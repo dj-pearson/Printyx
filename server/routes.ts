@@ -103,6 +103,12 @@ import equipmentDisposalRoutes from './routes-equipment-disposal';
 import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
+import { registerCustomerRoutes } from './routes-customers';
+import { registerDealsRoutes } from './routes-deals';
+import { registerCommissionRoutes } from './routes-commission';
+import { registerCatalogRoutes } from './routes-catalog';
+import { registerAnalyticsRoutes } from './routes-analytics';
+import { registerFinancialRoutes } from './routes-financial';
 import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerCustomReportsRoutes } from './routes-custom-reports';
 import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
@@ -651,8 +657,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup passport authentication
   await setupAuth(app);
 
-  // Global authentication middleware for all API routes except public/auth routes
-  // This ensures req.user is populated from Supabase JWT for all protected routes
+  // Import Supabase auth middleware
+  const { authenticateSupabaseJWT } = await import('./middleware/supabase-auth');
+  const { getUserId, getTenantId } = await import('./utils/auth-helpers');
+
+  // Global authentication middleware for all API routes
+  // Phase 1: Always try Supabase JWT first (non-blocking)
+  app.use('/api', authenticateSupabaseJWT);
+
+  // Phase 2: Populate req.user for backward compatibility
+  app.use('/api', async (req: any, res, next) => {
+    // If Supabase JWT auth succeeded, populate req.user for backward compatibility
+    if (req.supabaseUser) {
+      req.user = {
+        id: req.supabaseUser.id,
+        email: req.supabaseUser.email,
+        tenantId: req.supabaseUser.tenantId,
+        roleId: req.supabaseUser.roleId,
+        teamId: req.supabaseUser.teamId,
+        accessScope: req.supabaseUser.accessScope,
+        isPlatformUser: req.supabaseUser.isPlatformUser,
+        firstName: req.supabaseUser.firstName,
+        lastName: req.supabaseUser.lastName,
+      };
+    }
+    next();
+  });
+
+  // Phase 3: Require authentication (except public paths)
+  // This works with both Supabase JWT and session auth via unified helpers
   app.use('/api', async (req: any, res, next) => {
     // Routes that don't require authentication
     const publicPaths = [
@@ -669,8 +702,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
 
-    // For all other API routes, require authentication
-    return isAuthenticated(req, res, next);
+    // Check authentication using unified helpers (supports both JWT and session)
+    const userId = getUserId(req);
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED',
+      });
+    }
+
+    // Authentication succeeded
+    next();
   });
 
   // CSRF protection for state-changing routes (session-based)
@@ -1565,249 +1607,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Commission Management Routes
-  app.get('/api/commission/plans', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample commission plans
-      const commissionPlans = [
-        {
-          id: 'plan-1',
-          planName: 'Sales Rep Standard',
-          planType: 'sales_rep',
-          description: 'Standard commission plan for sales representatives',
-          isActive: true,
-          effectiveDate: new Date('2024-01-01'),
-          tiers: [
-            {
-              tierLevel: 1,
-              tierName: 'Starter',
-              minimumSales: 0,
-              maximumSales: 50000,
-              commissionRate: 5.0,
-              bonusThreshold: null,
-              bonusAmount: null,
-            },
-            {
-              tierLevel: 2,
-              tierName: 'Achiever',
-              minimumSales: 50001,
-              maximumSales: 100000,
-              commissionRate: 6.5,
-              bonusThreshold: 75000,
-              bonusAmount: 2500,
-            },
-          ],
-          rules: {
-            paymentFrequency: 'monthly',
-            paymentDelay: 30,
-            splitCommissionAllowed: true,
-            chargebackEnabled: true,
-            chargebackPeriod: 90,
-            minimumCommissionPayment: 100,
-          },
-          productRates: [
-            {
-              category: 'new_equipment',
-              rate: 8.0,
-              description: 'New copier/printer sales',
-            },
-            {
-              category: 'service_contracts',
-              rate: 4.0,
-              description: 'Service and maintenance contracts',
-            },
-          ],
-          createdAt: new Date('2024-01-01'),
-          updatedAt: new Date('2025-01-15'),
-        },
-      ];
-
-      res.json(commissionPlans);
-    } catch (error) {
-      console.error('Error fetching commission plans:', error);
-      res.status(500).json({ message: 'Failed to fetch commission plans' });
-    }
-  });
-
-  app.get('/api/commission/calculations', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Sample commission calculations
-      const calculations = [
-        {
-          id: 'calc-1',
-          employeeId: 'emp-001',
-          employeeName: 'John Smith',
-          employeeRole: 'Sales Representative',
-          planId: 'plan-1',
-          planName: 'Sales Rep Standard',
-          calculationPeriod: {
-            startDate: new Date('2025-01-01'),
-            endDate: new Date('2025-01-31'),
-            periodName: 'January 2025',
-          },
-          salesMetrics: {
-            totalSales: 87500,
-            quotaTarget: 75000,
-            quotaAchievement: 116.7,
-          },
-          commissionDetails: [
-            {
-              category: 'new_equipment',
-              salesAmount: 65000,
-              commissionRate: 6.5,
-              commissionAmount: 4225,
-              description: 'Tier 2 rate (6.5%) applied for sales over $50k',
-            },
-          ],
-          bonuses: [
-            {
-              type: 'tier_bonus',
-              description: 'Achiever tier bonus for exceeding $75k',
-              amount: 2500,
-              eligibilityMet: true,
-            },
-          ],
-          adjustments: [],
-          summary: {
-            grossCommission: 5350,
-            totalBonuses: 3500,
-            totalAdjustments: 0,
-            netCommission: 8850,
-            payoutDate: new Date('2025-03-01'),
-            status: 'calculated',
-          },
-          calculatedAt: new Date('2025-02-01'),
-          calculatedBy: 'system',
-        },
-      ];
-
-      res.json(calculations);
-    } catch (error) {
-      console.error('Error fetching commission calculations:', error);
-      res.status(500).json({ message: 'Failed to fetch commission calculations' });
-    }
-  });
-
-  app.get('/api/commission/analytics', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const analytics = {
-        summary: {
-          totalCommissionPaid: 245780,
-          averageCommissionRate: 6.8,
-          totalBonusesPaid: 45200,
-          totalAdjustments: -8950,
-          participatingEmployees: 28,
-          topPerformerPayout: 18750,
-          averagePayout: 8777.86,
-        },
-        performance_metrics: {
-          quotaAchievementRate: 87.5,
-          tierDistribution: {
-            starter: 12,
-            achiever: 11,
-            elite: 5,
-          },
-        },
-        monthly_trends: [
-          {
-            month: 'Dec 2024',
-            totalCommissions: 85210,
-            avgPayout: 9356,
-            quotaAchievement: 89.2,
-          },
-          {
-            month: 'Jan 2025',
-            totalCommissions: 87500,
-            avgPayout: 9611,
-            quotaAchievement: 91.5,
-          },
-        ],
-        top_performers: [
-          {
-            employeeId: 'emp-001',
-            name: 'John Smith',
-            role: 'Sales Representative',
-            totalCommission: 18750,
-            quotaAchievement: 191.7,
-            rank: 1,
-          },
-        ],
-        plan_performance: [
-          {
-            planId: 'plan-1',
-            planName: 'Sales Rep Standard',
-            participants: 18,
-            avgPayout: 9235,
-            totalPayout: 166230,
-            avgQuotaAchievement: 89.2,
-          },
-        ],
-        dispute_analysis: {
-          totalDisputes: 3,
-          resolvedDisputes: 2,
-          pendingDisputes: 1,
-          averageResolutionTime: 5.5,
-        },
-      };
-
-      res.json(analytics);
-    } catch (error) {
-      console.error('Error fetching commission analytics:', error);
-      res.status(500).json({ message: 'Failed to fetch commission analytics' });
-    }
-  });
-
-  app.get('/api/commission/disputes', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const disputes = [
-        {
-          id: 'dispute-1',
-          disputeNumber: 'DISP-2025-001',
-          employeeId: 'emp-001',
-          employeeName: 'John Smith',
-          calculationPeriod: 'January 2025',
-          disputeDetails: {
-            type: 'calculation_error',
-            description: 'Incorrect commission rate applied for large deal',
-            disputedAmount: 2850,
-            expectedAmount: 5200,
-            difference: 2350,
-          },
-          status: 'under_review',
-          priority: 'high',
-          resolution: {
-            assignedToName: 'Mary Johnson',
-            estimatedResolution: new Date('2025-02-10'),
-            notes: 'Reviewing contract terms and commission plan details',
-          },
-        },
-      ];
-
-      res.json(disputes);
-    } catch (error) {
-      console.error('Error fetching commission disputes:', error);
-      res.status(500).json({ message: 'Failed to fetch commission disputes' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-commission.ts (Phase 2):
+   * - GET /api/commission/plans
+   * - GET /api/commission/calculations
+   * - GET /api/commission/analytics
+   * - GET /api/commission/disputes
+   */
 
   // Customer Success & Retention Routes
   app.get('/api/customer-success/health-scores', async (req: any, res) => {
@@ -2471,220 +2277,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Advanced Analytics Dashboard Routes
-  app.get('/api/analytics/dashboard', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const analyticsDashboard = {
-        executiveSummary: {
-          totalRevenue: {
-            current: 2847650.75,
-            previous: 2634580.2,
-            growth: 8.1,
-            trend: 'up',
-          },
-          activeCustomers: {
-            current: 847,
-            previous: 832,
-            growth: 1.8,
-            trend: 'up',
-          },
-          serviceTickets: {
-            current: 2156,
-            previous: 2089,
-            growth: 3.2,
-            trend: 'up',
-          },
-          grossMargin: {
-            current: 42.7,
-            previous: 41.2,
-            growth: 1.5,
-            trend: 'up',
-          },
-        },
-        revenueAnalytics: {
-          monthlyRevenue: [
-            {
-              month: '2024-07',
-              revenue: 245680.5,
-              contracts: 78,
-              newCustomers: 12,
-            },
-            {
-              month: '2025-01',
-              revenue: 356290.1,
-              contracts: 102,
-              newCustomers: 28,
-            },
-          ],
-          revenueByCategory: [
-            {
-              category: 'Equipment Sales',
-              amount: 1247850.3,
-              percentage: 43.8,
-              growth: 12.5,
-            },
-            {
-              category: 'Service Contracts',
-              amount: 892640.75,
-              percentage: 31.4,
-              growth: 6.2,
-            },
-          ],
-          topPerformingProducts: [
-            {
-              product: 'Canon ImageRunner Advance DX 6780i',
-              revenue: 287450.0,
-              units: 23,
-              margin: 38.5,
-              trend: 'up',
-            },
-          ],
-        },
-        customerAnalytics: {
-          customerSegmentation: [
-            {
-              segment: 'Enterprise (500+ employees)',
-              count: 89,
-              revenue: 1456780.25,
-              percentage: 51.2,
-            },
-          ],
-          customerLifetimeValue: {
-            average: 18750.45,
-            median: 14280.2,
-            top10Percent: 67890.75,
-            churnRate: 4.2,
-            retentionRate: 95.8,
-          },
-          topCustomers: [
-            {
-              name: 'Metro Healthcare Systems',
-              revenue: 187450.75,
-              contracts: 15,
-              satisfaction: 4.8,
-              lastPurchase: new Date('2025-01-28T00:00:00Z'),
-              nextRenewal: new Date('2025-06-15T00:00:00Z'),
-            },
-          ],
-        },
-        serviceAnalytics: {
-          serviceMetrics: {
-            totalTickets: 2156,
-            avgResolutionTime: 3.4,
-            firstCallResolution: 87.5,
-            customerSatisfaction: 4.6,
-            technicianUtilization: 78.3,
-          },
-          ticketTrends: [
-            {
-              month: '2025-01',
-              tickets: 338,
-              resolved: 329,
-              satisfaction: 4.6,
-            },
-          ],
-          topIssues: [{ issue: 'Paper Jam', count: 387, avgTime: 1.2, resolution: 96.8 }],
-          technicianPerformance: [
-            {
-              technician: 'Mike Rodriguez',
-              tickets: 187,
-              avgTime: 2.8,
-              satisfaction: 4.8,
-              efficiency: 94.2,
-            },
-          ],
-        },
-        equipmentAnalytics: {
-          fleetOverview: {
-            totalUnits: 1247,
-            averageAge: 3.2,
-            utilizationRate: 73.4,
-            maintenanceCompliance: 94.7,
-          },
-          equipmentByManufacturer: [
-            {
-              manufacturer: 'Canon',
-              units: 387,
-              percentage: 31.0,
-              avgAge: 2.8,
-            },
-          ],
-          maintenanceSchedule: {
-            overdue: 23,
-            dueSoon: 67,
-            upcoming: 156,
-            compliant: 1001,
-          },
-        },
-        financialAnalytics: {
-          profitability: {
-            grossProfit: 1215867.45,
-            grossMargin: 42.7,
-            netProfit: 567890.25,
-            netMargin: 19.9,
-            ebitda: 678950.75,
-          },
-          cashFlow: [
-            {
-              month: '2025-01',
-              inflow: 434567.1,
-              outflow: 324567.85,
-              net: 109999.25,
-            },
-          ],
-          expenseBreakdown: [
-            {
-              category: 'Cost of Goods Sold',
-              amount: 1631783.3,
-              percentage: 57.3,
-            },
-          ],
-        },
-        predictiveAnalytics: {
-          revenueForecast: [{ month: '2025-02', predicted: 389670.5, confidence: 87.5 }],
-          churnPrediction: {
-            highRisk: 23,
-            mediumRisk: 67,
-            lowRisk: 757,
-            actions: [
-              {
-                customer: 'Sunset Industries',
-                risk: 89.2,
-                action: 'Immediate intervention required',
-              },
-            ],
-          },
-        },
-        competitiveAnalysis: {
-          marketShare: {
-            company: 12.7,
-            competitor1: 18.9,
-            competitor2: 15.4,
-            competitor3: 13.2,
-            others: 39.8,
-          },
-          winLossAnalysis: {
-            totalOpportunities: 287,
-            won: 156,
-            lost: 89,
-            pending: 42,
-            winRate: 54.4,
-            lossReasons: [{ reason: 'Price', count: 34, percentage: 38.2 }],
-          },
-        },
-      };
-
-      res.json(analyticsDashboard);
-    } catch (error) {
-      console.error('Error fetching analytics dashboard:', error);
-      res.status(500).json({ message: 'Failed to fetch analytics dashboard' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-analytics.ts (Phase 2):
+   * - GET /api/analytics/dashboard - Comprehensive analytics dashboard
+   * - GET /api/analytics/metrics - Aggregated service metrics
+   * - GET /api/analytics/performance-metrics - Performance metrics by period
+   * - GET /api/analytics/technician-performance - Technician analytics
+   * - GET /api/analytics/customer-service - Customer service analytics
+   * - GET /api/analytics/trends - Service trend analysis
+   * - GET /api/analytics/dashboards - Business intelligence dashboards
+   * - POST /api/analytics/dashboards - Create BI dashboard
+   * - GET /api/analytics/benchmarks - Performance benchmarks
+   * - POST /api/analytics/benchmarks - Create performance benchmark
+   * - POST /api/analytics/generate-reports - Generate sample analytics reports
+   */
 
   // Business Process Optimization Routes
   app.get('/api/business-process/dashboard', async (req: any, res) => {
@@ -4649,29 +4255,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Get contacts for a specific business record
-  app.get('/api/business-records/:id/contacts', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      const { id } = req.params;
-
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // First, get the business record to get the company name
-      const businessRecord = await storage.getBusinessRecord(id, tenantId);
-      if (!businessRecord) {
-        return res.status(404).json({ message: 'Business record not found' });
-      }
-
-      // Get contacts by company name from enhanced_contacts table
-      const contacts = await storage.getContactsByCompanyName(businessRecord.companyName, tenantId);
-      res.json(contacts || []);
-    } catch (error) {
-      console.error('Error fetching business record contacts:', error);
-      res.status(500).json({ message: 'Failed to fetch contacts' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - GET /api/business-records/:id/contacts
+   */
 
   app.get(
     '/api/customers/:id',
@@ -4709,32 +4296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  app.post('/api/customers', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const validatedData = insertCustomerSchema.parse({
-        ...req.body,
-        tenantId: tenantId,
-        createdBy: req.user.id,
-        recordType: 'customer', // Ensure it's created as a customer, not a lead
-        // Convert string fields to appropriate types
-        probability: req.body.probability ? parseFloat(req.body.probability) : null,
-        estimatedDealValue: req.body.estimatedDealValue
-          ? parseFloat(req.body.estimatedDealValue)
-          : null,
-      });
-
-      const customer = await storage.createCustomer(validatedData);
-      res.status(201).json(customer);
-    } catch (error) {
-      console.error('Error creating customer:', error);
-      res.status(500).json({ message: 'Failed to create customer' });
-    }
-  });
+  // NOTE: POST /api/customers route moved to routes-customers.ts
 
   // Leads API routes (unified with business records)
   app.get('/api/leads', async (req: any, res) => {
@@ -4784,37 +4346,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Unified business records route (handles both customers and leads by slug/ID)
-  app.get('/api/business-records/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Try to get by URL slug first, then by ID
-      let record;
-      const isSlug = id.includes('-') && id.length >= 20 && /\d{8}$/.test(id);
-
-      if (isSlug) {
-        record = await storage.getBusinessRecordBySlug(id, tenantId);
-      } else {
-        record = await storage.getBusinessRecord(id, tenantId);
-      }
-
-      if (!record) {
-        return res.status(404).json({ message: 'Business record not found' });
-      }
-
-      // Transform database fields to frontend format
-      const transformedRecord = BusinessRecordsTransformer.toFrontend(record);
-      res.json(transformedRecord);
-    } catch (error) {
-      console.error('Error fetching business record:', error);
-      res.status(500).json({ message: 'Failed to fetch business record' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - GET /api/business-records/:id
+   */
 
   // Business Records Import (CSV)
   app.post(
@@ -6310,34 +5845,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chart of Accounts Management
-  app.get('/api/chart-of-accounts', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const accounts = await storage.getChartOfAccounts(tenantId);
-      res.json(accounts);
-    } catch (error) {
-      console.error('Error fetching chart of accounts:', error);
-      res.status(500).json({ message: 'Failed to fetch chart of accounts' });
-    }
-  });
-
-  app.post('/api/chart-of-accounts', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const accountData = { ...req.body, tenantId };
-      const newAccount = await storage.createChartOfAccount(accountData);
-      res.status(201).json(newAccount);
-    } catch (error) {
-      console.error('Error creating account:', error);
-      res.status(500).json({ message: 'Failed to create account' });
-    }
-  });
-
-  // Journal Entries Management (temporarily disabled; storage methods not implemented)
-  app.all(['/api/journal-entries', '/api/journal-entries/:id'], (_req, res) => {
-    res.status(501).json({ message: 'Journal entries API not implemented' });
-  });
+  /**
+   * NOTE: Migrated to routes-financial.ts (Phase 2):
+   * - GET /api/chart-of-accounts - Get chart of accounts
+   * - POST /api/chart-of-accounts - Create chart of account entry
+   * - ALL /api/journal-entries - Journal entries (501 Not Implemented stub)
+   */
 
   // Purchase Orders Management
   app.get('/api/purchase-orders', async (req, res) => {
@@ -7704,202 +7217,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get single deal
-  app.get('/api/deals/:id', async (req: any, res) => {
-    try {
-      // Authentication check using unified auth helpers
-      const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const tenantId = user.tenantId;
-      const dealId = req.params.id;
-
-      const deal = await storage.getDeal(dealId, tenantId);
-      if (!deal) {
-        return res.status(404).json({ message: 'Deal not found' });
-      }
-
-      res.json(deal);
-    } catch (error) {
-      console.error('Error fetching deal:', error);
-      res.status(500).json({ message: 'Failed to fetch deal' });
-    }
-  });
-
-  // Create new deal
-  app.post('/api/deals', async (req: any, res) => {
-    try {
-      // Authentication check using unified auth helpers
-      const authUserId = getUserId(req);
-      if (!authUserId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(authUserId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const tenantId = user.tenantId;
-      const userId = user.id;
-
-      // Get the first available stage as default
-      const stages = await storage.getDealStages(tenantId);
-      const defaultStageId = stages.length > 0 ? stages[0].id : null;
-
-      if (!defaultStageId) {
-        // Initialize default stages if none exist
-        const defaultStages = [
-          {
-            name: 'Appointment Scheduled',
-            color: '#3B82F6',
-            sortOrder: 1,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Qualified to Buy',
-            color: '#8B5CF6',
-            sortOrder: 2,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Presentation Scheduled',
-            color: '#06B6D4',
-            sortOrder: 3,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Decision Maker Bought-In',
-            color: '#F59E0B',
-            sortOrder: 4,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Contract Sent',
-            color: '#EF4444',
-            sortOrder: 5,
-            isClosingStage: false,
-            isWonStage: false,
-          },
-          {
-            name: 'Closed Won',
-            color: '#10B981',
-            sortOrder: 6,
-            isClosingStage: true,
-            isWonStage: true,
-          },
-          {
-            name: 'Closed Lost',
-            color: '#6B7280',
-            sortOrder: 7,
-            isClosingStage: true,
-            isWonStage: false,
-          },
-        ];
-
-        const createdStages = [];
-        for (const stage of defaultStages) {
-          const stageData = {
-            ...stage,
-            tenantId,
-            isActive: true,
-          };
-          const newStage = await storage.createDealStage(stageData);
-          createdStages.push(newStage);
-        }
-
-        if (createdStages.length === 0) {
-          throw new Error('Could not create default deal stages');
-        }
-      }
-
-      // Get the updated stages list after potential creation
-      const finalStages = await storage.getDealStages(tenantId);
-      const finalStageId = finalStages.length > 0 ? finalStages[0].id : null;
-
-      if (!finalStageId) {
-        throw new Error('No deal stages available');
-      }
-
-      // Transform the data to match schema expectations
-      const dealData = {
-        tenantId,
-        ownerId: userId,
-        createdById: userId, // Add the required createdById field
-        stageId: finalStageId,
-        title: req.body.title,
-        description: req.body.description || null,
-        amount: req.body.amount ? req.body.amount : null,
-        estimatedMonthlyValue: req.body.estimatedMonthlyValue
-          ? req.body.estimatedMonthlyValue
-          : null,
-        expectedCloseDate: req.body.expectedCloseDate ? new Date(req.body.expectedCloseDate) : null,
-        companyName: req.body.companyName || null,
-        primaryContactName: req.body.primaryContactName || null,
-        primaryContactEmail: req.body.primaryContactEmail || null,
-        primaryContactPhone: req.body.primaryContactPhone || null,
-        source: req.body.source || null,
-        dealType: req.body.dealType || null,
-        priority: req.body.priority || 'medium',
-        productsInterested: req.body.productsInterested || null,
-        probability: 25, // Default probability for new deals
-      };
-
-      console.log('[DEAL DEBUG] Processed deal data:', JSON.stringify(dealData, null, 2));
-
-      const deal = await storage.createDeal(dealData);
-      res.status(201).json(deal);
-    } catch (error) {
-      console.error('Error creating deal:', error);
-      res.status(500).json({ message: 'Failed to create deal' });
-    }
-  });
-
-  // Update deal
-  app.put('/api/deals/:id', async (req: any, res) => {
-    try {
-      // Authentication check using unified auth helpers
-      const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
-
-      const tenantId = user.tenantId;
-      const dealId = req.params.id;
-
-      // Convert date strings to Date objects for Drizzle
-      const updateData = { ...req.body };
-      if (updateData.expectedCloseDate && typeof updateData.expectedCloseDate === 'string') {
-        updateData.expectedCloseDate = new Date(updateData.expectedCloseDate);
-      }
-
-      const deal = await storage.updateDeal(dealId, updateData, tenantId);
-      if (!deal) {
-        return res.status(404).json({ message: 'Deal not found' });
-      }
-
-      res.json(deal);
-    } catch (error) {
-      console.error('Error updating deal:', error);
-      res.status(500).json({ message: 'Failed to update deal' });
-    }
-  });
+  /**
+   * NOTE: The following routes have been migrated to routes-deals.ts:
+   * - GET /api/deals/:id
+   * - POST /api/deals
+   * - PUT /api/deals/:id
+   *
+   * See server/routes-deals.ts (Migrated 2/225 routes)
+   */
 
   // Update deal stage (for drag and drop)
   app.put('/api/deals/:id/stage', async (req: any, res) => {
@@ -8444,196 +7769,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Master Product Catalog Routes
-  app.get('/api/catalog/models', async (req: any, res) => {
-    try {
-      const manufacturer = String((req.query as any)?.manufacturer || '');
-      const search = String((req.query as any)?.search || '');
-      const category = String((req.query as any)?.category || '');
-      const status = String((req.query as any)?.status || '');
-      const rows = await storage.browseMasterProducts({
-        manufacturer,
-        search,
-        category,
-        status,
-      });
-      res.json(rows);
-    } catch (error) {
-      console.error('Error browsing master catalog:', error);
-      res.status(500).json({ message: 'Failed to fetch master catalog' });
-    }
-  });
-
-  app.post('/api/catalog/models', async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser ||
-        req.user?.is_platform_user ||
-        req.user?.role === 'platform_admin' ||
-        req.user?.role === 'root_admin' ||
-        req.user?.role === 'Platform Admin' ||
-        req.user?.role === 'Root Admin' ||
-        req.user?.role === 'admin';
-
-      if (!isPlatformUser) {
-        return res.status(403).json({
-          message: 'Platform admin required',
-          userRole: req.user?.role,
-          userId: req.user?.id,
-        });
-      }
-      const payload = insertMasterProductModelSchema.parse(req.body);
-      const saved = await storage.upsertMasterProduct(payload);
-      res.status(201).json(saved);
-    } catch (error: any) {
-      console.error('Error creating master product:', error);
-      res.status(500).json({
-        message: 'Failed to create master product',
-        detail: error?.message,
-      });
-    }
-  });
-
-  app.get('/api/catalog/manufacturers', async (_req: any, res) => {
-    try {
-      const rows = await storage.listMasterManufacturers();
-      res.json(rows);
-    } catch (error) {
-      console.error('Error fetching manufacturers:', error);
-      res.status(500).json({ message: 'Failed to fetch manufacturers' });
-    }
-  });
-
-  app.get('/api/enabled-products', async (req: any, res) => {
-    try {
-      const { tenantId } = req.user;
-      const rows = await storage.getEnabledProducts(tenantId);
-      res.json(rows);
-    } catch (error) {
-      console.error('Error fetching enabled products:', error);
-      res.status(500).json({ message: 'Failed to fetch enabled products' });
-    }
-  });
-
-  app.post('/api/catalog/models/:id/enable', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { id } = req.params;
-      const overrides = { ...req.body, enabledBy: userId };
-      const result = await storage.enableMasterProduct(tenantId, id, overrides);
-      res.json(result);
-    } catch (error) {
-      console.error('Error enabling product:', error);
-      res.status(500).json({ message: 'Failed to enable product' });
-    }
-  });
-
-  app.post('/api/catalog/models/bulk-enable', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { masterProductIds = [], defaultOverrides = {} } = req.body ?? {};
-      let enabled = 0;
-      let skipped = 0;
-      for (const pid of masterProductIds) {
-        try {
-          await storage.enableMasterProduct(tenantId, pid, {
-            ...defaultOverrides,
-            enabledBy: userId,
-          });
-          enabled += 1;
-        } catch {
-          skipped += 1;
-        }
-      }
-      res.json({ enabled, skipped });
-    } catch (error) {
-      console.error('Error bulk enabling products:', error);
-      res.status(500).json({ message: 'Failed to bulk enable products' });
-    }
-  });
-
-  // Tenant: enable products directly from CSV (uses Dealer Price as dealerCost)
-  app.post(
-    '/api/catalog/models/enable-from-csv',
-
-    upload.single('file'),
-    async (req: any, res) => {
-      try {
-        const { tenantId, id: userId } = req.user;
-        const file = req.file;
-        if (!file) return res.status(400).json({ message: 'CSV file required' });
-
-        const csvText = file.buffer.toString('utf-8');
-        const lines = csvText.split(/\r?\n/);
-        let columns: string[] = [];
-        let enabled = 0;
-        let skipped = 0;
-
-        const isHeader = (arr: string[]) => {
-          const lc = arr.map((s) => s.trim().toLowerCase());
-          return (
-            lc.includes('item no.') &&
-            lc.includes('description') &&
-            lc.some((c) => c.includes('dealer price')) &&
-            lc.includes('msrp')
-          );
-        };
-
-        const normalizeMoney = (s?: string) => {
-          if (!s) return undefined;
-          const n = Number(String(s).replace(/[$,\s]/g, ''));
-          return Number.isFinite(n) ? n : undefined;
-        };
-
-        for (const raw of lines) {
-          const line = raw.trimEnd();
-          if (!line) continue;
-          const parts = line.split(',');
-          if (isHeader(parts)) {
-            columns = parts.map((h: string) => h.trim().toLowerCase());
-            continue;
-          }
-          if (!columns.length) continue;
-
-          const row: any = {};
-          columns.forEach((c: string, i: number) => (row[c] = (parts[i] || '').trim()));
-          const modelCode = row['item no.'] || row['item no'] || row['item'];
-          const description = row['description'];
-          const dealerPrice = normalizeMoney(row['dealer price']) ?? normalizeMoney(row['dealer']);
-          if (!modelCode || !description) continue;
-
-          // Make sure a corresponding master product exists (create minimal if missing)
-          let master = await storage.findMasterProduct('Canon', modelCode);
-          if (!master) {
-            master = await storage.upsertMasterProduct({
-              manufacturer: 'Canon',
-              modelCode,
-              displayName: description,
-              msrp: undefined,
-            } as any);
-          }
-
-          try {
-            await storage.enableMasterProduct(tenantId, (master as any).id, {
-              dealerCost: dealerPrice as any,
-              updatedAt: new Date(),
-            } as any);
-            enabled += 1;
-          } catch {
-            skipped += 1;
-          }
-        }
-
-        res.json({ enabled, skipped });
-      } catch (error: any) {
-        console.error('Error enabling products from CSV:', error);
-        res.status(500).json({
-          message: 'Failed to enable from CSV',
-          detail: error?.message,
-        });
-      }
-    },
-  );
+  /**
+   * NOTE: Migrated to routes-catalog.ts (Phase 2):
+   * - GET /api/catalog/models - Browse master product catalog
+   * - POST /api/catalog/models - Create/update master product
+   * - GET /api/catalog/manufacturers - List manufacturers
+   * - GET /api/enabled-products - Get tenant-enabled products
+   * - POST /api/catalog/models/:id/enable - Enable product for tenant
+   * - POST /api/catalog/models/bulk-enable - Bulk enable products
+   * - POST /api/catalog/models/enable-from-csv - Enable from CSV file
+   *
+   * Additional routes migrated:
+   * - PATCH /api/catalog/models/:id (see below)
+   * - POST /api/catalog/normalize-categories (see below)
+   */
 
   // ===== SEO Management Routes =====
   // Root Admin: upsert global SEO settings
@@ -8813,30 +7962,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public: AI/LLM crawler directives (llms.txt)
-  app.get('/llms.txt', async (_req, res) => {
+  // Handler function for llms.txt content
+  const handleLlmsTxt = async (_req: any, res: any) => {
     try {
       const settingsRows = await db.select().from(seoSettings).limit(1);
       const settings = settingsRows[0] as any;
-      const allow = settings?.allowAiCrawling !== false;
-      const lines = [
-        `# LLMs crawling directives for Printyx`,
-        `# Allow AI crawlers to index public content for generative engines`,
-        allow ? `Allow: /` : `Disallow: /`,
-      ];
-      const body = lines.join('\n');
-      const etag = createHash('sha1').update(body).digest('hex');
+      const baseUrl = process.env.BASE_URL || 'https://printyx.net';
+
+      // Enhanced llms.txt with comprehensive platform information
+      const llmsTxt = `# Printyx - AI-Powered Print Fleet Management Platform
+# This file helps AI assistants understand what Printyx offers
+
+# Platform Overview
+Printyx is a modern cloud-based CRM and service management platform designed specifically for copier/printer dealers and managed print services providers.
+
+# Core Features
+- Customer Relationship Management (CRM) with AI-powered lead scoring
+- Service Dispatch & Field Service Management
+- Inventory & Warehouse Management
+- Advanced Billing & Meter Billing
+- Sales Forecasting & Analytics
+- Equipment Lifecycle Management
+- Mobile-First Service Technician App
+- QuickBooks & Salesforce Integration
+
+# Key Differentiators
+- Built for copier dealers (vs generic CRM)
+- Mobile-first design for field technicians
+- AI-powered predictive maintenance
+- Real-time meter reading collection
+- Automated supply replenishment
+- White-label capabilities
+
+# Documentation
+Documentation: ${baseUrl}/docs
+API Docs: ${baseUrl}/api/docs
+Knowledge Base: ${baseUrl}/knowledge-base
+
+# Contact
+Website: ${baseUrl}
+Support: support@printyx.net
+
+# AI Crawling Policy
+${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
+`;
+
+      const etag = createHash('sha1').update(llmsTxt).digest('hex');
       res.setHeader('ETag', etag);
       if (_req.headers['if-none-match'] === etag) {
         return res.status(304).end();
       }
       res
         .header('Content-Type', 'text/plain; charset=utf-8')
-        .header('Cache-Control', 'public, max-age=300, s-maxage=600')
-        .send(body);
+        .header('Cache-Control', 'public, max-age=3600, s-maxage=7200')
+        .send(llmsTxt);
     } catch (error) {
       res.header('Content-Type', 'text/plain; charset=utf-8').send('Allow: /\n');
     }
-  });
+  };
+
+  // Serve llms.txt at both locations for maximum compatibility
+  app.get('/llms.txt', handleLlmsTxt);
+  app.get('/.well-known/llms.txt', handleLlmsTxt);
 
   // Public: dynamic schema.json endpoint per path
   app.get('/schema.json', async (req, res) => {
@@ -9322,49 +8509,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Update master product
-  app.patch('/api/catalog/models/:id', async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser ||
-        req.user?.is_platform_user ||
-        req.user?.role === 'platform_admin' ||
-        req.user?.role === 'root_admin' ||
-        req.user?.role === 'Platform Admin' ||
-        req.user?.role === 'Root Admin' ||
-        req.user?.role === 'admin';
-
-      if (!isPlatformUser) {
-        return res.status(403).json({
-          message: 'Platform admin required to update master products',
-        });
-      }
-
-      const { id } = req.params;
-      const { displayName, msrp, dealerCost, marginPercentage, category, productType, status } =
-        req.body;
-
-      // Update the master product
-      const updateData: any = {};
-      if (displayName !== undefined) updateData.displayName = displayName;
-      if (msrp !== undefined) updateData.msrp = msrp;
-      if (dealerCost !== undefined) updateData.dealerCost = dealerCost;
-      if (marginPercentage !== undefined) updateData.marginPercentage = marginPercentage;
-      if (category !== undefined) updateData.category = category;
-      if (productType !== undefined) updateData.productType = productType;
-      if (status !== undefined) updateData.status = status;
-      updateData.updatedAt = new Date();
-
-      await db.update(masterProductModels).set(updateData).where(eq(masterProductModels.id, id));
-
-      res.json({ success: true, updated: updateData });
-    } catch (error: any) {
-      console.error('Error updating master product:', error);
-      res.status(500).json({
-        message: 'Failed to update master product',
-        detail: error?.message,
-      });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-catalog.ts (Phase 2):
+   * - PATCH /api/catalog/models/:id
+   */
 
   // Helper functions for enhanced CSV import
   const createFieldMappings = (headers: string[]) => {
@@ -9723,59 +8871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Normalize existing product categories
-  app.post('/api/catalog/normalize-categories', async (req: any, res) => {
-    try {
-      const isPlatformUser =
-        req.user?.isPlatformUser ||
-        req.user?.is_platform_user ||
-        req.user?.role === 'platform_admin' ||
-        req.user?.role === 'root_admin' ||
-        req.user?.role === 'Platform Admin' ||
-        req.user?.role === 'Root Admin' ||
-        req.user?.role === 'admin';
-
-      if (!isPlatformUser) {
-        return res.status(403).json({
-          message: 'Platform admin required to normalize categories',
-        });
-      }
-
-      // Get all products with categories that need normalization
-      const products = await db
-        .select()
-        .from(masterProductModels)
-        .where(sql`category IS NOT NULL`);
-
-      let updated = 0;
-      for (const product of products) {
-        const normalizedCategory = normalizeCategoryName(String(product.category || ''));
-        if (normalizedCategory !== product.category) {
-          await db
-            .update(masterProductModels)
-            .set({
-              category: normalizedCategory,
-              productType: normalizedCategory === 'Accessory' ? 'accessory' : 'model',
-              updatedAt: new Date(),
-            })
-            .where(eq(masterProductModels.id, product.id));
-          updated++;
-        }
-      }
-
-      res.json({
-        success: true,
-        message: `Normalized ${updated} product categories`,
-        updated,
-      });
-    } catch (error: any) {
-      console.error('Error normalizing categories:', error);
-      res.status(500).json({
-        message: 'Failed to normalize categories',
-        detail: error?.message,
-      });
-    }
-  });
+  // POST /api/catalog/normalize-categories - Migrated to routes-catalog.ts
 
   // Bulk update pricing
   app.post(
@@ -12763,433 +11859,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============= SERVICE ANALYTICS ROUTES =============
-
-  // Get analytics metrics
-  app.get(
-    '/api/analytics/metrics',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        const queries = [
-          `SELECT COALESCE(SUM(total_service_calls), 0) as total_service_calls FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly' AND metric_date >= DATE_TRUNC('month', CURRENT_DATE)`,
-          `SELECT COALESCE(AVG(average_response_time_minutes), 0) as avg_response_time FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
-          `SELECT COALESCE(AVG(average_satisfaction_score), 0) as customer_satisfaction FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
-          `SELECT COALESCE(AVG(month_over_month_growth), 0) as revenue_growth FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
-          `SELECT COALESCE(AVG(utilization_rate), 0) as utilization_rate FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
-          `SELECT COALESCE(AVG(first_call_resolution_rate), 0) as first_call_resolution FROM service_performance_metrics WHERE tenant_id = $1 AND metric_period = 'monthly'`,
-        ];
-
-        const results = await Promise.all(
-          queries.map((query) => db.$client.query(query, [tenantId])),
-        );
-
-        res.json({
-          totalServiceCalls: parseInt(results[0].rows[0].total_service_calls),
-          averageResponseTime: parseFloat(results[1].rows[0].avg_response_time),
-          customerSatisfaction: parseFloat(results[2].rows[0].customer_satisfaction),
-          revenueGrowth: parseFloat(results[3].rows[0].revenue_growth),
-          utilizationRate: parseFloat(results[4].rows[0].utilization_rate),
-          firstCallResolution: parseFloat(results[5].rows[0].first_call_resolution),
-        });
-      } catch (error) {
-        console.error('Error fetching analytics metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch analytics metrics' });
-      }
-    },
-  );
-
-  // Get performance metrics
-  app.get(
-    '/api/analytics/performance-metrics',
-
-    async (req: any, res) => {
-      try {
-        const period = String((req.query as any)?.period || '');
-        const tenantId = req.user.tenantId;
-
-        let whereConditions = ['tenant_id = $1'];
-        const queryParams = [tenantId];
-
-        if (period && period !== 'all') {
-          whereConditions.push(`metric_period = $${queryParams.length + 1}`);
-          queryParams.push(period);
-        }
-
-        const query = `
-        SELECT *
-        FROM service_performance_metrics
-        WHERE ${whereConditions.join(' AND ')}
-        ORDER BY metric_date DESC
-        LIMIT 20
-      `;
-
-        const result = await db.$client.query(query, queryParams);
-        res.json(result.rows);
-      } catch (error) {
-        console.error('Error fetching performance metrics:', error);
-        res.status(500).json({ error: 'Failed to fetch performance metrics' });
-      }
-    },
-  );
-
-  // Get technician performance analytics
-  app.get(
-    '/api/analytics/technician-performance',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        const query = `
-        SELECT 
-          tpa.*,
-          u.name as technician_name
-        FROM technician_performance_analytics tpa
-        LEFT JOIN users u ON tpa.technician_id = u.id
-        WHERE tpa.tenant_id = $1
-        ORDER BY tpa.created_at DESC
-      `;
-
-        const result = await db.$client.query(query, [tenantId]);
-        res.json(result.rows);
-      } catch (error) {
-        console.error('Error fetching technician performance analytics:', error);
-        res.status(500).json({ error: 'Failed to fetch technician performance analytics' });
-      }
-    },
-  );
-
-  // Get customer service analytics
-  app.get(
-    '/api/analytics/customer-service',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        const query = `
-        SELECT 
-          csa.*,
-          br.company_name as customer_name
-        FROM customer_service_analytics csa
-        LEFT JOIN business_records br ON csa.business_record_id = br.id
-        WHERE csa.tenant_id = $1
-        ORDER BY csa.created_at DESC
-      `;
-
-        const result = await db.$client.query(query, [tenantId]);
-        res.json(result.rows);
-      } catch (error) {
-        console.error('Error fetching customer service analytics:', error);
-        res.status(500).json({ error: 'Failed to fetch customer service analytics' });
-      }
-    },
-  );
-
-  // Get trend analysis
-  app.get('/api/analytics/trends', async (req: any, res) => {
-    try {
-      const category = String((req.query as any)?.category || '');
-      const tenantId = req.user.tenantId;
-
-      let whereConditions = ['tenant_id = $1'];
-      const queryParams = [tenantId];
-
-      if (category && category !== 'all') {
-        whereConditions.push(`trend_category = $${queryParams.length + 1}`);
-        queryParams.push(category);
-      }
-
-      const query = `
-        SELECT *
-        FROM service_trend_analysis
-        WHERE ${whereConditions.join(' AND ')}
-        ORDER BY analysis_date DESC
-        LIMIT 10
-      `;
-
-      const result = await db.$client.query(query, queryParams);
-      res.json(result.rows);
-    } catch (error) {
-      console.error('Error fetching trend analysis:', error);
-      res.status(500).json({ error: 'Failed to fetch trend analysis' });
-    }
-  });
-
-  // Get BI dashboards
-  app.get(
-    '/api/analytics/dashboards',
-
-    async (req: any, res) => {
-      try {
-        const category = String((req.query as any)?.category || '');
-        const tenantId = req.user.tenantId;
-
-        let whereConditions = ['bid.tenant_id = $1'];
-        const queryParams = [tenantId];
-
-        if (category && category !== 'all') {
-          whereConditions.push(`bid.category = $${queryParams.length + 1}`);
-          queryParams.push(category);
-        }
-
-        const query = `
-        SELECT 
-          bid.*,
-          u.name as owner_name
-        FROM business_intelligence_dashboards bid
-        LEFT JOIN users u ON bid.owner_id = u.id
-        WHERE ${whereConditions.join(' AND ')}
-        ORDER BY bid.is_featured DESC, bid.created_at DESC
-      `;
-
-        const result = await db.$client.query(query, queryParams);
-        res.json(result.rows);
-      } catch (error) {
-        console.error('Error fetching BI dashboards:', error);
-        res.status(500).json({ error: 'Failed to fetch BI dashboards' });
-      }
-    },
-  );
-
-  // Create BI dashboard
-  app.post(
-    '/api/analytics/dashboards',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const userId = req.user.id;
-
-        const {
-          dashboard_name,
-          dashboard_type,
-          category,
-          visibility,
-          refresh_interval,
-          auto_refresh,
-          description,
-        } = req.body;
-
-        const dashboardConfig = {
-          description,
-          widgets: [],
-          layout: 'grid',
-          theme: 'default',
-        };
-
-        const query = `
-        INSERT INTO business_intelligence_dashboards (
-          tenant_id, dashboard_name, dashboard_type, category, owner_id,
-          visibility, refresh_interval, auto_refresh, dashboard_config
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING *
-      `;
-
-        const result = await db.$client.query(query, [
-          tenantId,
-          dashboard_name,
-          dashboard_type,
-          category,
-          userId,
-          visibility,
-          refresh_interval,
-          auto_refresh,
-          JSON.stringify(dashboardConfig),
-        ]);
-
-        res.status(201).json(result.rows[0]);
-      } catch (error) {
-        console.error('Error creating BI dashboard:', error);
-        res.status(500).json({ error: 'Failed to create BI dashboard' });
-      }
-    },
-  );
-
-  // Get performance benchmarks
-  app.get(
-    '/api/analytics/benchmarks',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        const query = `
-        SELECT *
-        FROM performance_benchmarks
-        WHERE tenant_id = $1
-        ORDER BY improvement_priority DESC, created_at DESC
-      `;
-
-        const result = await db.$client.query(query, [tenantId]);
-        res.json(result.rows);
-      } catch (error) {
-        console.error('Error fetching performance benchmarks:', error);
-        res.status(500).json({ error: 'Failed to fetch performance benchmarks' });
-      }
-    },
-  );
-
-  // Create performance benchmark
-  app.post(
-    '/api/analytics/benchmarks',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        const {
-          benchmark_name,
-          benchmark_category,
-          industry_average,
-          company_target,
-          improvement_priority,
-          target_completion_date,
-          business_impact,
-          investment_required,
-        } = req.body;
-
-        const query = `
-        INSERT INTO performance_benchmarks (
-          tenant_id, benchmark_name, benchmark_category, industry_average,
-          company_target, improvement_priority, target_completion_date,
-          business_impact, investment_required, trend_direction
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING *
-      `;
-
-        const result = await db.$client.query(query, [
-          tenantId,
-          benchmark_name,
-          benchmark_category,
-          industry_average,
-          company_target,
-          improvement_priority,
-          target_completion_date,
-          business_impact,
-          investment_required,
-          'stable',
-        ]);
-
-        res.status(201).json(result.rows[0]);
-      } catch (error) {
-        console.error('Error creating performance benchmark:', error);
-        res.status(500).json({ error: 'Failed to create performance benchmark' });
-      }
-    },
-  );
-
-  // Generate analytics reports
-  app.post(
-    '/api/analytics/generate-reports',
-
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        // Generate sample performance metrics
-        const currentDate = new Date();
-        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-
-        const metricsQuery = `
-        INSERT INTO service_performance_metrics (
-          tenant_id, metric_date, metric_period, period_start, period_end,
-          total_service_calls, emergency_calls, average_response_time_minutes,
-          first_call_resolution_rate, average_satisfaction_score, total_service_revenue,
-          utilization_rate, jobs_completed_on_time, jobs_completed_late, month_over_month_growth
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      `;
-
-        await db.$client.query(metricsQuery, [
-          tenantId,
-          currentDate,
-          'monthly',
-          startOfMonth,
-          currentDate,
-          125,
-          18,
-          45.5,
-          87.2,
-          4.3,
-          45000,
-          78.5,
-          98,
-          12,
-          8.5,
-        ]);
-
-        // Generate sample trend analysis
-        const trendQuery = `
-        INSERT INTO service_trend_analysis (
-          tenant_id, trend_category, analysis_date, period_type,
-          current_value, previous_value, percentage_change, trend_direction,
-          forecasted_next_period, forecast_confidence, trend_insights
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      `;
-
-        const trends = [
-          [
-            'service_volume',
-            125,
-            118,
-            5.93,
-            'up',
-            132,
-            85,
-            'Service volume continues to grow steadily',
-          ],
-          [
-            'satisfaction',
-            4.3,
-            4.1,
-            4.88,
-            'up',
-            4.4,
-            90,
-            'Customer satisfaction improving with recent process changes',
-          ],
-          [
-            'response_times',
-            45.5,
-            52.3,
-            -13.0,
-            'down',
-            42,
-            88,
-            'Response times improving due to optimized routing',
-          ],
-        ];
-
-        for (const trend of trends) {
-          await db.$client.query(trendQuery, [
-            tenantId,
-            trend[0],
-            currentDate,
-            'monthly',
-            trend[1],
-            trend[2],
-            trend[3],
-            trend[4],
-            trend[5],
-            trend[6],
-            trend[7],
-          ]);
-        }
-
-        res.status(201).json({
-          message: 'Analytics reports generated successfully',
-          reports_generated: 1 + trends.length,
-        });
-      } catch (error) {
-        console.error('Error generating analytics reports:', error);
-        res.status(500).json({ error: 'Failed to generate analytics reports' });
-      }
-    },
-  );
-
   // ============= WORKFLOW AUTOMATION ROUTES =============
 
   // Get automation metrics
@@ -14428,18 +13097,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== BUSINESS LOGIC CONSISTENCY FIXES =====
 
-  // Helper function to generate customer numbers
-  async function generateCustomerNumber(tenantId: string): Promise<string> {
-    const count = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(businessRecords)
-      .where(
-        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
-      );
-
-    const customerCount = count[0]?.count || 0;
-    return `CUST-${String(customerCount + 1).padStart(6, '0')}`;
-  }
+  /**
+   * NOTE: Migrated helper function to routes-business-records.ts:
+   * - generateCustomerNumber()
+   */
 
   // Helper function for tiered billing calculation
   function calculateTieredAmount(copies: number, rates: any[], baseRate: number): number {
@@ -14475,119 +13136,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== BUSINESS LOGIC CONSISTENCY FIXES =====
 
-  // 1. Complete Lead-to-Customer Conversion Implementation
-  app.post('/api/business-records/:id/convert-to-customer', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { id } = req.params;
-      const { customerNumber, serviceAddress, billingAddress } = req.body;
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - POST /api/business-records/:id/convert-to-customer
+   */
 
-      // Get the lead record
-      const lead = await storage.getBusinessRecord(id, tenantId);
-      if (!lead || lead.recordType !== 'lead') {
-        return res.status(404).json({ message: 'Lead not found' });
-      }
-
-      // Generate customer number if not provided
-      const generatedCustomerNumber = customerNumber || (await generateCustomerNumber(tenantId));
-
-      // Update the record to customer status
-      const updatedRecord = await storage.updateBusinessRecord(id, tenantId, {
-        recordType: 'customer',
-        status: 'active',
-        customerNumber: generatedCustomerNumber,
-        customerSince: new Date(),
-        convertedBy: userId,
-        serviceAddress: serviceAddress || (lead as any).address,
-        billingAddress: billingAddress || (lead as any).address,
-        probability: 100,
-      });
-
-      // Create customer conversion activity
-      await storage.createBusinessRecordActivity({
-        tenantId,
-        businessRecordId: id,
-        activityType: 'conversion',
-        title: 'Lead Converted to Customer',
-        description: `Lead successfully converted to customer with number ${generatedCustomerNumber}`,
-        userId,
-        activityDate: new Date(),
-      });
-
-      // Auto-create initial service contract if applicable
-      if (lead.estimatedAmount && lead.estimatedAmount > 0) {
-        await storage.createContract({
-          tenantId,
-          customerId: id,
-          contractNumber: `CONTRACT-${generatedCustomerNumber}-${Date.now()}`,
-          status: 'pending',
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-          monthlyBase: String((lead.estimatedAmount / 12).toFixed(2)),
-          blackRate: null,
-          colorRate: null,
-        } as any);
-      }
-
-      res.json(updatedRecord);
-    } catch (error) {
-      console.error('Error converting lead to customer:', error);
-      res.status(500).json({ message: 'Failed to convert lead to customer' });
-    }
-  });
-
-  // 2. Business Records Lifecycle Management
-  app.patch('/api/business-records/:id/lifecycle', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user;
-      const { id } = req.params;
-      const { status, reason, notes } = req.body;
-
-      const updates: any = { leadStatus: status };
-
-      // Handle customer deactivation scenarios
-      if (status === 'churned' || status === 'competitor_switch' || status === 'non_payment') {
-        updates.customerUntil = new Date();
-        updates.churnReason = reason;
-        updates.deactivatedBy = userId;
-
-        // Auto-expire contracts
-        await db
-          .update(contracts)
-          .set({
-            status: 'cancelled',
-            endDate: new Date(),
-          })
-          .where(
-            and(
-              eq(contracts.customerId, id),
-              eq(contracts.tenantId, tenantId),
-              eq(contracts.status, 'active'),
-            ),
-          );
-      }
-
-      const updatedRecord = await storage.updateBusinessRecord(id, updates, tenantId);
-
-      // Log lifecycle change activity
-      await storage.createBusinessRecordActivity({
-        tenantId,
-        businessRecordId: id,
-        activityType: 'status_change',
-        title: `Status Changed to ${status}`,
-        description:
-          notes ||
-          `Business record status updated to ${status}${reason ? ` due to ${reason}` : ''}`,
-        userId,
-        activityDate: new Date(),
-      });
-
-      res.json(updatedRecord);
-    } catch (error) {
-      console.error('Error updating business record lifecycle:', error);
-      res.status(500).json({ message: 'Failed to update business record lifecycle' });
-    }
-  });
+  /**
+   * NOTE: Migrated to routes-business-records.ts:
+   * - PATCH /api/business-records/:id/lifecycle
+   */
 
   // 3. Equipment Lifecycle Integration with Service Workflows
   app.post('/api/equipment/:equipmentId/trigger-service', async (req: any, res) => {
@@ -15333,6 +13890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to fetch activities' });
     }
   });
+  registerCustomerRoutes(app);
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
   registerDealDeskRoutes(app);
@@ -15358,6 +13916,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
   registerSalesHandoffRoutes(app);
+  registerDealsRoutes(app);
+  registerCommissionRoutes(app);
+  registerCatalogRoutes(app);
+  registerAnalyticsRoutes(app);
+  registerFinancialRoutes(app);
   registerRenewalManagementRoutes(app);
 
   // Register Sales Forecasting routes
