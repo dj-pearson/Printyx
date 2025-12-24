@@ -11,6 +11,8 @@ import {
   resolutionSuggestionFeedback,
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
+import { getUserId, getTenantId, isPlatformAdmin } from './utils/auth-helpers';
+import { z } from 'zod';
 
 /**
  * INTELLIGENT ALERTS & INCIDENT RESPONSE ROUTES
@@ -76,8 +78,16 @@ router.post('/alerts/triage', async (req, res) => {
  */
 router.get('/alerts/:alertId/triage', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const triage = await db.query.alertTriageResults.findFirst({
-      where: eq(alertTriageResults.alertId, req.params.alertId),
+      where: and(
+        eq(alertTriageResults.alertId, req.params.alertId),
+        eq(alertTriageResults.tenantId, tenantId),
+      ),
       orderBy: desc(alertTriageResults.createdAt),
     });
 
@@ -98,6 +108,11 @@ router.get('/alerts/:alertId/triage', async (req, res) => {
  */
 router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const { reviewedBy, classificationAccurate, reviewNotes } = req.body;
 
     if (!reviewedBy || classificationAccurate === undefined) {
@@ -106,7 +121,20 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
       });
     }
 
-    const [updated] = await db.update(alertTriageResults)
+    // Verify the triage record belongs to this tenant before updating
+    const existingTriage = await db.query.alertTriageResults.findFirst({
+      where: and(
+        eq(alertTriageResults.id, req.params.triageId),
+        eq(alertTriageResults.tenantId, tenantId),
+      ),
+    });
+
+    if (!existingTriage) {
+      return res.status(404).json({ error: 'Triage result not found' });
+    }
+
+    const [updated] = await db
+      .update(alertTriageResults)
       .set({
         humanReviewed: true,
         reviewedBy,
@@ -114,7 +142,12 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
         classificationAccurate,
         reviewNotes,
       })
-      .where(eq(alertTriageResults.id, req.params.triageId))
+      .where(
+        and(
+          eq(alertTriageResults.id, req.params.triageId),
+          eq(alertTriageResults.tenantId, tenantId),
+        ),
+      )
       .returning();
 
     res.json({
@@ -137,14 +170,7 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
  */
 router.post('/containment/execute', async (req, res) => {
   try {
-    const {
-      alertId,
-      tenantId,
-      actionType,
-      target,
-      reason,
-      executedBy,
-    } = req.body;
+    const { alertId, tenantId, actionType, target, reason, executedBy } = req.body;
 
     // Validate required fields
     if (!alertId || !tenantId || !actionType || !target || !reason) {
@@ -182,23 +208,21 @@ router.post('/containment/execute', async (req, res) => {
  */
 router.get('/containment/logs', async (req, res) => {
   try {
-    const { tenantId, alertId, limit = 50 } = req.query;
-
-    let query = db.query.automatedContainmentLogs.findMany({
-      orderBy: desc(automatedContainmentLogs.createdAt),
-      limit: Number(limit),
-    });
-
-    const conditions = [];
-    if (tenantId) {
-      conditions.push(eq(automatedContainmentLogs.tenantId, tenantId as string));
+    // SECURITY FIX: Get tenant from auth context, not query params
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
     }
+
+    const { alertId, limit = 50 } = req.query;
+
+    const conditions = [eq(automatedContainmentLogs.tenantId, tenantId)];
     if (alertId) {
       conditions.push(eq(automatedContainmentLogs.alertId, alertId as string));
     }
 
     const logs = await db.query.automatedContainmentLogs.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
+      where: and(...conditions),
       orderBy: desc(automatedContainmentLogs.createdAt),
       limit: Number(limit),
     });
@@ -216,6 +240,11 @@ router.get('/containment/logs', async (req, res) => {
  */
 router.post('/containment/:logId/reverse', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const { reversedBy, reversalReason } = req.body;
 
     if (!reversedBy || !reversalReason) {
@@ -224,14 +253,32 @@ router.post('/containment/:logId/reverse', async (req, res) => {
       });
     }
 
-    const [updated] = await db.update(automatedContainmentLogs)
+    // Verify the containment log belongs to this tenant before updating
+    const existingLog = await db.query.automatedContainmentLogs.findFirst({
+      where: and(
+        eq(automatedContainmentLogs.id, req.params.logId),
+        eq(automatedContainmentLogs.tenantId, tenantId),
+      ),
+    });
+
+    if (!existingLog) {
+      return res.status(404).json({ error: 'Containment log not found' });
+    }
+
+    const [updated] = await db
+      .update(automatedContainmentLogs)
       .set({
         reversed: true,
         reversedAt: new Date(),
         reversedBy,
         reversalReason,
       })
-      .where(eq(automatedContainmentLogs.id, req.params.logId))
+      .where(
+        and(
+          eq(automatedContainmentLogs.id, req.params.logId),
+          eq(automatedContainmentLogs.tenantId, tenantId),
+        ),
+      )
       .returning();
 
     // TODO: Actually reverse the action (unblock IP, restore access, etc.)
@@ -256,10 +303,16 @@ router.post('/containment/:logId/reverse', async (req, res) => {
  */
 router.get('/incidents/correlations', async (req, res) => {
   try {
-    const { tenantId, limit = 50 } = req.query;
+    // SECURITY FIX: Get tenant from auth context, not query params
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
+    const { limit = 50 } = req.query;
 
     const correlations = await db.query.incidentCorrelations.findMany({
-      where: tenantId ? eq(incidentCorrelations.tenantId, tenantId as string) : undefined,
+      where: eq(incidentCorrelations.tenantId, tenantId),
       orderBy: desc(incidentCorrelations.createdAt),
       limit: Number(limit),
     });
@@ -277,8 +330,16 @@ router.get('/incidents/correlations', async (req, res) => {
  */
 router.get('/incidents/:incidentId/related', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const correlation = await db.query.incidentCorrelations.findFirst({
-      where: eq(incidentCorrelations.masterIncidentId, req.params.incidentId),
+      where: and(
+        eq(incidentCorrelations.masterIncidentId, req.params.incidentId),
+        eq(incidentCorrelations.tenantId, tenantId),
+      ),
       orderBy: desc(incidentCorrelations.createdAt),
     });
 
@@ -342,7 +403,7 @@ router.post('/patterns', async (req, res) => {
       category,
       resolutionSteps,
       resolutionTime,
-      successful
+      successful,
     );
 
     res.status(201).json({
@@ -415,7 +476,8 @@ router.post('/suggestions/:suggestionId/feedback', async (req, res) => {
       });
     }
 
-    const [feedbackRecord] = await db.insert(resolutionSuggestionFeedback)
+    const [feedbackRecord] = await db
+      .insert(resolutionSuggestionFeedback)
       .values({
         suggestionId: req.params.suggestionId,
         triageResultId,
@@ -497,18 +559,21 @@ router.post('/threats/detect', async (req, res) => {
  */
 router.get('/threats', async (req, res) => {
   try {
-    const { tenantId, status, limit = 50 } = req.query;
-
-    const conditions = [];
-    if (tenantId) {
-      conditions.push(eq(proactiveThreatDetection.tenantId, tenantId as string));
+    // SECURITY FIX: Get tenant from auth context, not query params
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
     }
+
+    const { status, limit = 50 } = req.query;
+
+    const conditions = [eq(proactiveThreatDetection.tenantId, tenantId)];
     if (status) {
       conditions.push(eq(proactiveThreatDetection.status, status as string));
     }
 
     const threats = await db.query.proactiveThreatDetection.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
+      where: and(...conditions),
       orderBy: desc(proactiveThreatDetection.lastDetectedAt),
       limit: Number(limit),
     });
@@ -526,19 +591,42 @@ router.get('/threats', async (req, res) => {
  */
 router.put('/threats/:threatId', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     const { status, resolutionNotes } = req.body;
 
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const [updated] = await db.update(proactiveThreatDetection)
+    // Verify the threat belongs to this tenant before updating
+    const existingThreat = await db.query.proactiveThreatDetection.findFirst({
+      where: and(
+        eq(proactiveThreatDetection.id, req.params.threatId),
+        eq(proactiveThreatDetection.tenantId, tenantId),
+      ),
+    });
+
+    if (!existingThreat) {
+      return res.status(404).json({ error: 'Threat not found' });
+    }
+
+    const [updated] = await db
+      .update(proactiveThreatDetection)
       .set({
         status,
         resolutionNotes,
         resolvedAt: status === 'resolved' ? new Date() : undefined,
       })
-      .where(eq(proactiveThreatDetection.id, req.params.threatId))
+      .where(
+        and(
+          eq(proactiveThreatDetection.id, req.params.threatId),
+          eq(proactiveThreatDetection.tenantId, tenantId),
+        ),
+      )
       .returning();
 
     res.json({
@@ -561,18 +649,21 @@ router.put('/threats/:threatId', async (req, res) => {
  */
 router.get('/routing-rules', async (req, res) => {
   try {
-    const { tenantId, isActive } = req.query;
-
-    const conditions = [];
-    if (tenantId) {
-      conditions.push(eq(alertRoutingRules.tenantId, tenantId as string));
+    // SECURITY FIX: Get tenant from auth context, not query params
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
     }
+
+    const { isActive } = req.query;
+
+    const conditions = [eq(alertRoutingRules.tenantId, tenantId)];
     if (isActive !== undefined) {
       conditions.push(eq(alertRoutingRules.isActive, isActive === 'true'));
     }
 
     const rules = await db.query.alertRoutingRules.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
+      where: and(...conditions),
       orderBy: desc(alertRoutingRules.priority),
     });
 
@@ -583,25 +674,28 @@ router.get('/routing-rules', async (req, res) => {
   }
 });
 
-// SECURITY FIX: Add validation schemas to prevent mass assignment
-const routingRuleSchema = z.object({
-  name: z.string().max(255),
-  description: z.string().optional(),
-  priority: z.number().int().min(0),
-  enabled: z.boolean(),
-  conditions: z.any(), // JSON field
-  actions: z.any(), // JSON field
-  tenantId: z.string().uuid(),
-}).strict();
+// SECURITY FIX: Validation schemas - tenantId comes from auth context, NOT from body
+const routingRuleSchema = z
+  .object({
+    name: z.string().max(255),
+    description: z.string().optional(),
+    priority: z.number().int().min(0),
+    enabled: z.boolean(),
+    conditions: z.any(), // JSON field
+    actions: z.any(), // JSON field
+  })
+  .strict();
 
-const updateRoutingRuleSchema = z.object({
-  name: z.string().max(255).optional(),
-  description: z.string().optional(),
-  priority: z.number().int().min(0).optional(),
-  enabled: z.boolean().optional(),
-  conditions: z.any().optional(),
-  actions: z.any().optional(),
-}).strict();
+const updateRoutingRuleSchema = z
+  .object({
+    name: z.string().max(255).optional(),
+    description: z.string().optional(),
+    priority: z.number().int().min(0).optional(),
+    enabled: z.boolean().optional(),
+    conditions: z.any().optional(),
+    actions: z.any().optional(),
+  })
+  .strict();
 
 /**
  * POST /api/security/routing-rules
@@ -609,11 +703,21 @@ const updateRoutingRuleSchema = z.object({
  */
 router.post('/routing-rules', async (req, res) => {
   try {
-    // SECURITY FIX: Validate input
+    // SECURITY FIX: Get tenant from auth context, NOT from body
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
+    // Validate input
     const validatedData = routingRuleSchema.parse(req.body);
 
-    const [rule] = await db.insert(alertRoutingRules)
-      .values(validatedData)
+    const [rule] = await db
+      .insert(alertRoutingRules)
+      .values({
+        ...validatedData,
+        tenantId, // SECURITY: tenantId from auth context
+      })
       .returning();
 
     res.status(201).json({
@@ -635,12 +739,32 @@ router.post('/routing-rules', async (req, res) => {
  */
 router.put('/routing-rules/:ruleId', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
     // SECURITY FIX: Validate input to prevent mass assignment
     const validatedData = updateRoutingRuleSchema.parse(req.body);
 
-    const [updated] = await db.update(alertRoutingRules)
+    // Verify the rule belongs to this tenant before updating
+    const existingRule = await db.query.alertRoutingRules.findFirst({
+      where: and(
+        eq(alertRoutingRules.id, req.params.ruleId),
+        eq(alertRoutingRules.tenantId, tenantId),
+      ),
+    });
+
+    if (!existingRule) {
+      return res.status(404).json({ error: 'Routing rule not found' });
+    }
+
+    const [updated] = await db
+      .update(alertRoutingRules)
       .set(validatedData)
-      .where(eq(alertRoutingRules.id, req.params.ruleId))
+      .where(
+        and(eq(alertRoutingRules.id, req.params.ruleId), eq(alertRoutingRules.tenantId, tenantId)),
+      )
       .returning();
 
     res.json({
@@ -659,8 +783,28 @@ router.put('/routing-rules/:ruleId', async (req, res) => {
  */
 router.delete('/routing-rules/:ruleId', async (req, res) => {
   try {
-    await db.delete(alertRoutingRules)
-      .where(eq(alertRoutingRules.id, req.params.ruleId));
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(401).json({ error: 'Tenant context required' });
+    }
+
+    // Verify the rule belongs to this tenant before deleting
+    const existingRule = await db.query.alertRoutingRules.findFirst({
+      where: and(
+        eq(alertRoutingRules.id, req.params.ruleId),
+        eq(alertRoutingRules.tenantId, tenantId),
+      ),
+    });
+
+    if (!existingRule) {
+      return res.status(404).json({ error: 'Routing rule not found' });
+    }
+
+    await db
+      .delete(alertRoutingRules)
+      .where(
+        and(eq(alertRoutingRules.id, req.params.ruleId), eq(alertRoutingRules.tenantId, tenantId)),
+      );
 
     res.json({
       success: true,
