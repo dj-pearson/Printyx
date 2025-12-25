@@ -1,26 +1,27 @@
-import express from "express";
-import rateLimit from "express-rate-limit";
-import { storage } from "./storage";
-import bcrypt from "bcrypt";
-import { z } from "zod";
-import { db } from "./db";
-import { passwordResets, emailVerifications } from "../shared/auth-schema";
-import { users, tenants } from "@shared/schema";
-import { eq, and, gt, desc } from "drizzle-orm";
-import { randomBytes } from "crypto";
-import { EmailTemplates } from "./services/email-templates";
-import { emailService } from "./services/email-service";
-import { getUserId, getTenantId } from "./utils/auth-helpers";
+import express from 'express';
+import rateLimit from 'express-rate-limit';
+import { storage } from './storage';
+import bcrypt from 'bcrypt';
+import { z } from 'zod';
+import { db } from './db';
+import { passwordResets, emailVerifications } from '../shared/auth-schema';
+import { users, tenants } from '@shared/schema';
+import { eq, and, gt, desc } from 'drizzle-orm';
+import { randomBytes } from 'crypto';
+import { EmailTemplates } from './services/email-templates';
+import { emailService } from './services/email-service';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = express.Router();
 
 // SECURITY FIX: Enhanced password validation with complexity requirements
-const passwordSchema = z.string()
-  .min(12, "Password must be at least 12 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
-  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+const passwordSchema = z
+  .string()
+  .min(12, 'Password must be at least 12 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
 // Login schema
 const loginSchema = z.object({
@@ -41,15 +42,15 @@ const resetPasswordSchema = z.object({
 // Signup schema
 const signupSchema = z.object({
   // Company information
-  companyName: z.string().min(2, "Company name is required"),
+  companyName: z.string().min(2, 'Company name is required'),
   industry: z.string().optional(),
   companySize: z.string().optional(),
-  website: z.string().url().optional().or(z.literal("")),
+  website: z.string().url().optional().or(z.literal('')),
 
   // Admin user
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Valid email is required"),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Valid email is required'),
   password: passwordSchema, // SECURITY FIX: Use enhanced password validation
   phone: z.string().optional(),
 
@@ -58,16 +59,16 @@ const signupSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),
-  country: z.string().default("US"),
-  timezone: z.string().default("America/New_York"),
+  country: z.string().default('US'),
+  timezone: z.string().default('America/New_York'),
 
   // Plan selection
-  planSlug: z.string().default("starter"),
-  billingCycle: z.enum(["monthly", "annual"]).default("monthly"),
+  planSlug: z.string().default('starter'),
+  billingCycle: z.enum(['monthly', 'annual']).default('monthly'),
 
   // Terms acceptance
-  acceptedTerms: z.boolean().refine(val => val === true, "You must accept the terms"),
-  acceptedPrivacy: z.boolean().refine(val => val === true, "You must accept the privacy policy"),
+  acceptedTerms: z.boolean().refine((val) => val === true, 'You must accept the terms'),
+  acceptedPrivacy: z.boolean().refine((val) => val === true, 'You must accept the privacy policy'),
 });
 
 // Email verification schema
@@ -76,7 +77,7 @@ const verifyEmailSchema = z.object({
 });
 
 // Session management
-declare module "express-session" {
+declare module 'express-session' {
   interface SessionData {
     userId?: string;
     tenantId?: string;
@@ -89,7 +90,7 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many login attempts. Please try again later." },
+  message: { message: 'Too many login attempts. Please try again later.' },
 });
 
 // Rate limiting for password reset requests
@@ -98,7 +99,7 @@ const passwordResetLimiter = rateLimit({
   max: 5, // 5 requests per hour per IP
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many password reset attempts. Please try again later." },
+  message: { message: 'Too many password reset attempts. Please try again later.' },
 });
 
 // SECURITY FIX: Rate limiting for signup to prevent automated account creation
@@ -107,17 +108,17 @@ const signupLimiter = rateLimit({
   max: 3, // 3 signups per hour per IP
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: "Too many signup attempts. Please try again later." },
+  message: { message: 'Too many signup attempts. Please try again later.' },
 });
 
 // Login endpoint
-router.post("/login", loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
 
     const user = await storage.authenticateUser(email, password);
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password" });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     // SECURITY FIX: Regenerate session ID to prevent session fixation attacks
@@ -136,7 +137,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     const userWithRole = await storage.getUserWithRole(user.id);
 
     res.json({
-      message: "Login successful",
+      message: 'Login successful',
       user: {
         id: user.id,
         email: user.email,
@@ -148,34 +149,35 @@ router.post("/login", loginLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(400).json({ message: "Invalid request" });
+    console.error('Login error:', error);
+    res.status(400).json({ message: 'Invalid request' });
   }
 });
 
 // Logout endpoint
-router.post("/logout", (req, res) => {
+router.post('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      console.error("Logout error:", err);
-      return res.status(500).json({ message: "Failed to logout" });
+      console.error('Logout error:', err);
+      return res.status(500).json({ message: 'Failed to logout' });
     }
-    res.clearCookie("connect.sid");
-    res.json({ message: "Logout successful" });
+    res.clearCookie('connect.sid');
+    res.json({ message: 'Logout successful' });
   });
 });
 
-// Get current user
-router.get("/user", async (req, res) => {
+// Get current user (supports both /user and /me endpoints)
+const getCurrentUserHandler = async (req: any, res: any) => {
   try {
     // SECURITY FIX: Restrict test mode to development/test environments only
-    const isTestMode = (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
-      && process.env.TEST_MODE === 'true';
+    const isTestMode =
+      (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
+      process.env.TEST_MODE === 'true';
 
     const testAuthToken = process.env.TEST_AUTH_SECRET || 'playwright';
     if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
       const testUserId = 'test-user-playwright';
-      const defaultTenantId = process.env.DEMO_TENANT_ID || "550e8400-e29b-41d4-a716-446655440000";
+      const defaultTenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
 
       // Ensure test user exists
       let testUser = await storage.getUser(testUserId);
@@ -184,8 +186,8 @@ router.get("/user", async (req, res) => {
         let tenant = await storage.getTenant(defaultTenantId);
         if (!tenant) {
           tenant = await storage.createTenant({
-            name: "Default Copier Dealer",
-            domain: "default",
+            name: 'Default Copier Dealer',
+            domain: 'default',
           });
         }
 
@@ -216,12 +218,12 @@ router.get("/user", async (req, res) => {
     // Use unified auth helpers to get user ID (supports Supabase JWT and session)
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ message: "Not authenticated" });
+      return res.status(401).json({ message: 'Not authenticated' });
     }
 
     const user = await storage.getUserWithRole(userId);
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
+      return res.status(401).json({ message: 'User not found' });
     }
 
     res.json({
@@ -229,15 +231,26 @@ router.get("/user", async (req, res) => {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      first_name: user.firstName,
+      last_name: user.lastName,
       role: user.role,
+      role_id: user.roleId,
       team: user.team,
+      team_id: user.teamId,
       tenantId: user.tenantId,
+      tenant_id: user.tenantId,
+      access_scope: user.accessScope,
+      is_platform_user: user.isPlatformUser,
     });
   } catch (error) {
-    console.error("Get user error:", error);
-    res.status(500).json({ message: "Failed to get user" });
+    console.error('Get user error:', error);
+    res.status(500).json({ message: 'Failed to get user' });
   }
-});
+};
+
+// Register /user endpoint (legacy compatibility)
+// Note: /api/auth/me is handled by routes-user-profile.ts with proper Supabase JWT middleware
+router.get('/user', getCurrentUserHandler);
 
 // ============================================================================
 // SIGNUP & EMAIL VERIFICATION ENDPOINTS
@@ -248,7 +261,7 @@ router.get("/user", async (req, res) => {
  * Create new tenant and admin user account
  * SECURITY: Rate limited to prevent automated mass account creation
  */
-router.post("/signup", signupLimiter, async (req, res) => {
+router.post('/signup', signupLimiter, async (req, res) => {
   try {
     const data = signupSchema.parse(req.body);
 
@@ -261,7 +274,7 @@ router.post("/signup", signupLimiter, async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({
-        message: "An account with this email already exists",
+        message: 'An account with this email already exists',
       });
     }
 
@@ -335,21 +348,21 @@ router.post("/signup", signupLimiter, async (req, res) => {
     console.log(`[SIGNUP] New account created: ${user.email} (tenant: ${tenant.id})`);
 
     res.json({
-      message: "Account created successfully! Please check your email to verify your account.",
+      message: 'Account created successfully! Please check your email to verify your account.',
       userId: user.id,
       tenantId: tenant.id,
       email: user.email,
       requiresVerification: true,
     });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error('Signup error:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({
-        message: "Invalid signup data",
+        message: 'Invalid signup data',
         errors: error.errors,
       });
     }
-    res.status(500).json({ message: "Failed to create account" });
+    res.status(500).json({ message: 'Failed to create account' });
   }
 });
 
@@ -357,7 +370,7 @@ router.post("/signup", signupLimiter, async (req, res) => {
  * POST /api/auth/verify-email
  * Verify email address with token
  */
-router.post("/verify-email", async (req, res) => {
+router.post('/verify-email', async (req, res) => {
   try {
     const { token } = verifyEmailSchema.parse(req.body);
 
@@ -369,14 +382,14 @@ router.post("/verify-email", async (req, res) => {
         and(
           eq(emailVerifications.token, token),
           gt(emailVerifications.expiresAt, new Date()),
-          eq(emailVerifications.verifiedAt, null as any)
-        )
+          eq(emailVerifications.verifiedAt, null as any),
+        ),
       )
       .limit(1);
 
     if (!verification) {
       return res.status(400).json({
-        message: "Invalid or expired verification token",
+        message: 'Invalid or expired verification token',
       });
     }
 
@@ -387,14 +400,10 @@ router.post("/verify-email", async (req, res) => {
       .where(eq(emailVerifications.id, verification.id));
 
     // Get user
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, verification.userId))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, verification.userId)).limit(1);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     // Send welcome email
@@ -418,7 +427,7 @@ router.post("/verify-email", async (req, res) => {
     console.log(`[EMAIL VERIFICATION] Email verified for user: ${user.id}`);
 
     res.json({
-      message: "Email verified successfully!",
+      message: 'Email verified successfully!',
       user: {
         id: user.id,
         email: user.email,
@@ -428,8 +437,8 @@ router.post("/verify-email", async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Email verification error:", error);
-    res.status(500).json({ message: "Failed to verify email" });
+    console.error('Email verification error:', error);
+    res.status(500).json({ message: 'Failed to verify email' });
   }
 });
 
@@ -437,20 +446,16 @@ router.post("/verify-email", async (req, res) => {
  * POST /api/auth/resend-verification
  * Resend verification email
  */
-router.post("/resend-verification", async (req, res) => {
+router.post('/resend-verification', async (req, res) => {
   try {
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     if (!user) {
       // Don't reveal if email exists
       return res.json({
-        message: "If an account exists, a verification email has been sent.",
+        message: 'If an account exists, a verification email has been sent.',
       });
     }
 
@@ -464,7 +469,7 @@ router.post("/resend-verification", async (req, res) => {
 
     if (existingVerification?.verifiedAt) {
       return res.status(400).json({
-        message: "Email is already verified",
+        message: 'Email is already verified',
       });
     }
 
@@ -495,11 +500,11 @@ router.post("/resend-verification", async (req, res) => {
     });
 
     res.json({
-      message: "Verification email sent successfully",
+      message: 'Verification email sent successfully',
     });
   } catch (error) {
-    console.error("Resend verification error:", error);
-    res.status(500).json({ message: "Failed to resend verification email" });
+    console.error('Resend verification error:', error);
+    res.status(500).json({ message: 'Failed to resend verification email' });
   }
 });
 
@@ -511,7 +516,7 @@ router.post("/resend-verification", async (req, res) => {
  * POST /api/auth/forgot-password
  * Request password reset email
  */
-router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = forgotPasswordSchema.parse(req.body);
 
@@ -521,11 +526,7 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
     };
 
     // Find user by email
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
 
     // If user doesn't exist, return success anyway (security best practice)
     if (!user) {
@@ -564,8 +565,8 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
     console.log(`[PASSWORD RESET] Reset email sent to: ${email}`);
     res.json(successResponse);
   } catch (error) {
-    console.error("Forgot password error:", error);
-    res.status(400).json({ message: "Invalid request" });
+    console.error('Forgot password error:', error);
+    res.status(400).json({ message: 'Invalid request' });
   }
 });
 
@@ -573,7 +574,7 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
  * GET /api/auth/verify-reset-token/:token
  * Verify if reset token is valid
  */
-router.get("/verify-reset-token/:token", async (req, res) => {
+router.get('/verify-reset-token/:token', async (req, res) => {
   try {
     const { token } = req.params;
 
@@ -584,25 +585,25 @@ router.get("/verify-reset-token/:token", async (req, res) => {
         and(
           eq(passwordResets.token, token),
           gt(passwordResets.expiresAt, new Date()),
-          eq(passwordResets.usedAt, null as any)
-        )
+          eq(passwordResets.usedAt, null as any),
+        ),
       )
       .limit(1);
 
     if (!resetRecord) {
       return res.status(400).json({
         valid: false,
-        message: "Invalid or expired reset token",
+        message: 'Invalid or expired reset token',
       });
     }
 
     res.json({
       valid: true,
-      message: "Token is valid",
+      message: 'Token is valid',
     });
   } catch (error) {
-    console.error("Verify reset token error:", error);
-    res.status(500).json({ message: "Failed to verify token" });
+    console.error('Verify reset token error:', error);
+    res.status(500).json({ message: 'Failed to verify token' });
   }
 });
 
@@ -610,7 +611,7 @@ router.get("/verify-reset-token/:token", async (req, res) => {
  * POST /api/auth/reset-password
  * Reset password using token
  */
-router.post("/reset-password", async (req, res) => {
+router.post('/reset-password', async (req, res) => {
   try {
     const { token, password } = resetPasswordSchema.parse(req.body);
 
@@ -622,36 +623,29 @@ router.post("/reset-password", async (req, res) => {
         and(
           eq(passwordResets.token, token),
           gt(passwordResets.expiresAt, new Date()),
-          eq(passwordResets.usedAt, null as any)
-        )
+          eq(passwordResets.usedAt, null as any),
+        ),
       )
       .limit(1);
 
     if (!resetRecord) {
       return res.status(400).json({
-        message: "Invalid or expired reset token",
+        message: 'Invalid or expired reset token',
       });
     }
 
     // Get user
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, resetRecord.userId))
-      .limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, resetRecord.userId)).limit(1);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     // Hash new password
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Update user password
-    await db
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, user.id));
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
 
     // Mark token as used
     await db
@@ -675,17 +669,17 @@ router.post("/reset-password", async (req, res) => {
     console.log(`[PASSWORD RESET] Password changed for user: ${user.id}`);
 
     res.json({
-      message: "Password has been reset successfully",
+      message: 'Password has been reset successfully',
     });
   } catch (error) {
-    console.error("Reset password error:", error);
+    console.error('Reset password error:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({
-        message: "Invalid request",
+        message: 'Invalid request',
         errors: error.errors,
       });
     }
-    res.status(500).json({ message: "Failed to reset password" });
+    res.status(500).json({ message: 'Failed to reset password' });
   }
 });
 
