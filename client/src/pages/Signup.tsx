@@ -40,13 +40,14 @@ const signupSchema = z
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     email: z.string().email('Valid email is required'),
+    // SECURITY: Match backend password requirements (12+ chars with special character)
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        'Password must contain uppercase, lowercase, and number',
-      ),
+      .min(12, 'Password must be at least 12 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
     confirmPassword: z.string(),
     phone: z.string().optional(),
 
@@ -486,7 +487,8 @@ export default function Signup() {
                             </div>
                           </FormControl>
                           <FormDescription>
-                            At least 8 characters with uppercase, lowercase, and number
+                            At least 12 characters with uppercase, lowercase, number, and special
+                            character
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
