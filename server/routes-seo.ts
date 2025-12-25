@@ -1410,6 +1410,170 @@ router.get('/sitemap.xml', async (req: any, res) => {
   }
 });
 
+// Generate image sitemap.xml
+router.get('/image-sitemap.xml', async (req: any, res) => {
+  try {
+    const baseUrl = process.env.BASE_URL || 'https://printyx.com';
+
+    // Import schemas for images
+    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import('@shared/schema');
+
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
+    xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n';
+
+    // Helper function to add image entry
+    const addImageUrl = (pageUrl: string, imageUrl: string, title?: string, caption?: string, geoLocation?: string, license?: string) => {
+      if (!imageUrl) return;
+
+      // Ensure absolute URL
+      const absoluteImageUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`;
+
+      xml += `  <url>\n`;
+      xml += `    <loc>${pageUrl}</loc>\n`;
+      xml += `    <image:image>\n`;
+      xml += `      <image:loc>${absoluteImageUrl}</image:loc>\n`;
+      if (title) {
+        xml += `      <image:title><![CDATA[${title}]]></image:title>\n`;
+      }
+      if (caption) {
+        xml += `      <image:caption><![CDATA[${caption}]]></image:caption>\n`;
+      }
+      if (geoLocation) {
+        xml += `      <image:geo_location>${geoLocation}</image:geo_location>\n`;
+      }
+      if (license) {
+        xml += `      <image:license>${license}</image:license>\n`;
+      }
+      xml += `    </image:image>\n`;
+      xml += `  </url>\n`;
+    };
+
+    // 1. Blog post featured images
+    const posts = await db
+      .select({
+        slug: blogPosts.slug,
+        featuredImage: blogPosts.featuredImage,
+        featuredImageAlt: blogPosts.featuredImageAlt,
+        title: blogPosts.title,
+      })
+      .from(blogPosts)
+      .where(eq(blogPosts.status, 'published'))
+      .limit(500);
+
+    posts.forEach((post) => {
+      if (post.featuredImage) {
+        addImageUrl(
+          `${baseUrl}/blog/${post.slug}`,
+          post.featuredImage,
+          post.featuredImageAlt || post.title,
+          `Featured image for ${post.title}`
+        );
+      }
+    });
+
+    // 2. Guide cover images
+    const guideDocs = await db
+      .select({
+        slug: guides.slug,
+        coverImage: guides.coverImage,
+        coverImageAlt: guides.coverImageAlt,
+        title: guides.title,
+      })
+      .from(guides)
+      .where(eq(guides.status, 'published'))
+      .limit(200);
+
+    guideDocs.forEach((guide) => {
+      if (guide.coverImage) {
+        addImageUrl(
+          `${baseUrl}/guides/${guide.slug}`,
+          guide.coverImage,
+          guide.coverImageAlt || guide.title,
+          `Cover image for ${guide.title}`
+        );
+      }
+    });
+
+    // 3. Case study featured images
+    const studies = await db
+      .select({
+        slug: caseStudies.slug,
+        featuredImage: caseStudies.featuredImage,
+        featuredImageAlt: caseStudies.featuredImageAlt,
+        title: caseStudies.title,
+      })
+      .from(caseStudies)
+      .where(eq(caseStudies.status, 'published'))
+      .limit(200);
+
+    studies.forEach((study) => {
+      if (study.featuredImage) {
+        addImageUrl(
+          `${baseUrl}/case-studies/${study.slug}`,
+          study.featuredImage,
+          study.featuredImageAlt || study.title,
+          `Featured image for ${study.title}`
+        );
+      }
+    });
+
+    // 4. Landing page hero images
+    const pages = await db
+      .select({
+        slug: landingPages.slug,
+        heroImage: landingPages.heroImage,
+        title: landingPages.title,
+      })
+      .from(landingPages)
+      .where(eq(landingPages.status, 'published'))
+      .limit(100);
+
+    pages.forEach((page) => {
+      if (page.heroImage) {
+        addImageUrl(
+          `${baseUrl}/${page.slug}`,
+          page.heroImage,
+          page.title,
+          `Hero image for ${page.title}`
+        );
+      }
+    });
+
+    // 5. Knowledge base article images
+    const articles = await db
+      .select({
+        slug: knowledgeArticles.slug,
+        featuredImage: knowledgeArticles.featuredImage,
+        title: knowledgeArticles.title,
+      })
+      .from(knowledgeArticles)
+      .where(eq(knowledgeArticles.status, 'published'))
+      .limit(300);
+
+    articles.forEach((article) => {
+      if (article.featuredImage) {
+        addImageUrl(
+          `${baseUrl}/kb/${article.slug}`,
+          article.featuredImage,
+          article.title,
+          `Featured image for ${article.title}`
+        );
+      }
+    });
+
+    xml += '</urlset>';
+
+    // Set proper headers
+    res.header('Content-Type', 'application/xml');
+    res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    res.send(xml);
+  } catch (error: any) {
+    console.error('Error generating image sitemap:', error);
+    res.status(500).json({ message: 'Error generating image sitemap' });
+  }
+});
+
 // Generate robots.txt
 router.get('/robots.txt', async (req: any, res) => {
   try {
@@ -1427,8 +1591,9 @@ Disallow: /signup
 Disallow: /reset-password
 Disallow: /verify-email
 
-# Sitemap
+# Sitemaps
 Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/image-sitemap.xml
 
 # Crawl-delay for politeness
 User-agent: *
