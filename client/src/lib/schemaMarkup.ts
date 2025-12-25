@@ -113,6 +113,124 @@ export interface BreadcrumbSchema {
   }>;
 }
 
+export interface ProductSchema {
+  '@context': string;
+  '@type': 'Product';
+  name: string;
+  description: string;
+  image?: string | string[];
+  sku?: string;
+  mpn?: string;
+  brand?: {
+    '@type': 'Brand';
+    name: string;
+  };
+  offers?: {
+    '@type': 'Offer';
+    url?: string;
+    priceCurrency: string;
+    price: string;
+    priceValidUntil?: string;
+    availability?: string;
+    itemCondition?: string;
+    seller?: {
+      '@type': 'Organization';
+      name: string;
+    };
+  };
+  aggregateRating?: {
+    '@type': 'AggregateRating';
+    ratingValue: string;
+    reviewCount: number;
+    bestRating?: string;
+    worstRating?: string;
+  };
+  review?: Array<{
+    '@type': 'Review';
+    author: {
+      '@type': 'Person';
+      name: string;
+    };
+    datePublished: string;
+    reviewBody: string;
+    reviewRating: {
+      '@type': 'Rating';
+      ratingValue: string;
+      bestRating?: string;
+    };
+  }>;
+}
+
+export interface ServiceSchema {
+  '@context': string;
+  '@type': 'Service';
+  name: string;
+  description: string;
+  provider: {
+    '@type': 'Organization';
+    name: string;
+    url?: string;
+    logo?: string;
+  };
+  areaServed?:
+    | Array<{
+        '@type': 'City' | 'State' | 'Country';
+        name: string;
+      }>
+    | string;
+  offers?: {
+    '@type': 'Offer';
+    priceCurrency?: string;
+    price?: string;
+    priceRange?: string;
+  };
+  serviceType?: string;
+  image?: string | string[];
+  aggregateRating?: {
+    '@type': 'AggregateRating';
+    ratingValue: string;
+    reviewCount: number;
+  };
+}
+
+export interface LocalBusinessSchema {
+  '@context': string;
+  '@type': 'LocalBusiness';
+  name: string;
+  description?: string;
+  image?: string | string[];
+  '@id'?: string;
+  url?: string;
+  telephone?: string;
+  email?: string;
+  address?: {
+    '@type': 'PostalAddress';
+    streetAddress: string;
+    addressLocality: string;
+    addressRegion: string;
+    postalCode: string;
+    addressCountry: string;
+  };
+  geo?: {
+    '@type': 'GeoCoordinates';
+    latitude: number;
+    longitude: number;
+  };
+  openingHoursSpecification?: Array<{
+    '@type': 'OpeningHoursSpecification';
+    dayOfWeek: string | string[];
+    opens: string;
+    closes: string;
+  }>;
+  priceRange?: string;
+  aggregateRating?: {
+    '@type': 'AggregateRating';
+    ratingValue: string;
+    reviewCount: number;
+  };
+  sameAs?: string[];
+}
+
 /**
  * Generate Article schema for blog posts
  */
@@ -146,15 +264,17 @@ export function generateArticleSchema(params: {
   }
 
   if (params.publishedDate) {
-    schema.datePublished = typeof params.publishedDate === 'string'
-      ? params.publishedDate
-      : params.publishedDate.toISOString();
+    schema.datePublished =
+      typeof params.publishedDate === 'string'
+        ? params.publishedDate
+        : params.publishedDate.toISOString();
   }
 
   if (params.modifiedDate) {
-    schema.dateModified = typeof params.modifiedDate === 'string'
-      ? params.modifiedDate
-      : params.modifiedDate.toISOString();
+    schema.dateModified =
+      typeof params.modifiedDate === 'string'
+        ? params.modifiedDate
+        : params.modifiedDate.toISOString();
   }
 
   if (params.authorName) {
@@ -314,12 +434,14 @@ export function generateOrganizationSchema(params: {
   }
 
   if (params.phone || params.email) {
-    schema.contactPoint = [{
-      '@type': 'ContactPoint',
-      ...(params.phone && { telephone: params.phone }),
-      contactType: 'customer service',
-      ...(params.email && { email: params.email }),
-    }];
+    schema.contactPoint = [
+      {
+        '@type': 'ContactPoint',
+        ...(params.phone && { telephone: params.phone }),
+        contactType: 'customer service',
+        ...(params.email && { email: params.email }),
+      },
+    ];
   }
 
   return schema;
@@ -328,10 +450,12 @@ export function generateOrganizationSchema(params: {
 /**
  * Generate Breadcrumb schema for navigation
  */
-export function generateBreadcrumbSchema(breadcrumbs: Array<{
-  name: string;
-  url?: string;
-}>): BreadcrumbSchema {
+export function generateBreadcrumbSchema(
+  breadcrumbs: Array<{
+    name: string;
+    url?: string;
+  }>,
+): BreadcrumbSchema {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -342,6 +466,270 @@ export function generateBreadcrumbSchema(breadcrumbs: Array<{
       ...(crumb.url && { item: crumb.url }),
     })),
   };
+}
+
+/**
+ * Generate Product schema for product pages
+ */
+export function generateProductSchema(params: {
+  name: string;
+  description: string;
+  imageUrl?: string | string[];
+  sku?: string;
+  mpn?: string;
+  brandName?: string;
+  price?: string;
+  priceCurrency?: string;
+  availability?: 'InStock' | 'OutOfStock' | 'PreOrder' | 'Discontinued';
+  condition?: 'NewCondition' | 'UsedCondition' | 'RefurbishedCondition';
+  url?: string;
+  rating?: number;
+  reviewCount?: number;
+  reviews?: Array<{
+    authorName: string;
+    datePublished: string;
+    reviewBody: string;
+    rating: number;
+  }>;
+}): ProductSchema {
+  const schema: ProductSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: params.name,
+    description: params.description,
+  };
+
+  if (params.imageUrl) {
+    schema.image = params.imageUrl;
+  }
+
+  if (params.sku) {
+    schema.sku = params.sku;
+  }
+
+  if (params.mpn) {
+    schema.mpn = params.mpn;
+  }
+
+  if (params.brandName) {
+    schema.brand = {
+      '@type': 'Brand',
+      name: params.brandName,
+    };
+  }
+
+  if (params.price && params.priceCurrency) {
+    schema.offers = {
+      '@type': 'Offer',
+      priceCurrency: params.priceCurrency,
+      price: params.price,
+      ...(params.url && { url: params.url }),
+      ...(params.availability && { availability: `https://schema.org/${params.availability}` }),
+      ...(params.condition && { itemCondition: `https://schema.org/${params.condition}` }),
+    };
+  }
+
+  if (params.rating && params.reviewCount) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: params.rating.toString(),
+      reviewCount: params.reviewCount,
+      bestRating: '5',
+      worstRating: '1',
+    };
+  }
+
+  if (params.reviews && params.reviews.length > 0) {
+    schema.review = params.reviews.map((review) => ({
+      '@type': 'Review',
+      author: {
+        '@type': 'Person',
+        name: review.authorName,
+      },
+      datePublished: review.datePublished,
+      reviewBody: review.reviewBody,
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: review.rating.toString(),
+        bestRating: '5',
+      },
+    }));
+  }
+
+  return schema;
+}
+
+/**
+ * Generate Service schema for service pages
+ */
+export function generateServiceSchema(params: {
+  name: string;
+  description: string;
+  providerName: string;
+  providerUrl?: string;
+  providerLogo?: string;
+  imageUrl?: string | string[];
+  serviceType?: string;
+  areaServed?: Array<{ type: 'City' | 'State' | 'Country'; name: string }> | string;
+  price?: string;
+  priceCurrency?: string;
+  priceRange?: string;
+  rating?: number;
+  reviewCount?: number;
+}): ServiceSchema {
+  const schema: ServiceSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: params.name,
+    description: params.description,
+    provider: {
+      '@type': 'Organization',
+      name: params.providerName,
+      ...(params.providerUrl && { url: params.providerUrl }),
+      ...(params.providerLogo && { logo: params.providerLogo }),
+    },
+  };
+
+  if (params.imageUrl) {
+    schema.image = params.imageUrl;
+  }
+
+  if (params.serviceType) {
+    schema.serviceType = params.serviceType;
+  }
+
+  if (params.areaServed) {
+    if (typeof params.areaServed === 'string') {
+      schema.areaServed = params.areaServed;
+    } else {
+      schema.areaServed = params.areaServed.map((area) => ({
+        '@type': area.type,
+        name: area.name,
+      }));
+    }
+  }
+
+  if (params.price && params.priceCurrency) {
+    schema.offers = {
+      '@type': 'Offer',
+      priceCurrency: params.priceCurrency,
+      price: params.price,
+    };
+  } else if (params.priceRange) {
+    schema.offers = {
+      '@type': 'Offer',
+      priceRange: params.priceRange,
+    };
+  }
+
+  if (params.rating && params.reviewCount) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: params.rating.toString(),
+      reviewCount: params.reviewCount,
+    };
+  }
+
+  return schema;
+}
+
+/**
+ * Generate LocalBusiness schema for location pages
+ */
+export function generateLocalBusinessSchema(params: {
+  name: string;
+  description?: string;
+  imageUrl?: string | string[];
+  url?: string;
+  telephone?: string;
+  email?: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+  openingHours?: Array<{
+    days: string | string[];
+    opens: string;
+    closes: string;
+  }>;
+  priceRange?: string;
+  rating?: number;
+  reviewCount?: number;
+  socialProfiles?: string[];
+}): LocalBusinessSchema {
+  const schema: LocalBusinessSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: params.name,
+  };
+
+  if (params.description) {
+    schema.description = params.description;
+  }
+
+  if (params.imageUrl) {
+    schema.image = params.imageUrl;
+  }
+
+  if (params.url) {
+    schema.url = params.url;
+    schema['@id'] = params.url;
+  }
+
+  if (params.telephone) {
+    schema.telephone = params.telephone;
+  }
+
+  if (params.email) {
+    schema.email = params.email;
+  }
+
+  schema.address = {
+    '@type': 'PostalAddress',
+    streetAddress: params.streetAddress,
+    addressLocality: params.city,
+    addressRegion: params.state,
+    postalCode: params.postalCode,
+    addressCountry: params.country || 'US',
+  };
+
+  if (params.latitude && params.longitude) {
+    schema.geo = {
+      '@type': 'GeoCoordinates',
+      latitude: params.latitude,
+      longitude: params.longitude,
+    };
+  }
+
+  if (params.openingHours && params.openingHours.length > 0) {
+    schema.openingHoursSpecification = params.openingHours.map((hours) => ({
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: hours.days,
+      opens: hours.opens,
+      closes: hours.closes,
+    }));
+  }
+
+  if (params.priceRange) {
+    schema.priceRange = params.priceRange;
+  }
+
+  if (params.rating && params.reviewCount) {
+    schema.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: params.rating.toString(),
+      reviewCount: params.reviewCount,
+    };
+  }
+
+  if (params.socialProfiles && params.socialProfiles.length > 0) {
+    schema.sameAs = params.socialProfiles;
+  }
+
+  return schema;
 }
 
 /**
@@ -371,10 +759,10 @@ export function injectMultipleSchemas(schemas: Array<Record<string, any>>) {
 
   // Remove existing schema scripts
   const existingScripts = document.querySelectorAll('script[type="application/ld+json"]');
-  existingScripts.forEach(script => script.remove());
+  existingScripts.forEach((script) => script.remove());
 
   // Inject each schema
-  schemas.forEach(schema => {
+  schemas.forEach((schema) => {
     const script = document.createElement('script');
     script.type = 'application/ld+json';
     script.text = JSON.stringify(schema);
