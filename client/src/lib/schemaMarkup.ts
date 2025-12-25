@@ -231,6 +231,49 @@ export interface LocalBusinessSchema {
   sameAs?: string[];
 }
 
+export interface VideoObjectSchema {
+  '@context': string;
+  '@type': 'VideoObject';
+  name: string;
+  description: string;
+  thumbnailUrl: string | string[];
+  uploadDate: string;
+  duration?: string; // ISO 8601 duration format (e.g., PT1M33S)
+  contentUrl?: string;
+  embedUrl?: string;
+  interactionStatistic?: {
+    '@type': 'InteractionCounter';
+    interactionType: string; // http://schema.org/WatchAction
+    userInteractionCount: number;
+  };
+  publisher?: {
+    '@type': 'Organization';
+    name: string;
+    logo?: {
+      '@type': 'ImageObject';
+      url: string;
+      width?: number;
+      height?: number;
+    };
+  };
+  expires?: string; // ISO 8601 date
+  hasPart?: Array<{
+    '@type': 'Clip';
+    name: string;
+    startOffset: number;
+    endOffset: number;
+    url: string;
+  }>;
+  potentialAction?: {
+    '@type': 'SeekToAction';
+    target: string;
+    'startOffset-input': string;
+  };
+  regionsAllowed?: string[]; // ISO 3166 country codes
+  inLanguage?: string;
+  isFamilyFriendly?: boolean;
+}
+
 /**
  * Generate Article schema for blog posts
  */
@@ -730,6 +773,126 @@ export function generateLocalBusinessSchema(params: {
   }
 
   return schema;
+}
+
+/**
+ * Generate VideoObject schema for video content
+ */
+export function generateVideoObjectSchema(params: {
+  name: string;
+  description: string;
+  thumbnailUrl: string | string[];
+  uploadDate: Date | string;
+  duration?: string; // ISO 8601 format like "PT1M33S" for 1 min 33 sec
+  contentUrl?: string;
+  embedUrl?: string;
+  viewCount?: number;
+  publisherName?: string;
+  publisherLogoUrl?: string;
+  expiresDate?: Date | string;
+  chapters?: Array<{
+    name: string;
+    startOffset: number;
+    endOffset: number;
+    url: string;
+  }>;
+  regionsAllowed?: string[];
+  language?: string;
+  isFamilyFriendly?: boolean;
+}): VideoObjectSchema {
+  const schema: VideoObjectSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: params.name,
+    description: params.description,
+    thumbnailUrl: params.thumbnailUrl,
+    uploadDate:
+      typeof params.uploadDate === 'string'
+        ? params.uploadDate
+        : params.uploadDate.toISOString(),
+  };
+
+  if (params.duration) {
+    schema.duration = params.duration;
+  }
+
+  if (params.contentUrl) {
+    schema.contentUrl = params.contentUrl;
+  }
+
+  if (params.embedUrl) {
+    schema.embedUrl = params.embedUrl;
+  }
+
+  if (params.viewCount !== undefined) {
+    schema.interactionStatistic = {
+      '@type': 'InteractionCounter',
+      interactionType: 'http://schema.org/WatchAction',
+      userInteractionCount: params.viewCount,
+    };
+  }
+
+  if (params.publisherName) {
+    schema.publisher = {
+      '@type': 'Organization',
+      name: params.publisherName,
+    };
+
+    if (params.publisherLogoUrl) {
+      schema.publisher.logo = {
+        '@type': 'ImageObject',
+        url: params.publisherLogoUrl,
+      };
+    }
+  }
+
+  if (params.expiresDate) {
+    schema.expires =
+      typeof params.expiresDate === 'string'
+        ? params.expiresDate
+        : params.expiresDate.toISOString();
+  }
+
+  if (params.chapters && params.chapters.length > 0) {
+    schema.hasPart = params.chapters.map((chapter) => ({
+      '@type': 'Clip',
+      name: chapter.name,
+      startOffset: chapter.startOffset,
+      endOffset: chapter.endOffset,
+      url: chapter.url,
+    }));
+  }
+
+  if (params.regionsAllowed && params.regionsAllowed.length > 0) {
+    schema.regionsAllowed = params.regionsAllowed;
+  }
+
+  if (params.language) {
+    schema.inLanguage = params.language;
+  }
+
+  if (params.isFamilyFriendly !== undefined) {
+    schema.isFamilyFriendly = params.isFamilyFriendly;
+  }
+
+  return schema;
+}
+
+/**
+ * Helper to convert seconds to ISO 8601 duration format
+ * Example: 93 seconds -> "PT1M33S"
+ */
+export function secondsToISO8601Duration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  let duration = 'PT';
+  if (hours > 0) duration += `${hours}H`;
+  if (minutes > 0) duration += `${minutes}M`;
+  if (secs > 0 || (hours === 0 && minutes === 0)) duration += `${secs}S`;
+
+  return duration;
 }
 
 /**
