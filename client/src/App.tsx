@@ -4,7 +4,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import React, { useState, useEffect, lazy } from 'react';
 import LogoExport from '@/pages/LogoExport';
 import { useLocation } from 'wouter';
-import { useSeo } from '@/lib/useSeo';
+import { SEOProvider } from '@/lib/seo/SEOProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
@@ -293,7 +293,6 @@ function Router() {
   const [pathname, setLocation] = useLocation();
   const { open, setOpen } = useCommandPalette();
   console.log('🎯 Router state:', { isAuthenticated, isLoading, pathname });
-  useSeo(pathname);
 
   // Save current route to localStorage when authenticated
   React.useEffect(() => {
@@ -756,12 +755,14 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <PWAProvider>
-            <Toaster />
-            <ErrorBoundary>
-              <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-                <Router />
-              </React.Suspense>
-            </ErrorBoundary>
+            <SEOProvider>
+              <Toaster />
+              <ErrorBoundary>
+                <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+                  <Router />
+                </React.Suspense>
+              </ErrorBoundary>
+            </SEOProvider>
           </PWAProvider>
         </TooltipProvider>
       </AuthProvider>
