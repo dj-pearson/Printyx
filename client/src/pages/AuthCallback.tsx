@@ -104,6 +104,9 @@ export default function AuthCallback() {
         }
 
         // If no tokens or code, try to get the session from URL (auto-confirm flow)
+        // Wait a brief moment for Supabase client to process any URL parameters
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
         const { data, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -112,27 +115,14 @@ export default function AuthCallback() {
 
         if (data.session) {
           setStatus('success');
+          // Shorter delay for better UX, session is already established
           setTimeout(() => {
             setLocation('/');
-          }, 2000);
+          }, 1500);
         } else {
-          // No session found, may need to check URL hash
-          // Supabase sometimes puts session info in the hash
-          const { data: hashData, error: hashError } = await supabase.auth.getSession();
-
-          if (hashError) {
-            throw hashError;
-          }
-
-          if (hashData.session) {
-            setStatus('success');
-            setTimeout(() => {
-              setLocation('/');
-            }, 2000);
-          } else {
-            setStatus('error');
-            setErrorMessage('No valid session found. Please try again or contact support.');
-          }
+          // No session found after checking all methods
+          setStatus('error');
+          setErrorMessage('No valid session found. Please try again or contact support.');
         }
       } catch (error) {
         console.error('Auth callback error:', error);
