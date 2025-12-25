@@ -307,7 +307,8 @@ export function useHasFeature(featureSlug: string) {
   const { data: subscription } = useSubscription();
 
   return {
-    hasFeature: subscription?.features?.includes(featureSlug) || subscription?.subscription?.isFree || false,
+    hasFeature:
+      subscription?.features?.includes(featureSlug) || subscription?.subscription?.isFree || false,
     isLoading: !subscription,
   };
 }
@@ -315,7 +316,9 @@ export function useHasFeature(featureSlug: string) {
 /**
  * Get usage percentage for a specific metric
  */
-export function useUsagePercentage(metric: 'users' | 'storage' | 'apiCalls' | 'locations' | 'businessRecords') {
+export function useUsagePercentage(
+  metric: 'users' | 'storage' | 'apiCalls' | 'locations' | 'businessRecords',
+) {
   const { data: subscription } = useSubscription();
 
   if (!subscription?.usage || !subscription?.limits) {
@@ -336,4 +339,216 @@ export function useUsagePercentage(metric: 'users' | 'storage' | 'apiCalls' | 'l
   }
 
   return Math.min(100, (usage / limit) * 100);
+}
+
+// ============================================================================
+// STRIPE CHECKOUT & PORTAL HOOKS
+// ============================================================================
+
+/**
+ * Get Stripe configuration (publishable key)
+ */
+export function useStripeConfig() {
+  return useQuery<{ publishableKey: string }>({
+    queryKey: ['stripe', 'config'],
+    queryFn: async () => {
+      const response = await fetch('/api/subscriptions/stripe/config');
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Stripe configuration');
+      }
+
+      return response.json();
+    },
+    staleTime: Infinity, // Config doesn't change
+    retry: false, // Don't retry if Stripe is not configured
+  });
+}
+
+/**
+ * Create a Stripe Checkout Session
+ * Redirects user to Stripe's hosted checkout page
+ */
+export function useCheckout() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    { sessionId: string; sessionUrl: string },
+    Error,
+    { planSlug: string; billingCycle: 'monthly' | 'annual'; discountCode?: string }
+  >({
+    mutationFn: async (data) => {
+      const response = await fetch('/api/subscriptions/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create checkout session');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Redirect to Stripe Checkout
+      if (data.sessionUrl) {
+        window.location.href = data.sessionUrl;
+      }
+    },
+  });
+}
+
+/**
+ * Create a Stripe Checkout Session for add-on purchase
+ */
+export function useAddonCheckout() {
+  return useMutation<
+    { sessionId: string; sessionUrl: string },
+    Error,
+    { addonSlug: string; quantity?: number }
+  >({
+    mutationFn: async (data) => {
+      const response = await fetch('/api/subscriptions/checkout/addon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create checkout session');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Redirect to Stripe Checkout
+      if (data.sessionUrl) {
+        window.location.href = data.sessionUrl;
+      }
+    },
+  });
+}
+
+/**
+ * Open Stripe Customer Portal for self-service billing management
+ */
+export function useCustomerPortal() {
+  return useMutation<{ url: string }, Error, void>({
+    mutationFn: async () => {
+      const response = await fetch('/api/subscriptions/portal', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create portal session');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      // Redirect to Stripe Customer Portal
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+  });
+}
+
+/**
+ * Preview upgrade/downgrade cost
+ */
+export function usePreviewUpgrade(newPlanSlug: string, billingCycle?: 'monthly' | 'annual') {
+  return useQuery<{
+    currentPlan: string;
+    newPlan: string;
+    subtotal: number;
+    total: number;
+    amountDue: number;
+    prorationAmount: number;
+    currency: string;
+    billingCycle: string;
+  }>({
+    queryKey: ['subscription', 'preview-upgrade', newPlanSlug, billingCycle],
+    queryFn: async () => {
+      const params = new URLSearchParams({ newPlanSlug });
+      if (billingCycle) {
+        params.append('billingCycle', billingCycle);
+      }
+
+      const response = await fetch(`/api/subscriptions/preview-upgrade?${params}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to preview upgrade');
+      }
+
+      return response.json();
+    },
+    enabled: !!newPlanSlug,
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+}
+
+/**
+ * Verify checkout session success
+ */
+export function useVerifyCheckoutSession(sessionId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useQuery<{
+    id: string;
+    status: string;
+    paymentStatus: string;
+    customerEmail: string;
+    subscriptionId?: string;
+  }>({
+    queryKey: ['stripe', 'checkout-session', sessionId],
+    queryFn: async () => {
+      if (!sessionId) throw new Error('No session ID provided');
+
+      const response = await fetch(`/api/subscriptions/checkout/session/${sessionId}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to verify checkout session');
+      }
+
+      return response.json();
+    },
+    enabled: !!sessionId,
+    onSuccess: () => {
+      // Invalidate subscription data to fetch updated status
+      queryClient.invalidateQueries({ queryKey: ['subscription'] });
+    },
+  });
+}
+
+/**
+ * Create a Setup Intent for adding a payment method
+ */
+export function useSetupIntent() {
+  return useMutation<{ clientSecret: string }, Error, void>({
+    mutationFn: async () => {
+      const response = await fetch('/api/subscriptions/setup-intent', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create setup intent');
+      }
+
+      return response.json();
+    },
+  });
 }

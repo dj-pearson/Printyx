@@ -1,11 +1,13 @@
-import { Router } from 'express';
+import { Router, raw } from 'express';
 import { SubscriptionService } from './services/subscription-service';
 import { UsageTrackingService } from './services/usage-tracking-service';
+import { StripeService } from './services/stripe-service';
 import { db } from './db';
 import {
   subscriptionPlans,
   subscriptionFeatures,
   tenantSubscriptions,
+  subscriptionAddons,
   discounts,
   subscriptionNotifications,
   subscriptionEvents,
@@ -38,10 +40,7 @@ router.get('/plans', async (req, res) => {
     const plans = await db
       .select()
       .from(subscriptionPlans)
-      .where(and(
-        eq(subscriptionPlans.isVisible, true),
-        eq(subscriptionPlans.isActive, true)
-      ))
+      .where(and(eq(subscriptionPlans.isVisible, true), eq(subscriptionPlans.isActive, true)))
       .orderBy(subscriptionPlans.displayOrder);
 
     const features = await db
@@ -69,7 +68,7 @@ router.get('/plans/:slug', async (req, res) => {
       where: and(
         eq(subscriptionPlans.slug, req.params.slug),
         eq(subscriptionPlans.isVisible, true),
-        eq(subscriptionPlans.isActive, true)
+        eq(subscriptionPlans.isActive, true),
       ),
     });
 
@@ -166,7 +165,7 @@ router.post('/create', async (req, res) => {
     const existing = await db.query.tenantSubscriptions.findFirst({
       where: and(
         eq(tenantSubscriptions.tenantId, tenantId),
-        sql`${tenantSubscriptions.status} IN ('active', 'trialing')`
+        sql`${tenantSubscriptions.status} IN ('active', 'trialing')`,
       ),
     });
 
@@ -383,14 +382,17 @@ router.get('/features', requireActiveSubscription, async (req, res) => {
       .where(sql`${subscriptionFeatures.slug} = ANY(${featureSlugs})`);
 
     // Group by category
-    const categorized = features.reduce((acc, feature) => {
-      const category = feature.category || 'Other';
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(feature);
-      return acc;
-    }, {} as Record<string, typeof features>);
+    const categorized = features.reduce(
+      (acc, feature) => {
+        const category = feature.category || 'Other';
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(feature);
+        return acc;
+      },
+      {} as Record<string, typeof features>,
+    );
 
     res.json({
       features,
@@ -452,8 +454,8 @@ router.get('/notifications', async (req, res) => {
         and(
           eq(subscriptionNotifications.tenantId, tenantId),
           userId ? eq(subscriptionNotifications.userId, userId) : sql`true`,
-          sql`${subscriptionNotifications.status} != 'dismissed'`
-        )
+          sql`${subscriptionNotifications.status} != 'dismissed'`,
+        ),
       )
       .orderBy(desc(subscriptionNotifications.createdAt))
       .limit(50);
@@ -488,8 +490,8 @@ router.post('/notifications/:id/dismiss', async (req, res) => {
       .where(
         and(
           eq(subscriptionNotifications.id, notificationId),
-          eq(subscriptionNotifications.tenantId, tenantId)
-        )
+          eq(subscriptionNotifications.tenantId, tenantId),
+        ),
       );
 
     res.json({ message: 'Notification dismissed' });
@@ -522,8 +524,8 @@ router.post('/notifications/:id/read', async (req, res) => {
       .where(
         and(
           eq(subscriptionNotifications.id, notificationId),
-          eq(subscriptionNotifications.tenantId, tenantId)
-        )
+          eq(subscriptionNotifications.tenantId, tenantId),
+        ),
       );
 
     res.json({ message: 'Notification marked as read' });
@@ -576,10 +578,7 @@ router.post('/validate-discount', async (req, res) => {
     }
 
     const discount = await db.query.discounts.findFirst({
-      where: and(
-        eq(discounts.code, code.toUpperCase()),
-        eq(discounts.isActive, true)
-      ),
+      where: and(eq(discounts.code, code.toUpperCase()), eq(discounts.isActive, true)),
     });
 
     if (!discount) {
@@ -638,6 +637,454 @@ router.post('/validate-discount', async (req, res) => {
   } catch (error) {
     console.error('Failed to validate discount:', error);
     res.status(500).json({ error: 'Failed to validate discount code' });
+  }
+});
+
+// ============================================================================
+// STRIPE CHECKOUT & PORTAL
+// ============================================================================
+
+/**
+ * GET /api/subscriptions/stripe/config
+ * Get Stripe publishable key for frontend initialization
+ */
+router.get('/stripe/config', (req, res) => {
+  try {
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({
+        error: 'Stripe is not configured',
+        message: 'Payment processing is currently unavailable',
+      });
+    }
+
+    res.json({
+      publishableKey: StripeService.getPublishableKey(),
+    });
+  } catch (error) {
+    console.error('Failed to get Stripe config:', error);
+    res.status(500).json({ error: 'Failed to get Stripe configuration' });
+  }
+});
+
+/**
+ * POST /api/subscriptions/checkout
+ * Create a Stripe Checkout Session for new subscription purchase
+ */
+router.post('/checkout', async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ error: 'No tenant context' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({
+        error: 'Stripe is not configured',
+        message: 'Payment processing is currently unavailable',
+      });
+    }
+
+    const { planSlug, billingCycle, discountCode } = req.body;
+
+    if (!planSlug || !billingCycle) {
+      return res.status(400).json({
+        error: 'Missing required fields: planSlug, billingCycle',
+      });
+    }
+
+    if (!['monthly', 'annual'].includes(billingCycle)) {
+      return res.status(400).json({
+        error: 'Invalid billing cycle. Must be "monthly" or "annual"',
+      });
+    }
+
+    // Get the plan and its Stripe price ID
+    const plan = await db.query.subscriptionPlans.findFirst({
+      where: and(eq(subscriptionPlans.slug, planSlug), eq(subscriptionPlans.isActive, true)),
+    });
+
+    if (!plan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    // Get the appropriate price ID
+    const priceId =
+      billingCycle === 'annual' ? plan.stripePriceIdAnnual : plan.stripePriceIdMonthly;
+
+    if (!priceId) {
+      return res.status(400).json({
+        error: 'Stripe price ID not configured for this plan',
+        message: 'Please contact support to set up payment for this plan',
+      });
+    }
+
+    // Get user email for the checkout session
+    const userEmail = req.user?.email;
+
+    // Determine success and cancel URLs
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const successUrl =
+      process.env.STRIPE_CHECKOUT_SUCCESS_URL || `${baseUrl}/settings/subscription?success=true`;
+    const cancelUrl = process.env.STRIPE_CHECKOUT_CANCEL_URL || `${baseUrl}/pricing?canceled=true`;
+
+    // Create checkout session
+    const session = await StripeService.createCheckoutSession({
+      tenantId,
+      priceId,
+      billingCycle,
+      successUrl,
+      cancelUrl,
+      customerEmail: userEmail,
+      trialDays: plan.trialEnabled ? plan.trialDays || 14 : 0,
+      discountCode,
+      metadata: {
+        planSlug,
+        planName: plan.name,
+      },
+    });
+
+    res.json({
+      sessionId: session.id,
+      sessionUrl: session.url,
+    });
+  } catch (error) {
+    console.error('Failed to create checkout session:', error);
+    res.status(500).json({
+      error: 'Failed to create checkout session',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/subscriptions/checkout/addon
+ * Create a Stripe Checkout Session for one-time add-on purchase
+ */
+router.post('/checkout/addon', async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ error: 'No tenant context' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({
+        error: 'Stripe is not configured',
+        message: 'Payment processing is currently unavailable',
+      });
+    }
+
+    const { addonSlug, quantity = 1 } = req.body;
+
+    if (!addonSlug) {
+      return res.status(400).json({
+        error: 'Missing required field: addonSlug',
+      });
+    }
+
+    // Get the addon and its Stripe price ID
+    const addon = await db.query.subscriptionAddons.findFirst({
+      where: and(eq(subscriptionAddons.slug, addonSlug), eq(subscriptionAddons.isActive, true)),
+    });
+
+    if (!addon) {
+      return res.status(404).json({ error: 'Add-on not found' });
+    }
+
+    if (!addon.stripePriceId) {
+      return res.status(400).json({
+        error: 'Stripe price ID not configured for this add-on',
+        message: 'Please contact support to set up payment for this add-on',
+      });
+    }
+
+    // Get user email for the checkout session
+    const userEmail = req.user?.email;
+
+    // Determine success and cancel URLs
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const successUrl = `${baseUrl}/settings/subscription?addon_success=true&addon=${addonSlug}`;
+    const cancelUrl = `${baseUrl}/settings/subscription?addon_canceled=true`;
+
+    // Create one-time checkout session
+    const session = await StripeService.createOneTimeCheckoutSession({
+      tenantId,
+      priceId: addon.stripePriceId,
+      quantity,
+      successUrl,
+      cancelUrl,
+      customerEmail: userEmail,
+      metadata: {
+        addonSlug,
+        addonName: addon.name,
+        category: addon.category,
+      },
+    });
+
+    res.json({
+      sessionId: session.id,
+      sessionUrl: session.url,
+    });
+  } catch (error) {
+    console.error('Failed to create addon checkout session:', error);
+    res.status(500).json({
+      error: 'Failed to create checkout session',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * GET /api/subscriptions/checkout/session/:sessionId
+ * Get checkout session details (for verifying success)
+ */
+router.get('/checkout/session/:sessionId', async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ error: 'No tenant context' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({ error: 'Stripe is not configured' });
+    }
+
+    const session = await StripeService.retrieveCheckoutSession(req.params.sessionId);
+
+    // Verify this session belongs to the requesting tenant
+    if (session.metadata?.tenantId !== tenantId) {
+      return res.status(403).json({ error: 'Access denied to this session' });
+    }
+
+    res.json({
+      id: session.id,
+      status: session.status,
+      paymentStatus: session.payment_status,
+      customerEmail: session.customer_email,
+      subscriptionId:
+        typeof session.subscription === 'string' ? session.subscription : session.subscription?.id,
+    });
+  } catch (error) {
+    console.error('Failed to retrieve checkout session:', error);
+    res.status(500).json({ error: 'Failed to retrieve checkout session' });
+  }
+});
+
+/**
+ * POST /api/subscriptions/portal
+ * Create a Stripe Customer Portal session for self-service billing management
+ */
+router.post('/portal', async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ error: 'No tenant context' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({
+        error: 'Stripe is not configured',
+        message: 'Billing management is currently unavailable',
+      });
+    }
+
+    // Determine return URL
+    const baseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const returnUrl = process.env.STRIPE_PORTAL_RETURN_URL || `${baseUrl}/settings/billing`;
+
+    const portalSession = await StripeService.createPortalSessionForTenant(tenantId, returnUrl);
+
+    res.json({
+      url: portalSession.url,
+    });
+  } catch (error) {
+    console.error('Failed to create portal session:', error);
+
+    // Check if the error is due to missing Stripe customer
+    if (error instanceof Error && error.message.includes('No Stripe customer ID')) {
+      return res.status(400).json({
+        error: 'No billing account found',
+        message: 'Please complete a purchase first to access billing management',
+      });
+    }
+
+    res.status(500).json({
+      error: 'Failed to create billing portal session',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/subscriptions/setup-intent
+ * Create a Setup Intent for adding a payment method
+ */
+router.post('/setup-intent', async (req, res) => {
+  try {
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return res.status(401).json({ error: 'No tenant context' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({ error: 'Stripe is not configured' });
+    }
+
+    // Get or create Stripe customer
+    const userEmail = req.user?.email;
+    const stripeCustomerId = await StripeService.getOrCreateCustomer(tenantId, userEmail);
+
+    const setupIntent = await StripeService.createSetupIntent(stripeCustomerId, {
+      tenantId,
+    });
+
+    res.json({
+      clientSecret: setupIntent.client_secret,
+    });
+  } catch (error) {
+    console.error('Failed to create setup intent:', error);
+    res.status(500).json({ error: 'Failed to create setup intent' });
+  }
+});
+
+/**
+ * GET /api/subscriptions/preview-upgrade
+ * Preview the cost of upgrading/downgrading
+ */
+router.get('/preview-upgrade', requireActiveSubscription, async (req, res) => {
+  try {
+    const tenantId = req.tenantId!;
+    const { newPlanSlug, billingCycle } = req.query;
+
+    if (!newPlanSlug) {
+      return res.status(400).json({ error: 'Missing required field: newPlanSlug' });
+    }
+
+    if (!StripeService.isConfigured()) {
+      return res.status(503).json({ error: 'Stripe is not configured' });
+    }
+
+    // Get current subscription
+    const subscription = await db.query.tenantSubscriptions.findFirst({
+      where: eq(tenantSubscriptions.tenantId, tenantId),
+    });
+
+    if (!subscription?.stripeSubscriptionId) {
+      return res.status(400).json({
+        error: 'No active Stripe subscription found',
+        message: 'Cannot preview upgrade without an active Stripe subscription',
+      });
+    }
+
+    // Get the new plan
+    const newPlan = await db.query.subscriptionPlans.findFirst({
+      where: eq(subscriptionPlans.slug, newPlanSlug as string),
+    });
+
+    if (!newPlan) {
+      return res.status(404).json({ error: 'Plan not found' });
+    }
+
+    // Get the new price ID
+    const cycle = (billingCycle as string) || subscription.billingCycle;
+    const newPriceId =
+      cycle === 'annual' ? newPlan.stripePriceIdAnnual : newPlan.stripePriceIdMonthly;
+
+    if (!newPriceId) {
+      return res.status(400).json({
+        error: 'Stripe price ID not configured for this plan',
+      });
+    }
+
+    // Get Stripe customer ID from tenant metadata
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(tenantSubscriptions.tenantId, tenantId),
+    });
+
+    const stripeCustomerId = (tenant?.metadata as any)?.stripeCustomerId;
+    if (!stripeCustomerId) {
+      return res.status(400).json({ error: 'No Stripe customer found' });
+    }
+
+    // Preview the invoice
+    const invoice = await StripeService.previewInvoice(
+      stripeCustomerId,
+      subscription.stripeSubscriptionId,
+      newPriceId,
+    );
+
+    res.json({
+      currentPlan: subscription.planId,
+      newPlan: newPlan.slug,
+      subtotal: (invoice.subtotal || 0) / 100,
+      total: (invoice.total || 0) / 100,
+      amountDue: (invoice.amount_due || 0) / 100,
+      prorationAmount: ((invoice.total || 0) - (invoice.subtotal || 0)) / 100,
+      currency: invoice.currency?.toUpperCase() || 'USD',
+      billingCycle: cycle,
+    });
+  } catch (error) {
+    console.error('Failed to preview upgrade:', error);
+    res.status(500).json({
+      error: 'Failed to preview upgrade',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// ============================================================================
+// STRIPE WEBHOOKS
+// ============================================================================
+
+/**
+ * POST /api/subscriptions/webhooks/stripe
+ * Stripe webhook endpoint with proper signature verification
+ * IMPORTANT: This must use raw body parser for signature verification
+ */
+router.post('/webhooks/stripe', raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    if (!StripeService.isConfigured()) {
+      console.error('Stripe webhook received but Stripe is not configured');
+      return res.status(503).json({ error: 'Stripe is not configured' });
+    }
+
+    const signature = req.headers['stripe-signature'] as string;
+
+    if (!signature) {
+      console.error('Missing stripe-signature header');
+      return res.status(400).json({ error: 'Missing stripe-signature header' });
+    }
+
+    // Verify webhook signature - CRITICAL for security
+    let event;
+    try {
+      event = StripeService.verifyWebhookSignature(req.body, signature);
+    } catch (err) {
+      console.error('Webhook signature verification failed:', err);
+      return res.status(400).json({
+        error: 'Webhook signature verification failed',
+        message: err instanceof Error ? err.message : 'Invalid signature',
+      });
+    }
+
+    // Process the event
+    const result = await StripeService.handleWebhookEventEnhanced(event);
+
+    if (result.success) {
+      res.json({ received: true, message: result.message });
+    } else {
+      // Still return 200 to acknowledge receipt, but log the error
+      console.error('Webhook processing error:', result.message);
+      res.json({ received: true, error: result.message });
+    }
+  } catch (error) {
+    console.error('Webhook error:', error);
+    // Return 200 to prevent Stripe from retrying on our errors
+    // Only return 4xx/5xx for signature verification failures
+    res.json({
+      received: true,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 });
 
