@@ -1,43 +1,90 @@
-import { Check, Sparkles, TrendingUp, Star } from 'lucide-react';
-import { useSubscriptionPlans, useSubscription, useCreateSubscription } from '@/hooks/useSubscription';
+import { Check, Sparkles, TrendingUp, Star, Loader2, CreditCard } from 'lucide-react';
+import {
+  useSubscriptionPlans,
+  useSubscription,
+  useCheckout,
+  useStripeConfig,
+} from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState, useEffect } from 'react';
+import { useLocation, useSearch } from 'wouter';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Pricing Page
  *
  * Displays subscription plans with feature comparison and allows users to:
- * - Start a free trial
- * - Subscribe to a plan
+ * - Start a free trial via Stripe Checkout
+ * - Subscribe to a plan with secure payment
  * - Upgrade from current plan
  */
 
 export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const { toast } = useToast();
 
   const { data, isLoading } = useSubscriptionPlans();
   const { data: subscription } = useSubscription();
-  const createSubscription = useCreateSubscription();
+  const { data: stripeConfig } = useStripeConfig();
+  const checkout = useCheckout();
+
+  // Handle canceled checkout
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get('canceled') === 'true') {
+      toast({
+        title: 'Checkout canceled',
+        description: "Your checkout was canceled. You can try again whenever you're ready.",
+        variant: 'default',
+      });
+      // Clean up URL
+      navigate('/pricing', { replace: true });
+    }
+  }, [search, toast, navigate]);
 
   const handleSelectPlan = async (planSlug: string) => {
+    // Check if Stripe is configured
+    if (!stripeConfig?.publishableKey) {
+      toast({
+        title: 'Payment not available',
+        description: 'Payment processing is currently unavailable. Please try again later.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSelectedPlan(planSlug);
+
     try {
-      await createSubscription.mutateAsync({
+      // Create checkout session and redirect to Stripe
+      await checkout.mutateAsync({
         planSlug,
         billingCycle,
-        startTrial: true,
       });
-
-      // Navigate to success or dashboard
-      navigate('/dashboard');
+      // Note: User will be redirected to Stripe Checkout
     } catch (error) {
-      console.error('Failed to create subscription:', error);
-      // Show error message
+      console.error('Failed to create checkout session:', error);
+      toast({
+        title: 'Checkout failed',
+        description:
+          error instanceof Error ? error.message : 'Failed to start checkout. Please try again.',
+        variant: 'destructive',
+      });
+      setSelectedPlan(null);
     }
   };
 
@@ -61,14 +108,17 @@ export default function Pricing() {
   const features = data?.features || [];
 
   // Group features by category
-  const featuresByCategory = features.reduce((acc, feature) => {
-    const category = feature.category || 'Other';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(feature);
-    return acc;
-  }, {} as Record<string, typeof features>);
+  const featuresByCategory = features.reduce(
+    (acc, feature) => {
+      const category = feature.category || 'Other';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(feature);
+      return acc;
+    },
+    {} as Record<string, typeof features>,
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -80,7 +130,11 @@ export default function Pricing() {
         </p>
 
         {/* Billing Toggle */}
-        <Tabs value={billingCycle} onValueChange={(v) => setBillingCycle(v as 'monthly' | 'annual')} className="inline-block">
+        <Tabs
+          value={billingCycle}
+          onValueChange={(v) => setBillingCycle(v as 'monthly' | 'annual')}
+          className="inline-block"
+        >
           <TabsList>
             <TabsTrigger value="monthly">Monthly</TabsTrigger>
             <TabsTrigger value="annual">
@@ -96,13 +150,20 @@ export default function Pricing() {
       {/* Plan Cards */}
       <div className="grid md:grid-cols-3 gap-6 mb-16">
         {plans.map((plan) => {
-          const price = billingCycle === 'annual' ? parseFloat(plan.annualPrice) / 12 : parseFloat(plan.monthlyPrice);
-          const totalPrice = billingCycle === 'annual' ? parseFloat(plan.annualPrice) : parseFloat(plan.monthlyPrice);
+          const price =
+            billingCycle === 'annual'
+              ? parseFloat(plan.annualPrice) / 12
+              : parseFloat(plan.monthlyPrice);
+          const totalPrice =
+            billingCycle === 'annual'
+              ? parseFloat(plan.annualPrice)
+              : parseFloat(plan.monthlyPrice);
 
           const isCurrentPlan = subscription?.plan?.slug === plan.slug;
-          const canUpgrade = subscription?.plan &&
-            plans.findIndex(p => p.slug === subscription.plan?.slug) <
-            plans.findIndex(p => p.slug === plan.slug);
+          const canUpgrade =
+            subscription?.plan &&
+            plans.findIndex((p) => p.slug === subscription.plan?.slug) <
+              plans.findIndex((p) => p.slug === plan.slug);
 
           return (
             <Card
@@ -157,26 +218,34 @@ export default function Pricing() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Users:</span>
-                    <span className="font-medium">{plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}</span>
+                    <span className="font-medium">
+                      {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Storage:</span>
-                    <span className="font-medium">{plan.maxStorage === -1 ? 'Unlimited' : `${plan.maxStorage}GB`}</span>
+                    <span className="font-medium">
+                      {plan.maxStorage === -1 ? 'Unlimited' : `${plan.maxStorage}GB`}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">API Calls:</span>
-                    <span className="font-medium">{plan.maxApiCalls === -1 ? 'Unlimited' : plan.maxApiCalls.toLocaleString()}/mo</span>
+                    <span className="font-medium">
+                      {plan.maxApiCalls === -1 ? 'Unlimited' : plan.maxApiCalls.toLocaleString()}/mo
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Locations:</span>
-                    <span className="font-medium">{plan.maxLocations === -1 ? 'Unlimited' : plan.maxLocations}</span>
+                    <span className="font-medium">
+                      {plan.maxLocations === -1 ? 'Unlimited' : plan.maxLocations}
+                    </span>
                   </div>
                 </div>
 
                 {/* Top Features */}
                 <div className="space-y-2">
                   {plan.features.slice(0, 8).map((featureSlug) => {
-                    const feature = features.find(f => f.slug === featureSlug);
+                    const feature = features.find((f) => f.slug === featureSlug);
                     return feature ? (
                       <div key={feature.id} className="flex items-start gap-2 text-sm">
                         <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
@@ -198,10 +267,7 @@ export default function Pricing() {
                     Current Plan
                   </Button>
                 ) : canUpgrade ? (
-                  <Button
-                    className="w-full"
-                    onClick={() => navigate('/settings/subscription')}
-                  >
+                  <Button className="w-full" onClick={() => navigate('/settings/subscription')}>
                     <TrendingUp className="h-4 w-4 mr-2" />
                     Upgrade to {plan.name}
                   </Button>
@@ -210,9 +276,23 @@ export default function Pricing() {
                     className="w-full"
                     variant={plan.isPopular ? 'default' : 'outline'}
                     onClick={() => handleSelectPlan(plan.slug)}
-                    disabled={createSubscription.isPending}
+                    disabled={checkout.isPending || selectedPlan === plan.slug}
                   >
-                    {subscription?.hasSubscription ? `Switch to ${plan.name}` : `Start ${plan.trialDays}-Day Trial`}
+                    {checkout.isPending && selectedPlan === plan.slug ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        {subscription?.hasSubscription
+                          ? `Switch to ${plan.name}`
+                          : plan.trialEnabled
+                            ? `Start ${plan.trialDays}-Day Trial`
+                            : 'Subscribe Now'}
+                      </>
+                    )}
                   </Button>
                 )}
               </CardFooter>
@@ -251,7 +331,9 @@ export default function Pricing() {
                         <div>
                           <div className="font-medium">{feature.name}</div>
                           {feature.description && (
-                            <div className="text-sm text-muted-foreground">{feature.description}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {feature.description}
+                            </div>
                           )}
                         </div>
                       </td>
