@@ -226,19 +226,19 @@ const requireAuth = async (req: any, res: any, next: any) => {
   }
 
   // Add user context for backwards compatibility using auth helpers
-  const userId = getUserId(req);
-  const tenantId = getTenantId(req);
+  const helperUserId = getUserId(req);
+  const helperTenantId = getTenantId(req);
 
   if (!req.user) {
     req.user = {
-      id: userId,
-      tenantId: tenantId,
+      id: helperUserId,
+      tenantId: helperTenantId,
     };
   } else if (!req.user.tenantId && !req.user.id) {
     // If we have user claims but no structured user object, build it
     req.user = {
-      id: userId,
-      tenantId: tenantId,
+      id: helperUserId,
+      tenantId: helperTenantId,
     };
   }
 
