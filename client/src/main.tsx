@@ -103,32 +103,27 @@ queryClient.getQueryCache().subscribe(() => {
   }
 });
 
-console.log('🚀 Main.tsx: Initializing Printyx application...');
-
 try {
   const rootElement = document.getElementById('root');
   if (!rootElement) {
-    console.error('❌ Root element not found!');
     throw new Error('Root element #root not found in DOM');
   }
 
-  console.log('✅ Root element found, creating React root...');
   const root = createRoot(rootElement);
-
-  console.log('✅ Rendering App component with ErrorBoundary...');
   root.render(
     <ErrorBoundary>
       <App />
     </ErrorBoundary>,
   );
-
-  console.log('✅ App rendered successfully');
 } catch (error) {
-  console.error('❌ Failed to initialize app:', error);
+  // Only log errors in development
+  if (import.meta.env.DEV) {
+    console.error('Failed to initialize app:', error);
+  }
   document.body.innerHTML = `
     <div style="padding: 20px; font-family: sans-serif;">
       <h1>⚠️ Failed to Initialize Application</h1>
-      <p>Error: ${error instanceof Error ? error.message : String(error)}</p>
+      <p>Please refresh the page or contact support if the issue persists.</p>
     </div>
   `;
 }
@@ -137,11 +132,9 @@ try {
 (window as any).__queryClient = queryClient;
 
 // Initialize PWA (service worker, install prompt, etc.)
-console.log('🔧 Initializing PWA...');
-initializePWA()
-  .then(() => {
-    console.log('✅ PWA initialized successfully');
-  })
-  .catch((error) => {
-    console.error('❌ PWA initialization failed:', error);
-  });
+initializePWA().catch((error) => {
+  // Only log PWA errors in development
+  if (import.meta.env.DEV) {
+    console.error('PWA initialization failed:', error);
+  }
+});
