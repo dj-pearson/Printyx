@@ -13,7 +13,6 @@ import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
 
-console.log('📦 App.tsx: Module loaded');
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
 import Login from '@/pages/Login';
@@ -84,9 +83,7 @@ const PredictiveContractProfitability = React.lazy(
 const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntelligence'));
 
 // Core app pages - lazy load everything for optimal bundle splitting
-// TEMPORARY: Load Dashboard eagerly to diagnose loading issue
-import Dashboard from '@/pages/dashboard';
-// const Dashboard = React.lazy(() => import("@/pages/dashboard"));
+const Dashboard = React.lazy(() => import('@/pages/dashboard'));
 const Customers = React.lazy(() => import('@/pages/customers'));
 const LeadDetail = React.lazy(() => import('@/pages/LeadDetail'));
 // Removed placeholder report imports - using Reports page instead
@@ -288,11 +285,9 @@ const UserManagement = React.lazy(() => import('@/pages/admin/UserManagement'));
 const LAST_ROUTE_KEY = 'printyx_last_route';
 
 function Router() {
-  console.log('🎯 Router: Component rendering');
   const { isAuthenticated, isLoading } = useAuthContext();
   const [pathname, setLocation] = useLocation();
   const { open, setOpen } = useCommandPalette();
-  console.log('🎯 Router state:', { isAuthenticated, isLoading, pathname });
 
   // Save current route to localStorage when authenticated
   React.useEffect(() => {
@@ -366,14 +361,27 @@ function Router() {
   // Data will be fetched when components mount, which is more efficient
   // and prevents unnecessary data fetching for pages the user might not visit
 
-  console.log('🎯 Router: About to render with conditions:', { isLoading, isAuthenticated });
-
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+        role="status"
+        aria-busy="true"
+        aria-label="Initializing application"
+      >
         <div className="text-center animate-fade-in">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <div
+            className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"
+            aria-hidden="true"
+          />
           <p className="mt-4 text-gray-600 font-medium">Loading Printyx...</p>
+          {/* SEO: Provide meaningful fallback content for crawlers */}
+          <noscript>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>Printyx - Modern Cloud Platform for Copier Dealers</p>
+              <p>Please enable JavaScript to continue.</p>
+            </div>
+          </noscript>
         </div>
       </div>
     );
@@ -439,25 +447,33 @@ function Router() {
   };
 
   // Authenticated routes
-  console.log('✅ Router: Rendering authenticated routes');
   return (
     <>
       <SubscriptionBanner />
       <CommandPalette open={open} onOpenChange={setOpen} />
       <React.Suspense
         fallback={
-          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-            {console.log('⏳ Suspense fallback showing...')}
+          <div
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading page content"
+          >
             <div className="text-center animate-fade-in">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+              <div
+                className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"
+                aria-hidden="true"
+              />
               <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+              {/* SEO: Provide meaningful content for crawlers */}
+              <noscript>
+                <p>Please enable JavaScript to use Printyx.</p>
+              </noscript>
             </div>
           </div>
         }
       >
-        {console.log('🔄 Inside Suspense, rendering Switch...')}
         <Switch>
-          {console.log('📍 Rendering routes, pathname:', pathname)}
           {/* Redirect auth pages to dashboard for authenticated users */}
           <Route path="/login" component={RedirectToDashboard} />
           <Route path="/signup" component={RedirectToDashboard} />
@@ -758,7 +774,24 @@ function App() {
             <SEOProvider>
               <Toaster />
               <ErrorBoundary>
-                <React.Suspense fallback={<div className="p-6">Loading…</div>}>
+                <React.Suspense
+                  fallback={
+                    <div
+                      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+                      role="status"
+                      aria-busy="true"
+                      aria-label="Loading application"
+                    >
+                      <div className="text-center">
+                        <div
+                          className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+                          aria-hidden="true"
+                        />
+                        <p className="mt-4 text-gray-600">Loading...</p>
+                      </div>
+                    </div>
+                  }
+                >
                   <Router />
                 </React.Suspense>
               </ErrorBoundary>
