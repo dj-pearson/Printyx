@@ -144,6 +144,33 @@ These variables are read on the Node.js server using `process.env.VARIABLE_NAME`
 | `STRIPE_CHECKOUT_CANCEL_URL` | No | URL | Cancel redirect URL |
 | `STRIPE_PORTAL_RETURN_URL` | No | URL | Customer portal return URL |
 
+**Subscription Products & Prices:**
+
+Generate these using `npm run stripe:setup` or PowerShell script `scripts/setup-stripe-products.ps1`.
+
+| Variable | Required | Format | Description |
+|----------|----------|--------|-------------|
+| `STRIPE_STARTER_PRODUCT_ID` | No | `prod_...` | Starter plan product ID |
+| `STRIPE_STARTER_PRICE_MONTHLY` | No | `price_...` | Starter monthly price ID ($79/month) |
+| `STRIPE_STARTER_PRICE_ANNUAL` | No | `price_...` | Starter annual price ID ($758/year) |
+| `STRIPE_PROFESSIONAL_PRODUCT_ID` | No | `prod_...` | Professional plan product ID |
+| `STRIPE_PROFESSIONAL_PRICE_MONTHLY` | No | `price_...` | Professional monthly price ID ($99/month) |
+| `STRIPE_PROFESSIONAL_PRICE_ANNUAL` | No | `price_...` | Professional annual price ID ($950/year) |
+| `STRIPE_ENTERPRISE_PRODUCT_ID` | No | `prod_...` | Enterprise plan product ID |
+| `STRIPE_ENTERPRISE_PRICE_MONTHLY` | No | `price_...` | Enterprise monthly price ID ($149/month) |
+| `STRIPE_ENTERPRISE_PRICE_ANNUAL` | No | `price_...` | Enterprise annual price ID ($1430/year) |
+
+**Payment Links:**
+
+| Variable | Required | Format | Description |
+|----------|----------|--------|-------------|
+| `STRIPE_STARTER_LINK_MONTHLY` | No | URL | Starter monthly payment link |
+| `STRIPE_STARTER_LINK_ANNUAL` | No | URL | Starter annual payment link |
+| `STRIPE_PROFESSIONAL_LINK_MONTHLY` | No | URL | Professional monthly payment link |
+| `STRIPE_PROFESSIONAL_LINK_ANNUAL` | No | URL | Professional annual payment link |
+| `STRIPE_ENTERPRISE_LINK_MONTHLY` | No | URL | Enterprise monthly payment link |
+| `STRIPE_ENTERPRISE_LINK_ANNUAL` | No | URL | Enterprise annual payment link |
+
 ---
 
 ### AI Services
