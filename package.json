@@ -42,7 +42,12 @@
     "kb:export": "tsx server/cli/kb-cli.ts export",
     "seed:rbac": "tsx server/database-updater/seeders/rbac-seeder.ts",
     "seed:reports": "tsx server/database-updater/seeders/report-seeder.ts",
-    "seed:kpis": "tsx server/database-updater/seeders/kpi-seeder.ts"
+    "seed:kpis": "tsx server/database-updater/seeders/kpi-seeder.ts",
+    "seed:plans": "tsx server/seed-subscription-plans.ts",
+    "stripe:setup": "tsx scripts/setup-stripe-products.ts",
+    "stripe:setup:live": "tsx scripts/setup-stripe-products.ts --live",
+    "stripe:setup:dry-run": "tsx scripts/setup-stripe-products.ts --dry-run",
+    "stripe:update-db": "tsx server/update-stripe-ids.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
