@@ -2,6 +2,10 @@
 import { config as dotenvConfig } from 'dotenv';
 dotenvConfig(); // Load .env file
 
+// Validate environment configuration early
+import { validateEnvironmentOrFail } from './lib/env-validation';
+validateEnvironmentOrFail();
+
 import express, { type Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
