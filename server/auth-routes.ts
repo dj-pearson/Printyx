@@ -4,15 +4,20 @@ import { storage } from './storage';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { db } from './db';
-import { passwordResets, emailVerifications } from '../shared/auth-schema';
+import { passwordResets, emailVerifications, loginAttempts } from '../shared/auth-schema';
 import { users, tenants } from '@shared/schema';
-import { eq, and, gt, desc } from 'drizzle-orm';
+import { eq, and, gt, desc, lt, isNull, or } from 'drizzle-orm';
 import { randomBytes } from 'crypto';
 import { EmailTemplates } from './services/email-templates';
 import { emailService } from './services/email-service';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = express.Router();
+
+// SECURITY: Account lockout configuration
+const MAX_LOGIN_ATTEMPTS = 5; // Lock after 5 failed attempts
+const LOCKOUT_DURATION_MINUTES = 30; // Lock for 30 minutes
+const ATTEMPT_WINDOW_MINUTES = 15; // Count attempts within 15-minute window
 
 // SECURITY FIX: Enhanced password validation with complexity requirements
 const passwordSchema = z
@@ -111,15 +116,153 @@ const signupLimiter = rateLimit({
   message: { message: 'Too many signup attempts. Please try again later.' },
 });
 
+/**
+ * SECURITY: Helper function to check if account is locked
+ */
+async function isAccountLocked(
+  email: string,
+): Promise<{ locked: boolean; remainingMinutes?: number }> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  const [attempt] = await db
+    .select()
+    .from(loginAttempts)
+    .where(eq(loginAttempts.email, normalizedEmail))
+    .limit(1);
+
+  if (!attempt || !attempt.lockedUntil) {
+    return { locked: false };
+  }
+
+  const now = new Date();
+  if (attempt.lockedUntil > now) {
+    const remainingMs = attempt.lockedUntil.getTime() - now.getTime();
+    const remainingMinutes = Math.ceil(remainingMs / (1000 * 60));
+    return { locked: true, remainingMinutes };
+  }
+
+  return { locked: false };
+}
+
+/**
+ * SECURITY: Record a failed login attempt and potentially lock the account
+ */
+async function recordFailedLoginAttempt(
+  email: string,
+  ipAddress: string,
+): Promise<{ locked: boolean; attemptsRemaining: number }> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - ATTEMPT_WINDOW_MINUTES * 60 * 1000);
+
+  // Get or create login attempt record
+  const [existingAttempt] = await db
+    .select()
+    .from(loginAttempts)
+    .where(eq(loginAttempts.email, normalizedEmail))
+    .limit(1);
+
+  if (!existingAttempt) {
+    // First failed attempt - create new record
+    await db.insert(loginAttempts).values({
+      email: normalizedEmail,
+      attemptCount: 1,
+      lastAttemptAt: now,
+      lastIpAddress: ipAddress,
+    });
+    return { locked: false, attemptsRemaining: MAX_LOGIN_ATTEMPTS - 1 };
+  }
+
+  // Check if previous attempts are outside the window (reset counter)
+  let newAttemptCount: number;
+  if (existingAttempt.lastAttemptAt < windowStart) {
+    newAttemptCount = 1;
+  } else {
+    newAttemptCount = existingAttempt.attemptCount + 1;
+  }
+
+  // Check if we should lock the account
+  let lockedUntil: Date | null = null;
+  if (newAttemptCount >= MAX_LOGIN_ATTEMPTS) {
+    lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
+    console.log(
+      `[SECURITY] Account locked for email: ${normalizedEmail} until ${lockedUntil.toISOString()}`,
+    );
+  }
+
+  // Update the record
+  await db
+    .update(loginAttempts)
+    .set({
+      attemptCount: newAttemptCount,
+      lastAttemptAt: now,
+      lastIpAddress: ipAddress,
+      lockedUntil,
+      updatedAt: now,
+    })
+    .where(eq(loginAttempts.id, existingAttempt.id));
+
+  return {
+    locked: lockedUntil !== null,
+    attemptsRemaining: Math.max(0, MAX_LOGIN_ATTEMPTS - newAttemptCount),
+  };
+}
+
+/**
+ * SECURITY: Clear failed login attempts on successful login
+ */
+async function clearLoginAttempts(email: string): Promise<void> {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  await db
+    .update(loginAttempts)
+    .set({
+      attemptCount: 0,
+      lockedUntil: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(loginAttempts.email, normalizedEmail));
+}
+
 // Login endpoint
 router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
+    const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
+
+    // SECURITY: Check if account is locked before attempting authentication
+    const lockStatus = await isAccountLocked(email);
+    if (lockStatus.locked) {
+      console.log(`[SECURITY] Blocked login attempt for locked account: ${email}`);
+      return res.status(429).json({
+        message: `Account is temporarily locked. Please try again in ${lockStatus.remainingMinutes} minute(s).`,
+        locked: true,
+        remainingMinutes: lockStatus.remainingMinutes,
+      });
+    }
 
     const user = await storage.authenticateUser(email, password);
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      // SECURITY: Record failed attempt and check for lockout
+      const attemptResult = await recordFailedLoginAttempt(email, ipAddress);
+
+      if (attemptResult.locked) {
+        return res.status(429).json({
+          message: `Too many failed attempts. Account locked for ${LOCKOUT_DURATION_MINUTES} minutes.`,
+          locked: true,
+          remainingMinutes: LOCKOUT_DURATION_MINUTES,
+        });
+      }
+
+      // Generic error message to prevent email enumeration
+      return res.status(401).json({
+        message: 'Invalid email or password',
+        attemptsRemaining: attemptResult.attemptsRemaining,
+      });
     }
+
+    // SECURITY: Clear failed attempts on successful login
+    await clearLoginAttempts(email);
 
     // SECURITY FIX: Regenerate session ID to prevent session fixation attacks
     await new Promise<void>((resolve, reject) => {
@@ -170,14 +313,23 @@ router.post('/logout', (req, res) => {
 const getCurrentUserHandler = async (req: any, res: any) => {
   try {
     // SECURITY FIX: Restrict test mode to development/test environments only
+    // SECURITY: Requires explicit TEST_AUTH_SECRET - no default fallback
     const isTestMode =
       (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
       process.env.TEST_MODE === 'true';
 
-    const testAuthToken = process.env.TEST_AUTH_SECRET || 'playwright';
-    if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
+    const testAuthSecret = process.env.TEST_AUTH_SECRET;
+    const demoTenantId = process.env.DEMO_TENANT_ID;
+
+    // SECURITY: Both TEST_AUTH_SECRET and DEMO_TENANT_ID must be explicitly set
+    if (isTestMode && testAuthSecret && req.headers['x-test-auth'] === testAuthSecret) {
+      if (!demoTenantId) {
+        console.error('[SECURITY] Test mode requires DEMO_TENANT_ID to be set');
+        return res.status(500).json({ message: 'Test mode configuration error' });
+      }
+
       const testUserId = 'test-user-playwright';
-      const defaultTenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+      const defaultTenantId = demoTenantId;
 
       // Ensure test user exists
       let testUser = await storage.getUser(testUserId);
