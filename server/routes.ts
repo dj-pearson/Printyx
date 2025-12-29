@@ -171,6 +171,7 @@ import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
 import seoRoutes from './routes-seo';
 import { registerHealthRoutes } from './routes/health-routes';
+import { apiVersioning, legacyRouteSupport, apiVersionInfo } from './middleware/api-versioning';
 import {
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
@@ -602,6 +603,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.use('/api/', apiLimiter);
+
+  // API versioning middleware
+  // Supports both URL-based (/api/v1/) and header-based (X-API-Version) versioning
+  app.use(apiVersioning());
+
+  // Legacy route support - auto-upgrade unversioned /api/ requests to /api/v1/
+  app.use(
+    legacyRouteSupport({
+      version: 'v1',
+      excludePaths: ['/api/health', '/api/auth', '/api/docs', '/.well-known', '/api/versions'],
+      redirect: false, // Rewrite internally, don't redirect
+    }),
+  );
+
+  // API versions info endpoint
+  app.get('/api/versions', apiVersionInfo());
+
   // Resolve tenant context for all requests
   app.use(resolveTenant as any);
 
