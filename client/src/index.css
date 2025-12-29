@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Safe viewport height CSS custom properties */
+:root {
+  /* Fallback to vh for browsers that don't support dvh */
+  --vh: 1vh;
+  --screen-safe: 100vh;
+  --screen-small: 100vh;
+  --screen-large: 100vh;
+}
+
+/* Modern browsers with dynamic viewport support */
+@supports (height: 100dvh) {
+  :root {
+    --screen-safe: 100dvh;
+  }
+}
+
+@supports (height: 100svh) {
+  :root {
+    --screen-small: 100svh;
+  }
+}
+
+@supports (height: 100lvh) {
+  :root {
+    --screen-large: 100lvh;
+  }
+}
+
+/* Utility classes for safe viewport heights */
+.h-screen-safe {
+  height: var(--screen-safe);
+}
+
+.min-h-screen-safe {
+  min-height: var(--screen-safe);
+}
+
+.max-h-screen-safe {
+  max-height: var(--screen-safe);
+}
+
 /* Mobile-responsive optimizations */
 @layer utilities {
   /* Smooth horizontal scrolling for mobile tabs */
