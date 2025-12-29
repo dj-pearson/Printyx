@@ -84,13 +84,21 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
           tenantId = tenantId || dbUser.tenantId;
           roleId = roleId || dbUser.roleId;
         } else {
-          // User not in database - use default demo tenant
-          tenantId =
-            tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+          // SECURITY: Require explicit DEMO_TENANT_ID - no hardcoded fallback
+          const demoTenantId = process.env.DEMO_TENANT_ID;
+          if (!demoTenantId) {
+            console.error('[Auth] User not in database and DEMO_TENANT_ID not configured');
+            return res.status(401).json({ message: 'User not properly configured' });
+          }
+          tenantId = tenantId || demoTenantId;
         }
       } catch (error) {
         console.error('[Auth] Error looking up user:', error);
-        tenantId = tenantId || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+        const demoTenantId = process.env.DEMO_TENANT_ID;
+        if (!demoTenantId) {
+          return res.status(500).json({ message: 'Authentication configuration error' });
+        }
+        tenantId = tenantId || demoTenantId;
       }
     }
 
@@ -113,14 +121,23 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   // Priority 2: Test mode (development/test environments only)
+  // SECURITY: Requires explicit TEST_AUTH_SECRET - no default fallback
   const isTestMode =
     (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') &&
     process.env.TEST_MODE === 'true';
 
-  const testAuthToken = process.env.TEST_AUTH_SECRET || 'playwright';
-  if (isTestMode && req.headers['x-test-auth'] === testAuthToken) {
+  const testAuthSecret = process.env.TEST_AUTH_SECRET;
+  const demoTenantId = process.env.DEMO_TENANT_ID;
+
+  // SECURITY: Both TEST_AUTH_SECRET and DEMO_TENANT_ID must be explicitly set
+  if (isTestMode && testAuthSecret && req.headers['x-test-auth'] === testAuthSecret) {
+    if (!demoTenantId) {
+      console.error('[SECURITY] Test mode requires DEMO_TENANT_ID to be set');
+      return res.status(500).json({ message: 'Test mode configuration error' });
+    }
+
     const testUserId = 'test-user-playwright';
-    const defaultTenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+    const defaultTenantId = demoTenantId;
 
     try {
       // Ensure tenant exists
