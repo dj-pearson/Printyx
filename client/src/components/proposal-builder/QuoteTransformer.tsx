@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { sanitizeRichHtml } from '@/lib/sanitize-html';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -671,9 +672,9 @@ export default function QuoteTransformer({
                     .map((section) => (
                       <div key={section.id} className="border-l-4 border-primary/20 pl-4">
                         <h3 className="font-semibold text-lg mb-2">{section.title}</h3>
-                        <div 
+                        <div
                           className="prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: section.content }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(section.content) }}
                         />
                       </div>
                     ))}
