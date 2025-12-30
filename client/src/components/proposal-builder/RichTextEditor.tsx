@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { sanitizeRichHtml } from '@/lib/sanitize-html';
 import { 
   Bold, 
   Italic, 
@@ -40,8 +41,11 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
   const [linkText, setLinkText] = useState('');
 
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value;
+    if (editorRef.current) {
+      const sanitizedValue = sanitizeRichHtml(value);
+      if (editorRef.current.innerHTML !== sanitizedValue) {
+        editorRef.current.innerHTML = sanitizedValue;
+      }
     }
   }, [value]);
 
@@ -416,7 +420,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
         style={{ minHeight }}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(value) }}
         data-placeholder={placeholder}
       />
 
