@@ -1,6 +1,19 @@
 # ============================================================================
 # Printyx Stripe Products Setup Script (PowerShell)
 # ============================================================================
+# This script creates all subscription products, prices, and payment links
+# in your Stripe account using the Stripe CLI.
+#
+# Prerequisites:
+#   1. Install Stripe CLI: https://stripe.com/docs/stripe-cli
+#   2. Login to Stripe CLI: stripe login
+#   3. Run this script from PowerShell
+#
+# Usage:
+#   .\setup-stripe-products.ps1
+#   .\setup-stripe-products.ps1 -TestMode  # For test mode (default)
+#   .\setup-stripe-products.ps1 -LiveMode  # For production
+# ============================================================================
 
 param(
     [switch]$LiveMode = $false,
@@ -48,27 +61,45 @@ $results = @{
 # ============================================================================
 
 Write-Host "`n[1/9] Creating Starter product..." -ForegroundColor Yellow
-$cmd = "stripe products create -d name=`"Printyx Starter`" -d description=`"Perfect for small copier dealers (5-20 employees) with core contract management and meter billing`" -d `"metadata[tier]=starter`" -d `"metadata[maxUsers]=20`" -d `"metadata[maxLocations]=3`" -d `"metadata[maxStorage]=100`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$starterProductJson = Invoke-Expression "$cmd 2>&1" | Out-String
+if ($modeFlag) {
+    $starterProductJson = stripe products create --name="Printyx Starter" --description="Perfect for small copier dealers (5-20 employees) with core contract management and meter billing" --metadata tier=starter --metadata maxUsers=20 --metadata maxLocations=3 --metadata maxStorage=100 $modeFlag 2>&1 | Out-String
+} else {
+    $starterProductJson = stripe products create --name="Printyx Starter" --description="Perfect for small copier dealers (5-20 employees) with core contract management and meter billing" --metadata tier=starter --metadata maxUsers=20 --metadata maxLocations=3 --metadata maxStorage=100 2>&1 | Out-String
+}
+
 $starterProduct = $starterProductJson | ConvertFrom-Json
 $starterProductId = $starterProduct.id
+$results.starter.productId = $starterProductId
 Write-Host "  Product ID: $starterProductId" -ForegroundColor Green
 
 Write-Host "`n[2/9] Creating Professional product..." -ForegroundColor Yellow
-$cmd = "stripe products create -d name=`"Printyx Professional`" -d description=`"For growing copier dealers (20-100 employees) with service dispatch, mobile app, and advanced inventory`" -d `"metadata[tier]=professional`" -d `"metadata[maxUsers]=100`" -d `"metadata[maxLocations]=10`" -d `"metadata[popular]=true`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$professionalProductJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$professionalProductJson = stripe products create `
+    --name="Printyx Professional" `
+    --description="For growing copier dealers (20-100 employees) with service dispatch, mobile app, and advanced inventory" `
+    --metadata[tier]="professional" `
+    --metadata[maxUsers]="100" `
+    --metadata[maxLocations]="10" `
+    --metadata[popular]="true" `
+    $modeFlag 2>&1 | Out-String
+
 $professionalProduct = $professionalProductJson | ConvertFrom-Json
 $professionalProductId = $professionalProduct.id
+$results.professional.productId = $professionalProductId
 Write-Host "  Product ID: $professionalProductId" -ForegroundColor Green
 
 Write-Host "`n[3/9] Creating Enterprise product..." -ForegroundColor Yellow
-$cmd = "stripe products create -d name=`"Printyx Enterprise`" -d description=`"For large copier dealers (100+ employees) with dedicated account manager, API access, and SLA guarantees`" -d `"metadata[tier]=enterprise`" -d `"metadata[maxUsers]=unlimited`" -d `"metadata[maxLocations]=unlimited`" -d `"metadata[sla]=true`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$enterpriseProductJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$enterpriseProductJson = stripe products create `
+    --name="Printyx Enterprise" `
+    --description="For large copier dealers (100+ employees) with dedicated account manager, API access, and SLA guarantees" `
+    --metadata[tier]="enterprise" `
+    --metadata[maxUsers]="unlimited" `
+    --metadata[maxLocations]="unlimited" `
+    --metadata[sla]="true" `
+    $modeFlag 2>&1 | Out-String
+
 $enterpriseProduct = $enterpriseProductJson | ConvertFrom-Json
 $enterpriseProductId = $enterpriseProduct.id
+$results.enterprise.productId = $enterpriseProductId
 Write-Host "  Product ID: $enterpriseProductId" -ForegroundColor Green
 
 # ============================================================================
@@ -78,55 +109,106 @@ Write-Host "  Product ID: $enterpriseProductId" -ForegroundColor Green
 Write-Host "`n[4/9] Creating Starter prices..." -ForegroundColor Yellow
 
 # Starter Monthly - $79/month
-$cmd = "stripe prices create -d product=$starterProductId -d unit_amount=7900 -d currency=usd -d `"recurring[interval]=month`" -d nickname=`"Starter Monthly`" -d `"metadata[plan]=starter`" -d `"metadata[billing]=monthly`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$starterMonthlyPriceJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$starterMonthlyPriceJson = stripe prices create `
+    --product=$starterProductId `
+    --unit-amount=7900 `
+    --currency=usd `
+    --recurring[interval]=month `
+    --nickname="Starter Monthly" `
+    --metadata[plan]="starter" `
+    --metadata[billing]="monthly" `
+    $modeFlag 2>&1 | Out-String
+
 $starterMonthlyPrice = $starterMonthlyPriceJson | ConvertFrom-Json
 $starterMonthlyPriceId = $starterMonthlyPrice.id
+$results.starter.monthlyPriceId = $starterMonthlyPriceId
 Write-Host "  Monthly Price ID: $starterMonthlyPriceId ($79/month)" -ForegroundColor Green
 
 # Starter Annual - $758/year (20% discount)
-$cmd = "stripe prices create -d product=$starterProductId -d unit_amount=75800 -d currency=usd -d `"recurring[interval]=year`" -d nickname=`"Starter Annual`" -d `"metadata[plan]=starter`" -d `"metadata[billing]=annual`" -d `"metadata[discount]=20%`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$starterAnnualPriceJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$starterAnnualPriceJson = stripe prices create `
+    --product=$starterProductId `
+    --unit-amount=75800 `
+    --currency=usd `
+    --recurring[interval]=year `
+    --nickname="Starter Annual" `
+    --metadata[plan]="starter" `
+    --metadata[billing]="annual" `
+    --metadata[discount]="20%" `
+    $modeFlag 2>&1 | Out-String
+
 $starterAnnualPrice = $starterAnnualPriceJson | ConvertFrom-Json
 $starterAnnualPriceId = $starterAnnualPrice.id
+$results.starter.annualPriceId = $starterAnnualPriceId
 Write-Host "  Annual Price ID: $starterAnnualPriceId ($758/year)" -ForegroundColor Green
 
 Write-Host "`n[5/9] Creating Professional prices..." -ForegroundColor Yellow
 
 # Professional Monthly - $99/month
-$cmd = "stripe prices create -d product=$professionalProductId -d unit_amount=9900 -d currency=usd -d `"recurring[interval]=month`" -d nickname=`"Professional Monthly`" -d `"metadata[plan]=professional`" -d `"metadata[billing]=monthly`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$professionalMonthlyPriceJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$professionalMonthlyPriceJson = stripe prices create `
+    --product=$professionalProductId `
+    --unit-amount=9900 `
+    --currency=usd `
+    --recurring[interval]=month `
+    --nickname="Professional Monthly" `
+    --metadata[plan]="professional" `
+    --metadata[billing]="monthly" `
+    $modeFlag 2>&1 | Out-String
+
 $professionalMonthlyPrice = $professionalMonthlyPriceJson | ConvertFrom-Json
 $professionalMonthlyPriceId = $professionalMonthlyPrice.id
+$results.professional.monthlyPriceId = $professionalMonthlyPriceId
 Write-Host "  Monthly Price ID: $professionalMonthlyPriceId ($99/month)" -ForegroundColor Green
 
 # Professional Annual - $950/year (20% discount)
-$cmd = "stripe prices create -d product=$professionalProductId -d unit_amount=95000 -d currency=usd -d `"recurring[interval]=year`" -d nickname=`"Professional Annual`" -d `"metadata[plan]=professional`" -d `"metadata[billing]=annual`" -d `"metadata[discount]=20%`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$professionalAnnualPriceJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$professionalAnnualPriceJson = stripe prices create `
+    --product=$professionalProductId `
+    --unit-amount=95000 `
+    --currency=usd `
+    --recurring[interval]=year `
+    --nickname="Professional Annual" `
+    --metadata[plan]="professional" `
+    --metadata[billing]="annual" `
+    --metadata[discount]="20%" `
+    $modeFlag 2>&1 | Out-String
+
 $professionalAnnualPrice = $professionalAnnualPriceJson | ConvertFrom-Json
 $professionalAnnualPriceId = $professionalAnnualPrice.id
+$results.professional.annualPriceId = $professionalAnnualPriceId
 Write-Host "  Annual Price ID: $professionalAnnualPriceId ($950/year)" -ForegroundColor Green
 
 Write-Host "`n[6/9] Creating Enterprise prices..." -ForegroundColor Yellow
 
 # Enterprise Monthly - $149/month
-$cmd = "stripe prices create -d product=$enterpriseProductId -d unit_amount=14900 -d currency=usd -d `"recurring[interval]=month`" -d nickname=`"Enterprise Monthly`" -d `"metadata[plan]=enterprise`" -d `"metadata[billing]=monthly`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$enterpriseMonthlyPriceJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$enterpriseMonthlyPriceJson = stripe prices create `
+    --product=$enterpriseProductId `
+    --unit-amount=14900 `
+    --currency=usd `
+    --recurring[interval]=month `
+    --nickname="Enterprise Monthly" `
+    --metadata[plan]="enterprise" `
+    --metadata[billing]="monthly" `
+    $modeFlag 2>&1 | Out-String
+
 $enterpriseMonthlyPrice = $enterpriseMonthlyPriceJson | ConvertFrom-Json
 $enterpriseMonthlyPriceId = $enterpriseMonthlyPrice.id
+$results.enterprise.monthlyPriceId = $enterpriseMonthlyPriceId
 Write-Host "  Monthly Price ID: $enterpriseMonthlyPriceId ($149/month)" -ForegroundColor Green
 
 # Enterprise Annual - $1430/year (20% discount)
-$cmd = "stripe prices create -d product=$enterpriseProductId -d unit_amount=143000 -d currency=usd -d `"recurring[interval]=year`" -d nickname=`"Enterprise Annual`" -d `"metadata[plan]=enterprise`" -d `"metadata[billing]=annual`" -d `"metadata[discount]=20%`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$enterpriseAnnualPriceJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$enterpriseAnnualPriceJson = stripe prices create `
+    --product=$enterpriseProductId `
+    --unit-amount=143000 `
+    --currency=usd `
+    --recurring[interval]=year `
+    --nickname="Enterprise Annual" `
+    --metadata[plan]="enterprise" `
+    --metadata[billing]="annual" `
+    --metadata[discount]="20%" `
+    $modeFlag 2>&1 | Out-String
+
 $enterpriseAnnualPrice = $enterpriseAnnualPriceJson | ConvertFrom-Json
 $enterpriseAnnualPriceId = $enterpriseAnnualPrice.id
+$results.enterprise.annualPriceId = $enterpriseAnnualPriceId
 Write-Host "  Annual Price ID: $enterpriseAnnualPriceId ($1430/year)" -ForegroundColor Green
 
 # ============================================================================
@@ -135,50 +217,92 @@ Write-Host "  Annual Price ID: $enterpriseAnnualPriceId ($1430/year)" -Foregroun
 
 Write-Host "`n[7/9] Creating Starter payment links..." -ForegroundColor Yellow
 
-$cmd = "stripe payment_links create -d `"line_items[0][price]=$starterMonthlyPriceId`" -d `"line_items[0][quantity]=1`" -d allow_promotion_codes=true -d billing_address_collection=required -d `"metadata[plan]=starter`" -d `"metadata[billing]=monthly`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$starterMonthlyLinkJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$starterMonthlyLinkJson = stripe payment_links create `
+    --line-items[0][price]=$starterMonthlyPriceId `
+    --line-items[0][quantity]=1 `
+    --allow-promotion-codes `
+    --billing-address-collection=required `
+    --metadata[plan]="starter" `
+    --metadata[billing]="monthly" `
+    $modeFlag 2>&1 | Out-String
+
 $starterMonthlyLink = $starterMonthlyLinkJson | ConvertFrom-Json
 $starterMonthlyLinkUrl = $starterMonthlyLink.url
+$results.starter.monthlyLink = $starterMonthlyLinkUrl
 Write-Host "  Monthly Link: $starterMonthlyLinkUrl" -ForegroundColor Green
 
-$cmd = "stripe payment_links create -d `"line_items[0][price]=$starterAnnualPriceId`" -d `"line_items[0][quantity]=1`" -d allow_promotion_codes=true -d billing_address_collection=required -d `"metadata[plan]=starter`" -d `"metadata[billing]=annual`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$starterAnnualLinkJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$starterAnnualLinkJson = stripe payment_links create `
+    --line-items[0][price]=$starterAnnualPriceId `
+    --line-items[0][quantity]=1 `
+    --allow-promotion-codes `
+    --billing-address-collection=required `
+    --metadata[plan]="starter" `
+    --metadata[billing]="annual" `
+    $modeFlag 2>&1 | Out-String
+
 $starterAnnualLink = $starterAnnualLinkJson | ConvertFrom-Json
 $starterAnnualLinkUrl = $starterAnnualLink.url
+$results.starter.annualLink = $starterAnnualLinkUrl
 Write-Host "  Annual Link: $starterAnnualLinkUrl" -ForegroundColor Green
 
 Write-Host "`n[8/9] Creating Professional payment links..." -ForegroundColor Yellow
 
-$cmd = "stripe payment_links create -d `"line_items[0][price]=$professionalMonthlyPriceId`" -d `"line_items[0][quantity]=1`" -d allow_promotion_codes=true -d billing_address_collection=required -d `"metadata[plan]=professional`" -d `"metadata[billing]=monthly`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$professionalMonthlyLinkJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$professionalMonthlyLinkJson = stripe payment_links create `
+    --line-items[0][price]=$professionalMonthlyPriceId `
+    --line-items[0][quantity]=1 `
+    --allow-promotion-codes `
+    --billing-address-collection=required `
+    --metadata[plan]="professional" `
+    --metadata[billing]="monthly" `
+    $modeFlag 2>&1 | Out-String
+
 $professionalMonthlyLink = $professionalMonthlyLinkJson | ConvertFrom-Json
 $professionalMonthlyLinkUrl = $professionalMonthlyLink.url
+$results.professional.monthlyLink = $professionalMonthlyLinkUrl
 Write-Host "  Monthly Link: $professionalMonthlyLinkUrl" -ForegroundColor Green
 
-$cmd = "stripe payment_links create -d `"line_items[0][price]=$professionalAnnualPriceId`" -d `"line_items[0][quantity]=1`" -d allow_promotion_codes=true -d billing_address_collection=required -d `"metadata[plan]=professional`" -d `"metadata[billing]=annual`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$professionalAnnualLinkJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$professionalAnnualLinkJson = stripe payment_links create `
+    --line-items[0][price]=$professionalAnnualPriceId `
+    --line-items[0][quantity]=1 `
+    --allow-promotion-codes `
+    --billing-address-collection=required `
+    --metadata[plan]="professional" `
+    --metadata[billing]="annual" `
+    $modeFlag 2>&1 | Out-String
+
 $professionalAnnualLink = $professionalAnnualLinkJson | ConvertFrom-Json
 $professionalAnnualLinkUrl = $professionalAnnualLink.url
+$results.professional.annualLink = $professionalAnnualLinkUrl
 Write-Host "  Annual Link: $professionalAnnualLinkUrl" -ForegroundColor Green
 
 Write-Host "`n[9/9] Creating Enterprise payment links..." -ForegroundColor Yellow
 
-$cmd = "stripe payment_links create -d `"line_items[0][price]=$enterpriseMonthlyPriceId`" -d `"line_items[0][quantity]=1`" -d allow_promotion_codes=true -d billing_address_collection=required -d `"metadata[plan]=enterprise`" -d `"metadata[billing]=monthly`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$enterpriseMonthlyLinkJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$enterpriseMonthlyLinkJson = stripe payment_links create `
+    --line-items[0][price]=$enterpriseMonthlyPriceId `
+    --line-items[0][quantity]=1 `
+    --allow-promotion-codes `
+    --billing-address-collection=required `
+    --metadata[plan]="enterprise" `
+    --metadata[billing]="monthly" `
+    $modeFlag 2>&1 | Out-String
+
 $enterpriseMonthlyLink = $enterpriseMonthlyLinkJson | ConvertFrom-Json
 $enterpriseMonthlyLinkUrl = $enterpriseMonthlyLink.url
+$results.enterprise.monthlyLink = $enterpriseMonthlyLinkUrl
 Write-Host "  Monthly Link: $enterpriseMonthlyLinkUrl" -ForegroundColor Green
 
-$cmd = "stripe payment_links create -d `"line_items[0][price]=$enterpriseAnnualPriceId`" -d `"line_items[0][quantity]=1`" -d allow_promotion_codes=true -d billing_address_collection=required -d `"metadata[plan]=enterprise`" -d `"metadata[billing]=annual`""
-if ($modeFlag) { $cmd += " $modeFlag" }
-$enterpriseAnnualLinkJson = Invoke-Expression "$cmd 2>&1" | Out-String
+$enterpriseAnnualLinkJson = stripe payment_links create `
+    --line-items[0][price]=$enterpriseAnnualPriceId `
+    --line-items[0][quantity]=1 `
+    --allow-promotion-codes `
+    --billing-address-collection=required `
+    --metadata[plan]="enterprise" `
+    --metadata[billing]="annual" `
+    $modeFlag 2>&1 | Out-String
+
 $enterpriseAnnualLink = $enterpriseAnnualLinkJson | ConvertFrom-Json
 $enterpriseAnnualLinkUrl = $enterpriseAnnualLink.url
+$results.enterprise.annualLink = $enterpriseAnnualLinkUrl
 Write-Host "  Annual Link: $enterpriseAnnualLinkUrl" -ForegroundColor Green
 
 # ============================================================================
