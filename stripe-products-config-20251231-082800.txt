@@ -1,0 +1,28 @@
+﻿# Printyx Stripe Configuration
+# Generated: 12/31/2025 08:28:00
+# Mode: TEST
+
+# ===========================================
+# STRIPE PRODUCT & PRICE IDS
+# ===========================================
+
+# Starter Plan (/month, /year)
+STRIPE_STARTER_PRODUCT_ID=prod_Thq3ffck9xWWvt
+STRIPE_STARTER_PRICE_MONTHLY=price_1SkQNPDicESs12qVEhbMWegH
+STRIPE_STARTER_PRICE_ANNUAL=price_1SkQNQDicESs12qVqHl3EkSo
+STRIPE_STARTER_LINK_MONTHLY=https://buy.stripe.com/test_00wdR97uobzkahnaKq8Ra00
+STRIPE_STARTER_LINK_ANNUAL=https://buy.stripe.com/test_00w5kD3e8avgdtzbOu8Ra01
+
+# Professional Plan (/month, /year)
+STRIPE_PROFESSIONAL_PRODUCT_ID=prod_Thq3uhcn0CTEDT
+STRIPE_PROFESSIONAL_PRICE_MONTHLY=price_1SkQNQDicESs12qVK7ucTqsR
+STRIPE_PROFESSIONAL_PRICE_ANNUAL=price_1SkQNRDicESs12qV2u9BPW8R
+STRIPE_PROFESSIONAL_LINK_MONTHLY=https://buy.stripe.com/test_00wdR9g0U46Sahng4K8Ra02
+STRIPE_PROFESSIONAL_LINK_ANNUAL=https://buy.stripe.com/test_5kQeVdg0U1YK3SZ9Gm8Ra03
+
+# Enterprise Plan (/month, /year)
+STRIPE_ENTERPRISE_PRODUCT_ID=prod_Thq3SgLSqPJva6
+STRIPE_ENTERPRISE_PRICE_MONTHLY=price_1SkQNSDicESs12qVBu9ihQnH
+STRIPE_ENTERPRISE_PRICE_ANNUAL=price_1SkQNSDicESs12qVwkIhMAJh
+STRIPE_ENTERPRISE_LINK_MONTHLY=https://buy.stripe.com/test_cNidR98ys8n875b6ua8Ra04
+STRIPE_ENTERPRISE_LINK_ANNUAL=https://buy.stripe.com/test_fZu6oHdSMbzk75b7ye8Ra05
