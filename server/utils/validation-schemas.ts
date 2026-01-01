@@ -33,10 +33,26 @@ export const sortSchema = z.object({
 
 // Date range schema
 export const dateRangeSchema = z.object({
-  startDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
-  endDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
-  fromDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
-  toDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+  startDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
+  endDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
+  fromDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
+  toDate: z
+    .string()
+    .datetime()
+    .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .optional(),
 });
 
 // Filter schema
@@ -107,8 +123,8 @@ export function sanitizeLikePattern(input: string): string {
 export function sanitizeStringArray(input: string, separator: string = ','): string[] {
   return input
     .split(separator)
-    .map(s => s.trim())
-    .filter(s => s.length > 0)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
     .slice(0, 100); // Max 100 items
 }
 
@@ -126,6 +142,119 @@ export function toSafeBoolean(input: any): boolean {
   }
   return false;
 }
+
+/**
+ * Customer Portal Schemas
+ */
+
+// Customer portal ticket schema
+export const customerTicketSchema = z.object({
+  subject: z.string().min(3, 'Subject must be at least 3 characters').max(200),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(10000),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+  category: z.string().max(50).optional(),
+  equipmentId: z.string().uuid().optional(),
+  attachments: z.array(z.string().url()).max(10).optional(),
+});
+
+// Customer portal profile update schema
+export const customerProfileSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  phone: z.string().max(20).optional(),
+  email: z.string().email().optional(),
+  notificationPreferences: z
+    .object({
+      email: z.boolean().optional(),
+      sms: z.boolean().optional(),
+      push: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// Service request schema
+export const serviceRequestSchema = z.object({
+  equipmentId: z.string().uuid('Invalid equipment ID'),
+  issueType: z.enum(['repair', 'maintenance', 'supply', 'installation', 'other']),
+  description: z.string().min(10).max(5000),
+  urgency: z.enum(['low', 'normal', 'high', 'critical']).default('normal'),
+  preferredDate: z.string().datetime().optional(),
+  preferredTimeSlot: z.enum(['morning', 'afternoon', 'evening', 'any']).optional(),
+  contactPhone: z.string().max(20).optional(),
+  contactEmail: z.string().email().optional(),
+});
+
+/**
+ * Integration Schemas
+ */
+
+// Webhook payload schema
+export const webhookPayloadSchema = z.object({
+  event: z.string().min(1).max(100),
+  data: z.record(z.unknown()),
+  timestamp: z.string().datetime().optional(),
+  signature: z.string().optional(),
+});
+
+// API key creation schema
+export const apiKeySchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters').max(100),
+  permissions: z.array(z.string()).min(1, 'At least one permission required'),
+  expiresAt: z.string().datetime().optional(),
+  rateLimit: z.number().int().min(1).max(100000).optional(),
+  allowedIps: z.array(z.string().ip()).max(20).optional(),
+});
+
+/**
+ * Reporting Schemas
+ */
+
+// Report generation schema
+export const reportSchema = z.object({
+  reportType: z.string().min(1).max(50),
+  dateRange: z.object({
+    start: z.string().datetime(),
+    end: z.string().datetime(),
+  }),
+  filters: z.record(z.unknown()).optional(),
+  format: z.enum(['pdf', 'csv', 'xlsx', 'json']).default('pdf'),
+  includeCharts: z.boolean().default(true),
+});
+
+/**
+ * Security Schemas
+ */
+
+// Password change schema
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z
+      .string()
+      .min(12, 'Password must be at least 12 characters')
+      .regex(/[A-Z]/, 'Password must contain an uppercase letter')
+      .regex(/[a-z]/, 'Password must contain a lowercase letter')
+      .regex(/[0-9]/, 'Password must contain a number')
+      .regex(/[^A-Za-z0-9]/, 'Password must contain a special character'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+// MFA setup schema
+export const mfaSetupSchema = z.object({
+  method: z.enum(['totp', 'sms', 'email']),
+  phoneNumber: z.string().max(20).optional(),
+  backupEmail: z.string().email().optional(),
+});
+
+// MFA verification schema
+export const mfaVerifySchema = z.object({
+  code: z.string().length(6, 'Code must be 6 digits').regex(/^\d+$/, 'Code must be numeric'),
+  rememberDevice: z.boolean().default(false),
+});
 
 /**
  * Validation middleware factory
@@ -153,7 +282,7 @@ export function validate(schemas: {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
           error: 'Invalid request parameters',
-          details: error.errors.map(e => ({
+          details: error.errors.map((e) => ({
             field: e.path.join('.'),
             message: e.message,
           })),
