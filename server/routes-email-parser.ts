@@ -3,8 +3,53 @@ import { db } from './db';
 import { emailMonitorConfig, processedEmails, parsingCorrections } from '@shared/schema';
 import { eq, and, desc, gte, lte } from 'drizzle-orm';
 import { startEmailMonitor, stopEmailMonitor } from './services/email-monitor-service';
+import { z } from 'zod';
+import {
+  encryptCredential,
+  decryptCredential,
+  safeEncryptCredential,
+} from './utils/credentials-encryption';
 
 const router = Router();
+
+// ============================================
+// Zod Validation Schemas
+// ============================================
+
+const emailConfigSchema = z.object({
+  emailAddress: z.string().email('Invalid email address'),
+  protocol: z.enum(['imap', 'oauth']).default('imap'),
+  host: z.string().min(1).optional(),
+  port: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((val) => (val ? Number(val) : null)),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  tls: z.boolean().optional().default(true),
+  enabled: z.boolean().optional().default(true),
+  pollInterval: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((val) => (val ? Number(val) : 60)),
+  autoAssignTechnician: z.boolean().optional().default(true),
+  sendConfirmationEmail: z.boolean().optional().default(true),
+});
+
+const testConnectionSchema = z.object({
+  host: z.string().min(1, 'Host is required'),
+  port: z.union([z.string(), z.number()]).transform((val) => Number(val)),
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+  tls: z.boolean().optional().default(true),
+});
+
+const correctionSchema = z.object({
+  emailId: z.string().uuid('Invalid email ID'),
+  aiParsedData: z.record(z.unknown()),
+  correctedData: z.record(z.unknown()),
+  correctionReason: z.string().optional(),
+});
 
 // Helper to get user ID from request (supports Supabase JWT and session)
 const getUserId = (req: Request): string | undefined => {
@@ -48,6 +93,16 @@ router.get('/config', async (req: any, res) => {
 router.post('/config', async (req: any, res) => {
   try {
     const { tenantId } = req;
+
+    // Validate input with Zod
+    const validation = emailConfigSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: validation.error.flatten().fieldErrors,
+      });
+    }
+
     const {
       emailAddress,
       protocol,
@@ -60,21 +115,17 @@ router.post('/config', async (req: any, res) => {
       pollInterval,
       autoAssignTechnician,
       sendConfirmationEmail,
-    } = req.body;
+    } = validation.data;
 
-    // Validate required fields
-    if (!emailAddress || !protocol) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
+    // Additional validation for IMAP protocol
     if (protocol === 'imap' && (!host || !port || !username || !password)) {
       return res.status(400).json({
         message: 'IMAP configuration requires host, port, username, and password',
       });
     }
 
-    // TODO: Encrypt password before storing
-    const encryptedPassword = password; // Placeholder - implement encryption
+    // Encrypt password using AES-256-GCM before storing
+    const encryptedPassword = password ? encryptCredential(password) : null;
 
     // Check if config exists
     const existingConfig = await db.query.emailMonitorConfig.findFirst({
@@ -91,14 +142,14 @@ router.post('/config', async (req: any, res) => {
           emailAddress,
           protocol,
           host,
-          port: port ? parseInt(port) : null,
+          port,
           username,
-          encryptedPassword: password ? encryptedPassword : existingConfig.encryptedPassword,
-          tls: tls !== undefined ? tls : true,
-          enabled: enabled !== undefined ? enabled : true,
-          pollInterval: pollInterval ? parseInt(pollInterval) : 60,
-          autoAssignTechnician: autoAssignTechnician !== undefined ? autoAssignTechnician : true,
-          sendConfirmationEmail: sendConfirmationEmail !== undefined ? sendConfirmationEmail : true,
+          encryptedPassword: encryptedPassword || existingConfig.encryptedPassword,
+          tls,
+          enabled,
+          pollInterval,
+          autoAssignTechnician,
+          sendConfirmationEmail,
           updatedAt: new Date(),
         })
         .where(eq(emailMonitorConfig.tenantId, tenantId))
@@ -112,14 +163,14 @@ router.post('/config', async (req: any, res) => {
           emailAddress,
           protocol,
           host,
-          port: port ? parseInt(port) : null,
+          port,
           username,
           encryptedPassword,
-          tls: tls !== undefined ? tls : true,
-          enabled: enabled !== undefined ? enabled : true,
-          pollInterval: pollInterval ? parseInt(pollInterval) : 60,
-          autoAssignTechnician: autoAssignTechnician !== undefined ? autoAssignTechnician : true,
-          sendConfirmationEmail: sendConfirmationEmail !== undefined ? sendConfirmationEmail : true,
+          tls,
+          enabled,
+          pollInterval,
+          autoAssignTechnician,
+          sendConfirmationEmail,
         })
         .returning();
     }
@@ -151,23 +202,40 @@ router.post('/config', async (req: any, res) => {
  */
 router.post('/test-connection', async (req: any, res) => {
   try {
-    const { host, port, username, password, tls } = req.body;
-
-    if (!host || !port || !username || !password) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    // Validate input with Zod
+    const validation = testConnectionSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: validation.error.flatten().fieldErrors,
+      });
     }
 
-    // TODO: Implement actual IMAP connection test
-    // For now, return mock success
-    res.json({
-      success: true,
-      message: 'Connection successful',
-    });
+    const { host, port, username, password, tls } = validation.data;
+
+    // In production, this would establish an actual IMAP connection to verify credentials
+    // For now, perform basic connectivity check
+    try {
+      // Attempt DNS resolution as a basic check
+      const dns = await import('dns').then((m) => m.promises);
+      await dns.lookup(host);
+
+      res.json({
+        success: true,
+        message: 'Connection parameters validated successfully',
+      });
+    } catch (dnsError) {
+      res.status(400).json({
+        success: false,
+        message: 'Unable to resolve host',
+        error: `Host '${host}' could not be resolved`,
+      });
+    }
   } catch (error) {
     console.error('[EmailParserAPI] Error testing connection:', error);
     res.status(500).json({
       success: false,
-      message: 'Connection failed',
+      message: 'Connection test failed',
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
@@ -305,11 +373,17 @@ router.post('/corrections', async (req: any, res) => {
   try {
     const { tenantId } = req;
     const userId = getUserId(req);
-    const { emailId, aiParsedData, correctedData, correctionReason } = req.body;
 
-    if (!emailId || !aiParsedData || !correctedData) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    // Validate input with Zod
+    const validation = correctionSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: validation.error.flatten().fieldErrors,
+      });
     }
+
+    const { emailId, aiParsedData, correctedData, correctionReason } = validation.data;
 
     await db.insert(parsingCorrections).values({
       emailId,
