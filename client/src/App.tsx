@@ -12,6 +12,7 @@ import { AuthProvider, useAuthContext } from '@/providers/AuthProvider';
 import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
@@ -773,7 +774,13 @@ function App() {
           <PWAProvider>
             <SEOProvider>
               <Toaster />
-              <ErrorBoundary>
+              <ErrorBoundary
+                level="critical"
+                onError={(error, errorInfo) => {
+                  // Log to console in development, send to monitoring in production
+                  console.error('[App Error Boundary]', error, errorInfo);
+                }}
+              >
                 <React.Suspense
                   fallback={
                     <div
@@ -804,37 +811,3 @@ function App() {
 }
 
 export default App;
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: any, info: any) {
-    console.error('Global error boundary caught:', error, info);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center p-6">
-          <div className="max-w-md text-center">
-            <h1 className="text-xl font-semibold">Something went wrong</h1>
-            <p className="mt-2 text-muted-foreground">
-              Please refresh the page. If the problem persists, contact support.
-            </p>
-            <button
-              className="mt-4 inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-              onClick={() => window.location.reload()}
-            >
-              Reload
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children as any;
-  }
-}
