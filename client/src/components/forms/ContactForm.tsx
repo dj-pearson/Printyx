@@ -1,31 +1,45 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Search, Plus, X, AlertCircle } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { TextareaWithCounter } from '@/components/ui/textarea-with-counter';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, Search, Plus, X, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const contactSchema = z.object({
   salutation: z.string().optional(),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
   title: z.string().optional(),
   department: z.string().optional(),
   reportsTo: z.string().optional(),
   phone: z.string().optional(),
   mobile: z.string().optional(),
-  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   nextCallBack: z.date().optional(),
   isPrimaryContact: z.boolean().default(false),
   contactRoles: z.array(z.string()).default([]),
@@ -43,51 +57,51 @@ interface ContactFormProps {
 }
 
 const salutationOptions = [
-  { value: "mr", label: "Mr." },
-  { value: "mrs", label: "Mrs." },
-  { value: "ms", label: "Ms." },
-  { value: "dr", label: "Dr." },
-  { value: "prof", label: "Prof." },
+  { value: 'mr', label: 'Mr.' },
+  { value: 'mrs', label: 'Mrs.' },
+  { value: 'ms', label: 'Ms.' },
+  { value: 'dr', label: 'Dr.' },
+  { value: 'prof', label: 'Prof.' },
 ];
 
 const commonRoles = [
-  "Decision Maker",
-  "IT Manager",
-  "Office Manager",
-  "Procurement",
-  "Finance Contact",
-  "Technical Contact",
-  "Executive Assistant",
-  "Department Head",
+  'Decision Maker',
+  'IT Manager',
+  'Office Manager',
+  'Procurement',
+  'Finance Contact',
+  'Technical Contact',
+  'Executive Assistant',
+  'Department Head',
 ];
 
-export default function ContactForm({ 
-  companyId, 
-  onSubmit, 
-  onCancel, 
-  initialData, 
-  isLoading = false 
+export default function ContactForm({
+  companyId,
+  onSubmit,
+  onCancel,
+  initialData,
+  isLoading = false,
 }: ContactFormProps) {
   const [selectedRoles, setSelectedRoles] = useState<string[]>(initialData?.contactRoles || []);
-  const [newRole, setNewRole] = useState("");
-  const [reportsToSearch, setReportsToSearch] = useState("");
+  const [newRole, setNewRole] = useState('');
+  const [reportsToSearch, setReportsToSearch] = useState('');
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
-      salutation: initialData?.salutation || "",
-      firstName: initialData?.firstName || "",
-      lastName: initialData?.lastName || "",
-      title: initialData?.title || "",
-      department: initialData?.department || "",
-      reportsTo: initialData?.reportsTo || "",
-      phone: initialData?.phone || "",
-      mobile: initialData?.mobile || "",
-      email: initialData?.email || "",
+      salutation: initialData?.salutation || '',
+      firstName: initialData?.firstName || '',
+      lastName: initialData?.lastName || '',
+      title: initialData?.title || '',
+      department: initialData?.department || '',
+      reportsTo: initialData?.reportsTo || '',
+      phone: initialData?.phone || '',
+      mobile: initialData?.mobile || '',
+      email: initialData?.email || '',
       nextCallBack: initialData?.nextCallBack,
       isPrimaryContact: initialData?.isPrimaryContact || false,
       contactRoles: initialData?.contactRoles || [],
-      notes: initialData?.notes || "",
+      notes: initialData?.notes || '',
     },
   });
 
@@ -101,12 +115,12 @@ export default function ContactForm({
   const addRole = () => {
     if (newRole.trim() && !selectedRoles.includes(newRole.trim())) {
       setSelectedRoles([...selectedRoles, newRole.trim()]);
-      setNewRole("");
+      setNewRole('');
     }
   };
 
   const removeRole = (role: string) => {
-    setSelectedRoles(selectedRoles.filter(r => r !== role));
+    setSelectedRoles(selectedRoles.filter((r) => r !== role));
   };
 
   const addCommonRole = (role: string) => {
@@ -120,9 +134,7 @@ export default function ContactForm({
       <CardHeader>
         <CardTitle className="flex items-center">
           Contact Information
-          {form.formState.errors.firstName && (
-            <AlertCircle className="w-4 h-4 text-red-500 ml-2" />
-          )}
+          {form.formState.errors.firstName && <AlertCircle className="w-4 h-4 text-red-500 ml-2" />}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -179,18 +191,15 @@ export default function ContactForm({
                     <FormItem>
                       <FormLabel className="text-red-600">* Last Name</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Last Name" 
+                        <Input
+                          placeholder="Last Name"
                           className={cn(
-                            form.formState.errors.lastName && "border-red-500 focus:border-red-500"
+                            form.formState.errors.lastName && 'border-red-500 focus:border-red-500',
                           )}
-                          {...field} 
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage className="text-red-600" />
-                      {form.formState.errors.lastName && (
-                        <p className="text-red-600 text-sm">Complete this field.</p>
-                      )}
                     </FormItem>
                   )}
                 />
@@ -277,15 +286,11 @@ export default function ContactForm({
                             <Button
                               variant="outline"
                               className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
+                                'w-full pl-3 text-left font-normal',
+                                !field.value && 'text-muted-foreground',
                               )}
                             >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
+                              {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
@@ -295,13 +300,14 @@ export default function ContactForm({
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
+                            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                             initialFocus
                           />
                         </PopoverContent>
                       </Popover>
+                      <FormDescription>
+                        Schedule when to follow up with this contact
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -327,13 +333,13 @@ export default function ContactForm({
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel>Primary Contact</FormLabel>
+                        <FormDescription>
+                          This contact will receive all main communications
+                        </FormDescription>
                       </div>
                     </FormItem>
                   )}
@@ -344,7 +350,7 @@ export default function ContactForm({
             {/* Contact Roles Section */}
             <div className="space-y-4">
               <Label>Contact Roles</Label>
-              
+
               {/* Quick Add Common Roles */}
               <div className="flex flex-wrap gap-2">
                 {commonRoles.map((role) => (
@@ -406,12 +412,18 @@ export default function ContactForm({
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <TextareaWithCounter
                       placeholder="Additional notes about this contact..."
                       className="min-h-[100px]"
-                      {...field} 
+                      maxLength={1000}
+                      showCounter={true}
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
                     />
                   </FormControl>
+                  <FormDescription>Add any relevant details about this contact</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -419,19 +431,11 @@ export default function ContactForm({
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-4 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isLoading}
-              >
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? "Saving..." : "Save Contact"}
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Saving...' : 'Save Contact'}
               </Button>
             </div>
           </form>
