@@ -11,6 +11,7 @@ import {
 import { eq, and, or, gte, desc, inArray } from 'drizzle-orm';
 import multer from 'multer';
 import { storage } from './storage';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = Router();
 
@@ -38,8 +39,8 @@ const upload = multer({
  */
 router.get('/sync', async (req: any, res) => {
   try {
-    const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+    const tenantId = getTenantId(req);
+    const technicianId = getUserId(req);
     const since = req.query.since; // Last sync timestamp for incremental sync
 
     // Get assigned tickets (open or in progress)
