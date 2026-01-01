@@ -77,6 +77,7 @@ import {
   meterReadings,
   vendors,
   productAccessories,
+  contractTieredRates,
 } from '@shared/schema';
 // Mobile routes integrated directly in main routes file
 import { registerIntegrationRoutes } from './routes-integrations';
@@ -122,7 +123,7 @@ import { registerSalesforceTestRoutes } from './test-salesforce-integration';
 import { registerDataEnrichmentRoutes } from './routes-data-enrichment';
 import { DashboardService } from './integrations/dashboard-service';
 import { db } from './db';
-import { and, eq, sql, desc, or, asc } from 'drizzle-orm';
+import { and, eq, sql, desc, or, asc, inArray, sum, count as drizzleCount } from 'drizzle-orm';
 import integrationRoutes from './integrations/routes';
 import integrationHubRoutes from './routes-integration-hub';
 import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
@@ -5673,6 +5674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Automated Invoice Generation
+  // PERFORMANCE OPTIMIZED: Batch fetches contracts and tiered rates instead of N+1 queries
   app.post('/api/billing/generate-invoices', async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
@@ -5683,18 +5685,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all pending meter readings
       const pendingReadings = await storage.getMeterReadingsByStatus(tenantId, 'pending');
 
+      if (pendingReadings.length === 0) {
+        return res.json({
+          message: 'No pending meter readings to process',
+          invoices: [],
+        });
+      }
+
+      // Extract unique contract IDs from pending readings
+      const contractIds = [
+        ...new Set(pendingReadings.filter((r) => r.contractId).map((r) => String(r.contractId))),
+      ];
+
+      if (contractIds.length === 0) {
+        return res.json({
+          message: 'No meter readings with valid contracts',
+          invoices: [],
+        });
+      }
+
+      // PERFORMANCE FIX: Batch fetch all contracts in one query instead of N queries
+      const allContracts = await db
+        .select()
+        .from(contracts)
+        .where(and(eq(contracts.tenantId, tenantId), inArray(contracts.id, contractIds)));
+
+      // PERFORMANCE FIX: Batch fetch all tiered rates for these contracts in one query
+      const allTieredRates = await db
+        .select()
+        .from(contractTieredRates)
+        .where(inArray(contractTieredRates.contractId, contractIds))
+        .orderBy(contractTieredRates.sortOrder);
+
+      // Create lookup maps for O(1) access
+      const contractMap = new Map(allContracts.map((c) => [c.id, c]));
+      const tieredRatesMap = new Map<string, typeof allTieredRates>();
+      for (const rate of allTieredRates) {
+        const rates = tieredRatesMap.get(rate.contractId) || [];
+        rates.push(rate);
+        tieredRatesMap.set(rate.contractId, rates);
+      }
+
       const generatedInvoices = [];
+      const failedReadings = [];
+
+      // Process each reading using the pre-fetched data
       for (const reading of pendingReadings) {
         try {
-          // Calculate billing amounts using tiered rates
           if (!reading.contractId) continue;
-          const contract = await storage.getContract(String(reading.contractId), tenantId);
+
+          const contract = contractMap.get(String(reading.contractId));
           if (!contract) continue;
 
-          // Get tiered rates for this contract
-          const tieredRates = await storage.getContractTieredRatesByContract(
-            String(reading.contractId),
-          );
+          // Get tiered rates from map (O(1) lookup)
+          const tieredRates = tieredRatesMap.get(String(reading.contractId)) || [];
 
           let blackAmount = 0;
           let colorAmount = 0;
@@ -5759,12 +5803,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           generatedInvoices.push(invoice);
         } catch (readingError) {
           console.error(`Error processing reading ${reading.id}:`, readingError);
+          failedReadings.push(reading.id);
         }
       }
 
       res.json({
         message: `Generated ${generatedInvoices.length} invoices`,
         invoices: generatedInvoices,
+        ...(failedReadings.length > 0 && { failedReadingIds: failedReadings }),
       });
     } catch (error) {
       console.error('Error generating invoices:', error);
@@ -5773,6 +5819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contract Profitability Analysis
+  // PERFORMANCE OPTIMIZED: Uses SQL JOIN and GROUP BY instead of O(n*m) in-memory filtering
   app.get(
     '/api/billing/contract-profitability',
 
@@ -5783,41 +5830,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
 
-        const contracts = await storage.getContracts(tenantId);
-        const invoices = await storage.getInvoices(tenantId);
+        // Parse pagination parameters
+        const page = parseInt(req.query.page as string) || 1;
+        const pageSize = Math.min(parseInt(req.query.pageSize as string) || 50, 100);
+        const offset = (page - 1) * pageSize;
 
-        const profitabilityData = contracts.map((contract) => {
-          const contractInvoices = invoices.filter((inv) => inv.contractId === contract.id);
-          const totalRevenue = contractInvoices.reduce(
-            (sum: number, inv: any) => sum + parseFloat(String(inv.totalAmount || '0')),
-            0,
-          );
-          const totalPaid = contractInvoices.reduce(
-            (sum: number, inv: any) => sum + parseFloat(String(inv.amountPaid ?? '0')),
-            0,
-          );
-          const equipmentCost = parseFloat((contract as any).equipmentCost?.toString() || '0');
-          const monthlyCosts = parseFloat(contract.monthlyBase?.toString() || '0') * 12; // Assume yearly cost
+        // PERFORMANCE FIX: Use SQL JOIN and GROUP BY for aggregation instead of loading all data
+        // This reduces O(n*m) complexity to O(n+m) and avoids memory issues with large datasets
+        const aggregatedData = await db
+          .select({
+            contractId: contracts.id,
+            contractNumber: contracts.contractNumber,
+            monthlyBase: contracts.monthlyBase,
+            totalRevenue: sql<string>`COALESCE(SUM(${invoices.totalAmount}::numeric), 0)`,
+            totalPaid: sql<string>`COALESCE(SUM(${invoices.amountPaid}::numeric), 0)`,
+            invoiceCount: sql<number>`COUNT(${invoices.id})::int`,
+          })
+          .from(contracts)
+          .leftJoin(invoices, eq(contracts.id, invoices.contractId))
+          .where(eq(contracts.tenantId, tenantId))
+          .groupBy(contracts.id, contracts.contractNumber, contracts.monthlyBase)
+          .orderBy(desc(sql`COALESCE(SUM(${invoices.totalAmount}::numeric), 0)`))
+          .limit(pageSize)
+          .offset(offset);
 
-          const totalCosts = equipmentCost + monthlyCosts;
+        // Get total count for pagination
+        const countResult = await db
+          .select({ count: sql<number>`COUNT(DISTINCT ${contracts.id})::int` })
+          .from(contracts)
+          .where(eq(contracts.tenantId, tenantId));
+        const totalCount = countResult[0]?.count || 0;
+
+        // Calculate profitability metrics for only the returned rows
+        const profitabilityData = aggregatedData.map((row) => {
+          const totalRevenue = parseFloat(String(row.totalRevenue || '0'));
+          const totalPaid = parseFloat(String(row.totalPaid || '0'));
+          const monthlyCosts = parseFloat(row.monthlyBase?.toString() || '0') * 12;
+          const totalCosts = monthlyCosts; // Equipment cost would need to be joined if available
           const grossProfit = totalRevenue - totalCosts;
           const marginPercent = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+          const invoiceCount = row.invoiceCount || 0;
 
           return {
-            contractId: contract.id,
-            contractNumber: contract.contractNumber,
+            contractId: row.contractId,
+            contractNumber: row.contractNumber,
             totalRevenue,
             totalPaid,
             totalCosts,
             grossProfit,
             marginPercent,
-            invoiceCount: contractInvoices.length,
-            averageInvoiceAmount:
-              contractInvoices.length > 0 ? totalRevenue / contractInvoices.length : 0,
+            invoiceCount,
+            averageInvoiceAmount: invoiceCount > 0 ? totalRevenue / invoiceCount : 0,
           };
         });
 
-        res.json(profitabilityData);
+        res.json({
+          data: profitabilityData,
+          pagination: {
+            page,
+            pageSize,
+            totalCount,
+            totalPages: Math.ceil(totalCount / pageSize),
+          },
+        });
       } catch (error) {
         console.error('Error calculating contract profitability:', error);
         res.status(500).json({ message: 'Failed to calculate contract profitability' });
