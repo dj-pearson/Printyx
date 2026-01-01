@@ -10,7 +10,7 @@ import type { Express } from 'express';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
-import { getTenantId } from './utils/auth-helpers';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 export function registerActivitiesRoutes(app: Express) {
   // Apply authentication to all activities routes
@@ -23,11 +23,7 @@ export function registerActivitiesRoutes(app: Express) {
   // GET /api/activities - Get all activities for CRM dashboard
   app.get('/api/activities', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId =
-        req.headers['x-tenant-id'] ||
-        req.session?.tenantId ||
-        req.user?.tenantId ||
-        getTenantId(req);
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -45,7 +41,7 @@ export function registerActivitiesRoutes(app: Express) {
   // GET /api/activities/recent - Get recent activities with pagination
   app.get('/api/activities/recent', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || getTenantId(req);
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -70,8 +66,8 @@ export function registerActivitiesRoutes(app: Express) {
   // POST /api/activities - Create new activity
   app.post('/api/activities', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || getTenantId(req);
-      const userId = req.user?.id || req.session?.userId;
+      const tenantId = getTenantId(req);
+      const userId = getUserId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -96,7 +92,7 @@ export function registerActivitiesRoutes(app: Express) {
   app.get('/api/activities/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId || getTenantId(req);
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -119,7 +115,7 @@ export function registerActivitiesRoutes(app: Express) {
   app.put('/api/activities/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId || getTenantId(req);
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -142,7 +138,7 @@ export function registerActivitiesRoutes(app: Express) {
   app.delete('/api/activities/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId || getTenantId(req);
+      const tenantId = getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -165,7 +161,7 @@ export function registerActivitiesRoutes(app: Express) {
   app.get('/api/activities/user/:userId', resolveTenant, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const tenantId = req.user?.tenantId || getTenantId(req);
+      const tenantId = getTenantId(req);
       const { limit = '50' } = req.query;
 
       if (!tenantId) {
