@@ -25,6 +25,8 @@ import {
 import { z } from 'zod';
 import { requireRootAdmin } from '../routes-root-admin';
 import { requireRole } from '../rbac-middleware';
+// Auth helpers for Supabase JWT + session fallback
+import { getUserId, isAuthenticated as checkAuthenticated } from '../utils/auth-helpers';
 
 const router = Router();
 
@@ -36,8 +38,7 @@ const requireManager = requireRole(3);
 
 // Authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  if (!isAuthenticated) {
+  if (!checkAuthenticated(req)) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
@@ -104,7 +105,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
     const topArticles = await db.query.knowledgeArticles.findMany({
       where: and(
         eq(knowledgeArticles.tenantId, tenantId),
-        eq(knowledgeArticles.status, 'published')
+        eq(knowledgeArticles.status, 'published'),
       ),
       orderBy: [desc(knowledgeArticles.viewCount)],
       limit: 10,
@@ -112,10 +113,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
 
     // Get articles needing review
     const needsReview = await db.query.knowledgeArticles.findMany({
-      where: and(
-        eq(knowledgeArticles.tenantId, tenantId),
-        eq(knowledgeArticles.status, 'review')
-      ),
+      where: and(eq(knowledgeArticles.tenantId, tenantId), eq(knowledgeArticles.status, 'review')),
       limit: 10,
     });
 
@@ -177,10 +175,7 @@ router.post('/articles/bulk-update', requireSystemAdmin, async (req: Request, re
       .update(knowledgeArticles)
       .set(updateData)
       .where(
-        and(
-          eq(knowledgeArticles.tenantId, tenantId),
-          inArray(knowledgeArticles.id, articleIds)
-        )
+        and(eq(knowledgeArticles.tenantId, tenantId), inArray(knowledgeArticles.id, articleIds)),
       )
       .returning();
 
@@ -218,39 +213,25 @@ router.delete('/articles/bulk-delete', requireRootAdmin, async (req: Request, re
     // Delete related records first
     await db
       .delete(articleViews)
-      .where(
-        and(
-          eq(articleViews.tenantId, tenantId),
-          inArray(articleViews.articleId, articleIds)
-        )
-      );
+      .where(and(eq(articleViews.tenantId, tenantId), inArray(articleViews.articleId, articleIds)));
 
     await db
       .delete(articleFeedback)
       .where(
-        and(
-          eq(articleFeedback.tenantId, tenantId),
-          inArray(articleFeedback.articleId, articleIds)
-        )
+        and(eq(articleFeedback.tenantId, tenantId), inArray(articleFeedback.articleId, articleIds)),
       );
 
     await db
       .delete(articleVersions)
       .where(
-        and(
-          eq(articleVersions.tenantId, tenantId),
-          inArray(articleVersions.articleId, articleIds)
-        )
+        and(eq(articleVersions.tenantId, tenantId), inArray(articleVersions.articleId, articleIds)),
       );
 
     // Delete articles
     const deleted = await db
       .delete(knowledgeArticles)
       .where(
-        and(
-          eq(knowledgeArticles.tenantId, tenantId),
-          inArray(knowledgeArticles.id, articleIds)
-        )
+        and(eq(knowledgeArticles.tenantId, tenantId), inArray(knowledgeArticles.id, articleIds)),
       )
       .returning();
 
@@ -280,10 +261,7 @@ router.get('/feedback/pending', requireSystemAdmin, async (req: Request, res: Re
     const { limit = 50, offset = 0 } = req.query;
 
     const feedback = await db.query.articleFeedback.findMany({
-      where: and(
-        eq(articleFeedback.tenantId, tenantId),
-        eq(articleFeedback.resolved, false)
-      ),
+      where: and(eq(articleFeedback.tenantId, tenantId), eq(articleFeedback.resolved, false)),
       limit: Number(limit),
       offset: Number(offset),
       orderBy: [desc(articleFeedback.createdAt)],
@@ -302,7 +280,7 @@ router.get('/feedback/pending', requireSystemAdmin, async (req: Request, res: Re
       }
     }
 
-    const feedbackWithArticles = feedback.map(fb => ({
+    const feedbackWithArticles = feedback.map((fb) => ({
       ...fb,
       article: articlesMap.get(fb.articleId),
     }));
@@ -345,12 +323,7 @@ router.put('/feedback/:id/resolve', requireSystemAdmin, async (req: Request, res
         resolvedBy: userId,
         resolutionNotes,
       })
-      .where(
-        and(
-          eq(articleFeedback.id, id),
-          eq(articleFeedback.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(articleFeedback.id, id), eq(articleFeedback.tenantId, tenantId)))
       .returning();
 
     res.json({
@@ -418,10 +391,7 @@ router.post('/ai-queue/:id/retry', requireSystemAdmin, async (req: Request, res:
         errorMessage: null,
       })
       .where(
-        and(
-          eq(aiContentGenerationQueue.id, id),
-          eq(aiContentGenerationQueue.tenantId, tenantId)
-        )
+        and(eq(aiContentGenerationQueue.id, id), eq(aiContentGenerationQueue.tenantId, tenantId)),
       )
       .returning();
 
@@ -449,10 +419,7 @@ router.get('/articles/:id/versions', requireSystemAdmin, async (req: Request, re
     const { id } = req.params;
 
     const versions = await db.query.articleVersions.findMany({
-      where: and(
-        eq(articleVersions.articleId, id),
-        eq(articleVersions.tenantId, tenantId)
-      ),
+      where: and(eq(articleVersions.articleId, id), eq(articleVersions.tenantId, tenantId)),
       orderBy: [desc(articleVersions.version)],
     });
 
@@ -474,58 +441,57 @@ router.get('/articles/:id/versions', requireSystemAdmin, async (req: Request, re
  * Restore a previous version of an article
  * RBAC: System Admin (Level 5+)
  */
-router.post('/articles/:id/restore-version', requireSystemAdmin, async (req: Request, res: Response) => {
-  try {
-    const tenantId = (req as any).tenantId || 'demo-tenant';
-    const userId = (req as any).userId || 'demo-user';
-    const { id } = req.params;
+router.post(
+  '/articles/:id/restore-version',
+  requireSystemAdmin,
+  async (req: Request, res: Response) => {
+    try {
+      const tenantId = (req as any).tenantId || 'demo-tenant';
+      const userId = (req as any).userId || 'demo-user';
+      const { id } = req.params;
 
-    const schema = z.object({
-      version: z.number().int().positive(),
-    });
-
-    const { version } = schema.parse(req.body);
-
-    // Get the version to restore
-    const versionToRestore = await db.query.articleVersions.findFirst({
-      where: and(
-        eq(articleVersions.articleId, id),
-        eq(articleVersions.tenantId, tenantId),
-        eq(articleVersions.version, version)
-      ),
-    });
-
-    if (!versionToRestore) {
-      return res.status(404).json({
-        success: false,
-        error: 'Version not found',
+      const schema = z.object({
+        version: z.number().int().positive(),
       });
-    }
 
-    // Update article with restored content
-    const article = await KnowledgeBaseService.updateArticle(
-      id,
-      tenantId,
-      userId,
-      {
+      const { version } = schema.parse(req.body);
+
+      // Get the version to restore
+      const versionToRestore = await db.query.articleVersions.findFirst({
+        where: and(
+          eq(articleVersions.articleId, id),
+          eq(articleVersions.tenantId, tenantId),
+          eq(articleVersions.version, version),
+        ),
+      });
+
+      if (!versionToRestore) {
+        return res.status(404).json({
+          success: false,
+          error: 'Version not found',
+        });
+      }
+
+      // Update article with restored content
+      const article = await KnowledgeBaseService.updateArticle(id, tenantId, userId, {
         title: versionToRestore.title,
         content: versionToRestore.content as any,
-      }
-    );
+      });
 
-    res.json({
-      success: true,
-      data: article,
-      message: `Restored to version ${version}`,
-    });
-  } catch (error: any) {
-    console.error('Failed to restore version:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+      res.json({
+        success: true,
+        data: article,
+        message: `Restored to version ${version}`,
+      });
+    } catch (error: any) {
+      console.error('Failed to restore version:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  },
+);
 
 /**
  * POST /api/admin/knowledge-base/import
@@ -565,14 +531,10 @@ router.post('/import', requireRootAdmin, async (req: Request, res: Response) => 
     // Import each article
     for (const articleData of articles) {
       try {
-        const article = await KnowledgeBaseService.createArticle(
-          tenantId,
-          userId,
-          {
-            ...articleData,
-            categoryId,
-          }
-        );
+        const article = await KnowledgeBaseService.createArticle(tenantId, userId, {
+          ...articleData,
+          categoryId,
+        });
         imported.push(article);
       } catch (error: any) {
         errors.push({
@@ -636,7 +598,7 @@ router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
 
       // Simple CSV generation
       const headers = ['ID', 'Title', 'Status', 'Category', 'Created', 'Views'];
-      const rows = articles.map(a => [
+      const rows = articles.map((a) => [
         a.id,
         a.title,
         a.status,
@@ -645,10 +607,7 @@ router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
         a.viewCount,
       ]);
 
-      const csv = [
-        headers.join(','),
-        ...rows.map(row => row.join(',')),
-      ].join('\n');
+      const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
       res.send(csv);
     }
@@ -671,7 +630,9 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const { startDate, endDate, groupBy = 'day' } = req.query;
 
-    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const start = startDate
+      ? new Date(startDate as string)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate as string) : new Date();
 
     // Get view trends
@@ -687,8 +648,8 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
         and(
           eq(articleViews.tenantId, tenantId),
           gte(articleViews.viewedAt, start),
-          lte(articleViews.viewedAt, end)
-        )
+          lte(articleViews.viewedAt, end),
+        ),
       )
       .groupBy(sql`date_trunc(${groupBy}, ${articleViews.viewedAt})`)
       .orderBy(sql`date_trunc(${groupBy}, ${articleViews.viewedAt})`);
@@ -710,7 +671,7 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
       where: and(
         eq(knowledgeArticles.tenantId, tenantId),
         gte(articleViews.createdAt, start),
-        lte(articleViews.createdAt, end)
+        lte(articleViews.createdAt, end),
       ),
       orderBy: [desc(articleViews.createdAt)],
       limit: 100,
@@ -743,10 +704,12 @@ router.post('/categories/reorder', requireSystemAdmin, async (req: Request, res:
     const tenantId = (req as any).tenantId || 'demo-tenant';
 
     const schema = z.object({
-      categoryOrders: z.array(z.object({
-        id: z.string().uuid(),
-        order: z.number().int(),
-      })),
+      categoryOrders: z.array(
+        z.object({
+          id: z.string().uuid(),
+          order: z.number().int(),
+        }),
+      ),
     });
 
     const { categoryOrders } = schema.parse(req.body);
@@ -756,12 +719,7 @@ router.post('/categories/reorder', requireSystemAdmin, async (req: Request, res:
       await db
         .update(knowledgeCategories)
         .set({ categoryOrder: order })
-        .where(
-          and(
-            eq(knowledgeCategories.id, id),
-            eq(knowledgeCategories.tenantId, tenantId)
-          )
-        );
+        .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenantId, tenantId)));
     }
 
     res.json({
