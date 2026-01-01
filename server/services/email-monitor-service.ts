@@ -3,6 +3,7 @@ import { processedEmails, emailMonitorConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { AIEmailParserService } from './ai-email-parser-service';
 import { TicketCreationService } from './ticket-creation-service';
+import { decryptCredential } from '../utils/credentials-encryption';
 
 interface EmailConfig {
   host: string;
@@ -284,7 +285,9 @@ export class EmailMonitorService {
       // Update stats
       await this.updateStats('success');
 
-      console.log(`[EmailMonitor] ✓ Ticket ${ticket.id} created from email ${emailId} (${duration}ms)`);
+      console.log(
+        `[EmailMonitor] ✓ Ticket ${ticket.id} created from email ${emailId} (${duration}ms)`,
+      );
     } catch (error) {
       console.error('[EmailMonitor] Error creating ticket from email:', error);
 
@@ -365,10 +368,13 @@ export class EmailMonitorService {
 /**
  * Global email monitor instances (one per tenant)
  */
-const emailMonitors = new Map<string, {
-  monitor: EmailMonitorService;
-  interval: NodeJS.Timeout;
-}>();
+const emailMonitors = new Map<
+  string,
+  {
+    monitor: EmailMonitorService;
+    interval: NodeJS.Timeout;
+  }
+>();
 
 /**
  * Start email monitoring for a tenant
@@ -395,8 +401,8 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
     return;
   }
 
-  // Decrypt password (TODO: implement encryption/decryption)
-  const password = config.encryptedPassword; // For now, assuming not encrypted
+  // Decrypt password using AES-256-GCM
+  const password = decryptCredential(config.encryptedPassword);
 
   const emailConfig: EmailConfig = {
     host: config.host,
@@ -422,7 +428,9 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
 
   emailMonitors.set(tenantId, { monitor, interval });
 
-  console.log(`[EmailMonitor] Started monitoring for tenant ${tenantId} (polling every ${pollInterval / 1000}s)`);
+  console.log(
+    `[EmailMonitor] Started monitoring for tenant ${tenantId} (polling every ${pollInterval / 1000}s)`,
+  );
 
   // Do initial check immediately
   try {
