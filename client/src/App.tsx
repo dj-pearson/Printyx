@@ -1,8 +1,7 @@
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React, { useState, useEffect, lazy } from 'react';
-import LogoExport from '@/pages/LogoExport';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { SEOProvider } from '@/lib/seo/SEOProvider';
 import { Toaster } from '@/components/ui/toaster';
@@ -58,6 +57,9 @@ const DynamicPricingAIBlog = React.lazy(
 const ROICalculator = React.lazy(() => import('@/pages/marketing/ROICalculator'));
 const CaseStudies = React.lazy(() => import('@/pages/marketing/CaseStudies'));
 const CompetitiveBattleCard = React.lazy(() => import('@/pages/marketing/CompetitiveBattleCard'));
+
+// Utility pages
+const LogoExport = React.lazy(() => import('@/pages/LogoExport'));
 
 // Competitive Differentiation Pages
 const AutopilotDashboard = React.lazy(() => import('@/pages/AutopilotDashboard'));
@@ -391,7 +393,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
-        <Route path="/export-logos" component={lazy(() => import('@/pages/LogoExport'))} />
+        <Route path="/export-logos" component={LogoExport} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
