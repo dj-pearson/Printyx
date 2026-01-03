@@ -21,15 +21,16 @@ import { supabase } from '@/lib/supabase';
 import { Printer, CheckCircle, AlertCircle, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 
+// SECURITY: Match backend password requirements (12+ chars with special character)
 const resetPasswordSchema = z
   .object({
     password: z
       .string()
-      .min(8, 'Password must be at least 8 characters')
-      .regex(
-        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-        'Password must contain at least one uppercase letter, one lowercase letter, and one number',
-      ),
+      .min(12, 'Password must be at least 12 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -285,7 +286,8 @@ export default function ResetPassword() {
                           </div>
                         </FormControl>
                         <FormDescription>
-                          At least 8 characters with uppercase, lowercase, and number
+                          At least 12 characters with uppercase, lowercase, number, and special
+                          character
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
