@@ -2,18 +2,10 @@ import express from 'express';
 import { db } from './db';
 import { documents } from '../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
+// Use centralized auth helpers for Supabase JWT + session fallback
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = express.Router();
-
-// Helper to get user ID from request (supports Supabase JWT and session)
-const getUserId = (req: any): string | undefined => {
-  return req.user?.id || req.user?.claims?.sub || req.session?.userId;
-};
-
-// Helper to get tenant ID from request
-const getTenantId = (req: any): string | undefined => {
-  return req.tenantId || req.user?.tenantId || req.user?.claims?.tenantId || req.session?.tenantId;
-};
 
 // Middleware for authentication and tenant
 const requireAuth = (req: any, res: any, next: any) => {

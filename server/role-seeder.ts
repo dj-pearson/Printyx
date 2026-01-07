@@ -2,6 +2,40 @@ import { db } from "./db";
 import { roles, users, tenants } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+
+/**
+ * Generate a secure random password meeting complexity requirements.
+ * Passwords include: uppercase, lowercase, numbers, and special characters.
+ */
+function generateSecurePassword(length: number = 16): string {
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Excluded I, O for readability
+  const lowercase = 'abcdefghjkmnpqrstuvwxyz'; // Excluded i, l, o for readability
+  const numbers = '23456789'; // Excluded 0, 1 for readability
+  const special = '!@#$%^&*';
+
+  // Ensure at least one of each type
+  let password = '';
+  password += uppercase[crypto.randomInt(uppercase.length)];
+  password += lowercase[crypto.randomInt(lowercase.length)];
+  password += numbers[crypto.randomInt(numbers.length)];
+  password += special[crypto.randomInt(special.length)];
+
+  // Fill remaining characters
+  const allChars = uppercase + lowercase + numbers + special;
+  for (let i = password.length; i < length; i++) {
+    password += allChars[crypto.randomInt(allChars.length)];
+  }
+
+  // Shuffle the password
+  const passwordArray = password.split('');
+  for (let i = passwordArray.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i + 1);
+    [passwordArray[i], passwordArray[j]] = [passwordArray[j], passwordArray[i]];
+  }
+
+  return passwordArray.join('');
+}
 
 // Define the comprehensive role hierarchy
 const ROLE_DEFINITIONS = [
@@ -333,17 +367,21 @@ export async function createDemoTenant() {
 
 export async function seedDemoUsers(tenantId: string) {
   console.log("Seeding demo users with new role hierarchy...");
-  
-  const demoUsers = [
+
+  // SECURITY: Passwords are now generated securely at runtime
+  // Generated passwords are logged once during seeding and should be saved securely
+  // For production, users should be created through the UI with secure password requirements.
+
+  // Define user configurations without passwords - passwords are generated at runtime
+  const demoUserConfigs = [
     // Printyx Platform Users (no tenantId)
     {
       id: "58c36f26-c458-400b-8055-5dfa31afa88a",
       email: "Pearsonperformance@gmail.com",
       firstName: "Root",
       lastName: "Admin",
-      password: "Infomax1!",
       roleCode: "ROOT_ADMIN",
-      tenantId: null,
+      tenantId: null as string | null,
       isPlatformUser: true
     },
     {
@@ -351,9 +389,8 @@ export async function seedDemoUsers(tenantId: string) {
       email: "support@printyx.com",
       firstName: "Sarah",
       lastName: "Support",
-      password: "PrintyxSupport123!",
       roleCode: "PRINTYX_SUPPORT",
-      tenantId: null,
+      tenantId: null as string | null,
       isPlatformUser: true
     },
     {
@@ -361,19 +398,17 @@ export async function seedDemoUsers(tenantId: string) {
       email: "tech@printyx.com",
       firstName: "Marcus",
       lastName: "Technical",
-      password: "PrintyxTech123!",
       roleCode: "PRINTYX_TECHNICAL",
-      tenantId: null,
+      tenantId: null as string | null,
       isPlatformUser: true
     },
-    
+
     // Company Tenant Users
     {
       id: "company-admin-1",
       email: "admin@democopier.com",
       firstName: "Jennifer",
       lastName: "Administrator",
-      password: "CompanyAdmin123!",
       roleCode: "COMPANY_ADMIN",
       tenantId: tenantId,
       isPlatformUser: false
@@ -383,7 +418,6 @@ export async function seedDemoUsers(tenantId: string) {
       email: "sales.director@democopier.com",
       firstName: "Michael",
       lastName: "SalesDirector",
-      password: "SalesDir123!",
       roleCode: "SALES_DIRECTOR",
       tenantId: tenantId,
       isPlatformUser: false
@@ -393,7 +427,6 @@ export async function seedDemoUsers(tenantId: string) {
       email: "sales.manager@democopier.com",
       firstName: "Lisa",
       lastName: "SalesManager",
-      password: "SalesMgr123!",
       roleCode: "SALES_MANAGER",
       tenantId: tenantId,
       isPlatformUser: false
@@ -403,7 +436,6 @@ export async function seedDemoUsers(tenantId: string) {
       email: "sales.rep@democopier.com",
       firstName: "David",
       lastName: "SalesRep",
-      password: "SalesRep123!",
       roleCode: "SALES_REP",
       tenantId: tenantId,
       isPlatformUser: false
@@ -413,7 +445,6 @@ export async function seedDemoUsers(tenantId: string) {
       email: "service.director@democopier.com",
       firstName: "Patricia",
       lastName: "ServiceDirector",
-      password: "ServiceDir123!",
       roleCode: "SERVICE_DIRECTOR",
       tenantId: tenantId,
       isPlatformUser: false
@@ -423,7 +454,6 @@ export async function seedDemoUsers(tenantId: string) {
       email: "service.tech@democopier.com",
       firstName: "Robert",
       lastName: "ServiceTech",
-      password: "ServiceTech123!",
       roleCode: "SERVICE_TECH",
       tenantId: tenantId,
       isPlatformUser: false
@@ -433,12 +463,30 @@ export async function seedDemoUsers(tenantId: string) {
       email: "finance.director@democopier.com",
       firstName: "Karen",
       lastName: "FinanceDirector",
-      password: "FinanceDir123!",
       roleCode: "FINANCE_DIRECTOR",
       tenantId: tenantId,
       isPlatformUser: false
     }
   ];
+
+  // Generate secure passwords for each user
+  const demoUsers = demoUserConfigs.map(config => ({
+    ...config,
+    password: generateSecurePassword(16)
+  }));
+
+  // Log generated credentials securely (only shown once during seeding)
+  console.log("\n" + "=".repeat(70));
+  console.log("⚠️  IMPORTANT: Save these credentials securely - they are shown only once!");
+  console.log("=".repeat(70));
+  console.log("\nGenerated Demo User Credentials:");
+  console.log("-".repeat(70));
+  for (const user of demoUsers) {
+    console.log(`${user.email.padEnd(40)} | ${user.password}`);
+  }
+  console.log("-".repeat(70));
+  console.log("⚠️  Store these credentials in a secure password manager!");
+  console.log("=".repeat(70) + "\n");
 
   for (const userData of demoUsers) {
     try {
@@ -488,14 +536,27 @@ export async function seedDemoUsers(tenantId: string) {
 
 export async function initializeRoleHierarchy() {
   console.log("Initializing comprehensive role hierarchy...");
-  
+
+  // SECURITY: Prevent running in production with hardcoded passwords
+  if (process.env.NODE_ENV === 'production') {
+    const allowSeeding = process.env.ALLOW_DEMO_SEEDING === 'true';
+    if (!allowSeeding) {
+      throw new Error(
+        'SECURITY BLOCKED: Cannot run role seeder with hardcoded passwords in production. ' +
+        'Set ALLOW_DEMO_SEEDING=true environment variable only if this is a demo/test environment.'
+      );
+    }
+    console.warn('⚠️  WARNING: Running demo seeder with hardcoded passwords in production mode!');
+    console.warn('⚠️  This should ONLY be done in isolated demo/test environments.');
+  }
+
   try {
     // Step 1: Seed all roles
     await seedRoles();
-    
+
     // Step 2: Create demo tenant
     const tenantId = await createDemoTenant();
-    
+
     // Step 3: Seed demo users with new hierarchy
     await seedDemoUsers(tenantId);
     

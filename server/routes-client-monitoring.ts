@@ -1077,6 +1077,25 @@ export function registerClientMonitoringRoutes(app: Express) {
         totalColorImpressions += metrics.colorImpressions || 0;
       }
 
+      // Calculate average uptime based on current device status
+      // Uptime = (online devices / total devices) * 100
+      const averageUptime = totalDevices > 0
+        ? Math.round((onlineDevices / totalDevices) * 1000) / 10
+        : 0;
+
+      // Calculate fleet utilization based on devices with recent activity
+      // A device is "utilized" if it has metrics collected in the last 24 hours
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      let activeDevices = 0;
+      for (const [deviceId, metrics] of metricsMap.entries()) {
+        if (metrics.collectionTimestamp && new Date(metrics.collectionTimestamp) > twentyFourHoursAgo) {
+          activeDevices++;
+        }
+      }
+      const fleetUtilization = totalDevices > 0
+        ? Math.round((activeDevices / totalDevices) * 1000) / 10
+        : 0;
+
       res.json({
         summary: {
           totalDevices,
@@ -1084,8 +1103,8 @@ export function registerClientMonitoringRoutes(app: Express) {
           offlineDevices,
           devicesWithAlerts,
           criticalAlerts,
-          averageUptime: 96.8, // TODO: Calculate from uptime metrics
-          fleetUtilization: 78.5, // TODO: Calculate from usage patterns
+          averageUptime,
+          fleetUtilization,
         },
         statusDistribution: {
           online: onlineDevices,

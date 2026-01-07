@@ -166,7 +166,7 @@ class CustomerNumberService {
 // Get customer number configuration
 router.get('/config', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
+    const tenantId = getTenantId(req);
 
     const configs = await db
       .select()
@@ -184,8 +184,8 @@ router.get('/config', async (req: any, res) => {
 // Create or update customer number configuration
 router.post('/config', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
-    const userId = req.session?.userId || req.user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const validatedData = insertCustomerNumberConfigSchema.parse({
       ...req.body,
       tenantId,
@@ -211,7 +211,7 @@ router.post('/config', async (req: any, res) => {
 // Update customer number configuration
 router.put('/config/:id', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
+    const tenantId = getTenantId(req);
     const { id } = req.params;
 
     // Validate that this config belongs to the tenant
@@ -252,8 +252,8 @@ router.put('/config/:id', async (req: any, res) => {
 // Generate a new customer number (without assigning)
 router.post('/generate', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
-    const userId = req.session?.userId || req.user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
 
     const customerNumber = await CustomerNumberService.generateCustomerNumber(tenantId, userId);
 
@@ -267,8 +267,8 @@ router.post('/generate', async (req: any, res) => {
 // Assign customer number to existing customer
 router.post('/assign', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
-    const userId = req.session?.userId || req.user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const { customerId, customerNumber } = req.body;
 
     if (!customerId || !customerNumber) {
@@ -310,8 +310,8 @@ router.post('/assign', async (req: any, res) => {
 // Convert lead to customer with automatic customer number generation
 router.post('/convert-lead/:leadId', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
-    const userId = req.session?.userId || req.user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const { leadId } = req.params;
 
     const result = await CustomerNumberService.convertLeadToCustomerWithNumber(
@@ -330,7 +330,7 @@ router.post('/convert-lead/:leadId', async (req: any, res) => {
 // Get customer number history
 router.get('/history', async (req: any, res) => {
   try {
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
+    const tenantId = getTenantId(req);
 
     const history = await db
       .select({

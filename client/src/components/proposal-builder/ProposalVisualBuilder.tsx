@@ -4,6 +4,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { sanitizeRichHtml } from '@/lib/sanitize-html';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -201,7 +202,7 @@ function SortableSection({
           <div
             onDoubleClick={() => setIsEditing(true)}
             className="cursor-text"
-            dangerouslySetInnerHTML={{ __html: section.content || `<h3>${section.title}</h3><p>Double-click to edit content...</p>` }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(section.content || `<h3>${section.title}</h3><p>Double-click to edit content...</p>`) }}
           />
         )}
       </div>
@@ -772,7 +773,7 @@ export default function ProposalVisualBuilder({
                         fontStyle: section.styling.fontStyle || 'normal',
                         textDecoration: section.styling.textDecoration || 'none',
                       }}
-                      dangerouslySetInnerHTML={{ __html: section.content }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(section.content) }}
                     />
                   ))}
               </div>

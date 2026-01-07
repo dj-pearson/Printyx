@@ -347,8 +347,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 Create or update your `.env` file:
 
 ```bash
-# Supabase Configuration
-VITE_SUPABASE_URL=https://your-project.supabase.co
+# Supabase Configuration (self-hosted at printyx.net)
+VITE_SUPABASE_URL=https://api.printyx.net
 VITE_SUPABASE_ANON_KEY=your_anon_key
 
 # Required for Core Web Vitals (FREE)
@@ -581,7 +581,7 @@ SELECT cron.schedule(
   '0 2 * * *',
   $$
   SELECT net.http_post(
-    url := 'https://your-project.supabase.co/functions/v1/run-scheduled-audit',
+    url := 'https://functions.printyx.net/run-scheduled-audit',
     headers := '{"Content-Type": "application/json", "Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb,
     body := '{"url": "https://yourdomain.com"}'::jsonb
   ) AS request_id;
@@ -749,8 +749,8 @@ AND resolved_at < NOW() - INTERVAL '30 days';
 **Automated Backups:**
 
 ```bash
-# Daily backup of SEO tables
-pg_dump -h db.your-project.supabase.co \
+# Daily backup of SEO tables (self-hosted Supabase)
+pg_dump -h 209.145.59.219 -p 5433 \
         -U postgres \
         -t "seo_*" \
         -t "gsc_*" \
@@ -807,16 +807,17 @@ LIMIT 100;
 
 ### Custom Domain for Edge Functions
 
-Use your own domain for Edge Functions:
+Printyx uses custom domains for self-hosted Supabase:
 
-1. Add CNAME record:
+1. Custom domains configured:
    ```
-   api.yourdomain.com → your-project.supabase.co
+   api.printyx.net → Self-hosted Supabase API
+   functions.printyx.net → Self-hosted Edge Functions
    ```
 
 2. Update function URLs in frontend:
    ```typescript
-   const FUNCTION_BASE_URL = 'https://api.yourdomain.com/functions/v1';
+   const FUNCTION_BASE_URL = 'https://functions.printyx.net';
    ```
 
 ### Rate Limiting

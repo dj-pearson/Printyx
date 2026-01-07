@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
 
+    <!-- Performance Optimization: DNS Prefetch -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+
+    <!-- Performance Optimization: Preconnect to critical origins -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <!-- Primary Meta Tags -->
     <title>Printyx - AI-Powered Copier Dealer Management Platform | Modern Cloud ERP</title>
     <meta name="title" content="Printyx - AI-Powered Copier Dealer Management Platform | Modern Cloud ERP" />
@@ -111,9 +119,29 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- SEO: Initial content for crawlers before React hydrates -->
+      <noscript>
+        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px;">
+          <h1>Printyx - AI-Powered Copier Dealer Management Platform</h1>
+          <p>Transform your copier dealership with modern cloud technology and predictive intelligence.</p>
+          <h2>Key Features</h2>
+          <ul>
+            <li><strong>Predictive Equipment Failure Detection</strong> - Know when devices need service before they fail</li>
+            <li><strong>AI-Powered Contract Profitability</strong> - Optimize every contract for maximum ROI</li>
+            <li><strong>Smart Service Dispatch</strong> - Route optimization and automated scheduling</li>
+            <li><strong>Automated Meter Billing</strong> - Accurate, timely billing with no manual entry</li>
+            <li><strong>Dynamic Pricing</strong> - Intelligent pricing recommendations based on market data</li>
+            <li><strong>Integration Marketplace</strong> - Connect with e-automate, Salesforce, QuickBooks, and more</li>
+          </ul>
+          <h2>Why Choose Printyx?</h2>
+          <p>Printyx provides a 2-3 year technical advantage over legacy systems. Our modern cloud architecture delivers faster performance, better reliability, and AI capabilities that legacy systems simply cannot match.</p>
+          <p><strong>Ready to get started?</strong> Please enable JavaScript to access the full Printyx platform, or <a href="mailto:sales@printyx.com">contact our sales team</a> for a demo.</p>
+        </div>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
-    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js" async></script>
   </body>
 </html>
