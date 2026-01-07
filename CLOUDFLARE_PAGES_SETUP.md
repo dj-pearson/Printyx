@@ -55,12 +55,12 @@ This guide explains how to deploy the Printyx frontend to Cloudflare Pages while
 Add these in Cloudflare Pages → Settings → Environment Variables:
 
 ```
-# Required - Supabase Configuration
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
+# Required - Supabase Configuration (self-hosted at printyx.net)
+VITE_SUPABASE_URL=https://api.printyx.net
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 
-# Optional - Direct API Base URL (if not using proxy)
-VITE_API_BASE_URL=https://your-project-id.supabase.co/functions/v1
+# Optional - Direct API Base URL (self-hosted Edge Functions)
+VITE_API_BASE_URL=https://functions.printyx.net
 
 # Optional - App Version
 VITE_APP_VERSION=1.0.0
@@ -92,7 +92,7 @@ const headers = {
 1. Uncomment the proxy line in `client/public/_redirects`:
 
 ```
-/api/* https://your-project-id.supabase.co/functions/v1/:splat 200
+/api/* https://functions.printyx.net/:splat 200
 ```
 
 2. Don't set `VITE_API_BASE_URL` (frontend will use relative URLs)

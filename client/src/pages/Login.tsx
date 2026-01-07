@@ -106,17 +106,49 @@ export default function Login() {
 
       // Restore last visited route or go to dashboard
       const lastRoute = localStorage.getItem('printyx_last_route');
-      // Exclude auth pages and API routes from redirect targets
-      const invalidRoutes = [
-        '/login',
-        '/signup',
-        '/forgot-password',
-        '/reset-password',
-        '/auth/callback',
-      ];
-      const isValidRoute =
-        lastRoute && !invalidRoutes.includes(lastRoute) && !lastRoute.startsWith('/api/');
-      const redirectTo = isValidRoute ? lastRoute : '/';
+
+      // SECURITY: Sanitize and validate redirect route
+      const getSafeRedirectRoute = (route: string | null): string => {
+        if (!route) return '/';
+
+        // Decode any URL encoding to prevent bypass
+        let decodedRoute: string;
+        try {
+          decodedRoute = decodeURIComponent(route);
+        } catch {
+          return '/';
+        }
+
+        // Must be a relative path starting with /
+        if (!decodedRoute.startsWith('/')) return '/';
+
+        // Block absolute URLs disguised as paths (e.g., //evil.com)
+        if (decodedRoute.startsWith('//')) return '/';
+
+        // Block javascript: and data: schemes
+        const lowercaseRoute = decodedRoute.toLowerCase();
+        if (lowercaseRoute.includes('javascript:') || lowercaseRoute.includes('data:')) return '/';
+
+        // Exclude auth pages and API routes from redirect targets
+        const invalidPrefixes = [
+          '/login',
+          '/signup',
+          '/forgot-password',
+          '/reset-password',
+          '/auth/',
+          '/api/',
+        ];
+        if (invalidPrefixes.some((prefix) => decodedRoute.startsWith(prefix))) return '/';
+
+        // Validate it's a clean path (alphanumeric, hyphens, underscores, slashes)
+        if (!/^[a-zA-Z0-9\-_/]+$/.test(decodedRoute.replace(/\?.*$/, '').replace(/#.*$/, ''))) {
+          return '/';
+        }
+
+        return decodedRoute;
+      };
+
+      const redirectTo = getSafeRedirectRoute(lastRoute);
 
       // Clear the stored route after using it
       localStorage.removeItem('printyx_last_route');

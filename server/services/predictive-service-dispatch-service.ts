@@ -5,9 +5,29 @@ import {
   tonerAlerts,
   installationSchedules,
   businessRecords,
-  repCapacity
+  repCapacity,
+  users
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, lt, inArray } from 'drizzle-orm';
+
+// Helper to get user full name
+async function getUserName(userId: string): Promise<string> {
+  try {
+    const user = await db
+      .select({ firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user.length > 0) {
+      const { firstName, lastName } = user[0];
+      return [firstName, lastName].filter(Boolean).join(' ') || userId;
+    }
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+  }
+  return userId;
+}
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
@@ -430,9 +450,12 @@ Format as JSON:
       const nextSlot = new Date();
       nextSlot.setHours(nextSlot.getHours() + (tech.currentActiveLeads * 2)); // 2 hours per existing job
 
+      // Get technician name from users table
+      const technicianName = await getUserName(tech.userId);
+
       matches.push({
         technicianId: tech.userId,
-        technicianName: tech.userId, // TODO: Join with users table
+        technicianName,
         score,
         reasons,
         availability: {
@@ -440,8 +463,8 @@ Format as JSON:
           nextAvailableSlot: nextSlot,
         },
         location: {
-          distance: 10, // TODO: Calculate actual distance
-          travelTime: 30, // minutes
+          distance: 10, // TODO: Calculate actual distance using Google Maps API
+          travelTime: 30, // minutes - estimated
         },
         skills: tech.skills || [],
         certifications: tech.certifications || [],

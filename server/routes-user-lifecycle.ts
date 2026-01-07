@@ -63,7 +63,7 @@ const auditLog = (action: string) => {
     const logEntry = {
       timestamp: new Date().toISOString(),
       action,
-      userId: req.user?.id || req.session?.userId,
+      userId: getUserId(req),
       userEmail: req.user?.email,
       targetUserId: req.params.userId || req.body.userId,
       ip: req.ip || req.connection.remoteAddress,

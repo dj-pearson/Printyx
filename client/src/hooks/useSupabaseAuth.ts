@@ -98,25 +98,51 @@ export function useSupabaseAuth() {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   // Initialize and listen for auth changes
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setIsInitialized(true);
-    });
+    let mounted = true;
+
+    // Get initial session first, then set up listener
+    // This prevents race condition where listener fires before initial session is set
+    const initializeAuth = async () => {
+      try {
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
+        if (mounted) {
+          setSession(initialSession);
+          setSessionChecked(true);
+          setIsInitialized(true);
+        }
+      } catch (error) {
+        console.error('Failed to get initial session:', error);
+        if (mounted) {
+          setSession(null);
+          setSessionChecked(true);
+          setIsInitialized(true);
+        }
+      }
+    };
+
+    initializeAuth();
 
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      // Invalidate user query on auth change
-      queryClient.invalidateQueries({ queryKey: ['supabase-auth-user'] });
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (mounted) {
+        setSession(newSession);
+        // Invalidate user query on auth change
+        queryClient.invalidateQueries({ queryKey: ['supabase-auth-user'] });
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [queryClient]);
 
   // Fetch extended user profile from users table (optional, for role/team data)
@@ -433,11 +459,21 @@ export function useSupabaseAuth() {
     return session?.access_token ?? null;
   }, []);
 
+  // Determine authentication status
+  // User is authenticated if we have a valid session (profile is optional enhancement)
+  // This prevents false-negative when profile fetch fails due to RLS or network issues
+  const hasValidSession = !!session && sessionChecked;
+  const isFullyLoaded = hasValidSession && !!userProfile;
+
   return {
     user: userProfile,
     session,
-    isLoading: !isInitialized || isProfileLoading,
-    isAuthenticated: !!session && !!userProfile,
+    // Loading while initializing or while we have a session but profile is still loading
+    isLoading: !isInitialized || (hasValidSession && isProfileLoading),
+    // Authenticated if we have a valid session (profile enhances but isn't required)
+    isAuthenticated: hasValidSession,
+    // Fully authenticated with profile data loaded
+    isFullyAuthenticated: isFullyLoaded,
     error,
     // Auth methods
     login,

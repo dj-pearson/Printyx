@@ -2,6 +2,13 @@
 
 This guide will help you set up your `.env` file for local development with Supabase.
 
+> **Note:** Printyx uses a **self-hosted Supabase** instance. Production uses:
+> - **API URL:** `https://api.printyx.net`
+> - **Functions URL:** `https://functions.printyx.net`
+> - **Database:** `209.145.59.219:5433` (Supavisor pooler)
+>
+> Contact your administrator for access credentials.
+
 ## Quick Start
 
 1. **Copy the template below into a new file named `.env` in the root directory**
@@ -21,10 +28,13 @@ Copy everything below into your `.env` file:
 # You can use EITHER Option 1 OR Option 2
 
 # Option 1: Single DATABASE_URL (Recommended)
-DATABASE_URL=postgresql://postgres.your-project-ref:your-password@aws-0-us-east-1.pooler.supabase.com:5432/postgres
+# For self-hosted Supabase (Printyx production):
+DATABASE_URL=postgresql://postgres:your-password@209.145.59.219:5433/postgres
+# For cloud Supabase:
+# DATABASE_URL=postgresql://postgres.your-project-ref:your-password@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 
 # Option 2: Individual Database Components (Alternative)
-# DB_HOST=aws-0-us-east-1.pooler.supabase.com
+# DB_HOST=209.145.59.219 (self-hosted) or aws-0-us-east-1.pooler.supabase.com (cloud)
 # DB_PORT=5432
 # DB_USER=postgres.your-project-ref
 # DB_PASSWORD=your-password
@@ -74,8 +84,8 @@ DEMO_USER_PASSWORD=change-this-password
 # ========================================
 # These are prefixed with VITE_ for Vite to expose them to the frontend
 
-# Supabase URL: Found in Supabase Dashboard > Settings > API > Project URL
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+# Supabase URL: For self-hosted use api.printyx.net, for cloud use your-project.supabase.co
+VITE_SUPABASE_URL=https://api.printyx.net
 
 # Supabase Anon Key: Found in Supabase Dashboard > Settings > API > anon public
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
@@ -112,7 +122,12 @@ You'll find:
 3. Select **Connection Pooling** (Session mode recommended)
 4. Copy the URI and paste it as `DATABASE_URL`
 
-Example format:
+Example format (self-hosted Printyx):
+```
+postgresql://postgres:[YOUR-PASSWORD]@209.145.59.219:5433/postgres
+```
+
+Example format (cloud Supabase):
 ```
 postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
@@ -138,8 +153,8 @@ For basic local development, you **MUST** have these 5 variables:
 DATABASE_URL=postgresql://...
 SUPABASE_JWT_SECRET=your-jwt-secret
 
-# Frontend
-VITE_SUPABASE_URL=https://your-project.supabase.co
+# Frontend (use api.printyx.net for self-hosted)
+VITE_SUPABASE_URL=https://api.printyx.net
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_AUTH_MODE=supabase
 ```

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useLocation, Link } from "wouter";
+import { useMemo, useEffect } from 'react';
+import { useLocation, Link } from 'wouter';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -7,15 +7,16 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+} from '@/components/ui/breadcrumb';
+import { generateBreadcrumbSchema } from '@/lib/schemaMarkup';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import {
   ChevronDown,
   Plus,
@@ -28,7 +29,7 @@ import {
   Edit,
   Trash,
   Download,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface BreadcrumbSegment {
   label: string;
@@ -40,7 +41,7 @@ interface QuickAction {
   icon: React.ReactNode;
   onClick?: () => void;
   href?: string;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
 }
 
 interface SmartBreadcrumbProps {
@@ -48,51 +49,44 @@ interface SmartBreadcrumbProps {
   quickActions?: QuickAction[];
 }
 
-export function SmartBreadcrumb({
-  customSegments,
-  quickActions,
-}: SmartBreadcrumbProps) {
+export function SmartBreadcrumb({ customSegments, quickActions }: SmartBreadcrumbProps) {
   const [location] = useLocation();
 
   // Auto-generate breadcrumbs from route if not provided
   const segments = useMemo((): BreadcrumbSegment[] => {
     if (customSegments) return customSegments;
 
-    const pathParts = location.split("/").filter(Boolean);
-    const breadcrumbs: BreadcrumbSegment[] = [
-      { label: "Home", href: "/dashboard" },
-    ];
+    const pathParts = location.split('/').filter(Boolean);
+    const breadcrumbs: BreadcrumbSegment[] = [{ label: 'Home', href: '/dashboard' }];
 
-    let currentPath = "";
+    let currentPath = '';
     pathParts.forEach((part, index) => {
       currentPath += `/${part}`;
       const isLast = index === pathParts.length - 1;
 
       // Format label (capitalize, remove dashes, handle IDs)
       let label = part
-        .split("-")
+        .split('-')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
+        .join(' ');
 
       // If it looks like a UUID or ID, use generic label
       if (
-        part.match(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-        ) ||
+        part.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) ||
         part.match(/^\d+$/)
       ) {
-        label = "Details";
+        label = 'Details';
       }
 
       // Map known routes to friendly names
       const routeMap: Record<string, string> = {
-        "service-hub": "Service Management",
-        "service-dispatch": "Dispatch Board",
-        "meter-billing": "Meter Billing",
-        "meter-readings": "Meter Readings",
-        "warehouse-operations": "Warehouse",
-        "performance-monitoring": "Analytics",
-        "customer-portal": "Customer Portal",
+        'service-hub': 'Service Management',
+        'service-dispatch': 'Dispatch Board',
+        'meter-billing': 'Meter Billing',
+        'meter-readings': 'Meter Readings',
+        'warehouse-operations': 'Warehouse',
+        'performance-monitoring': 'Analytics',
+        'customer-portal': 'Customer Portal',
       };
 
       if (routeMap[part]) {
@@ -115,109 +109,144 @@ export function SmartBreadcrumb({
     const actions: QuickAction[] = [];
 
     // Determine context from route
-    if (location.includes("/customers")) {
+    if (location.includes('/customers')) {
       actions.push(
         {
-          label: "New Customer",
+          label: 'New Customer',
           icon: <Plus className="h-4 w-4" />,
-          href: "/customers?action=new",
+          href: '/customers?action=new',
         },
         {
-          label: "View All",
+          label: 'View All',
           icon: <Eye className="h-4 w-4" />,
-          href: "/customers",
+          href: '/customers',
         },
         {
-          label: "Export List",
+          label: 'Export List',
           icon: <Download className="h-4 w-4" />,
-          onClick: () => console.log("Export customers"),
-        }
+          onClick: () => console.log('Export customers'),
+        },
       );
 
       // If viewing a specific customer, add customer-specific actions
       if (location.match(/\/customers\/[^/]+$/)) {
         actions.unshift(
           {
-            label: "Create Service Request",
+            label: 'Create Service Request',
             icon: <Wrench className="h-4 w-4" />,
-            href: "/service-hub?action=new",
+            href: '/service-hub?action=new',
           },
           {
-            label: "Generate Invoice",
+            label: 'Generate Invoice',
             icon: <DollarSign className="h-4 w-4" />,
-            href: "/invoices?action=new",
+            href: '/invoices?action=new',
           },
           {
-            label: "Submit Meter Reading",
+            label: 'Submit Meter Reading',
             icon: <FileText className="h-4 w-4" />,
-            href: "/meter-readings?action=new",
-          }
+            href: '/meter-readings?action=new',
+          },
         );
       }
-    } else if (location.includes("/service-hub") || location.includes("/service-dispatch")) {
+    } else if (location.includes('/service-hub') || location.includes('/service-dispatch')) {
       actions.push(
         {
-          label: "New Service Request",
+          label: 'New Service Request',
           icon: <Plus className="h-4 w-4" />,
-          href: "/service-hub?action=new",
+          href: '/service-hub?action=new',
         },
         {
-          label: "Dispatch Board",
+          label: 'Dispatch Board',
           icon: <Calendar className="h-4 w-4" />,
-          href: "/service-dispatch",
+          href: '/service-dispatch',
         },
         {
-          label: "Service Hub",
+          label: 'Service Hub',
           icon: <Wrench className="h-4 w-4" />,
-          href: "/service-hub",
-        }
+          href: '/service-hub',
+        },
       );
-    } else if (location.includes("/equipment")) {
+    } else if (location.includes('/equipment')) {
       actions.push(
         {
-          label: "Add Equipment",
+          label: 'Add Equipment',
           icon: <Plus className="h-4 w-4" />,
-          href: "/equipment?action=new",
+          href: '/equipment?action=new',
         },
         {
-          label: "View All Equipment",
+          label: 'View All Equipment',
           icon: <Eye className="h-4 w-4" />,
-          href: "/equipment",
-        }
+          href: '/equipment',
+        },
       );
-    } else if (location.includes("/invoices")) {
+    } else if (location.includes('/invoices')) {
       actions.push(
         {
-          label: "Generate Invoice",
+          label: 'Generate Invoice',
           icon: <Plus className="h-4 w-4" />,
-          href: "/invoices?action=new",
+          href: '/invoices?action=new',
         },
         {
-          label: "View All Invoices",
+          label: 'View All Invoices',
           icon: <Eye className="h-4 w-4" />,
-          href: "/invoices",
-        }
+          href: '/invoices',
+        },
       );
-    } else if (location.includes("/warehouse")) {
+    } else if (location.includes('/warehouse')) {
       actions.push(
         {
-          label: "Add Part",
+          label: 'Add Part',
           icon: <Plus className="h-4 w-4" />,
-          href: "/warehouse-operations?action=new-part",
+          href: '/warehouse-operations?action=new-part',
         },
         {
-          label: "Transfer Parts",
+          label: 'Transfer Parts',
           icon: <Package className="h-4 w-4" />,
-          href: "/warehouse-operations?action=transfer",
-        }
+          href: '/warehouse-operations?action=transfer',
+        },
       );
     }
 
     return actions;
   }, [location, quickActions]);
 
+  // Inject breadcrumb schema markup for SEO
+  useEffect(() => {
+    if (segments.length > 1) {
+      // Generate full URLs for schema
+      const baseUrl = window.location.origin;
+      const breadcrumbsWithUrls = segments.map((segment) => ({
+        name: segment.label,
+        url: segment.href ? `${baseUrl}${segment.href}` : undefined,
+      }));
+
+      const schema = generateBreadcrumbSchema(breadcrumbsWithUrls);
+
+      // Inject schema into page
+      const scriptId = 'breadcrumb-schema';
+      let script = document.getElementById(scriptId) as HTMLScriptElement;
+
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.type = 'application/ld+json';
+        document.head.appendChild(script);
+      }
+
+      script.textContent = JSON.stringify(schema);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      const script = document.getElementById('breadcrumb-schema');
+      if (script) {
+        script.remove();
+      }
+    };
+  }, [segments]);
+
   // Don't show breadcrumbs on home/dashboard
-  if (location === "/" || location === "/dashboard") {
+  if (location === '/' || location === '/dashboard') {
     return null;
   }
 
@@ -255,17 +284,17 @@ export function SmartBreadcrumb({
             {contextQuickActions.map((action, index) => (
               <div key={index}>
                 {index > 0 &&
-                  action.variant === "destructive" &&
-                  contextQuickActions[index - 1]?.variant !== "destructive" && (
+                  action.variant === 'destructive' &&
+                  contextQuickActions[index - 1]?.variant !== 'destructive' && (
                     <DropdownMenuSeparator />
                   )}
                 <DropdownMenuItem
                   onClick={action.onClick}
                   asChild={!!action.href}
                   className={
-                    action.variant === "destructive"
-                      ? "text-destructive focus:text-destructive"
-                      : ""
+                    action.variant === 'destructive'
+                      ? 'text-destructive focus:text-destructive'
+                      : ''
                   }
                 >
                   {action.href ? (

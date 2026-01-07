@@ -1,10 +1,9 @@
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React, { useState, useEffect, lazy } from 'react';
-import LogoExport from '@/pages/LogoExport';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useSeo } from '@/lib/useSeo';
+import { SEOProvider } from '@/lib/seo/SEOProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
@@ -12,8 +11,8 @@ import { AuthProvider, useAuthContext } from '@/providers/AuthProvider';
 import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
+import { ErrorBoundary } from '@/components/error-boundary';
 
-console.log('📦 App.tsx: Module loaded');
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
 import Login from '@/pages/Login';
@@ -59,6 +58,9 @@ const ROICalculator = React.lazy(() => import('@/pages/marketing/ROICalculator')
 const CaseStudies = React.lazy(() => import('@/pages/marketing/CaseStudies'));
 const CompetitiveBattleCard = React.lazy(() => import('@/pages/marketing/CompetitiveBattleCard'));
 
+// Utility pages
+const LogoExport = React.lazy(() => import('@/pages/LogoExport'));
+
 // Competitive Differentiation Pages
 const AutopilotDashboard = React.lazy(() => import('@/pages/AutopilotDashboard'));
 const ConnectDashboard = React.lazy(() => import('@/pages/ConnectDashboard'));
@@ -84,9 +86,7 @@ const PredictiveContractProfitability = React.lazy(
 const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntelligence'));
 
 // Core app pages - lazy load everything for optimal bundle splitting
-// TEMPORARY: Load Dashboard eagerly to diagnose loading issue
-import Dashboard from '@/pages/dashboard';
-// const Dashboard = React.lazy(() => import("@/pages/dashboard"));
+const Dashboard = React.lazy(() => import('@/pages/dashboard'));
 const Customers = React.lazy(() => import('@/pages/customers'));
 const LeadDetail = React.lazy(() => import('@/pages/LeadDetail'));
 // Removed placeholder report imports - using Reports page instead
@@ -288,12 +288,9 @@ const UserManagement = React.lazy(() => import('@/pages/admin/UserManagement'));
 const LAST_ROUTE_KEY = 'printyx_last_route';
 
 function Router() {
-  console.log('🎯 Router: Component rendering');
   const { isAuthenticated, isLoading } = useAuthContext();
   const [pathname, setLocation] = useLocation();
   const { open, setOpen } = useCommandPalette();
-  console.log('🎯 Router state:', { isAuthenticated, isLoading, pathname });
-  useSeo(pathname);
 
   // Save current route to localStorage when authenticated
   React.useEffect(() => {
@@ -367,14 +364,27 @@ function Router() {
   // Data will be fetched when components mount, which is more efficient
   // and prevents unnecessary data fetching for pages the user might not visit
 
-  console.log('🎯 Router: About to render with conditions:', { isLoading, isAuthenticated });
-
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div
+        className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+        role="status"
+        aria-busy="true"
+        aria-label="Initializing application"
+      >
         <div className="text-center animate-fade-in">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <div
+            className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"
+            aria-hidden="true"
+          />
           <p className="mt-4 text-gray-600 font-medium">Loading Printyx...</p>
+          {/* SEO: Provide meaningful fallback content for crawlers */}
+          <noscript>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>Printyx - Modern Cloud Platform for Copier Dealers</p>
+              <p>Please enable JavaScript to continue.</p>
+            </div>
+          </noscript>
         </div>
       </div>
     );
@@ -383,7 +393,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
-        <Route path="/export-logos" component={lazy(() => import('@/pages/LogoExport'))} />
+        <Route path="/export-logos" component={LogoExport} />
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
@@ -440,25 +450,33 @@ function Router() {
   };
 
   // Authenticated routes
-  console.log('✅ Router: Rendering authenticated routes');
   return (
     <>
       <SubscriptionBanner />
       <CommandPalette open={open} onOpenChange={setOpen} />
       <React.Suspense
         fallback={
-          <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-            {console.log('⏳ Suspense fallback showing...')}
+          <div
+            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading page content"
+          >
             <div className="text-center animate-fade-in">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+              <div
+                className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"
+                aria-hidden="true"
+              />
               <p className="mt-4 text-gray-600 font-medium">Loading...</p>
+              {/* SEO: Provide meaningful content for crawlers */}
+              <noscript>
+                <p>Please enable JavaScript to use Printyx.</p>
+              </noscript>
             </div>
           </div>
         }
       >
-        {console.log('🔄 Inside Suspense, rendering Switch...')}
         <Switch>
-          {console.log('📍 Rendering routes, pathname:', pathname)}
           {/* Redirect auth pages to dashboard for authenticated users */}
           <Route path="/login" component={RedirectToDashboard} />
           <Route path="/signup" component={RedirectToDashboard} />
@@ -756,12 +774,37 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <PWAProvider>
-            <Toaster />
-            <ErrorBoundary>
-              <React.Suspense fallback={<div className="p-6">Loading…</div>}>
-                <Router />
-              </React.Suspense>
-            </ErrorBoundary>
+            <SEOProvider>
+              <Toaster />
+              <ErrorBoundary
+                level="critical"
+                onError={(error, errorInfo) => {
+                  // Log to console in development, send to monitoring in production
+                  console.error('[App Error Boundary]', error, errorInfo);
+                }}
+              >
+                <React.Suspense
+                  fallback={
+                    <div
+                      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+                      role="status"
+                      aria-busy="true"
+                      aria-label="Loading application"
+                    >
+                      <div className="text-center">
+                        <div
+                          className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+                          aria-hidden="true"
+                        />
+                        <p className="mt-4 text-gray-600">Loading...</p>
+                      </div>
+                    </div>
+                  }
+                >
+                  <Router />
+                </React.Suspense>
+              </ErrorBoundary>
+            </SEOProvider>
           </PWAProvider>
         </TooltipProvider>
       </AuthProvider>
@@ -770,37 +813,3 @@ function App() {
 }
 
 export default App;
-
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-  componentDidCatch(error: any, info: any) {
-    console.error('Global error boundary caught:', error, info);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center p-6">
-          <div className="max-w-md text-center">
-            <h1 className="text-xl font-semibold">Something went wrong</h1>
-            <p className="mt-2 text-muted-foreground">
-              Please refresh the page. If the problem persists, contact support.
-            </p>
-            <button
-              className="mt-4 inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-              onClick={() => window.location.reload()}
-            >
-              Reload
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children as any;
-  }
-}

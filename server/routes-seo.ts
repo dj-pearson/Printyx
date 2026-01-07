@@ -52,7 +52,7 @@ router.get('/api/seo/settings', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const [settings] = await db
@@ -73,7 +73,7 @@ router.post('/api/seo/settings', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const [existing] = await db
@@ -83,18 +83,20 @@ router.post('/api/seo/settings', async (req: any, res) => {
       .limit(1);
 
     // SECURITY FIX: Add validation schema to prevent mass assignment
-    const seoSettingsSchema = z.object({
-      metaTitle: z.string().max(255).optional(),
-      metaDescription: z.string().max(500).optional(),
-      metaKeywords: z.string().optional(),
-      ogTitle: z.string().max(255).optional(),
-      ogDescription: z.string().max(500).optional(),
-      ogImage: z.string().url().optional(),
-      twitterCard: z.string().optional(),
-      canonicalUrl: z.string().url().optional(),
-      structuredData: z.any().optional(), // JSON field
-      robots: z.string().optional(),
-    }).strict();
+    const seoSettingsSchema = z
+      .object({
+        metaTitle: z.string().max(255).optional(),
+        metaDescription: z.string().max(500).optional(),
+        metaKeywords: z.string().optional(),
+        ogTitle: z.string().max(255).optional(),
+        ogDescription: z.string().max(500).optional(),
+        ogImage: z.string().url().optional(),
+        twitterCard: z.string().optional(),
+        canonicalUrl: z.string().url().optional(),
+        structuredData: z.any().optional(), // JSON field
+        robots: z.string().optional(),
+      })
+      .strict();
 
     const validatedData = seoSettingsSchema.parse(req.body);
 
@@ -130,12 +132,12 @@ router.post('/api/seo/audit', async (req: any, res) => {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url } = req.body;
     if (!url) {
-      return res.status(400).json({ message: "URL is required" });
+      return res.status(400).json({ message: 'URL is required' });
     }
 
     // Start audit
@@ -177,7 +179,7 @@ router.get('/api/seo/audit/history', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const limit = parseInt(req.query.limit as string) || 20;
@@ -203,20 +205,17 @@ router.get('/api/seo/audit/:id', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const [audit] = await db
       .select()
       .from(seoAuditHistory)
-      .where(and(
-        eq(seoAuditHistory.id, req.params.id),
-        eq(seoAuditHistory.tenantId, tenantId)
-      ))
+      .where(and(eq(seoAuditHistory.id, req.params.id), eq(seoAuditHistory.tenantId, tenantId)))
       .limit(1);
 
     if (!audit) {
-      return res.status(404).json({ message: "Audit not found" });
+      return res.status(404).json({ message: 'Audit not found' });
     }
 
     res.json(audit);
@@ -232,7 +231,7 @@ router.post('/api/seo/audit/:id/apply-fixes', async (req: any, res) => {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { fixes } = req.body; // Array of fix objects
@@ -254,7 +253,7 @@ router.post('/api/seo/audit/:id/apply-fixes', async (req: any, res) => {
           })
           .returning();
         return applied;
-      })
+      }),
     );
 
     res.json(appliedFixes);
@@ -271,7 +270,7 @@ router.get('/api/seo/keywords', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const keywords = await db
@@ -292,7 +291,7 @@ router.post('/api/seo/keywords', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const [keyword] = await db
@@ -312,16 +311,13 @@ router.put('/api/seo/keywords/:id', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const [keyword] = await db
       .update(seoKeywords)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(and(
-        eq(seoKeywords.id, req.params.id),
-        eq(seoKeywords.tenantId, tenantId)
-      ))
+      .where(and(eq(seoKeywords.id, req.params.id), eq(seoKeywords.tenantId, tenantId)))
       .returning();
 
     res.json(keyword);
@@ -336,15 +332,12 @@ router.delete('/api/seo/keywords/:id', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     await db
       .delete(seoKeywords)
-      .where(and(
-        eq(seoKeywords.id, req.params.id),
-        eq(seoKeywords.tenantId, tenantId)
-      ));
+      .where(and(eq(seoKeywords.id, req.params.id), eq(seoKeywords.tenantId, tenantId)));
 
     res.json({ success: true });
   } catch (error: any) {
@@ -375,7 +368,7 @@ router.post('/api/seo/keywords/check-positions', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { keywordIds } = req.body;
@@ -384,10 +377,7 @@ router.post('/api/seo/keywords/check-positions', async (req: any, res) => {
     const keywords = await db
       .select()
       .from(seoKeywords)
-      .where(and(
-        eq(seoKeywords.tenantId, tenantId),
-        inArray(seoKeywords.id, keywordIds)
-      ));
+      .where(and(eq(seoKeywords.tenantId, tenantId), inArray(seoKeywords.id, keywordIds)));
 
     // Check positions (simplified - in production, use SERP API)
     const results = await Promise.all(
@@ -404,16 +394,14 @@ router.post('/api/seo/keywords/check-positions', async (req: any, res) => {
           .where(eq(seoKeywords.id, keyword.id));
 
         // Record history
-        await db
-          .insert(seoKeywordHistory)
-          .values({
-            keywordId: keyword.id,
-            position,
-            recordedAt: new Date(),
-          });
+        await db.insert(seoKeywordHistory).values({
+          keywordId: keyword.id,
+          position,
+          recordedAt: new Date(),
+        });
 
         return { ...keyword, currentPosition: position };
-      })
+      }),
     );
 
     res.json(results);
@@ -430,13 +418,13 @@ router.post('/api/seo/crawl', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { startUrl, maxPages = 100, maxDepth = 3 } = req.body;
 
     if (!startUrl) {
-      return res.status(400).json({ message: "Start URL is required" });
+      return res.status(400).json({ message: 'Start URL is required' });
     }
 
     const crawlId = crypto.randomUUID();
@@ -457,7 +445,7 @@ router.post('/api/seo/crawl', async (req: any, res) => {
           })
           .returning();
         return stored;
-      })
+      }),
     );
 
     res.json({ crawlId, results: storedResults });
@@ -472,16 +460,18 @@ router.get('/api/seo/crawl/:crawlId', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const results = await db
       .select()
       .from(seoCrawlResults)
-      .where(and(
-        eq(seoCrawlResults.tenantId, tenantId),
-        eq(seoCrawlResults.crawlId, req.params.crawlId)
-      ))
+      .where(
+        and(
+          eq(seoCrawlResults.tenantId, tenantId),
+          eq(seoCrawlResults.crawlId, req.params.crawlId),
+        ),
+      )
       .orderBy(asc(seoCrawlResults.crawlDepth));
 
     res.json(results);
@@ -498,13 +488,13 @@ router.post('/api/seo/core-web-vitals', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url, device = 'mobile' } = req.body;
 
     if (!url) {
-      return res.status(400).json({ message: "URL is required" });
+      return res.status(400).json({ message: 'URL is required' });
     }
 
     // Check Core Web Vitals using PageSpeed Insights API
@@ -534,7 +524,7 @@ router.get('/api/seo/core-web-vitals', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url } = req.query;
@@ -566,13 +556,13 @@ router.post('/api/seo/analyze/page', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url } = req.body;
 
     if (!url) {
-      return res.status(400).json({ message: "URL is required" });
+      return res.status(400).json({ message: 'URL is required' });
     }
 
     const analysis = await analyzePage(url);
@@ -599,7 +589,7 @@ router.get('/api/seo/page-scores', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const scores = await db
@@ -623,13 +613,13 @@ router.post('/api/seo/analyze/images', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { pageUrl } = req.body;
 
     if (!pageUrl) {
-      return res.status(400).json({ message: "Page URL is required" });
+      return res.status(400).json({ message: 'Page URL is required' });
     }
 
     const images = await analyzeImages(pageUrl);
@@ -646,7 +636,7 @@ router.post('/api/seo/analyze/images', async (req: any, res) => {
           })
           .returning();
         return stored;
-      })
+      }),
     );
 
     res.json(storedImages);
@@ -661,7 +651,7 @@ router.get('/api/seo/images', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { pageUrl } = req.query;
@@ -692,13 +682,13 @@ router.post('/api/seo/check/broken-links', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { sourceUrl } = req.body;
 
     if (!sourceUrl) {
-      return res.status(400).json({ message: "Source URL is required" });
+      return res.status(400).json({ message: 'Source URL is required' });
     }
 
     const links = await checkBrokenLinks(sourceUrl);
@@ -715,7 +705,7 @@ router.post('/api/seo/check/broken-links', async (req: any, res) => {
           })
           .returning();
         return stored;
-      })
+      }),
     );
 
     res.json(storedLinks);
@@ -730,16 +720,13 @@ router.get('/api/seo/broken-links', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const brokenLinks = await db
       .select()
       .from(seoLinkAnalysis)
-      .where(and(
-        eq(seoLinkAnalysis.tenantId, tenantId),
-        eq(seoLinkAnalysis.isBroken, true)
-      ))
+      .where(and(eq(seoLinkAnalysis.tenantId, tenantId), eq(seoLinkAnalysis.isBroken, true)))
       .orderBy(desc(seoLinkAnalysis.checkedAt))
       .limit(100);
 
@@ -757,13 +744,13 @@ router.post('/api/seo/check/security', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url } = req.body;
 
     if (!url) {
-      return res.status(400).json({ message: "URL is required" });
+      return res.status(400).json({ message: 'URL is required' });
     }
 
     const security = await checkSecurityHeaders(url);
@@ -792,13 +779,13 @@ router.post('/api/seo/check/mobile', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url } = req.body;
 
     if (!url) {
-      return res.status(400).json({ message: "URL is required" });
+      return res.status(400).json({ message: 'URL is required' });
     }
 
     const mobile = await checkMobileFriendliness(url);
@@ -827,13 +814,13 @@ router.post('/api/seo/validate/structured-data', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url } = req.body;
 
     if (!url) {
-      return res.status(400).json({ message: "URL is required" });
+      return res.status(400).json({ message: 'URL is required' });
     }
 
     const schemas = await validateStructuredData(url);
@@ -850,7 +837,7 @@ router.post('/api/seo/validate/structured-data', async (req: any, res) => {
           })
           .returning();
         return stored;
-      })
+      }),
     );
 
     res.json(storedSchemas);
@@ -867,13 +854,13 @@ router.post('/api/seo/detect/redirect-chains', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { sourceUrl } = req.body;
 
     if (!sourceUrl) {
-      return res.status(400).json({ message: "Source URL is required" });
+      return res.status(400).json({ message: 'Source URL is required' });
     }
 
     const redirects = await detectRedirectChains(sourceUrl);
@@ -902,13 +889,13 @@ router.post('/api/seo/detect/duplicate-content', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { url1, url2 } = req.body;
 
     if (!url1 || !url2) {
-      return res.status(400).json({ message: "Both URLs are required" });
+      return res.status(400).json({ message: 'Both URLs are required' });
     }
 
     const duplicate = await detectDuplicateContent(url1, url2);
@@ -938,7 +925,7 @@ router.post('/api/seo/optimize/content', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { title, originalContent, targetKeyword, secondaryKeywords } = req.body;
@@ -969,7 +956,7 @@ router.get('/api/seo/content-optimizations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const optimizations = await db
@@ -993,13 +980,13 @@ router.post('/api/seo/analyze/semantic', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { keyword } = req.body;
 
     if (!keyword) {
-      return res.status(400).json({ message: "Keyword is required" });
+      return res.status(400).json({ message: 'Keyword is required' });
     }
 
     const semantic = await analyzeSemanticKeywords(keyword);
@@ -1028,7 +1015,7 @@ router.get('/api/seo/alerts', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { status } = req.query;
@@ -1058,7 +1045,7 @@ router.post('/api/seo/alerts/:id/acknowledge', async (req: any, res) => {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const [alert] = await db
@@ -1068,10 +1055,7 @@ router.post('/api/seo/alerts/:id/acknowledge', async (req: any, res) => {
         acknowledgedBy: userId,
         acknowledgedAt: new Date(),
       })
-      .where(and(
-        eq(seoAlerts.id, req.params.id),
-        eq(seoAlerts.tenantId, tenantId)
-      ))
+      .where(and(eq(seoAlerts.id, req.params.id), eq(seoAlerts.tenantId, tenantId)))
       .returning();
 
     res.json(alert);
@@ -1087,7 +1071,7 @@ router.post('/api/seo/alerts/:id/resolve', async (req: any, res) => {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { resolutionNotes } = req.body;
@@ -1100,10 +1084,7 @@ router.post('/api/seo/alerts/:id/resolve', async (req: any, res) => {
         resolvedAt: new Date(),
         resolutionNotes,
       })
-      .where(and(
-        eq(seoAlerts.id, req.params.id),
-        eq(seoAlerts.tenantId, tenantId)
-      ))
+      .where(and(eq(seoAlerts.id, req.params.id), eq(seoAlerts.tenantId, tenantId)))
       .returning();
 
     res.json(alert);
@@ -1120,7 +1101,7 @@ router.get('/api/seo/monitoring/log', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { checkType, startDate, endDate } = req.query;
@@ -1158,13 +1139,13 @@ router.post('/api/seo/analyze/competitor', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const { competitorUrl, competitorName } = req.body;
 
     if (!competitorUrl) {
-      return res.status(400).json({ message: "Competitor URL is required" });
+      return res.status(400).json({ message: 'Competitor URL is required' });
     }
 
     const analysis = await analyzeCompetitor(competitorUrl);
@@ -1192,7 +1173,7 @@ router.get('/api/seo/competitors', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const competitors = await db
@@ -1223,10 +1204,34 @@ const validateStructuredData = seoService.validateStructuredData;
 const detectRedirectChains = seoService.detectRedirectChains;
 
 // Simplified implementations for functions not yet in service layer
-async function checkKeywordPosition(keyword: string, targetUrl: string | null) {
-  // TODO: Integrate with SERP API (SERPApi or DataForSEO)
-  // For now, return estimate
-  return Math.floor(Math.random() * 50) + 1;
+async function checkKeywordPosition(keyword: string, targetUrl: string | null, tenantId?: string) {
+  // Query stored position from database
+  if (tenantId) {
+    try {
+      const conditions = [eq(seoKeywords.keyword, keyword)];
+      if (targetUrl) {
+        conditions.push(eq(seoKeywords.targetUrl, targetUrl));
+      }
+      conditions.push(eq(seoKeywords.tenantId, tenantId));
+
+      const result = await db
+        .select({ currentPosition: seoKeywords.currentPosition })
+        .from(seoKeywords)
+        .where(and(...conditions))
+        .limit(1);
+
+      if (result.length > 0 && result[0].currentPosition !== null) {
+        return result[0].currentPosition;
+      }
+    } catch (error) {
+      console.error('Error checking keyword position:', error);
+    }
+  }
+
+  // Return null if no data available
+  // NOTE: Real-time SERP position tracking requires integration with SERP API (SERPApi or DataForSEO)
+  // Positions can be updated via Google Search Console integration or manual tracking
+  return null;
 }
 
 async function analyzePage(url: string) {
@@ -1262,7 +1267,11 @@ async function detectDuplicateContent(url1: string, url2: string) {
   };
 }
 
-async function optimizeContent(content: string, targetKeyword: string, secondaryKeywords: string[]) {
+async function optimizeContent(
+  content: string,
+  targetKeyword: string,
+  secondaryKeywords: string[],
+) {
   // TODO: Integrate with AI (OpenAI/Anthropic)
   // For now, return basic analysis
   const wordCount = content.split(' ').length;
@@ -1273,7 +1282,11 @@ async function optimizeContent(content: string, targetKeyword: string, secondary
     seoScore: 80,
     wordCount,
     aiSuggestions: [
-      { type: 'keyword', suggestion: `Include "${targetKeyword}" in the first paragraph`, priority: 'high' },
+      {
+        type: 'keyword',
+        suggestion: `Include "${targetKeyword}" in the first paragraph`,
+        priority: 'high',
+      },
     ],
   };
 }
@@ -1302,5 +1315,305 @@ async function analyzeCompetitor(competitorUrl: string) {
     referringDomains: 0,
   };
 }
+
+// ============= SITEMAP GENERATION =============
+
+// Generate dynamic sitemap.xml
+router.get('/sitemap.xml', async (req: any, res) => {
+  try {
+    const baseUrl = 'https://printyx.com';
+
+    // Define all marketing pages with SEO priorities and change frequencies
+    const staticPages = [
+      // Core pages
+      { url: '', priority: 1.0, changefreq: 'daily', lastmod: new Date() },
+      { url: 'copier-dealer-crm', priority: 0.9, changefreq: 'weekly' },
+      { url: 'print-service-dispatch-mobile', priority: 0.9, changefreq: 'weekly' },
+      { url: 'canon-master-product-catalog', priority: 0.8, changefreq: 'monthly' },
+
+      // Strategic landing pages
+      { url: 'predictive-intelligence', priority: 0.9, changefreq: 'weekly' },
+      { url: 'modern-architecture', priority: 0.9, changefreq: 'weekly' },
+      { url: 'integration-marketplace', priority: 0.8, changefreq: 'weekly' },
+      { url: 'dealer-expertise', priority: 0.8, changefreq: 'monthly' },
+
+      // Conversion pages
+      { url: 'roi-calculator', priority: 0.8, changefreq: 'monthly' },
+      { url: 'case-studies', priority: 0.7, changefreq: 'monthly' },
+      { url: 'competitive-battle-card', priority: 0.7, changefreq: 'monthly' },
+
+      // Blog index
+      { url: 'blog', priority: 0.8, changefreq: 'daily' },
+
+      // Feature pages
+      { url: 'autopilot-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'connect-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'compare-e-automate', priority: 0.8, changefreq: 'monthly' },
+      { url: 'integration-marketplace-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'scheduled-reports-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'meeting-to-proposal-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'auto-lead-routing-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'predictive-service-dispatch-dashboard', priority: 0.8, changefreq: 'monthly' },
+      { url: 'white-label-dashboard', priority: 0.7, changefreq: 'monthly' },
+      { url: 'auto-supply-replenishment-dashboard', priority: 0.7, changefreq: 'monthly' },
+
+      // Auth pages (lower priority)
+      { url: 'login', priority: 0.3, changefreq: 'yearly' },
+      { url: 'signup', priority: 0.5, changefreq: 'yearly' },
+    ];
+
+    // Fetch blog posts from database if content_marketing table exists
+    let blogPosts: Array<{ slug: string; updatedAt: Date }> = [];
+    try {
+      // Query would go here - for now using empty array
+      // const posts = await db.select().from(contentMarketingPosts).where(eq(status, 'published'));
+      // blogPosts = posts.map(p => ({ slug: p.slug, updatedAt: p.updatedAt }));
+    } catch (error) {
+      console.log('Blog posts table not available for sitemap');
+    }
+
+    // Build XML sitemap
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+    // Add static pages
+    for (const page of staticPages) {
+      xml += '  <url>\n';
+      xml += `    <loc>${baseUrl}/${page.url}</loc>\n`;
+      if (page.lastmod) {
+        xml += `    <lastmod>${page.lastmod.toISOString().split('T')[0]}</lastmod>\n`;
+      }
+      xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
+      xml += `    <priority>${page.priority}</priority>\n`;
+      xml += '  </url>\n';
+    }
+
+    // Add blog posts
+    for (const post of blogPosts) {
+      xml += '  <url>\n';
+      xml += `    <loc>${baseUrl}/blog/${post.slug}</loc>\n`;
+      xml += `    <lastmod>${post.updatedAt.toISOString().split('T')[0]}</lastmod>\n`;
+      xml += `    <changefreq>monthly</changefreq>\n`;
+      xml += `    <priority>0.7</priority>\n`;
+      xml += '  </url>\n';
+    }
+
+    xml += '</urlset>';
+
+    // Set proper headers
+    res.header('Content-Type', 'application/xml');
+    res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    res.send(xml);
+  } catch (error: any) {
+    console.error('Error generating sitemap:', error);
+    res.status(500).json({ message: 'Error generating sitemap' });
+  }
+});
+
+// Generate image sitemap.xml
+router.get('/image-sitemap.xml', async (req: any, res) => {
+  try {
+    const baseUrl = process.env.BASE_URL || 'https://printyx.com';
+
+    // Import schemas for images
+    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import('@shared/schema');
+
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
+    xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n';
+
+    // Helper function to add image entry
+    const addImageUrl = (pageUrl: string, imageUrl: string, title?: string, caption?: string, geoLocation?: string, license?: string) => {
+      if (!imageUrl) return;
+
+      // Ensure absolute URL
+      const absoluteImageUrl = imageUrl.startsWith('http') ? imageUrl : `${baseUrl}${imageUrl}`;
+
+      xml += `  <url>\n`;
+      xml += `    <loc>${pageUrl}</loc>\n`;
+      xml += `    <image:image>\n`;
+      xml += `      <image:loc>${absoluteImageUrl}</image:loc>\n`;
+      if (title) {
+        xml += `      <image:title><![CDATA[${title}]]></image:title>\n`;
+      }
+      if (caption) {
+        xml += `      <image:caption><![CDATA[${caption}]]></image:caption>\n`;
+      }
+      if (geoLocation) {
+        xml += `      <image:geo_location>${geoLocation}</image:geo_location>\n`;
+      }
+      if (license) {
+        xml += `      <image:license>${license}</image:license>\n`;
+      }
+      xml += `    </image:image>\n`;
+      xml += `  </url>\n`;
+    };
+
+    // 1. Blog post featured images
+    const posts = await db
+      .select({
+        slug: blogPosts.slug,
+        featuredImage: blogPosts.featuredImage,
+        featuredImageAlt: blogPosts.featuredImageAlt,
+        title: blogPosts.title,
+      })
+      .from(blogPosts)
+      .where(eq(blogPosts.status, 'published'))
+      .limit(500);
+
+    posts.forEach((post) => {
+      if (post.featuredImage) {
+        addImageUrl(
+          `${baseUrl}/blog/${post.slug}`,
+          post.featuredImage,
+          post.featuredImageAlt || post.title,
+          `Featured image for ${post.title}`
+        );
+      }
+    });
+
+    // 2. Guide cover images
+    const guideDocs = await db
+      .select({
+        slug: guides.slug,
+        coverImage: guides.coverImage,
+        coverImageAlt: guides.coverImageAlt,
+        title: guides.title,
+      })
+      .from(guides)
+      .where(eq(guides.status, 'published'))
+      .limit(200);
+
+    guideDocs.forEach((guide) => {
+      if (guide.coverImage) {
+        addImageUrl(
+          `${baseUrl}/guides/${guide.slug}`,
+          guide.coverImage,
+          guide.coverImageAlt || guide.title,
+          `Cover image for ${guide.title}`
+        );
+      }
+    });
+
+    // 3. Case study featured images
+    const studies = await db
+      .select({
+        slug: caseStudies.slug,
+        featuredImage: caseStudies.featuredImage,
+        featuredImageAlt: caseStudies.featuredImageAlt,
+        title: caseStudies.title,
+      })
+      .from(caseStudies)
+      .where(eq(caseStudies.status, 'published'))
+      .limit(200);
+
+    studies.forEach((study) => {
+      if (study.featuredImage) {
+        addImageUrl(
+          `${baseUrl}/case-studies/${study.slug}`,
+          study.featuredImage,
+          study.featuredImageAlt || study.title,
+          `Featured image for ${study.title}`
+        );
+      }
+    });
+
+    // 4. Landing page hero images
+    const pages = await db
+      .select({
+        slug: landingPages.slug,
+        heroImage: landingPages.heroImage,
+        title: landingPages.title,
+      })
+      .from(landingPages)
+      .where(eq(landingPages.status, 'published'))
+      .limit(100);
+
+    pages.forEach((page) => {
+      if (page.heroImage) {
+        addImageUrl(
+          `${baseUrl}/${page.slug}`,
+          page.heroImage,
+          page.title,
+          `Hero image for ${page.title}`
+        );
+      }
+    });
+
+    // 5. Knowledge base article images
+    const articles = await db
+      .select({
+        slug: knowledgeArticles.slug,
+        featuredImage: knowledgeArticles.featuredImage,
+        title: knowledgeArticles.title,
+      })
+      .from(knowledgeArticles)
+      .where(eq(knowledgeArticles.status, 'published'))
+      .limit(300);
+
+    articles.forEach((article) => {
+      if (article.featuredImage) {
+        addImageUrl(
+          `${baseUrl}/kb/${article.slug}`,
+          article.featuredImage,
+          article.title,
+          `Featured image for ${article.title}`
+        );
+      }
+    });
+
+    xml += '</urlset>';
+
+    // Set proper headers
+    res.header('Content-Type', 'application/xml');
+    res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    res.send(xml);
+  } catch (error: any) {
+    console.error('Error generating image sitemap:', error);
+    res.status(500).json({ message: 'Error generating image sitemap' });
+  }
+});
+
+// Generate robots.txt
+router.get('/robots.txt', async (req: any, res) => {
+  try {
+    const baseUrl = 'https://printyx.com';
+
+    let robotsTxt = `# Printyx robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /settings
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /verify-email
+
+# Sitemaps
+Sitemap: ${baseUrl}/sitemap.xml
+Sitemap: ${baseUrl}/image-sitemap.xml
+
+# Crawl-delay for politeness
+User-agent: *
+Crawl-delay: 1
+
+# Block aggressive bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+`;
+
+    res.header('Content-Type', 'text/plain');
+    res.header('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    res.send(robotsTxt);
+  } catch (error: any) {
+    console.error('Error generating robots.txt:', error);
+    res.status(500).send('Error generating robots.txt');
+  }
+});
 
 export default router;

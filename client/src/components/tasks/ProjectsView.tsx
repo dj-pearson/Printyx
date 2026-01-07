@@ -3,13 +3,14 @@
  * Project management and overview
  */
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Folder, Calendar, User, CheckCircle, MoreHorizontal } from "lucide-react";
-import { format } from "date-fns";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Folder, Calendar, User, CheckCircle, MoreHorizontal, Plus } from 'lucide-react';
+import { EmptyState } from '@/components/ui/empty-state';
+import { format } from 'date-fns';
 
 interface Project {
   id: string;
@@ -38,27 +39,37 @@ export function ProjectsView({ projects, isLoading, teamMembers }: ProjectsViewP
 
   if (projects.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Folder className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Projects</h3>
-          <p className="text-muted-foreground">
-            Create your first project to get started
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={Folder}
+        title="No projects yet"
+        description="Projects help you organize related tasks and track progress towards larger goals."
+        action={{
+          label: 'Create Project',
+          onClick: () => {
+            // Trigger the create project dialog in parent
+            const event = new CustomEvent('createProject');
+            window.dispatchEvent(event);
+          },
+          icon: Plus,
+        }}
+        suggestions={[
+          'Group related tasks into projects for better organization',
+          'Assign a project manager to oversee progress',
+          'Set deadlines and track completion percentage',
+        ]}
+      />
     );
   }
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      planning: "bg-gray-100 text-gray-800",
-      active: "bg-blue-100 text-blue-800",
-      on_hold: "bg-yellow-100 text-yellow-800",
-      completed: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
+      planning: 'bg-gray-100 text-gray-800',
+      active: 'bg-blue-100 text-blue-800',
+      on_hold: 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -70,7 +81,7 @@ export function ProjectsView({ projects, isLoading, teamMembers }: ProjectsViewP
               <div className="flex items-center gap-2">
                 <div
                   className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: project.color || "#3b82f6" }}
+                  style={{ backgroundColor: project.color || '#3b82f6' }}
                 />
                 <CardTitle className="text-lg">{project.name}</CardTitle>
               </div>
@@ -79,14 +90,12 @@ export function ProjectsView({ projects, isLoading, teamMembers }: ProjectsViewP
               </Button>
             </div>
             <Badge variant="outline" className={getStatusColor(project.status)}>
-              {project.status.replace("_", " ")}
+              {project.status.replace('_', ' ')}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             {project.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {project.description}
-              </p>
+              <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
             )}
 
             <div className="space-y-2 text-sm">
@@ -100,7 +109,7 @@ export function ProjectsView({ projects, isLoading, teamMembers }: ProjectsViewP
               {project.endDate && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>Due {format(new Date(project.endDate), "MMM d, yyyy")}</span>
+                  <span>Due {format(new Date(project.endDate), 'MMM d, yyyy')}</span>
                 </div>
               )}
 

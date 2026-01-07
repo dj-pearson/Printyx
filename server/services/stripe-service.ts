@@ -46,6 +46,33 @@ export interface CreateSubscriptionParams {
   metadata?: Record<string, string>;
 }
 
+export interface CreateCheckoutSessionParams {
+  tenantId: string;
+  priceId: string;
+  billingCycle: 'monthly' | 'annual';
+  successUrl: string;
+  cancelUrl: string;
+  customerEmail?: string;
+  trialDays?: number;
+  discountCode?: string;
+  metadata?: Record<string, string>;
+}
+
+export interface CreatePortalSessionParams {
+  stripeCustomerId: string;
+  returnUrl: string;
+}
+
+export interface CreateOneTimeCheckoutParams {
+  tenantId: string;
+  priceId: string;
+  quantity?: number;
+  successUrl: string;
+  cancelUrl: string;
+  customerEmail?: string;
+  metadata?: Record<string, string>;
+}
+
 export class StripeService {
   /**
    * Check if Stripe is configured
@@ -517,5 +544,529 @@ export class StripeService {
       throw new Error('STRIPE_PUBLISHABLE_KEY not configured');
     }
     return publishableKey;
+  }
+
+  /**
+   * Create a Stripe Checkout Session for subscription purchase
+   * This is the primary method for new subscription purchases
+   */
+  static async createCheckoutSession(
+    params: CreateCheckoutSessionParams,
+  ): Promise<Stripe.Checkout.Session> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const {
+      tenantId,
+      priceId,
+      billingCycle,
+      successUrl,
+      cancelUrl,
+      customerEmail,
+      trialDays = 0,
+      discountCode,
+      metadata = {},
+    } = params;
+
+    // Get or create Stripe customer
+    const stripeCustomerId = await this.getOrCreateCustomer(tenantId, customerEmail);
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: 'subscription',
+      customer: stripeCustomerId,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl,
+      metadata: {
+        tenantId,
+        billingCycle,
+        ...metadata,
+      },
+      subscription_data: {
+        metadata: {
+          tenantId,
+          billingCycle,
+        },
+      },
+      // Security: Require billing address for compliance
+      billing_address_collection: 'required',
+      // Allow promotion codes
+      allow_promotion_codes: true,
+      // Automatic tax calculation (if enabled in Stripe dashboard)
+      automatic_tax: { enabled: false },
+    };
+
+    // Add customer email if not already a customer
+    if (customerEmail && !stripeCustomerId) {
+      sessionParams.customer_email = customerEmail;
+    }
+
+    // Add trial period if specified
+    if (trialDays > 0) {
+      sessionParams.subscription_data!.trial_period_days = trialDays;
+    }
+
+    // Add discount code if provided
+    if (discountCode) {
+      sessionParams.discounts = [{ coupon: discountCode }];
+      // Remove allow_promotion_codes when using discounts
+      delete sessionParams.allow_promotion_codes;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    console.log(
+      `✅ Created checkout session ${session.id} for tenant ${tenantId} (${billingCycle})`,
+    );
+
+    return session;
+  }
+
+  /**
+   * Create a Stripe Checkout Session for one-time purchase (add-ons)
+   */
+  static async createOneTimeCheckoutSession(
+    params: CreateOneTimeCheckoutParams,
+  ): Promise<Stripe.Checkout.Session> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const {
+      tenantId,
+      priceId,
+      quantity = 1,
+      successUrl,
+      cancelUrl,
+      customerEmail,
+      metadata = {},
+    } = params;
+
+    // Get or create Stripe customer
+    const stripeCustomerId = await this.getOrCreateCustomer(tenantId, customerEmail);
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      mode: 'payment',
+      customer: stripeCustomerId,
+      line_items: [
+        {
+          price: priceId,
+          quantity,
+        },
+      ],
+      success_url: `${successUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl,
+      metadata: {
+        tenantId,
+        type: 'one_time_purchase',
+        ...metadata,
+      },
+      payment_intent_data: {
+        metadata: {
+          tenantId,
+          type: 'one_time_purchase',
+        },
+      },
+      billing_address_collection: 'required',
+      allow_promotion_codes: true,
+    };
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
+
+    console.log(`✅ Created one-time checkout session ${session.id} for tenant ${tenantId}`);
+
+    return session;
+  }
+
+  /**
+   * Create a Stripe Customer Portal session for self-service billing management
+   */
+  static async createPortalSession(
+    params: CreatePortalSessionParams,
+  ): Promise<Stripe.BillingPortal.Session> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const { stripeCustomerId, returnUrl } = params;
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: stripeCustomerId,
+      return_url: returnUrl,
+    });
+
+    console.log(`✅ Created customer portal session for customer ${stripeCustomerId}`);
+
+    return session;
+  }
+
+  /**
+   * Create a Customer Portal session using tenant ID
+   */
+  static async createPortalSessionForTenant(
+    tenantId: string,
+    returnUrl: string,
+  ): Promise<Stripe.BillingPortal.Session> {
+    // Get Stripe customer ID from tenant
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(tenants.id, tenantId),
+    });
+
+    if (!tenant) {
+      throw new Error('Tenant not found');
+    }
+
+    const tenantMetadata = (tenant.metadata as any) || {};
+    if (!tenantMetadata.stripeCustomerId) {
+      throw new Error('No Stripe customer ID for this tenant');
+    }
+
+    return this.createPortalSession({
+      stripeCustomerId: tenantMetadata.stripeCustomerId,
+      returnUrl,
+    });
+  }
+
+  /**
+   * Retrieve a checkout session
+   */
+  static async retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    return await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription', 'payment_intent', 'customer'],
+    });
+  }
+
+  /**
+   * Get subscription details
+   */
+  static async retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    return await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['default_payment_method', 'latest_invoice'],
+    });
+  }
+
+  /**
+   * Get customer details
+   */
+  static async retrieveCustomer(customerId: string): Promise<Stripe.Customer> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer.deleted) {
+      throw new Error('Customer has been deleted');
+    }
+    return customer as Stripe.Customer;
+  }
+
+  /**
+   * Apply a coupon to an existing subscription
+   */
+  static async applyCouponToSubscription(
+    subscriptionId: string,
+    couponId: string,
+  ): Promise<Stripe.Subscription> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    return await stripe.subscriptions.update(subscriptionId, {
+      coupon: couponId,
+    });
+  }
+
+  /**
+   * Preview upcoming invoice (useful for showing upgrade/downgrade costs)
+   */
+  static async previewInvoice(
+    stripeCustomerId: string,
+    subscriptionId: string,
+    newPriceId: string,
+  ): Promise<Stripe.Invoice> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+    return await stripe.invoices.retrieveUpcoming({
+      customer: stripeCustomerId,
+      subscription: subscriptionId,
+      subscription_items: [
+        {
+          id: subscription.items.data[0].id,
+          price: newPriceId,
+        },
+      ],
+    });
+  }
+
+  /**
+   * Create a Setup Intent for collecting payment method without immediate charge
+   */
+  static async createSetupIntent(
+    stripeCustomerId: string,
+    metadata?: Record<string, string>,
+  ): Promise<Stripe.SetupIntent> {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    return await stripe.setupIntents.create({
+      customer: stripeCustomerId,
+      payment_method_types: ['card'],
+      metadata: metadata || {},
+    });
+  }
+
+  /**
+   * Verify webhook signature and return event
+   * This is the secure way to process webhooks
+   */
+  static verifyWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event {
+    if (!stripe) {
+      throw new Error('Stripe is not configured');
+    }
+
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      throw new Error('STRIPE_WEBHOOK_SECRET not configured');
+    }
+
+    return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+  }
+
+  /**
+   * Enhanced webhook handler with checkout session support
+   */
+  static async handleWebhookEventEnhanced(event: Stripe.Event): Promise<{
+    success: boolean;
+    message: string;
+    data?: any;
+  }> {
+    console.log(`📨 Processing Stripe webhook: ${event.type}`);
+
+    try {
+      switch (event.type) {
+        // Checkout session completed (new purchase)
+        case 'checkout.session.completed':
+          return await this.handleCheckoutSessionCompleted(
+            event.data.object as Stripe.Checkout.Session,
+          );
+
+        // Checkout session expired
+        case 'checkout.session.expired':
+          return await this.handleCheckoutSessionExpired(
+            event.data.object as Stripe.Checkout.Session,
+          );
+
+        // Subscription events
+        case 'customer.subscription.created':
+          await this.handleSubscriptionCreated(event.data.object as Stripe.Subscription);
+          return { success: true, message: 'Subscription created' };
+
+        case 'customer.subscription.updated':
+          await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+          return { success: true, message: 'Subscription updated' };
+
+        case 'customer.subscription.deleted':
+          await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          return { success: true, message: 'Subscription deleted' };
+
+        case 'customer.subscription.trial_will_end':
+          return await this.handleTrialWillEnd(event.data.object as Stripe.Subscription);
+
+        // Invoice events
+        case 'invoice.paid':
+          await this.handleInvoicePaid(event.data.object as Stripe.Invoice);
+          return { success: true, message: 'Invoice paid' };
+
+        case 'invoice.payment_failed':
+          await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+          return { success: true, message: 'Invoice payment failed handled' };
+
+        case 'invoice.upcoming':
+          return await this.handleInvoiceUpcoming(event.data.object as Stripe.Invoice);
+
+        // Payment method events
+        case 'payment_method.attached':
+          await this.handlePaymentMethodAttached(event.data.object as Stripe.PaymentMethod);
+          return { success: true, message: 'Payment method attached' };
+
+        case 'payment_method.detached':
+          await this.handlePaymentMethodDetached(event.data.object as Stripe.PaymentMethod);
+          return { success: true, message: 'Payment method detached' };
+
+        // Payment intent events (for one-time purchases)
+        case 'payment_intent.succeeded':
+          return await this.handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent);
+
+        case 'payment_intent.payment_failed':
+          return await this.handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
+
+        default:
+          console.log(`⚠️  Unhandled webhook event type: ${event.type}`);
+          return { success: true, message: `Unhandled event type: ${event.type}` };
+      }
+    } catch (error) {
+      console.error(`❌ Error handling webhook ${event.type}:`, error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Handle checkout session completed - activate subscription
+   */
+  private static async handleCheckoutSessionCompleted(
+    session: Stripe.Checkout.Session,
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    const tenantId = session.metadata?.tenantId;
+
+    if (!tenantId) {
+      console.error('❌ No tenantId in checkout session metadata');
+      return { success: false, message: 'No tenantId in session metadata' };
+    }
+
+    console.log(`✅ Checkout completed for tenant ${tenantId}`);
+
+    // Handle subscription checkout
+    if (session.mode === 'subscription' && session.subscription) {
+      const subscriptionId =
+        typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+
+      // Update tenant subscription in database
+      await db
+        .update(tenantSubscriptions)
+        .set({
+          stripeSubscriptionId: subscriptionId,
+          status: 'active',
+          updatedAt: new Date(),
+        })
+        .where(eq(tenantSubscriptions.tenantId, tenantId));
+
+      return {
+        success: true,
+        message: 'Subscription activated',
+        data: { subscriptionId },
+      };
+    }
+
+    // Handle one-time payment checkout
+    if (session.mode === 'payment' && session.payment_intent) {
+      const paymentIntentId =
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent.id;
+
+      return {
+        success: true,
+        message: 'One-time payment completed',
+        data: { paymentIntentId },
+      };
+    }
+
+    return { success: true, message: 'Checkout session handled' };
+  }
+
+  /**
+   * Handle checkout session expired
+   */
+  private static async handleCheckoutSessionExpired(
+    session: Stripe.Checkout.Session,
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = session.metadata?.tenantId;
+    console.log(`⚠️  Checkout session expired for tenant ${tenantId || 'unknown'}`);
+
+    return { success: true, message: 'Checkout session expired' };
+  }
+
+  /**
+   * Handle trial ending notification
+   */
+  private static async handleTrialWillEnd(
+    subscription: Stripe.Subscription,
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = subscription.metadata.tenantId;
+
+    if (!tenantId) {
+      console.error('❌ No tenantId in subscription metadata');
+      return { success: false, message: 'No tenantId in metadata' };
+    }
+
+    console.log(`⚠️  Trial will end for tenant ${tenantId}`);
+
+    // TODO: Send trial ending notification email
+
+    return { success: true, message: 'Trial ending notification processed' };
+  }
+
+  /**
+   * Handle upcoming invoice notification
+   */
+  private static async handleInvoiceUpcoming(
+    invoice: Stripe.Invoice,
+  ): Promise<{ success: boolean; message: string }> {
+    const customerId = invoice.customer as string;
+    console.log(`📬 Upcoming invoice for customer ${customerId}`);
+
+    // TODO: Send upcoming invoice notification
+
+    return { success: true, message: 'Upcoming invoice notification processed' };
+  }
+
+  /**
+   * Handle successful payment intent (one-time purchases)
+   */
+  private static async handlePaymentIntentSucceeded(
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    const tenantId = paymentIntent.metadata?.tenantId;
+    const purchaseType = paymentIntent.metadata?.type;
+
+    console.log(`✅ Payment succeeded for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
+
+    if (purchaseType === 'one_time_purchase') {
+      // Handle add-on purchase activation
+      // TODO: Activate the purchased add-on for the tenant
+    }
+
+    return {
+      success: true,
+      message: 'Payment succeeded',
+      data: { paymentIntentId: paymentIntent.id },
+    };
+  }
+
+  /**
+   * Handle failed payment intent
+   */
+  private static async handlePaymentIntentFailed(
+    paymentIntent: Stripe.PaymentIntent,
+  ): Promise<{ success: boolean; message: string }> {
+    const tenantId = paymentIntent.metadata?.tenantId;
+
+    console.log(`❌ Payment failed for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
+
+    // TODO: Send payment failed notification
+
+    return { success: true, message: 'Payment failure handled' };
   }
 }
