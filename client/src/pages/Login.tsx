@@ -18,6 +18,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/providers/AuthProvider';
 import { supabase } from '@/lib/supabase';
 import { config } from '@/lib/config';
+import { sanitizeEmail, getSafeRedirectRoute } from '@/lib/validations';
+import { getOAuthRedirectURL, formatAuthError, parseRedirectFromURL } from '@/lib/auth-utils';
 import { Printer, ArrowLeft, Chrome, Apple } from 'lucide-react';
 
 const loginSchema = z.object({
@@ -53,11 +55,14 @@ export default function Login() {
 
     setOauthLoading(provider);
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      // SECURITY: Get safe redirect URL with preserved intended destination
+      const lastRoute = localStorage.getItem('printyx_last_route');
+      const redirectURL = getOAuthRedirectURL(provider, lastRoute || undefined);
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo,
+          redirectTo: redirectURL,
           scopes: provider === 'google' ? 'email profile' : 'email name',
         },
       });
@@ -70,7 +75,7 @@ export default function Login() {
     } catch (error: any) {
       toast({
         title: `Sign in with ${provider === 'google' ? 'Google' : 'Apple'} failed`,
-        description: error?.message || 'Please try again.',
+        description: formatAuthError(error),
         variant: 'destructive',
       });
       setOauthLoading(null);
@@ -94,7 +99,9 @@ export default function Login() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginForm) => {
-      await login(data.email, data.password);
+      // SECURITY: Sanitize email input
+      const sanitizedEmail = sanitizeEmail(data.email);
+      await login(sanitizedEmail, data.password);
     },
     onSuccess: () => {
       toast({
@@ -104,54 +111,8 @@ export default function Login() {
       // Invalidate Supabase auth query to fetch fresh user data
       queryClient.invalidateQueries({ queryKey: ['supabase-auth-user'] });
 
-      // Restore last visited route or go to dashboard
-      const lastRoute = localStorage.getItem('printyx_last_route');
-
-      // SECURITY: Sanitize and validate redirect route
-      const getSafeRedirectRoute = (route: string | null): string => {
-        if (!route) return '/';
-
-        // Decode any URL encoding to prevent bypass
-        let decodedRoute: string;
-        try {
-          decodedRoute = decodeURIComponent(route);
-        } catch {
-          return '/';
-        }
-
-        // Must be a relative path starting with /
-        if (!decodedRoute.startsWith('/')) return '/';
-
-        // Block absolute URLs disguised as paths (e.g., //evil.com)
-        if (decodedRoute.startsWith('//')) return '/';
-
-        // Block javascript: and data: schemes
-        const lowercaseRoute = decodedRoute.toLowerCase();
-        if (lowercaseRoute.includes('javascript:') || lowercaseRoute.includes('data:')) return '/';
-
-        // Exclude auth pages and API routes from redirect targets
-        const invalidPrefixes = [
-          '/login',
-          '/signup',
-          '/forgot-password',
-          '/reset-password',
-          '/auth/',
-          '/api/',
-        ];
-        if (invalidPrefixes.some((prefix) => decodedRoute.startsWith(prefix))) return '/';
-
-        // Validate it's a clean path (alphanumeric, hyphens, underscores, slashes)
-        if (!/^[a-zA-Z0-9\-_/]+$/.test(decodedRoute.replace(/\?.*$/, '').replace(/#.*$/, ''))) {
-          return '/';
-        }
-
-        return decodedRoute;
-      };
-
-      const redirectTo = getSafeRedirectRoute(lastRoute);
-
-      // Clear the stored route after using it
-      localStorage.removeItem('printyx_last_route');
+      // SECURITY: Use improved redirect handling from auth-utils
+      const redirectTo = getSafeRedirectRoute();
 
       // Use location.replace for smooth transition without back button issue
       window.location.replace(redirectTo);
@@ -159,7 +120,7 @@ export default function Login() {
     onError: (error: any) => {
       toast({
         title: 'Login failed',
-        description: error.message || 'Invalid email or password',
+        description: formatAuthError(error),
         variant: 'destructive',
       });
     },
