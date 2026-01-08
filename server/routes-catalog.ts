@@ -403,4 +403,7 @@ export function registerCatalogRoutes(app: Express) {
   app.use(router);
 }
 
+// Named export for dynamic imports
+export const catalogRouter = router;
+
 export default router;
