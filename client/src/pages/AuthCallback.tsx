@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { supabase } from '@/lib/supabase';
+import { parseRedirectFromURL } from '@/lib/auth-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Printer, CheckCircle, XCircle, Loader2 } from 'lucide-react';
@@ -32,6 +33,9 @@ export default function AuthCallback() {
         // Get the hash fragment from the URL
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
+
+        // SECURITY: Parse and sanitize redirect destination
+        const redirectPath = parseRedirectFromURL(queryParams);
 
         // Determine callback type
         const type = hashParams.get('type') || queryParams.get('type');
@@ -78,9 +82,9 @@ export default function AuthCallback() {
             return;
           }
 
-          // For email verification or signup, redirect to dashboard
+          // SECURITY: Use sanitized redirect path from query parameter
           setTimeout(() => {
-            setLocation('/');
+            setLocation(redirectPath);
           }, 2000);
           return;
         }
@@ -96,9 +100,9 @@ export default function AuthCallback() {
 
           setStatus('success');
 
-          // Redirect after successful code exchange
+          // SECURITY: Use sanitized redirect path from query parameter
           setTimeout(() => {
-            setLocation('/');
+            setLocation(redirectPath);
           }, 2000);
           return;
         }
@@ -115,9 +119,9 @@ export default function AuthCallback() {
 
         if (data.session) {
           setStatus('success');
-          // Shorter delay for better UX, session is already established
+          // SECURITY: Use sanitized redirect path from query parameter
           setTimeout(() => {
-            setLocation('/');
+            setLocation(redirectPath);
           }, 1500);
         } else {
           // No session found after checking all methods

@@ -25,6 +25,9 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/providers/AuthProvider';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+import { sanitizeEmail, sanitizeInput, PasswordSchema, EmailSchema } from '@/lib/validations';
+import { formatAuthError } from '@/lib/auth-utils';
 import { Printer, ArrowRight, ArrowLeft, CheckCircle, Eye, EyeOff, Mail } from 'lucide-react';
 import { Link } from 'wouter';
 
@@ -39,15 +42,8 @@ const signupSchema = z
     // Admin user
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
-    email: z.string().email('Valid email is required'),
-    // SECURITY: Match backend password requirements (12+ chars with special character)
-    password: z
-      .string()
-      .min(12, 'Password must be at least 12 characters')
-      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-      .regex(/[0-9]/, 'Password must contain at least one number')
-      .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+    email: EmailSchema, // SECURITY: Use shared email schema with sanitization
+    password: PasswordSchema, // SECURITY: Use shared password schema with complexity requirements
     confirmPassword: z.string(),
     phone: z.string().optional(),
 
@@ -135,17 +131,17 @@ export default function Signup() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: SignupForm) => {
-      // Prepare metadata for tenant/company creation
+      // SECURITY: Sanitize all text inputs
       const metadata = {
-        companyName: data.companyName,
-        industry: data.industry,
+        companyName: sanitizeInput(data.companyName),
+        industry: data.industry ? sanitizeInput(data.industry) : undefined,
         companySize: data.companySize,
         website: data.website,
-        firstName: data.firstName,
-        lastName: data.lastName,
+        firstName: sanitizeInput(data.firstName),
+        lastName: sanitizeInput(data.lastName),
         phone: data.phone,
-        address: data.address,
-        city: data.city,
+        address: data.address ? sanitizeInput(data.address) : undefined,
+        city: data.city ? sanitizeInput(data.city) : undefined,
         state: data.state,
         zip: data.zip,
         country: data.country,
@@ -154,6 +150,7 @@ export default function Signup() {
         billingCycle: data.billingCycle,
       };
 
+      // SECURITY: Email is already sanitized by EmailSchema transform
       await signup(data.email, data.password, metadata);
       return { email: data.email };
     },
@@ -168,7 +165,7 @@ export default function Signup() {
     onError: (error: any) => {
       toast({
         title: 'Signup failed',
-        description: error.message || 'Please try again',
+        description: formatAuthError(error),
         variant: 'destructive',
       });
     },
@@ -486,10 +483,11 @@ export default function Signup() {
                               </button>
                             </div>
                           </FormControl>
-                          <FormDescription>
-                            At least 12 characters with uppercase, lowercase, number, and special
-                            character
-                          </FormDescription>
+                          {/* Real-time password strength indicator */}
+                          <PasswordStrengthIndicator
+                            password={field.value || ''}
+                            className="mt-2"
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
