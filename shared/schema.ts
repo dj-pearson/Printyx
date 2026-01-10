@@ -1721,7 +1721,13 @@ export const meterReadings = pgTable('meter_readings', {
   createdBy: varchar('created_by').notNull(),
   createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
   updatedAt: timestamp('updated_at').defaultNow(),
-});
+}, (table) => ({
+  // Performance indexes for meter reading queries
+  equipmentDateIdx: index('meter_readings_equipment_date_idx').on(table.equipmentId, table.readingDate),
+  tenantDateIdx: index('meter_readings_tenant_date_idx').on(table.tenantId, table.readingDate),
+  tenantEquipmentIdx: index('meter_readings_tenant_equipment_idx').on(table.tenantId, table.equipmentId),
+  billingStatusIdx: index('meter_readings_billing_status_idx').on(table.tenantId, table.billingStatus),
+}));
 
 // Service Calls/Work Orders Table (E-Automate compatible)
 export const serviceCalls = pgTable('service_calls', {
@@ -2982,27 +2988,36 @@ export const serviceTicketUpdates = pgTable('service_ticket_updates', {
 // Note: inventoryItems table is defined above with full E-Automate compatibility
 
 // Technicians table
-export const technicians = pgTable('technicians', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  userId: varchar('user_id').notNull(),
-  employeeId: varchar('employee_id'),
-  firstName: varchar('first_name').notNull(),
-  lastName: varchar('last_name').notNull(),
-  email: varchar('email').notNull(),
-  phone: varchar('phone'),
-  skills: text('skills').array(),
-  certifications: text('certifications').array(),
-  currentLocation: text('current_location'),
-  isActive: boolean('is_active').default(true),
-  isAvailable: boolean('is_available').default(true),
-  workingHours: text('working_hours'),
-  hourlyRate: decimal('hourly_rate', { precision: 10, scale: 2 }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+export const technicians = pgTable(
+  'technicians',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    userId: varchar('user_id').notNull(),
+    employeeId: varchar('employee_id'),
+    firstName: varchar('first_name').notNull(),
+    lastName: varchar('last_name').notNull(),
+    email: varchar('email').notNull(),
+    phone: varchar('phone'),
+    skills: text('skills').array(),
+    certifications: text('certifications').array(),
+    currentLocation: text('current_location'),
+    isActive: boolean('is_active').default(true),
+    isAvailable: boolean('is_available').default(true),
+    workingHours: text('working_hours'),
+    hourlyRate: decimal('hourly_rate', { precision: 10, scale: 2 }),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // Performance indexes for technician queries
+    tenantUserIdx: index('technicians_tenant_user_idx').on(table.tenantId, table.userId),
+    tenantActiveIdx: index('technicians_tenant_active_idx').on(table.tenantId, table.isActive),
+    emailIdx: index('technicians_email_idx').on(table.email),
+  }),
+);
 
 // Technician availability table for scheduling
 export const technicianAvailability = pgTable('technician_availability', {

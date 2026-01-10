@@ -25,6 +25,7 @@ import {
   getMonitoringHealth,
   getQueryStats,
 } from './lib/monitoring';
+import { setupOpenApi } from './openapi';
 
 const app = express();
 
@@ -292,6 +293,10 @@ app.use((req, res, next) => {
   await initMonitoring();
 
   const server = await registerRoutes(app);
+
+  // Setup OpenAPI/Swagger documentation
+  setupOpenApi(app);
+  serverLog.info('OpenAPI documentation available at /api/docs');
 
   // Add monitoring health and stats endpoints
   app.get('/api/monitoring/health', (_req, res) => {
