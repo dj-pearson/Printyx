@@ -1,0 +1,356 @@
+/**
+ * Per-User Rate Limiting Middleware
+ *
+ * Rate limits authenticated users based on their user ID, not just IP address.
+ * Provides separate limits for different endpoint categories.
+ *
+ * Features:
+ * - User-based rate limiting (falls back to IP if not authenticated)
+ * - Configurable limits per endpoint category
+ * - Sliding window algorithm with in-memory storage
+ * - Standard rate limit headers (X-RateLimit-*)
+ * - Graceful degradation when storage unavailable
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import { getUserId, isAuthenticated } from '../utils/auth-helpers';
+
+// Rate limit configuration by category
+interface RateLimitConfig {
+  /** Max requests per window */
+  limit: number;
+  /** Window size in milliseconds */
+  windowMs: number;
+  /** Optional message when rate limited */
+  message?: string;
+}
+
+// Default configurations for different endpoint types
+export const RATE_LIMIT_CONFIGS = {
+  /** General API endpoints */
+  general: {
+    limit: 500,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    message: 'Too many requests, please try again later',
+  },
+  /** High-traffic read endpoints (lists, searches) */
+  read: {
+    limit: 1000,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    message: 'Too many read requests, please try again later',
+  },
+  /** Write operations (create, update, delete) */
+  write: {
+    limit: 200,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    message: 'Too many write requests, please try again later',
+  },
+  /** Search and autocomplete endpoints */
+  search: {
+    limit: 300,
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    message: 'Too many search requests, please try again later',
+  },
+  /** Export/download operations */
+  export: {
+    limit: 20,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    message: 'Too many export requests, please try again later',
+  },
+  /** AI/expensive operations */
+  ai: {
+    limit: 50,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    message: 'AI request limit reached, please try again later',
+  },
+  /** Bulk operations */
+  bulk: {
+    limit: 10,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    message: 'Bulk operation limit reached, please try again later',
+  },
+  /** Reports/analytics */
+  reports: {
+    limit: 100,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    message: 'Report request limit reached, please try again later',
+  },
+} as const;
+
+// Type for config keys
+type RateLimitCategory = keyof typeof RATE_LIMIT_CONFIGS;
+
+// In-memory storage for rate limit buckets
+// Key format: `${category}:${userId|ip}:${bucketKey}`
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+
+const rateLimitStore = new Map<string, RateLimitBucket>();
+
+// Cleanup interval (every 5 minutes)
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+// Cleanup old buckets periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitStore.entries()) {
+    if (bucket.resetAt < now) {
+      rateLimitStore.delete(key);
+    }
+  }
+}, CLEANUP_INTERVAL_MS);
+
+/**
+ * Get the identifier for rate limiting
+ * Uses user ID for authenticated users, falls back to IP
+ */
+function getRateLimitKey(req: Request): string {
+  // Try to get authenticated user ID
+  const userId = getUserId(req as any);
+  if (userId) {
+    return `user:${userId}`;
+  }
+
+  // Fall back to IP address
+  const ip =
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    'unknown';
+  return `ip:${ip}`;
+}
+
+/**
+ * Get current bucket key based on window
+ */
+function getBucketKey(windowMs: number): string {
+  const now = Date.now();
+  const bucketStart = Math.floor(now / windowMs) * windowMs;
+  return bucketStart.toString();
+}
+
+/**
+ * Check and update rate limit for a key
+ */
+function checkRateLimit(
+  identifier: string,
+  category: string,
+  config: RateLimitConfig
+): {
+  allowed: boolean;
+  remaining: number;
+  resetAt: number;
+  limit: number;
+} {
+  const bucketKey = getBucketKey(config.windowMs);
+  const storeKey = `${category}:${identifier}:${bucketKey}`;
+
+  const now = Date.now();
+  const resetAt = Math.ceil(now / config.windowMs) * config.windowMs;
+
+  let bucket = rateLimitStore.get(storeKey);
+
+  if (!bucket || bucket.resetAt < now) {
+    // Create new bucket
+    bucket = {
+      count: 1,
+      resetAt,
+    };
+    rateLimitStore.set(storeKey, bucket);
+
+    return {
+      allowed: true,
+      remaining: config.limit - 1,
+      resetAt,
+      limit: config.limit,
+    };
+  }
+
+  // Increment existing bucket
+  bucket.count++;
+  rateLimitStore.set(storeKey, bucket);
+
+  const remaining = Math.max(0, config.limit - bucket.count);
+  const allowed = bucket.count <= config.limit;
+
+  return {
+    allowed,
+    remaining,
+    resetAt: bucket.resetAt,
+    limit: config.limit,
+  };
+}
+
+/**
+ * Set rate limit headers on response
+ */
+function setRateLimitHeaders(
+  res: Response,
+  limit: number,
+  remaining: number,
+  resetAt: number
+): void {
+  res.setHeader('X-RateLimit-Limit', limit.toString());
+  res.setHeader('X-RateLimit-Remaining', remaining.toString());
+  res.setHeader('X-RateLimit-Reset', Math.floor(resetAt / 1000).toString());
+  res.setHeader('X-RateLimit-Policy', `${limit};w=${Math.floor(resetAt / 1000)}`);
+}
+
+/**
+ * Create a per-user rate limiter middleware
+ *
+ * @param category - The rate limit category (general, read, write, etc.)
+ * @param customConfig - Optional custom configuration to override defaults
+ */
+export function userRateLimit(
+  category: RateLimitCategory = 'general',
+  customConfig?: Partial<RateLimitConfig>
+) {
+  const config: RateLimitConfig = {
+    ...RATE_LIMIT_CONFIGS[category],
+    ...customConfig,
+  };
+
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const identifier = getRateLimitKey(req);
+      const result = checkRateLimit(identifier, category, config);
+
+      // Always set rate limit headers
+      setRateLimitHeaders(res, result.limit, result.remaining, result.resetAt);
+
+      if (!result.allowed) {
+        res.setHeader('Retry-After', Math.ceil((result.resetAt - Date.now()) / 1000).toString());
+        return res.status(429).json({
+          message: config.message || 'Rate limit exceeded',
+          code: 'RATE_LIMITED',
+          retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
+          limit: result.limit,
+          remaining: 0,
+          resetAt: Math.floor(result.resetAt / 1000),
+        });
+      }
+
+      next();
+    } catch (error) {
+      // Graceful degradation - allow request if rate limiting fails
+      console.error('[UserRateLimit] Error checking rate limit:', error);
+      next();
+    }
+  };
+}
+
+/**
+ * Rate limit middleware that determines category based on request method
+ */
+export function autoRateLimit() {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Determine category based on method and path
+    let category: RateLimitCategory = 'general';
+
+    const method = req.method.toUpperCase();
+    const path = req.path.toLowerCase();
+
+    // Check for specific patterns
+    if (path.includes('/search') || path.includes('/autocomplete')) {
+      category = 'search';
+    } else if (path.includes('/export') || path.includes('/download')) {
+      category = 'export';
+    } else if (path.includes('/ai') || path.includes('/claude') || path.includes('/gpt')) {
+      category = 'ai';
+    } else if (path.includes('/bulk') || path.includes('/batch')) {
+      category = 'bulk';
+    } else if (path.includes('/reports') || path.includes('/analytics')) {
+      category = 'reports';
+    } else if (method === 'GET') {
+      category = 'read';
+    } else if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+      category = 'write';
+    }
+
+    // Apply rate limiting with detected category
+    return userRateLimit(category)(req, res, next);
+  };
+}
+
+/**
+ * Get current rate limit stats for a user (for debugging/admin)
+ */
+export function getRateLimitStats(req: Request): Record<string, {
+  count: number;
+  limit: number;
+  remaining: number;
+  resetAt: Date;
+}> {
+  const identifier = getRateLimitKey(req);
+  const stats: Record<string, any> = {};
+
+  for (const [category, config] of Object.entries(RATE_LIMIT_CONFIGS)) {
+    const bucketKey = getBucketKey(config.windowMs);
+    const storeKey = `${category}:${identifier}:${bucketKey}`;
+    const bucket = rateLimitStore.get(storeKey);
+
+    if (bucket) {
+      stats[category] = {
+        count: bucket.count,
+        limit: config.limit,
+        remaining: Math.max(0, config.limit - bucket.count),
+        resetAt: new Date(bucket.resetAt),
+      };
+    } else {
+      stats[category] = {
+        count: 0,
+        limit: config.limit,
+        remaining: config.limit,
+        resetAt: new Date(
+          Math.ceil(Date.now() / config.windowMs) * config.windowMs
+        ),
+      };
+    }
+  }
+
+  return stats;
+}
+
+/**
+ * Reset rate limit for a specific user (admin function)
+ */
+export function resetUserRateLimit(userId: string, category?: RateLimitCategory): void {
+  const identifier = `user:${userId}`;
+
+  if (category) {
+    // Reset specific category
+    const config = RATE_LIMIT_CONFIGS[category];
+    const bucketKey = getBucketKey(config.windowMs);
+    const storeKey = `${category}:${identifier}:${bucketKey}`;
+    rateLimitStore.delete(storeKey);
+  } else {
+    // Reset all categories
+    for (const key of rateLimitStore.keys()) {
+      if (key.includes(identifier)) {
+        rateLimitStore.delete(key);
+      }
+    }
+  }
+}
+
+/**
+ * Get memory usage stats for rate limit store
+ */
+export function getRateLimitStoreStats(): {
+  totalBuckets: number;
+  categories: Record<string, number>;
+} {
+  const stats: Record<string, number> = {};
+
+  for (const key of rateLimitStore.keys()) {
+    const category = key.split(':')[0];
+    stats[category] = (stats[category] || 0) + 1;
+  }
+
+  return {
+    totalBuckets: rateLimitStore.size,
+    categories: stats,
+  };
+}
