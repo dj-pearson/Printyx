@@ -20,6 +20,8 @@ import { trialRoutes } from './routes-trial';
 import emailParserRoutes from './routes-email-parser';
 import mobileTechnicianRoutes from './routes-mobile-technician';
 import equipmentQRRoutes from './routes-equipment-qr';
+import businessRecordsRoutes from './routes-business-records';
+import importRoutes from './routes-import';
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -13201,6 +13203,11 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
   // NOTE: Activities endpoint migrated to routes-activities.ts (Phase 3 Refactor)
   registerCustomerRoutes(app);
+
+  // Enhanced CRM Routes (Business Records)
+  app.use(businessRecordsRoutes);
+  app.use(importRoutes);
+
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
   registerDealDeskRoutes(app);
