@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<
       className={cn(
         // Mobile-first responsive dialog
         'fixed left-[50%] top-[50%] z-50 grid translate-x-[-50%] translate-y-[-50%] gap-4',
-        'border border-white/10 bg-card/90 backdrop-blur-xl shadow-lg',
+        'border bg-background shadow-lg',
         // Mobile: nearly full width with small margins
         'w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]',
         // Tablet and up: constrained width
