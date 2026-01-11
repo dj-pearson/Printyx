@@ -22,7 +22,7 @@ When you first open the CRM, you'll see:
 
 1. **KPI Cards** (Top)
    - Total Leads
-   - Prospects  
+   - Prospects
    - Customers
    - Pipeline Value
 
@@ -46,9 +46,9 @@ When you first open the CRM, you'll see:
 
 1. Click **"Add Lead"** button (top right)
 2. Fill in required fields:
-   - Company Name *
-   - Contact Name *
-   - Email *
+   - Company Name \*
+   - Contact Name \*
+   - Email \*
    - Phone
 3. Add optional details:
    - Industry
@@ -76,12 +76,14 @@ When you first open the CRM, you'll see:
 ### Moving Leads Through Stages
 
 **Drag & Drop Method** (Kanban View):
+
 1. Click and hold a lead card
 2. Drag to the target status column
 3. Release to drop
 4. Status updates automatically!
 
 **Status Dropdown Method** (List View):
+
 1. Find the lead in the list
 2. Click the status badge
 3. Select new status
@@ -110,9 +112,11 @@ Former Customer:
 ## 🔍 Finding Records Quickly
 
 ### Search Bar
+
 Type any of these:
+
 - Company name: "Acme"
-- Contact name: "John Smith"  
+- Contact name: "John Smith"
 - Email: "john@acme.com"
 
 Press Enter or wait - results filter instantly!
@@ -120,11 +124,13 @@ Press Enter or wait - results filter instantly!
 ### Filters
 
 **Pipeline Filter**:
+
 - Leads: Shows new/contacted/qualified
 - Prospects: Shows qualified/proposal/negotiation
 - Customers: Shows active/at-risk
 
 **View Toggle**:
+
 - Kanban: Visual board with drag-and-drop
 - List: Table view with sortable columns
 
@@ -133,6 +139,7 @@ Press Enter or wait - results filter instantly!
 ## 📊 Understanding the Cards
 
 Each card shows:
+
 - **Company Name** (top, bold)
 - **Contact Name** (below company)
 - **Deal Value** (if set, in green with $)
@@ -207,7 +214,7 @@ Each card shows:
 3. **Review Column Mapping**
    - System auto-maps columns (usually 90%+ accurate)
    - Manually adjust any incorrect mappings
-   - Required fields shown with *
+   - Required fields shown with \*
 
 4. **Validate Data**
    - System checks for errors (invalid emails, missing fields)
@@ -242,11 +249,13 @@ Each card shows:
 ### Kanban Board
 
 **Pros**:
+
 - Visual pipeline overview
 - Drag-and-drop status changes
 - See bottlenecks at a glance
 
 **When to Use**:
+
 - Managing active leads
 - Daily pipeline review
 - Team meetings/standups
@@ -254,16 +263,19 @@ Each card shows:
 ### List View
 
 **Pros**:
+
 - More details visible
 - Sortable columns
 - Better for large datasets
 
 **When to Use**:
+
 - Finding specific records
 - Exporting data
 - Detailed analysis
 
 ### Switching Views
+
 Click the **Grid icon** (Kanban) or **List icon** (List) in the toolbar.
 
 ---
@@ -295,16 +307,19 @@ Click the **Grid icon** (Kanban) or **List icon** (List) in the toolbar.
 ## 💬 Tips & Tricks
 
 ### Keyboard Shortcuts
+
 - **Cmd/Ctrl + K**: Quick search (future)
 - **Escape**: Close dialogs
 - **Tab**: Navigate form fields
 
 ### Speed Tips
+
 1. **Bulk Status Update**: Select multiple cards → Change status at once (future)
 2. **Quick Search**: Type partial names (e.g., "acm" finds "Acme Corp")
 3. **Filter Presets**: Save your favorite filter combinations (future)
 
 ### Mobile Tips
+
 1. **Cards are touch-optimized** (48px tap targets)
 2. **Swipe to reveal actions** (future)
 3. **Pull to refresh** (future)
@@ -314,6 +329,7 @@ Click the **Grid icon** (Kanban) or **List icon** (List) in the toolbar.
 ## 📞 Need Help?
 
 ### Quick Resources
+
 - **Documentation**: `/docs/CRM_IMPROVEMENTS_README.md`
 - **API Reference**: `/docs/OAUTH_INTEGRATION_PLAN.md`
 - **Competitive Info**: `/docs/CRM_COMPETITIVE_ADVANTAGES.md`
@@ -354,9 +370,10 @@ A: Yes! Use bulk export feature (coming soon) or export via reports.
 
 ## 🎉 You're Ready!
 
-You now know everything to get started with the new CRM. 
+You now know everything to get started with the new CRM.
 
 **Next Steps**:
+
 1. Import your existing leads
 2. Train your team
 3. Start managing your pipeline
