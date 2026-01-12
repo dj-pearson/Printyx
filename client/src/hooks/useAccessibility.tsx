@@ -25,7 +25,7 @@ interface AccessibilityContextType {
   preferences: AccessibilityPreferences;
   updatePreference: <K extends keyof AccessibilityPreferences>(
     key: K,
-    value: AccessibilityPreferences[K]
+    value: AccessibilityPreferences[K],
   ) => void;
   resetPreferences: () => void;
   announce: (message: string, priority?: 'polite' | 'assertive') => void;
@@ -158,30 +158,30 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
     }
   }, [preferences]);
 
-  const updatePreference = useCallback(<K extends keyof AccessibilityPreferences>(
-    key: K,
-    value: AccessibilityPreferences[K]
-  ) => {
-    setPreferences((prev) => {
-      const updated = { ...prev, [key]: value };
-      return updated;
-    });
+  const updatePreference = useCallback(
+    <K extends keyof AccessibilityPreferences>(key: K, value: AccessibilityPreferences[K]) => {
+      setPreferences((prev) => {
+        const updated = { ...prev, [key]: value };
+        return updated;
+      });
 
-    // Announce the change to screen readers
-    const labels: Record<string, string> = {
-      highContrast: value ? 'High contrast mode enabled' : 'High contrast mode disabled',
-      reducedMotion: value ? 'Reduced motion enabled' : 'Reduced motion disabled',
-      fontSize: `Font size set to ${value}`,
-      colorBlind: `Color vision filter set to ${value}`,
-      focusIndicators: value ? 'Focus indicators enabled' : 'Focus indicators disabled',
-      underlineLinks: value ? 'Link underlines enabled' : 'Link underlines disabled',
-    };
+      // Announce the change to screen readers
+      const labels: Record<string, string> = {
+        highContrast: value ? 'High contrast mode enabled' : 'High contrast mode disabled',
+        reducedMotion: value ? 'Reduced motion enabled' : 'Reduced motion disabled',
+        fontSize: `Font size set to ${value}`,
+        colorBlind: `Color vision filter set to ${value}`,
+        focusIndicators: value ? 'Focus indicators enabled' : 'Focus indicators disabled',
+        underlineLinks: value ? 'Link underlines enabled' : 'Link underlines disabled',
+      };
 
-    const message = labels[key];
-    if (message) {
-      announceToScreenReader(message, 'polite');
-    }
-  }, []);
+      const message = labels[key];
+      if (message) {
+        announceToScreenReader(message, 'polite');
+      }
+    },
+    [],
+  );
 
   const resetPreferences = useCallback(() => {
     setPreferences(DEFAULT_ACCESSIBILITY_PREFERENCES);
