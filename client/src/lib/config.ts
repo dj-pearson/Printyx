@@ -25,19 +25,18 @@ const rawAuthMode = String(import.meta.env.VITE_AUTH_MODE || '').toLowerCase();
 const resolvedAuthMode: AuthMode =
   rawAuthMode === 'legacy' ? 'legacy' : rawAuthMode === 'hybrid' ? 'hybrid' : 'supabase';
 
-// Determine API base URL
-// In production, use the explicit VITE_API_BASE_URL or fallback to api.printyx.net
-// In development, use relative URLs (empty string) for the dev proxy to work
+// Determine API base URL for Express-style /api/* routes
+// In production, these go to Supabase Edge Functions at functions.printyx.net
 const getApiBaseUrl = (): string => {
   // Explicit override always wins
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  // In production, default to api.printyx.net for Express API requests
+  // In production, use Edge Functions
   if (import.meta.env.PROD) {
-    return 'https://api.printyx.net';
+    return 'https://functions.printyx.net';
   }
-  // In development, use relative URLs (proxy handles it)
+  // In development, use relative URLs (Vite proxy handles it)
   return '';
 };
 
@@ -86,16 +85,23 @@ if (typeof window !== 'undefined') {
 }
 
 // Helper to construct full API URLs
+// In production, transforms /api/tasks -> /tasks for Edge Functions
 export function getApiUrl(path: string): string {
   // Remove leading slash if present
-  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  let cleanPath = path.startsWith('/') ? path.slice(1) : path;
 
   // If no base URL is configured, use relative URLs (dev mode with proxy)
   if (!config.apiBaseUrl) {
     return `/${cleanPath}`;
   }
 
-  // Otherwise, construct full URL (remove trailing slash from base if present)
+  // For Edge Functions (production), strip the /api/ prefix
+  // e.g., /api/tasks -> /tasks, /api/projects -> /projects
+  if (config.isProduction && cleanPath.startsWith('api/')) {
+    cleanPath = cleanPath.slice(4); // Remove 'api/' prefix
+  }
+
+  // Construct full URL (remove trailing slash from base if present)
   const baseUrl = config.apiBaseUrl.endsWith('/')
     ? config.apiBaseUrl.slice(0, -1)
     : config.apiBaseUrl;
