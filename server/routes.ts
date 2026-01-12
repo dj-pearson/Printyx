@@ -8621,9 +8621,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   const calendarRoutes = await import('./routes/calendar-routes');
   app.use('/api/calendar', calendarRoutes.default);
 
-  // Task Management Routes
-  const taskRoutes = await import('./routes/task-routes');
-  app.use('/api/tasks', taskRoutes.default);
+  // Task Management Routes - DISABLED: Using routes-tasks.ts instead (registered via registerTaskRoutes)
+  // This was causing 405 conflicts with the real task routes
+  // const taskRoutes = await import('./routes/task-routes');
+  // app.use('/api/tasks', taskRoutes.default);
 
   // Performance Monitoring Routes
   const performanceRoutes = await import('./routes/performance-routes');
