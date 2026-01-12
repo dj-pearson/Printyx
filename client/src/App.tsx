@@ -12,6 +12,8 @@ import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { AccessibilityProvider } from '@/hooks/useAccessibility';
+import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
 
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
@@ -24,6 +26,9 @@ import AuthCallback from '@/pages/AuthCallback';
 import EndUserLicenseAgreement from '@/pages/legal/EndUserLicenseAgreement';
 import PrivacyPolicy from '@/pages/legal/PrivacyPolicy';
 import TermsAndConditions from '@/pages/legal/TermsAndConditions';
+
+// Accessibility Statement - lazy load
+const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
 
 // Marketing pages - lazy load
 const Homepage = React.lazy(() => import('@/pages/marketing/Homepage'));
@@ -403,6 +408,7 @@ function Router() {
         <Route path="/eula" component={EndUserLicenseAgreement} />
         <Route path="/privacy" component={PrivacyPolicy} />
         <Route path="/terms" component={TermsAndConditions} />
+        <Route path="/accessibility" component={AccessibilityStatement} />
         <Route path="/" component={Homepage} />
 
         {/* Strategic landing pages */}
@@ -755,6 +761,7 @@ function Router() {
           <Route path="/eula" component={EndUserLicenseAgreement} />
           <Route path="/privacy" component={PrivacyPolicy} />
           <Route path="/terms" component={TermsAndConditions} />
+          <Route path="/accessibility" component={AccessibilityStatement} />
           <Route path="/onboarding" component={OnboardingDashboard} />
           <Route path="/onboarding/new" component={EnhancedOnboardingForm} />
           <Route path="/onboarding/enhanced" component={EnhancedOnboardingForm} />
@@ -772,41 +779,45 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <PWAProvider>
-            <SEOProvider>
-              <Toaster />
-              <ErrorBoundary
-                level="critical"
-                onError={(error, errorInfo) => {
-                  // Log to console in development, send to monitoring in production
-                  console.error('[App Error Boundary]', error, errorInfo);
-                }}
-              >
-                <React.Suspense
-                  fallback={
-                    <div
-                      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
-                      role="status"
-                      aria-busy="true"
-                      aria-label="Loading application"
-                    >
-                      <div className="text-center">
+        <AccessibilityProvider>
+          <LiveRegionProvider>
+            <TooltipProvider>
+              <PWAProvider>
+                <SEOProvider>
+                  <Toaster />
+                  <ErrorBoundary
+                    level="critical"
+                    onError={(error, errorInfo) => {
+                      // Log to console in development, send to monitoring in production
+                      console.error('[App Error Boundary]', error, errorInfo);
+                    }}
+                  >
+                    <React.Suspense
+                      fallback={
                         <div
-                          className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
-                          aria-hidden="true"
-                        />
-                        <p className="mt-4 text-gray-600">Loading...</p>
-                      </div>
-                    </div>
-                  }
-                >
-                  <Router />
-                </React.Suspense>
-              </ErrorBoundary>
-            </SEOProvider>
-          </PWAProvider>
-        </TooltipProvider>
+                          className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+                          role="status"
+                          aria-busy="true"
+                          aria-label="Loading application"
+                        >
+                          <div className="text-center">
+                            <div
+                              className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+                              aria-hidden="true"
+                            />
+                            <p className="mt-4 text-gray-600">Loading...</p>
+                          </div>
+                        </div>
+                      }
+                    >
+                      <Router />
+                    </React.Suspense>
+                  </ErrorBoundary>
+                </SEOProvider>
+              </PWAProvider>
+            </TooltipProvider>
+          </LiveRegionProvider>
+        </AccessibilityProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
