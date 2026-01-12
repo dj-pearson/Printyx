@@ -11,6 +11,7 @@ import {
   KeyboardShortcutsDialog,
   useKeyboardNavigation,
 } from '@/components/layout/keyboard-shortcuts-dialog';
+import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -53,13 +54,24 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
 
   return (
     <SidebarProvider defaultOpen={true}>
+      {/* Skip Navigation for Keyboard Users - WCAG 2.1 Level A (2.4.1) */}
+      <SkipNavigation
+        links={[
+          { id: 'main-content', label: 'Skip to main content' },
+          { id: 'sidebar-navigation', label: 'Skip to navigation' },
+          { id: 'search-input', label: 'Skip to search' },
+        ]}
+      />
+
       <div className="flex min-h-screen w-full bg-executive">
         {/* Global Components */}
         <CommandPalette open={open} onOpenChange={setOpen} />
         <KeyboardShortcutsDialog />
 
         {/* Integrated Sidebar Component - Works with SidebarProvider */}
-        <RoleAwareCollapsibleSidebar />
+        <nav id="sidebar-navigation" aria-label="Main navigation">
+          <RoleAwareCollapsibleSidebar />
+        </nav>
 
         <SidebarInset className="flex-1 flex flex-col overflow-hidden">
           <Header title={title} description={description} onSearchClick={() => setOpen(true)} />
@@ -67,7 +79,12 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
           {/* Smart Breadcrumb Navigation with Quick Actions */}
           <SmartBreadcrumb />
 
-          <main className="flex-1 overflow-auto">
+          <main
+            id="main-content"
+            className="flex-1 overflow-auto"
+            tabIndex={-1}
+            aria-label="Main content"
+          >
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 pb-20 md:pb-6">{children}</div>
           </main>
         </SidebarInset>
