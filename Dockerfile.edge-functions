@@ -39,10 +39,29 @@ echo "======================================"\n\
 exec deno run --allow-all /app/server.ts\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
-# Create a simple server that routes to functions
+# Create a simple server that routes to functions with CORS support
 RUN echo 'import { serve } from "https://deno.land/std@0.168.0/http/server.ts";\n\
 \n\
 const port = parseInt(Deno.env.get("PORT") || "3001");\n\
+\n\
+// CORS Configuration\n\
+const ALLOWED_ORIGINS = [\n\
+  "https://printyx.net",\n\
+  "https://www.printyx.net",\n\
+  "http://localhost:5173",\n\
+  "http://localhost:5000",\n\
+];\n\
+\n\
+function getCorsHeaders(origin: string | null): Record<string, string> {\n\
+  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];\n\
+  return {\n\
+    "Access-Control-Allow-Origin": allowedOrigin,\n\
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-tenant-id",\n\
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",\n\
+    "Access-Control-Allow-Credentials": "true",\n\
+    "Access-Control-Max-Age": "86400",\n\
+  };\n\
+}\n\
 \n\
 // Load all function handlers\n\
 const functions: Record<string, any> = {};\n\
@@ -60,13 +79,20 @@ for await (const dirEntry of Deno.readDir("/app/functions")) {\n\
   }\n\
 }\n\
 \n\
-console.log(`\n🚀 Edge Functions server listening on http://0.0.0.0:${port}`);\n\
-console.log(`Available functions: ${Object.keys(functions).join(", ")}\n`);\n\
+console.log(`\\n🚀 Edge Functions server listening on http://0.0.0.0:${port}`);\n\
+console.log(`Available functions: ${Object.keys(functions).join(", ")}\\n`);\n\
 \n\
 // Main request handler\n\
 await serve(async (req: Request) => {\n\
   const url = new URL(req.url);\n\
   const pathParts = url.pathname.split("/").filter(Boolean);\n\
+  const origin = req.headers.get("origin");\n\
+  const corsHeaders = getCorsHeaders(origin);\n\
+  \n\
+  // Handle CORS preflight requests\n\
+  if (req.method === "OPTIONS") {\n\
+    return new Response("ok", { headers: corsHeaders });\n\
+  }\n\
   \n\
   // Health check\n\
   if (url.pathname === "/health" || url.pathname === "/") {\n\
@@ -78,7 +104,7 @@ await serve(async (req: Request) => {\n\
       }),\n\
       { \n\
         status: 200,\n\
-        headers: { "Content-Type": "application/json" }\n\
+        headers: { ...corsHeaders, "Content-Type": "application/json" }\n\
       }\n\
     );\n\
   }\n\
@@ -94,7 +120,7 @@ await serve(async (req: Request) => {\n\
       }),\n\
       { \n\
         status: 404,\n\
-        headers: { "Content-Type": "application/json" }\n\
+        headers: { ...corsHeaders, "Content-Type": "application/json" }\n\
       }\n\
     );\n\
   }\n\
@@ -107,15 +133,29 @@ await serve(async (req: Request) => {\n\
     newUrl.pathname = "/" + pathParts.slice(1).join("/");\n\
     const newReq = new Request(newUrl, req);\n\
     \n\
-    // Call the function\n\
-    return await functions[functionName].default(newReq);\n\
+    // Call the function and ensure CORS headers are included\n\
+    const response = await functions[functionName].default(newReq);\n\
+    \n\
+    // Clone response and add CORS headers if not already present\n\
+    const newHeaders = new Headers(response.headers);\n\
+    if (!newHeaders.has("Access-Control-Allow-Origin")) {\n\
+      Object.entries(corsHeaders).forEach(([key, value]) => {\n\
+        newHeaders.set(key, value);\n\
+      });\n\
+    }\n\
+    \n\
+    return new Response(response.body, {\n\
+      status: response.status,\n\
+      statusText: response.statusText,\n\
+      headers: newHeaders,\n\
+    });\n\
   } catch (error) {\n\
     console.error(`Error executing ${functionName}:`, error);\n\
     return new Response(\n\
       JSON.stringify({ error: error.message }),\n\
       { \n\
         status: 500,\n\
-        headers: { "Content-Type": "application/json" }\n\
+        headers: { ...corsHeaders, "Content-Type": "application/json" }\n\
       }\n\
     );\n\
   }\n\
