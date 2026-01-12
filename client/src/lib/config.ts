@@ -25,18 +25,32 @@ const rawAuthMode = String(import.meta.env.VITE_AUTH_MODE || '').toLowerCase();
 const resolvedAuthMode: AuthMode =
   rawAuthMode === 'legacy' ? 'legacy' : rawAuthMode === 'hybrid' ? 'hybrid' : 'supabase';
 
+// Determine API base URL
+// In production, use the explicit VITE_API_BASE_URL or fallback to api.printyx.net
+// In development, use relative URLs (empty string) for the dev proxy to work
+const getApiBaseUrl = (): string => {
+  // Explicit override always wins
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // In production, default to api.printyx.net for Express API requests
+  if (import.meta.env.PROD) {
+    return 'https://api.printyx.net';
+  }
+  // In development, use relative URLs (proxy handles it)
+  return '';
+};
+
 export const config = {
-  // API Base URL - defaults to relative for dev, can be overridden for production
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || '',
+  // API Base URL - defaults to relative for dev, api.printyx.net for production
+  apiBaseUrl: getApiBaseUrl(),
 
   // Supabase Configuration
   // In production, use same-origin proxy to avoid CORS issues
   // Self-hosted Supabase at api.printyx.net
   supabase: {
     // Use proxy in production: /api/* routes to Supabase API
-    url: useProxy
-      ? getOriginUrl()
-      : import.meta.env.VITE_SUPABASE_URL || 'https://api.printyx.net',
+    url: useProxy ? getOriginUrl() : import.meta.env.VITE_SUPABASE_URL || 'https://api.printyx.net',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
     // Use proxy in production: /functions/* routes to Supabase Edge Functions
     functionsUrl: useProxy
@@ -65,6 +79,7 @@ if (typeof window !== 'undefined') {
     authMode: config.authMode,
     useProxy: config.useSupabaseProxy,
     supabaseUrl: config.supabase.url,
+    apiBaseUrl: config.apiBaseUrl,
     isProduction: config.isProduction,
     envAuthMode: import.meta.env.VITE_AUTH_MODE,
   });
