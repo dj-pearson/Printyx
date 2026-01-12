@@ -23,7 +23,9 @@ export default async function handler(req: Request) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      return createCorsResponse({ error: 'Unauthorized' }, 401, req);
+      console.error('Auth error:', userError);
+      console.error('Authorization header:', req.headers.get('Authorization'));
+      return createCorsResponse({ error: 'Unauthorized', details: userError?.message }, 401, req);
     }
 
     // Get tenant ID from user metadata
