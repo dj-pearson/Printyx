@@ -68,7 +68,7 @@ export default async function handler(req: Request) {
         role_id,
         team_id,
         is_active,
-        avatar_url
+        profile_image_url
       `,
       )
       .eq('tenant_id', tenantId)
@@ -89,7 +89,7 @@ export default async function handler(req: Request) {
       lastName: u.last_name,
       roleId: u.role_id,
       teamId: u.team_id,
-      avatar: u.avatar_url,
+      avatar: u.profile_image_url,
       isActive: u.is_active,
     }));
 

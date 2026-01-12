@@ -112,16 +112,10 @@ export default async function handler(req: Request) {
           return createCorsResponse(task, 200, req);
         }
 
-        // List all tasks
+        // List all tasks (without joins to avoid FK errors)
         const { data: tasks, error } = await admin
           .from('tasks')
-          .select(
-            `
-            *,
-            assigned_user:users!tasks_assigned_to_fkey(id, first_name, last_name, email),
-            project:projects!tasks_project_id_fkey(id, name)
-          `,
-          )
+          .select('*')
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false });
 
@@ -138,11 +132,9 @@ export default async function handler(req: Request) {
           status: task.status,
           priority: task.priority,
           assignedTo: task.assigned_to,
-          assignedToName: task.assigned_user
-            ? `${task.assigned_user.first_name || ''} ${task.assigned_user.last_name || ''}`.trim()
-            : null,
+          assignedToName: null, // Will be populated by frontend if needed
           projectId: task.project_id,
-          projectName: task.project?.name,
+          projectName: null, // Will be populated by frontend if needed
           dueDate: task.due_date,
           estimatedHours: task.estimated_hours,
           actualHours: task.actual_hours,

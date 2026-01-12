@@ -95,16 +95,10 @@ export default async function handler(req: Request) {
           );
         }
 
-        // List all projects
+        // List all projects (without joins to avoid FK errors)
         const { data: projects, error } = await admin
           .from('projects')
-          .select(
-            `
-            *,
-            project_manager:users!projects_project_manager_id_fkey(id, first_name, last_name),
-            customer:business_records!projects_customer_id_fkey(id, company_name)
-          `,
-          )
+          .select('*')
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false });
 
