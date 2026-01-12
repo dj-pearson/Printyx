@@ -94,6 +94,7 @@ import { registerTechnicianManagementRoutes } from './routes-technician-manageme
 import { registerProductModelsRoutes } from './routes-product-models';
 import { registerProductPricingRoutes } from './routes-product-pricing';
 import { registerSoftwareProductsRoutes } from './routes-software-products';
+import accessibilityRoutes from './routes-accessibility';
 // OLD BILLING ROUTES - CONSOLIDATED INTO ./routes/billing.ts
 // import { registerInvoicesRoutes } from './routes-invoices';
 import { setupAuth, isAuthenticated } from './replitAuth';
@@ -837,6 +838,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Universal search routes
   app.use(universalSearchRoutes);
+
+  // Accessibility routes - ADA/WCAG 2.1 compliance
+  app.use('/api/accessibility', accessibilityRoutes);
 
   // Tenants route for platform users (Root Admin / platform-only)
   app.get('/api/tenants', async (req: any, res) => {
