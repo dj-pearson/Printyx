@@ -1,0 +1,432 @@
+/**
+ * Accessibility Styles
+ * WCAG 2.1 Compliance CSS
+ *
+ * This file contains all accessibility-related styles including:
+ * - Skip navigation
+ * - Reduced motion
+ * - High contrast mode
+ * - Color blindness filters
+ * - Font scaling
+ * - Focus indicators
+ */
+
+/* ==========================================================================
+   Screen Reader Only Utilities
+   ========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only-focusable:focus,
+.sr-only-focusable:active {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ==========================================================================
+   Skip Navigation
+   WCAG 2.1 Level A - Bypass Blocks (2.4.1)
+   ========================================================================== */
+
+.skip-navigation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+}
+
+.skip-navigation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: none;
+}
+
+.skip-link:focus {
+  position: fixed;
+  top: 0;
+  left: 0;
+  outline: 3px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.skip-target:focus {
+  outline: none;
+}
+
+/* ==========================================================================
+   Reduced Motion Support
+   WCAG 2.1 Level AAA - Animation from Interactions (2.3.3)
+   ========================================================================== */
+
+/* System preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Manual reduced motion preference */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ==========================================================================
+   High Contrast Mode
+   WCAG 2.1 Level AAA - Contrast (Enhanced) (1.4.6)
+   ========================================================================== */
+
+/* System preference for high contrast */
+@media (prefers-contrast: more) {
+  :root {
+    --high-contrast-border: 2px solid currentColor;
+  }
+}
+
+/* Manual high contrast mode */
+.high-contrast {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 0%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 0%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 250 100% 30%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 90%;
+  --secondary-foreground: 0 0% 0%;
+  --muted: 0 0% 90%;
+  --muted-foreground: 0 0% 30%;
+  --accent: 0 0% 90%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 0 100% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0%;
+  --input: 0 0% 0%;
+  --ring: 250 100% 30%;
+}
+
+.dark.high-contrast {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 0 0% 0%;
+  --card-foreground: 0 0% 100%;
+  --popover: 0 0% 0%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 250 100% 70%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 0 0% 20%;
+  --muted-foreground: 0 0% 70%;
+  --accent: 0 0% 20%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 100% 60%;
+  --destructive-foreground: 0 0% 0%;
+  --border: 0 0% 100%;
+  --input: 0 0% 100%;
+  --ring: 250 100% 70%;
+}
+
+.high-contrast button,
+.high-contrast [role="button"],
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+  border: 2px solid currentColor !important;
+}
+
+.high-contrast a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ==========================================================================
+   Color Blindness Filters
+   WCAG 2.1 Level A - Use of Color (1.4.1)
+   ========================================================================== */
+
+/* Protanopia (Red-Blind) */
+[data-color-blind="protanopia"] {
+  filter: url('#protanopia-filter');
+}
+
+/* Deuteranopia (Green-Blind) */
+[data-color-blind="deuteranopia"] {
+  filter: url('#deuteranopia-filter');
+}
+
+/* Tritanopia (Blue-Blind) */
+[data-color-blind="tritanopia"] {
+  filter: url('#tritanopia-filter');
+}
+
+/* Achromatopsia (Total Color Blindness) */
+[data-color-blind="achromatopsia"] {
+  filter: grayscale(100%);
+}
+
+/* ==========================================================================
+   Font Size Scaling
+   WCAG 2.1 Level AA - Resize Text (1.4.4)
+   ========================================================================== */
+
+:root {
+  --accessibility-font-scale: 1;
+}
+
+/* Ensure text can be resized up to 200% without loss of functionality */
+html {
+  font-size: calc(16px * var(--accessibility-font-scale, 1));
+}
+
+/* Prevent font scaling from breaking layout */
+@media (min-width: 640px) {
+  body {
+    min-width: 320px;
+  }
+}
+
+/* ==========================================================================
+   Focus Indicators
+   WCAG 2.1 Level AA - Focus Visible (2.4.7)
+   ========================================================================== */
+
+.show-focus-indicators *:focus {
+  outline: 3px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+}
+
+.show-focus-indicators *:focus:not(:focus-visible) {
+  outline: none !important;
+}
+
+.show-focus-indicators *:focus-visible {
+  outline: 3px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+}
+
+/* Enhanced focus indicators for high contrast mode */
+.high-contrast *:focus-visible {
+  outline: 4px solid currentColor !important;
+  outline-offset: 4px !important;
+}
+
+/* ==========================================================================
+   Link Underlines
+   WCAG 2.1 Level A - Link Purpose (2.4.4)
+   ========================================================================== */
+
+.underline-links a:not([role="button"]):not(.no-underline) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.underline-links a:not([role="button"]):not(.no-underline):hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ==========================================================================
+   Cursor Size
+   ========================================================================== */
+
+[data-cursor-size="large"],
+[data-cursor-size="large"] * {
+  cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="black" stroke="white" stroke-width="1" d="M8 2 L8 26 L13 21 L18 30 L22 28 L17 19 L24 19 Z"/></svg>') 8 2, auto;
+}
+
+[data-cursor-size="large"] a,
+[data-cursor-size="large"] button,
+[data-cursor-size="large"] [role="button"],
+[data-cursor-size="large"] input,
+[data-cursor-size="large"] select,
+[data-cursor-size="large"] textarea,
+[data-cursor-size="large"] [tabindex]:not([tabindex="-1"]) {
+  cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path fill="black" stroke="white" stroke-width="1" d="M6 6 L6 26 L10 26 L10 18 L22 18 L22 26 L26 26 L26 6 Z"/></svg>') 16 16, pointer;
+}
+
+/* ==========================================================================
+   Touch Target Size
+   WCAG 2.1 Level AAA - Target Size (2.5.5)
+   ========================================================================== */
+
+.touch-accessible button,
+.touch-accessible [role="button"],
+.touch-accessible a,
+.touch-accessible input[type="checkbox"],
+.touch-accessible input[type="radio"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ==========================================================================
+   Text Spacing
+   WCAG 2.1 Level AA - Text Spacing (1.4.12)
+   ========================================================================== */
+
+/* Users can adjust these values in their browsers */
+body {
+  line-height: 1.5;
+  letter-spacing: 0.012em;
+  word-spacing: 0.16em;
+}
+
+p {
+  margin-bottom: 2em;
+}
+
+/* ==========================================================================
+   Content Visibility
+   WCAG 2.1 Level A - Pause, Stop, Hide (2.2.2)
+   ========================================================================== */
+
+/* Pause animations on hover for users who need more time */
+.pausable-animation:hover {
+  animation-play-state: paused;
+}
+
+/* ==========================================================================
+   Form Error Styling
+   WCAG 2.1 Level A - Error Identification (3.3.1)
+   ========================================================================== */
+
+[aria-invalid="true"] {
+  border-color: hsl(var(--destructive)) !important;
+}
+
+[aria-invalid="true"]:focus {
+  outline-color: hsl(var(--destructive)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.2) !important;
+}
+
+.error-message {
+  color: hsl(var(--destructive));
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Error icon indicator (not just color) */
+[aria-invalid="true"]::before {
+  content: "⚠ ";
+}
+
+/* ==========================================================================
+   Table Accessibility
+   WCAG 2.1 Level A - Info and Relationships (1.3.1)
+   ========================================================================== */
+
+table {
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Make table rows distinguishable */
+.high-contrast tbody tr:nth-child(even) {
+  background-color: hsl(var(--muted) / 0.5);
+}
+
+/* ==========================================================================
+   Print Styles for Accessibility
+   ========================================================================== */
+
+@media print {
+  .sr-only,
+  .skip-navigation,
+  [aria-hidden="true"] {
+    display: none !important;
+  }
+
+  a::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+  }
+
+  /* Ensure sufficient contrast for printing */
+  * {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* ==========================================================================
+   Color Blindness SVG Filters
+   Include these in the document for the filters to work
+   ========================================================================== */
+
+/*
+Add this SVG to your document:
+
+<svg xmlns="http://www.w3.org/2000/svg" class="sr-only">
+  <defs>
+    <filter id="protanopia-filter">
+      <feColorMatrix type="matrix" values="
+        0.567, 0.433, 0, 0, 0
+        0.558, 0.442, 0, 0, 0
+        0, 0.242, 0.758, 0, 0
+        0, 0, 0, 1, 0
+      "/>
+    </filter>
+    <filter id="deuteranopia-filter">
+      <feColorMatrix type="matrix" values="
+        0.625, 0.375, 0, 0, 0
+        0.7, 0.3, 0, 0, 0
+        0, 0.3, 0.7, 0, 0
+        0, 0, 0, 1, 0
+      "/>
+    </filter>
+    <filter id="tritanopia-filter">
+      <feColorMatrix type="matrix" values="
+        0.95, 0.05, 0, 0, 0
+        0, 0.433, 0.567, 0, 0
+        0, 0.475, 0.525, 0, 0
+        0, 0, 0, 1, 0
+      "/>
+    </filter>
+  </defs>
+</svg>
+*/

@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Accessibility Styles - WCAG 2.1 Compliance */
+@import './styles/accessibility.css';
+
 /* Safe viewport height CSS custom properties */
 :root {
   /* Fallback to vh for browsers that don't support dvh */
