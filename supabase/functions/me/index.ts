@@ -1,6 +1,5 @@
 // Me Edge Function
 // Returns current user profile + role/team from DB using service role (bypasses RLS).
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 
@@ -44,7 +43,8 @@ function normalizePermissions(input: unknown): PermissionsObject {
   return {};
 }
 
-serve(async (req: Request) => {
+// Export handler for use by the main server router
+export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -176,4 +176,4 @@ serve(async (req: Request) => {
       req,
     );
   }
-});
+}
