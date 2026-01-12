@@ -1,10 +1,10 @@
 // Users Edge Function
 // Lists users for task assignment and team management
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 
-serve(async (req: Request) => {
+// Export handler for use by the main server router
+export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -79,4 +79,4 @@ serve(async (req: Request) => {
       req,
     );
   }
-});
+}

@@ -1,6 +1,5 @@
 // Signup Edge Function
 // Creates tenant, user, and sends verification email
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
@@ -26,7 +25,8 @@ interface SignupRequest {
   };
 }
 
-serve(async (req: Request) => {
+// Export handler for use by the main server router
+export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -231,4 +231,4 @@ serve(async (req: Request) => {
       req,
     );
   }
-});
+}
