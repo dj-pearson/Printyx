@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -10,41 +10,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Calendar as CalendarIcon,
-  Clock,
-  Flag,
-  Tag,
-  Users,
-  Link,
-  Plus,
-  X,
-} from "lucide-react";
-import { format } from "date-fns";
+} from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar as CalendarIcon, Clock, Flag, Tag, Users, Link, Plus, X } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "in_progress" | "review" | "completed" | "cancelled";
-  priority: "low" | "medium" | "high" | "urgent";
+  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string;
   projectId?: string;
   parentTaskId?: string;
@@ -81,25 +68,23 @@ export function CreateTaskDialog({
   parentTask?: Task;
 }) {
   const [formData, setFormData] = useState<Partial<Task>>({
-    title: "",
-    description: "",
-    status: "todo",
-    priority: "medium",
-    assignedTo: "",
-    projectId: "",
+    title: '',
+    description: '',
+    status: 'todo',
+    priority: 'medium',
+    assignedTo: '',
+    projectId: '',
     parentTaskId: parentTask?.id,
-    dueDate: "",
-    startDate: "",
+    dueDate: '',
+    startDate: '',
     estimatedHours: 0,
     tags: [],
     customFields: {},
     dependencies: [],
   });
 
-  const [newTag, setNewTag] = useState("");
-  const [selectedDependencies, setSelectedDependencies] = useState<string[]>(
-    []
-  );
+  const [newTag, setNewTag] = useState('');
+  const [selectedDependencies, setSelectedDependencies] = useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,15 +94,15 @@ export function CreateTaskDialog({
     });
     // Reset form
     setFormData({
-      title: "",
-      description: "",
-      status: "todo",
-      priority: "medium",
-      assignedTo: "",
-      projectId: "",
+      title: '',
+      description: '',
+      status: 'todo',
+      priority: 'medium',
+      assignedTo: '',
+      projectId: '',
       parentTaskId: parentTask?.id,
-      dueDate: "",
-      startDate: "",
+      dueDate: '',
+      startDate: '',
       estimatedHours: 0,
       tags: [],
       customFields: {},
@@ -132,7 +117,7 @@ export function CreateTaskDialog({
         ...prev,
         tags: [...(prev.tags || []), newTag],
       }));
-      setNewTag("");
+      setNewTag('');
     }
   };
 
@@ -148,30 +133,40 @@ export function CreateTaskDialog({
       <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">
-            {parentTask
-              ? `Create Subtask for "${parentTask.title}"`
-              : "Create New Task"}
+            {parentTask ? `Create Subtask for "${parentTask.title}"` : 'Create New Task'}
           </DialogTitle>
           <DialogDescription className="text-sm">
             {parentTask
-              ? "Add a subtask to break down the work into smaller, manageable pieces."
-              : "Create a new task and configure all the details needed for successful completion."}
+              ? 'Add a subtask to break down the work into smaller, manageable pieces.'
+              : 'Create a new task and configure all the details needed for successful completion.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="details" className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
-              <TabsTrigger value="details" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+              <TabsTrigger
+                value="details"
+                className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
+              >
                 Details
               </TabsTrigger>
-              <TabsTrigger value="scheduling" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+              <TabsTrigger
+                value="scheduling"
+                className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
+              >
                 Schedule
               </TabsTrigger>
-              <TabsTrigger value="workflow" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+              <TabsTrigger
+                value="workflow"
+                className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
+              >
                 Workflow
               </TabsTrigger>
-              <TabsTrigger value="custom" className="text-xs sm:text-sm min-h-[44px] touch-manipulation">
+              <TabsTrigger
+                value="custom"
+                className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
+              >
                 Custom
               </TabsTrigger>
             </TabsList>
@@ -185,9 +180,7 @@ export function CreateTaskDialog({
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="What needs to be done?"
                   required
                   className="h-11 touch-manipulation text-base"
@@ -368,7 +361,7 @@ export function CreateTaskDialog({
                     onChange={(e) => setNewTag(e.target.value)}
                     placeholder="Add tag..."
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === 'Enter') {
                         e.preventDefault();
                         addTag();
                       }
@@ -401,24 +394,18 @@ export function CreateTaskDialog({
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {formData.startDate
-                          ? format(new Date(formData.startDate), "PPP")
-                          : "Pick start date"}
+                          ? format(new Date(formData.startDate), 'PPP')
+                          : 'Pick start date'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <Calendar
                         mode="single"
-                        selected={
-                          formData.startDate
-                            ? new Date(formData.startDate)
-                            : undefined
-                        }
+                        selected={formData.startDate ? new Date(formData.startDate) : undefined}
                         onSelect={(date) =>
                           setFormData((prev) => ({
                             ...prev,
-                            startDate: date
-                              ? date.toISOString().split("T")[0]
-                              : "",
+                            startDate: date ? date.toISOString().split('T')[0] : '',
                           }))
                         }
                         initialFocus
@@ -437,24 +424,18 @@ export function CreateTaskDialog({
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {formData.dueDate
-                          ? format(new Date(formData.dueDate), "PPP")
-                          : "Pick due date"}
+                          ? format(new Date(formData.dueDate), 'PPP')
+                          : 'Pick due date'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <Calendar
                         mode="single"
-                        selected={
-                          formData.dueDate
-                            ? new Date(formData.dueDate)
-                            : undefined
-                        }
+                        selected={formData.dueDate ? new Date(formData.dueDate) : undefined}
                         onSelect={(date) =>
                           setFormData((prev) => ({
                             ...prev,
-                            dueDate: date
-                              ? date.toISOString().split("T")[0]
-                              : "",
+                            dueDate: date ? date.toISOString().split('T')[0] : '',
                           }))
                         }
                         initialFocus
@@ -492,14 +473,12 @@ export function CreateTaskDialog({
               <div className="space-y-2">
                 <Label>Dependencies</Label>
                 <p className="text-sm text-gray-600">
-                  Select tasks that must be completed before this task can
-                  start.
+                  Select tasks that must be completed before this task can start.
                 </p>
                 {/* This would be populated with existing tasks */}
                 <div className="border rounded-lg p-4 bg-gray-50">
                   <p className="text-sm text-gray-500">
-                    No dependencies selected. Dependencies help establish task
-                    order and workflow.
+                    No dependencies selected. Dependencies help establish task order and workflow.
                   </p>
                 </div>
               </div>
@@ -509,8 +488,8 @@ export function CreateTaskDialog({
                 <div className="space-y-2">
                   <Label>Task Breakdown</Label>
                   <p className="text-sm text-gray-600">
-                    After creating this task, you can break it down into smaller
-                    subtasks for better organization.
+                    After creating this task, you can break it down into smaller subtasks for better
+                    organization.
                   </p>
                 </div>
               )}
@@ -520,9 +499,7 @@ export function CreateTaskDialog({
               <div className="space-y-4">
                 <div className="text-center py-8 text-gray-500">
                   <p>Custom fields will be available in future updates.</p>
-                  <p className="text-sm">
-                    Add custom properties specific to your workflow.
-                  </p>
+                  <p className="text-sm">Add custom properties specific to your workflow.</p>
                 </div>
               </div>
             </TabsContent>
@@ -542,11 +519,7 @@ export function CreateTaskDialog({
               disabled={isLoading || !formData.title}
               className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
             >
-              {isLoading
-                ? "Creating..."
-                : parentTask
-                ? "Create Subtask"
-                : "Create Task"}
+              {isLoading ? 'Creating...' : parentTask ? 'Create Subtask' : 'Create Task'}
             </Button>
           </DialogFooter>
         </form>
@@ -570,14 +543,14 @@ export function CreateProjectDialog({
   isLoading: boolean;
 }) {
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    projectManager: "",
-    customerId: "",
-    startDate: "",
-    endDate: "",
-    estimatedBudget: "",
-    template: "",
+    name: '',
+    description: '',
+    projectManager: '',
+    customerId: '',
+    startDate: '',
+    endDate: '',
+    estimatedBudget: '',
+    template: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -585,14 +558,14 @@ export function CreateProjectDialog({
     onSubmit(formData);
     // Reset form
     setFormData({
-      name: "",
-      description: "",
-      projectManager: "",
-      customerId: "",
-      startDate: "",
-      endDate: "",
-      estimatedBudget: "",
-      template: "",
+      name: '',
+      description: '',
+      projectManager: '',
+      customerId: '',
+      startDate: '',
+      endDate: '',
+      estimatedBudget: '',
+      template: '',
     });
   };
 
@@ -615,9 +588,7 @@ export function CreateProjectDialog({
             <Input
               id="projectName"
               value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Enter project name"
               required
               className="h-11 touch-manipulation text-base"
@@ -649,9 +620,7 @@ export function CreateProjectDialog({
             <Label className="text-sm sm:text-base">Project Manager</Label>
             <Select
               value={formData.projectManager}
-              onValueChange={(value) =>
-                setFormData((prev) => ({ ...prev, projectManager: value }))
-              }
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, projectManager: value }))}
             >
               <SelectTrigger className="h-11 touch-manipulation">
                 <SelectValue placeholder="Select project manager" />
@@ -695,9 +664,7 @@ export function CreateProjectDialog({
               <Input
                 type="date"
                 value={formData.endDate}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, endDate: e.target.value }))
-                }
+                onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
                 className="h-11 touch-manipulation text-base"
               />
             </div>
@@ -732,7 +699,259 @@ export function CreateProjectDialog({
               disabled={isLoading || !formData.name}
               className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
             >
-              {isLoading ? "Creating..." : "Create Project"}
+              {isLoading ? 'Creating...' : 'Create Project'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Edit Task Dialog
+export function EditTaskDialog({
+  open,
+  onOpenChange,
+  task,
+  projects,
+  teamMembers,
+  onSubmit,
+  isLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  task: Task | null;
+  projects: Project[];
+  teamMembers: any[];
+  onSubmit: (taskId: string, data: Partial<Task>) => void;
+  isLoading: boolean;
+}) {
+  const [formData, setFormData] = useState<Partial<Task>>({});
+
+  // Pre-populate form when task changes
+  React.useEffect(() => {
+    if (task) {
+      setFormData({
+        title: task.title || '',
+        description: task.description || '',
+        status: task.status,
+        priority: task.priority,
+        assignedTo: task.assignedTo || '',
+        projectId: task.projectId || '',
+        dueDate: task.dueDate || '',
+        tags: task.tags || [],
+      });
+    }
+  }, [task]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (task) {
+      onSubmit(task.id, formData);
+    }
+  };
+
+  if (!task) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+        <DialogHeader>
+          <DialogTitle className="text-lg sm:text-xl">Edit Task</DialogTitle>
+          <DialogDescription className="text-sm">
+            Update task details and configuration
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Task Title */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-title" className="text-sm sm:text-base">
+              Task Title *
+            </Label>
+            <Input
+              id="edit-title"
+              value={formData.title}
+              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+              placeholder="What needs to be done?"
+              required
+              className="h-11 touch-manipulation text-base"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-description" className="text-sm sm:text-base">
+              Description
+            </Label>
+            <Textarea
+              id="edit-description"
+              value={formData.description}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="Add more details about this task..."
+              rows={3}
+              className="touch-manipulation text-base resize-none"
+            />
+          </div>
+
+          {/* Status & Priority */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, status: value as any }))
+                }
+              >
+                <SelectTrigger className="h-11 touch-manipulation">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todo" className="min-h-[44px]">
+                    To Do
+                  </SelectItem>
+                  <SelectItem value="in_progress" className="min-h-[44px]">
+                    In Progress
+                  </SelectItem>
+                  <SelectItem value="review" className="min-h-[44px]">
+                    Review
+                  </SelectItem>
+                  <SelectItem value="completed" className="min-h-[44px]">
+                    Completed
+                  </SelectItem>
+                  <SelectItem value="cancelled" className="min-h-[44px]">
+                    Cancelled
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base">Priority</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, priority: value as any }))
+                }
+              >
+                <SelectTrigger className="h-11 touch-manipulation">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low" className="min-h-[44px]">
+                    Low
+                  </SelectItem>
+                  <SelectItem value="medium" className="min-h-[44px]">
+                    Medium
+                  </SelectItem>
+                  <SelectItem value="high" className="min-h-[44px]">
+                    High
+                  </SelectItem>
+                  <SelectItem value="urgent" className="min-h-[44px]">
+                    Urgent
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Project & Assignee */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base">Project</Label>
+              <Select
+                value={formData.projectId}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, projectId: value }))}
+              >
+                <SelectTrigger className="h-11 touch-manipulation">
+                  <SelectValue placeholder="Select project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="min-h-[44px]">
+                    No Project
+                  </SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id} className="min-h-[44px]">
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm sm:text-base">Assignee</Label>
+              <Select
+                value={formData.assignedTo}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, assignedTo: value }))}
+              >
+                <SelectTrigger className="h-11 touch-manipulation">
+                  <SelectValue placeholder="Assign to..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned" className="min-h-[44px]">
+                    Unassigned
+                  </SelectItem>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id} className="min-h-[44px]">
+                      {member.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Due Date */}
+          <div className="space-y-2">
+            <Label className="text-sm sm:text-base">Due Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full h-11 touch-manipulation justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.dueDate ? format(new Date(formData.dueDate), 'PPP') : 'Pick a date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.dueDate ? new Date(formData.dueDate) : undefined}
+                  onSelect={(date) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      dueDate: date?.toISOString(),
+                    }))
+                  }
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading || !formData.title}
+              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
+            >
+              {isLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </form>
