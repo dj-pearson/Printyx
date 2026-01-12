@@ -15,16 +15,23 @@ export default async function handler(req: Request) {
     pathParts[pathParts.length - 1] !== 'projects' ? pathParts[pathParts.length - 1] : null;
 
   try {
-    // Verify JWT and get current auth user
+    // Extract JWT from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return createCorsResponse({ error: 'Missing or invalid Authorization header' }, 401, req);
+    }
+
+    const jwt = authHeader.replace('Bearer ', '');
+
+    // Verify JWT and get user
     const supabase = createSupabaseClient(req);
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(jwt);
 
     if (userError || !user) {
       console.error('Auth error:', userError);
-      console.error('Authorization header:', req.headers.get('Authorization'));
       return createCorsResponse({ error: 'Unauthorized', details: userError?.message }, 401, req);
     }
 
