@@ -131,7 +131,18 @@ export function MyTasksView({ tasks, isLoading, teamMembers, projects = [] }: My
   };
 
   const handleEditSubmit = (taskId: string, data: Partial<Task>) => {
-    editTaskMutation.mutate({ taskId, data });
+    // Clean up empty strings to null for better API compatibility
+    const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
+      // Convert empty strings to null, especially for dates
+      if (value === '') {
+        acc[key] = null;
+      } else {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Partial<Task>);
+
+    editTaskMutation.mutate({ taskId, data: cleanedData });
   };
 
   const isOverdue = (task: Task) => {
