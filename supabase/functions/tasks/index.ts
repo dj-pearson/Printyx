@@ -136,12 +136,10 @@ export default async function handler(req: Request) {
           projectId: task.project_id,
           projectName: null, // Will be populated by frontend if needed
           dueDate: task.due_date,
-          estimatedHours: task.estimated_hours,
-          actualHours: task.actual_hours,
           completionPercentage: task.completion_percentage || 0,
           tags: task.tags || [],
           createdAt: task.created_at,
-          completedAt: task.completed_at,
+          createdBy: task.created_by,
         }));
 
         return createCorsResponse(transformedTasks, 200, req);
@@ -163,9 +161,8 @@ export default async function handler(req: Request) {
           priority: body.priority || 'medium',
           assigned_to: body.assignedTo || null,
           project_id: body.projectId || null,
-          customer_id: body.customerId || null,
           due_date: body.dueDate || null,
-          estimated_hours: body.estimatedHours || null,
+          completion_percentage: body.completionPercentage || 0,
           tags: body.tags || [],
           created_by: user.id,
         };
