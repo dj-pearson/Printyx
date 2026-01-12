@@ -34,10 +34,24 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized', details: userError?.message }, 401, req);
     }
 
-    // Get tenant ID from user metadata
-    const tenantId = (user.app_metadata as any)?.tenantId;
+    // Get tenant ID from user metadata or query from database
+    let tenantId = (user.app_metadata as any)?.tenantId;
+
     if (!tenantId) {
-      return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+      // Fallback: query tenant_id from users table
+      const admin = createSupabaseServiceClient();
+      const { data: userData, error: userQueryError } = await admin
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .single();
+
+      if (userQueryError || !userData?.tenant_id) {
+        console.error('No tenant ID in app_metadata or database for user:', user.id);
+        return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+      }
+
+      tenantId = userData.tenant_id;
     }
 
     const admin = createSupabaseServiceClient();
