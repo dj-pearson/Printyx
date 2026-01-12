@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Table,
   TableBody,
@@ -24,11 +26,28 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { CheckCircle2, AlertCircle, Clock, CheckCheck, Filter, Plus } from 'lucide-react';
+import {
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  CheckCheck,
+  Filter,
+  Plus,
+  Edit,
+  MoreHorizontal,
+  Calendar as CalendarIcon,
+} from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDistanceToNow, isPast, isToday, format } from 'date-fns';
+import { EditTaskDialog } from './TaskDialogs';
 
 interface Task {
   id: string;
@@ -45,11 +64,14 @@ interface MyTasksViewProps {
   tasks: Task[];
   isLoading: boolean;
   teamMembers: any[];
+  projects?: any[];
 }
 
-export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps) {
+export function MyTasksView({ tasks, isLoading, teamMembers, projects = [] }: MyTasksViewProps) {
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -62,6 +84,55 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
       toast({ title: 'Success', description: 'Task completed successfully' });
     },
   });
+
+  // Update task mutation (for inline edits)
+  const updateTaskMutation = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: Partial<Task> }) =>
+      apiRequest(`/api/tasks/${taskId}`, 'PATCH', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({ title: 'Success', description: 'Task updated successfully' });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update task',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Full task edit mutation
+  const editTaskMutation = useMutation({
+    mutationFn: async ({ taskId, data }: { taskId: string; data: Partial<Task> }) =>
+      apiRequest(`/api/tasks/${taskId}`, 'PATCH', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({ title: 'Success', description: 'Task updated successfully' });
+      setIsEditDialogOpen(false);
+      setEditingTask(null);
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to update task',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleInlineEdit = (taskId: string, field: string, value: any) => {
+    updateTaskMutation.mutate({ taskId, data: { [field]: value } });
+  };
+
+  const handleEditClick = (task: Task) => {
+    setEditingTask(task);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = (taskId: string, data: Partial<Task>) => {
+    editTaskMutation.mutate({ taskId, data });
+  };
 
   const isOverdue = (task: Task) => {
     return task.dueDate && isPast(new Date(task.dueDate)) && task.status !== 'completed';
@@ -265,40 +336,107 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
+                        {/* Inline Priority Edit */}
+                        <Select
+                          value={task.priority}
+                          onValueChange={(value) => handleInlineEdit(task.id, 'priority', value)}
+                        >
+                          <SelectTrigger className="w-[120px] h-8 border-0 focus:ring-1">
+                            <Badge className={getPriorityColor(task.priority)}>
+                              {task.priority}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="urgent">Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={getStatusColor(task.status)}>
-                          {task.status.replace('_', ' ')}
-                        </Badge>
+                        {/* Inline Status Edit */}
+                        <Select
+                          value={task.status}
+                          onValueChange={(value) => handleInlineEdit(task.id, 'status', value)}
+                        >
+                          <SelectTrigger className="w-[130px] h-8 border-0 focus:ring-1">
+                            <Badge variant="outline" className={getStatusColor(task.status)}>
+                              {task.status.replace('_', ' ')}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="review">Review</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
-                        {task.dueDate ? (
-                          <div>
-                            <div className={isOverdue(task) ? 'text-red-500 font-medium' : ''}>
-                              {format(new Date(task.dueDate), 'MMM d, yyyy')}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(task.dueDate), {
-                                addSuffix: true,
-                              })}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">No due date</span>
-                        )}
+                        {/* Inline Due Date Edit */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 p-0 hover:bg-transparent justify-start font-normal"
+                            >
+                              {task.dueDate ? (
+                                <div>
+                                  <div
+                                    className={isOverdue(task) ? 'text-red-500 font-medium' : ''}
+                                  >
+                                    {format(new Date(task.dueDate), 'MMM d, yyyy')}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {formatDistanceToNow(new Date(task.dueDate), {
+                                      addSuffix: true,
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">No due date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={task.dueDate ? new Date(task.dueDate) : undefined}
+                              onSelect={(date) =>
+                                handleInlineEdit(task.id, 'dueDate', date?.toISOString())
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
                       </TableCell>
                       <TableCell className="text-right">
-                        {task.status !== 'completed' && (
-                          <Button
-                            size="sm"
-                            onClick={() => completeTaskMutation.mutate(task.id)}
-                            disabled={completeTaskMutation.isPending}
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Complete
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditClick(task)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Task
+                              </DropdownMenuItem>
+                              {task.status !== 'completed' && (
+                                <DropdownMenuItem
+                                  onClick={() => completeTaskMutation.mutate(task.id)}
+                                >
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                                  Mark Complete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -308,6 +446,17 @@ export function MyTasksView({ tasks, isLoading, teamMembers }: MyTasksViewProps)
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Task Dialog */}
+      <EditTaskDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        task={editingTask}
+        projects={projects}
+        teamMembers={teamMembers}
+        onSubmit={handleEditSubmit}
+        isLoading={editTaskMutation.isPending}
+      />
     </div>
   );
 }

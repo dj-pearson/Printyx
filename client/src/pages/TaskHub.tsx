@@ -188,7 +188,12 @@ export default function TaskHub() {
               <Tabs value={activeTab} className="space-y-6">
                 {/* My Tasks Tab */}
                 <TabsContent value="my-tasks">
-                  <MyTasksView tasks={tasks} isLoading={tasksLoading} teamMembers={teamMembers} />
+                  <MyTasksView
+                    tasks={tasks}
+                    isLoading={tasksLoading}
+                    teamMembers={teamMembers}
+                    projects={projects}
+                  />
                 </TabsContent>
 
                 {/* All Tasks Tab */}
