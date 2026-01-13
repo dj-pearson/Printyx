@@ -251,8 +251,12 @@ export default function LeadDetailHubspot() {
 
     const transformed: any = {};
     for (const [key, value] of Object.entries(obj)) {
-      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      transformed[camelKey] = transformKeys(value);
+      // Safely transform key to camelCase
+      const camelKey = String(key).replace(/_([a-z])/g, (match, letter) =>
+        letter ? letter.toUpperCase() : match,
+      );
+      // Recursively transform nested objects/arrays, but skip null/undefined values
+      transformed[camelKey] = value === null || value === undefined ? value : transformKeys(value);
     }
     return transformed;
   };
@@ -261,7 +265,7 @@ export default function LeadDetailHubspot() {
     queryKey: ['/api/business-records', id],
     queryFn: async () => {
       const data = await apiRequest(`/api/business-records/${id}`);
-      return transformKeys(data);
+      return data ? transformKeys(data) : null;
     },
     enabled: !!id,
   });
