@@ -8,8 +8,8 @@ export default async function handler(req: Request) {
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
-  const recordId =
-    pathParts[pathParts.length - 1] !== 'business-records' ? pathParts[pathParts.length - 1] : null;
+  const recordId = pathParts[1]; // business-records/:id
+  const subResource = pathParts[2]; // activities, contacts, etc.
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -41,7 +41,14 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     if (req.method === 'GET') {
-      if (recordId) {
+      // Handle sub-resources
+      if (subResource === 'activities') {
+        // TODO: Implement activities table and fetch activities
+        // For now, return empty array to prevent 500 errors
+        return createCorsResponse([], 200, req);
+      }
+
+      if (recordId && recordId !== 'business-records') {
         // Get single business record
         const { data: record, error } = await admin
           .from('business_records')
