@@ -142,7 +142,7 @@ CREATE SEQUENCE IF NOT EXISTS ticket_number_seq START 1000;
 -- Apply updated_at triggers to all major tables
 DO $$
 DECLARE
-    table_name text;
+    tbl_name text;
     tables_with_updated_at text[] := ARRAY[
         'tasks', 'projects', 'users', 'business_records', 'business_record_activities',
         'lead_contacts', 'customer_contacts', 'service_tickets', 'equipment', 'contracts',
@@ -151,19 +151,19 @@ DECLARE
         'inventory_items', 'product_models', 'product_accessories', 'leases', 'customers'
     ];
 BEGIN
-    FOREACH table_name IN ARRAY tables_with_updated_at
+    FOREACH tbl_name IN ARRAY tables_with_updated_at
     LOOP
         -- Check if table exists
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = table_name) THEN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND information_schema.tables.table_name = tbl_name) THEN
             -- Drop trigger if exists
-            EXECUTE format('DROP TRIGGER IF EXISTS update_%I_updated_at ON %I', table_name, table_name);
+            EXECUTE format('DROP TRIGGER IF EXISTS update_%I_updated_at ON %I', tbl_name, tbl_name);
             -- Create trigger
             EXECUTE format('
                 CREATE TRIGGER update_%I_updated_at
                 BEFORE UPDATE ON %I
                 FOR EACH ROW
                 EXECUTE FUNCTION update_updated_at_column()
-            ', table_name, table_name);
+            ', tbl_name, tbl_name);
         END IF;
     END LOOP;
 END $$;
