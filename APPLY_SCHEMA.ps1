@@ -24,9 +24,9 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Connection failed"
     }
-    Write-Host "✓ Database connection successful" -ForegroundColor Green
+    Write-Host "[OK] Database connection successful" -ForegroundColor Green
 } catch {
-    Write-Host "✗ Cannot connect to database!" -ForegroundColor Red
+    Write-Host "[ERROR] Cannot connect to database!" -ForegroundColor Red
     Write-Host "Make sure PostgreSQL is running and connection details are correct." -ForegroundColor Red
     Write-Host "Error: $_" -ForegroundColor Red
     exit 1
@@ -37,7 +37,7 @@ Write-Host ""
 Write-Host "Creating backup..." -ForegroundColor Yellow
 $BackupFile = "backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').sql"
 pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME --schema=public --no-owner --no-acl > $BackupFile
-Write-Host "✓ Backup created: $BackupFile" -ForegroundColor Green
+Write-Host "[OK] Backup created: $BackupFile" -ForegroundColor Green
 Write-Host ""
 
 # Apply complete schema
@@ -61,9 +61,9 @@ if (Test-Path "database-exports\complete-with-schema.sql") {
     $applyResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f $tempFile 2>&1 | Tee-Object -FilePath "schema_import.log"
     
     Remove-Item $tempFile -ErrorAction SilentlyContinue
-    Write-Host "✓ Schema applied" -ForegroundColor Green
+    Write-Host "[OK] Schema applied" -ForegroundColor Green
 } else {
-    Write-Host "✗ database-exports\complete-with-schema.sql not found!" -ForegroundColor Red
+    Write-Host "[ERROR] database-exports\complete-with-schema.sql not found!" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
@@ -75,9 +75,9 @@ if (Test-Path "supabase\migrations") {
         Write-Host "  Applying: $($_.Name)" -ForegroundColor Gray
         $migrateResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f $_.FullName 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
     }
-    Write-Host "✓ Supabase migrations applied" -ForegroundColor Green
+    Write-Host "[OK] Supabase migrations applied" -ForegroundColor Green
 } else {
-    Write-Host "⚠ supabase\migrations folder not found, skipping" -ForegroundColor Yellow
+    Write-Host "[WARN] supabase\migrations folder not found, skipping" -ForegroundColor Yellow
 }
 Write-Host ""
 
@@ -91,7 +91,7 @@ if (Test-Path "fix-tenant-id-camelcase-v2.sql") {
     Write-Host "  Applying tenant ID fixes..." -ForegroundColor Gray
     $tenantResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "fix-tenant-id-camelcase-v2.sql" 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
 }
-Write-Host "✓ Fixes applied" -ForegroundColor Green
+Write-Host "[OK] Fixes applied" -ForegroundColor Green
 Write-Host ""
 
 # Verify tables
@@ -111,9 +111,9 @@ foreach ($table in $keyTables) {
     $checkQuery = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$table');"
     $exists = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c $checkQuery
     if ($exists.Trim() -eq 't') {
-        Write-Host "  ✓ $table" -ForegroundColor Green
+        Write-Host "  [OK] $table" -ForegroundColor Green
     } else {
-        Write-Host "  ✗ $table" -ForegroundColor Red
+        Write-Host "  [MISSING] $table" -ForegroundColor Red
     }
 }
 Write-Host ""
@@ -121,7 +121,7 @@ Write-Host ""
 # Reload schema
 Write-Host "Reloading PostgREST schema cache..." -ForegroundColor Yellow
 $reloadResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "NOTIFY pgrst, 'reload schema';" 2>&1
-Write-Host "✓ Schema cache reloaded" -ForegroundColor Green
+Write-Host "[OK] Schema cache reloaded" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "=== Migration Complete! ===" -ForegroundColor Green
