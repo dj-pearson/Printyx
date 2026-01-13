@@ -493,7 +493,7 @@ function Router() {
           <Route path="/dashboard/today" component={TodayDashboard} />
           <Route path="/customers" component={Customers} />
           <Route path="/customers/:slug" component={CustomerDetail} />
-          <Route path="/leads/:slug" component={CustomerDetail} />
+          {/* Removed duplicate route - /leads/:slug should use LeadDetail component (defined below) */}
           {/* Consolidated into /customers */}
           <Route path="/crm" component={Customers} />
           <Route path="/business-records" component={Customers} />
