@@ -244,31 +244,46 @@ export default function LeadDetailHubspot() {
   });
 
   // Fetch lead details
-  // Transform snake_case API response to camelCase for frontend
-  const transformKeys = (obj: any): any => {
-    if (!obj || typeof obj !== 'object') return obj;
-    if (Array.isArray(obj)) return obj.map(transformKeys);
-
-    const transformed: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      // Safely transform key to camelCase
-      const camelKey = String(key).replace(/_([a-z])/g, (match, letter) =>
-        letter ? letter.toUpperCase() : match,
-      );
-      // Recursively transform nested objects/arrays, but skip null/undefined values
-      transformed[camelKey] = value === null || value === undefined ? value : transformKeys(value);
-    }
-    return transformed;
-  };
-
-  const { data: lead, isLoading } = useQuery({
+  const { data: leadRaw, isLoading } = useQuery({
     queryKey: ['/api/business-records', id],
-    queryFn: async () => {
-      const data = await apiRequest(`/api/business-records/${id}`);
-      return data ? transformKeys(data) : null;
-    },
+    queryFn: async () => apiRequest(`/api/business-records/${id}`),
     enabled: !!id,
   });
+
+  // Normalize lead data to handle both snake_case and camelCase from API
+  const lead = leadRaw
+    ? {
+        ...leadRaw,
+        companyName: leadRaw.company_name || leadRaw.companyName,
+        primaryContactName: leadRaw.primary_contact_name || leadRaw.primaryContactName,
+        primaryContactEmail: leadRaw.primary_contact_email || leadRaw.primaryContactEmail,
+        primaryContactPhone: leadRaw.primary_contact_phone || leadRaw.primaryContactPhone,
+        primaryContactTitle: leadRaw.primary_contact_title || leadRaw.primaryContactTitle,
+        addressLine1: leadRaw.address_line1 || leadRaw.addressLine1,
+        addressLine2: leadRaw.address_line2 || leadRaw.addressLine2,
+        postalCode: leadRaw.postal_code || leadRaw.postalCode,
+        recordType: leadRaw.record_type || leadRaw.recordType,
+        leadScore: leadRaw.lead_score || leadRaw.leadScore,
+        estimatedDealValue: leadRaw.estimated_deal_value || leadRaw.estimatedDealValue,
+        closeDate: leadRaw.close_date || leadRaw.closeDate,
+        ownerId: leadRaw.owner_id || leadRaw.ownerId,
+        assignedSalesRep: leadRaw.assigned_sales_rep || leadRaw.assignedSalesRep,
+        customerNumber: leadRaw.customer_number || leadRaw.customerNumber,
+        customerSince: leadRaw.customer_since || leadRaw.customerSince,
+        lastContactDate: leadRaw.last_contact_date || leadRaw.lastContactDate,
+        nextFollowUp: leadRaw.next_follow_up || leadRaw.nextFollowUp,
+        nextFollowUpDate: leadRaw.next_follow_up_date || leadRaw.nextFollowUpDate,
+        createdAt: leadRaw.created_at || leadRaw.createdAt,
+        updatedAt: leadRaw.updated_at || leadRaw.updatedAt,
+        createdBy: leadRaw.created_by || leadRaw.createdBy,
+        updatedBy: leadRaw.updated_by || leadRaw.updatedBy,
+        employeeCount: leadRaw.employee_count || leadRaw.employeeCount,
+        annualRevenue: leadRaw.annual_revenue || leadRaw.annualRevenue,
+        tenantId: leadRaw.tenant_id || leadRaw.tenantId,
+        taxId: leadRaw.tax_id || leadRaw.taxId,
+        customerTier: leadRaw.customer_tier || leadRaw.customerTier,
+      }
+    : null;
 
   // Form state for editing
   const [editForm, setEditForm] = useState({
