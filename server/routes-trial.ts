@@ -4,14 +4,9 @@
 
 import express, { Request } from 'express';
 import { TrialManagementService } from './services/trial-management-service';
+import { getUserId, isPlatformAdmin } from './utils/auth-helpers';
 
 const router = express.Router();
-
-// Helper to get user ID from request (supports Supabase JWT and session)
-const getUserId = (req: Request): string | undefined => {
-  const reqAny = req as any;
-  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.userId;
-};
 
 /**
  * GET /api/trial/status
@@ -49,9 +44,8 @@ router.post('/process-emails', async (req, res) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    // TODO: Add admin role check here
-    // For now, allow any authenticated user in development
-    if (process.env.NODE_ENV === 'production') {
+    // SECURITY FIX: Proper admin role check instead of NODE_ENV
+    if (!isPlatformAdmin(req)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
@@ -78,8 +72,8 @@ router.get('/users', async (req, res) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    // TODO: Add admin role check here
-    if (process.env.NODE_ENV === 'production') {
+    // SECURITY FIX: Proper admin role check instead of NODE_ENV
+    if (!isPlatformAdmin(req)) {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
