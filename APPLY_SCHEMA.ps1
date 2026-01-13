@@ -83,12 +83,13 @@ Write-Host ""
 # Verify tables
 Write-Host "Verifying tables..." -ForegroundColor Yellow
 $TableCount = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';"
-Write-Host "Tables created: $($TableCount.Trim())"
+$TableCountTrimmed = $TableCount.Trim()
+Write-Host "Tables created: $TableCountTrimmed"
 Write-Host ""
 
 # List key tables
 Write-Host "Key tables status:" -ForegroundColor Yellow
-psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c @"
+$KeyTablesSQL = @"
 SELECT 
     table_name,
     CASE WHEN EXISTS (
@@ -114,6 +115,8 @@ FROM (
 ) AS tables_to_check(table_name)
 ORDER BY table_name;
 "@
+
+psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c $KeyTablesSQL
 Write-Host ""
 
 # Reload schema
@@ -127,7 +130,7 @@ Write-Host ""
 Write-Host "Summary:"
 Write-Host "  - Backup: $BackupFile"
 Write-Host "  - Log: schema_import.log"
-Write-Host "  - Tables: $($TableCount.Trim())"
+Write-Host "  - Tables: $TableCountTrimmed"
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Test Edge Functions at https://functions.printyx.net"
