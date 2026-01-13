@@ -43,14 +43,13 @@ export default async function handler(req: Request) {
     if (req.method === 'GET') {
       // Handle sub-resources
       if (subResource === 'activities' && recordId) {
-        // Fetch activities for this business record
+        // Fetch activities from the SEPARATE business_record_activities table (CORRECT ARCHITECTURE)
         const { data: activities, error } = await admin
-          .from('business_records')
+          .from('business_record_activities')
           .select('*')
-          .eq('record_type', 'activity')
-          .eq('related_to', recordId)
+          .eq('business_record_id', recordId)
           .eq('tenant_id', tenantId)
-          .order('activity_date', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (error) {
           console.error('Error fetching activities:', error);
@@ -112,7 +111,7 @@ export default async function handler(req: Request) {
     if (req.method === 'POST') {
       const body = await req.json();
 
-      // Handle POST to /business-records/:id/activities
+      // Handle POST to /business-records/:id/activities - CORRECT: use separate activities table
       if (subResource === 'activities' && recordId) {
         // Verify the parent record exists
         const { data: parentRecord } = await admin
@@ -126,20 +125,32 @@ export default async function handler(req: Request) {
           return createCorsResponse({ error: 'Parent record not found' }, 404, req);
         }
 
-        // Create activity as a business_records entry with record_type='activity'
+        // Create activity in the SEPARATE business_record_activities table (CORRECT ARCHITECTURE)
         const activityData = {
           tenant_id: tenantId,
-          record_type: 'activity',
-          related_to: recordId, // Link to parent record
-          company_name: parentRecord.company_name, // Use parent's company name to satisfy NOT NULL constraint
-          ...body, // Include all activity fields (activity_type, activity_subject, notes, etc.)
+          business_record_id: recordId, // Link to parent business record
+          activity_type: body.activity_type,
+          subject: body.activity_subject || `${body.activity_type} activity`,
+          description: body.notes || body.description,
+          direction: body.direction,
+          email_from: body.email_from,
+          email_to: body.email_to,
+          email_cc: body.email_cc,
+          call_duration: body.activity_duration,
+          call_outcome: body.activity_outcome,
+          scheduled_date: body.activity_date,
+          completed_date: body.completed_date,
+          due_date: body.due_date,
+          outcome: body.outcome,
+          next_action: body.next_action,
+          follow_up_date: body.follow_up_date,
           created_by: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
         const { data: newActivity, error } = await admin
-          .from('business_records')
+          .from('business_record_activities')
           .insert(activityData)
           .select('*')
           .single();
