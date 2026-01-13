@@ -20,11 +20,15 @@ $DATABASE_URL = "postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_N
 # Test connection
 Write-Host "Testing database connection..." -ForegroundColor Yellow
 try {
-    psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT version();" | Out-Null
+    $testResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "SELECT version();" 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Connection failed"
+    }
     Write-Host "✓ Database connection successful" -ForegroundColor Green
 } catch {
     Write-Host "✗ Cannot connect to database!" -ForegroundColor Red
     Write-Host "Make sure PostgreSQL is running and connection details are correct." -ForegroundColor Red
+    Write-Host "Error: $_" -ForegroundColor Red
     exit 1
 }
 Write-Host ""
@@ -40,19 +44,23 @@ Write-Host ""
 Write-Host "Applying complete schema from database-exports..." -ForegroundColor Yellow
 if (Test-Path "database-exports\complete-with-schema.sql") {
     # Read and clean the SQL file
+    Write-Host "  Reading SQL file..." -ForegroundColor Gray
     $sqlContent = Get-Content "database-exports\complete-with-schema.sql" -Raw
-    $sqlContent = $sqlContent -replace 'OWNER TO neondb_owner;', '' `
-                               -replace 'ALTER .* OWNER TO neondb_owner;', '' `
-                               -replace 'OWNER TO postgres;', ''
+    
+    Write-Host "  Cleaning SQL (removing NEON-specific commands)..." -ForegroundColor Gray
+    $sqlContent = $sqlContent -replace 'OWNER TO neondb_owner;', ''
+    $sqlContent = $sqlContent -replace 'ALTER .* OWNER TO neondb_owner;', ''
+    $sqlContent = $sqlContent -replace 'OWNER TO postgres;', ''
     
     # Save cleaned SQL to temp file
     $tempFile = "temp_cleaned_schema.sql"
     $sqlContent | Out-File -FilePath $tempFile -Encoding UTF8
     
+    Write-Host "  Applying to database..." -ForegroundColor Gray
     # Apply to database
-    psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f $tempFile 2>&1 | Tee-Object -FilePath "schema_import.log"
+    $applyResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f $tempFile 2>&1 | Tee-Object -FilePath "schema_import.log"
     
-    Remove-Item $tempFile
+    Remove-Item $tempFile -ErrorAction SilentlyContinue
     Write-Host "✓ Schema applied" -ForegroundColor Green
 } else {
     Write-Host "✗ database-exports\complete-with-schema.sql not found!" -ForegroundColor Red
@@ -62,72 +70,63 @@ Write-Host ""
 
 # Apply Supabase migrations
 Write-Host "Applying Supabase migrations..." -ForegroundColor Yellow
-Get-ChildItem "supabase\migrations\*.sql" | Sort-Object Name | ForEach-Object {
-    Write-Host "  Applying: $($_.Name)"
-    psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f $_.FullName 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
+if (Test-Path "supabase\migrations") {
+    Get-ChildItem "supabase\migrations\*.sql" | Sort-Object Name | ForEach-Object {
+        Write-Host "  Applying: $($_.Name)" -ForegroundColor Gray
+        $migrateResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f $_.FullName 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
+    }
+    Write-Host "✓ Supabase migrations applied" -ForegroundColor Green
+} else {
+    Write-Host "⚠ supabase\migrations folder not found, skipping" -ForegroundColor Yellow
 }
-Write-Host "✓ Supabase migrations applied" -ForegroundColor Green
 Write-Host ""
 
 # Apply RLS and fixes
 Write-Host "Applying final fixes..." -ForegroundColor Yellow
 if (Test-Path "setup-rls-policies.sql") {
-    psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "setup-rls-policies.sql" 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
+    Write-Host "  Applying RLS policies..." -ForegroundColor Gray
+    $rlsResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "setup-rls-policies.sql" 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
 }
 if (Test-Path "fix-tenant-id-camelcase-v2.sql") {
-    psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "fix-tenant-id-camelcase-v2.sql" 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
+    Write-Host "  Applying tenant ID fixes..." -ForegroundColor Gray
+    $tenantResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f "fix-tenant-id-camelcase-v2.sql" 2>&1 | Where-Object { $_ -notmatch "NOTICE" }
 }
 Write-Host "✓ Fixes applied" -ForegroundColor Green
 Write-Host ""
 
 # Verify tables
 Write-Host "Verifying tables..." -ForegroundColor Yellow
-$TableCount = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';"
+$countQuery = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';"
+$TableCount = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c $countQuery
 $TableCountTrimmed = $TableCount.Trim()
-Write-Host "Tables created: $TableCountTrimmed"
+Write-Host "  Tables created: $TableCountTrimmed" -ForegroundColor Gray
 Write-Host ""
 
-# List key tables
-Write-Host "Key tables status:" -ForegroundColor Yellow
-$KeyTablesSQL = @"
-SELECT 
-    table_name,
-    CASE WHEN EXISTS (
-        SELECT 1 FROM information_schema.tables t 
-        WHERE t.table_schema = 'public' AND t.table_name = tables_to_check.table_name
-    ) THEN '✓' ELSE '✗' END as exists
-FROM (
-    VALUES 
-        ('tenants'),
-        ('users'),
-        ('roles'),
-        ('teams'),
-        ('business_records'),
-        ('business_record_activities'),
-        ('service_tickets'),
-        ('equipment'),
-        ('quotes'),
-        ('invoices'),
-        ('deals'),
-        ('opportunities'),
-        ('tasks'),
-        ('projects')
-) AS tables_to_check(table_name)
-ORDER BY table_name;
-"@
+# List key tables (simpler approach)
+Write-Host "Checking key tables..." -ForegroundColor Yellow
+$keyTables = @('tenants', 'users', 'roles', 'teams', 'business_records', 'business_record_activities', 
+               'service_tickets', 'equipment', 'quotes', 'invoices', 'deals', 'opportunities', 'tasks', 'projects')
 
-psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c $KeyTablesSQL
+foreach ($table in $keyTables) {
+    $checkQuery = "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '$table');"
+    $exists = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -t -c $checkQuery
+    if ($exists.Trim() -eq 't') {
+        Write-Host "  ✓ $table" -ForegroundColor Green
+    } else {
+        Write-Host "  ✗ $table" -ForegroundColor Red
+    }
+}
 Write-Host ""
 
 # Reload schema
 Write-Host "Reloading PostgREST schema cache..." -ForegroundColor Yellow
-psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "NOTIFY pgrst, 'reload schema';" | Out-Null
+$reloadResult = psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -c "NOTIFY pgrst, 'reload schema';" 2>&1
 Write-Host "✓ Schema cache reloaded" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "=== Migration Complete! ===" -ForegroundColor Green
 Write-Host ""
-Write-Host "Summary:"
+Write-Host "Summary:" -ForegroundColor Cyan
 Write-Host "  - Backup: $BackupFile"
 Write-Host "  - Log: schema_import.log"
 Write-Host "  - Tables: $TableCountTrimmed"
@@ -140,4 +139,3 @@ Write-Host ""
 
 # Clean up
 Remove-Item Env:\PGPASSWORD
-
