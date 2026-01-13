@@ -2,6 +2,34 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// Helper to convert snake_case to camelCase
+function toCamelCase(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(toCamelCase);
+  if (typeof obj !== 'object') return obj;
+
+  const converted: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    converted[camelKey] = toCamelCase(value);
+  }
+  return converted;
+}
+
+// Helper to convert camelCase to snake_case
+function toSnakeCase(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(toSnakeCase);
+  if (typeof obj !== 'object') return obj;
+
+  const converted: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const snakeKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    converted[snakeKey] = toSnakeCase(value);
+  }
+  return converted;
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -56,7 +84,7 @@ export default async function handler(req: Request) {
           return createCorsResponse({ error: 'Failed to fetch activities' }, 500, req);
         }
 
-        return createCorsResponse(activities || [], 200, req);
+        return createCorsResponse(toCamelCase(activities || []), 200, req);
       }
 
       if (recordId && recordId !== 'business-records') {
@@ -73,7 +101,7 @@ export default async function handler(req: Request) {
           return createCorsResponse({ error: 'Business record not found' }, 404, req);
         }
 
-        return createCorsResponse(record, 200, req);
+        return createCorsResponse(toCamelCase(record), 200, req);
       } else {
         // List business records with filters
         const recordType =
@@ -104,7 +132,7 @@ export default async function handler(req: Request) {
           return createCorsResponse({ error: 'Failed to fetch business records' }, 500, req);
         }
 
-        return createCorsResponse(records || [], 200, req);
+        return createCorsResponse(toCamelCase(records || []), 200, req);
       }
     }
 
@@ -126,24 +154,11 @@ export default async function handler(req: Request) {
         }
 
         // Create activity in the SEPARATE business_record_activities table (CORRECT ARCHITECTURE)
+        // Convert camelCase input to snake_case for database
         const activityData = {
           tenant_id: tenantId,
           business_record_id: recordId, // Link to parent business record
-          activity_type: body.activity_type,
-          subject: body.activity_subject || `${body.activity_type} activity`,
-          description: body.notes || body.description,
-          direction: body.direction,
-          email_from: body.email_from,
-          email_to: body.email_to,
-          email_cc: body.email_cc,
-          call_duration: body.activity_duration,
-          call_outcome: body.activity_outcome,
-          scheduled_date: body.activity_date,
-          completed_date: body.completed_date,
-          due_date: body.due_date,
-          outcome: body.outcome,
-          next_action: body.next_action,
-          follow_up_date: body.follow_up_date,
+          ...toSnakeCase(body),
           created_by: user.id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -164,13 +179,14 @@ export default async function handler(req: Request) {
           );
         }
 
-        return createCorsResponse(newActivity, 201, req);
+        return createCorsResponse(toCamelCase(newActivity), 201, req);
       }
 
       // Handle regular business record creation (lead/customer)
+      // Convert camelCase input to snake_case for database
       const recordData = {
         tenant_id: tenantId,
-        ...body,
+        ...toSnakeCase(body),
         created_by: user.id,
         updated_at: new Date().toISOString(),
       };
@@ -186,14 +202,15 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create business record' }, 500, req);
       }
 
-      return createCorsResponse(newRecord, 201, req);
+      return createCorsResponse(toCamelCase(newRecord), 201, req);
     }
 
     if (req.method === 'PATCH' && recordId) {
       const body = await req.json();
 
+      // Convert camelCase input to snake_case for database
       const updateData = {
-        ...body,
+        ...toSnakeCase(body),
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       };
@@ -211,7 +228,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update business record' }, 500, req);
       }
 
-      return createCorsResponse(updated, 200, req);
+      return createCorsResponse(toCamelCase(updated), 200, req);
     }
 
     if (req.method === 'DELETE' && recordId) {
