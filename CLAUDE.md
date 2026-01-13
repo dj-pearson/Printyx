@@ -238,12 +238,36 @@ Located in `supabase/functions/`:
 | RBAC middleware | `server/middleware/enhanced-rbac-middleware.ts` |
 | Query scoping | `server/middleware/hierarchical-query-builder.ts` |
 
-## Development Workflow
+## Development Workflow: Plan → Execute → Test → Commit
 
-1. **Before starting**: `npm run check` - Ensure no type errors
-2. **During development**: `npm run dev` - Hot reload
-3. **Before committing**: `npm run build` - Verify build passes
-4. **Code style**: `npm run format:write && npm run lint`
+Follow this 4-step cycle for each feature or change:
+
+### 1. Plan
+Think through the approach together before writing any code. Discuss the strategy and get alignment on what you're building. Consider:
+- What files need to change?
+- What's the data flow?
+- Are there edge cases to handle?
+- Does this affect multi-tenant isolation?
+
+### 2. Execute
+Write the code that matches the plan. The AI isn't figuring out what to build—you've already done that together. Focus on implementation details.
+
+### 3. Test
+Validate the implementation matches the plan:
+```bash
+npm run check            # Type safety
+npm run test             # Unit tests
+npm run test:e2e         # E2E tests (if applicable)
+npm run dev              # Manual QA
+```
+
+### 4. Commit
+Commit the working code and start the cycle again for the next piece.
+
+### Pre-Flight Checks
+- **Before starting**: `npm run check` - Ensure no existing type errors
+- **Before committing**: `npm run build` - Verify build passes
+- **Code style**: `npm run format:write && npm run lint`
 
 ## Common Pitfalls
 
