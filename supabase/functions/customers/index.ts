@@ -1,5 +1,6 @@
-// Customers Edge Function
-// Handles customer-specific operations (customers are business_records with record_type='customer')
+// Customers Edge Function - Companies Architecture
+// Handles customer relationship operations (customers table links to companies)
+// Updated Jan 13, 2026 - Now uses companies as single source of truth
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
@@ -43,25 +44,50 @@ export default async function handler(req: Request) {
     const pathParts = url.pathname.split('/').filter(Boolean);
     const customerId = pathParts[1]; // /customers/:id
 
-    // GET /customers - List all customers
+    // GET /customers - List all customers with company information
     if (req.method === 'GET' && !customerId) {
       const search = url.searchParams.get('search');
       const status = url.searchParams.get('status');
 
       let query = admin
-        .from('business_records')
-        .select('*')
+        .from('customers')
+        .select(
+          `
+          *,
+          companies!inner(
+            id,
+            business_name,
+            customer_number,
+            phone,
+            email,
+            website,
+            billing_address,
+            billing_city,
+            billing_state,
+            billing_zip,
+            industry
+          ),
+          company_contacts!inner(
+            id,
+            first_name,
+            last_name,
+            email,
+            phone,
+            title,
+            is_primary
+          )
+        `,
+        )
         .eq('tenant_id', tenantId)
-        .eq('record_type', 'customer') // Only customers
-        .order('created_at', { ascending: false });
+        .order('customer_since', { ascending: false });
 
       if (status) {
-        query = query.eq('status', status);
+        query = query.eq('lead_status', status);
       }
 
       if (search) {
         query = query.or(
-          `company_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%`,
+          `companies.business_name.ilike.%${search}%,companies.customer_number.ilike.%${search}%,company_contacts.email.ilike.%${search}%`,
         );
       }
 
@@ -75,14 +101,22 @@ export default async function handler(req: Request) {
       return createCorsResponse(customers || [], 200, req);
     }
 
-    // GET /customers/:id - Get single customer
+    // GET /customers/:id - Get single customer with full company info
     if (req.method === 'GET' && customerId) {
       const { data: customer, error } = await admin
-        .from('business_records')
-        .select('*')
+        .from('customers')
+        .select(
+          `
+          *,
+          companies!inner(*),
+          company_contacts(*),
+          equipment(*),
+          service_tickets(*),
+          invoices(*)
+        `,
+        )
         .eq('id', customerId)
         .eq('tenant_id', tenantId)
-        .eq('record_type', 'customer')
         .single();
 
       if (error) {
@@ -93,23 +127,61 @@ export default async function handler(req: Request) {
       return createCorsResponse(customer, 200, req);
     }
 
-    // POST /customers - Create new customer
+    // POST /customers - Create new customer (requires company_id)
+    // Note: Company should already exist. Use /companies endpoint to create company first.
     if (req.method === 'POST') {
       const body = await req.json();
 
+      if (!body.company_id) {
+        return createCorsResponse(
+          { error: 'company_id is required. Create company first.' },
+          400,
+          req,
+        );
+      }
+
+      // Verify company exists
+      const { data: companyExists } = await admin
+        .from('companies')
+        .select('id')
+        .eq('id', body.company_id)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (!companyExists) {
+        return createCorsResponse({ error: 'Company not found' }, 404, req);
+      }
+
       const customerData = {
-        ...body,
         tenant_id: tenantId,
-        record_type: 'customer', // Force record_type to customer
-        status: body.status || 'active',
+        company_id: body.company_id,
+        contact_id: body.contact_id,
+        converted_from_lead_id: body.converted_from_lead_id,
+        lead_source: body.lead_source || 'website',
+        lead_status: body.lead_status || 'active',
+        customer_since: body.customer_since || new Date().toISOString(),
+        estimated_amount: body.estimated_amount,
+        probability: 100, // Customers are 100% probability
+        close_date: body.close_date,
+        owner_id: body.owner_id || user.id,
+        priority: body.priority || 'medium',
+        notes: body.notes,
+        preferred_technician: body.preferred_technician,
+        current_balance: body.current_balance || 0,
         created_by: user.id,
         created_at: new Date().toISOString(),
       };
 
       const { data: customer, error } = await admin
-        .from('business_records')
+        .from('customers')
         .insert(customerData)
-        .select()
+        .select(
+          `
+          *,
+          companies(*),
+          company_contacts(*)
+        `,
+        )
         .single();
 
       if (error) {
@@ -120,13 +192,12 @@ export default async function handler(req: Request) {
       return createCorsResponse(customer, 201, req);
     }
 
-    // PATCH /customers/:id - Update customer
+    // PATCH /customers/:id - Update customer record
     if ((req.method === 'PATCH' || req.method === 'PUT') && customerId) {
       const body = await req.json();
 
       const updateData = {
         ...body,
-        updated_by: user.id,
         updated_at: new Date().toISOString(),
       };
 
@@ -135,14 +206,20 @@ export default async function handler(req: Request) {
       delete updateData.tenant_id;
       delete updateData.created_by;
       delete updateData.created_at;
+      delete updateData.company_id; // Don't allow changing company link
 
       const { data: customer, error } = await admin
-        .from('business_records')
+        .from('customers')
         .update(updateData)
         .eq('id', customerId)
         .eq('tenant_id', tenantId)
-        .eq('record_type', 'customer')
-        .select()
+        .select(
+          `
+          *,
+          companies(*),
+          company_contacts(*)
+        `,
+        )
         .single();
 
       if (error) {
@@ -153,21 +230,25 @@ export default async function handler(req: Request) {
       return createCorsResponse(customer, 200, req);
     }
 
-    // DELETE /customers/:id - Delete customer
+    // DELETE /customers/:id - Delete customer relationship (company remains)
     if (req.method === 'DELETE' && customerId) {
+      // Note: This only deletes the customer relationship, not the company
       const { error } = await admin
-        .from('business_records')
+        .from('customers')
         .delete()
         .eq('id', customerId)
-        .eq('tenant_id', tenantId)
-        .eq('record_type', 'customer');
+        .eq('tenant_id', tenantId);
 
       if (error) {
         console.error('Error deleting customer:', error);
         return createCorsResponse({ error: 'Failed to delete customer' }, 500, req);
       }
 
-      return createCorsResponse({ success: true, message: 'Customer deleted' }, 200, req);
+      return createCorsResponse(
+        { success: true, message: 'Customer relationship deleted (company preserved)' },
+        200,
+        req,
+      );
     }
 
     // Method not allowed

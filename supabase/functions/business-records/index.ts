@@ -1,10 +1,17 @@
-// Supabase Edge Function for business_records (leads/customers) - Updated Jan 13, 2026
+// ⚠️ DEPRECATED: This endpoint is deprecated as of Jan 13, 2026
+// Use /companies, /leads, and /customers endpoints instead
+// This function now redirects to the companies-based architecture
+// business_records table is being phased out in favor of companies + relationships
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
+
+  // Add deprecation warning header
+  const deprecationMessage =
+    'This endpoint is deprecated. Use /companies, /leads, or /customers instead. Will be removed in 30 days.';
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
@@ -41,9 +48,11 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     if (req.method === 'GET') {
+      // Warn about deprecation
+      console.warn('[DEPRECATED] business-records endpoint called. Use /companies instead.');
+
       // Handle sub-resources
       if (subResource === 'activities' && recordId) {
-        // Fetch activities from the SEPARATE business_record_activities table (CORRECT ARCHITECTURE)
         const { data: activities, error } = await admin
           .from('business_record_activities')
           .select('*')
@@ -53,34 +62,98 @@ export default async function handler(req: Request) {
 
         if (error) {
           console.error('Error fetching activities:', error);
-          return createCorsResponse({ error: 'Failed to fetch activities' }, 500, req);
+          return createCorsResponse(
+            { error: 'Failed to fetch activities' },
+            500,
+            req,
+            deprecationMessage,
+          );
         }
 
-        return createCorsResponse(activities || [], 200, req);
+        return createCorsResponse(activities || [], 200, req, deprecationMessage);
       }
 
       if (recordId && recordId !== 'business-records') {
-        // Get single business record
-        const { data: record, error } = await admin
+        // Try to find in business_records first (legacy), then check companies
+        let { data: record, error } = await admin
           .from('business_records')
           .select('*')
           .eq('id', recordId)
           .eq('tenant_id', tenantId)
           .single();
 
-        if (error) {
-          console.error('Error fetching business record:', error);
-          return createCorsResponse({ error: 'Business record not found' }, 404, req);
+        // If not found in business_records, try companies
+        if (error || !record) {
+          const { data: company } = await admin
+            .from('companies')
+            .select(
+              `
+              *,
+              company_contacts(*),
+              leads(*),
+              customers(*)
+            `,
+            )
+            .eq('id', recordId)
+            .eq('tenant_id', tenantId)
+            .single();
+
+          if (company) {
+            return createCorsResponse(
+              {
+                ...company,
+                _migrated: true,
+                _message: 'This record has been migrated to companies table',
+              },
+              200,
+              req,
+              deprecationMessage,
+            );
+          }
         }
 
-        return createCorsResponse(record, 200, req);
+        if (error) {
+          console.error('Error fetching record:', error);
+          return createCorsResponse({ error: 'Record not found' }, 404, req, deprecationMessage);
+        }
+
+        return createCorsResponse({ ...record, _deprecated: true }, 200, req, deprecationMessage);
       } else {
-        // List business records with filters
+        // List records - combine from both tables for transition period
         const recordType =
           url.searchParams.get('recordType') || url.searchParams.get('record_type');
         const status = url.searchParams.get('status');
         const search = url.searchParams.get('search');
 
+        // Check if they want leads or customers specifically
+        if (recordType === 'lead' || recordType === 'customer') {
+          const table = recordType === 'lead' ? 'leads' : 'customers';
+          const { data: records, error } = await admin
+            .from(table)
+            .select(
+              `
+              *,
+              companies!inner(*),
+              company_contacts(*)
+            `,
+            )
+            .eq('tenant_id', tenantId);
+
+          if (!error) {
+            return createCorsResponse(
+              {
+                data: records,
+                _message: `Use /${table} endpoint instead of /business-records`,
+                _migrated: true,
+              },
+              200,
+              req,
+              deprecationMessage,
+            );
+          }
+        }
+
+        // Fall back to business_records for backwards compatibility
         let query = admin.from('business_records').select('*').eq('tenant_id', tenantId);
 
         if (recordType) {
@@ -101,14 +174,25 @@ export default async function handler(req: Request) {
 
         if (error) {
           console.error('Error fetching business records:', error);
-          return createCorsResponse({ error: 'Failed to fetch business records' }, 500, req);
+          return createCorsResponse(
+            { error: 'Failed to fetch records' },
+            500,
+            req,
+            deprecationMessage,
+          );
         }
 
-        return createCorsResponse(records || [], 200, req);
+        return createCorsResponse(
+          { data: records, _deprecated: true },
+          200,
+          req,
+          deprecationMessage,
+        );
       }
     }
 
     if (req.method === 'POST') {
+      console.warn('[DEPRECATED] POST to business-records. Use /companies POST instead.');
       const body = await req.json();
 
       // Handle POST to /business-records/:id/activities - CORRECT: use separate activities table
@@ -229,7 +313,7 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true }, 200, req);
     }
 
-    return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    return createCorsResponse({ error: 'Method not allowed' }, 405, req, deprecationMessage);
   } catch (error) {
     console.error('Business records function error:', error);
     return createCorsResponse(

@@ -32,13 +32,25 @@ export function handleCors(req: Request): Response | null {
   return null;
 }
 
-export function createCorsResponse(body: any, status: number, req: Request): Response {
+export function createCorsResponse(
+  body: any,
+  status: number,
+  req: Request,
+  deprecationWarning?: string,
+): Response {
   const origin = req.headers.get('origin');
+  const headers: Record<string, string> = {
+    ...getCorsHeaders(origin),
+    'Content-Type': 'application/json',
+  };
+
+  if (deprecationWarning) {
+    headers['X-Deprecation-Warning'] = deprecationWarning;
+    headers['X-Deprecated'] = 'true';
+  }
+
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      ...getCorsHeaders(origin),
-      'Content-Type': 'application/json',
-    },
+    headers,
   });
 }
