@@ -42,10 +42,22 @@ export default async function handler(req: Request) {
 
     if (req.method === 'GET') {
       // Handle sub-resources
-      if (subResource === 'activities') {
-        // TODO: Implement activities table and fetch activities
-        // For now, return empty array to prevent 500 errors
-        return createCorsResponse([], 200, req);
+      if (subResource === 'activities' && recordId) {
+        // Fetch activities for this business record
+        const { data: activities, error } = await admin
+          .from('business_records')
+          .select('*')
+          .eq('record_type', 'activity')
+          .eq('related_to', recordId)
+          .eq('tenant_id', tenantId)
+          .order('activity_date', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching activities:', error);
+          return createCorsResponse({ error: 'Failed to fetch activities' }, 500, req);
+        }
+
+        return createCorsResponse(activities || [], 200, req);
       }
 
       if (recordId && recordId !== 'business-records') {
@@ -100,6 +112,51 @@ export default async function handler(req: Request) {
     if (req.method === 'POST') {
       const body = await req.json();
 
+      // Handle POST to /business-records/:id/activities
+      if (subResource === 'activities' && recordId) {
+        // Verify the parent record exists
+        const { data: parentRecord } = await admin
+          .from('business_records')
+          .select('id, company_name')
+          .eq('id', recordId)
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (!parentRecord) {
+          return createCorsResponse({ error: 'Parent record not found' }, 404, req);
+        }
+
+        // Create activity as a business_records entry with record_type='activity'
+        const activityData = {
+          tenant_id: tenantId,
+          record_type: 'activity',
+          related_to: recordId, // Link to parent record
+          company_name: parentRecord.company_name, // Use parent's company name to satisfy NOT NULL constraint
+          ...body, // Include all activity fields (activity_type, activity_subject, notes, etc.)
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: newActivity, error } = await admin
+          .from('business_records')
+          .insert(activityData)
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Error creating activity:', error);
+          return createCorsResponse(
+            { error: 'Failed to create activity', details: error },
+            500,
+            req,
+          );
+        }
+
+        return createCorsResponse(newActivity, 201, req);
+      }
+
+      // Handle regular business record creation (lead/customer)
       const recordData = {
         tenant_id: tenantId,
         ...body,
