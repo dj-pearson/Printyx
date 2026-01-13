@@ -1,4 +1,4 @@
-// Supabase Edge Function for business_records (leads/customers)
+// Supabase Edge Function for business_records (leads/customers) - Updated Jan 13, 2026
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
