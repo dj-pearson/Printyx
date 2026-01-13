@@ -243,7 +243,7 @@ export default function LeadDetailHubspot() {
     editRecord: false,
   });
 
-  // Fetch lead details
+  // Fetch lead details (with fallback for snake_case/camelCase)
   const { data: leadRaw, isLoading } = useQuery({
     queryKey: ['/api/business-records', id],
     queryFn: async () => apiRequest(`/api/business-records/${id}`),
