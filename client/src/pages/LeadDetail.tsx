@@ -246,6 +246,7 @@ export default function LeadDetailHubspot() {
   // Fetch lead details
   const { data: lead, isLoading } = useQuery({
     queryKey: ['/api/business-records', id],
+    queryFn: async () => apiRequest(`/api/business-records/${id}`),
     enabled: !!id,
   });
 
