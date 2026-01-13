@@ -1,37 +1,37 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams, useLocation } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ActivityForm } from "@/components/forms/ActivityForms";
-import { ActivityTimeline } from "@/components/ActivityTimeline";
-import { ContactManager } from "@/components/ContactManager";
-import { LeadProposals } from "@/components/leads/LeadProposals";
-import { LeadQuotes } from "@/components/leads/LeadQuotes";
-import { LeadDeals } from "@/components/leads/LeadDeals";
-import { format } from "date-fns";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ActivityForm } from '@/components/forms/ActivityForms';
+import { ActivityTimeline } from '@/components/ActivityTimeline';
+import { ContactManager } from '@/components/ContactManager';
+import { LeadProposals } from '@/components/leads/LeadProposals';
+import { LeadQuotes } from '@/components/leads/LeadQuotes';
+import { LeadDeals } from '@/components/leads/LeadDeals';
+import { format } from 'date-fns';
 import {
   ArrowLeft,
   Clock,
@@ -80,16 +80,16 @@ import {
   CheckSquare,
   BookOpen,
   Quote,
-} from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+} from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
 
 // Lead Contact Form Component
-function LeadContactForm({ 
-  leadId, 
-  onSuccess, 
-  onCancel 
+function LeadContactForm({
+  leadId,
+  onSuccess,
+  onCancel,
 }: {
   leadId: string;
   onSuccess: () => void;
@@ -98,11 +98,11 @@ function LeadContactForm({
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    title: "",
-    email: "",
-    phone: "",
+    firstName: '',
+    lastName: '',
+    title: '',
+    email: '',
+    phone: '',
     isPrimary: false,
   });
 
@@ -111,11 +111,11 @@ function LeadContactForm({
 
     // Validate required fields
     if (!formData.firstName || !formData.lastName) {
-      console.error("Validation failed: Missing required fields");
+      console.error('Validation failed: Missing required fields');
       toast({
-        title: "Validation Error",
-        description: "First name and last name are required.",
-        variant: "destructive",
+        title: 'Validation Error',
+        description: 'First name and last name are required.',
+        variant: 'destructive',
       });
       return;
     }
@@ -130,12 +130,12 @@ function LeadContactForm({
 
       onSuccess();
     } catch (error) {
-      console.error("Error creating lead contact:", error);
-      console.error("Error details:", error.response?.data || error.message);
+      console.error('Error creating lead contact:', error);
+      console.error('Error details:', error.response?.data || error.message);
       toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to create contact. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to create contact. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -197,9 +197,7 @@ function LeadContactForm({
         <Checkbox
           id="isPrimary"
           checked={formData.isPrimary}
-          onCheckedChange={(checked) => 
-            setFormData({ ...formData, isPrimary: !!checked })
-          }
+          onCheckedChange={(checked) => setFormData({ ...formData, isPrimary: !!checked })}
         />
         <Label htmlFor="isPrimary">Set as primary contact</Label>
       </div>
@@ -209,7 +207,7 @@ function LeadContactForm({
           Cancel
         </Button>
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Contact"}
+          {isLoading ? 'Creating...' : 'Create Contact'}
         </Button>
       </div>
     </form>
@@ -221,10 +219,9 @@ export default function LeadDetailHubspot() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Extract ID from URL query parameters
-  const searchParams = new URLSearchParams(window.location.search);
-  const id = searchParams.get('id');
+
+  // Use slug as the ID (slug contains the UUID from the URL path)
+  const id = slug;
   const [isEditing, setIsEditing] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     company: true,
@@ -248,103 +245,103 @@ export default function LeadDetailHubspot() {
 
   // Fetch lead details
   const { data: lead, isLoading } = useQuery({
-    queryKey: ["/api/business-records", id],
+    queryKey: ['/api/business-records', id],
     enabled: !!id,
   });
 
   // Form state for editing
   const [editForm, setEditForm] = useState({
     // Basic Information
-    companyName: "",
-    accountNumber: "",
-    accountType: "Prospect",
-    website: "",
-    industry: "",
-    companySize: "",
+    companyName: '',
+    accountNumber: '',
+    accountType: 'Prospect',
+    website: '',
+    industry: '',
+    companySize: '',
     employeeCount: null,
     annualRevenue: null,
 
     // Contact Information
-    primaryContactName: "",
-    primaryContactEmail: "",
-    primaryContactPhone: "",
-    primaryContactTitle: "",
+    primaryContactName: '',
+    primaryContactEmail: '',
+    primaryContactPhone: '',
+    primaryContactTitle: '',
 
     // Billing Contact
-    billingContactName: "",
-    billingContactEmail: "",
-    billingContactPhone: "",
+    billingContactName: '',
+    billingContactEmail: '',
+    billingContactPhone: '',
 
     // Address Information
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    postalCode: "",
-    country: "US",
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    country: 'US',
 
     // Billing Address
-    billingAddressLine1: "",
-    billingAddressLine2: "",
-    billingCity: "",
-    billingState: "",
-    billingPostalCode: "",
-    billingCountry: "US",
+    billingAddressLine1: '',
+    billingAddressLine2: '',
+    billingCity: '',
+    billingState: '',
+    billingPostalCode: '',
+    billingCountry: 'US',
 
     // Shipping Address
-    shippingAddressLine1: "",
-    shippingAddressLine2: "",
-    shippingCity: "",
-    shippingState: "",
-    shippingPostalCode: "",
-    shippingCountry: "US",
+    shippingAddressLine1: '',
+    shippingAddressLine2: '',
+    shippingCity: '',
+    shippingState: '',
+    shippingPostalCode: '',
+    shippingCountry: 'US',
 
     // Communication
-    phone: "",
-    fax: "",
-    preferredContactMethod: "email",
+    phone: '',
+    fax: '',
+    preferredContactMethod: 'email',
 
     // Pipeline Information
-    leadSource: "website",
+    leadSource: 'website',
     estimatedAmount: null,
     probability: 50,
-    closeDate: "",
-    salesStage: "new",
-    interestLevel: "warm",
+    closeDate: '',
+    salesStage: 'new',
+    interestLevel: 'warm',
 
     // Assignment & Ownership
-    ownerId: "",
-    assignedSalesRep: "",
-    territory: "",
-    accountManagerId: "",
+    ownerId: '',
+    assignedSalesRep: '',
+    territory: '',
+    accountManagerId: '',
     leadScore: 0,
-    priority: "medium",
+    priority: 'medium',
 
     // Salesforce-specific Fields
-    customerRating: "Warm",
-    parentAccountId: "",
-    customerPriority: "Medium",
-    slaLevel: "Standard",
-    upsellOpportunity: "",
-    accountNotes: "",
+    customerRating: 'Warm',
+    parentAccountId: '',
+    customerPriority: 'Medium',
+    slaLevel: 'Standard',
+    upsellOpportunity: '',
+    accountNotes: '',
 
     // External System Integration
-    externalCustomerId: "",
-    externalSystemId: "",
-    externalSalesforceId: "",
-    externalLeadId: "",
-    migrationStatus: "",
+    externalCustomerId: '',
+    externalSystemId: '',
+    externalSalesforceId: '',
+    externalLeadId: '',
+    migrationStatus: '',
 
     // Financial Information
     creditLimit: null,
-    paymentTerms: "Net 30",
-    billingTerms: "",
+    paymentTerms: 'Net 30',
+    billingTerms: '',
     taxExempt: false,
-    taxId: "",
-    customerTier: "",
+    taxId: '',
+    customerTier: '',
 
     // System Tracking
-    notes: "",
+    notes: '',
   });
 
   // Initialize form when lead data loads
@@ -357,23 +354,23 @@ export default function LeadDetailHubspot() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/business-records/${id}`, "PUT", data);
+      return await apiRequest(`/api/business-records/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       toast({
-        title: "Record Updated",
-        description: "Lead information has been successfully updated.",
+        title: 'Record Updated',
+        description: 'Lead information has been successfully updated.',
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/business-records", id],
+        queryKey: ['/api/business-records', id],
       });
       setIsEditing(false);
     },
     onError: (error: any) => {
       toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update lead information.",
-        variant: "destructive",
+        title: 'Update Failed',
+        description: error.message || 'Failed to update lead information.',
+        variant: 'destructive',
       });
     },
   });
@@ -391,10 +388,7 @@ export default function LeadDetailHubspot() {
 
   if (isLoading) {
     return (
-      <MainLayout
-        title="Lead Details"
-        description="Loading lead information..."
-      >
+      <MainLayout title="Lead Details" description="Loading lead information...">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -404,18 +398,13 @@ export default function LeadDetailHubspot() {
 
   if (!lead) {
     return (
-      <MainLayout
-        title="Lead Not Found"
-        description="The requested lead could not be found"
-      >
+      <MainLayout title="Lead Not Found" description="The requested lead could not be found">
         <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Lead not found
-          </h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Lead not found</h3>
           <p className="text-gray-600 mb-4">
             The lead you're looking for doesn't exist or has been removed.
           </p>
-          <Button onClick={() => setLocation("/leads-management")}>
+          <Button onClick={() => setLocation('/leads-management')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Leads
           </Button>
@@ -434,7 +423,7 @@ export default function LeadDetailHubspot() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setLocation("/leads-management")}
+              onClick={() => setLocation('/leads-management')}
               className="px-2 sm:px-3"
             >
               <ArrowLeft className="h-4 w-4 mr-1 sm:mr-2" />
@@ -448,24 +437,28 @@ export default function LeadDetailHubspot() {
               className="px-2 sm:px-3"
             >
               <Edit className="h-4 w-4 mr-1 sm:mr-2" />
-              {isEditing ? "Cancel" : "Edit"}
+              {isEditing ? 'Cancel' : 'Edit'}
             </Button>
           </div>
 
           {/* Quick Action CTAs */}
           <div className="mb-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   // Switch to deals tab first
-                  const dealsTab = document.querySelector('[data-state="inactive"][value="deals"]') as HTMLElement;
+                  const dealsTab = document.querySelector(
+                    '[data-state="inactive"][value="deals"]',
+                  ) as HTMLElement;
                   if (dealsTab) {
                     dealsTab.click();
                     // Small delay to ensure tab is active before triggering action
                     setTimeout(() => {
-                      const event = new CustomEvent('leadTabAction', { detail: { action: 'createDeal' } });
+                      const event = new CustomEvent('leadTabAction', {
+                        detail: { action: 'createDeal' },
+                      });
                       window.dispatchEvent(event);
                     }, 100);
                   }
@@ -475,34 +468,34 @@ export default function LeadDetailHubspot() {
                 <Briefcase className="h-3 w-3 mr-1" />
                 Create Deal
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={async () => {
-                  alert("Button clicked! Check console for API test results...");
+                  alert('Button clicked! Check console for API test results...');
                   // Direct API test
                   try {
                     const response = await apiRequest(`/api/leads/${id}/contacts`, {
                       method: 'POST',
                       data: {
-                        firstName: "Test",
-                        lastName: "Contact",
-                        email: "test@test.com",
+                        firstName: 'Test',
+                        lastName: 'Contact',
+                        email: 'test@test.com',
                         isPrimary: false,
                       },
                     });
-                    alert("SUCCESS: Contact created!");
+                    alert('SUCCESS: Contact created!');
                     toast({
-                      title: "Success",
-                      description: "Test contact created directly",
+                      title: 'Success',
+                      description: 'Test contact created directly',
                     });
                   } catch (error) {
-                    console.error("DIRECT API ERROR:", error);
-                    alert("ERROR: " + error.message);
+                    console.error('DIRECT API ERROR:', error);
+                    alert('ERROR: ' + error.message);
                     toast({
-                      title: "Error",
-                      description: "API test failed: " + error.message,
-                      variant: "destructive",
+                      title: 'Error',
+                      description: 'API test failed: ' + error.message,
+                      variant: 'destructive',
                     });
                   }
                 }}
@@ -511,39 +504,48 @@ export default function LeadDetailHubspot() {
                 <UserPlus className="h-3 w-3 mr-1" />
                 🔴 API TEST
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setDialogs(prev => ({ ...prev, note: true }))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
                 className="text-xs"
               >
                 <StickyNote className="h-3 w-3 mr-1" />
                 Log Activity
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setLocation('/demo-scheduling?leadId=' + id + '&companyName=' + encodeURIComponent(lead.companyName || ''))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setLocation(
+                    '/demo-scheduling?leadId=' +
+                      id +
+                      '&companyName=' +
+                      encodeURIComponent(lead.companyName || ''),
+                  )
+                }
                 className="text-xs"
               >
                 <Calendar className="h-3 w-3 mr-1" />
                 Schedule Demo
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   // Route through deals - switch to deals tab and trigger quote creation
-                  const dealsTab = document.querySelector('[data-state="inactive"][value="deals"]') as HTMLElement;
+                  const dealsTab = document.querySelector(
+                    '[data-state="inactive"][value="deals"]',
+                  ) as HTMLElement;
                   if (dealsTab) {
                     dealsTab.click();
                     setTimeout(() => {
-                      const event = new CustomEvent('leadTabAction', { 
-                        detail: { 
-                          action: 'createQuote', 
-                          leadId: id, 
-                          companyName: lead.companyName || '' 
-                        } 
+                      const event = new CustomEvent('leadTabAction', {
+                        detail: {
+                          action: 'createQuote',
+                          leadId: id,
+                          companyName: lead.companyName || '',
+                        },
                       });
                       window.dispatchEvent(event);
                     }, 100);
@@ -554,21 +556,23 @@ export default function LeadDetailHubspot() {
                 <Quote className="h-3 w-3 mr-1" />
                 Create Quote
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   // Route through deals - switch to deals tab and trigger proposal creation
-                  const dealsTab = document.querySelector('[data-state="inactive"][value="deals"]') as HTMLElement;
+                  const dealsTab = document.querySelector(
+                    '[data-state="inactive"][value="deals"]',
+                  ) as HTMLElement;
                   if (dealsTab) {
                     dealsTab.click();
                     setTimeout(() => {
-                      const event = new CustomEvent('leadTabAction', { 
-                        detail: { 
-                          action: 'createProposal', 
-                          leadId: id, 
-                          companyName: lead.companyName || '' 
-                        } 
+                      const event = new CustomEvent('leadTabAction', {
+                        detail: {
+                          action: 'createProposal',
+                          leadId: id,
+                          companyName: lead.companyName || '',
+                        },
                       });
                       window.dispatchEvent(event);
                     }, 100);
@@ -586,30 +590,26 @@ export default function LeadDetailHubspot() {
           <div className="flex items-start space-x-3 mb-4">
             <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
               <AvatarFallback className="bg-blue-100 text-blue-600 text-base sm:text-lg font-semibold">
-                {lead.companyName?.[0] || "L"}
+                {lead.companyName?.[0] || 'L'}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <h1 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">
-                {lead.companyName || "Unnamed Lead"}
+                {lead.companyName || 'Unnamed Lead'}
               </h1>
               <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600 mt-1">
                 <Badge
-                  variant={
-                    lead.status === "qualified" ? "default" : "secondary"
-                  }
+                  variant={lead.status === 'qualified' ? 'default' : 'secondary'}
                   className="text-xs"
                 >
-                  {lead.status || "New"}
+                  {lead.status || 'New'}
                 </Badge>
                 <span className="hidden sm:inline">•</span>
                 <span>Lead score: {lead.leadScore || 0}</span>
                 <span className="hidden sm:inline">•</span>
                 <span className="hidden sm:inline">
-                  Created{" "}
-                  {lead.createdAt
-                    ? format(new Date(lead.createdAt), "MMM d, yyyy")
-                    : "Recently"}
+                  Created{' '}
+                  {lead.createdAt ? format(new Date(lead.createdAt), 'MMM d, yyyy') : 'Recently'}
                 </span>
               </div>
             </div>
@@ -733,10 +733,7 @@ export default function LeadDetailHubspot() {
               <TabsContent value="overview" className="space-y-6 mt-6">
                 {/* Company Information */}
                 <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => toggleSection("company")}
-                  >
+                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('company')}>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center">
                         <Building2 className="h-5 w-5 mr-2" />
@@ -767,9 +764,7 @@ export default function LeadDetailHubspot() {
                               }
                             />
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.companyName || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.companyName || '--'}</p>
                           )}
                         </div>
 
@@ -788,7 +783,7 @@ export default function LeadDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.accountNumber || "--"}
+                              {lead.accountNumber || '--'}
                             </p>
                           )}
                         </div>
@@ -809,19 +804,13 @@ export default function LeadDetailHubspot() {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Prospect">
-                                  Prospect
-                                </SelectItem>
-                                <SelectItem value="Customer">
-                                  Customer
-                                </SelectItem>
+                                <SelectItem value="Prospect">Prospect</SelectItem>
+                                <SelectItem value="Customer">Customer</SelectItem>
                                 <SelectItem value="Partner">Partner</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.accountType || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.accountType || '--'}</p>
                           )}
                         </div>
 
@@ -852,7 +841,7 @@ export default function LeadDetailHubspot() {
                                   <ExternalLink className="h-3 w-3 ml-1" />
                                 </a>
                               ) : (
-                                "--"
+                                '--'
                               )}
                             </p>
                           )}
@@ -874,35 +863,21 @@ export default function LeadDetailHubspot() {
                                 <SelectValue placeholder="Select industry" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Healthcare">
-                                  Healthcare
-                                </SelectItem>
-                                <SelectItem value="Education">
-                                  Education
-                                </SelectItem>
-                                <SelectItem value="Manufacturing">
-                                  Manufacturing
-                                </SelectItem>
+                                <SelectItem value="Healthcare">Healthcare</SelectItem>
+                                <SelectItem value="Education">Education</SelectItem>
+                                <SelectItem value="Manufacturing">Manufacturing</SelectItem>
                                 <SelectItem value="Financial Services">
                                   Financial Services
                                 </SelectItem>
-                                <SelectItem value="Government">
-                                  Government
-                                </SelectItem>
+                                <SelectItem value="Government">Government</SelectItem>
                                 <SelectItem value="Legal">Legal</SelectItem>
-                                <SelectItem value="Technology">
-                                  Technology
-                                </SelectItem>
-                                <SelectItem value="Real Estate">
-                                  Real Estate
-                                </SelectItem>
+                                <SelectItem value="Technology">Technology</SelectItem>
+                                <SelectItem value="Real Estate">Real Estate</SelectItem>
                                 <SelectItem value="Other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.industry || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.industry || '--'}</p>
                           )}
                         </div>
 
@@ -922,30 +897,16 @@ export default function LeadDetailHubspot() {
                                 <SelectValue placeholder="Select size" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="1-10">
-                                  1-10 employees
-                                </SelectItem>
-                                <SelectItem value="11-50">
-                                  11-50 employees
-                                </SelectItem>
-                                <SelectItem value="51-200">
-                                  51-200 employees
-                                </SelectItem>
-                                <SelectItem value="201-500">
-                                  201-500 employees
-                                </SelectItem>
-                                <SelectItem value="501-1000">
-                                  501-1000 employees
-                                </SelectItem>
-                                <SelectItem value="1000+">
-                                  1000+ employees
-                                </SelectItem>
+                                <SelectItem value="1-10">1-10 employees</SelectItem>
+                                <SelectItem value="11-50">11-50 employees</SelectItem>
+                                <SelectItem value="51-200">51-200 employees</SelectItem>
+                                <SelectItem value="201-500">201-500 employees</SelectItem>
+                                <SelectItem value="501-1000">501-1000 employees</SelectItem>
+                                <SelectItem value="1000+">1000+ employees</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.companySize || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.companySize || '--'}</p>
                           )}
                         </div>
 
@@ -955,19 +916,17 @@ export default function LeadDetailHubspot() {
                             <Input
                               id="employeeCount"
                               type="number"
-                              value={editForm.employeeCount || ""}
+                              value={editForm.employeeCount || ''}
                               onChange={(e) =>
                                 setEditForm((prev) => ({
                                   ...prev,
-                                  employeeCount: e.target.value
-                                    ? parseInt(e.target.value)
-                                    : null,
+                                  employeeCount: e.target.value ? parseInt(e.target.value) : null,
                                 }))
                               }
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.employeeCount || "--"}
+                              {lead.employeeCount || '--'}
                             </p>
                           )}
                         </div>
@@ -978,23 +937,19 @@ export default function LeadDetailHubspot() {
                             <Input
                               id="annualRevenue"
                               type="number"
-                              value={editForm.annualRevenue || ""}
+                              value={editForm.annualRevenue || ''}
                               onChange={(e) =>
                                 setEditForm((prev) => ({
                                   ...prev,
-                                  annualRevenue: e.target.value
-                                    ? parseFloat(e.target.value)
-                                    : null,
+                                  annualRevenue: e.target.value ? parseFloat(e.target.value) : null,
                                 }))
                               }
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
                               {lead.annualRevenue
-                                ? `$${Number(
-                                    lead.annualRevenue
-                                  ).toLocaleString()}`
-                                : "--"}
+                                ? `$${Number(lead.annualRevenue).toLocaleString()}`
+                                : '--'}
                             </p>
                           )}
                         </div>
@@ -1005,10 +960,7 @@ export default function LeadDetailHubspot() {
 
                 {/* Contact Information */}
                 <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => toggleSection("contact")}
-                  >
+                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('contact')}>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center">
                         <User className="h-5 w-5 mr-2" />
@@ -1026,9 +978,7 @@ export default function LeadDetailHubspot() {
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="primaryContactName">
-                            Contact Name
-                          </Label>
+                          <Label htmlFor="primaryContactName">Contact Name</Label>
                           {isEditing ? (
                             <Input
                               id="primaryContactName"
@@ -1042,7 +992,7 @@ export default function LeadDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.primaryContactName || "--"}
+                              {lead.primaryContactName || '--'}
                             </p>
                           )}
                         </div>
@@ -1062,7 +1012,7 @@ export default function LeadDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.primaryContactTitle || "--"}
+                              {lead.primaryContactTitle || '--'}
                             </p>
                           )}
                         </div>
@@ -1091,7 +1041,7 @@ export default function LeadDetailHubspot() {
                                   {lead.primaryContactEmail}
                                 </a>
                               ) : (
-                                "--"
+                                '--'
                               )}
                             </p>
                           )}
@@ -1121,7 +1071,7 @@ export default function LeadDetailHubspot() {
                                   {lead.primaryContactPhone}
                                 </a>
                               ) : (
-                                "--"
+                                '--'
                               )}
                             </p>
                           )}
@@ -1151,7 +1101,7 @@ export default function LeadDetailHubspot() {
                                   {lead.phone}
                                 </a>
                               ) : (
-                                "--"
+                                '--'
                               )}
                             </p>
                           )}
@@ -1171,18 +1121,14 @@ export default function LeadDetailHubspot() {
                               }
                             />
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.fax || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.fax || '--'}</p>
                           )}
                         </div>
                       </div>
 
                       {/* Billing Contact Section */}
                       <Separator />
-                      <h4 className="text-sm font-medium text-gray-900">
-                        Billing Contact
-                      </h4>
+                      <h4 className="text-sm font-medium text-gray-900">Billing Contact</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="billingContactName">Name</Label>
@@ -1199,7 +1145,7 @@ export default function LeadDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.billingContactName || "--"}
+                              {lead.billingContactName || '--'}
                             </p>
                           )}
                         </div>
@@ -1228,7 +1174,7 @@ export default function LeadDetailHubspot() {
                                   {lead.billingContactEmail}
                                 </a>
                               ) : (
-                                "--"
+                                '--'
                               )}
                             </p>
                           )}
@@ -1258,7 +1204,7 @@ export default function LeadDetailHubspot() {
                                   {lead.billingContactPhone}
                                 </a>
                               ) : (
-                                "--"
+                                '--'
                               )}
                             </p>
                           )}
@@ -1270,10 +1216,7 @@ export default function LeadDetailHubspot() {
 
                 {/* Address Information */}
                 <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => toggleSection("address")}
-                  >
+                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('address')}>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center">
                         <MapPin className="h-5 w-5 mr-2" />
@@ -1291,9 +1234,7 @@ export default function LeadDetailHubspot() {
                     <CardContent className="space-y-6">
                       {/* Primary Address */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">
-                          Primary Address
-                        </h4>
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Primary Address</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
                             <Label htmlFor="addressLine1">Address Line 1</Label>
@@ -1310,7 +1251,7 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.addressLine1 || "--"}
+                                {lead.addressLine1 || '--'}
                               </p>
                             )}
                           </div>
@@ -1330,7 +1271,7 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.addressLine2 || "--"}
+                                {lead.addressLine2 || '--'}
                               </p>
                             )}
                           </div>
@@ -1349,9 +1290,7 @@ export default function LeadDetailHubspot() {
                                 }
                               />
                             ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.city || "--"}
-                              </p>
+                              <p className="text-sm text-gray-900 mt-1">{lead.city || '--'}</p>
                             )}
                           </div>
 
@@ -1369,9 +1308,7 @@ export default function LeadDetailHubspot() {
                                 }
                               />
                             ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.state || "--"}
-                              </p>
+                              <p className="text-sm text-gray-900 mt-1">{lead.state || '--'}</p>
                             )}
                           </div>
 
@@ -1390,7 +1327,7 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.postalCode || "--"}
+                                {lead.postalCode || '--'}
                               </p>
                             )}
                           </div>
@@ -1411,17 +1348,13 @@ export default function LeadDetailHubspot() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="US">
-                                    United States
-                                  </SelectItem>
+                                  <SelectItem value="US">United States</SelectItem>
                                   <SelectItem value="CA">Canada</SelectItem>
                                   <SelectItem value="MX">Mexico</SelectItem>
                                 </SelectContent>
                               </Select>
                             ) : (
-                              <p className="text-sm text-gray-900 mt-1">
-                                {lead.country || "US"}
-                              </p>
+                              <p className="text-sm text-gray-900 mt-1">{lead.country || 'US'}</p>
                             )}
                           </div>
                         </div>
@@ -1431,14 +1364,10 @@ export default function LeadDetailHubspot() {
 
                       {/* Billing Address */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900 mb-3">
-                          Billing Address
-                        </h4>
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Billing Address</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="md:col-span-2">
-                            <Label htmlFor="billingAddressLine1">
-                              Billing Address Line 1
-                            </Label>
+                            <Label htmlFor="billingAddressLine1">Billing Address Line 1</Label>
                             {isEditing ? (
                               <Input
                                 id="billingAddressLine1"
@@ -1452,15 +1381,13 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingAddressLine1 || "--"}
+                                {lead.billingAddressLine1 || '--'}
                               </p>
                             )}
                           </div>
 
                           <div className="md:col-span-2">
-                            <Label htmlFor="billingAddressLine2">
-                              Billing Address Line 2
-                            </Label>
+                            <Label htmlFor="billingAddressLine2">Billing Address Line 2</Label>
                             {isEditing ? (
                               <Input
                                 id="billingAddressLine2"
@@ -1474,7 +1401,7 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingAddressLine2 || "--"}
+                                {lead.billingAddressLine2 || '--'}
                               </p>
                             )}
                           </div>
@@ -1494,7 +1421,7 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingCity || "--"}
+                                {lead.billingCity || '--'}
                               </p>
                             )}
                           </div>
@@ -1514,15 +1441,13 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingState || "--"}
+                                {lead.billingState || '--'}
                               </p>
                             )}
                           </div>
 
                           <div>
-                            <Label htmlFor="billingPostalCode">
-                              Postal Code
-                            </Label>
+                            <Label htmlFor="billingPostalCode">Postal Code</Label>
                             {isEditing ? (
                               <Input
                                 id="billingPostalCode"
@@ -1536,7 +1461,7 @@ export default function LeadDetailHubspot() {
                               />
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingPostalCode || "--"}
+                                {lead.billingPostalCode || '--'}
                               </p>
                             )}
                           </div>
@@ -1557,16 +1482,14 @@ export default function LeadDetailHubspot() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="US">
-                                    United States
-                                  </SelectItem>
+                                  <SelectItem value="US">United States</SelectItem>
                                   <SelectItem value="CA">Canada</SelectItem>
                                   <SelectItem value="MX">Mexico</SelectItem>
                                 </SelectContent>
                               </Select>
                             ) : (
                               <p className="text-sm text-gray-900 mt-1">
-                                {lead.billingCountry || "US"}
+                                {lead.billingCountry || 'US'}
                               </p>
                             )}
                           </div>
@@ -1578,10 +1501,7 @@ export default function LeadDetailHubspot() {
 
                 {/* Pipeline Information */}
                 <Card>
-                  <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => toggleSection("pipeline")}
-                  >
+                  <CardHeader className="cursor-pointer" onClick={() => toggleSection('pipeline')}>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center">
                         <Target className="h-5 w-5 mr-2" />
@@ -1615,29 +1535,17 @@ export default function LeadDetailHubspot() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="website">Website</SelectItem>
-                                <SelectItem value="referral">
-                                  Referral
-                                </SelectItem>
-                                <SelectItem value="cold_call">
-                                  Cold Call
-                                </SelectItem>
-                                <SelectItem value="trade_show">
-                                  Trade Show
-                                </SelectItem>
-                                <SelectItem value="social_media">
-                                  Social Media
-                                </SelectItem>
-                                <SelectItem value="advertising">
-                                  Advertising
-                                </SelectItem>
+                                <SelectItem value="referral">Referral</SelectItem>
+                                <SelectItem value="cold_call">Cold Call</SelectItem>
+                                <SelectItem value="trade_show">Trade Show</SelectItem>
+                                <SelectItem value="social_media">Social Media</SelectItem>
+                                <SelectItem value="advertising">Advertising</SelectItem>
                                 <SelectItem value="partner">Partner</SelectItem>
                                 <SelectItem value="other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.leadSource || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.leadSource || '--'}</p>
                           )}
                         </div>
 
@@ -1658,42 +1566,26 @@ export default function LeadDetailHubspot() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="new">New</SelectItem>
-                                <SelectItem value="contacted">
-                                  Contacted
-                                </SelectItem>
-                                <SelectItem value="qualified">
-                                  Qualified
-                                </SelectItem>
-                                <SelectItem value="proposal">
-                                  Proposal
-                                </SelectItem>
-                                <SelectItem value="negotiation">
-                                  Negotiation
-                                </SelectItem>
-                                <SelectItem value="closed_won">
-                                  Closed Won
-                                </SelectItem>
-                                <SelectItem value="closed_lost">
-                                  Closed Lost
-                                </SelectItem>
+                                <SelectItem value="contacted">Contacted</SelectItem>
+                                <SelectItem value="qualified">Qualified</SelectItem>
+                                <SelectItem value="proposal">Proposal</SelectItem>
+                                <SelectItem value="negotiation">Negotiation</SelectItem>
+                                <SelectItem value="closed_won">Closed Won</SelectItem>
+                                <SelectItem value="closed_lost">Closed Lost</SelectItem>
                               </SelectContent>
                             </Select>
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.salesStage || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.salesStage || '--'}</p>
                           )}
                         </div>
 
                         <div>
-                          <Label htmlFor="estimatedAmount">
-                            Estimated Deal Value
-                          </Label>
+                          <Label htmlFor="estimatedAmount">Estimated Deal Value</Label>
                           {isEditing ? (
                             <Input
                               id="estimatedAmount"
                               type="number"
-                              value={editForm.estimatedAmount || ""}
+                              value={editForm.estimatedAmount || ''}
                               onChange={(e) =>
                                 setEditForm((prev) => ({
                                   ...prev,
@@ -1706,10 +1598,8 @@ export default function LeadDetailHubspot() {
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
                               {lead.estimatedAmount
-                                ? `$${Number(
-                                    lead.estimatedAmount
-                                  ).toLocaleString()}`
-                                : "--"}
+                                ? `$${Number(lead.estimatedAmount).toLocaleString()}`
+                                : '--'}
                             </p>
                           )}
                         </div>
@@ -1722,20 +1612,16 @@ export default function LeadDetailHubspot() {
                               type="number"
                               min="0"
                               max="100"
-                              value={editForm.probability || ""}
+                              value={editForm.probability || ''}
                               onChange={(e) =>
                                 setEditForm((prev) => ({
                                   ...prev,
-                                  probability: e.target.value
-                                    ? parseInt(e.target.value)
-                                    : 0,
+                                  probability: e.target.value ? parseInt(e.target.value) : 0,
                                 }))
                               }
                             />
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.probability || 0}%
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.probability || 0}%</p>
                           )}
                         </div>
 
@@ -1745,7 +1631,7 @@ export default function LeadDetailHubspot() {
                             <Input
                               id="closeDate"
                               type="date"
-                              value={editForm.closeDate || ""}
+                              value={editForm.closeDate || ''}
                               onChange={(e) =>
                                 setEditForm((prev) => ({
                                   ...prev,
@@ -1756,11 +1642,8 @@ export default function LeadDetailHubspot() {
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
                               {lead.closeDate
-                                ? format(
-                                    new Date(lead.closeDate),
-                                    "MMM d, yyyy"
-                                  )
-                                : "--"}
+                                ? format(new Date(lead.closeDate), 'MMM d, yyyy')
+                                : '--'}
                             </p>
                           )}
                         </div>
@@ -1788,7 +1671,7 @@ export default function LeadDetailHubspot() {
                             </Select>
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.interestLevel || "--"}
+                              {lead.interestLevel || '--'}
                             </p>
                           )}
                         </div>
@@ -1801,20 +1684,16 @@ export default function LeadDetailHubspot() {
                               type="number"
                               min="0"
                               max="100"
-                              value={editForm.leadScore || ""}
+                              value={editForm.leadScore || ''}
                               onChange={(e) =>
                                 setEditForm((prev) => ({
                                   ...prev,
-                                  leadScore: e.target.value
-                                    ? parseInt(e.target.value)
-                                    : 0,
+                                  leadScore: e.target.value ? parseInt(e.target.value) : 0,
                                 }))
                               }
                             />
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.leadScore || 0}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.leadScore || 0}</p>
                           )}
                         </div>
 
@@ -1840,16 +1719,12 @@ export default function LeadDetailHubspot() {
                               </SelectContent>
                             </Select>
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.priority || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.priority || '--'}</p>
                           )}
                         </div>
 
                         <div>
-                          <Label htmlFor="assignedSalesRep">
-                            Assigned Sales Rep
-                          </Label>
+                          <Label htmlFor="assignedSalesRep">Assigned Sales Rep</Label>
                           {isEditing ? (
                             <Input
                               id="assignedSalesRep"
@@ -1863,7 +1738,7 @@ export default function LeadDetailHubspot() {
                             />
                           ) : (
                             <p className="text-sm text-gray-900 mt-1">
-                              {lead.assignedSalesRep || "--"}
+                              {lead.assignedSalesRep || '--'}
                             </p>
                           )}
                         </div>
@@ -1882,9 +1757,7 @@ export default function LeadDetailHubspot() {
                               }
                             />
                           ) : (
-                            <p className="text-sm text-gray-900 mt-1">
-                              {lead.territory || "--"}
-                            </p>
+                            <p className="text-sm text-gray-900 mt-1">{lead.territory || '--'}</p>
                           )}
                         </div>
                       </div>
@@ -1901,9 +1774,7 @@ export default function LeadDetailHubspot() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          setDialogs((prev) => ({ ...prev, note: true }))
-                        }
+                        onClick={() => setDialogs((prev) => ({ ...prev, note: true }))}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Note
@@ -1911,9 +1782,7 @@ export default function LeadDetailHubspot() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          setDialogs((prev) => ({ ...prev, call: true }))
-                        }
+                        onClick={() => setDialogs((prev) => ({ ...prev, call: true }))}
                       >
                         <PhoneCall className="h-4 w-4 mr-2" />
                         Log Call
@@ -1921,9 +1790,7 @@ export default function LeadDetailHubspot() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          setDialogs((prev) => ({ ...prev, email: true }))
-                        }
+                        onClick={() => setDialogs((prev) => ({ ...prev, email: true }))}
                       >
                         <Mail className="h-4 w-4 mr-2" />
                         Log Email
@@ -1936,30 +1803,30 @@ export default function LeadDetailHubspot() {
 
               <TabsContent value="contacts" className="mt-6">
                 <ContactManager
-                  companyId={lead?.companyId || lead?.id || ""}
-                  companyName={lead?.companyName || "Unknown Company"}
+                  companyId={lead?.companyId || lead?.id || ''}
+                  companyName={lead?.companyName || 'Unknown Company'}
                 />
               </TabsContent>
 
               <TabsContent value="deals" className="mt-6">
                 <LeadDeals
-                  leadId={lead?.id || ""}
-                  leadName={lead?.companyName || "Unknown Lead"}
-                  companyId={lead?.companyId || lead?.id || ""}
+                  leadId={lead?.id || ''}
+                  leadName={lead?.companyName || 'Unknown Lead'}
+                  companyId={lead?.companyId || lead?.id || ''}
                 />
               </TabsContent>
 
               <TabsContent value="proposals" className="mt-6">
                 <LeadProposals
-                  leadId={lead?.id || ""}
-                  leadName={lead?.companyName || "Unknown Lead"}
+                  leadId={lead?.id || ''}
+                  leadName={lead?.companyName || 'Unknown Lead'}
                 />
               </TabsContent>
 
               <TabsContent value="quotes" className="mt-6">
                 <LeadQuotes
-                  leadId={lead?.id || ""}
-                  leadName={lead?.companyName || "Unknown Lead"}
+                  leadId={lead?.id || ''}
+                  leadName={lead?.companyName || 'Unknown Lead'}
                 />
               </TabsContent>
             </Tabs>
@@ -1978,10 +1845,10 @@ export default function LeadDetailHubspot() {
                   <Badge
                     variant={
                       lead.leadScore > 70
-                        ? "default"
+                        ? 'default'
                         : lead.leadScore > 40
-                        ? "secondary"
-                        : "outline"
+                          ? 'secondary'
+                          : 'outline'
                     }
                   >
                     {lead.leadScore || 0}/100
@@ -1990,12 +1857,8 @@ export default function LeadDetailHubspot() {
 
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Status</span>
-                  <Badge
-                    variant={
-                      lead.status === "qualified" ? "default" : "secondary"
-                    }
-                  >
-                    {lead.status || "New"}
+                  <Badge variant={lead.status === 'qualified' ? 'default' : 'secondary'}>
+                    {lead.status || 'New'}
                   </Badge>
                 </div>
 
@@ -2003,14 +1866,14 @@ export default function LeadDetailHubspot() {
                   <span className="text-sm text-gray-600">Interest Level</span>
                   <Badge
                     variant={
-                      lead.interestLevel === "hot"
-                        ? "destructive"
-                        : lead.interestLevel === "warm"
-                        ? "default"
-                        : "secondary"
+                      lead.interestLevel === 'hot'
+                        ? 'destructive'
+                        : lead.interestLevel === 'warm'
+                          ? 'default'
+                          : 'secondary'
                     }
                   >
-                    {lead.interestLevel || "Warm"}
+                    {lead.interestLevel || 'Warm'}
                   </Badge>
                 </div>
 
@@ -2018,14 +1881,14 @@ export default function LeadDetailHubspot() {
                   <span className="text-sm text-gray-600">Priority</span>
                   <Badge
                     variant={
-                      lead.priority === "high"
-                        ? "destructive"
-                        : lead.priority === "medium"
-                        ? "default"
-                        : "secondary"
+                      lead.priority === 'high'
+                        ? 'destructive'
+                        : lead.priority === 'medium'
+                          ? 'default'
+                          : 'secondary'
                     }
                   >
-                    {lead.priority || "Medium"}
+                    {lead.priority || 'Medium'}
                   </Badge>
                 </div>
 
@@ -2035,9 +1898,7 @@ export default function LeadDetailHubspot() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Created</span>
                     <span className="text-sm text-gray-900">
-                      {lead.createdAt
-                        ? format(new Date(lead.createdAt), "MMM d, yyyy")
-                        : "--"}
+                      {lead.createdAt ? format(new Date(lead.createdAt), 'MMM d, yyyy') : '--'}
                     </span>
                   </div>
 
@@ -2045,19 +1906,17 @@ export default function LeadDetailHubspot() {
                     <span className="text-sm text-gray-600">Last Contact</span>
                     <span className="text-sm text-gray-900">
                       {lead.lastContactDate
-                        ? format(new Date(lead.lastContactDate), "MMM d, yyyy")
-                        : "--"}
+                        ? format(new Date(lead.lastContactDate), 'MMM d, yyyy')
+                        : '--'}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      Next Follow-up
-                    </span>
+                    <span className="text-sm text-gray-600">Next Follow-up</span>
                     <span className="text-sm text-gray-900">
                       {lead.nextFollowUpDate
-                        ? format(new Date(lead.nextFollowUpDate), "MMM d, yyyy")
-                        : "--"}
+                        ? format(new Date(lead.nextFollowUpDate), 'MMM d, yyyy')
+                        : '--'}
                     </span>
                   </div>
                 </div>
@@ -2066,10 +1925,7 @@ export default function LeadDetailHubspot() {
 
             {/* Financial Information */}
             <Card>
-              <CardHeader
-                className="cursor-pointer"
-                onClick={() => toggleSection("financial")}
-              >
+              <CardHeader className="cursor-pointer" onClick={() => toggleSection('financial')}>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center text-lg">
                     <DollarSign className="h-5 w-5 mr-2" />
@@ -2091,21 +1947,17 @@ export default function LeadDetailHubspot() {
                       <Input
                         id="creditLimit"
                         type="number"
-                        value={editForm.creditLimit || ""}
+                        value={editForm.creditLimit || ''}
                         onChange={(e) =>
                           setEditForm((prev) => ({
                             ...prev,
-                            creditLimit: e.target.value
-                              ? parseFloat(e.target.value)
-                              : null,
+                            creditLimit: e.target.value ? parseFloat(e.target.value) : null,
                           }))
                         }
                       />
                     ) : (
                       <p className="text-sm text-gray-900 mt-1">
-                        {lead.creditLimit
-                          ? `$${Number(lead.creditLimit).toLocaleString()}`
-                          : "--"}
+                        {lead.creditLimit ? `$${Number(lead.creditLimit).toLocaleString()}` : '--'}
                       </p>
                     )}
                   </div>
@@ -2135,9 +1987,7 @@ export default function LeadDetailHubspot() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {lead.paymentTerms || "--"}
-                      </p>
+                      <p className="text-sm text-gray-900 mt-1">{lead.paymentTerms || '--'}</p>
                     )}
                   </div>
 
@@ -2155,9 +2005,7 @@ export default function LeadDetailHubspot() {
                         }
                       />
                     ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {lead.taxId || "--"}
-                      </p>
+                      <p className="text-sm text-gray-900 mt-1">{lead.taxId || '--'}</p>
                     )}
                   </div>
 
@@ -2174,11 +2022,7 @@ export default function LeadDetailHubspot() {
                         }
                       />
                     ) : (
-                      <Checkbox
-                        id="taxExempt"
-                        checked={lead.taxExempt}
-                        disabled
-                      />
+                      <Checkbox id="taxExempt" checked={lead.taxExempt} disabled />
                     )}
                     <Label htmlFor="taxExempt">Tax Exempt</Label>
                   </div>
@@ -2188,10 +2032,7 @@ export default function LeadDetailHubspot() {
 
             {/* External System Integration */}
             <Card>
-              <CardHeader
-                className="cursor-pointer"
-                onClick={() => toggleSection("external")}
-              >
+              <CardHeader className="cursor-pointer" onClick={() => toggleSection('external')}>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center text-lg">
                     <Zap className="h-5 w-5 mr-2" />
@@ -2208,9 +2049,7 @@ export default function LeadDetailHubspot() {
               {expandedSections.external && (
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="externalCustomerId">
-                      External Customer ID
-                    </Label>
+                    <Label htmlFor="externalCustomerId">External Customer ID</Label>
                     {isEditing ? (
                       <Input
                         id="externalCustomerId"
@@ -2224,7 +2063,7 @@ export default function LeadDetailHubspot() {
                       />
                     ) : (
                       <p className="text-sm text-gray-900 mt-1">
-                        {lead.externalCustomerId || "--"}
+                        {lead.externalCustomerId || '--'}
                       </p>
                     )}
                   </div>
@@ -2252,9 +2091,7 @@ export default function LeadDetailHubspot() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {lead.externalSystemId || "--"}
-                      </p>
+                      <p className="text-sm text-gray-900 mt-1">{lead.externalSystemId || '--'}</p>
                     )}
                   </div>
 
@@ -2275,17 +2112,13 @@ export default function LeadDetailHubspot() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="in_progress">
-                            In Progress
-                          </SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
                           <SelectItem value="failed">Failed</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
-                      <p className="text-sm text-gray-900 mt-1">
-                        {lead.migrationStatus || "--"}
-                      </p>
+                      <p className="text-sm text-gray-900 mt-1">{lead.migrationStatus || '--'}</p>
                     )}
                   </div>
                 </CardContent>
@@ -2315,7 +2148,7 @@ export default function LeadDetailHubspot() {
                   />
                 ) : (
                   <p className="text-sm text-gray-900 whitespace-pre-wrap">
-                    {lead.notes || "No notes available."}
+                    {lead.notes || 'No notes available.'}
                   </p>
                 )}
               </CardContent>
@@ -2385,10 +2218,10 @@ export default function LeadDetailHubspot() {
             leadId={id}
             onSuccess={() => {
               setDialogs((prev) => ({ ...prev, editRecord: false }));
-              queryClient.invalidateQueries({ queryKey: ["/api/leads", id, "contacts"] });
+              queryClient.invalidateQueries({ queryKey: ['/api/leads', id, 'contacts'] });
               toast({
-                title: "Success",
-                description: "Contact created successfully",
+                title: 'Success',
+                description: 'Contact created successfully',
               });
             }}
             onCancel={() => {

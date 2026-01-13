@@ -118,26 +118,29 @@ export function ActivityForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Convert camelCase to snake_case for database compatibility
     const activityData = {
-      activityType,
-      subject:
+      activity_type: activityType,
+      activity_subject:
         formData.subject ||
         `${activityType.charAt(0).toUpperCase() + activityType.slice(1)} with ${recordName}`,
-      description: formData.description,
+      notes: formData.description,
       direction: formData.direction,
-      emailTo: formData.emailTo,
-      emailCc: formData.emailCc,
-      callDuration: formData.callDuration,
-      callOutcome: formData.callOutcome,
-      scheduledDate: formData.scheduledDate?.toISOString(),
-      dueDate: formData.dueDate?.toISOString(),
-      completedDate:
+      email_to: formData.emailTo,
+      email_cc: formData.emailCc,
+      activity_duration: formData.callDuration,
+      activity_outcome: formData.callOutcome,
+      activity_date:
+        formData.scheduledDate?.toISOString() ||
+        (activityType === 'note' || activityType === 'call' ? new Date().toISOString() : undefined),
+      due_date: formData.dueDate?.toISOString(),
+      completed_date:
         activityType === 'note' || formData.outcome === 'completed'
           ? new Date().toISOString()
           : undefined,
       outcome: formData.outcome,
-      nextAction: formData.nextAction,
-      followUpDate: formData.followUpDate?.toISOString(),
+      next_action: formData.nextAction,
+      follow_up_date: formData.followUpDate?.toISOString(),
     };
 
     createActivityMutation.mutate(activityData);
