@@ -244,9 +244,25 @@ export default function LeadDetailHubspot() {
   });
 
   // Fetch lead details
+  // Transform snake_case API response to camelCase for frontend
+  const transformKeys = (obj: any): any => {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(transformKeys);
+
+    const transformed: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      transformed[camelKey] = transformKeys(value);
+    }
+    return transformed;
+  };
+
   const { data: lead, isLoading } = useQuery({
     queryKey: ['/api/business-records', id],
-    queryFn: async () => apiRequest(`/api/business-records/${id}`),
+    queryFn: async () => {
+      const data = await apiRequest(`/api/business-records/${id}`);
+      return transformKeys(data);
+    },
     enabled: !!id,
   });
 
