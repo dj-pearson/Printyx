@@ -191,7 +191,7 @@ export function useSupabaseAuth() {
 
             if (currentSession?.access_token) {
               // Call backend API to fetch user profile
-              const apiUrl = getApiUrl('api/auth/me');
+              const apiUrl = getApiUrl('me');
               const response = await fetch(apiUrl, {
                 headers: {
                   Authorization: `Bearer ${currentSession.access_token}`,
