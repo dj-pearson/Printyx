@@ -168,7 +168,7 @@ export function useSupabaseAuth() {
         const supabaseResult = await supabase
           .from('users')
           .select(
-            'id, email, first_name, last_name, tenant_id, role, role_id, team_id, access_scope, is_platform_user, profile_image_url',
+            'id, email, first_name, last_name, tenant_id, role_id, team_id, access_scope, is_platform_user, profile_image_url',
           )
           .eq('id', session.user.id)
           .single();
@@ -216,10 +216,10 @@ export function useSupabaseAuth() {
           console.warn('No user profile found from any source, using auth metadata');
         }
 
-        // Determine role - check both role (string) and role_id (FK) columns
-        const roleString = profile?.role; // String role like 'admin', 'manager', etc.
+        // Determine role - use role_id (FK) column
         const roleId = profile?.role_id || authUser.roleId;
         let roleData = null;
+        const roleString = null; // Legacy role string no longer used
 
         // First try to fetch from roles table if we have role_id
         if (roleId) {
