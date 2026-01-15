@@ -3,13 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,13 +46,15 @@ const quoteSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   businessRecordId: z.string().min(1, 'Company is required'),
   contactId: z.string().optional(),
-  billingAddress: z.object({
-    street: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zipCode: z.string().optional(),
-    country: z.string().optional(),
-  }).optional(),
+  billingAddress: z
+    .object({
+      street: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zipCode: z.string().optional(),
+      country: z.string().optional(),
+    })
+    .optional(),
   pricingType: z.enum(['new', 'upgrade']).default('new'),
   validUntil: z.string().optional(),
   customerNotes: z.string().optional(),
@@ -73,7 +69,13 @@ const quoteSchema = z.object({
 
 type QuoteFormData = z.infer<typeof quoteSchema>;
 
-type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services';
+type ProductType =
+  | 'product_models'
+  | 'product_accessories'
+  | 'professional_services'
+  | 'service_products'
+  | 'supplies'
+  | 'managed_services';
 
 interface LineItem {
   id?: string;
@@ -102,11 +104,11 @@ interface QuoteBuilderProps {
   onCreateProposal?: (quoteId: string) => void;
 }
 
-export default function QuoteBuilder({ 
-  initialQuoteId, 
-  onSave, 
+export default function QuoteBuilder({
+  initialQuoteId,
+  onSave,
   onCancel,
-  onCreateProposal 
+  onCreateProposal,
 }: QuoteBuilderProps) {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
@@ -153,7 +155,7 @@ export default function QuoteBuilder({
   });
 
   // Fetch business records for company/contact selection
-  const { data: businessRecords } = useQuery({
+  const { data: businessRecords = [] } = useQuery({
     queryKey: ['/api/business-records'],
   });
 
@@ -163,8 +165,8 @@ export default function QuoteBuilder({
     const leadId = urlParams.get('leadId');
     const companyName = urlParams.get('companyName');
     const shouldPrefill = urlParams.get('prefill') === 'true';
-    
-    if (shouldPrefill && leadId && businessRecords && !initialQuoteId) {
+
+    if (shouldPrefill && leadId && Array.isArray(businessRecords) && !initialQuoteId) {
       // Find the lead/company in business records
       const company = businessRecords.find((record: any) => record.id === leadId);
       if (company) {
@@ -172,7 +174,7 @@ export default function QuoteBuilder({
         setSelectedCompany(company);
         form.setValue('businessRecordId', company.id);
         form.setValue('title', `Quote for ${company.companyName}`);
-        
+
         // Auto-populate billing address if available
         if (company.address) {
           form.setValue('billingAddress', {
@@ -191,7 +193,7 @@ export default function QuoteBuilder({
   useEffect(() => {
     if (existingQuote && !quoteLoading) {
       console.log('📝 Populating form with existing quote:', existingQuote);
-      
+
       // Update form with existing data
       form.reset({
         title: existingQuote.title || '',
@@ -219,11 +221,13 @@ export default function QuoteBuilder({
       setTaxAmount(parseFloat(existingQuote.taxAmount || '0'));
 
       // Find and set the selected company
-      if (existingQuote.businessRecordId && businessRecords) {
-        const company = businessRecords.find((record: any) => record.id === existingQuote.businessRecordId);
+      if (existingQuote.businessRecordId && Array.isArray(businessRecords)) {
+        const company = businessRecords.find(
+          (record: any) => record.id === existingQuote.businessRecordId,
+        );
         if (company) {
           setSelectedCompany(company);
-          
+
           // Also fetch and set the contact if contactId exists
           if (existingQuote.contactId) {
             // Fetch contacts for this company
@@ -275,7 +279,7 @@ export default function QuoteBuilder({
       const discountAmt = parseFloat(data.quote.discountAmount || '0');
       const taxAmt = parseFloat(data.quote.taxAmount || '0');
       const totalAmount = subtotalAmount - discountAmt + taxAmt;
-      
+
       const quoteData = {
         ...data.quote,
         proposalType: 'quote',
@@ -301,7 +305,7 @@ export default function QuoteBuilder({
       };
 
       console.log('📤 Submitting quote:', quoteData);
-      
+
       if (initialQuoteId && initialQuoteId !== 'new') {
         return await apiRequest(`/api/proposals/${initialQuoteId}`, 'PATCH', quoteData);
       } else {
@@ -333,8 +337,8 @@ export default function QuoteBuilder({
   // Submit quote mutation (change status to sent)
   const submitQuoteMutation = useMutation({
     mutationFn: async (quoteId: string) => {
-      return await apiRequest(`/api/proposals/${quoteId}/status`, 'PATCH', { 
-        status: 'sent' 
+      return await apiRequest(`/api/proposals/${quoteId}/status`, 'PATCH', {
+        status: 'sent',
       });
     },
     onSuccess: () => {
@@ -359,7 +363,7 @@ export default function QuoteBuilder({
   const handleCompanySelect = (company: any) => {
     setSelectedCompany(company);
     form.setValue('businessRecordId', company.id);
-    
+
     // Auto-populate billing address if available
     if (company.address) {
       form.setValue('billingAddress', {
@@ -378,7 +382,7 @@ export default function QuoteBuilder({
   };
 
   const handleAddLineItem = (newItem: Omit<LineItem, 'lineNumber'>) => {
-    const lineNumber = Math.max(0, ...lineItems.map(item => item.lineNumber)) + 1;
+    const lineNumber = Math.max(0, ...lineItems.map((item) => item.lineNumber)) + 1;
     setLineItems([...lineItems, { ...newItem, lineNumber }]);
   };
 
@@ -415,7 +419,7 @@ export default function QuoteBuilder({
   useEffect(() => {
     const subtotalAmount = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const totalAmount = subtotalAmount - discountAmount + taxAmount;
-    
+
     form.setValue('subtotal', subtotalAmount.toString());
     form.setValue('totalAmount', totalAmount.toString());
   }, [lineItems, discountAmount, taxAmount, form]);
@@ -446,11 +450,11 @@ export default function QuoteBuilder({
 
     try {
       // First save the quote
-      const savedQuote = await saveQuoteMutation.mutateAsync({ 
-        quote: formData, 
-        lineItems 
+      const savedQuote = await saveQuoteMutation.mutateAsync({
+        quote: formData,
+        lineItems,
       });
-      
+
       // Then submit it
       await submitQuoteMutation.mutateAsync(savedQuote.id);
     } catch (error) {
@@ -473,13 +477,13 @@ export default function QuoteBuilder({
       // First save the quote if needed
       let quoteId = initialQuoteId;
       if (!quoteId) {
-        const savedQuote = await saveQuoteMutation.mutateAsync({ 
-          quote: formData, 
-          lineItems 
+        const savedQuote = await saveQuoteMutation.mutateAsync({
+          quote: formData,
+          lineItems,
         });
         quoteId = savedQuote.id;
       }
-      
+
       // Navigate to proposal builder with quote data
       if (onCreateProposal && quoteId) {
         onCreateProposal(quoteId);
@@ -581,11 +585,7 @@ export default function QuoteBuilder({
                     <FormItem>
                       <FormLabel className="text-sm font-medium">Valid Until</FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
-                          className="min-h-[44px]"
-                          {...field}
-                        />
+                        <Input type="date" className="min-h-[44px]" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
