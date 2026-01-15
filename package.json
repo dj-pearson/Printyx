@@ -27,6 +27,10 @@
     "test:e2e:webkit": "playwright test --project=webkit",
     "test:e2e:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
     "test:all": "npm run test && npm run test:e2e",
+    "test:comprehensive": "tsx tools/automated-testing/comprehensive-runner.ts",
+    "test:discover": "tsx tools/automated-testing/comprehensive-discovery.ts",
+    "test:execute": "tsx tools/automated-testing/comprehensive-execution.ts",
+    "check:secrets": "tsx tools/automated-testing/check-no-secrets.ts",
     "db:push": "drizzle-kit push",
     "db:push:forecast": "drizzle-kit push --config=drizzle.forecasting.config.ts",
     "updater": "tsx server/database-updater/cli/updater-cli.ts",
@@ -238,6 +242,9 @@
   "lint-staged": {
     "*.{ts,tsx,js,jsx,css,json}": [
       "prettier --write"
+    ],
+    "*": [
+      "tsx tools/automated-testing/check-no-secrets.ts --staged"
     ]
   },
   "optionalDependencies": {

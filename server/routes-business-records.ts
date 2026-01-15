@@ -11,7 +11,7 @@ import { db } from './db';
 import { businessRecords, businessRecordActivities } from '../shared/schema';
 import { eq, and, or, like, desc, asc, sql, inArray } from 'drizzle-orm';
 import { getUserId, getTenantId, isAuthenticated } from './utils/auth-helpers';
-import { requireAuth } from './middleware/supabase-auth';
+import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';
 
 const router = Router();
@@ -645,5 +645,10 @@ router.post('/api/customers', requireAuth, async (req: Request, res: Response) =
   req.body.status = req.body.status || 'active';
   return router.handle(req, res, () => {});
 });
+
+// Registration function for use in main routes file
+export function registerBusinessRecordRoutes(app: any) {
+  app.use(router);
+}
 
 export default router;

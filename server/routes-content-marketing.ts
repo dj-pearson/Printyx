@@ -23,13 +23,15 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 const router = express.Router();
 
-// Apply RBAC context to all content marketing routes
-router.use(enhanceUserContext);
+// NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
+// without a path prefix (app.use(contentMarketingRoutes)), so it would run on ALL requests
+// including non-API routes like /login, blocking Vite from serving the frontend.
+// Instead, individual routes use optionalAuth or requireAuth as needed.
 
 // Auth middleware - make content public for unauthenticated users, but track tenantId for authenticated
 const optionalAuth = (req: any, res: any, next: any) => {
@@ -62,8 +64,8 @@ router.get('/api/content/blog', optionalAuth, async (req: any, res) => {
         or(
           ilike(blogPosts.title, `%${search}%`),
           ilike(blogPosts.excerpt, `%${search}%`),
-          ilike(blogPosts.content, `%${search}%`)
-        )
+          ilike(blogPosts.content, `%${search}%`),
+        ),
       );
     }
 
@@ -114,10 +116,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
     const [post] = await db
       .select()
       .from(blogPosts)
-      .where(and(
-        eq(blogPosts.slug, req.params.slug),
-        eq(blogPosts.status, 'published')
-      ))
+      .where(and(eq(blogPosts.slug, req.params.slug), eq(blogPosts.status, 'published')))
       .limit(1);
 
     if (!post) {
@@ -134,20 +133,16 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
     const faqs = await db
       .select()
       .from(contentFaqs)
-      .where(and(
-        eq(contentFaqs.contentType, 'blog_post'),
-        eq(contentFaqs.contentId, post.id)
-      ))
+      .where(and(eq(contentFaqs.contentType, 'blog_post'), eq(contentFaqs.contentId, post.id)))
       .orderBy(asc(contentFaqs.order));
 
     // Get citations
     const citations = await db
       .select()
       .from(contentCitations)
-      .where(and(
-        eq(contentCitations.contentType, 'blog_post'),
-        eq(contentCitations.contentId, post.id)
-      ));
+      .where(
+        and(eq(contentCitations.contentType, 'blog_post'), eq(contentCitations.contentId, post.id)),
+      );
 
     // Get related posts
     let relatedPosts: any[] = [];
@@ -164,10 +159,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
           readTime: blogPosts.readTime,
         })
         .from(blogPosts)
-        .where(and(
-          inArray(blogPosts.id, post.relatedPosts),
-          eq(blogPosts.status, 'published')
-        ))
+        .where(and(inArray(blogPosts.id, post.relatedPosts), eq(blogPosts.status, 'published')))
         .limit(3);
     }
 
@@ -195,10 +187,7 @@ router.post('/api/content/blog', async (req: any, res) => {
       authorId: userId,
     });
 
-    const [post] = await db
-      .insert(blogPosts)
-      .values(validatedData)
-      .returning();
+    const [post] = await db.insert(blogPosts).values(validatedData).returning();
 
     res.json(post);
   } catch (error: any) {
@@ -229,9 +218,7 @@ router.put('/api/content/blog/:id', async (req: any, res) => {
 // Delete blog post (admin only)
 router.delete('/api/content/blog/:id', async (req: any, res) => {
   try {
-    await db
-      .delete(blogPosts)
-      .where(eq(blogPosts.id, req.params.id));
+    await db.delete(blogPosts).where(eq(blogPosts.id, req.params.id));
 
     res.json({ success: true });
   } catch (error: any) {
@@ -303,10 +290,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
     const [guide] = await db
       .select()
       .from(guides)
-      .where(and(
-        eq(guides.slug, req.params.slug),
-        eq(guides.status, 'published')
-      ))
+      .where(and(eq(guides.slug, req.params.slug), eq(guides.status, 'published')))
       .limit(1);
 
     if (!guide) {
@@ -321,7 +305,11 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
 
     // Get related guides
     let relatedGuides: any[] = [];
-    if (guide.relatedGuides && Array.isArray(guide.relatedGuides) && guide.relatedGuides.length > 0) {
+    if (
+      guide.relatedGuides &&
+      Array.isArray(guide.relatedGuides) &&
+      guide.relatedGuides.length > 0
+    ) {
       relatedGuides = await db
         .select({
           id: guides.id,
@@ -334,10 +322,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
           readTime: guides.readTime,
         })
         .from(guides)
-        .where(and(
-          inArray(guides.id, guide.relatedGuides),
-          eq(guides.status, 'published')
-        ))
+        .where(and(inArray(guides.id, guide.relatedGuides), eq(guides.status, 'published')))
         .limit(3);
     }
 
@@ -363,10 +348,7 @@ router.post('/api/content/guides', async (req: any, res) => {
       authorId: userId,
     });
 
-    const [guide] = await db
-      .insert(guides)
-      .values(validatedData)
-      .returning();
+    const [guide] = await db.insert(guides).values(validatedData).returning();
 
     res.json(guide);
   } catch (error: any) {
@@ -426,10 +408,7 @@ router.get('/api/content/case-studies/:slug', optionalAuth, async (req: any, res
     const [study] = await db
       .select()
       .from(caseStudies)
-      .where(and(
-        eq(caseStudies.slug, req.params.slug),
-        eq(caseStudies.status, 'published')
-      ))
+      .where(and(eq(caseStudies.slug, req.params.slug), eq(caseStudies.status, 'published')))
       .limit(1);
 
     if (!study) {
@@ -459,10 +438,7 @@ router.post('/api/content/case-studies', async (req: any, res) => {
       tenantId,
     });
 
-    const [study] = await db
-      .insert(caseStudies)
-      .values(validatedData)
-      .returning();
+    const [study] = await db.insert(caseStudies).values(validatedData).returning();
 
     res.json(study);
   } catch (error: any) {
@@ -482,10 +458,7 @@ router.get('/api/content/landing/:slug', optionalAuth, async (req: any, res) => 
     const [page] = await db
       .select()
       .from(landingPages)
-      .where(and(
-        eq(landingPages.slug, req.params.slug),
-        eq(landingPages.status, 'published')
-      ))
+      .where(and(eq(landingPages.slug, req.params.slug), eq(landingPages.status, 'published')))
       .limit(1);
 
     if (!page) {
@@ -515,10 +488,7 @@ router.post('/api/content/landing', async (req: any, res) => {
       tenantId,
     });
 
-    const [page] = await db
-      .insert(landingPages)
-      .values(validatedData)
-      .returning();
+    const [page] = await db.insert(landingPages).values(validatedData).returning();
 
     res.json(page);
   } catch (error: any) {
@@ -558,10 +528,7 @@ router.post('/api/content/:contentType/:contentId/faq', async (req: any, res) =>
       ...req.body,
     });
 
-    const [faq] = await db
-      .insert(contentFaqs)
-      .values(validatedData)
-      .returning();
+    const [faq] = await db.insert(contentFaqs).values(validatedData).returning();
 
     res.json(faq);
   } catch (error: any) {
@@ -585,10 +552,7 @@ router.post('/api/content/:contentType/:contentId/citation', async (req: any, re
       ...req.body,
     });
 
-    const [citation] = await db
-      .insert(contentCitations)
-      .values(validatedData)
-      .returning();
+    const [citation] = await db.insert(contentCitations).values(validatedData).returning();
 
     res.json(citation);
   } catch (error: any) {
@@ -619,21 +583,19 @@ router.post('/api/content/analytics/view', optionalAuth, async (req: any, res) =
       aiPlatform,
     } = req.body;
 
-    await db
-      .insert(contentAnalytics)
-      .values({
-        contentType,
-        contentId,
-        source,
-        medium,
-        campaign,
-        device,
-        browser,
-        country,
-        region,
-        isAiReferral: isAiReferral || false,
-        aiPlatform,
-      });
+    await db.insert(contentAnalytics).values({
+      contentType,
+      contentId,
+      source,
+      medium,
+      campaign,
+      device,
+      browser,
+      country,
+      region,
+      isAiReferral: isAiReferral || false,
+      aiPlatform,
+    });
 
     res.json({ success: true });
   } catch (error: any) {
@@ -651,20 +613,24 @@ router.get('/api/content/analytics/:contentType/:contentId', async (req: any, re
     const [{ totalViews }] = await db
       .select({ totalViews: sql<number>`count(*)::int` })
       .from(contentAnalytics)
-      .where(and(
-        eq(contentAnalytics.contentType, contentType as any),
-        eq(contentAnalytics.contentId, contentId)
-      ));
+      .where(
+        and(
+          eq(contentAnalytics.contentType, contentType as any),
+          eq(contentAnalytics.contentId, contentId),
+        ),
+      );
 
     // Get AI referrals
     const [{ aiReferrals }] = await db
       .select({ aiReferrals: sql<number>`count(*)::int` })
       .from(contentAnalytics)
-      .where(and(
-        eq(contentAnalytics.contentType, contentType as any),
-        eq(contentAnalytics.contentId, contentId),
-        eq(contentAnalytics.isAiReferral, true)
-      ));
+      .where(
+        and(
+          eq(contentAnalytics.contentType, contentType as any),
+          eq(contentAnalytics.contentId, contentId),
+          eq(contentAnalytics.isAiReferral, true),
+        ),
+      );
 
     // Get top sources
     const topSources = await db
@@ -673,10 +639,12 @@ router.get('/api/content/analytics/:contentType/:contentId', async (req: any, re
         count: sql<number>`count(*)::int`,
       })
       .from(contentAnalytics)
-      .where(and(
-        eq(contentAnalytics.contentType, contentType as any),
-        eq(contentAnalytics.contentId, contentId)
-      ))
+      .where(
+        and(
+          eq(contentAnalytics.contentType, contentType as any),
+          eq(contentAnalytics.contentId, contentId),
+        ),
+      )
       .groupBy(contentAnalytics.source)
       .orderBy(sql`count(*) desc`)
       .limit(5);
@@ -699,27 +667,44 @@ router.get('/api/content/analytics/:contentType/:contentId', async (req: any, re
 router.get('/sitemap.xml', async (req, res) => {
   try {
     // Get all published content
-    const [publishedBlogPosts, publishedGuides, publishedCaseStudies, publishedLandingPages] = await Promise.all([
-      db
-        .select({ slug: blogPosts.slug, updatedAt: blogPosts.updatedAt, publishedAt: blogPosts.publishedAt })
-        .from(blogPosts)
-        .where(eq(blogPosts.status, 'published')),
+    const [publishedBlogPosts, publishedGuides, publishedCaseStudies, publishedLandingPages] =
+      await Promise.all([
+        db
+          .select({
+            slug: blogPosts.slug,
+            updatedAt: blogPosts.updatedAt,
+            publishedAt: blogPosts.publishedAt,
+          })
+          .from(blogPosts)
+          .where(eq(blogPosts.status, 'published')),
 
-      db
-        .select({ slug: guides.slug, updatedAt: guides.updatedAt, publishedAt: guides.publishedAt })
-        .from(guides)
-        .where(eq(guides.status, 'published')),
+        db
+          .select({
+            slug: guides.slug,
+            updatedAt: guides.updatedAt,
+            publishedAt: guides.publishedAt,
+          })
+          .from(guides)
+          .where(eq(guides.status, 'published')),
 
-      db
-        .select({ slug: caseStudies.slug, updatedAt: caseStudies.updatedAt, publishedAt: caseStudies.publishedAt })
-        .from(caseStudies)
-        .where(eq(caseStudies.status, 'published')),
+        db
+          .select({
+            slug: caseStudies.slug,
+            updatedAt: caseStudies.updatedAt,
+            publishedAt: caseStudies.publishedAt,
+          })
+          .from(caseStudies)
+          .where(eq(caseStudies.status, 'published')),
 
-      db
-        .select({ slug: landingPages.slug, updatedAt: landingPages.updatedAt, publishedAt: landingPages.publishedAt })
-        .from(landingPages)
-        .where(eq(landingPages.status, 'published')),
-    ]);
+        db
+          .select({
+            slug: landingPages.slug,
+            updatedAt: landingPages.updatedAt,
+            publishedAt: landingPages.publishedAt,
+          })
+          .from(landingPages)
+          .where(eq(landingPages.status, 'published')),
+      ]);
 
     const baseUrl = process.env.BASE_URL || 'https://printyx.com';
 
@@ -814,10 +799,7 @@ router.get('/llms.txt', async (req, res) => {
     const baseUrl = process.env.BASE_URL || 'https://printyx.com';
 
     // Try to get custom llms.txt from SEO settings (first tenant with settings)
-    const [settings] = await db
-      .select({ llmsTxt: seoSettings.llmsTxt })
-      .from(seoSettings)
-      .limit(1);
+    const [settings] = await db.select({ llmsTxt: seoSettings.llmsTxt }).from(seoSettings).limit(1);
 
     if (settings?.llmsTxt) {
       res.header('Content-Type', 'text/plain');

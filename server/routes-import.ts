@@ -17,7 +17,7 @@ import { Readable } from 'stream';
 import { db } from './db';
 import { businessRecords } from '../shared/schema';
 import { getUserId, getTenantId } from './utils/auth-helpers';
-import { requireAuth } from './middleware/supabase-auth';
+import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 
