@@ -165,14 +165,18 @@ export default function CustomerDetailHubspot() {
   const customer = useMemo(() => {
     if (!customerData) return null;
 
+    // Handle if API returns an array instead of single object
+    const data = Array.isArray(customerData) ? customerData[0] : customerData;
+    if (!data) return null;
+
     // Extract nested company and contact data
-    const companyData = (customerData as any).companies || {};
-    const contactData = Array.isArray((customerData as any).company_contacts)
-      ? (customerData as any).company_contacts[0]
-      : (customerData as any).company_contacts || {};
+    const companyData = (data as any).companies || {};
+    const contactData = Array.isArray((data as any).company_contacts)
+      ? (data as any).company_contacts[0]
+      : (data as any).company_contacts || {};
 
     return {
-      ...(customerData as any),
+      ...(data as any),
       // Company fields from nested companies object
       companyName: companyData.business_name || (customerData as any).company_name,
       customerNumber: companyData.customer_number,
