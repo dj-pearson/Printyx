@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from './queryClient';
 
 export interface ProductAccessory {
   id: string;
@@ -25,11 +26,22 @@ export interface ProductAccessory {
 }
 
 export function useRequiredAccessories(modelId: string | null) {
-  return useQuery<ProductAccessory[]>({
+  const { data = [], ...rest } = useQuery<ProductAccessory[]>({
     queryKey: ['/api/product-models', modelId, 'required-accessories'],
+    queryFn: async () => {
+      if (!modelId) return [];
+      const response = await apiRequest(
+        `/api/product-models/${modelId}/required-accessories`,
+        'GET',
+      );
+      // Ensure response is always an array
+      return Array.isArray(response) ? response : [];
+    },
     enabled: !!modelId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  return { data, ...rest };
 }
 
 /**
@@ -38,23 +50,25 @@ export function useRequiredAccessories(modelId: string | null) {
 export function addRequiredAccessoriesToQuote(
   requiredAccessories: ProductAccessory[],
   existingLineItems: any[],
-  modelId: string
+  modelId: string,
 ) {
-  if (!requiredAccessories || requiredAccessories.length === 0) {
-    return existingLineItems;
+  // Ensure inputs are arrays
+  const accessories = Array.isArray(requiredAccessories) ? requiredAccessories : [];
+  const lineItems = Array.isArray(existingLineItems) ? existingLineItems : [];
+
+  if (accessories.length === 0) {
+    return lineItems;
   }
 
-  const newLineItems = [...existingLineItems];
-  
+  const newLineItems = [...lineItems];
+
   // Check which required accessories are not already in the quote
   const existingAccessoryCodes = new Set(
-    existingLineItems
-      .filter(item => item.itemType === 'accessory')
-      .map(item => item.productCode)
+    lineItems.filter((item) => item.itemType === 'accessory').map((item) => item.productCode),
   );
 
   // Add missing required accessories
-  requiredAccessories.forEach(accessory => {
+  accessories.forEach((accessory) => {
     if (!existingAccessoryCodes.has(accessory.accessoryCode)) {
       newLineItems.push({
         id: `temp-${Date.now()}-${Math.random()}`,
@@ -80,7 +94,10 @@ export function addRequiredAccessoriesToQuote(
  * Utility function to get required accessories info for display
  */
 export function getRequiredAccessoriesInfo(requiredAccessories: ProductAccessory[]) {
-  if (!requiredAccessories || requiredAccessories.length === 0) {
+  // Ensure input is an array
+  const accessories = Array.isArray(requiredAccessories) ? requiredAccessories : [];
+
+  if (accessories.length === 0) {
     return {
       count: 0,
       totalValue: 0,
@@ -88,15 +105,15 @@ export function getRequiredAccessoriesInfo(requiredAccessories: ProductAccessory
     };
   }
 
-  const totalValue = requiredAccessories.reduce((sum, accessory) => {
+  const totalValue = accessories.reduce((sum, accessory) => {
     const price = parseFloat(accessory.newRepPrice || accessory.standardRepPrice || '0');
     return sum + price;
   }, 0);
 
   return {
-    count: requiredAccessories.length,
+    count: accessories.length,
     totalValue,
-    accessories: requiredAccessories.map(accessory => ({
+    accessories: accessories.map((accessory) => ({
       code: accessory.accessoryCode,
       name: accessory.accessoryName,
       price: parseFloat(accessory.newRepPrice || accessory.standardRepPrice || '0'),
