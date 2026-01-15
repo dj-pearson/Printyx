@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -25,15 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Building2,
-  User,
-  MapPin,
-  Phone,
-  Mail,
-  Plus,
-  Search,
-} from 'lucide-react';
+import { Building2, User, MapPin, Phone, Mail, Plus, Search } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
 interface Company {
@@ -82,7 +68,8 @@ export default function CompanyContactSelector({
     queryKey: ['/api/business-records'],
     queryFn: async () => {
       const response = await apiRequest('/api/business-records', 'GET');
-      return response;
+      // Ensure response is always an array
+      return Array.isArray(response) ? response : [];
     },
   });
 
@@ -91,8 +78,12 @@ export default function CompanyContactSelector({
     queryKey: [`/api/business-records/${selectedCompany?.id}/contacts`],
     enabled: !!selectedCompany?.id,
     queryFn: async () => {
-      const response = await apiRequest(`/api/business-records/${selectedCompany.id}/contacts`, 'GET');
-      return response;
+      const response = await apiRequest(
+        `/api/business-records/${selectedCompany.id}/contacts`,
+        'GET',
+      );
+      // Ensure response is always an array
+      return Array.isArray(response) ? response : [];
     },
   });
 
@@ -100,8 +91,10 @@ export default function CompanyContactSelector({
   const filteredCompanies = companies.filter((company) => {
     const searchLower = companySearchTerm.toLowerCase();
     const companyName = company.companyName || `${company.firstName} ${company.lastName}`;
-    return companyName.toLowerCase().includes(searchLower) ||
-           company.email?.toLowerCase().includes(searchLower);
+    return (
+      companyName.toLowerCase().includes(searchLower) ||
+      company.email?.toLowerCase().includes(searchLower)
+    );
   });
 
   const getCompanyDisplayName = (company: Company) => {
@@ -113,7 +106,7 @@ export default function CompanyContactSelector({
   };
 
   const handleCompanyChange = (companyId: string) => {
-    const company = companies.find(c => c.id === companyId);
+    const company = companies.find((c) => c.id === companyId);
     if (company) {
       onCompanySelect(company);
       onContactSelect(null); // Reset contact when company changes
@@ -121,10 +114,10 @@ export default function CompanyContactSelector({
   };
 
   const handleContactChange = (contactId: string) => {
-    if (contactId === "no-contact") {
+    if (contactId === 'no-contact') {
       onContactSelect(null);
     } else {
-      const contact = contacts.find(c => c.id === contactId);
+      const contact = contacts.find((c) => c.id === contactId);
       onContactSelect(contact || null);
     }
   };
@@ -146,10 +139,7 @@ export default function CompanyContactSelector({
           <Label className="text-sm font-medium">Company *</Label>
           <div className="flex gap-2">
             <div className="flex-1">
-              <Select
-                value={selectedCompany?.id || ''}
-                onValueChange={handleCompanyChange}
-              >
+              <Select value={selectedCompany?.id || ''} onValueChange={handleCompanyChange}>
                 <SelectTrigger className="min-h-[44px]">
                   <SelectValue placeholder="Select a company...">
                     {selectedCompany && (
@@ -177,18 +167,14 @@ export default function CompanyContactSelector({
                       Loading companies...
                     </div>
                   ) : filteredCompanies.length === 0 ? (
-                    <div className="p-2 text-center text-muted-foreground">
-                      No companies found
-                    </div>
+                    <div className="p-2 text-center text-muted-foreground">No companies found</div>
                   ) : (
                     filteredCompanies.map((company) => (
                       <SelectItem key={company.id} value={company.id}>
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4" />
                           <div>
-                            <div className="font-medium">
-                              {getCompanyDisplayName(company)}
-                            </div>
+                            <div className="font-medium">{getCompanyDisplayName(company)}</div>
                             {company.city && company.state && (
                               <div className="text-xs text-muted-foreground">
                                 {company.city}, {company.state}
@@ -215,9 +201,7 @@ export default function CompanyContactSelector({
               <DialogContent className="w-[95vw] sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add New Company</DialogTitle>
-                  <DialogDescription>
-                    Create a new company record for this quote
-                  </DialogDescription>
+                  <DialogDescription>Create a new company record for this quote</DialogDescription>
                 </DialogHeader>
                 <div className="text-center p-4">
                   <p className="text-sm text-muted-foreground">
@@ -251,7 +235,9 @@ export default function CompanyContactSelector({
                   <div className="min-w-0">
                     <div className="break-words">{selectedCompany.address}</div>
                     {selectedCompany.city && selectedCompany.state && (
-                      <div className="break-words">{selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}</div>
+                      <div className="break-words">
+                        {selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -264,10 +250,7 @@ export default function CompanyContactSelector({
         {selectedCompany && (
           <div className="space-y-2">
             <Label className="text-sm font-medium">Primary Contact</Label>
-            <Select
-              value={selectedContact?.id || 'no-contact'}
-              onValueChange={handleContactChange}
-            >
+            <Select value={selectedContact?.id || 'no-contact'} onValueChange={handleContactChange}>
               <SelectTrigger className="min-h-[44px]">
                 <SelectValue placeholder="Select a contact...">
                   {selectedContact && (
@@ -285,9 +268,7 @@ export default function CompanyContactSelector({
               </SelectTrigger>
               <SelectContent>
                 {contactsLoading ? (
-                  <div className="p-2 text-center text-muted-foreground">
-                    Loading contacts...
-                  </div>
+                  <div className="p-2 text-center text-muted-foreground">Loading contacts...</div>
                 ) : contacts.length === 0 ? (
                   <div className="p-2 text-center text-muted-foreground">
                     No contacts found for this company

@@ -150,6 +150,7 @@ export default function QuoteBuilder({
     enabled: !!initialQuoteId && initialQuoteId !== 'new',
     queryFn: async () => {
       const response = await apiRequest(`/api/proposals/${initialQuoteId}`, 'GET');
+      // Return response as-is (not an array, it's a single object)
       return response;
     },
   });
@@ -157,6 +158,11 @@ export default function QuoteBuilder({
   // Fetch business records for company/contact selection
   const { data: businessRecords = [] } = useQuery({
     queryKey: ['/api/business-records'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/business-records', 'GET');
+      // Ensure response is always an array
+      return Array.isArray(response) ? response : [];
+    },
   });
 
   // Handle URL parameters for pre-filling (e.g., from leads page)
