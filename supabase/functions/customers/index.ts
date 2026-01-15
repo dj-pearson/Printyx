@@ -65,7 +65,8 @@ export default async function handler(req: Request) {
             billing_city,
             billing_state,
             billing_zip,
-            industry
+            industry,
+            customer_since
           ),
           company_contacts!inner(
             id,
@@ -79,7 +80,7 @@ export default async function handler(req: Request) {
         `,
         )
         .eq('tenant_id', tenantId)
-        .order('customer_since', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (status) {
         query = query.eq('lead_status', status);
@@ -234,7 +235,7 @@ export default async function handler(req: Request) {
         converted_from_lead_id: body.converted_from_lead_id,
         lead_source: body.leadSource || body.lead_source || 'website',
         lead_status: body.lead_status || 'active',
-        customer_since: body.customer_since || new Date().toISOString(),
+        // customer_since is stored in companies table, not customers table
         estimated_amount: body.estimatedDealValue
           ? parseFloat(body.estimatedDealValue)
           : body.estimated_amount,
