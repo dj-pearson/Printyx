@@ -168,7 +168,7 @@ export function useSupabaseAuth() {
         const supabaseResult = await supabase
           .from('users')
           .select(
-            'id, email, first_name, last_name, tenant_id, role_id, team_id, access_scope, is_platform_user, profile_image_url',
+            'id, email, first_name, last_name, tenant_id, role_id, team_id, is_platform_user, profile_image_url',
           )
           .eq('id', session.user.id)
           .single();
@@ -352,7 +352,7 @@ export function useSupabaseAuth() {
           tenantId: profile?.tenant_id || authUser.tenantId,
           roleId: profile?.role_id || authUser.roleId,
           teamId: profile?.team_id || authUser.teamId,
-          accessScope: profile?.access_scope || authUser.accessScope,
+          accessScope: authUser.accessScope || 'own', // Use auth metadata or default
           isPlatformUser: isPlatformUser,
           role: roleData,
           team: teamData,
