@@ -127,43 +127,120 @@ export default async function handler(req: Request) {
       return createCorsResponse(customer, 200, req);
     }
 
-    // POST /customers - Create new customer (requires company_id)
-    // Note: Company should already exist. Use /companies endpoint to create company first.
+    // POST /customers - Create new customer
+    // Supports two formats:
+    // 1. With existing company_id and contact_id
+    // 2. With inline company and contact data (will create them first)
     if (req.method === 'POST') {
       const body = await req.json();
 
-      if (!body.company_id) {
+      let companyId = body.company_id;
+      let contactId = body.contact_id;
+
+      // If company_id not provided, try to create company from inline data
+      if (!companyId && body.companyName) {
+        const companyData = {
+          tenant_id: tenantId,
+          business_name: body.companyName,
+          customer_number: body.customerNumber,
+          phone: body.primaryContactPhone || body.phone,
+          email: body.primaryContactEmail || body.email,
+          website: body.website,
+          billing_address: body.addressLine1
+            ? `${body.addressLine1}${body.addressLine2 ? ', ' + body.addressLine2 : ''}`
+            : undefined,
+          billing_city: body.city,
+          billing_state: body.state,
+          billing_zip: body.postalCode,
+          industry: body.industry,
+          business_record_type: 'Customer',
+          customer_since: body.customer_since || new Date().toISOString(),
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: company, error: companyError } = await admin
+          .from('companies')
+          .insert(companyData)
+          .select()
+          .single();
+
+        if (companyError) {
+          console.error('Error creating company:', companyError);
+          return createCorsResponse(
+            { error: 'Failed to create company', details: companyError.message },
+            500,
+            req,
+          );
+        }
+
+        companyId = company.id;
+
+        // Create primary contact if provided
+        if (body.primaryContactName || body.primaryContactEmail) {
+          const [firstName, ...lastNameParts] = (body.primaryContactName || '').split(' ');
+          const lastName = lastNameParts.join(' ');
+
+          const contactData = {
+            tenant_id: tenantId,
+            company_id: companyId,
+            first_name: firstName || 'Primary',
+            last_name: lastName || 'Contact',
+            email: body.primaryContactEmail,
+            phone: body.primaryContactPhone,
+            title: body.primaryContactTitle,
+            is_primary: true,
+            created_at: new Date().toISOString(),
+          };
+
+          const { data: contact, error: contactError } = await admin
+            .from('company_contacts')
+            .insert(contactData)
+            .select()
+            .single();
+
+          if (contactError) {
+            console.error('Error creating contact:', contactError);
+            // Don't fail the whole request, just log the error
+          } else {
+            contactId = contact.id;
+          }
+        }
+      } else if (!companyId) {
         return createCorsResponse(
-          { error: 'company_id is required. Create company first.' },
+          { error: 'Either company_id or companyName is required' },
           400,
           req,
         );
-      }
+      } else {
+        // Verify company exists
+        const { data: companyExists } = await admin
+          .from('companies')
+          .select('id')
+          .eq('id', companyId)
+          .eq('tenant_id', tenantId)
+          .single();
 
-      // Verify company exists
-      const { data: companyExists } = await admin
-        .from('companies')
-        .select('id')
-        .eq('id', body.company_id)
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (!companyExists) {
-        return createCorsResponse({ error: 'Company not found' }, 404, req);
+        if (!companyExists) {
+          return createCorsResponse({ error: 'Company not found' }, 404, req);
+        }
       }
 
       const customerData = {
         tenant_id: tenantId,
-        company_id: body.company_id,
-        contact_id: body.contact_id,
+        company_id: companyId,
+        contact_id: contactId,
         converted_from_lead_id: body.converted_from_lead_id,
-        lead_source: body.lead_source || 'website',
+        lead_source: body.leadSource || body.lead_source || 'website',
         lead_status: body.lead_status || 'active',
         customer_since: body.customer_since || new Date().toISOString(),
-        estimated_amount: body.estimated_amount,
-        probability: 100, // Customers are 100% probability
-        close_date: body.close_date,
-        owner_id: body.owner_id || user.id,
+        estimated_amount: body.estimatedDealValue
+          ? parseFloat(body.estimatedDealValue)
+          : body.estimated_amount,
+        probability: body.probability ? parseInt(body.probability) : 100,
+        close_date: body.expectedCloseDate || body.close_date,
+        owner_id: body.assignedSalesRep || body.owner_id || user.id,
         priority: body.priority || 'medium',
         notes: body.notes,
         preferred_technician: body.preferred_technician,
@@ -186,7 +263,11 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error creating customer:', error);
-        return createCorsResponse({ error: 'Failed to create customer', details: error }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to create customer', details: error.message },
+          500,
+          req,
+        );
       }
 
       return createCorsResponse(customer, 201, req);
