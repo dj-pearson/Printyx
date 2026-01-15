@@ -152,9 +152,14 @@ export default function CustomerDetailHubspot() {
 
   // Fetch customer details using URL slug
   const { data: customerData, isLoading } = useQuery({
-    queryKey: ['/api/customers', slug],
+    queryKey: [`/api/customers/${slug}`],
     enabled: !!slug,
   });
+
+  // Debug logging
+  console.log('🔍 CustomerDetail - slug:', slug);
+  console.log('🔍 CustomerDetail - customerData:', customerData);
+  console.log('🔍 CustomerDetail - isLoading:', isLoading);
 
   // Transform nested data structure from Edge Function to flat structure
   const customer = useMemo(() => {
