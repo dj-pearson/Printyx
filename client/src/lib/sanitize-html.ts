@@ -5,7 +5,7 @@
  * Always use these utilities when rendering user-generated HTML content.
  */
 
-import DOMPurify from "dompurify";
+import DOMPurify from 'isomorphic-dompurify';
 
 /**
  * Default configuration for DOMPurify.
@@ -15,92 +15,92 @@ const DEFAULT_CONFIG: DOMPurify.Config = {
   // Allowed HTML tags for rich text content
   ALLOWED_TAGS: [
     // Text formatting
-    "p",
-    "br",
-    "span",
-    "div",
-    "strong",
-    "b",
-    "em",
-    "i",
-    "u",
-    "s",
-    "strike",
-    "del",
-    "ins",
-    "sub",
-    "sup",
-    "small",
-    "mark",
+    'p',
+    'br',
+    'span',
+    'div',
+    'strong',
+    'b',
+    'em',
+    'i',
+    'u',
+    's',
+    'strike',
+    'del',
+    'ins',
+    'sub',
+    'sup',
+    'small',
+    'mark',
     // Headings
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
     // Lists
-    "ul",
-    "ol",
-    "li",
+    'ul',
+    'ol',
+    'li',
     // Links and images
-    "a",
-    "img",
+    'a',
+    'img',
     // Tables
-    "table",
-    "thead",
-    "tbody",
-    "tfoot",
-    "tr",
-    "th",
-    "td",
-    "caption",
-    "colgroup",
-    "col",
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'th',
+    'td',
+    'caption',
+    'colgroup',
+    'col',
     // Block elements
-    "blockquote",
-    "pre",
-    "code",
-    "hr",
+    'blockquote',
+    'pre',
+    'code',
+    'hr',
     // Semantic
-    "article",
-    "section",
-    "header",
-    "footer",
-    "nav",
-    "aside",
-    "figure",
-    "figcaption",
+    'article',
+    'section',
+    'header',
+    'footer',
+    'nav',
+    'aside',
+    'figure',
+    'figcaption',
     // Forms (display only)
-    "label",
+    'label',
   ],
   // Allowed attributes
   ALLOWED_ATTR: [
     // Common attributes
-    "id",
-    "class",
-    "style",
-    "title",
-    "lang",
-    "dir",
+    'id',
+    'class',
+    'style',
+    'title',
+    'lang',
+    'dir',
     // Links
-    "href",
-    "target",
-    "rel",
+    'href',
+    'target',
+    'rel',
     // Images
-    "src",
-    "alt",
-    "width",
-    "height",
+    'src',
+    'alt',
+    'width',
+    'height',
     // Tables
-    "colspan",
-    "rowspan",
-    "scope",
+    'colspan',
+    'rowspan',
+    'scope',
     // Data attributes (limited)
-    "data-*",
+    'data-*',
   ],
   // Allow target="_blank" for links but add security attributes
-  ADD_ATTR: ["target"],
+  ADD_ATTR: ['target'],
   // Force all links to have rel="noopener noreferrer" for security
   FORBID_ATTR: [],
   // Don't allow data: URLs in src attributes (potential XSS vector)
@@ -124,11 +124,8 @@ const DEFAULT_CONFIG: DOMPurify.Config = {
  * <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(userContent) }} />
  * ```
  */
-export function sanitizeHtml(
-  html: string,
-  config?: DOMPurify.Config
-): string {
-  if (!html) return "";
+export function sanitizeHtml(html: string, config?: DOMPurify.Config): string {
+  if (!html) return '';
 
   // Merge custom config with defaults
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
@@ -144,7 +141,7 @@ export function sanitizeHtml(
  * @returns Plain text with all HTML removed
  */
 export function stripHtml(html: string): string {
-  if (!html) return "";
+  if (!html) return '';
 
   return DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
 }
@@ -157,11 +154,11 @@ export function stripHtml(html: string): string {
  * @returns Sanitized HTML with only basic formatting
  */
 export function sanitizeBasicHtml(html: string): string {
-  if (!html) return "";
+  if (!html) return '';
 
   return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: ["p", "br", "strong", "b", "em", "i", "u", "a"],
-    ALLOWED_ATTR: ["href", "target", "rel"],
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
   });
 }
 
@@ -173,7 +170,7 @@ export function sanitizeBasicHtml(html: string): string {
  * @returns Sanitized HTML with rich text formatting preserved
  */
 export function sanitizeRichHtml(html: string): string {
-  if (!html) return "";
+  if (!html) return '';
 
   return DOMPurify.sanitize(html, DEFAULT_CONFIG);
 }
@@ -182,20 +179,17 @@ export function sanitizeRichHtml(html: string): string {
  * Hook to add rel="noopener noreferrer" to all links for security.
  * This prevents the new window from having access to window.opener.
  */
-DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   // Add noopener noreferrer to external links
-  if (node.tagName === "A" && node.hasAttribute("target")) {
-    const existingRel = node.getAttribute("rel") || "";
-    if (!existingRel.includes("noopener")) {
-      node.setAttribute(
-        "rel",
-        `${existingRel} noopener noreferrer`.trim()
-      );
+  if (node.tagName === 'A' && node.hasAttribute('target')) {
+    const existingRel = node.getAttribute('rel') || '';
+    if (!existingRel.includes('noopener')) {
+      node.setAttribute('rel', `${existingRel} noopener noreferrer`.trim());
     }
   }
   // Force images to have alt text for accessibility
-  if (node.tagName === "IMG" && !node.hasAttribute("alt")) {
-    node.setAttribute("alt", "");
+  if (node.tagName === 'IMG' && !node.hasAttribute('alt')) {
+    node.setAttribute('alt', '');
   }
 });
 
