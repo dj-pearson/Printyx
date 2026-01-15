@@ -145,6 +145,7 @@
     "imap": "^0.8.19",
     "input-otp": "^1.4.2",
     "intuit-oauth": "^4.2.0",
+    "isomorphic-dompurify": "^2.35.0",
     "jose": "^6.1.3",
     "jsforce": "^3.10.0",
     "lucide-react": "^0.453.0",

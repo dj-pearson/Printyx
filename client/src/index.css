@@ -1,9 +1,9 @@
+/* Accessibility Styles - WCAG 2.1 Compliance */
+@import './styles/accessibility.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Accessibility Styles - WCAG 2.1 Compliance */
-@import './styles/accessibility.css';
 
 /* Safe viewport height CSS custom properties */
 :root {
