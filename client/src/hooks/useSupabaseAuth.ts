@@ -168,7 +168,7 @@ export function useSupabaseAuth() {
         const supabaseResult = await supabase
           .from('users')
           .select(
-            'id, email, first_name, last_name, tenant_id, role_id, team_id, is_platform_user, profile_image_url',
+            'id, email, first_name, last_name, tenant_id, role_id, team_id, profile_image_url',
           )
           .eq('id', session.user.id)
           .single();
@@ -336,9 +336,9 @@ export function useSupabaseAuth() {
           };
         }
 
-        // Detect isPlatformUser based on role or explicit flag
+        // Detect isPlatformUser based on role or explicit flag from auth metadata
         const isPlatformUser =
-          profile?.is_platform_user ||
+          authUser.isPlatformUser ||
           roleData.level >= 8 ||
           roleString?.toLowerCase().includes('admin') ||
           roleString?.toLowerCase().includes('root') ||
