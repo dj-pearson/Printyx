@@ -1,31 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { MainLayout } from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'wouter';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BulkOperationsToolbar,
   useBulkSelection,
   BulkAction,
-} from "@/components/ui/bulk-operations-toolbar";
-import {
-  exportToCSV,
-  exportToJSON,
-  createExportColumn,
-} from "@/lib/export-utils";
-import { SavedFilters, useFilterState } from "@/components/ui/saved-filters";
+} from '@/components/ui/bulk-operations-toolbar';
+import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import {
   Table as UITable,
   TableBody,
@@ -33,7 +29,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Search,
   Plus,
@@ -51,14 +47,9 @@ import {
   TrendingUp,
   DollarSign,
   Upload,
-} from "lucide-react";
-import { CsvImportWizard } from "@/components/import";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+} from 'lucide-react';
+import { CsvImportWizard } from '@/components/import';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -66,16 +57,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
 // Customer form validation schema
 const customerSchema = z.object({
@@ -124,13 +115,14 @@ export default function Customers() {
     priorityFilter: 'all',
   });
 
-  const { searchTerm, industryFilter, stateFilter, statusFilter, sourceFilter, priorityFilter } = filterState.filters;
+  const { searchTerm, industryFilter, stateFilter, statusFilter, sourceFilter, priorityFilter } =
+    filterState.filters;
 
-  const [viewMode, setViewMode] = useState<"cards" | "table">(() => {
-    if (typeof window !== "undefined") {
-      return window.innerWidth < 768 ? "cards" : "table";
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 ? 'cards' : 'table';
     }
-    return "cards";
+    return 'cards';
   });
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -139,37 +131,37 @@ export default function Customers() {
   const form = useForm({
     resolver: zodResolver(customerSchema),
     defaultValues: {
-      companyName: "",
-      website: "",
-      industry: "",
-      companySize: "",
-      primaryContactName: "",
-      primaryContactTitle: "",
-      primaryContactEmail: "",
-      primaryContactPhone: "",
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "",
-      priority: "medium",
-      customerTier: "",
-      assignedSalesRep: "",
-      leadSource: "",
-      tags: "",
-      notes: "",
-      estimatedDealValue: "",
-      expectedCloseDate: "",
-      probability: "",
-    }
+      companyName: '',
+      website: '',
+      industry: '',
+      companySize: '',
+      primaryContactName: '',
+      primaryContactTitle: '',
+      primaryContactEmail: '',
+      primaryContactPhone: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+      priority: 'medium',
+      customerTier: '',
+      assignedSalesRep: '',
+      leadSource: '',
+      tags: '',
+      notes: '',
+      estimatedDealValue: '',
+      expectedCloseDate: '',
+      probability: '',
+    },
   });
   const queryClient = useQueryClient();
 
   const updateCustomerMutation = useMutation({
     mutationFn: (data: any) => apiRequest(`/api/customers/${data.id}`, 'PATCH', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
       setIsEditDialogOpen(false);
       setEditingCustomer(null);
       form.reset();
@@ -179,7 +171,7 @@ export default function Customers() {
   const createCustomerMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/customers', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
       setIsEditDialogOpen(false);
       setIsCreating(false);
       form.reset();
@@ -212,48 +204,54 @@ export default function Customers() {
 
   useEffect(() => {
     const handler = () => {
-      if (window.innerWidth < 768 && viewMode === "table") {
-        setViewMode("cards");
+      if (window.innerWidth < 768 && viewMode === 'table') {
+        setViewMode('cards');
       }
     };
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
   }, [viewMode]);
 
   // Fetch customers from unified business_records view
   const { data: customers = [], isLoading: customersLoading } = useQuery({
-    queryKey: ["/api/customers"],
+    queryKey: ['/api/customers'],
     enabled: isAuthenticated,
   });
 
   // Optional companies for enrichment
   const { data: companies = [] } = useQuery({
-    queryKey: ["/api/companies"],
+    queryKey: ['/api/companies'],
     enabled: isAuthenticated,
   });
 
   const enriched = useMemo(() => {
     return (customers as any[]).map((c) => {
-      const company = (companies as any[]).find(
-        (co) => co.id === (c.companyId || c.company_id)
-      );
-      // Prefer snake_case from business_records: company_name
+      // Extract nested company and contact data from Edge Function response
+      const companyData = c.companies || {};
+      const contactData = Array.isArray(c.company_contacts)
+        ? c.company_contacts[0]
+        : c.company_contacts || {};
+
+      // Get company name from nested companies object
       const companyName =
+        companyData.business_name ||
         c.company_name ||
         c.companyName ||
-        company?.businessName ||
-        company?.name ||
         `Customer ${String(c.id).slice(0, 8)}`;
-      const city = c.city || company?.city || "";
-      const state = c.state || company?.state || "";
+
+      const city = companyData.billing_city || c.city || '';
+      const state = companyData.billing_state || c.state || '';
+
       return {
         ...c,
         companyName,
         city,
         state,
-        phone: c.phone || company?.phone || "",
-        website: c.website || company?.website || "",
-        industry: c.industry || company?.industry || "",
+        phone: companyData.phone || c.phone || '',
+        website: companyData.website || c.website || '',
+        industry: companyData.industry || c.industry || '',
+        status: c.lead_status || c.status || 'active',
+        recordType: c.lead_status === 'active' ? 'customer' : 'lead',
       };
     });
   }, [customers, companies]);
@@ -261,12 +259,15 @@ export default function Customers() {
   const filtered = useMemo(() => {
     return enriched.filter((r: any) => {
       // Tab filter (record type)
-      const recordType = r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
+      const recordType =
+        r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
       const status = r.status || 'new';
 
       let matchesTab = true;
       if (selectedTab === 'leads') {
-        matchesTab = recordType === 'lead' || ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status);
+        matchesTab =
+          recordType === 'lead' ||
+          ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status);
       } else if (selectedTab === 'prospects') {
         matchesTab = status === 'qualified' || status === 'proposal_sent';
       } else if (selectedTab === 'customers') {
@@ -279,16 +280,11 @@ export default function Customers() {
 
       // Search filter
       const term = searchTerm.trim().toLowerCase();
-      const matchesSearch = !term || [
-        r.companyName,
-        r.primaryContactName,
-        r.primaryContactEmail,
-        r.industry,
-        r.city,
-        r.state,
-      ]
-        .filter(Boolean)
-        .some((v: string) => String(v).toLowerCase().includes(term));
+      const matchesSearch =
+        !term ||
+        [r.companyName, r.primaryContactName, r.primaryContactEmail, r.industry, r.city, r.state]
+          .filter(Boolean)
+          .some((v: string) => String(v).toLowerCase().includes(term));
 
       // Industry filter
       const matchesIndustry = industryFilter === 'all' || r.industry === industryFilter;
@@ -300,32 +296,56 @@ export default function Customers() {
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
 
       // Source filter
-      const matchesSource = sourceFilter === 'all' || r.leadSource === sourceFilter || r.source === sourceFilter;
+      const matchesSource =
+        sourceFilter === 'all' || r.leadSource === sourceFilter || r.source === sourceFilter;
 
       // Priority filter
       const matchesPriority = priorityFilter === 'all' || r.priority === priorityFilter;
 
-      return matchesTab && matchesSearch && matchesIndustry && matchesState && matchesStatus && matchesSource && matchesPriority;
+      return (
+        matchesTab &&
+        matchesSearch &&
+        matchesIndustry &&
+        matchesState &&
+        matchesStatus &&
+        matchesSource &&
+        matchesPriority
+      );
     });
-  }, [enriched, selectedTab, searchTerm, industryFilter, stateFilter, statusFilter, sourceFilter, priorityFilter]);
+  }, [
+    enriched,
+    selectedTab,
+    searchTerm,
+    industryFilter,
+    stateFilter,
+    statusFilter,
+    sourceFilter,
+    priorityFilter,
+  ]);
 
   // Calculate KPIs
   const kpis = useMemo(() => {
     const totalLeads = enriched.filter((r: any) => {
-      const recordType = r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
+      const recordType =
+        r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
       const status = r.status || 'new';
-      return recordType === 'lead' || ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status);
+      return (
+        recordType === 'lead' || ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status)
+      );
     }).length;
 
     const totalCustomers = enriched.filter((r: any) => {
-      const recordType = r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
+      const recordType =
+        r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
       const status = r.status || 'new';
       return recordType === 'customer' || status === 'active' || status === 'inactive';
     }).length;
 
     const activeCustomers = enriched.filter((r: any) => r.status === 'active').length;
 
-    const qualifiedLeads = enriched.filter((r: any) => r.status === 'qualified' || r.status === 'proposal_sent').length;
+    const qualifiedLeads = enriched.filter(
+      (r: any) => r.status === 'qualified' || r.status === 'proposal_sent',
+    ).length;
 
     const pipelineValue = enriched.reduce((sum: number, r: any) => {
       const value = parseFloat(r.estimatedDealValue || r.estimatedAmount || '0');
@@ -337,23 +357,17 @@ export default function Customers() {
 
   // Get unique values for filter dropdowns
   const uniqueIndustries = useMemo(() => {
-    const industries = new Set(
-      enriched.map((c: any) => c.industry).filter(Boolean)
-    );
+    const industries = new Set(enriched.map((c: any) => c.industry).filter(Boolean));
     return Array.from(industries).sort();
   }, [enriched]);
 
   const uniqueStates = useMemo(() => {
-    const states = new Set(
-      enriched.map((c: any) => c.state).filter(Boolean)
-    );
+    const states = new Set(enriched.map((c: any) => c.state).filter(Boolean));
     return Array.from(states).sort();
   }, [enriched]);
 
   const uniqueSources = useMemo(() => {
-    const sources = new Set(
-      enriched.map((c: any) => c.leadSource || c.source).filter(Boolean)
-    );
+    const sources = new Set(enriched.map((c: any) => c.leadSource || c.source).filter(Boolean));
     return Array.from(sources).sort();
   }, [enriched]);
 
@@ -363,12 +377,10 @@ export default function Customers() {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (customerIds: string[]) => {
-      await Promise.all(
-        customerIds.map(id => apiRequest(`/api/customers/${id}`, 'DELETE'))
-      );
+      await Promise.all(customerIds.map((id) => apiRequest(`/api/customers/${id}`, 'DELETE')));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
       bulkSelection.clearSelection();
       toast({
         title: 'Success',
@@ -386,9 +398,7 @@ export default function Customers() {
 
   // Bulk export function
   const handleBulkExport = (format: 'csv' | 'json') => {
-    const selectedCustomers = filtered.filter((c: any) =>
-      bulkSelection.selectedIds.includes(c.id)
-    );
+    const selectedCustomers = filtered.filter((c: any) => bulkSelection.selectedIds.includes(c.id));
 
     const columns = [
       createExportColumn('companyName', 'Company Name'),
@@ -455,9 +465,7 @@ export default function Customers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{kpis.totalLeads}</div>
-              <p className="text-xs text-muted-foreground">
-                In pipeline
-              </p>
+              <p className="text-xs text-muted-foreground">In pipeline</p>
             </CardContent>
           </Card>
 
@@ -468,9 +476,7 @@ export default function Customers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{kpis.totalCustomers}</div>
-              <p className="text-xs text-muted-foreground">
-                All time
-              </p>
+              <p className="text-xs text-muted-foreground">All time</p>
             </CardContent>
           </Card>
 
@@ -481,9 +487,7 @@ export default function Customers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{kpis.activeCustomers}</div>
-              <p className="text-xs text-muted-foreground">
-                Currently active
-              </p>
+              <p className="text-xs text-muted-foreground">Currently active</p>
             </CardContent>
           </Card>
 
@@ -494,9 +498,7 @@ export default function Customers() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{kpis.qualifiedLeads}</div>
-              <p className="text-xs text-muted-foreground">
-                Ready to close
-              </p>
+              <p className="text-xs text-muted-foreground">Ready to close</p>
             </CardContent>
           </Card>
 
@@ -506,12 +508,8 @@ export default function Customers() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                ${kpis.pipelineValue.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Total estimated
-              </p>
+              <div className="text-2xl font-bold">${kpis.pipelineValue.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Total estimated</p>
             </CardContent>
           </Card>
         </div>
@@ -618,10 +616,13 @@ export default function Customers() {
                   getFilterDescription={(filters) => {
                     const parts: string[] = [];
                     if (filters.searchTerm) parts.push(`Search: "${filters.searchTerm}"`);
-                    if (filters.industryFilter !== 'all') parts.push(`Industry: ${filters.industryFilter}`);
+                    if (filters.industryFilter !== 'all')
+                      parts.push(`Industry: ${filters.industryFilter}`);
                     if (filters.stateFilter !== 'all') parts.push(`State: ${filters.stateFilter}`);
-                    if (filters.sourceFilter !== 'all') parts.push(`Source: ${filters.sourceFilter}`);
-                    if (filters.priorityFilter !== 'all') parts.push(`Priority: ${filters.priorityFilter}`);
+                    if (filters.sourceFilter !== 'all')
+                      parts.push(`Source: ${filters.sourceFilter}`);
+                    if (filters.priorityFilter !== 'all')
+                      parts.push(`Priority: ${filters.priorityFilter}`);
                     return parts.length > 0 ? parts.join(' • ') : 'No filters applied';
                   }}
                 />
@@ -653,17 +654,17 @@ export default function Customers() {
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  variant={viewMode === "cards" ? "default" : "outline"}
+                  variant={viewMode === 'cards' ? 'default' : 'outline'}
                   size="icon"
-                  onClick={() => setViewMode("cards")}
+                  onClick={() => setViewMode('cards')}
                   title="Card view"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={viewMode === "table" ? "default" : "outline"}
+                  variant={viewMode === 'table' ? 'default' : 'outline'}
                   size="icon"
-                  onClick={() => setViewMode("table")}
+                  onClick={() => setViewMode('table')}
                   title="Table view"
                 >
                   <Rows className="h-4 w-4" />
@@ -688,206 +689,240 @@ export default function Customers() {
               </div>
             </div>
 
-        {/* Bulk Operations Toolbar */}
-        <BulkOperationsToolbar
-          selectedCount={bulkSelection.selectedCount}
-          totalCount={filtered.length}
-          onClearSelection={bulkSelection.clearSelection}
-          onSelectAll={bulkSelection.selectAll}
-          selectedIds={bulkSelection.selectedIds}
-          actions={bulkActions}
-        />
+            {/* Bulk Operations Toolbar */}
+            <BulkOperationsToolbar
+              selectedCount={bulkSelection.selectedCount}
+              totalCount={filtered.length}
+              onClearSelection={bulkSelection.clearSelection}
+              onSelectAll={bulkSelection.selectAll}
+              selectedIds={bulkSelection.selectedIds}
+              actions={bulkActions}
+            />
 
-        {customersLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="h-4 bg-muted rounded mb-2" />
-                  <div className="h-3 bg-muted rounded mb-4 w-2/3" />
-                  <div className="space-y-2">
-                    <div className="h-3 bg-muted rounded w-1/2" />
-                    <div className="h-3 bg-muted rounded w-3/4" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : filtered && filtered.length > 0 ? (
-          viewMode === "cards" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {filtered.map((customer: any) => {
-                const displayName = customer.companyName as string;
-                const subtitle = [
-                  customer.industry,
-                  [customer.city, customer.state].filter(Boolean).join(", "),
-                ]
-                  .filter(Boolean)
-                  .join(" • ");
-
-                return (
-                  <Card
-                    key={customer.id}
-                    className="hover:shadow-md transition-shadow touch-manipulation"
-                  >
+            {customersLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="animate-pulse">
                     <CardContent className="p-4 sm:p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3 min-w-0 flex-1">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <span className="text-primary font-semibold text-sm sm:text-base">
-                              {displayName?.charAt(0)?.toUpperCase() || "C"}
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
-                              {displayName}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                              {subtitle || "Customer"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
+                      <div className="h-4 bg-muted rounded mb-2" />
+                      <div className="h-3 bg-muted rounded mb-4 w-2/3" />
                       <div className="space-y-2">
-                        {customer.phone && (
-                          <p className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                            <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{customer.phone}</span>
-                          </p>
-                        )}
-                        {customer.website && (
-                          <p className="text-xs sm:text-sm text-muted-foreground flex items-center">
-                            <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{customer.website}</span>
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mt-4 pt-4 border-t border-border">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full flex items-center gap-2 min-h-11 sm:h-9"
-                          onClick={() => navigate(`/customers/${customer.urlSlug || customer.url_slug || customer.id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                          View Details
-                        </Button>
+                        <div className="h-3 bg-muted rounded w-1/2" />
+                        <div className="h-3 bg-muted rounded w-3/4" />
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="bg-background rounded-md border">
-              <UITable>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={bulkSelection.isAllSelected}
-                        onCheckedChange={bulkSelection.toggleAll}
-                        aria-label="Select all customers"
-                      />
-                    </TableHead>
-                    <TableHead>Company</TableHead>
-                    <TableHead>Industry</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Website</TableHead>
-                    <TableHead className="w-24" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((row: any) => (
-                    <TableRow
-                      key={row.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={bulkSelection.isSelected(row.id)}
-                          onCheckedChange={() => bulkSelection.toggleSelection(row.id)}
-                          aria-label={`Select ${row.companyName}`}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {row.companyName}
-                      </TableCell>
-                      <TableCell>{row.industry || "—"}</TableCell>
-                      <TableCell>
-                        {[row.city, row.state].filter(Boolean).join(", ") ||
-                          "—"}
-                      </TableCell>
-                      <TableCell>{row.phone || "—"}</TableCell>
-                      <TableCell className="truncate max-w-[260px]">
-                        {row.website || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`);
-                          }}
+                ))}
+              </div>
+            ) : filtered && filtered.length > 0 ? (
+              viewMode === 'cards' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {filtered.map((customer: any) => {
+                    const displayName = customer.companyName as string;
+                    const location = [customer.city, customer.state].filter(Boolean).join(', ');
+
+                    return (
+                      <Card
+                        key={customer.id}
+                        className="hover:shadow-md transition-shadow touch-manipulation"
+                      >
+                        <CardContent className="p-4 sm:p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center space-x-3 min-w-0 flex-1">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-primary font-semibold text-sm sm:text-base">
+                                  {displayName?.charAt(0)?.toUpperCase() || 'C'}
+                                </span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
+                                  {displayName}
+                                </h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge
+                                    variant={
+                                      customer.status === 'active'
+                                        ? 'default'
+                                        : customer.status === 'inactive'
+                                          ? 'secondary'
+                                          : customer.status === 'qualified'
+                                            ? 'success'
+                                            : 'outline'
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {customer.status || 'lead'}
+                                  </Badge>
+                                  {location && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {location}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            {customer.phone && (
+                              <p className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                <Phone className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">{customer.phone}</span>
+                              </p>
+                            )}
+                            {customer.website && (
+                              <p className="text-xs sm:text-sm text-muted-foreground flex items-center">
+                                <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-2 flex-shrink-0" />
+                                <span className="truncate">{customer.website}</span>
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full flex items-center gap-2 min-h-11 sm:h-9"
+                              onClick={() =>
+                                navigate(
+                                  `/customers/${customer.urlSlug || customer.url_slug || customer.id}`,
+                                )
+                              }
+                            >
+                              <Eye className="h-4 w-4" />
+                              View Details
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="bg-background rounded-md border">
+                  <UITable>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">
+                          <Checkbox
+                            checked={bulkSelection.isAllSelected}
+                            onCheckedChange={bulkSelection.toggleAll}
+                            aria-label="Select all customers"
+                          />
+                        </TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Website</TableHead>
+                        <TableHead className="w-24" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filtered.map((row: any) => (
+                        <TableRow
+                          key={row.id}
+                          className="cursor-pointer"
+                          onClick={() =>
+                            navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`)
+                          }
                         >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </UITable>
-            </div>
-          )
-        ) : (
-          <Card>
-            <CardContent className="py-8 sm:py-12">
-              <EmptyState
-                icon={Users}
-                title={
-                  searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
-                    ? 'No customers match your filters'
-                    : 'No customers yet'
-                }
-                description={
-                  searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
-                    ? 'Try adjusting your search criteria or filters to find what you\'re looking for'
-                    : 'Start building your customer base by adding your first customer'
-                }
-                type={searchTerm || industryFilter !== 'all' || stateFilter !== 'all' ? 'filter' : 'default'}
-                action={{
-                  label: 'Add Customer',
-                  onClick: handleAddCustomer,
-                  icon: Plus,
-                }}
-                secondaryAction={
-                  searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
-                    ? {
-                        label: 'Clear Filters',
-                        onClick: filterState.clearFilters,
-                        variant: 'outline',
-                      }
-                    : undefined
-                }
-                suggestions={
-                  customers.length === 0 && !searchTerm
-                    ? [
-                        'Customers are the foundation of your business relationships',
-                        'Track contacts, deals, and service history in one place',
-                        'Export customer data anytime for reporting',
-                      ]
-                    : undefined
-                }
-              />
-            </CardContent>
-          </Card>
-        )}
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={bulkSelection.isSelected(row.id)}
+                              onCheckedChange={() => bulkSelection.toggleSelection(row.id)}
+                              aria-label={`Select ${row.companyName}`}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">{row.companyName}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                row.status === 'active'
+                                  ? 'default'
+                                  : row.status === 'inactive'
+                                    ? 'secondary'
+                                    : row.status === 'qualified'
+                                      ? 'success'
+                                      : 'outline'
+                              }
+                            >
+                              {row.status || 'lead'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {[row.city, row.state].filter(Boolean).join(', ') || '—'}
+                          </TableCell>
+                          <TableCell>{row.phone || '—'}</TableCell>
+                          <TableCell className="truncate max-w-[260px]">
+                            {row.website || '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`);
+                              }}
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </UITable>
+                </div>
+              )
+            ) : (
+              <Card>
+                <CardContent className="py-8 sm:py-12">
+                  <EmptyState
+                    icon={Users}
+                    title={
+                      searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                        ? 'No customers match your filters'
+                        : 'No customers yet'
+                    }
+                    description={
+                      searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                        ? "Try adjusting your search criteria or filters to find what you're looking for"
+                        : 'Start building your customer base by adding your first customer'
+                    }
+                    type={
+                      searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                        ? 'filter'
+                        : 'default'
+                    }
+                    action={{
+                      label: 'Add Customer',
+                      onClick: handleAddCustomer,
+                      icon: Plus,
+                    }}
+                    secondaryAction={
+                      searchTerm || industryFilter !== 'all' || stateFilter !== 'all'
+                        ? {
+                            label: 'Clear Filters',
+                            onClick: filterState.clearFilters,
+                            variant: 'outline',
+                          }
+                        : undefined
+                    }
+                    suggestions={
+                      customers.length === 0 && !searchTerm
+                        ? [
+                            'Customers are the foundation of your business relationships',
+                            'Track contacts, deals, and service history in one place',
+                            'Export customer data anytime for reporting',
+                          ]
+                        : undefined
+                    }
+                  />
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -895,9 +930,9 @@ export default function Customers() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{isCreating ? "Create New Customer" : "Edit Customer"}</DialogTitle>
+              <DialogTitle>{isCreating ? 'Create New Customer' : 'Edit Customer'}</DialogTitle>
             </DialogHeader>
-            
+
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Basic Company Information */}
@@ -917,7 +952,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="website"
@@ -931,7 +966,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="industry"
@@ -945,7 +980,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="companySize"
@@ -990,7 +1025,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="primaryContactTitle"
@@ -1004,7 +1039,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="primaryContactEmail"
@@ -1018,7 +1053,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="primaryContactPhone"
@@ -1052,7 +1087,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="addressLine2"
@@ -1066,7 +1101,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="city"
@@ -1080,7 +1115,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="state"
@@ -1094,7 +1129,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="postalCode"
@@ -1108,7 +1143,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="country"
@@ -1152,7 +1187,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="customerTier"
@@ -1176,7 +1211,7 @@ export default function Customers() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="assignedSalesRep"
@@ -1202,13 +1237,16 @@ export default function Customers() {
                       <FormItem>
                         <FormLabel>Tags</FormLabel>
                         <FormControl>
-                          <Input placeholder="enterprise, vip, tech-forward (comma-separated)" {...field} />
+                          <Input
+                            placeholder="enterprise, vip, tech-forward (comma-separated)"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="notes"
@@ -1246,8 +1284,12 @@ export default function Customers() {
                     disabled={updateCustomerMutation.isPending || createCustomerMutation.isPending}
                   >
                     {updateCustomerMutation.isPending || createCustomerMutation.isPending
-                      ? (isCreating ? "Creating..." : "Updating...")
-                      : (isCreating ? "Create Customer" : "Update Customer")}
+                      ? isCreating
+                        ? 'Creating...'
+                        : 'Updating...'
+                      : isCreating
+                        ? 'Create Customer'
+                        : 'Update Customer'}
                   </Button>
                 </div>
               </form>
@@ -1261,10 +1303,10 @@ export default function Customers() {
           onOpenChange={setIsImportDialogOpen}
           defaultEntityType="business_records"
           onImportComplete={() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+            queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
             toast({
-              title: "Import Complete",
-              description: "Customers have been imported successfully.",
+              title: 'Import Complete',
+              description: 'Customers have been imported successfully.',
             });
           }}
         />
