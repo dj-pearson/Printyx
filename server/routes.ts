@@ -608,12 +608,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use('/api/', apiLimiter);
 
-  // API versioning middleware
+  // API versioning middleware (API routes only)
   // Supports both URL-based (/api/v1/) and header-based (X-API-Version) versioning
-  app.use(apiVersioning());
+  app.use('/api', apiVersioning());
 
-  // Legacy route support - auto-upgrade unversioned /api/ requests to /api/v1/
+  // Legacy route support - auto-upgrade unversioned /api/ requests to /api/v1/ (API routes only)
   app.use(
+    '/api',
     legacyRouteSupport({
       version: 'v1',
       excludePaths: ['/api/health', '/api/auth', '/api/docs', '/.well-known', '/api/versions'],
@@ -624,14 +625,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API versions info endpoint
   app.get('/api/versions', apiVersionInfo());
 
-  // Resolve tenant context for all requests
-  app.use(resolveTenant as any);
+  // Resolve tenant context (API routes only)
+  app.use('/api', resolveTenant as any);
 
   // Track API calls for subscription usage monitoring
   const { trackApiCall } = await import('./middleware/subscription');
   app.use('/api', trackApiCall);
-  // Apply registration lock middleware to block new user registrations
-  app.use(blockRegistrations);
+  // Apply registration lock middleware to block new user registrations (API routes only)
+  app.use('/api', blockRegistrations);
 
   // Setup session management
   // SECURITY: Validate SESSION_SECRET is set in production
