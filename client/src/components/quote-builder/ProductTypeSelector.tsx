@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -49,7 +43,14 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
-type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'supplies' | 'managed_services' | 'software_products';
+type ProductType =
+  | 'product_models'
+  | 'product_accessories'
+  | 'professional_services'
+  | 'service_products'
+  | 'supplies'
+  | 'managed_services'
+  | 'software_products';
 
 interface ProductTypeOption {
   value: ProductType;
@@ -137,52 +138,62 @@ export default function ProductTypeSelector({
 }: ProductTypeSelectorProps) {
   // If we're adding accessories for a parent product, default to accessories
   const [selectedType, setSelectedType] = useState<ProductType>(
-    parentProductId ? 'product_accessories' : 'product_models'
+    parentProductId ? 'product_accessories' : 'product_models',
   );
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [manufacturerFilter, setManufacturerFilter] = useState('all');
 
-  const selectedTypeOption = productTypes.find(type => type.value === selectedType);
+  const selectedTypeOption = productTypes.find((type) => type.value === selectedType);
 
   // Fetch products based on selected type
   const { data: products = [], isLoading } = useQuery<Product[]>({
     queryKey: [selectedTypeOption?.endpoint, parentProductId],
     queryFn: async () => {
       let url = selectedTypeOption?.endpoint || '';
-      
+
       // For accessories, filter by parent product if specified
       if (selectedType === 'product_accessories' && parentProductId) {
         url += `?modelId=${parentProductId}`;
       }
-      
+
       const response = await apiRequest(url, 'GET');
       console.log('API Response for', url, ':', response);
-      return response;
+      // Ensure response is always an array
+      return Array.isArray(response) ? response : [];
     },
     enabled: !!selectedTypeOption,
   });
 
+  // Ensure products is always an array before using array methods
+  const productsArray = Array.isArray(products) ? products : [];
+
   // Get unique categories and manufacturers for filtering
-  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
-  const manufacturers = Array.from(new Set(products.map(p => p.manufacturer).filter(Boolean)));
+  const categories = Array.from(new Set(productsArray.map((p) => p.category).filter(Boolean)));
+  const manufacturers = Array.from(
+    new Set(productsArray.map((p) => p.manufacturer).filter(Boolean)),
+  );
 
   // Filter products
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = productsArray.filter((product) => {
     // Check for active status - handle both field names
     const isActive = product.isActive !== false && product.status !== 'inactive';
     if (!isActive) return false;
-    
-    const matchesSearch = 
-      (product.productName && product.productName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+
+    const matchesSearch =
+      (product.productName &&
+        product.productName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (product.modelName && product.modelName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.displayName && product.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.productCode && product.productCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.displayName &&
+        product.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (product.productCode &&
+        product.productCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (product.modelCode && product.modelCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesManufacturer = manufacturerFilter === 'all' || product.manufacturer === manufacturerFilter;
+    const matchesManufacturer =
+      manufacturerFilter === 'all' || product.manufacturer === manufacturerFilter;
 
     return matchesSearch && matchesCategory && matchesManufacturer;
   });
@@ -227,7 +238,10 @@ export default function ProductTypeSelector({
         {/* Product Type Selection */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Product Type</Label>
-          <Select value={selectedType} onValueChange={(value: ProductType) => setSelectedType(value)}>
+          <Select
+            value={selectedType}
+            onValueChange={(value: ProductType) => setSelectedType(value)}
+          >
             <SelectTrigger className="min-h-[44px]">
               <SelectValue>
                 {selectedTypeOption && (
@@ -240,20 +254,18 @@ export default function ProductTypeSelector({
             </SelectTrigger>
             <SelectContent>
               {productTypes
-                .filter(type => !parentProductId || type.value === 'product_accessories')
+                .filter((type) => !parentProductId || type.value === 'product_accessories')
                 .map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  <div className="flex items-center gap-2">
-                    <type.icon className="h-4 w-4" />
-                    <div>
-                      <div className="font-medium">{type.label}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {type.description}
+                  <SelectItem key={type.value} value={type.value}>
+                    <div className="flex items-center gap-2">
+                      <type.icon className="h-4 w-4" />
+                      <div>
+                        <div className="font-medium">{type.label}</div>
+                        <div className="text-xs text-muted-foreground">{type.description}</div>
                       </div>
                     </div>
-                  </div>
-                </SelectItem>
-              ))}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
@@ -333,7 +345,10 @@ export default function ProductTypeSelector({
               {/* Mobile Card View */}
               <div className="sm:hidden space-y-3 p-3">
                 {filteredProducts.map((product) => (
-                  <div key={product.id} className="border rounded-lg p-3 space-y-3 active:scale-[0.99] transition-transform">
+                  <div
+                    key={product.id}
+                    className="border rounded-lg p-3 space-y-3 active:scale-[0.99] transition-transform"
+                  >
                     <div className="flex justify-between items-start gap-2">
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-sm line-clamp-2">{product.productName}</h4>
@@ -348,17 +363,24 @@ export default function ProductTypeSelector({
                       </Badge>
                     </div>
 
-                    {selectedType === 'product_models' && (product.category || product.manufacturer) && (
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        {product.category && <span className="truncate">{product.category}</span>}
-                        {product.manufacturer && <span className="truncate">{product.manufacturer}</span>}
-                      </div>
-                    )}
+                    {selectedType === 'product_models' &&
+                      (product.category || product.manufacturer) && (
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {product.category && <span className="truncate">{product.category}</span>}
+                          {product.manufacturer && (
+                            <span className="truncate">{product.manufacturer}</span>
+                          )}
+                        </div>
+                      )}
 
                     <div className="flex justify-between items-center gap-2 pt-2 border-t">
                       <div className="text-xs flex-1 min-w-0">
-                        <div className="text-muted-foreground truncate">MSRP: {formatPrice(product.msrp)}</div>
-                        <div className="font-medium truncate">Your Price: {formatPrice(getPrice(product))}</div>
+                        <div className="text-muted-foreground truncate">
+                          MSRP: {formatPrice(product.msrp)}
+                        </div>
+                        <div className="font-medium truncate">
+                          Your Price: {formatPrice(getPrice(product))}
+                        </div>
                       </div>
                       <Button
                         size="sm"
@@ -372,7 +394,7 @@ export default function ProductTypeSelector({
                   </div>
                 ))}
               </div>
-              
+
               {/* Desktop Table View */}
               <div className="hidden sm:block">
                 <Table>
@@ -415,9 +437,7 @@ export default function ProductTypeSelector({
                         )}
                         <TableCell>{formatPrice(product.msrp)}</TableCell>
                         <TableCell>
-                          <span className="font-medium">
-                            {formatPrice(getPrice(product))}
-                          </span>
+                          <span className="font-medium">{formatPrice(getPrice(product))}</span>
                         </TableCell>
                         <TableCell>
                           <Button
@@ -443,9 +463,7 @@ export default function ProductTypeSelector({
           <div className="text-xs sm:text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-start gap-2">
               <Wrench className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>
-                Showing accessories compatible with the selected product model.
-              </span>
+              <span>Showing accessories compatible with the selected product model.</span>
             </div>
           </div>
         )}
