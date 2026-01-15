@@ -1,37 +1,26 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import { apiRequest } from "@/lib/queryClient";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import { apiRequest } from '@/lib/queryClient';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -40,7 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   User,
   Lock,
@@ -54,7 +43,7 @@ import {
   Camera,
   Loader2,
   AlertTriangle,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface UserSettings {
   id: string;
@@ -92,11 +81,11 @@ interface UserSettings {
 }
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("profile");
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [activeTab, setActiveTab] = useState('profile');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch user settings
@@ -107,37 +96,37 @@ export default function Settings() {
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    jobTitle: "",
-    department: "",
-    bio: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    jobTitle: '',
+    department: '',
+    bio: '',
   });
 
   // Password form state
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   // Preferences form state
   const [preferencesForm, setPreferencesForm] = useState({
-    theme: "system",
-    language: "en",
-    timezone: "America/New_York",
-    dateFormat: "MM/dd/yyyy",
-    timeFormat: "12",
-    currency: "USD",
+    theme: 'system',
+    language: 'en',
+    timezone: 'America/New_York',
+    dateFormat: 'MM/dd/yyyy',
+    timeFormat: '12',
+    currency: 'USD',
   });
 
   // Update preferences immediately when changed
   const updatePreference = (key: string, value: string) => {
     const newPreferences = { ...preferencesForm, [key]: value };
     setPreferencesForm(newPreferences);
-    
+
     // Auto-save preferences immediately
     preferencesMutation.mutate({
       ...newPreferences,
@@ -149,7 +138,7 @@ export default function Settings() {
   const updateNotification = (key: string, value: boolean) => {
     const newNotifications = { ...notifications, [key]: value };
     setNotifications(newNotifications);
-    
+
     // Auto-save notifications immediately
     preferencesMutation.mutate({
       ...preferencesForm,
@@ -161,7 +150,7 @@ export default function Settings() {
   const updateAccessibility = (key: string, value: any) => {
     const newAccessibility = { ...accessibility, [key]: value };
     setAccessibility(newAccessibility);
-    
+
     // Auto-save accessibility immediately
     accessibilityMutation.mutate({
       accessibility: newAccessibility,
@@ -180,10 +169,10 @@ export default function Settings() {
   const [accessibility, setAccessibility] = useState({
     highContrast: false,
     reducedMotion: false,
-    fontSize: "medium",
+    fontSize: 'medium',
     screenReader: false,
     keyboardNavigation: false,
-    colorBlind: "none",
+    colorBlind: 'none',
     soundEnabled: true,
     voiceCommands: false,
   });
@@ -192,41 +181,45 @@ export default function Settings() {
   useEffect(() => {
     if (userSettings) {
       setProfileForm({
-        firstName: userSettings.firstName || "",
-        lastName: userSettings.lastName || "",
-        email: userSettings.email || "",
-        phone: userSettings.phone || "",
-        jobTitle: userSettings.jobTitle || "",
-        department: userSettings.department || "",
-        bio: userSettings.bio || "",
+        firstName: userSettings.firstName || '',
+        lastName: userSettings.lastName || '',
+        email: userSettings.email || '',
+        phone: userSettings.phone || '',
+        jobTitle: userSettings.jobTitle || '',
+        department: userSettings.department || '',
+        bio: userSettings.bio || '',
       });
 
       setPreferencesForm({
-        theme: userSettings.theme || "system",
-        language: userSettings.language || "en",
-        timezone: userSettings.timezone || "America/New_York",
-        dateFormat: userSettings.dateFormat || "MM/dd/yyyy",
-        timeFormat: userSettings.timeFormat || "12",
-        currency: userSettings.currency || "USD",
+        theme: userSettings.theme || 'system',
+        language: userSettings.language || 'en',
+        timezone: userSettings.timezone || 'America/New_York',
+        dateFormat: userSettings.dateFormat || 'MM/dd/yyyy',
+        timeFormat: userSettings.timeFormat || '12',
+        currency: userSettings.currency || 'USD',
       });
 
-      setNotifications(userSettings.notifications || {
-        email: true,
-        push: true,
-        sms: false,
-        marketing: false,
-      });
+      setNotifications(
+        userSettings.notifications || {
+          email: true,
+          push: true,
+          sms: false,
+          marketing: false,
+        },
+      );
 
-      setAccessibility(userSettings.accessibility || {
-        highContrast: false,
-        reducedMotion: false,
-        fontSize: "medium",
-        screenReader: false,
-        keyboardNavigation: false,
-        colorBlind: "none",
-        soundEnabled: true,
-        voiceCommands: false,
-      });
+      setAccessibility(
+        userSettings.accessibility || {
+          highContrast: false,
+          reducedMotion: false,
+          fontSize: 'medium',
+          screenReader: false,
+          keyboardNavigation: false,
+          colorBlind: 'none',
+          soundEnabled: true,
+          voiceCommands: false,
+        },
+      );
     }
   }, [userSettings]);
 
@@ -234,25 +227,25 @@ export default function Settings() {
   const profileMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/user/profile', { method: 'PUT', body: data }),
     onSuccess: () => {
-      toast({ title: "Profile updated successfully" });
+      toast({ title: 'Profile updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
     },
     onError: () => {
-      toast({ title: "Failed to update profile", variant: "destructive" });
+      toast({ title: 'Failed to update profile', variant: 'destructive' });
     },
   });
 
   const passwordMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/user/password', { method: 'PUT', body: data }),
     onSuccess: () => {
-      toast({ title: "Password updated successfully" });
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast({ title: 'Password updated successfully' });
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Failed to update password", 
-        description: error.message || "Please check your current password",
-        variant: "destructive" 
+      toast({
+        title: 'Failed to update password',
+        description: error.message || 'Please check your current password',
+        variant: 'destructive',
       });
     },
   });
@@ -260,22 +253,22 @@ export default function Settings() {
   const preferencesMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/user/preferences', { method: 'PUT', body: data }),
     onSuccess: () => {
-      toast({ title: "Preferences updated successfully" });
+      toast({ title: 'Preferences updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
     },
     onError: () => {
-      toast({ title: "Failed to update preferences", variant: "destructive" });
+      toast({ title: 'Failed to update preferences', variant: 'destructive' });
     },
   });
 
   const accessibilityMutation = useMutation({
     mutationFn: (data: any) => apiRequest('/api/user/accessibility', { method: 'PUT', body: data }),
     onSuccess: () => {
-      toast({ title: "Accessibility settings updated successfully" });
+      toast({ title: 'Accessibility settings updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
     },
     onError: () => {
-      toast({ title: "Failed to update accessibility settings", variant: "destructive" });
+      toast({ title: 'Failed to update accessibility settings', variant: 'destructive' });
     },
   });
 
@@ -291,22 +284,22 @@ export default function Settings() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "Data exported successfully" });
+      toast({ title: 'Data exported successfully' });
     },
     onError: () => {
-      toast({ title: "Failed to export data", variant: "destructive" });
+      toast({ title: 'Failed to export data', variant: 'destructive' });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => apiRequest('/api/user/delete', { method: 'DELETE' }),
     onSuccess: () => {
-      toast({ title: "Account deleted successfully" });
+      toast({ title: 'Account deleted successfully' });
       // Redirect to login or home page
       window.location.href = '/';
     },
     onError: () => {
-      toast({ title: "Failed to delete account", variant: "destructive" });
+      toast({ title: 'Failed to delete account', variant: 'destructive' });
     },
   });
 
@@ -319,11 +312,11 @@ export default function Settings() {
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
       return;
     }
     if (passwordForm.newPassword.length < 8) {
-      toast({ title: "Password must be at least 8 characters", variant: "destructive" });
+      toast({ title: 'Password must be at least 8 characters', variant: 'destructive' });
       return;
     }
     passwordMutation.mutate({
@@ -356,8 +349,8 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = () => {
-    if (deleteConfirmation !== "DELETE") {
-      toast({ title: "Please type DELETE to confirm", variant: "destructive" });
+    if (deleteConfirmation !== 'DELETE') {
+      toast({ title: 'Please type DELETE to confirm', variant: 'destructive' });
       return;
     }
     setIsDeleting(true);
@@ -377,7 +370,6 @@ export default function Settings() {
   return (
     <MainLayout title="Settings" description="Manage your account settings and preferences">
       <div className="space-y-6 px-4 sm:px-6 lg:px-0">
-
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           {/* Mobile Tab Selection Dropdown */}
           <div className="md:hidden">
@@ -385,12 +377,42 @@ export default function Settings() {
               <SelectTrigger className="w-full">
                 <SelectValue>
                   <div className="flex items-center gap-2">
-                    {activeTab === "profile" && <><User className="h-4 w-4" />Profile</>}
-                    {activeTab === "security" && <><Lock className="h-4 w-4" />Security</>}
-                    {activeTab === "preferences" && <><Palette className="h-4 w-4" />Preferences</>}
-                    {activeTab === "notifications" && <><Bell className="h-4 w-4" />Notifications</>}
-                    {activeTab === "accessibility" && <><Eye className="h-4 w-4" />Accessibility</>}
-                    {activeTab === "data" && <><Shield className="h-4 w-4" />Data & Privacy</>}
+                    {activeTab === 'profile' && (
+                      <>
+                        <User className="h-4 w-4" />
+                        Profile
+                      </>
+                    )}
+                    {activeTab === 'security' && (
+                      <>
+                        <Lock className="h-4 w-4" />
+                        Security
+                      </>
+                    )}
+                    {activeTab === 'preferences' && (
+                      <>
+                        <Palette className="h-4 w-4" />
+                        Preferences
+                      </>
+                    )}
+                    {activeTab === 'notifications' && (
+                      <>
+                        <Bell className="h-4 w-4" />
+                        Notifications
+                      </>
+                    )}
+                    {activeTab === 'accessibility' && (
+                      <>
+                        <Eye className="h-4 w-4" />
+                        Accessibility
+                      </>
+                    )}
+                    {activeTab === 'data' && (
+                      <>
+                        <Shield className="h-4 w-4" />
+                        Data & Privacy
+                      </>
+                    )}
                   </div>
                 </SelectValue>
               </SelectTrigger>
@@ -477,7 +499,8 @@ export default function Settings() {
                   <Avatar className="h-20 w-20">
                     <AvatarImage src={userSettings?.avatar} />
                     <AvatarFallback className="text-lg">
-                      {profileForm.firstName?.[0]}{profileForm.lastName?.[0]}
+                      {profileForm.firstName?.[0]}
+                      {profileForm.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -498,7 +521,9 @@ export default function Settings() {
                       <Input
                         id="firstName"
                         value={profileForm.firstName}
-                        onChange={(e) => setProfileForm({ ...profileForm, firstName: e.target.value })}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, firstName: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -507,7 +532,9 @@ export default function Settings() {
                       <Input
                         id="lastName"
                         value={profileForm.lastName}
-                        onChange={(e) => setProfileForm({ ...profileForm, lastName: e.target.value })}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, lastName: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -538,7 +565,9 @@ export default function Settings() {
                       <Input
                         id="jobTitle"
                         value={profileForm.jobTitle}
-                        onChange={(e) => setProfileForm({ ...profileForm, jobTitle: e.target.value })}
+                        onChange={(e) =>
+                          setProfileForm({ ...profileForm, jobTitle: e.target.value })
+                        }
                       />
                     </div>
                   </div>
@@ -547,7 +576,9 @@ export default function Settings() {
                     <Label htmlFor="department">Department</Label>
                     <Select
                       value={profileForm.department}
-                      onValueChange={(value) => setProfileForm({ ...profileForm, department: value })}
+                      onValueChange={(value) =>
+                        setProfileForm({ ...profileForm, department: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select department" />
@@ -588,9 +619,7 @@ export default function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Change Password</CardTitle>
-                <CardDescription>
-                  Update your password to keep your account secure.
-                </CardDescription>
+                <CardDescription>Update your password to keep your account secure.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -600,7 +629,9 @@ export default function Settings() {
                       id="currentPassword"
                       type="password"
                       value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -611,7 +642,9 @@ export default function Settings() {
                       id="newPassword"
                       type="password"
                       value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -622,13 +655,17 @@ export default function Settings() {
                       id="confirmPassword"
                       type="password"
                       value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                      }
                       required
                     />
                   </div>
 
                   <Button type="submit" disabled={passwordMutation.isPending}>
-                    {passwordMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {passwordMutation.isPending && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
                     Update Password
                   </Button>
                 </form>
@@ -638,9 +675,7 @@ export default function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Two-Factor Authentication</CardTitle>
-                <CardDescription>
-                  Add an extra layer of security to your account.
-                </CardDescription>
+                <CardDescription>Add an extra layer of security to your account.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
@@ -654,6 +689,50 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Session Management</CardTitle>
+                <CardDescription>
+                  Manage your active sessions and sign out of your account.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Current Session</p>
+                      <p className="text-sm text-muted-foreground">Signed in as {user?.email}</p>
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-red-600">Sign Out</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sign out of your account on this device
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      onClick={async () => {
+                        try {
+                          console.log('🔓 Signing out...');
+                          await logout();
+                        } catch (error) {
+                          console.error('Logout error:', error);
+                          // Force logout
+                          localStorage.clear();
+                          window.location.replace('/login');
+                        }
+                      }}
+                    >
+                      Sign Out
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Preferences Tab */}
@@ -661,9 +740,7 @@ export default function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Appearance & Language</CardTitle>
-                <CardDescription>
-                  Customize how Printyx looks and feels.
-                </CardDescription>
+                <CardDescription>Customize how Printyx looks and feels.</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePreferencesSubmit} className="space-y-4">
@@ -777,7 +854,9 @@ export default function Settings() {
                   </div>
 
                   <Button type="submit" disabled={preferencesMutation.isPending}>
-                    {preferencesMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {preferencesMutation.isPending && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
                     Save Preferences
                   </Button>
                 </form>
@@ -790,9 +869,7 @@ export default function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Notification Preferences</CardTitle>
-                <CardDescription>
-                  Choose which notifications you want to receive.
-                </CardDescription>
+                <CardDescription>Choose which notifications you want to receive.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
@@ -849,8 +926,13 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button onClick={handleNotificationsSubmit} disabled={preferencesMutation.isPending}>
-                  {preferencesMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Button
+                  onClick={handleNotificationsSubmit}
+                  disabled={preferencesMutation.isPending}
+                >
+                  {preferencesMutation.isPending && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   Save Notification Settings
                 </Button>
               </CardContent>
@@ -933,9 +1015,7 @@ export default function Settings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">Screen Reader Support</p>
-                      <p className="text-sm text-muted-foreground">
-                        Optimize for screen readers
-                      </p>
+                      <p className="text-sm text-muted-foreground">Optimize for screen readers</p>
                     </div>
                     <Switch
                       checked={accessibility.screenReader}
@@ -952,16 +1032,16 @@ export default function Settings() {
                     </div>
                     <Switch
                       checked={accessibility.keyboardNavigation}
-                      onCheckedChange={(checked) => updateAccessibility('keyboardNavigation', checked)}
+                      onCheckedChange={(checked) =>
+                        updateAccessibility('keyboardNavigation', checked)
+                      }
                     />
                   </div>
 
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">Sound Enabled</p>
-                      <p className="text-sm text-muted-foreground">
-                        Play notification sounds
-                      </p>
+                      <p className="text-sm text-muted-foreground">Play notification sounds</p>
                     </div>
                     <Switch
                       checked={accessibility.soundEnabled}
@@ -970,8 +1050,13 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <Button onClick={handleAccessibilitySubmit} disabled={accessibilityMutation.isPending}>
-                  {accessibilityMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Button
+                  onClick={handleAccessibilitySubmit}
+                  disabled={accessibilityMutation.isPending}
+                >
+                  {accessibilityMutation.isPending && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   Save Accessibility Settings
                 </Button>
               </CardContent>
@@ -983,16 +1068,19 @@ export default function Settings() {
             <Card>
               <CardHeader>
                 <CardTitle>Data Export</CardTitle>
-                <CardDescription>
-                  Download a copy of your data stored in Printyx.
-                </CardDescription>
+                <CardDescription>Download a copy of your data stored in Printyx.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    This will include your profile information, settings, and associated business data.
+                    This will include your profile information, settings, and associated business
+                    data.
                   </p>
-                  <Button variant="outline" onClick={() => exportMutation.mutate()} disabled={exportMutation.isPending}>
+                  <Button
+                    variant="outline"
+                    onClick={() => exportMutation.mutate()}
+                    disabled={exportMutation.isPending}
+                  >
                     {exportMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     <Download className="h-4 w-4 mr-2" />
                     Export My Data
@@ -1012,7 +1100,8 @@ export default function Settings() {
                 <Alert className="mb-4">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                    This action cannot be undone. This will permanently delete your account and
+                    remove all your data from our servers.
                   </AlertDescription>
                 </Alert>
 
@@ -1027,14 +1116,13 @@ export default function Settings() {
                     <DialogHeader>
                       <DialogTitle>Are you absolutely sure?</DialogTitle>
                       <DialogDescription>
-                        This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
+                        This action cannot be undone. This will permanently delete your account and
+                        remove all your data from our servers.
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="deleteConfirmation">
-                          Type "DELETE" to confirm:
-                        </Label>
+                        <Label htmlFor="deleteConfirmation">Type "DELETE" to confirm:</Label>
                         <Input
                           id="deleteConfirmation"
                           value={deleteConfirmation}
@@ -1047,7 +1135,7 @@ export default function Settings() {
                       <Button
                         variant="destructive"
                         onClick={handleDeleteAccount}
-                        disabled={deleteConfirmation !== "DELETE" || isDeleting}
+                        disabled={deleteConfirmation !== 'DELETE' || isDeleting}
                       >
                         {isDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Delete Account
