@@ -135,8 +135,6 @@ export function registerUserProfileRoutes(app: Express) {
         role: (userRecord as any).role, // String role column
         role_id: userRecord.roleId,
         team_id: userRecord.teamId,
-        access_scope: userRecord.accessScope || 'own',
-        is_platform_user: isPlatformUser,
         profile_image_url: userRecord.profileImageUrl,
         roleData: roleData, // Parsed role information
         createdAt: userRecord.createdAt,

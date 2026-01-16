@@ -181,7 +181,6 @@ export default async function handler(req: Request) {
         full_name: `${metadata.firstName} ${metadata.lastName}`,
         phone: metadata.phone || null,
         role_id: roleId,
-        access_scope: 'company',
         status: 'pending_verification',
         is_tenant_admin: true,
         created_at: new Date().toISOString(),

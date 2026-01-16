@@ -26,7 +26,6 @@ export function registerTaskRoutes(app: Express) {
             id: fullUser.id,
             tenantId: fullUser.tenantId,
             isPlatformUser: fullUser.isPlatformUser,
-            is_platform_user: fullUser.isPlatformUser,
             email: fullUser.email,
             firstName: fullUser.firstName,
             lastName: fullUser.lastName,
