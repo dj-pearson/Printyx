@@ -334,10 +334,12 @@ export default async function handler(req: Request) {
 
     // GET /companies/:id/activities - Get company activities
     if (req.method === 'GET' && companyId && subResource === 'activities') {
+      // Query both company_id (new) and business_record_id (legacy) for migration support
+      // This allows us to fetch activities created before and after the company_id migration
       const { data: activities, error } = await admin
         .from('business_record_activities')
         .select('*')
-        .eq('company_id', companyId)
+        .or(`company_id.eq.${companyId},business_record_id.eq.${companyId}`)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
