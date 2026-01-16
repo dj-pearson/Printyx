@@ -193,17 +193,40 @@ export default async function handler(req: Request) {
 
     if (req.method === 'POST') {
       console.warn('[DEPRECATED] POST to business-records. Use /companies POST instead.');
+      console.log(
+        'POST Debug - recordId:',
+        recordId,
+        'subResource:',
+        subResource,
+        'pathname:',
+        url.pathname,
+      );
       const body = await req.json();
 
       // Handle POST to /business-records/:id/activities - CORRECT: use separate activities table
       if (subResource === 'activities' && recordId) {
-        // Verify the parent record exists
-        const { data: parentRecord } = await admin
+        console.log('Creating activity for recordId:', recordId);
+        // Verify the parent record exists (check both business_records and companies for backwards compatibility)
+        let { data: parentRecord } = await admin
           .from('business_records')
           .select('id, company_name')
           .eq('id', recordId)
           .eq('tenant_id', tenantId)
           .single();
+
+        // If not found in business_records, check companies table (migration support)
+        if (!parentRecord) {
+          const { data: companyRecord } = await admin
+            .from('companies')
+            .select('id, business_name')
+            .eq('id', recordId)
+            .eq('tenant_id', tenantId)
+            .single();
+
+          if (companyRecord) {
+            parentRecord = { id: companyRecord.id, company_name: companyRecord.business_name };
+          }
+        }
 
         if (!parentRecord) {
           return createCorsResponse({ error: 'Parent record not found' }, 404, req);
