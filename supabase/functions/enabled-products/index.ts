@@ -80,14 +80,25 @@ export default async function handler(req: Request) {
     if (req.method === 'POST') {
       const body = await req.json();
 
+      // Map camelCase fields to snake_case for database
+      const dbData: Record<string, any> = {
+        tenant_id: tenantId,
+        master_product_id: body.masterProductId || null,
+        source: body.source || 'master_catalog',
+        enabled: body.enabled !== undefined ? body.enabled : true,
+        custom_sku: body.customSku || null,
+        custom_name: body.customName || null,
+        dealer_cost: body.dealerCost || null,
+        company_price: body.companyPrice || null,
+        markup_rule_id: body.markupRuleId || null,
+        price_overridden: body.priceOverridden !== undefined ? body.priceOverridden : false,
+        enabled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
       const { data: newProduct, error } = await admin
         .from('enabled_products')
-        .insert({
-          ...body,
-          tenant_id: tenantId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .insert(dbData)
         .select()
         .single();
 
@@ -103,12 +114,25 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && productId) {
       const body = await req.json();
 
+      // Map camelCase fields to snake_case for database
+      const dbData: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only include fields that are present in the request
+      if (body.masterProductId !== undefined) dbData.master_product_id = body.masterProductId;
+      if (body.source !== undefined) dbData.source = body.source;
+      if (body.enabled !== undefined) dbData.enabled = body.enabled;
+      if (body.customSku !== undefined) dbData.custom_sku = body.customSku;
+      if (body.customName !== undefined) dbData.custom_name = body.customName;
+      if (body.dealerCost !== undefined) dbData.dealer_cost = body.dealerCost;
+      if (body.companyPrice !== undefined) dbData.company_price = body.companyPrice;
+      if (body.markupRuleId !== undefined) dbData.markup_rule_id = body.markupRuleId;
+      if (body.priceOverridden !== undefined) dbData.price_overridden = body.priceOverridden;
+
       const { data: updatedProduct, error } = await admin
         .from('enabled_products')
-        .update({
-          ...body,
-          updated_at: new Date().toISOString(),
-        })
+        .update(dbData)
         .eq('enabled_product_id', productId)
         .eq('tenant_id', tenantId)
         .select()

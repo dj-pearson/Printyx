@@ -80,14 +80,34 @@ export default async function handler(req: Request) {
     if (req.method === 'POST') {
       const body = await req.json();
 
+      // Map camelCase fields to snake_case for database
+      const dbData: Record<string, any> = {
+        tenant_id: tenantId,
+        product_code: body.productCode,
+        product_name: body.productName,
+        category: body.category || 'MFP',
+        manufacturer: body.manufacturer || null,
+        description: body.description || null,
+        msrp: body.msrp || null,
+        color_mode: body.colorMode || null,
+        color_speed: body.colorSpeed || null,
+        bw_speed: body.bwSpeed || null,
+        product_family: body.productFamily || null,
+        required_accessories: body.requiredAccessories || null,
+        new_active: body.newActive !== undefined ? body.newActive : false,
+        new_rep_price: body.newRepPrice || null,
+        upgrade_active: body.upgradeActive !== undefined ? body.upgradeActive : false,
+        upgrade_rep_price: body.upgradeRepPrice || null,
+        lexmark_active: body.lexmarkActive !== undefined ? body.lexmarkActive : false,
+        lexmark_rep_price: body.lexmarkRepPrice || null,
+        is_active: body.isActive !== undefined ? body.isActive : true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
       const { data: newModel, error } = await admin
         .from('product_models')
-        .insert({
-          ...body,
-          tenant_id: tenantId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .insert(dbData)
         .select()
         .single();
 
@@ -103,12 +123,35 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && modelId) {
       const body = await req.json();
 
+      // Map camelCase fields to snake_case for database
+      const dbData: Record<string, any> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only include fields that are present in the request
+      if (body.productCode !== undefined) dbData.product_code = body.productCode;
+      if (body.productName !== undefined) dbData.product_name = body.productName;
+      if (body.category !== undefined) dbData.category = body.category;
+      if (body.manufacturer !== undefined) dbData.manufacturer = body.manufacturer;
+      if (body.description !== undefined) dbData.description = body.description;
+      if (body.msrp !== undefined) dbData.msrp = body.msrp;
+      if (body.colorMode !== undefined) dbData.color_mode = body.colorMode;
+      if (body.colorSpeed !== undefined) dbData.color_speed = body.colorSpeed;
+      if (body.bwSpeed !== undefined) dbData.bw_speed = body.bwSpeed;
+      if (body.productFamily !== undefined) dbData.product_family = body.productFamily;
+      if (body.requiredAccessories !== undefined)
+        dbData.required_accessories = body.requiredAccessories;
+      if (body.newActive !== undefined) dbData.new_active = body.newActive;
+      if (body.newRepPrice !== undefined) dbData.new_rep_price = body.newRepPrice;
+      if (body.upgradeActive !== undefined) dbData.upgrade_active = body.upgradeActive;
+      if (body.upgradeRepPrice !== undefined) dbData.upgrade_rep_price = body.upgradeRepPrice;
+      if (body.lexmarkActive !== undefined) dbData.lexmark_active = body.lexmarkActive;
+      if (body.lexmarkRepPrice !== undefined) dbData.lexmark_rep_price = body.lexmarkRepPrice;
+      if (body.isActive !== undefined) dbData.is_active = body.isActive;
+
       const { data: updatedModel, error } = await admin
         .from('product_models')
-        .update({
-          ...body,
-          updated_at: new Date().toISOString(),
-        })
+        .update(dbData)
         .eq('id', modelId)
         .eq('tenant_id', tenantId)
         .select()
