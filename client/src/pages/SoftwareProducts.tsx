@@ -1,26 +1,67 @@
-import { useState, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Code, Edit3, Tag, DollarSign, Filter, Upload, Download, Eye, Edit, Sparkles, TrendingUp, Trash2, CheckSquare, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSoftwareProductSchema, type SoftwareProduct, type InsertSoftwareProduct } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+import { useState, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Plus,
+  Search,
+  Code,
+  Edit3,
+  Tag,
+  DollarSign,
+  Filter,
+  Upload,
+  Download,
+  Eye,
+  Edit,
+  Sparkles,
+  TrendingUp,
+  Trash2,
+  CheckSquare,
+  Square,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  insertSoftwareProductSchema,
+  type SoftwareProduct,
+  type InsertSoftwareProduct,
+} from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
 
 export default function SoftwareProducts() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -46,15 +87,15 @@ export default function SoftwareProducts() {
       setDialogOpen(false);
       form.reset();
       toast({
-        title: "Success",
-        description: "Software product created successfully",
+        title: 'Success',
+        description: 'Software product created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create software product",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create software product',
+        variant: 'destructive',
       });
     },
   });
@@ -69,15 +110,15 @@ export default function SoftwareProducts() {
       editForm.reset();
       setSelectedProduct(null);
       toast({
-        title: "Success",
-        description: "Software product updated successfully",
+        title: 'Success',
+        description: 'Software product updated successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update software product",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update software product',
+        variant: 'destructive',
       });
     },
   });
@@ -90,17 +131,18 @@ export default function SoftwareProducts() {
       queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
       setSelectedProduct(null);
       toast({
-        title: "Success",
-        description: "Software product deleted successfully",
+        title: 'Success',
+        description: 'Software product deleted successfully',
       });
     },
     onError: (error: any) => {
       console.error('Delete error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete software product";
+      const errorMessage =
+        error?.response?.data?.message || error?.message || 'Failed to delete software product';
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -114,17 +156,18 @@ export default function SoftwareProducts() {
       setSelectedIds(new Set());
       setBulkMode(false);
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Successfully deleted ${selectedIds.size} software products`,
       });
     },
     onError: (error: any) => {
       console.error('Bulk delete error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete software products";
+      const errorMessage =
+        error?.response?.data?.message || error?.message || 'Failed to delete software products';
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -133,16 +176,16 @@ export default function SoftwareProducts() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const response = await fetch('/api/software-products/import', {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error('Import failed');
       }
-      
+
       return response.json();
     },
     onSuccess: (data) => {
@@ -152,15 +195,15 @@ export default function SoftwareProducts() {
         fileInputRef.current.value = '';
       }
       toast({
-        title: "Import Completed",
+        title: 'Import Completed',
         description: `Successfully imported ${data.imported} products. ${data.skipped > 0 ? `Skipped ${data.skipped} rows.` : ''}`,
       });
     },
     onError: (error) => {
       toast({
-        title: "Import Failed",
-        description: "Failed to import CSV data. Please check your file format.",
-        variant: "destructive",
+        title: 'Import Failed',
+        description: 'Failed to import CSV data. Please check your file format.',
+        variant: 'destructive',
       });
     },
   });
@@ -168,9 +211,9 @@ export default function SoftwareProducts() {
   const form = useForm<InsertSoftwareProduct>({
     resolver: zodResolver(insertSoftwareProductSchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
+      tenantId: '',
+      productCode: '',
+      productName: '',
       vendor: null,
       productType: null,
       category: null,
@@ -207,13 +250,13 @@ export default function SoftwareProducts() {
     createProductMutation.mutate(data);
   };
 
-  // Edit form for existing products  
+  // Edit form for existing products
   const editForm = useForm<InsertSoftwareProduct>({
     resolver: zodResolver(insertSoftwareProductSchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
+      tenantId: '',
+      productCode: '',
+      productName: '',
       vendor: null,
       productType: null,
       category: null,
@@ -250,24 +293,24 @@ export default function SoftwareProducts() {
       // Convert empty strings back to null for database storage
       const sanitizedData = {
         ...data,
-        productType: data.productType === "" ? null : data.productType,
-        category: data.category === "" ? null : data.category,
-        accessoryType: data.accessoryType === "" ? null : data.accessoryType,
-        paymentType: data.paymentType === "" ? null : data.paymentType,
-        description: data.description === "" ? null : data.description,
-        summary: data.summary === "" ? null : data.summary,
-        note: data.note === "" ? null : data.note,
-        eaNotes: data.eaNotes === "" ? null : data.eaNotes,
-        configNote: data.configNote === "" ? null : data.configNote,
-        relatedProducts: data.relatedProducts === "" ? null : data.relatedProducts,
-        standardCost: data.standardCost === "" ? null : data.standardCost,
-        standardRepPrice: data.standardRepPrice === "" ? null : data.standardRepPrice,
-        newCost: data.newCost === "" ? null : data.newCost,
-        newRepPrice: data.newRepPrice === "" ? null : data.newRepPrice,
-        upgradeCost: data.upgradeCost === "" ? null : data.upgradeCost,
-        upgradeRepPrice: data.upgradeRepPrice === "" ? null : data.upgradeRepPrice,
-        priceBookId: data.priceBookId === "" ? null : data.priceBookId,
-        tempKey: data.tempKey === "" ? null : data.tempKey,
+        productType: data.productType === '' ? null : data.productType,
+        category: data.category === '' ? null : data.category,
+        accessoryType: data.accessoryType === '' ? null : data.accessoryType,
+        paymentType: data.paymentType === '' ? null : data.paymentType,
+        description: data.description === '' ? null : data.description,
+        summary: data.summary === '' ? null : data.summary,
+        note: data.note === '' ? null : data.note,
+        eaNotes: data.eaNotes === '' ? null : data.eaNotes,
+        configNote: data.configNote === '' ? null : data.configNote,
+        relatedProducts: data.relatedProducts === '' ? null : data.relatedProducts,
+        standardCost: data.standardCost === '' ? null : data.standardCost,
+        standardRepPrice: data.standardRepPrice === '' ? null : data.standardRepPrice,
+        newCost: data.newCost === '' ? null : data.newCost,
+        newRepPrice: data.newRepPrice === '' ? null : data.newRepPrice,
+        upgradeCost: data.upgradeCost === '' ? null : data.upgradeCost,
+        upgradeRepPrice: data.upgradeRepPrice === '' ? null : data.upgradeRepPrice,
+        priceBookId: data.priceBookId === '' ? null : data.priceBookId,
+        tempKey: data.tempKey === '' ? null : data.tempKey,
       };
       updateProductMutation.mutate({ ...sanitizedData, id: selectedProduct.id });
     }
@@ -284,7 +327,7 @@ export default function SoftwareProducts() {
     if (selectedIds.size === filteredProducts.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+      setSelectedIds(new Set(filteredProducts.map((p) => p.id)));
     }
   };
 
@@ -305,7 +348,7 @@ export default function SoftwareProducts() {
 
   const handleEdit = (product: SoftwareProduct) => {
     setSelectedProduct(product);
-    
+
     // Debug logging to see what data we're getting
     console.log('Editing product:', product.productName);
     console.log('Category:', product.category);
@@ -315,43 +358,43 @@ export default function SoftwareProducts() {
     console.log('lease:', product.lease);
     console.log('standardRepPrice:', product.standardRepPrice);
     console.log('Full product object:', product);
-    
+
     // Reset the edit form with the product's current values
     // Convert null values to empty strings for Select components
     const formData = {
-      tenantId: product.tenantId || "",
-      productCode: product.productCode || "",
-      productName: product.productName || "",
-      vendor: product.vendor || "",
-      productType: product.productType || "",
-      category: product.category || "",
-      accessoryType: product.accessoryType || "",
-      description: product.description || "",
-      summary: product.summary || "",
-      note: product.note || "",
-      eaNotes: product.eaNotes || "",
-      configNote: product.configNote || "",
-      relatedProducts: product.relatedProducts || "",
+      tenantId: product.tenantId || '',
+      productCode: product.productCode || '',
+      productName: product.productName || '',
+      vendor: product.vendor || '',
+      productType: product.productType || '',
+      category: product.category || '',
+      accessoryType: product.accessoryType || '',
+      description: product.description || '',
+      summary: product.summary || '',
+      note: product.note || '',
+      eaNotes: product.eaNotes || '',
+      configNote: product.configNote || '',
+      relatedProducts: product.relatedProducts || '',
       isActive: product.isActive ?? true,
       availableForAll: product.availableForAll ?? false,
       repostEdit: product.repostEdit ?? false,
       salesRepCredit: product.salesRepCredit ?? true,
       funding: product.funding ?? true,
       lease: product.lease ?? false,
-      paymentType: product.paymentType || "",
+      paymentType: product.paymentType || '',
       standardActive: product.standardActive ?? false,
-      standardCost: product.standardCost || "",
-      standardRepPrice: product.standardRepPrice || "",
+      standardCost: product.standardCost || '',
+      standardRepPrice: product.standardRepPrice || '',
       newActive: product.newActive ?? false,
-      newCost: product.newCost || "",
-      newRepPrice: product.newRepPrice || "",
+      newCost: product.newCost || '',
+      newRepPrice: product.newRepPrice || '',
       upgradeActive: product.upgradeActive ?? false,
-      upgradeCost: product.upgradeCost || "",
-      upgradeRepPrice: product.upgradeRepPrice || "",
-      priceBookId: product.priceBookId || "",
-      tempKey: product.tempKey || "",
+      upgradeCost: product.upgradeCost || '',
+      upgradeRepPrice: product.upgradeRepPrice || '',
+      priceBookId: product.priceBookId || '',
+      tempKey: product.tempKey || '',
     };
-    
+
     console.log('Form data being set:', formData);
     editForm.reset(formData);
     setEditDialogOpen(true);
@@ -363,9 +406,9 @@ export default function SoftwareProducts() {
       csvImportMutation.mutate(file);
     } else {
       toast({
-        title: "Invalid File",
-        description: "Please select a valid CSV file",
-        variant: "destructive",
+        title: 'Invalid File',
+        description: 'Please select a valid CSV file',
+        variant: 'destructive',
       });
     }
   };
@@ -390,33 +433,34 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast({
-      title: "Sample Downloaded",
-      description: "Sample CSV file has been downloaded to help guide your import",
+      title: 'Sample Downloaded',
+      description: 'Sample CSV file has been downloaded to help guide your import',
     });
   };
 
   // Get unique categories from products
-  const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
+  const categories = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
 
   // Filter products by search and category
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    if (selectedCategory === "all") return matchesSearch;
-    
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      (product.productName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (product.productCode?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (product.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+
+    if (selectedCategory === 'all') return matchesSearch;
+
     const matchesCategory = product.category === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
   const formatCurrency = (value: string | number | null | undefined) => {
-    if (!value || value === null || value === undefined) return "$0.00";
+    if (!value || value === null || value === undefined) return '$0.00';
     const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-    if (isNaN(numericValue)) return "$0.00";
+    if (isNaN(numericValue)) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -443,19 +487,23 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 <span className="font-medium">{product.productCode}</span>
-                {product.vendor && <span className="ml-2 text-muted-foreground">• {product.vendor}</span>}
-                {product.category && <span className="ml-2 text-muted-foreground">• {product.category}</span>}
+                {product.vendor && (
+                  <span className="ml-2 text-muted-foreground">• {product.vendor}</span>
+                )}
+                {product.category && (
+                  <span className="ml-2 text-muted-foreground">• {product.category}</span>
+                )}
               </CardDescription>
             </div>
-            <Badge 
-              variant={product.isActive ? "default" : "secondary"} 
+            <Badge
+              variant={product.isActive ? 'default' : 'secondary'}
               className={`shrink-0 text-xs ${product.isActive ? 'bg-green-100 text-green-800' : ''}`}
             >
-              {product.isActive ? "Active" : "Inactive"}
+              {product.isActive ? 'Active' : 'Inactive'}
             </Badge>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 flex flex-col space-y-3 pt-0">
           <div className="flex flex-wrap gap-1">
             <Badge variant="outline" className="text-xs">
@@ -486,7 +534,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <span className="text-xs font-medium">Standard</span>
               </div>
               <p className="text-sm sm:text-base font-bold">
-                {product.standardActive ? formatCurrency(product.standardRepPrice) : "Not Set"}
+                {product.standardActive ? formatCurrency(product.standardRepPrice) : 'Not Set'}
               </p>
             </div>
 
@@ -496,7 +544,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <span className="text-xs font-medium">New</span>
               </div>
               <p className="text-sm sm:text-base font-bold text-green-600">
-                {product.newActive ? formatCurrency(product.newRepPrice) : "Not Set"}
+                {product.newActive ? formatCurrency(product.newRepPrice) : 'Not Set'}
               </p>
             </div>
 
@@ -506,7 +554,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <span className="text-xs font-medium">Upgrade</span>
               </div>
               <p className="text-sm sm:text-base font-bold text-blue-600">
-                {product.upgradeActive ? formatCurrency(product.upgradeRepPrice) : "Not Set"}
+                {product.upgradeActive ? formatCurrency(product.upgradeRepPrice) : 'Not Set'}
               </p>
             </div>
           </div>
@@ -517,18 +565,22 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             {(product.salesRepCredit || product.funding) && (
               <div className="flex flex-wrap gap-1">
                 {product.salesRepCredit && (
-                  <Badge variant="outline" className="text-xs">Rep Credit</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Rep Credit
+                  </Badge>
                 )}
                 {product.funding && (
-                  <Badge variant="outline" className="text-xs">Funding</Badge>
+                  <Badge variant="outline" className="text-xs">
+                    Funding
+                  </Badge>
                 )}
               </div>
             )}
-            
+
             {!bulkMode && (
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="flex-1 text-xs sm:text-sm py-1 h-8"
                   onClick={() => handleViewDetails(product)}
@@ -538,8 +590,8 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   <span className="hidden sm:inline">View Details</span>
                   <span className="sm:hidden">View</span>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="flex-1 text-xs sm:text-sm py-1 h-8"
                   onClick={() => handleEdit(product)}
@@ -548,8 +600,8 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                   Edit
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
                   className="text-xs sm:text-sm py-1 h-8"
                   onClick={() => deleteProductMutation.mutate(product.id)}
@@ -586,7 +638,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 </Button>
               </DialogTrigger>
             </Dialog>
-            
+
             <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="w-full sm:w-auto">
@@ -599,7 +651,8 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <DialogHeader>
                   <DialogTitle>Import Software Products from CSV</DialogTitle>
                   <DialogDescription>
-                    Upload a CSV file to import multiple software products at once. Download the sample file for reference.
+                    Upload a CSV file to import multiple software products at once. Download the
+                    sample file for reference.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
@@ -607,27 +660,40 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-medium">CSV Template</h3>
-                        <p className="text-sm text-muted-foreground">Download a sample CSV with example software products and variations</p>
+                        <p className="text-sm text-muted-foreground">
+                          Download a sample CSV with example software products and variations
+                        </p>
                       </div>
                       <Button variant="outline" onClick={generateSampleCSV}>
                         <Download className="h-4 w-4 mr-2" />
                         Download Sample
                       </Button>
                     </div>
-                    
+
                     <div className="bg-muted p-4 rounded-md">
                       <h4 className="font-medium mb-2">Helpful Variations Included:</h4>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>• <strong>Product Types:</strong> Application, License, Cloud Service, Plugin, Driver</div>
-                        <div>• <strong>Categories:</strong> Document Management, UniFlow, Papercut, PrinterLogic, Print Management, Security Software</div>
-                        <div>• <strong>Payment Types:</strong> Monthly, Annual, Perpetual</div>
-                        <div>• <strong>Accessory Types:</strong> Software License, Add-on Module, Cloud Subscription, Support Package</div>
+                        <div>
+                          • <strong>Product Types:</strong> Application, License, Cloud Service,
+                          Plugin, Driver
+                        </div>
+                        <div>
+                          • <strong>Categories:</strong> Document Management, UniFlow, Papercut,
+                          PrinterLogic, Print Management, Security Software
+                        </div>
+                        <div>
+                          • <strong>Payment Types:</strong> Monthly, Annual, Perpetual
+                        </div>
+                        <div>
+                          • <strong>Accessory Types:</strong> Software License, Add-on Module, Cloud
+                          Subscription, Support Package
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="text-lg font-medium mb-4">Upload CSV File</h3>
                     <div className="space-y-4">
@@ -639,8 +705,9 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         disabled={csvImportMutation.isPending}
                       />
                       <p className="text-sm text-muted-foreground">
-                        Select a CSV file containing your software product data. The file should include columns for 
-                        productCode, productName, productType, category, paymentType, and pricing information.
+                        Select a CSV file containing your software product data. The file should
+                        include columns for productCode, productName, productType, category,
+                        paymentType, and pricing information.
                       </p>
                     </div>
                   </div>
@@ -648,7 +715,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
               </DialogContent>
             </Dialog>
           </div>
-          
+
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -662,16 +729,22 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   {/* Information Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="productName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Name <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="Document Management Suite" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Document Management Suite"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -684,7 +757,11 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>Vendor</FormLabel>
                             <FormControl>
-                              <Input placeholder="Microsoft" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Microsoft"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -699,7 +776,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Product Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -726,9 +803,15 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="productCode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Code <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Code <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="SW-DMS-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="SW-DMS-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -747,7 +830,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Accessory Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -757,7 +840,9 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                                 <SelectItem value="none">--None--</SelectItem>
                                 <SelectItem value="Software License">Software License</SelectItem>
                                 <SelectItem value="Add-on Module">Add-on Module</SelectItem>
-                                <SelectItem value="Cloud Subscription">Cloud Subscription</SelectItem>
+                                <SelectItem value="Cloud Subscription">
+                                  Cloud Subscription
+                                </SelectItem>
                                 <SelectItem value="Support Package">Support Package</SelectItem>
                               </SelectContent>
                             </Select>
@@ -771,7 +856,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Category</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -779,13 +864,17 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="none">--None--</SelectItem>
-                                <SelectItem value="Document Management">Document Management</SelectItem>
+                                <SelectItem value="Document Management">
+                                  Document Management
+                                </SelectItem>
                                 <SelectItem value="Print Management">Print Management</SelectItem>
                                 <SelectItem value="UniFlow">UniFlow</SelectItem>
                                 <SelectItem value="Papercut">Papercut</SelectItem>
                                 <SelectItem value="PrinterLogic">PrinterLogic</SelectItem>
                                 <SelectItem value="Security Software">Security Software</SelectItem>
-                                <SelectItem value="Workflow Automation">Workflow Automation</SelectItem>
+                                <SelectItem value="Workflow Automation">
+                                  Workflow Automation
+                                </SelectItem>
                                 <SelectItem value="Cloud Solutions">Cloud Solutions</SelectItem>
                               </SelectContent>
                             </Select>
@@ -801,10 +890,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="isActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Active</label>
                           </div>
                         )}
@@ -814,10 +900,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="availableForAll"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Available for All</label>
                           </div>
                         )}
@@ -827,10 +910,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="repostEdit"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Repost Edit</label>
                           </div>
                         )}
@@ -843,10 +923,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="salesRepCredit"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Sales Rep Credit</label>
                           </div>
                         )}
@@ -856,10 +933,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="funding"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Funding</label>
                           </div>
                         )}
@@ -872,7 +946,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   {/* Detail Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Detail</h3>
-                    
+
                     <FormField
                       control={form.control}
                       name="summary"
@@ -882,7 +956,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormControl>
                             <Textarea
                               placeholder="Brief summary of the software product..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={3}
                             />
@@ -891,7 +965,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="description"
@@ -901,7 +975,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormControl>
                             <Textarea
                               placeholder="Detailed description of the software product..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={4}
                             />
@@ -920,7 +994,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormControl>
                             <Textarea
                               placeholder="Additional notes..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={2}
                             />
@@ -937,7 +1011,11 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         <FormItem>
                           <FormLabel>EA Notes</FormLabel>
                           <FormControl>
-                            <Input placeholder="EA specific notes..." value={field.value || ""} onChange={field.onChange} />
+                            <Input
+                              placeholder="EA specific notes..."
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -953,7 +1031,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormControl>
                             <Textarea
                               placeholder="Configuration notes and requirements..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={3}
                             />
@@ -972,7 +1050,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormControl>
                             <Textarea
                               placeholder="Related products and dependencies..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={2}
                             />
@@ -988,17 +1066,14 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   {/* Pricing Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Pricing Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="lease"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Lease</label>
                           </div>
                         )}
@@ -1009,7 +1084,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payment Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -1036,10 +1111,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="standardActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Standard Active</label>
                           </div>
                         )}
@@ -1052,12 +1124,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             <FormItem>
                               <FormLabel>Standard Cost</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="500.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="500.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1071,12 +1143,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             <FormItem>
                               <FormLabel>Standard Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="599.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="599.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1093,10 +1165,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="newActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">New Active</label>
                           </div>
                         )}
@@ -1109,12 +1178,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             <FormItem>
                               <FormLabel>New Cost</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="450.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="450.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1128,12 +1197,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             <FormItem>
                               <FormLabel>New Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="549.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="549.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1150,10 +1219,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         name="upgradeActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Upgrade Active</label>
                           </div>
                         )}
@@ -1166,12 +1232,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             <FormItem>
                               <FormLabel>Upgrade Cost</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="200.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="200.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1185,12 +1251,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             <FormItem>
                               <FormLabel>Upgrade Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="249.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="249.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1206,7 +1272,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                   {/* System Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">System Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -1215,7 +1281,11 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>Price Book ID</FormLabel>
                             <FormControl>
-                              <Input placeholder="PB-SW-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="PB-SW-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1228,7 +1298,11 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>Temp Key</FormLabel>
                             <FormControl>
-                              <Input placeholder="TK-SW-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="TK-SW-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1245,7 +1319,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       Save & New
                     </Button>
                     <Button type="submit" disabled={createProductMutation.isPending}>
-                      {createProductMutation.isPending ? "Saving..." : "Save"}
+                      {createProductMutation.isPending ? 'Saving...' : 'Save'}
                     </Button>
                   </div>
                 </form>
@@ -1273,32 +1347,38 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground">Category</h4>
-                      <p>{selectedProduct.category || "Not specified"}</p>
+                      <p>{selectedProduct.category || 'Not specified'}</p>
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground">Product Type</h4>
-                      <p>{selectedProduct.productType || "Not specified"}</p>
+                      <p>{selectedProduct.productType || 'Not specified'}</p>
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground">Payment Type</h4>
-                      <p>{selectedProduct.paymentType || "Not specified"}</p>
+                      <p>{selectedProduct.paymentType || 'Not specified'}</p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
-                      <Badge variant={selectedProduct.isActive ? "default" : "secondary"}>
-                        {selectedProduct.isActive ? "Active" : "Inactive"}
+                      <Badge variant={selectedProduct.isActive ? 'default' : 'secondary'}>
+                        {selectedProduct.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-muted-foreground">Features</h4>
                       <div className="flex flex-wrap gap-2">
-                        {selectedProduct.salesRepCredit && <Badge variant="outline">Sales Rep Credit</Badge>}
-                        {selectedProduct.funding && <Badge variant="outline">Funding Available</Badge>}
+                        {selectedProduct.salesRepCredit && (
+                          <Badge variant="outline">Sales Rep Credit</Badge>
+                        )}
+                        {selectedProduct.funding && (
+                          <Badge variant="outline">Funding Available</Badge>
+                        )}
                         {selectedProduct.lease && <Badge variant="outline">Lease Option</Badge>}
-                        {selectedProduct.availableForAll && <Badge variant="outline">Available for All</Badge>}
+                        {selectedProduct.availableForAll && (
+                          <Badge variant="outline">Available for All</Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1312,39 +1392,51 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                     <div className="p-4 border rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <h5 className="font-medium">Standard Pricing</h5>
-                        <Badge variant={selectedProduct.standardActive ? "default" : "secondary"}>
-                          {selectedProduct.standardActive ? "Active" : "Inactive"}
+                        <Badge variant={selectedProduct.standardActive ? 'default' : 'secondary'}>
+                          {selectedProduct.standardActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
                       <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Cost: {formatCurrency(selectedProduct.standardCost)}</div>
-                        <div className="text-lg font-bold">Rep: {formatCurrency(selectedProduct.standardRepPrice)}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Cost: {formatCurrency(selectedProduct.standardCost)}
+                        </div>
+                        <div className="text-lg font-bold">
+                          Rep: {formatCurrency(selectedProduct.standardRepPrice)}
+                        </div>
                       </div>
                     </div>
 
                     <div className="p-4 border rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <h5 className="font-medium">New Pricing</h5>
-                        <Badge variant={selectedProduct.newActive ? "default" : "secondary"}>
-                          {selectedProduct.newActive ? "Active" : "Inactive"}
+                        <Badge variant={selectedProduct.newActive ? 'default' : 'secondary'}>
+                          {selectedProduct.newActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
                       <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Cost: {formatCurrency(selectedProduct.newCost)}</div>
-                        <div className="text-lg font-bold">Rep: {formatCurrency(selectedProduct.newRepPrice)}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Cost: {formatCurrency(selectedProduct.newCost)}
+                        </div>
+                        <div className="text-lg font-bold">
+                          Rep: {formatCurrency(selectedProduct.newRepPrice)}
+                        </div>
                       </div>
                     </div>
 
                     <div className="p-4 border rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <h5 className="font-medium">Upgrade Pricing</h5>
-                        <Badge variant={selectedProduct.upgradeActive ? "default" : "secondary"}>
-                          {selectedProduct.upgradeActive ? "Active" : "Inactive"}
+                        <Badge variant={selectedProduct.upgradeActive ? 'default' : 'secondary'}>
+                          {selectedProduct.upgradeActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
                       <div className="space-y-1">
-                        <div className="text-sm text-muted-foreground">Cost: {formatCurrency(selectedProduct.upgradeCost)}</div>
-                        <div className="text-lg font-bold">Rep: {formatCurrency(selectedProduct.upgradeRepPrice)}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Cost: {formatCurrency(selectedProduct.upgradeCost)}
+                        </div>
+                        <div className="text-lg font-bold">
+                          Rep: {formatCurrency(selectedProduct.upgradeRepPrice)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1357,13 +1449,17 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       <h4 className="text-lg font-semibold">Description</h4>
                       {selectedProduct.summary && (
                         <div>
-                          <h5 className="text-sm font-medium text-muted-foreground mb-1">Summary</h5>
+                          <h5 className="text-sm font-medium text-muted-foreground mb-1">
+                            Summary
+                          </h5>
                           <p className="text-sm">{selectedProduct.summary}</p>
                         </div>
                       )}
                       {selectedProduct.description && (
                         <div>
-                          <h5 className="text-sm font-medium text-muted-foreground mb-1">Description</h5>
+                          <h5 className="text-sm font-medium text-muted-foreground mb-1">
+                            Description
+                          </h5>
                           <p className="text-sm">{selectedProduct.description}</p>
                         </div>
                       )}
@@ -1372,13 +1468,20 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 )}
 
                 <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setDetailsDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDetailsDialogOpen(false)}
+                  >
                     Close
                   </Button>
-                  <Button type="button" onClick={() => {
-                    setDetailsDialogOpen(false);
-                    handleEdit(selectedProduct);
-                  }}>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setDetailsDialogOpen(false);
+                      handleEdit(selectedProduct);
+                    }}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Product
                   </Button>
@@ -1430,7 +1533,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       )}
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-3 gap-4">
                     <FormField
                       control={editForm.control}
@@ -1451,7 +1554,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Product Type</FormLabel>
-                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="--None--" />
@@ -1475,7 +1578,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Category</FormLabel>
-                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="--None--" />
@@ -1483,7 +1586,9 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">--None--</SelectItem>
-                              <SelectItem value="Document Management">Document Management</SelectItem>
+                              <SelectItem value="Document Management">
+                                Document Management
+                              </SelectItem>
                               <SelectItem value="UniFlow">UniFlow</SelectItem>
                               <SelectItem value="Papercut">Papercut</SelectItem>
                               <SelectItem value="PrinterLogic">PrinterLogic</SelectItem>
@@ -1501,7 +1606,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Payment Type</FormLabel>
-                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="--None--" />
@@ -1528,10 +1633,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Describe the software product features and capabilities..."
                             className="min-h-[80px]"
-                            value={field.value || ""}
+                            value={field.value || ''}
                             onChange={field.onChange}
                           />
                         </FormControl>
@@ -1539,17 +1644,14 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
                       name="isActive"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">Active</label>
                         </div>
                       )}
@@ -1559,10 +1661,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       name="availableForAll"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">Available for All</label>
                         </div>
                       )}
@@ -1575,17 +1674,14 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 {/* Pricing */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Pricing & Options</h3>
-                  
+
                   <div className="grid grid-cols-3 gap-4">
                     <FormField
                       control={editForm.control}
                       name="salesRepCredit"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">Sales Rep Credit</label>
                         </div>
                       )}
@@ -1595,10 +1691,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       name="funding"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">Funding</label>
                         </div>
                       )}
@@ -1608,10 +1701,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       name="lease"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">Lease</label>
                         </div>
                       )}
@@ -1625,10 +1715,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       name="standardActive"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">Standard Active</label>
                         </div>
                       )}
@@ -1641,12 +1728,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>Standard Cost</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="500.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="500.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1660,12 +1747,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>Standard Rep Price</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="599.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="599.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1682,10 +1769,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                       name="newActive"
                       render={({ field }) => (
                         <div className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={!!field.value}
-                            onCheckedChange={field.onChange}
-                          />
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                           <label className="text-sm font-medium">New Active</label>
                         </div>
                       )}
@@ -1698,12 +1782,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>New Cost</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="450.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="450.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1717,12 +1801,12 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                           <FormItem>
                             <FormLabel>New Rep Price</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="549.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="549.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1738,7 +1822,7 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                     Cancel
                   </Button>
                   <Button type="submit" disabled={updateProductMutation.isPending}>
-                    {updateProductMutation.isPending ? "Updating..." : "Update Product"}
+                    {updateProductMutation.isPending ? 'Updating...' : 'Update Product'}
                   </Button>
                 </div>
               </form>
@@ -1748,9 +1832,9 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
 
         {/* Bulk Mode Controls */}
         <div className="flex justify-between items-center">
-          <Button 
-            variant={bulkMode ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={bulkMode ? 'default' : 'outline'}
+            size="sm"
             onClick={() => {
               setBulkMode(!bulkMode);
               setSelectedIds(new Set());
@@ -1760,21 +1844,21 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             <CheckSquare className="h-4 w-4 mr-2" />
             {bulkMode ? 'Exit Bulk Mode' : 'Bulk Mode'}
           </Button>
-          
+
           {bulkMode && selectedIds.size > 0 && (
             <div className="flex gap-2">
-              <Button 
+              <Button
                 variant="outline"
-                size="sm" 
+                size="sm"
                 onClick={handleSelectAll}
                 data-testid="button-select-all"
               >
                 <Square className="h-4 w-4 mr-2" />
                 {selectedIds.size === filteredProducts.length ? 'Deselect All' : 'Select All'}
               </Button>
-              <Button 
+              <Button
                 variant="destructive"
-                size="sm" 
+                size="sm"
                 onClick={handleBulkDelete}
                 disabled={bulkDeleteMutation.isPending}
                 data-testid="button-bulk-delete"
@@ -1804,8 +1888,10 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -1835,12 +1921,11 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             <Code className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2 text-center">No Software Products Found</h3>
             <p className="text-muted-foreground text-center mb-4 max-w-md">
-              {searchTerm || selectedCategory !== "all" 
-                ? "No software products match your current filters. Try adjusting your search criteria."
-                : "Get started by adding your first software product to the catalog."
-              }
+              {searchTerm || selectedCategory !== 'all'
+                ? 'No software products match your current filters. Try adjusting your search criteria.'
+                : 'Get started by adding your first software product to the catalog.'}
             </p>
-            {!searchTerm && selectedCategory === "all" && (
+            {!searchTerm && selectedCategory === 'all' && (
               <Button onClick={() => setDialogOpen(true)} size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Software Product
@@ -1861,12 +1946,8 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
             {filteredProducts.length} of {products.length} software products
           </span>
           <div className="flex gap-4">
-            <span>
-              {products.filter(p => p.isActive).length} active
-            </span>
-            <span>
-              {products.filter(p => !p.isActive).length} inactive
-            </span>
+            <span>{products.filter((p) => p.isActive).length} active</span>
+            <span>{products.filter((p) => !p.isActive).length} inactive</span>
           </div>
         </div>
       </div>
