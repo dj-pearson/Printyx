@@ -178,7 +178,7 @@ export default function CustomerDetailHubspot() {
     return {
       ...(data as any),
       // Company fields from nested companies object
-      companyName: companyData.business_name || (customerData as any).company_name,
+      companyName: companyData.business_name,
       customerNumber: companyData.customer_number,
       accountNumber: companyData.account_number,
       website: companyData.website,

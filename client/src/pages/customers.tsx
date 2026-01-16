@@ -234,10 +234,7 @@ export default function Customers() {
 
       // Get company name from nested companies object
       const companyName =
-        companyData.business_name ||
-        c.company_name ||
-        c.companyName ||
-        `Customer ${String(c.id).slice(0, 8)}`;
+        companyData.business_name || c.companyName || `Customer ${String(c.id).slice(0, 8)}`;
 
       const city = companyData.billing_city || c.city || '';
       const state = companyData.billing_state || c.state || '';
