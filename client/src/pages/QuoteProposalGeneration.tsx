@@ -812,7 +812,9 @@ export default function QuoteProposalGeneration() {
                             <TableCell>
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <Calendar className="h-4 w-4" />
-                                {format(new Date(proposal.createdAt), 'MMM dd, yyyy')}
+                                {proposal.createdAt
+                                  ? format(new Date(proposal.createdAt), 'MMM dd, yyyy')
+                                  : 'No date'}
                               </div>
                             </TableCell>
                             <TableCell>
@@ -888,7 +890,11 @@ export default function QuoteProposalGeneration() {
                         <CardContent>
                           <div className="flex items-center justify-between text-sm text-muted-foreground">
                             <span>{template.templateType?.replace('_', ' ')}</span>
-                            <span>{format(new Date(template.createdAt), 'MMM dd, yyyy')}</span>
+                            <span>
+                              {template.createdAt
+                                ? format(new Date(template.createdAt), 'MMM dd, yyyy')
+                                : 'No date'}
+                            </span>
                           </div>
                         </CardContent>
                       </Card>
