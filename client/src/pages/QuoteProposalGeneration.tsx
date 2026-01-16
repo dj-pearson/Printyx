@@ -105,36 +105,25 @@ export default function QuoteProposalGeneration() {
   const [, setLocation] = useLocation();
 
   // Fetch proposals
-  const { data: proposalsResponse, isLoading: proposalsLoading } = useQuery({
+  // Fetch proposals (queryClient automatically unwraps { data: [...] } responses)
+  const { data: proposals = [], isLoading: proposalsLoading } = useQuery({
     queryKey: ['/api/proposals'],
   });
-  const proposals = Array.isArray(proposalsResponse)
-    ? proposalsResponse
-    : proposalsResponse?.data || [];
 
   // Fetch proposal templates
-  const { data: templatesResponse, isLoading: templatesLoading } = useQuery({
+  const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['/api/proposals/proposal-templates'],
   });
-  const templates = Array.isArray(templatesResponse)
-    ? templatesResponse
-    : templatesResponse?.data || [];
 
   // Fetch equipment packages
-  const { data: packagesResponse, isLoading: packagesLoading } = useQuery({
+  const { data: packages = [], isLoading: packagesLoading } = useQuery({
     queryKey: ['/api/proposals/equipment-packages'],
   });
-  const packages = Array.isArray(packagesResponse)
-    ? packagesResponse
-    : packagesResponse?.data || [];
 
   // Fetch business records for customer selection
-  const { data: businessRecordsResponse } = useQuery({
+  const { data: businessRecords = [] } = useQuery({
     queryKey: ['/api/business-records'],
   });
-  const businessRecords = Array.isArray(businessRecordsResponse)
-    ? businessRecordsResponse
-    : businessRecordsResponse?.data || [];
 
   // Create proposal mutation
   const createProposalMutation = useMutation({
