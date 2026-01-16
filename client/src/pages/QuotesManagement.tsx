@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { MainLayout } from '@/components/layout/main-layout';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -27,11 +21,7 @@ import {
   useBulkSelection,
   BulkAction,
 } from '@/components/ui/bulk-operations-toolbar';
-import {
-  exportToCSV,
-  exportToJSON,
-  createExportColumn,
-} from '@/lib/export-utils';
+import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import { QuoteTemplates } from '@/components/quotes/quote-templates';
 import {
@@ -80,15 +70,16 @@ import {
   User,
   TrendingUp,
   Wand2,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
-import ContextualHelp from "@/components/contextual/ContextualHelp";
-import PageAlerts from "@/components/contextual/PageAlerts";
-import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
-import MobileFAB from "@/components/layout/MobileFAB";
+import ContextualHelp from '@/components/contextual/ContextualHelp';
+import PageAlerts from '@/components/contextual/PageAlerts';
+import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
+import MobileFAB from '@/components/layout/MobileFAB';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 
 interface Quote {
@@ -161,9 +152,14 @@ export default function QuotesManagement() {
       return response.map((proposal: any) => ({
         ...proposal,
         // Map proposal fields to quote fields for consistency
-        status: proposal.status === 'draft' ? 'draft' :
-                proposal.status === 'sent' ? 'sent' :
-                proposal.status === 'accepted' ? 'accepted' : 'closed_lost',
+        status:
+          proposal.status === 'draft'
+            ? 'draft'
+            : proposal.status === 'sent'
+              ? 'sent'
+              : proposal.status === 'accepted'
+                ? 'accepted'
+                : 'closed_lost',
       }));
     },
   });
@@ -212,7 +208,7 @@ export default function QuotesManagement() {
 
   // Filter quotes
   const filteredQuotes = quotes.filter((quote) => {
-    const matchesSearch = 
+    const matchesSearch =
       quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.proposalNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (quote.customerName && quote.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -224,7 +220,7 @@ export default function QuotesManagement() {
       const quoteDate = new Date(quote.createdAt);
       const now = new Date();
       const daysDiff = Math.floor((now.getTime() - quoteDate.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       switch (dateFilter) {
         case 'today':
           matchesDate = daysDiff === 0;
@@ -247,12 +243,18 @@ export default function QuotesManagement() {
   // Calculate statistics
   const stats = {
     total: quotes.length,
-    draft: quotes.filter(q => q.status === 'draft').length,
-    sent: quotes.filter(q => q.status === 'sent').length,
-    accepted: quotes.filter(q => q.status === 'accepted').length,
-    closedLost: quotes.filter(q => q.status === 'closed_lost').length,
-    totalValue: quotes.reduce((sum, q) => sum + (parseFloat(q.totalAmount?.toString() || '0') || 0), 0),
-    winRate: quotes.length > 0 ? (quotes.filter(q => q.status === 'accepted').length / quotes.length) * 100 : 0,
+    draft: quotes.filter((q) => q.status === 'draft').length,
+    sent: quotes.filter((q) => q.status === 'sent').length,
+    accepted: quotes.filter((q) => q.status === 'accepted').length,
+    closedLost: quotes.filter((q) => q.status === 'closed_lost').length,
+    totalValue: quotes.reduce(
+      (sum, q) => sum + (parseFloat(q.totalAmount?.toString() || '0') || 0),
+      0,
+    ),
+    winRate:
+      quotes.length > 0
+        ? (quotes.filter((q) => q.status === 'accepted').length / quotes.length) * 100
+        : 0,
   };
 
   // Bulk selection hook
@@ -262,9 +264,7 @@ export default function QuotesManagement() {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (quoteIds: string[]) => {
       // Delete all quotes in parallel
-      await Promise.all(
-        quoteIds.map(id => apiRequest(`/api/proposals/${id}`, 'DELETE'))
-      );
+      await Promise.all(quoteIds.map((id) => apiRequest(`/api/proposals/${id}`, 'DELETE')));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
@@ -285,9 +285,7 @@ export default function QuotesManagement() {
 
   // Bulk export function
   const handleBulkExport = (format: 'csv' | 'json') => {
-    const selectedQuotes = quotes.filter(q =>
-      bulkSelection.selectedIds.includes(q.id)
-    );
+    const selectedQuotes = quotes.filter((q) => bulkSelection.selectedIds.includes(q.id));
 
     const columns = [
       createExportColumn('proposalNumber', 'Quote Number'),
@@ -354,7 +352,7 @@ export default function QuotesManagement() {
   const getStatusBadge = (status: Quote['status']) => {
     const config = statusConfig[status];
     const Icon = config.icon;
-    
+
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <Icon className="h-3 w-3" />
@@ -388,13 +386,20 @@ export default function QuotesManagement() {
   };
 
   return (
-    <MainLayout title="Quotes Management" description="Create, manage, and track your sales quotes and proposals">
+    <MainLayout
+      title="Quotes Management"
+      description="Create, manage, and track your sales quotes and proposals"
+    >
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="quotes-management" />
         <KpiSummaryBar className="mb-4" />
-        <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
+        <PageAlerts
+          categories={['business']}
+          severities={['medium', 'high', 'critical']}
+          className="-mt-2"
+        />
         {/* Process Help Banner */}
-        <ProcessHelpBanner 
+        <ProcessHelpBanner
           processType="lead-to-quote"
           currentStage="quote-generation"
           nextStage="proposal-conversion"
@@ -484,7 +489,7 @@ export default function QuotesManagement() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <Select
                   value={statusFilter}
@@ -528,7 +533,8 @@ export default function QuotesManagement() {
                   getFilterDescription={(filters) => {
                     const parts: string[] = [];
                     if (filters.searchTerm) parts.push(`Search: "${filters.searchTerm}"`);
-                    if (filters.statusFilter !== 'all') parts.push(`Status: ${filters.statusFilter}`);
+                    if (filters.statusFilter !== 'all')
+                      parts.push(`Status: ${filters.statusFilter}`);
                     if (filters.dateFilter !== 'all') parts.push(`Date: ${filters.dateFilter}`);
                     return parts.length > 0 ? parts.join(' • ') : 'No filters applied';
                   }}
@@ -572,10 +578,14 @@ export default function QuotesManagement() {
                 }
                 description={
                   searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
-                    ? 'Try adjusting your search criteria to find what you\'re looking for'
+                    ? "Try adjusting your search criteria to find what you're looking for"
                     : 'Create your first quote to start managing sales opportunities'
                 }
-                type={searchTerm || statusFilter !== 'all' || dateFilter !== 'all' ? 'filter' : 'default'}
+                type={
+                  searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
+                    ? 'filter'
+                    : 'default'
+                }
                 action={{
                   label: 'Create Quote',
                   onClick: handleCreateQuote,
@@ -634,9 +644,7 @@ export default function QuotesManagement() {
                           />
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-primary">
-                            {quote.proposalNumber}
-                          </div>
+                          <div className="font-medium text-primary">{quote.proposalNumber}</div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{quote.title}</div>
@@ -656,27 +664,18 @@ export default function QuotesManagement() {
                             </div>
                           </div>
                         </TableCell>
+                        <TableCell>{getStatusBadge(quote.status)}</TableCell>
                         <TableCell>
-                          {getStatusBadge(quote.status)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">
-                            {formatCurrency(quote.totalAmount)}
-                          </div>
+                          <div className="font-medium">{formatCurrency(quote.totalAmount)}</div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {quote.validUntil 
-                              ? formatDate(quote.validUntil)
-                              : 'Not set'
-                            }
+                            {quote.validUntil ? formatDate(quote.validUntil) : 'Not set'}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">
-                            {formatDate(quote.createdAt)}
-                          </div>
+                          <div className="text-sm">{formatDate(quote.createdAt)}</div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm">
@@ -715,25 +714,25 @@ export default function QuotesManagement() {
                                 </DoDEnforcementButton>
                               </div>
                               <DropdownMenuSeparator />
-                              
+
                               {quote.status === 'draft' && (
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   onClick={() => handleStatusChange(quote.id, 'sent')}
                                 >
                                   <Send className="h-4 w-4 mr-2" />
                                   Send Quote
                                 </DropdownMenuItem>
                               )}
-                              
+
                               {quote.status === 'sent' && (
                                 <>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => handleStatusChange(quote.id, 'accepted')}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Mark Accepted
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => handleStatusChange(quote.id, 'closed_lost')}
                                   >
                                     <XCircle className="h-4 w-4 mr-2" />
@@ -754,7 +753,8 @@ export default function QuotesManagement() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Delete Quote</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Are you sure you want to delete this quote? This action cannot be undone.
+                                      Are you sure you want to delete this quote? This action cannot
+                                      be undone.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
