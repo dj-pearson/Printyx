@@ -6,7 +6,12 @@
   "scripts": {
     "extract": "tsx extract-schema.ts",
     "validate": "tsx validate-code.ts",
-    "check": "npm run extract && npm run validate"
+    "check": "npm run extract && npm run validate",
+    "fix": "tsx auto-fix.ts",
+    "fix:apply": "tsx auto-fix.ts --apply",
+    "fix:rules": "tsx auto-fix.ts --rules",
+    "report": "tsx generate-report.ts",
+    "view": "tsx view-table.ts"
   },
   "keywords": [
     "database",
