@@ -1,0 +1,4423 @@
+{
+  "tables": {
+    "ai_employees": {
+      "name": "ai_employees",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_model",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'claude-3-5-sonnet-20241022'"
+        },
+        {
+          "name": "ai_personality",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "communication",
+          "type": "style",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "total_tasks_completed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_task_completion_time_minutes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "user_satisfaction_rating",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "learning_data",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'active'"
+        },
+        {
+          "name": "last_active_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "training_completion_percentage",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "tasks_assigned",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "tasks_completed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "tasks_failed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_response_time_ms",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "ai_employee_tasks": {
+      "name": "ai_employee_tasks",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        },
+        {
+          "name": "task_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "task_description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "task_priority",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'medium'"
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "completed_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "due_date",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'assigned'"
+        },
+        {
+          "name": "current_step",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "human_review_status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_confidence_score",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "error_messages",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "parent_task_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employee_tasks",
+            "column": "id"
+          }
+        },
+        {
+          "name": "workflow_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "estimated_cost",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "actual_cost",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        },
+        {
+          "column": "parent_task_id",
+          "references": {
+            "table": "ai_employee_tasks",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_employee_workflows": {
+      "name": "ai_employee_workflows",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "workflow_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "workflow_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "workflow_version",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'1.0'"
+        },
+        {
+          "name": "workflow_steps",
+          "type": "JSONB",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "success_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_executions",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "optimization_suggestions",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'active'"
+        },
+        {
+          "name": "approved_by",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "approved_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "ai_workflow_executions": {
+      "name": "ai_workflow_executions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "workflow_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employee_workflows",
+            "column": "id"
+          }
+        },
+        {
+          "name": "triggered_by",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "input_data",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "completed_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "current_step_index",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "current_step_name",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'running'"
+        },
+        {
+          "name": "error_details",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "total_execution_time_minutes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "steps_completed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "steps_failed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "human_interventions",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "total_ai_tokens_used",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "total_cost",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employees_involved",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "workflow_id",
+          "references": {
+            "table": "ai_employee_workflows",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_employee_skills": {
+      "name": "ai_employee_skills",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        },
+        {
+          "name": "skill_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "skill_category",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "proficiency_level",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "1"
+        },
+        {
+          "name": "success_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "training_data",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "practice_opportunities",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "improvement_suggestions",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "times_used",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "last_used_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "average_performance_score",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_employee_interactions": {
+      "name": "ai_employee_interactions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        },
+        {
+          "name": "interaction_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "interaction_content",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "interaction_context",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "sentiment_analysis",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "ended_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "response_time_ms",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "interaction_outcome",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "follow_up_date",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_confidence_in_response",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "human_intervention_required",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "quality_score",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_employee_training": {
+      "name": "ai_employee_training",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        },
+        {
+          "name": "training_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "training_description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "training_data",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "training_method",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "started_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "completed_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "progress_percentage",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "pre_training_performance",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "post_training_performance",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "improvement_metrics",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "validation_results",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "test_scenarios_passed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "test_scenarios_failed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'in_progress'"
+        },
+        {
+          "name": "approved_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "deployment_date",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_employee_analytics": {
+      "name": "ai_employee_analytics",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "employee_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        },
+        {
+          "name": "analysis_date",
+          "type": "DATE",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "tasks_assigned",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "tasks_completed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "tasks_failed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_completion_time_minutes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_quality_score",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "customer_satisfaction_rating",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "human_intervention_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "error_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_ai_tokens_used",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "total_cost",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "cost_per_task",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "roi_estimate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "skill_improvements",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "training_hours",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_interactions",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "successful_interactions",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "escalated_interactions",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_response_time_ms",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "performance_vs_baseline",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "employee_id",
+          "references": {
+            "table": "ai_employees",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_scheduling_preferences": {
+      "name": "ai_scheduling_preferences",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "work_hours_start",
+          "type": "TIME",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'08:00:00'"
+        },
+        {
+          "name": "work_hours_end",
+          "type": "TIME",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'17:00:00'"
+        },
+        {
+          "name": "work_days",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{1"
+        },
+        {
+          "name": "timezone",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'America/New_York'"
+        },
+        {
+          "name": "preferred_meeting_duration",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "30"
+        },
+        {
+          "name": "max_meetings_per_day",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "8"
+        },
+        {
+          "name": "learning_enabled",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "true"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "ai_generated_content": {
+      "name": "ai_generated_content",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_type",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "model_used",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "usage_count",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "user_rating",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'draft'"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "business_records": {
+      "name": "business_records",
+      "columns": [
+        {
+          "name": "IF",
+          "type": "NOT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "primaryKeys": [],
+      "foreignKeys": []
+    },
+    "deals": {
+      "name": "deals",
+      "columns": [
+        {
+          "name": "IF",
+          "type": "NOT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "primaryKeys": [],
+      "foreignKeys": []
+    },
+    "vector_embeddings": {
+      "name": "vector_embeddings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "vector_version",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "1"
+        },
+        {
+          "name": "content_text",
+          "type": "TEXT",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_summary",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_keywords",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "content_author_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "access_level",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'tenant'"
+        },
+        {
+          "name": "embedding_source",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "ai_search_queries": {
+      "name": "ai_search_queries",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "query_text",
+          "type": "TEXT",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "query_intent",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "search_filters",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "query_embedding",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "top_result_scores",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "user_satisfaction_rating",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "result_quality_feedback",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "ai_generated_answers": {
+      "name": "ai_generated_answers",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "query_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_search_queries",
+            "column": "id"
+          }
+        },
+        {
+          "name": "answer_text",
+          "type": "TEXT",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "answer_confidence",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_unhelpful_votes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "user_corrections",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "generation_prompt",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "generation_parameters",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "processing_time_ms",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "tokens_used",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "version",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "1"
+        },
+        {
+          "name": "superseded_by",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_generated_answers",
+            "column": "id"
+          }
+        },
+        {
+          "name": "is_current",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "query_id",
+          "references": {
+            "table": "ai_search_queries",
+            "column": "id"
+          }
+        },
+        {
+          "column": "superseded_by",
+          "references": {
+            "table": "ai_generated_answers",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "knowledge_entities": {
+      "name": "knowledge_entities",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "entity_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "entity_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "entity_summary",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "related_entities",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "child_entities",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "entity_status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'active'"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "search_sessions": {
+      "name": "search_sessions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "session_title",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "last_activity_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "ended_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_duration_minutes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "query_count",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "content_similarities": {
+      "name": "content_similarities",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_a_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_a_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_b_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "content_b_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "vector_similarity",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_validated",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "validation_feedback",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "recommendation_clicks",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "recommendation_usefulness_rating",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "search_analytics": {
+      "name": "search_analytics",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "analysis_date",
+          "type": "DATE",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_queries",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "unique_users",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_queries_per_user",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "most_common_query_types",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "average_result_count",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "zero_result_query_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "answers_generated",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_answer_confidence",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "answer_helpfulness_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "session_completion_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "follow_up_query_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "most_retrieved_content",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "answer_generation_time_ms",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "ai_accuracy_indicators",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "ai_insights",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "calendar_connections": {
+      "name": "calendar_connections",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "provider",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "access_token",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "refresh_token",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "token_expires_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "calendar_id",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "is_primary",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "false"
+        },
+        {
+          "name": "sync_enabled",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "true"
+        },
+        {
+          "name": "last_sync_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "sync_token",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "calendar_events": {
+      "name": "calendar_events",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "calendar_connection_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "calendar_connections",
+            "column": "id"
+          }
+        },
+        {
+          "name": "external_event_id",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "start_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "end_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "is_all_day",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "false"
+        },
+        {
+          "name": "location",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "attendees",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "recurrence_rule",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "cancelled",
+          "type": "visibility",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'default'"
+        },
+        {
+          "name": "private",
+          "type": "event_type",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'meeting'"
+        },
+        {
+          "name": "focus_time",
+          "type": "related_entity_id",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_confidence",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "calendar_connection_id",
+          "references": {
+            "table": "calendar_connections",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "calendar_event_reminders": {
+      "name": "calendar_event_reminders",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "event_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "calendar_events",
+            "column": "id"
+          }
+        },
+        {
+          "name": "reminder_minutes",
+          "type": "INTEGER",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "sms",
+          "type": "is_sent",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "false"
+        },
+        {
+          "name": "sent_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "event_id",
+          "references": {
+            "table": "calendar_events",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "calendar_availability": {
+      "name": "calendar_availability",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "day_of_week",
+          "type": "INTEGER",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "end_time",
+          "type": "TIME",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "timezone",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'America/New_York'"
+        },
+        {
+          "name": "is_available",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "true"
+        },
+        {
+          "name": "availability_type",
+          "type": "VARCHAR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'work'"
+        },
+        {
+          "name": "break",
+          "type": "created_at",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "calendar_sync_logs": {
+      "name": "calendar_sync_logs",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "calendar_connection_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "calendar_connections",
+            "column": "id"
+          }
+        },
+        {
+          "name": "sync_type",
+          "type": "VARCHAR",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "events_created",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "events_updated",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "events_deleted",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "error_message",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "sync_duration_ms",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "calendar_connection_id",
+          "references": {
+            "table": "calendar_connections",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "meeting_recordings": {
+      "name": "meeting_recordings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "meeting_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "recording_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "recording_url",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "wav",
+          "type": "file_size_bytes",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "duration_seconds",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "recording_source",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "phone",
+          "type": "audio_quality",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'good'"
+        },
+        {
+          "name": "poor",
+          "type": "video_quality",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "audio_only",
+          "type": "processing_status",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'pending'"
+        },
+        {
+          "name": "failed",
+          "type": "transcription_status",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'pending'"
+        },
+        {
+          "name": "failed",
+          "type": "ai_analysis_status",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'pending'"
+        },
+        {
+          "name": "failed",
+          "type": "ai_confidence_score",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "processing_started_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "processing_completed_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "uploaded_by",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "is_public",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "meeting_transcriptions": {
+      "name": "meeting_transcriptions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "recording_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "meeting_recordings",
+            "column": "id"
+          }
+        },
+        {
+          "name": "meeting_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "full_transcript",
+          "type": "TEXT",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "transcript_segments",
+          "type": "JSONB",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "aws_transcribe",
+          "type": "ai_model_version",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "processing_time_seconds",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "overall_confidence",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "speaker_count",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "speakers",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "detected_languages",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "last_updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "recording_id",
+          "references": {
+            "table": "meeting_recordings",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "meeting_notes": {
+      "name": "meeting_notes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "meeting_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "recording_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "meeting_recordings",
+            "column": "id"
+          }
+        },
+        {
+          "name": "transcription_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "meeting_transcriptions",
+            "column": "id"
+          }
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "executive_summary",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "detailed_notes",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "key_points",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "mixed",
+          "type": "engagement_level",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "low",
+          "type": "productivity_score",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "processing_time_seconds",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_confidence_score",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "version",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "1"
+        },
+        {
+          "name": "is_final",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "parent_note_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "meeting_notes",
+            "column": "id"
+          }
+        },
+        {
+          "name": "created_by",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "shared_with",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "recording_id",
+          "references": {
+            "table": "meeting_recordings",
+            "column": "id"
+          }
+        },
+        {
+          "column": "transcription_id",
+          "references": {
+            "table": "meeting_transcriptions",
+            "column": "id"
+          }
+        },
+        {
+          "column": "parent_note_id",
+          "references": {
+            "table": "meeting_notes",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "meeting_highlights": {
+      "name": "meeting_highlights",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "meeting_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "recording_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "meeting_recordings",
+            "column": "id"
+          }
+        },
+        {
+          "name": "transcription_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "meeting_transcriptions",
+            "column": "id"
+          }
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "highlight_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "opportunity",
+          "type": "title",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "start_time_seconds",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "transcript_excerpt",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "negative",
+          "type": "confidence_score",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "none",
+          "type": "requires_action",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "assigned_to",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "completion_status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'open'"
+        },
+        {
+          "name": "cancelled",
+          "type": "created_by",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "recording_id",
+          "references": {
+            "table": "meeting_recordings",
+            "column": "id"
+          }
+        },
+        {
+          "column": "transcription_id",
+          "references": {
+            "table": "meeting_transcriptions",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "meeting_speakers": {
+      "name": "meeting_speakers",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "NULL",
+          "type": "for",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "voice_signature_id",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_speaking_time_minutes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_participation_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "meeting_content_search": {
+      "name": "meeting_content_search",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "meeting_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "searchable_content",
+          "type": "TEXT",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "and",
+          "type": "metadata",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "action_items",
+          "type": "content_source_id",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "tags",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "search_vector",
+          "type": "TSVECTOR",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "meeting_content_analytics": {
+      "name": "meeting_content_analytics",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "analysis_date",
+          "type": "DATE",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_meetings_recorded",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "total_recording_hours",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "total_transcription_words",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "average_transcription_confidence",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "average_ai_processing_time_seconds",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "transcription_accuracy_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "most_discussed_topics",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "average_meeting_productivity_score",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "average_speaker_count",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "most_active_speakers",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "speaking_time_distribution",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "decisions_made_count",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "action_items_generated_count",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "follow_up_completion_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_insights",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "ai_recommendations",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "content_quality_trends",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "recording_integrations": {
+      "name": "recording_integrations",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "integration_type",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "manual",
+          "type": "integration_name",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "api_credentials",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "auto_processing_enabled",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "auto_transcription",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "auto_note_generation",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "auto_highlight_extraction",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "notification_settings",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        },
+        {
+          "name": "processing_complete_notifications",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "last_successful_sync",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "last_error_message",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "error_count",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "recordings_processed",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "total_processing_time_hours",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_by",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "task_categories": {
+      "name": "task_categories",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "color",
+          "type": "VARCHAR(7)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'#3B82F6'"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "ai_tasks": {
+      "name": "ai_tasks",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "category_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "task_categories",
+            "column": "id"
+          }
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "priority",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'medium'"
+        },
+        {
+          "name": "low",
+          "type": "status",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'pending'"
+        },
+        {
+          "name": "on_hold",
+          "type": "due_date",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "estimated_duration",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "completion_date",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "depends_on",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'[]'"
+        },
+        {
+          "name": "ai_suggested_end",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "ai_priority_score",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "is_ai_scheduled",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "false"
+        },
+        {
+          "name": "related_entity_type",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "project_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "assigned_to",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "last_activity_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "category_id",
+          "references": {
+            "table": "task_categories",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "task_dependencies": {
+      "name": "task_dependencies",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "predecessor_task_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        },
+        {
+          "name": "successor_task_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        },
+        {
+          "name": "dependency_type",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'finish_to_start'"
+        },
+        {
+          "name": "start_to_finish",
+          "type": "lag_days",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "0"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "predecessor_task_id",
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        },
+        {
+          "column": "successor_task_id",
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "task_time_entries": {
+      "name": "task_time_entries",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "task_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "start_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "end_time",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "duration_minutes",
+          "type": "INTEGER",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "is_billable",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "false"
+        },
+        {
+          "name": "hourly_rate",
+          "type": "DECIMAL",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "task_id",
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "task_activities": {
+      "name": "task_activities",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "task_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "activity_type",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "metadata",
+          "type": "JSONB",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'{}'"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "task_id",
+          "references": {
+            "table": "ai_tasks",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "task_templates": {
+      "name": "task_templates",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "category_id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": true,
+          "references": {
+            "table": "task_categories",
+            "column": "id"
+          }
+        },
+        {
+          "name": "template_data",
+          "type": "JSONB",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_by",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": [
+        {
+          "column": "category_id",
+          "references": {
+            "table": "task_categories",
+            "column": "id"
+          }
+        }
+      ]
+    },
+    "ai_task_suggestions": {
+      "name": "ai_task_suggestions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "UUID",
+          "nullable": true,
+          "isPrimaryKey": true,
+          "isForeignKey": false,
+          "defaultValue": "gen_random_uuid()"
+        },
+        {
+          "name": "tenant_id",
+          "type": "UUID",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "suggested_task",
+          "type": "JSONB",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "'pending'"
+        },
+        {
+          "name": "dismissed",
+          "type": "created_at",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false,
+          "defaultValue": "NOW()"
+        },
+        {
+          "name": "responded_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        },
+        {
+          "name": "response_user_id",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "primaryKeys": ["id"],
+      "foreignKeys": []
+    },
+    "product_models": {
+      "name": "product_models",
+      "columns": [
+        {
+          "name": "pricing_migrated",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "primaryKeys": [],
+      "foreignKeys": []
+    },
+    "product_accessories": {
+      "name": "product_accessories",
+      "columns": [
+        {
+          "name": "pricing_migrated",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "isPrimaryKey": false,
+          "isForeignKey": false
+        }
+      ],
+      "primaryKeys": [],
+      "foreignKeys": []
+    }
+  },
+  "generatedAt": "2026-01-16T14:55:52.670Z",
+  "sourceFiles": [
+    "migrations\\0000_remarkable_venom.sql",
+    "migrations\\002_add_foreign_key_constraints.sql",
+    "migrations\\002_data_cleanup.sql",
+    "migrations\\002_pre_migration_checks.sql",
+    "migrations\\003_fix_tenant_metadata.sql",
+    "migrations\\ai-employees-migration.sql",
+    "migrations\\ai-enhancement-migration.sql",
+    "migrations\\ai-search-knowledge-migration.sql",
+    "migrations\\calendar-integration-migration.sql",
+    "migrations\\meeting-transcription-migration.sql",
+    "migrations\\task-management-migration.sql",
+    "database\\migrations\\001_migrate_pricing_to_enhanced_schema.sql",
+    "database\\migrations\\001_migrate_pricing_to_enhanced_schema_ROLLBACK.sql",
+    "database\\migrations\\001_migrate_pricing_VALIDATION_QUERIES.sql",
+    "database\\seed_test_data.sql",
+    "supabase\\migrations\\001_rls_policies.sql",
+    "supabase\\migrations\\002_users_rls_policies.sql",
+    "supabase\\migrations\\003_users_security_constraints.sql",
+    "supabase\\migrations\\004_postgrest_grants.sql",
+    "supabase\\migrations\\005_comprehensive_schema.sql"
+  ]
+}
