@@ -20,12 +20,6 @@ export default async function handler(req: Request) {
   const recordId = pathParts[0]; // The UUID
   const subResource = pathParts[1]; // activities, contacts, etc.
 
-  console.log('🔍 business-records - Full URL:', req.url);
-  console.log('🔍 business-records - Pathname:', url.pathname);
-  console.log('🔍 business-records - PathParts:', pathParts);
-  console.log('🔍 business-records - recordId:', recordId, 'subResource:', subResource);
-  console.log('🔍 business-records - Method:', req.method);
-
   try {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -61,10 +55,11 @@ export default async function handler(req: Request) {
 
       // Handle sub-resources
       if (subResource === 'activities' && recordId) {
+        // Query activities by either business_record_id OR company_id
         const { data: activities, error } = await admin
           .from('business_record_activities')
           .select('*')
-          .eq('business_record_id', recordId)
+          .or(`business_record_id.eq.${recordId},company_id.eq.${recordId}`)
           .eq('tenant_id', tenantId)
           .order('created_at', { ascending: false });
 
@@ -233,9 +228,13 @@ export default async function handler(req: Request) {
         }
 
         // Create activity in the SEPARATE business_record_activities table (CORRECT ARCHITECTURE)
+        // Support both business_records (legacy) and companies (new) architectures
         const activityData = {
           tenant_id: tenantId,
-          business_record_id: recordId, // Link to parent business record
+          // If parent is from companies table, use company_id; otherwise use business_record_id
+          ...(parentRecord.business_name
+            ? { company_id: recordId }
+            : { business_record_id: recordId }),
           activity_type: body.activity_type,
           subject: body.activity_subject || `${body.activity_type} activity`,
           description: body.notes || body.description,

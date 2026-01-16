@@ -63,11 +63,11 @@ export default function CompanyContactSelector({
   const [companySearchTerm, setCompanySearchTerm] = useState('');
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
 
-  // Fetch business records (companies/customers)
+  // Fetch companies
   const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
-    queryKey: ['/api/business-records'],
+    queryKey: ['/api/companies'],
     queryFn: async () => {
-      const response = await apiRequest('/api/business-records', 'GET');
+      const response = await apiRequest('/api/companies', 'GET');
       // Ensure response is always an array
       return Array.isArray(response) ? response : [];
     },
@@ -75,13 +75,10 @@ export default function CompanyContactSelector({
 
   // Fetch contacts for selected company
   const { data: contacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
-    queryKey: [`/api/business-records/${selectedCompany?.id}/contacts`],
+    queryKey: [`/api/companies/${selectedCompany?.id}/contacts`],
     enabled: !!selectedCompany?.id,
     queryFn: async () => {
-      const response = await apiRequest(
-        `/api/business-records/${selectedCompany.id}/contacts`,
-        'GET',
-      );
+      const response = await apiRequest(`/api/companies/${selectedCompany.id}/contacts`, 'GET');
       // Ensure response is always an array
       return Array.isArray(response) ? response : [];
     },

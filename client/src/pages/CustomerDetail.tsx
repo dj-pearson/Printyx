@@ -341,10 +341,14 @@ export default function CustomerDetailHubspot() {
     }
   }, [customer]);
 
-  // Update mutation
+  // Update mutation - using companies endpoint
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/business-records/${customer?.id}`, 'PUT', data);
+      return await apiRequest(
+        `/api/companies/${customer?.company_id || customer?.id}`,
+        'PATCH',
+        data,
+      );
     },
     onSuccess: (updatedData) => {
       toast({
@@ -352,26 +356,15 @@ export default function CustomerDetailHubspot() {
         description: 'Customer information has been successfully updated.',
       });
 
-      // Optimistic update for main business records list
-      queryClient.setQueryData(['/api/business-records'], (oldData: any) => {
-        if (!oldData) return oldData;
-        return oldData.map((record: any) =>
-          record.id === customer?.id ? { ...record, ...updatedData } : record,
-        );
-      });
-
-      // Optimistic update for individual record
-      queryClient.setQueryData(['/api/business-records', slug], updatedData);
-
       // Invalidate all related caches to ensure consistency
       queryClient.invalidateQueries({
-        queryKey: ['/api/business-records', slug],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['/api/business-records'],
+        queryKey: [`/api/customers/${slug}`],
       });
       queryClient.invalidateQueries({
         queryKey: ['/api/customers'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/companies/${customer?.company_id || customer?.id}`],
       });
 
       setIsEditing(false);
