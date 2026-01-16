@@ -9,8 +9,10 @@ export default async function handler(req: Request) {
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
-  const companyId = pathParts[1]; // companies/:id
-  const subResource = pathParts[2]; // contacts, leads, customers, etc.
+  // Edge functions receive paths without the function name prefix
+  // e.g., /companies/123/activities becomes /123/activities
+  const companyId = pathParts[0]; // The UUID
+  const subResource = pathParts[1]; // contacts, leads, customers, activities, etc.
 
   try {
     const authHeader = req.headers.get('Authorization');
