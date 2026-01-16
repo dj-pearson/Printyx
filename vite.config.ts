@@ -100,5 +100,13 @@ export default defineConfig({
       strict: true,
       deny: ['**/.*'],
     },
+    proxy: {
+      // Proxy /api/* requests to Edge Functions
+      '/api': {
+        target: 'http://localhost:8000', // Supabase Edge Functions local server
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''), // Strip /api prefix
+      },
+    },
   },
 });
