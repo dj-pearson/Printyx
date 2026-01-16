@@ -59,11 +59,17 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
         credentials: 'include',
       });
 
+      console.log('🔍 ActivityTimeline - Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to fetch activities');
+        const errorText = await response.text();
+        console.error('🔍 ActivityTimeline - Error response:', errorText);
+        throw new Error(`Failed to fetch activities: ${response.status} - ${errorText}`);
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('🔍 ActivityTimeline - Fetched activities:', data);
+      return data;
     },
     enabled: !!businessRecordId, // Only run query if businessRecordId is defined
   });
