@@ -1,0 +1,17 @@
+{
+  "name": "schema-validation",
+  "version": "1.0.0",
+  "description": "Database schema validation tools for Printyx",
+  "private": true,
+  "scripts": {
+    "extract": "tsx extract-schema.ts",
+    "validate": "tsx validate-code.ts",
+    "check": "npm run extract && npm run validate"
+  },
+  "keywords": [
+    "database",
+    "schema",
+    "validation"
+  ],
+  "author": "Printyx"
+}
