@@ -20,6 +20,12 @@ export default async function handler(req: Request) {
   const recordId = pathParts[0]; // The UUID
   const subResource = pathParts[1]; // activities, contacts, etc.
 
+  console.log('🔍 business-records - Full URL:', req.url);
+  console.log('🔍 business-records - Pathname:', url.pathname);
+  console.log('🔍 business-records - PathParts:', pathParts);
+  console.log('🔍 business-records - recordId:', recordId, 'subResource:', subResource);
+  console.log('🔍 business-records - Method:', req.method);
+
   try {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
