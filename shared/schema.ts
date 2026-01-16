@@ -1646,88 +1646,101 @@ export const serviceContracts = pgTable('service_contracts', {
 });
 
 // Enhanced Meter Readings Table (E-Automate compatible with comprehensive billing features)
-export const meterReadings = pgTable('meter_readings', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const meterReadings = pgTable(
+  'meter_readings',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // E-Automate Compatibility
-  externalReadingId: varchar('external_reading_id'), // E-Automate ReadingKey
-  externalEquipmentId: varchar('external_equipment_id'), // E-Automate EquipmentKey
-  lastSyncDate: timestamp('last_sync_date'),
+    // E-Automate Compatibility
+    externalReadingId: varchar('external_reading_id'), // E-Automate ReadingKey
+    externalEquipmentId: varchar('external_equipment_id'), // E-Automate EquipmentKey
+    lastSyncDate: timestamp('last_sync_date'),
 
-  // Reading Identification
-  equipmentId: varchar('equipment_id').notNull(), // References equipment.id
-  contractId: varchar('contract_id'), // References contracts.id
-  readingDate: timestamp('reading_date').notNull(), // E-Automate ReadingDate
+    // Reading Identification
+    equipmentId: varchar('equipment_id').notNull(), // References equipment.id
+    contractId: varchar('contract_id'), // References contracts.id
+    readingDate: timestamp('reading_date').notNull(), // E-Automate ReadingDate
 
-  // Meter Values (E-Automate compatible with additional fields)
-  bwMeterReading: integer('bw_meter_reading'), // E-Automate BWMeter / blackMeter
-  colorMeterReading: integer('color_meter_reading'), // E-Automate ColorMeter / colorMeter
-  scanMeterReading: integer('scan_meter_reading'), // E-Automate ScanMeter
-  faxMeterReading: integer('fax_meter_reading'), // E-Automate FaxMeter
-  largePaperMeterReading: integer('large_paper_meter_reading'), // E-Automate LargePaperMeter
+    // Meter Values (E-Automate compatible with additional fields)
+    bwMeterReading: integer('bw_meter_reading'), // E-Automate BWMeter / blackMeter
+    colorMeterReading: integer('color_meter_reading'), // E-Automate ColorMeter / colorMeter
+    scanMeterReading: integer('scan_meter_reading'), // E-Automate ScanMeter
+    faxMeterReading: integer('fax_meter_reading'), // E-Automate FaxMeter
+    largePaperMeterReading: integer('large_paper_meter_reading'), // E-Automate LargePaperMeter
 
-  // Previous Readings for Copy Calculation
-  previousBlackMeter: integer('previous_black_meter').default(0),
-  previousColorMeter: integer('previous_color_meter').default(0),
-  blackCopies: integer('black_copies').default(0),
-  colorCopies: integer('color_copies').default(0),
+    // Previous Readings for Copy Calculation
+    previousBlackMeter: integer('previous_black_meter').default(0),
+    previousColorMeter: integer('previous_color_meter').default(0),
+    blackCopies: integer('black_copies').default(0),
+    colorCopies: integer('color_copies').default(0),
 
-  // Collection Method (Enhanced PRD requirement)
-  readingMethod: varchar('reading_method').default('manual'), // E-Automate ReadingMethod
-  collectionMethod: varchar('collection_method').default('manual'), // manual, dca, email, api, remote_monitoring
+    // Collection Method (Enhanced PRD requirement)
+    readingMethod: varchar('reading_method').default('manual'), // E-Automate ReadingMethod
+    collectionMethod: varchar('collection_method').default('manual'), // manual, dca, email, api, remote_monitoring
 
-  // DCA Integration Fields
-  dcaDeviceId: varchar('dca_device_id'), // Device ID for DCA integration
-  dcaLastSync: timestamp('dca_last_sync'), // Last successful DCA sync
-  dcaError: text('dca_error'), // Any DCA collection errors
+    // DCA Integration Fields
+    dcaDeviceId: varchar('dca_device_id'), // Device ID for DCA integration
+    dcaLastSync: timestamp('dca_last_sync'), // Last successful DCA sync
+    dcaError: text('dca_error'), // Any DCA collection errors
 
-  // Email Collection Fields
-  emailSource: varchar('email_source'), // Email address readings came from
-  emailSubject: varchar('email_subject'), // Original email subject
-  emailTimestamp: timestamp('email_timestamp'), // When email was received
+    // Email Collection Fields
+    emailSource: varchar('email_source'), // Email address readings came from
+    emailSubject: varchar('email_subject'), // Original email subject
+    emailTimestamp: timestamp('email_timestamp'), // When email was received
 
-  // API Collection Fields
-  apiSource: varchar('api_source'), // Which API endpoint provided the data
-  apiResponseId: varchar('api_response_id'), // Reference to API response
+    // API Collection Fields
+    apiSource: varchar('api_source'), // Which API endpoint provided the data
+    apiResponseId: varchar('api_response_id'), // Reference to API response
 
-  // Quality Control & Verification
-  technicianId: varchar('technician_id'), // E-Automate TechnicianID
-  isVerified: boolean('is_verified').default(false), // E-Automate Verified
-  verifiedBy: varchar('verified_by'), // Who verified the reading
-  verifiedAt: timestamp('verified_at'), // When was it verified
+    // Quality Control & Verification
+    technicianId: varchar('technician_id'), // E-Automate TechnicianID
+    isVerified: boolean('is_verified').default(false), // E-Automate Verified
+    verifiedBy: varchar('verified_by'), // Who verified the reading
+    verifiedAt: timestamp('verified_at'), // When was it verified
 
-  // Exceptions and Adjustments
-  hasException: boolean('has_exception').default(false),
-  exceptionReason: varchar('exception_reason'), // manual_override, billing_dispute, equipment_error
-  exceptionNotes: text('exception_notes'),
-  adjustmentAmount: decimal('adjustment_amount', {
-    precision: 10,
-    scale: 2,
-  }).default('0'),
+    // Exceptions and Adjustments
+    hasException: boolean('has_exception').default(false),
+    exceptionReason: varchar('exception_reason'), // manual_override, billing_dispute, equipment_error
+    exceptionNotes: text('exception_notes'),
+    adjustmentAmount: decimal('adjustment_amount', {
+      precision: 10,
+      scale: 2,
+    }).default('0'),
 
-  // Billing Information (E-Automate compatible)
-  billingPeriod: varchar('billing_period'), // E-Automate BillingPeriod
-  billingStatus: varchar('billing_status').default('pending'), // pending, processed, billed, disputed
-  invoiceNumber: varchar('invoice_number'), // E-Automate InvoiceNumber
-  invoiceId: varchar('invoice_id'), // Reference to generated invoice
-  billingAmount: decimal('billing_amount', { precision: 10, scale: 2 }),
+    // Billing Information (E-Automate compatible)
+    billingPeriod: varchar('billing_period'), // E-Automate BillingPeriod
+    billingStatus: varchar('billing_status').default('pending'), // pending, processed, billed, disputed
+    invoiceNumber: varchar('invoice_number'), // E-Automate InvoiceNumber
+    invoiceId: varchar('invoice_id'), // Reference to generated invoice
+    billingAmount: decimal('billing_amount', { precision: 10, scale: 2 }),
 
-  // System Tracking
-  readingNotes: text('reading_notes'), // E-Automate Notes
-  notes: text('notes'), // Additional notes
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => ({
-  // Performance indexes for meter reading queries
-  equipmentDateIdx: index('meter_readings_equipment_date_idx').on(table.equipmentId, table.readingDate),
-  tenantDateIdx: index('meter_readings_tenant_date_idx').on(table.tenantId, table.readingDate),
-  tenantEquipmentIdx: index('meter_readings_tenant_equipment_idx').on(table.tenantId, table.equipmentId),
-  billingStatusIdx: index('meter_readings_billing_status_idx').on(table.tenantId, table.billingStatus),
-}));
+    // System Tracking
+    readingNotes: text('reading_notes'), // E-Automate Notes
+    notes: text('notes'), // Additional notes
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // Performance indexes for meter reading queries
+    equipmentDateIdx: index('meter_readings_equipment_date_idx').on(
+      table.equipmentId,
+      table.readingDate,
+    ),
+    tenantDateIdx: index('meter_readings_tenant_date_idx').on(table.tenantId, table.readingDate),
+    tenantEquipmentIdx: index('meter_readings_tenant_equipment_idx').on(
+      table.tenantId,
+      table.equipmentId,
+    ),
+    billingStatusIdx: index('meter_readings_billing_status_idx').on(
+      table.tenantId,
+      table.billingStatus,
+    ),
+  }),
+);
 
 // Service Calls/Work Orders Table (E-Automate compatible)
 export const serviceCalls = pgTable('service_calls', {
@@ -2137,7 +2150,8 @@ export const businessRecordActivities = pgTable('business_record_activities', {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   tenantId: varchar('tenant_id').notNull(),
-  businessRecordId: varchar('business_record_id').notNull(), // References businessRecords.id
+  businessRecordId: varchar('business_record_id'), // References businessRecords.id (nullable for migration)
+  companyId: varchar('company_id'), // References companies.id (new architecture)
 
   // Activity Details
   activityType: varchar('activity_type').notNull(), // email, call, meeting, demo, proposal, task, note, external, service_call, billing, churn_prevention

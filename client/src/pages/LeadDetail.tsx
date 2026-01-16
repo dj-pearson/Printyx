@@ -245,8 +245,8 @@ export default function LeadDetailHubspot() {
 
   // Fetch lead details (with fallback for snake_case/camelCase)
   const { data: leadRaw, isLoading } = useQuery({
-    queryKey: ['/api/business-records', id],
-    queryFn: async () => apiRequest(`/api/business-records/${id}`),
+    queryKey: ['/api/leads', id],
+    queryFn: async () => apiRequest(`/api/leads/${id}`),
     enabled: !!id,
   });
 
@@ -392,15 +392,18 @@ export default function LeadDetailHubspot() {
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest(`/api/business-records/${id}`, 'PUT', data);
+      return await apiRequest(`/api/leads/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       toast({
-        title: 'Record Updated',
+        title: 'Lead Updated',
         description: 'Lead information has been successfully updated.',
       });
       queryClient.invalidateQueries({
-        queryKey: ['/api/business-records', id],
+        queryKey: ['/api/leads', id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/leads'],
       });
       setIsEditing(false);
     },

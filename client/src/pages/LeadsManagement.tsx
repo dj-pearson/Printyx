@@ -703,9 +703,7 @@ export default function LeadsManagement() {
               <span className="hidden sm:inline">Export</span>
             </Button>
             <LeadsImport
-              onImportComplete={() =>
-                queryClient.invalidateQueries({ queryKey: ['/api/business-records'] })
-              }
+              onImportComplete={() => queryClient.invalidateQueries({ queryKey: ['/api/leads'] })}
             />
             <Dialog open={isNewLeadOpen} onOpenChange={setIsNewLeadOpen}>
               <DialogTrigger asChild>
@@ -1262,7 +1260,9 @@ const leadSchema = z.object({
   phone: z.string().optional(),
   jobTitle: z.string().optional(),
   leadSource: z.string().optional(),
-  status: z.enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost']).default('new'),
+  status: z
+    .enum(['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'])
+    .default('new'),
   priority: z.enum(['low', 'medium', 'high']).default('medium'),
   estimatedValue: z.coerce.number().min(0, 'Value must be positive').optional(),
   notes: z.string().optional(),
@@ -1314,21 +1314,10 @@ function LeadForm({
 
   // Fetch existing companies for autocomplete
   const { data: existingCompanies = [] } = useQuery({
-    queryKey: ['/api/business-records'],
+    queryKey: ['/api/companies'],
     select: (data: any[]) => {
-      const companies = data
-        .filter((record: any) => record.companyName && record.companyName.trim())
-        .reduce(
-          (acc, record) => {
-            const companyName = record.companyName.toLowerCase();
-            if (!acc[companyName] || record.recordType === 'customer') {
-              acc[companyName] = record;
-            }
-            return acc;
-          },
-          {} as Record<string, any>,
-        );
-      return Object.values(companies);
+      // Companies endpoint returns companies with business_name field
+      return data.filter((company: any) => company.business_name && company.business_name.trim());
     },
   });
 
@@ -1697,11 +1686,7 @@ function LeadForm({
             <FormItem>
               <FormLabel>Notes</FormLabel>
               <FormControl>
-                <Textarea
-                  {...field}
-                  rows={3}
-                  placeholder="Additional notes about this lead..."
-                />
+                <Textarea {...field} rows={3} placeholder="Additional notes about this lead..." />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -1721,4 +1706,3 @@ function LeadForm({
     </Form>
   );
 }
-

@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 interface ActivityFormProps {
   isOpen: boolean;
   onClose: () => void;
-  businessRecordId: string;
+  businessRecordId: string; // Company ID (kept for backward compatibility)
   activityType: 'call' | 'email' | 'meeting' | 'note' | 'task';
   recordType: 'lead' | 'customer';
   recordName?: string;
@@ -74,7 +74,7 @@ export function ActivityForm({
 
   const createActivityMutation = useMutation({
     mutationFn: async (data: any) =>
-      apiRequest(`/api/business-records/${businessRecordId}/activities`, 'POST', data),
+      apiRequest(`/api/companies/${businessRecordId}/activities`, 'POST', data),
     onSuccess: () => {
       toast({
         title: 'Activity Logged',
@@ -83,7 +83,7 @@ export function ActivityForm({
         } has been successfully logged.`,
       });
       queryClient.invalidateQueries({
-        queryKey: [`/api/business-records/${businessRecordId}/activities`],
+        queryKey: [`/api/companies/${businessRecordId}/activities`],
       });
       onClose();
       resetForm();

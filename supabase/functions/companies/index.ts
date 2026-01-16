@@ -276,6 +276,77 @@ export default async function handler(req: Request) {
       return createCorsResponse(company, 201, req);
     }
 
+    // POST /companies/:id/activities - Add activity to company
+    if (req.method === 'POST' && companyId && subResource === 'activities') {
+      const body = await req.json();
+
+      // Verify company exists
+      const { data: companyExists } = await admin
+        .from('companies')
+        .select('id, business_name')
+        .eq('id', companyId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (!companyExists) {
+        return createCorsResponse({ error: 'Company not found' }, 404, req);
+      }
+
+      // Create activity in business_record_activities table with company_id
+      const activityData = {
+        tenant_id: tenantId,
+        company_id: companyId,
+        activity_type: body.activity_type,
+        subject: body.activity_subject || body.subject || `${body.activity_type} activity`,
+        description: body.notes || body.description,
+        direction: body.direction,
+        email_from: body.email_from,
+        email_to: body.email_to,
+        email_cc: body.email_cc,
+        call_duration: body.activity_duration || body.call_duration,
+        call_outcome: body.activity_outcome || body.call_outcome,
+        scheduled_date: body.activity_date || body.scheduled_date,
+        completed_date: body.completed_date,
+        due_date: body.due_date,
+        outcome: body.outcome,
+        next_action: body.next_action,
+        follow_up_date: body.follow_up_date,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: activity, error } = await admin
+        .from('business_record_activities')
+        .insert(activityData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating activity:', error);
+        return createCorsResponse({ error: 'Failed to create activity', details: error }, 500, req);
+      }
+
+      return createCorsResponse(activity, 201, req);
+    }
+
+    // GET /companies/:id/activities - Get company activities
+    if (req.method === 'GET' && companyId && subResource === 'activities') {
+      const { data: activities, error } = await admin
+        .from('business_record_activities')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching activities:', error);
+        return createCorsResponse({ error: 'Failed to fetch activities' }, 500, req);
+      }
+
+      return createCorsResponse(activities || [], 200, req);
+    }
+
     // POST /companies/:id/contacts - Add contact to existing company
     if (req.method === 'POST' && companyId && subResource === 'contacts') {
       const body = await req.json();

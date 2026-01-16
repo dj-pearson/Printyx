@@ -155,11 +155,11 @@ export default function QuoteBuilder({
     },
   });
 
-  // Fetch business records for company/contact selection
+  // Fetch companies for company/contact selection
   const { data: businessRecords = [] } = useQuery({
-    queryKey: ['/api/business-records'],
+    queryKey: ['/api/companies'],
     queryFn: async () => {
-      const response = await apiRequest('/api/business-records', 'GET');
+      const response = await apiRequest('/api/companies', 'GET');
       // Ensure response is always an array
       return Array.isArray(response) ? response : [];
     },
@@ -237,7 +237,7 @@ export default function QuoteBuilder({
           // Also fetch and set the contact if contactId exists
           if (existingQuote.contactId) {
             // Fetch contacts for this company
-            apiRequest(`/api/business-records/${existingQuote.businessRecordId}/contacts`, 'GET')
+            apiRequest(`/api/companies/${existingQuote.businessRecordId}/contacts`, 'GET')
               .then((contacts: any[]) => {
                 const contact = contacts.find((c: any) => c.id === existingQuote.contactId);
                 if (contact) {

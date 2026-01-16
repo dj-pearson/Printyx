@@ -1300,7 +1300,8 @@ export default function Customers() {
           onOpenChange={setIsImportDialogOpen}
           defaultEntityType="business_records"
           onImportComplete={() => {
-            queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
             toast({
               title: 'Import Complete',
               description: 'Customers have been imported successfully.',
