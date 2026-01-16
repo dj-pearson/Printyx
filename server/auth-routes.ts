@@ -391,8 +391,6 @@ const getCurrentUserHandler = async (req: any, res: any) => {
       team_id: user.teamId,
       tenantId: user.tenantId,
       tenant_id: user.tenantId,
-      access_scope: user.accessScope,
-      is_platform_user: user.isPlatformUser,
     });
   } catch (error) {
     console.error('Get user error:', error);

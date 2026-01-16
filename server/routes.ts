@@ -219,7 +219,6 @@ const requireAuth = async (req: any, res: any, next: any) => {
           id: fullUser.id,
           tenantId: fullUser.tenantId,
           isPlatformUser: fullUser.isPlatformUser,
-          is_platform_user: fullUser.isPlatformUser,
           email: fullUser.email,
           firstName: fullUser.firstName,
           lastName: fullUser.lastName,
@@ -7758,12 +7757,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
             userRole: req.user?.role,
             userId: req.user?.id,
             isPlatformUser: req.user?.isPlatformUser,
-            is_platform_user: req.user?.is_platform_user,
             debug: {
               checkResult: isPlatformUser,
               conditions: {
                 isPlatformUser: req.user?.isPlatformUser,
-                is_platform_user: req.user?.is_platform_user,
                 platform_admin: req.user?.role === 'platform_admin',
                 root_admin: req.user?.role === 'root_admin',
                 Platform_Admin: req.user?.role === 'Platform Admin',
