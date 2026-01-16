@@ -15,8 +15,10 @@ export default async function handler(req: Request) {
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
-  const recordId = pathParts[1]; // business-records/:id
-  const subResource = pathParts[2]; // activities, contacts, etc.
+  // Edge functions receive paths without the function name prefix
+  // e.g., /business-records/123/activities becomes /123/activities
+  const recordId = pathParts[0]; // The UUID
+  const subResource = pathParts[1]; // activities, contacts, etc.
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -73,7 +75,8 @@ export default async function handler(req: Request) {
         return createCorsResponse(activities || [], 200, req, deprecationMessage);
       }
 
-      if (recordId && recordId !== 'business-records') {
+      if (recordId && !subResource) {
+        // Getting a single record by ID
         // Try to find in business_records first (legacy), then check companies
         let { data: record, error } = await admin
           .from('business_records')
@@ -193,19 +196,10 @@ export default async function handler(req: Request) {
 
     if (req.method === 'POST') {
       console.warn('[DEPRECATED] POST to business-records. Use /companies POST instead.');
-      console.log(
-        'POST Debug - recordId:',
-        recordId,
-        'subResource:',
-        subResource,
-        'pathname:',
-        url.pathname,
-      );
       const body = await req.json();
 
       // Handle POST to /business-records/:id/activities - CORRECT: use separate activities table
       if (subResource === 'activities' && recordId) {
-        console.log('Creating activity for recordId:', recordId);
         // Verify the parent record exists (check both business_records and companies for backwards compatibility)
         let { data: parentRecord } = await admin
           .from('business_records')
