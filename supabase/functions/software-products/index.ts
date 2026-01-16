@@ -85,7 +85,6 @@ export default async function handler(req: Request) {
         tenant_id: tenantId,
         product_code: body.productCode,
         product_name: body.productName,
-        vendor: body.vendor || null,
         product_type: body.productType || null,
         category: body.category || null,
         accessory_type: body.accessoryType || null,
@@ -143,7 +142,6 @@ export default async function handler(req: Request) {
       // Only include fields that are present in the request
       if (body.productCode !== undefined) dbData.product_code = body.productCode;
       if (body.productName !== undefined) dbData.product_name = body.productName;
-      if (body.vendor !== undefined) dbData.vendor = body.vendor;
       if (body.productType !== undefined) dbData.product_type = body.productType;
       if (body.category !== undefined) dbData.category = body.category;
       if (body.accessoryType !== undefined) dbData.accessory_type = body.accessoryType;
