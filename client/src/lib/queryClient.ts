@@ -249,7 +249,20 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    const responseData = await res.json();
+
+    // Auto-unwrap Edge Function responses that have { data: [...], total, page, limit } structure
+    // This handles paginated responses from Supabase Edge Functions consistently
+    if (
+      responseData &&
+      typeof responseData === 'object' &&
+      'data' in responseData &&
+      Array.isArray(responseData.data)
+    ) {
+      return responseData.data;
+    }
+
+    return responseData;
   };
 
 export const queryClient = new QueryClient({
