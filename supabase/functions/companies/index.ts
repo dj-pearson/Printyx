@@ -14,12 +14,6 @@ export default async function handler(req: Request) {
   const companyId = pathParts[0]; // The UUID
   const subResource = pathParts[1]; // contacts, leads, customers, activities, etc.
 
-  console.log('🔍 companies - Full URL:', req.url);
-  console.log('🔍 companies - Pathname:', url.pathname);
-  console.log('🔍 companies - PathParts:', pathParts);
-  console.log('🔍 companies - companyId:', companyId, 'subResource:', subResource);
-  console.log('🔍 companies - Method:', req.method);
-
   try {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;

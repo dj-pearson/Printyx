@@ -177,6 +177,9 @@ export default function CustomerDetailHubspot() {
 
     return {
       ...(data as any),
+      // IMPORTANT: Extract company_id for activities and other company-related operations
+      company_id: (data as any).company_id || companyData.id,
+
       // Company fields from nested companies object
       companyName: companyData.business_name,
       customerNumber: companyData.customer_number,
@@ -2150,13 +2153,13 @@ export default function CustomerDetailHubspot() {
                       </Button>
                     </div>
                   </div>
-                  <ActivityTimeline businessRecordId={customer?.id} />
+                  <ActivityTimeline businessRecordId={customer?.company_id} />
                 </div>
               </TabsContent>
 
               <TabsContent value="contacts" className="mt-6">
                 <ContactManager
-                  companyId={customer?.companyId || customer?.id || ''}
+                  companyId={customer?.company_id || ''}
                   companyName={customer?.companyName || 'Unknown Company'}
                 />
               </TabsContent>
@@ -2736,7 +2739,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.call}
         onClose={() => setDialogs((prev) => ({ ...prev, call: false }))}
-        businessRecordId={customer?.id}
+        businessRecordId={customer?.company_id}
         activityType="call"
         recordType="customer"
         recordName={customer.companyName}
@@ -2745,7 +2748,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.email}
         onClose={() => setDialogs((prev) => ({ ...prev, email: false }))}
-        businessRecordId={customer?.id}
+        businessRecordId={customer?.company_id}
         activityType="email"
         recordType="customer"
         recordName={customer.companyName}
@@ -2754,7 +2757,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.meeting}
         onClose={() => setDialogs((prev) => ({ ...prev, meeting: false }))}
-        businessRecordId={customer?.id}
+        businessRecordId={customer?.company_id}
         activityType="meeting"
         recordType="customer"
         recordName={customer.companyName}
@@ -2763,7 +2766,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.note}
         onClose={() => setDialogs((prev) => ({ ...prev, note: false }))}
-        businessRecordId={customer?.id}
+        businessRecordId={customer?.company_id}
         activityType="note"
         recordType="customer"
         recordName={customer.companyName}
@@ -2772,7 +2775,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.task}
         onClose={() => setDialogs((prev) => ({ ...prev, task: false }))}
-        businessRecordId={customer?.id}
+        businessRecordId={customer?.company_id}
         activityType="task"
         recordType="customer"
         recordName={customer.companyName}
