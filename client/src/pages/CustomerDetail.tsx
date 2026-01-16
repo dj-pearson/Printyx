@@ -175,6 +175,11 @@ export default function CustomerDetailHubspot() {
       ? (data as any).company_contacts[0]
       : (data as any).company_contacts || {};
 
+    console.log('🔍 CustomerDetail - Raw data:', data);
+    console.log('🔍 CustomerDetail - data.company_id:', (data as any).company_id);
+    console.log('🔍 CustomerDetail - companyData:', companyData);
+    console.log('🔍 CustomerDetail - companyData.id:', companyData.id);
+
     return {
       ...(data as any),
       // IMPORTANT: Extract company_id for activities and other company-related operations
@@ -209,6 +214,9 @@ export default function CustomerDetailHubspot() {
       primaryContactTitle: contactData.title,
     };
   }, [customerData]);
+
+  console.log('🔍 CustomerDetail - Final customer object:', customer);
+  console.log('🔍 CustomerDetail - Final company_id:', customer?.company_id);
 
   // Determine if this is a lead or customer based on the record type and stage
   const isLead =

@@ -45,6 +45,8 @@ interface ActivityTimelineProps {
 }
 
 export function ActivityTimeline({ businessRecordId, className }: ActivityTimelineProps) {
+  console.log('🔍 ActivityTimeline - businessRecordId:', businessRecordId);
+
   const {
     data: activities,
     isLoading,
@@ -52,6 +54,7 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
   } = useQuery<Activity[]>({
     queryKey: [`/api/companies/${businessRecordId}/activities`],
     queryFn: async () => {
+      console.log('🔍 ActivityTimeline - Fetching activities for company:', businessRecordId);
       const response = await fetch(`/api/companies/${businessRecordId}/activities`, {
         credentials: 'include',
       });
@@ -62,6 +65,7 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
 
       return response.json();
     },
+    enabled: !!businessRecordId, // Only run query if businessRecordId is defined
   });
 
   const getActivityIcon = (type: string) => {
