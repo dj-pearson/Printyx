@@ -21,7 +21,7 @@ import emailParserRoutes from './routes-email-parser';
 import mobileTechnicianRoutes from './routes-mobile-technician';
 import equipmentQRRoutes from './routes-equipment-qr';
 import businessRecordsRoutes from './routes-business-records';
-import importRoutes from './routes-import';
+// NOTE: importRoutes removed - now using registerCsvImportRoutes from './routes-csv-import'
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -13209,7 +13209,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
   // Enhanced CRM Routes (Business Records)
   app.use(businessRecordsRoutes);
-  app.use(importRoutes);
+  // NOTE: Import routes now handled by registerCsvImportRoutes() at line ~6928
 
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
