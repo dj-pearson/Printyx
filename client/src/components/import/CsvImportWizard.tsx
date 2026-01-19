@@ -76,7 +76,9 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { ColumnMappingInterface } from './ColumnMappingInterface';
-import { getApiUrl } from '@/lib/config';
+import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { getAccessToken } from '@/lib/supabase';
+import { config, getApiUrl } from '@/lib/config';
 
 // Types
 interface EntityType {
@@ -194,9 +196,7 @@ export function CsvImportWizard({
   const { data: entityTypes = [] } = useQuery<EntityType[]>({
     queryKey: ['/api/import/entity-types'],
     queryFn: async () => {
-      const response = await fetch(getApiUrl('/api/import/entity-types'));
-      if (!response.ok) throw new Error('Failed to fetch entity types');
-      const data = await response.json();
+      const data = await apiRequest('/api/import/entity-types');
       return Array.isArray(data) ? data : [];
     },
     enabled: open,
@@ -206,9 +206,7 @@ export function CsvImportWizard({
   const { data: templateData } = useQuery<{ columns: TemplateColumn[] }>({
     queryKey: ['/api/import/templates', entityType],
     queryFn: async () => {
-      const response = await fetch(getApiUrl(`/api/import/templates/${entityType}`));
-      if (!response.ok) throw new Error('Failed to fetch template');
-      return response.json();
+      return await apiRequest(`/api/import/templates/${entityType}`);
     },
     enabled: !!entityType,
   });
@@ -217,9 +215,7 @@ export function CsvImportWizard({
   const { data: importJob, refetch: refetchJob } = useQuery<ImportJob>({
     queryKey: ['/api/import/jobs', importJobId],
     queryFn: async () => {
-      const response = await fetch(getApiUrl(`/api/import/jobs/${importJobId}`));
-      if (!response.ok) throw new Error('Failed to fetch import job');
-      return response.json();
+      return await apiRequest(`/api/import/jobs/${importJobId}`);
     },
     enabled: !!importJobId,
     refetchInterval: (data) => {
@@ -232,9 +228,7 @@ export function CsvImportWizard({
   const { data: duplicatesData } = useQuery<{ duplicates: Duplicate[] }>({
     queryKey: ['/api/import/jobs', importJobId, 'duplicates'],
     queryFn: async () => {
-      const response = await fetch(getApiUrl(`/api/import/jobs/${importJobId}/duplicates`));
-      if (!response.ok) throw new Error('Failed to fetch duplicates');
-      return response.json();
+      return await apiRequest(`/api/import/jobs/${importJobId}/duplicates`);
     },
     enabled: !!importJobId && step === 'duplicates',
   });
@@ -243,9 +237,7 @@ export function CsvImportWizard({
   const { data: aiStatus } = useQuery<{ available: boolean }>({
     queryKey: ['/api/import/ai/status'],
     queryFn: async () => {
-      const response = await fetch(getApiUrl('/api/import/ai/status'));
-      if (!response.ok) throw new Error('Failed to check AI status');
-      return response.json();
+      return await apiRequest('/api/import/ai/status');
     },
     enabled: open,
   });
@@ -253,15 +245,7 @@ export function CsvImportWizard({
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch(getApiUrl('/api/import/upload'), {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
-      }
-      return response.json();
+      return await apiFormRequest('/api/import/upload', 'POST', formData);
     },
     onSuccess: (data) => {
       setImportJobId(data.jobId);
@@ -280,14 +264,7 @@ export function CsvImportWizard({
   // Validate mutation
   const validateMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(getApiUrl(`/api/import/jobs/${importJobId}/validate`), {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Validation failed');
-      }
-      return response.json();
+      return await apiRequest(`/api/import/jobs/${importJobId}/validate`, 'POST');
     },
     onSuccess: (data) => {
       refetchJob();
@@ -315,14 +292,7 @@ export function CsvImportWizard({
   // Execute import mutation
   const executeMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(getApiUrl(`/api/import/jobs/${importJobId}/execute`), {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Import failed');
-      }
-      return response.json();
+      return await apiRequest(`/api/import/jobs/${importJobId}/execute`, 'POST');
     },
     onSuccess: (data) => {
       refetchJob();
@@ -348,19 +318,9 @@ export function CsvImportWizard({
   // Resolve duplicates mutation
   const resolveAllDuplicatesMutation = useMutation({
     mutationFn: async (resolution: string) => {
-      const response = await fetch(
-        getApiUrl(`/api/import/jobs/${importJobId}/duplicates/resolve-all`),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resolution }),
-        },
-      );
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to resolve duplicates');
-      }
-      return response.json();
+      return await apiRequest(`/api/import/jobs/${importJobId}/duplicates/resolve-all`, 'POST', {
+        resolution,
+      });
     },
     onSuccess: () => {
       refetchJob();
@@ -442,10 +402,41 @@ export function CsvImportWizard({
   );
 
   // Download template
-  const handleDownloadTemplate = useCallback(() => {
+  const handleDownloadTemplate = useCallback(async () => {
     if (!entityType) return;
-    window.open(getApiUrl(`/api/import/templates/${entityType}/download`), '_blank');
-  }, [entityType]);
+    try {
+      // Get auth token
+      const accessToken = await getAccessToken();
+      const headers: HeadersInit = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      // Fetch CSV with auth
+      const response = await fetch(getApiUrl(`/api/import/templates/${entityType}/download`), {
+        headers,
+      });
+
+      if (!response.ok) throw new Error('Failed to download template');
+
+      const csvContent = await response.text();
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${entityType}-template.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: error instanceof Error ? error.message : 'Failed to download template',
+      });
+    }
+  }, [entityType, toast]);
 
   // Reset wizard
   const handleReset = useCallback(() => {
