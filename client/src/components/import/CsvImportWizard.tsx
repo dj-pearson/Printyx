@@ -10,8 +10,8 @@
  * - Import execution with progress tracking
  */
 
-import { useState, useCallback, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback, useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Upload,
   Download,
@@ -31,8 +31,8 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -40,27 +40,27 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -68,22 +68,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useToast } from '@/hooks/use-toast';
+import { ColumnMappingInterface } from './ColumnMappingInterface';
 
 // Types
 interface EntityType {
@@ -163,7 +155,14 @@ interface CsvImportWizardProps {
   onImportComplete?: (result: any) => void;
 }
 
-type WizardStep = "select" | "upload" | "mapping" | "validation" | "duplicates" | "import" | "complete";
+type WizardStep =
+  | 'select'
+  | 'upload'
+  | 'mapping'
+  | 'validation'
+  | 'duplicates'
+  | 'import'
+  | 'complete';
 
 export function CsvImportWizard({
   open,
@@ -171,15 +170,20 @@ export function CsvImportWizard({
   defaultEntityType,
   onImportComplete,
 }: CsvImportWizardProps) {
-  const [step, setStep] = useState<WizardStep>("select");
-  const [entityType, setEntityType] = useState(defaultEntityType || "");
+  const [step, setStep] = useState<WizardStep>('select');
+  const [entityType, setEntityType] = useState(defaultEntityType || '');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [useAiRefinement, setUseAiRefinement] = useState(false);
-  const [duplicateStrategy, setDuplicateStrategy] = useState<string>("prompt");
-  const [importJobId, setImportJobId] = useState<string | null>(null);
+  const [duplicateStrategy, setDuplicateStrategy] = useState<string>('prompt');
+  const [importJobId, setImportJobId] = useState<String | null>(null);
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
   const [expandedErrors, setExpandedErrors] = useState(false);
   const [selectedDuplicates, setSelectedDuplicates] = useState<Record<string, string>>({});
+
+  // CSV data for mapping
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<string[][]>([]);
+  const [finalMappings, setFinalMappings] = useState<Map<string, string>>(new Map());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -187,60 +191,60 @@ export function CsvImportWizard({
 
   // Fetch entity types
   const { data: entityTypes = [] } = useQuery<EntityType[]>({
-    queryKey: ["/api/import/entity-types"],
+    queryKey: ['/api/import/entity-types'],
     enabled: open,
   });
 
   // Fetch template columns for selected entity type
   const { data: templateData } = useQuery<{ columns: TemplateColumn[] }>({
-    queryKey: ["/api/import/templates", entityType],
+    queryKey: ['/api/import/templates', entityType],
     enabled: !!entityType,
   });
 
   // Fetch import job details
   const { data: importJob, refetch: refetchJob } = useQuery<ImportJob>({
-    queryKey: ["/api/import/jobs", importJobId],
+    queryKey: ['/api/import/jobs', importJobId],
     enabled: !!importJobId,
     refetchInterval: (data) => {
-      if (data?.status === "processing") return 1000;
+      if (data?.status === 'processing') return 1000;
       return false;
     },
   });
 
   // Fetch duplicates
   const { data: duplicatesData } = useQuery<{ duplicates: Duplicate[] }>({
-    queryKey: ["/api/import/jobs", importJobId, "duplicates"],
-    enabled: !!importJobId && step === "duplicates",
+    queryKey: ['/api/import/jobs', importJobId, 'duplicates'],
+    enabled: !!importJobId && step === 'duplicates',
   });
 
   // Check AI availability
   const { data: aiStatus } = useQuery<{ available: boolean }>({
-    queryKey: ["/api/import/ai/status"],
+    queryKey: ['/api/import/ai/status'],
     enabled: open,
   });
 
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/import/upload", {
-        method: "POST",
+      const response = await fetch('/api/import/upload', {
+        method: 'POST',
         body: formData,
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Upload failed");
+        throw new Error(error.message || 'Upload failed');
       }
       return response.json();
     },
     onSuccess: (data) => {
       setImportJobId(data.jobId);
       setColumnMappings(data.columnMappings || []);
-      setStep("mapping");
+      setStep('mapping');
     },
     onError: (error: Error) => {
       toast({
-        variant: "destructive",
-        title: "Upload Failed",
+        variant: 'destructive',
+        title: 'Upload Failed',
         description: error.message,
       });
     },
@@ -250,32 +254,32 @@ export function CsvImportWizard({
   const validateMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/import/jobs/${importJobId}/validate`, {
-        method: "POST",
+        method: 'POST',
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Validation failed");
+        throw new Error(error.message || 'Validation failed');
       }
       return response.json();
     },
     onSuccess: (data) => {
       refetchJob();
       if (data.needsDuplicateReview && data.duplicatesDetected > 0) {
-        setStep("duplicates");
+        setStep('duplicates');
       } else if (data.canProceed) {
-        setStep("import");
+        setStep('import');
       } else {
         toast({
-          variant: "destructive",
-          title: "Validation Failed",
-          description: "Too many errors to proceed. Please fix the data and try again.",
+          variant: 'destructive',
+          title: 'Validation Failed',
+          description: 'Too many errors to proceed. Please fix the data and try again.',
         });
       }
     },
     onError: (error: Error) => {
       toast({
-        variant: "destructive",
-        title: "Validation Failed",
+        variant: 'destructive',
+        title: 'Validation Failed',
         description: error.message,
       });
     },
@@ -285,30 +289,30 @@ export function CsvImportWizard({
   const executeMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(`/api/import/jobs/${importJobId}/execute`, {
-        method: "POST",
+        method: 'POST',
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Import failed");
+        throw new Error(error.message || 'Import failed');
       }
       return response.json();
     },
     onSuccess: (data) => {
       refetchJob();
-      setStep("complete");
-      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      setStep('complete');
+      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
       if (onImportComplete) {
         onImportComplete(data);
       }
     },
     onError: (error: Error) => {
       toast({
-        variant: "destructive",
-        title: "Import Failed",
+        variant: 'destructive',
+        title: 'Import Failed',
         description: error.message,
       });
     },
@@ -318,65 +322,105 @@ export function CsvImportWizard({
   const resolveAllDuplicatesMutation = useMutation({
     mutationFn: async (resolution: string) => {
       const response = await fetch(`/api/import/jobs/${importJobId}/duplicates/resolve-all`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resolution }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to resolve duplicates");
+        throw new Error(error.message || 'Failed to resolve duplicates');
       }
       return response.json();
     },
     onSuccess: () => {
       refetchJob();
-      setStep("import");
+      setStep('import');
     },
   });
 
   // Handle file selection
-  const handleFileSelect = useCallback((file: File) => {
-    if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
-      toast({
-        variant: "destructive",
-        title: "Invalid File",
-        description: "Please select a CSV file",
-      });
-      return;
-    }
-    setSelectedFile(file);
-  }, [toast]);
+  const handleFileSelect = useCallback(
+    (file: File) => {
+      if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid File',
+          description: 'Please select a CSV file',
+        });
+        return;
+      }
+      setSelectedFile(file);
+
+      // Parse CSV to extract headers and sample rows
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter((line) => line.trim());
+        if (lines.length > 0) {
+          // First line is headers
+          const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
+          setCsvHeaders(headers);
+
+          // Get first 5 rows as sample data
+          const sampleRows = lines
+            .slice(1, 6)
+            .map((line) => line.split(',').map((cell) => cell.trim().replace(/^"|"$/g, '')));
+          setCsvRows(sampleRows);
+        }
+      };
+      reader.readAsText(file);
+    },
+    [toast],
+  );
 
   // Handle file drop
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) handleFileSelect(file);
+    },
+    [handleFileSelect],
+  );
 
   // Handle upload
   const handleUpload = useCallback(() => {
     if (!selectedFile || !entityType) return;
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("entityType", entityType);
-    formData.append("useAiRefinement", String(useAiRefinement));
-    formData.append("duplicateStrategy", duplicateStrategy);
+    // Move to mapping step instead of uploading immediately
+    setStep('mapping');
+  }, [selectedFile, entityType]);
 
-    uploadMutation.mutate(formData);
-  }, [selectedFile, entityType, useAiRefinement, duplicateStrategy, uploadMutation]);
+  // Handle mapping complete - transform data and upload
+  const handleMappingComplete = useCallback(
+    (mappings: Map<string, string>) => {
+      setFinalMappings(mappings);
+
+      if (!selectedFile || !entityType) return;
+
+      // Create transformed data with mapped fields
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('entityType', entityType);
+      formData.append('useAiRefinement', String(useAiRefinement));
+      formData.append('duplicateStrategy', duplicateStrategy);
+      formData.append('columnMappings', JSON.stringify(Array.from(mappings.entries())));
+
+      uploadMutation.mutate(formData);
+    },
+    [selectedFile, entityType, useAiRefinement, duplicateStrategy, uploadMutation],
+  );
 
   // Download template
   const handleDownloadTemplate = useCallback(() => {
     if (!entityType) return;
-    window.open(`/api/import/templates/${entityType}/download`, "_blank");
+    window.open(`/api/import/templates/${entityType}/download`, '_blank');
   }, [entityType]);
 
   // Reset wizard
   const handleReset = useCallback(() => {
-    setStep("select");
-    setEntityType(defaultEntityType || "");
+    setStep('select');
+    setEntityType(defaultEntityType || '');
     setSelectedFile(null);
     setImportJobId(null);
     setColumnMappings([]);
@@ -386,7 +430,7 @@ export function CsvImportWizard({
   // Render step content
   const renderStepContent = () => {
     switch (step) {
-      case "select":
+      case 'select':
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -465,13 +509,15 @@ export function CsvImportWizard({
           </div>
         );
 
-      case "upload":
+      case 'upload':
         return (
           <div className="space-y-6">
             {/* File drop zone */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                selectedFile ? "border-green-500 bg-green-50" : "border-muted-foreground/25 hover:border-primary"
+                selectedFile
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-muted-foreground/25 hover:border-primary'
               }`}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
@@ -545,125 +591,24 @@ export function CsvImportWizard({
                       </p>
                     </div>
                   </div>
-                  <Switch
-                    checked={useAiRefinement}
-                    onCheckedChange={setUseAiRefinement}
-                  />
+                  <Switch checked={useAiRefinement} onCheckedChange={setUseAiRefinement} />
                 </div>
               )}
             </div>
           </div>
         );
 
-      case "mapping":
+      case 'mapping':
         return (
-          <div className="space-y-4">
-            {importJob?.aiMappingConfidence && (
-              <Alert>
-                <Sparkles className="w-4 h-4" />
-                <AlertTitle>AI Mapping Complete</AlertTitle>
-                <AlertDescription>
-                  {importJob.aiMappingConfidence}% confidence in column mappings
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="text-sm text-muted-foreground">
-              Review and confirm column mappings. Click on a mapping to change it.
-            </div>
-
-            <ScrollArea className="h-[400px] rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>CSV Column</TableHead>
-                    <TableHead>Maps To</TableHead>
-                    <TableHead>Confidence</TableHead>
-                    <TableHead className="w-20">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {columnMappings.map((mapping, index) => (
-                    <TableRow key={mapping.sourceColumn}>
-                      <TableCell className="font-medium">
-                        {mapping.sourceColumn}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={mapping.targetField}
-                          onValueChange={(value) => {
-                            const newMappings = [...columnMappings];
-                            newMappings[index] = {
-                              ...mapping,
-                              targetField: value,
-                              userConfirmed: true,
-                            };
-                            setColumnMappings(newMappings);
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">-- Skip this column --</SelectItem>
-                            {templateData?.columns.map((col) => (
-                              <SelectItem key={col.dbField} value={col.dbField}>
-                                {col.name}
-                                {col.required && " *"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            mapping.confidence >= 90
-                              ? "default"
-                              : mapping.confidence >= 70
-                              ? "secondary"
-                              : "destructive"
-                          }
-                        >
-                          {mapping.confidence}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {mapping.userConfirmed ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        ) : mapping.aiSuggested ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Sparkles className="w-4 h-4 text-purple-500" />
-                              </TooltipTrigger>
-                              <TooltipContent>AI suggested</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <Info className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-
-            {importJob?.unmappedColumns && importJob.unmappedColumns.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="w-4 h-4" />
-                <AlertTitle>Unmapped Columns</AlertTitle>
-                <AlertDescription>
-                  The following columns could not be mapped:{" "}
-                  {importJob.unmappedColumns.join(", ")}
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
+          <ColumnMappingInterface
+            csvHeaders={csvHeaders}
+            csvSampleData={csvRows}
+            onMappingComplete={handleMappingComplete}
+            entityType={entityType}
+          />
         );
 
-      case "validation":
+      case 'validation':
         return (
           <div className="space-y-4">
             {validateMutation.isPending ? (
@@ -756,7 +701,7 @@ export function CsvImportWizard({
           </div>
         );
 
-      case "duplicates":
+      case 'duplicates':
         return (
           <div className="space-y-4">
             <Alert>
@@ -771,7 +716,7 @@ export function CsvImportWizard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => resolveAllDuplicatesMutation.mutate("skip")}
+                onClick={() => resolveAllDuplicatesMutation.mutate('skip')}
                 disabled={resolveAllDuplicatesMutation.isPending}
               >
                 <SkipForward className="w-4 h-4 mr-1" />
@@ -780,7 +725,7 @@ export function CsvImportWizard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => resolveAllDuplicatesMutation.mutate("merge")}
+                onClick={() => resolveAllDuplicatesMutation.mutate('merge')}
                 disabled={resolveAllDuplicatesMutation.isPending}
               >
                 <Merge className="w-4 h-4 mr-1" />
@@ -789,7 +734,7 @@ export function CsvImportWizard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => resolveAllDuplicatesMutation.mutate("create_new")}
+                onClick={() => resolveAllDuplicatesMutation.mutate('create_new')}
                 disabled={resolveAllDuplicatesMutation.isPending}
               >
                 <Plus className="w-4 h-4 mr-1" />
@@ -803,9 +748,7 @@ export function CsvImportWizard({
                   <Card key={dup.id}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm">
-                          Row {dup.rowNumber}
-                        </CardTitle>
+                        <CardTitle className="text-sm">Row {dup.rowNumber}</CardTitle>
                         <Badge variant="outline">{dup.matchScore}% match</Badge>
                       </div>
                     </CardHeader>
@@ -813,24 +756,28 @@ export function CsvImportWizard({
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="font-medium mb-1">Import Data</p>
-                          {Object.entries(dup.rowData).slice(0, 3).map(([key, val]) => (
-                            <p key={key} className="text-muted-foreground truncate">
-                              {key}: {String(val)}
-                            </p>
-                          ))}
+                          {Object.entries(dup.rowData)
+                            .slice(0, 3)
+                            .map(([key, val]) => (
+                              <p key={key} className="text-muted-foreground truncate">
+                                {key}: {String(val)}
+                              </p>
+                            ))}
                         </div>
                         <div>
                           <p className="font-medium mb-1">Existing Record</p>
-                          {Object.entries(dup.existingRecordData || {}).slice(0, 3).map(([key, val]) => (
-                            <p key={key} className="text-muted-foreground truncate">
-                              {key}: {String(val)}
-                            </p>
-                          ))}
+                          {Object.entries(dup.existingRecordData || {})
+                            .slice(0, 3)
+                            .map(([key, val]) => (
+                              <p key={key} className="text-muted-foreground truncate">
+                                {key}: {String(val)}
+                              </p>
+                            ))}
                         </div>
                       </div>
 
                       <RadioGroup
-                        value={selectedDuplicates[dup.id] || "skip"}
+                        value={selectedDuplicates[dup.id] || 'skip'}
                         onValueChange={(value) =>
                           setSelectedDuplicates({ ...selectedDuplicates, [dup.id]: value })
                         }
@@ -857,18 +804,16 @@ export function CsvImportWizard({
           </div>
         );
 
-      case "import":
+      case 'import':
         return (
           <div className="space-y-4">
-            {executeMutation.isPending || importJob?.status === "processing" ? (
+            {executeMutation.isPending || importJob?.status === 'processing' ? (
               <div className="flex flex-col items-center justify-center py-12 space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 <p className="text-muted-foreground">Importing records...</p>
                 {importJob && (
                   <Progress
-                    value={
-                      ((importJob.importedRows || 0) / (importJob.totalRows || 1)) * 100
-                    }
+                    value={((importJob.importedRows || 0) / (importJob.totalRows || 1)) * 100}
                     className="w-64"
                   />
                 )}
@@ -880,37 +825,29 @@ export function CsvImportWizard({
                 <p className="text-muted-foreground">
                   {importJob?.validRows} records will be imported
                 </p>
-                <Button onClick={() => executeMutation.mutate()}>
-                  Start Import
-                </Button>
+                <Button onClick={() => executeMutation.mutate()}>Start Import</Button>
               </div>
             )}
           </div>
         );
 
-      case "complete":
+      case 'complete':
         return (
           <div className="text-center py-8 space-y-6">
             <CheckCircle2 className="w-16 h-16 mx-auto text-green-500" />
             <div className="space-y-2">
               <h3 className="text-xl font-semibold">Import Complete!</h3>
-              <p className="text-muted-foreground">
-                Your data has been successfully imported.
-              </p>
+              <p className="text-muted-foreground">Your data has been successfully imported.</p>
             </div>
 
             {importJob && (
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-green-500">
-                    {importJob.importedRows}
-                  </p>
+                  <p className="text-2xl font-bold text-green-500">{importJob.importedRows}</p>
                   <p className="text-sm text-muted-foreground">Imported</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-500">
-                    {importJob.mergedRows}
-                  </p>
+                  <p className="text-2xl font-bold text-blue-500">{importJob.mergedRows}</p>
                   <p className="text-sm text-muted-foreground">Merged</p>
                 </div>
                 <div className="text-center">
@@ -927,9 +864,7 @@ export function CsvImportWizard({
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Import More
               </Button>
-              <Button onClick={() => onOpenChange(false)}>
-                Done
-              </Button>
+              <Button onClick={() => onOpenChange(false)}>Done</Button>
             </div>
           </div>
         );
@@ -942,17 +877,17 @@ export function CsvImportWizard({
   // Navigation buttons
   const canProceed = () => {
     switch (step) {
-      case "select":
+      case 'select':
         return !!entityType;
-      case "upload":
+      case 'upload':
         return !!selectedFile;
-      case "mapping":
+      case 'mapping':
         return columnMappings.length > 0;
-      case "validation":
-        return importJob?.status !== "failed";
-      case "duplicates":
+      case 'validation':
+        return importJob?.status !== 'failed';
+      case 'duplicates':
         return true;
-      case "import":
+      case 'import':
         return true;
       default:
         return false;
@@ -961,18 +896,18 @@ export function CsvImportWizard({
 
   const handleNext = () => {
     switch (step) {
-      case "select":
-        setStep("upload");
+      case 'select':
+        setStep('upload');
         break;
-      case "upload":
+      case 'upload':
         handleUpload();
         break;
-      case "mapping":
-        setStep("validation");
+      case 'mapping':
+        setStep('validation');
         validateMutation.mutate();
         break;
-      case "duplicates":
-        setStep("import");
+      case 'duplicates':
+        setStep('import');
         break;
       default:
         break;
@@ -981,23 +916,23 @@ export function CsvImportWizard({
 
   const handleBack = () => {
     switch (step) {
-      case "upload":
-        setStep("select");
+      case 'upload':
+        setStep('select');
         break;
-      case "mapping":
-        setStep("upload");
+      case 'mapping':
+        setStep('upload');
         break;
-      case "validation":
-        setStep("mapping");
+      case 'validation':
+        setStep('mapping');
         break;
-      case "duplicates":
-        setStep("validation");
+      case 'duplicates':
+        setStep('validation');
         break;
-      case "import":
+      case 'import':
         if (importJob?.duplicatesDetected) {
-          setStep("duplicates");
+          setStep('duplicates');
         } else {
-          setStep("validation");
+          setStep('validation');
         }
         break;
       default:
@@ -1006,13 +941,13 @@ export function CsvImportWizard({
   };
 
   const stepTitles: Record<WizardStep, string> = {
-    select: "Select Data Type",
-    upload: "Upload CSV File",
-    mapping: "Review Column Mapping",
-    validation: "Validate Data",
-    duplicates: "Resolve Duplicates",
-    import: "Import Data",
-    complete: "Import Complete",
+    select: 'Select Data Type',
+    upload: 'Upload CSV File',
+    mapping: 'Review Column Mapping',
+    validation: 'Validate Data',
+    duplicates: 'Resolve Duplicates',
+    import: 'Import Data',
+    complete: 'Import Complete',
   };
 
   return (
@@ -1029,38 +964,65 @@ export function CsvImportWizard({
         </DialogHeader>
 
         {/* Progress indicator */}
-        {step !== "complete" && (
+        {step !== 'complete' && (
           <div className="flex items-center gap-2 py-2">
-            {(["select", "upload", "mapping", "validation", "duplicates", "import"] as WizardStep[]).map(
-              (s, i) => (
-                <div key={s} className="flex items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                      step === s
-                        ? "bg-primary text-primary-foreground"
-                        : (["select", "upload", "mapping", "validation", "duplicates", "import"] as WizardStep[]).indexOf(step) > i
-                        ? "bg-green-500 text-white"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {(["select", "upload", "mapping", "validation", "duplicates", "import"] as WizardStep[]).indexOf(step) > i ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      i + 1
-                    )}
-                  </div>
-                  {i < 5 && (
-                    <div
-                      className={`w-8 h-0.5 ${
-                        (["select", "upload", "mapping", "validation", "duplicates", "import"] as WizardStep[]).indexOf(step) > i
-                          ? "bg-green-500"
-                          : "bg-muted"
-                      }`}
-                    />
+            {(
+              ['select', 'upload', 'mapping', 'validation', 'duplicates', 'import'] as WizardStep[]
+            ).map((s, i) => (
+              <div key={s} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
+                    step === s
+                      ? 'bg-primary text-primary-foreground'
+                      : (
+                            [
+                              'select',
+                              'upload',
+                              'mapping',
+                              'validation',
+                              'duplicates',
+                              'import',
+                            ] as WizardStep[]
+                          ).indexOf(step) > i
+                        ? 'bg-green-500 text-white'
+                        : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {(
+                    [
+                      'select',
+                      'upload',
+                      'mapping',
+                      'validation',
+                      'duplicates',
+                      'import',
+                    ] as WizardStep[]
+                  ).indexOf(step) > i ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    i + 1
                   )}
                 </div>
-              )
-            )}
+                {i < 5 && (
+                  <div
+                    className={`w-8 h-0.5 ${
+                      (
+                        [
+                          'select',
+                          'upload',
+                          'mapping',
+                          'validation',
+                          'duplicates',
+                          'import',
+                        ] as WizardStep[]
+                      ).indexOf(step) > i
+                        ? 'bg-green-500'
+                        : 'bg-muted'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
           </div>
         )}
 
@@ -1070,14 +1032,16 @@ export function CsvImportWizard({
         <div className="flex-1 overflow-y-auto py-4">{renderStepContent()}</div>
 
         {/* Navigation */}
-        {step !== "complete" && (
+        {step !== 'complete' && (
           <>
             <Separator />
             <div className="flex justify-between pt-4">
               <Button
                 variant="outline"
                 onClick={handleBack}
-                disabled={step === "select" || uploadMutation.isPending || validateMutation.isPending}
+                disabled={
+                  step === 'select' || uploadMutation.isPending || validateMutation.isPending
+                }
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back
@@ -1094,8 +1058,8 @@ export function CsvImportWizard({
                 {uploadMutation.isPending || validateMutation.isPending ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : null}
-                {step === "import" ? "Start Import" : "Next"}
-                {step !== "import" && <ArrowRight className="w-4 h-4 ml-2" />}
+                {step === 'import' ? 'Start Import' : 'Next'}
+                {step !== 'import' && <ArrowRight className="w-4 h-4 ml-2" />}
               </Button>
             </div>
           </>
