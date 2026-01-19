@@ -192,18 +192,34 @@ export function CsvImportWizard({
   // Fetch entity types
   const { data: entityTypes = [] } = useQuery<EntityType[]>({
     queryKey: ['/api/import/entity-types'],
+    queryFn: async () => {
+      const response = await fetch('/api/import/entity-types');
+      if (!response.ok) throw new Error('Failed to fetch entity types');
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    },
     enabled: open,
   });
 
   // Fetch template columns for selected entity type
   const { data: templateData } = useQuery<{ columns: TemplateColumn[] }>({
     queryKey: ['/api/import/templates', entityType],
+    queryFn: async () => {
+      const response = await fetch(`/api/import/templates/${entityType}`);
+      if (!response.ok) throw new Error('Failed to fetch template');
+      return response.json();
+    },
     enabled: !!entityType,
   });
 
   // Fetch import job details
   const { data: importJob, refetch: refetchJob } = useQuery<ImportJob>({
     queryKey: ['/api/import/jobs', importJobId],
+    queryFn: async () => {
+      const response = await fetch(`/api/import/jobs/${importJobId}`);
+      if (!response.ok) throw new Error('Failed to fetch import job');
+      return response.json();
+    },
     enabled: !!importJobId,
     refetchInterval: (data) => {
       if (data?.status === 'processing') return 1000;
@@ -214,12 +230,22 @@ export function CsvImportWizard({
   // Fetch duplicates
   const { data: duplicatesData } = useQuery<{ duplicates: Duplicate[] }>({
     queryKey: ['/api/import/jobs', importJobId, 'duplicates'],
+    queryFn: async () => {
+      const response = await fetch(`/api/import/jobs/${importJobId}/duplicates`);
+      if (!response.ok) throw new Error('Failed to fetch duplicates');
+      return response.json();
+    },
     enabled: !!importJobId && step === 'duplicates',
   });
 
   // Check AI availability
   const { data: aiStatus } = useQuery<{ available: boolean }>({
     queryKey: ['/api/import/ai/status'],
+    queryFn: async () => {
+      const response = await fetch('/api/import/ai/status');
+      if (!response.ok) throw new Error('Failed to check AI status');
+      return response.json();
+    },
     enabled: open,
   });
 
