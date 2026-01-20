@@ -292,41 +292,33 @@ export default async function handler(req: Request) {
               }
             }
 
-            // Insert into business_records table
+            // Insert into companies table
             if (job.entityType === 'business_records') {
-              const { error: insertError } = await admin.from('business_records').insert({
+              const { error: insertError } = await admin.from('companies').insert({
                 tenant_id: job.tenantId,
-                created_by: job.userId,
-                owner_id: job.userId,
-                company_name: mappedData.companyName || mappedData.businessName || 'Unknown',
-                primary_contact_name:
-                  mappedData.primaryContactName ||
-                  `${mappedData.firstName || ''} ${mappedData.lastName || ''}`.trim() ||
-                  null,
-                primary_contact_email: mappedData.primaryContactEmail || mappedData.email || null,
-                primary_contact_phone: mappedData.primaryContactPhone || mappedData.phone || null,
+                business_record_type:
+                  mappedData.recordType || mappedData.businessRecordType || 'Customer',
+                business_name: mappedData.companyName || mappedData.businessName || 'Unknown',
+                phone: mappedData.primaryContactPhone || mappedData.phone || null,
+                fax: mappedData.fax || null,
                 website: mappedData.website || null,
                 industry: mappedData.industry || null,
-                address_line1:
+                description: mappedData.notes || mappedData.businessDescription || null,
+                billing_address:
                   mappedData.address ||
                   mappedData.mailingStreet ||
                   mappedData.billingStreet ||
                   null,
-                city: mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
-                state: mappedData.state || mappedData.mailingState || null,
-                postal_code:
+                billing_city:
+                  mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
+                billing_state: mappedData.state || mappedData.mailingState || null,
+                billing_zip:
                   mappedData.postalCode ||
                   mappedData.zipCode ||
                   mappedData.mailingZipPostalCode ||
                   null,
-                country: mappedData.country || mappedData.mailingCountry || null,
-                record_type:
-                  mappedData.recordType?.toLowerCase() ||
-                  mappedData.businessRecordType?.toLowerCase() ||
-                  'customer',
-                status: 'active',
-                source: mappedData.leadSource || 'import',
-                notes: mappedData.notes || mappedData.businessDescription || null,
+                created_by: job.userId,
+                business_owner: job.userId,
               });
 
               if (insertError) {
