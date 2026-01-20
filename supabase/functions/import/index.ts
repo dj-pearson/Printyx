@@ -338,7 +338,59 @@ export default async function handler(req: Request) {
               }
 
               if (existingCompany) {
-                // Update existing company - fill in missing fields only
+                // First, ensure customer/lead relationship exists
+                const recordType =
+                  existingCompany.business_record_type || mappedData.recordType || 'Customer';
+                const isLead = recordType.toLowerCase() === 'lead';
+                let relationshipCreated = false;
+
+                if (isLead) {
+                  // Check for existing lead relationship
+                  const { data: existingLead } = await admin
+                    .from('leads')
+                    .select('id')
+                    .eq('tenant_id', job.tenantId)
+                    .eq('company_id', existingCompany.id)
+                    .maybeSingle();
+
+                  if (!existingLead) {
+                    const { error: leadInsertError } = await admin.from('leads').insert({
+                      tenant_id: job.tenantId,
+                      company_id: existingCompany.id,
+                      status: mappedData.status || 'new',
+                      priority: mappedData.priority || 'medium',
+                      source: mappedData.leadSource || mappedData.source || 'import',
+                      created_by: job.userId,
+                    });
+
+                    if (!leadInsertError) {
+                      relationshipCreated = true;
+                    }
+                  }
+                } else {
+                  // Check for existing customer relationship
+                  const { data: existingCustomer } = await admin
+                    .from('customers')
+                    .select('id')
+                    .eq('tenant_id', job.tenantId)
+                    .eq('company_id', existingCompany.id)
+                    .maybeSingle();
+
+                  if (!existingCustomer) {
+                    const { error: customerInsertError } = await admin.from('customers').insert({
+                      tenant_id: job.tenantId,
+                      company_id: existingCompany.id,
+                      status: 'active',
+                      created_by: job.userId,
+                    });
+
+                    if (!customerInsertError) {
+                      relationshipCreated = true;
+                    }
+                  }
+                }
+
+                // Now check for company field updates
                 const updateData: any = {};
                 let hasUpdates = false;
 
@@ -411,6 +463,7 @@ export default async function handler(req: Request) {
                   }
                 }
 
+                // Update company if needed
                 if (hasUpdates) {
                   const { error: updateError } = await admin
                     .from('companies')
@@ -423,52 +476,12 @@ export default async function handler(req: Request) {
                   } else {
                     mergedRows++;
                   }
+                } else if (relationshipCreated) {
+                  // No company updates but relationship was created
+                  mergedRows++;
                 } else {
-                  // Duplicate with no new info
+                  // Duplicate with no new info or relationship
                   skippedRows++;
-                }
-
-                // Ensure customer/lead relationship exists (for both updated and skipped)
-                const recordType =
-                  existingCompany.business_record_type || mappedData.recordType || 'Customer';
-                const isLead = recordType.toLowerCase() === 'lead';
-
-                if (isLead) {
-                  // Check for existing lead relationship
-                  const { data: existingLead } = await admin
-                    .from('leads')
-                    .select('id')
-                    .eq('tenant_id', job.tenantId)
-                    .eq('company_id', existingCompany.id)
-                    .single();
-
-                  if (!existingLead) {
-                    await admin.from('leads').insert({
-                      tenant_id: job.tenantId,
-                      company_id: existingCompany.id,
-                      status: mappedData.status || 'new',
-                      priority: mappedData.priority || 'medium',
-                      source: mappedData.leadSource || mappedData.source || 'import',
-                      created_by: job.userId,
-                    });
-                  }
-                } else {
-                  // Check for existing customer relationship
-                  const { data: existingCustomer } = await admin
-                    .from('customers')
-                    .select('id')
-                    .eq('tenant_id', job.tenantId)
-                    .eq('company_id', existingCompany.id)
-                    .single();
-
-                  if (!existingCustomer) {
-                    await admin.from('customers').insert({
-                      tenant_id: job.tenantId,
-                      company_id: existingCompany.id,
-                      status: 'active',
-                      created_by: job.userId,
-                    });
-                  }
                 }
               } else {
                 // Create new company
