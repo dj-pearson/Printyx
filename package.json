@@ -54,7 +54,8 @@
     "stripe:update-db": "tsx server/update-stripe-ids.ts",
     "migrate:analyze": "tsx scripts/migrate-business-records-to-companies.ts analyze",
     "migrate:preview": "tsx scripts/migrate-business-records-to-companies.ts preview",
-    "migrate:execute": "tsx scripts/migrate-business-records-to-companies.ts execute"
+    "migrate:execute": "tsx scripts/migrate-business-records-to-companies.ts execute",
+    "fix:contacts": "tsx scripts/fix-missing-contacts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
