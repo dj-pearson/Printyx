@@ -277,6 +277,7 @@ export default async function handler(req: Request) {
 
       let importedRows = 0;
       let skippedRows = 0;
+      let mergedRows = 0;
 
       try {
         // Process each row
@@ -292,40 +293,175 @@ export default async function handler(req: Request) {
               }
             }
 
-            // Insert into companies table
+            // Insert into companies table with duplicate detection
             if (job.entityType === 'business_records') {
-              const { error: insertError } = await admin.from('companies').insert({
-                tenant_id: job.tenantId,
-                business_record_type:
-                  mappedData.recordType || mappedData.businessRecordType || 'Customer',
-                business_name: mappedData.companyName || mappedData.businessName || 'Unknown',
-                phone: mappedData.primaryContactPhone || mappedData.phone || null,
-                fax: mappedData.fax || null,
-                website: mappedData.website || null,
-                industry: mappedData.industry || null,
-                description: mappedData.notes || mappedData.businessDescription || null,
-                billing_address:
-                  mappedData.address ||
-                  mappedData.mailingStreet ||
-                  mappedData.billingStreet ||
-                  null,
-                billing_city:
-                  mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
-                billing_state: mappedData.state || mappedData.mailingState || null,
-                billing_zip:
-                  mappedData.postalCode ||
-                  mappedData.zipCode ||
-                  mappedData.mailingZipPostalCode ||
-                  null,
-                created_by: job.userId,
-                business_owner: job.userId,
-              });
+              const businessName = mappedData.companyName || mappedData.businessName || 'Unknown';
+              const contactEmail = mappedData.primaryContactEmail || mappedData.email || null;
+              const phone = mappedData.primaryContactPhone || mappedData.phone || null;
 
-              if (insertError) {
-                console.error('Insert error:', insertError);
+              // Check for existing company by name
+              const { data: existingCompanies, error: searchError } = await admin
+                .from('companies')
+                .select('*')
+                .eq('tenant_id', job.tenantId)
+                .ilike('business_name', businessName)
+                .limit(5);
+
+              if (searchError) {
+                console.error('Search error:', searchError);
                 skippedRows++;
+                continue;
+              }
+
+              let existingCompany = null;
+
+              // If we found companies with matching name, verify it's the same company
+              if (existingCompanies && existingCompanies.length > 0) {
+                // Exact name match (case-insensitive)
+                existingCompany = existingCompanies.find(
+                  (c) => c.business_name.toLowerCase().trim() === businessName.toLowerCase().trim(),
+                );
+
+                // If multiple exact matches, try to match by phone or email
+                if (existingCompany && existingCompanies.length > 1) {
+                  if (phone) {
+                    const phoneMatch = existingCompanies.find(
+                      (c) =>
+                        c.business_name.toLowerCase().trim() ===
+                          businessName.toLowerCase().trim() &&
+                        c.phone &&
+                        c.phone.replace(/\D/g, '') === phone.replace(/\D/g, ''),
+                    );
+                    if (phoneMatch) existingCompany = phoneMatch;
+                  }
+                }
+              }
+
+              if (existingCompany) {
+                // Update existing company - fill in missing fields only
+                const updateData: any = {};
+                let hasUpdates = false;
+
+                if (!existingCompany.phone && phone) {
+                  updateData.phone = phone;
+                  hasUpdates = true;
+                }
+
+                if (!existingCompany.fax && mappedData.fax) {
+                  updateData.fax = mappedData.fax;
+                  hasUpdates = true;
+                }
+
+                if (!existingCompany.website && mappedData.website) {
+                  updateData.website = mappedData.website;
+                  hasUpdates = true;
+                }
+
+                if (!existingCompany.industry && mappedData.industry) {
+                  updateData.industry = mappedData.industry;
+                  hasUpdates = true;
+                }
+
+                if (!existingCompany.billing_address) {
+                  const address =
+                    mappedData.address ||
+                    mappedData.mailingStreet ||
+                    mappedData.billingStreet ||
+                    null;
+                  if (address) {
+                    updateData.billing_address = address;
+                    hasUpdates = true;
+                  }
+                }
+
+                if (!existingCompany.billing_city) {
+                  const city =
+                    mappedData.city || mappedData.mailingCity || mappedData.billingCity || null;
+                  if (city) {
+                    updateData.billing_city = city;
+                    hasUpdates = true;
+                  }
+                }
+
+                if (!existingCompany.billing_state) {
+                  const state = mappedData.state || mappedData.mailingState || null;
+                  if (state) {
+                    updateData.billing_state = state;
+                    hasUpdates = true;
+                  }
+                }
+
+                if (!existingCompany.billing_zip) {
+                  const zip =
+                    mappedData.postalCode ||
+                    mappedData.zipCode ||
+                    mappedData.mailingZipPostalCode ||
+                    null;
+                  if (zip) {
+                    updateData.billing_zip = zip;
+                    hasUpdates = true;
+                  }
+                }
+
+                if (!existingCompany.description) {
+                  const desc = mappedData.notes || mappedData.businessDescription || null;
+                  if (desc) {
+                    updateData.description = desc;
+                    hasUpdates = true;
+                  }
+                }
+
+                if (hasUpdates) {
+                  const { error: updateError } = await admin
+                    .from('companies')
+                    .update(updateData)
+                    .eq('id', existingCompany.id);
+
+                  if (updateError) {
+                    console.error('Update error:', updateError);
+                    skippedRows++;
+                  } else {
+                    mergedRows++;
+                  }
+                } else {
+                  // Duplicate with no new info
+                  skippedRows++;
+                }
               } else {
-                importedRows++;
+                // Create new company
+                const { error: insertError } = await admin.from('companies').insert({
+                  tenant_id: job.tenantId,
+                  business_record_type:
+                    mappedData.recordType || mappedData.businessRecordType || 'Customer',
+                  business_name: businessName,
+                  phone: phone,
+                  fax: mappedData.fax || null,
+                  website: mappedData.website || null,
+                  industry: mappedData.industry || null,
+                  description: mappedData.notes || mappedData.businessDescription || null,
+                  billing_address:
+                    mappedData.address ||
+                    mappedData.mailingStreet ||
+                    mappedData.billingStreet ||
+                    null,
+                  billing_city:
+                    mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
+                  billing_state: mappedData.state || mappedData.mailingState || null,
+                  billing_zip:
+                    mappedData.postalCode ||
+                    mappedData.zipCode ||
+                    mappedData.mailingZipPostalCode ||
+                    null,
+                  created_by: job.userId,
+                  business_owner: job.userId,
+                });
+
+                if (insertError) {
+                  console.error('Insert error:', insertError);
+                  skippedRows++;
+                } else {
+                  importedRows++;
+                }
               }
             }
           } catch (rowError) {
@@ -337,6 +473,7 @@ export default async function handler(req: Request) {
         job.status = 'completed';
         job.importedRows = importedRows;
         job.skippedRows = skippedRows;
+        job.mergedRows = mergedRows;
         importJobs.set(jobId, job);
 
         return createCorsResponse(
@@ -344,7 +481,7 @@ export default async function handler(req: Request) {
             message: 'Import completed',
             importedRows,
             skippedRows,
-            mergedRows: 0,
+            mergedRows,
           },
           200,
           req,
