@@ -343,6 +343,7 @@ export default async function handler(req: Request) {
                   existingCompany.business_record_type || mappedData.recordType || 'Customer';
                 const isLead = recordType.toLowerCase() === 'lead';
                 let relationshipCreated = false;
+                let contactCreated = false;
 
                 if (isLead) {
                   // Check for existing lead relationship
@@ -386,27 +387,33 @@ export default async function handler(req: Request) {
 
                     if (!customerInsertError) {
                       relationshipCreated = true;
+                    }
+                  }
 
-                      // Ensure at least one company contact exists (required for customers page)
-                      const { data: existingContacts } = await admin
-                        .from('company_contacts')
-                        .select('id')
-                        .eq('company_id', existingCompany.id)
-                        .limit(1);
+                  // ALWAYS check for missing contact (whether relationship exists or not)
+                  const { data: existingContacts } = await admin
+                    .from('company_contacts')
+                    .select('id')
+                    .eq('company_id', existingCompany.id)
+                    .limit(1);
 
-                      if (!existingContacts || existingContacts.length === 0) {
-                        // Create a default primary contact
-                        await admin.from('company_contacts').insert({
-                          company_id: existingCompany.id,
-                          tenant_id: job.tenantId,
-                          first_name: mappedData.primaryContactFirstName || 'Primary',
-                          last_name: mappedData.primaryContactLastName || 'Contact',
-                          email: contactEmail || null,
-                          phone: phone || null,
-                          is_primary_contact: true,
-                          created_by: job.userId,
-                        });
-                      }
+                  if (!existingContacts || existingContacts.length === 0) {
+                    // Create a default primary contact
+                    const { error: contactInsertError } = await admin
+                      .from('company_contacts')
+                      .insert({
+                        company_id: existingCompany.id,
+                        tenant_id: job.tenantId,
+                        first_name: mappedData.primaryContactFirstName || 'Primary',
+                        last_name: mappedData.primaryContactLastName || 'Contact',
+                        email: contactEmail || null,
+                        phone: phone || null,
+                        is_primary_contact: true,
+                        created_by: job.userId,
+                      });
+
+                    if (!contactInsertError) {
+                      contactCreated = true;
                     }
                   }
                 }
@@ -497,11 +504,11 @@ export default async function handler(req: Request) {
                   } else {
                     mergedRows++;
                   }
-                } else if (relationshipCreated) {
-                  // No company updates but relationship was created
+                } else if (relationshipCreated || contactCreated) {
+                  // No company updates but relationship or contact was created
                   mergedRows++;
                 } else {
-                  // Duplicate with no new info or relationship
+                  // Duplicate with no new info, relationship, or contact
                   skippedRows++;
                 }
               } else {
