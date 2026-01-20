@@ -294,16 +294,6 @@ export default async function handler(req: Request) {
 
             // Insert into business_records table
             if (job.entityType === 'business_records') {
-              // Generate unique identifiers
-              const timestamp = Date.now();
-              const randomNum = Math.floor(Math.random() * 100000000);
-              const companyDisplayId = `${randomNum}`;
-              const companyNameSlug = (mappedData.companyName || 'company')
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '');
-              const urlSlug = `${companyNameSlug}-${companyDisplayId}`;
-
               const { error: insertError } = await admin.from('business_records').insert({
                 tenant_id: job.tenantId,
                 created_by: job.userId,
@@ -337,8 +327,6 @@ export default async function handler(req: Request) {
                 status: 'active',
                 source: mappedData.leadSource || 'import',
                 notes: mappedData.notes || mappedData.businessDescription || null,
-                company_display_id: companyDisplayId,
-                url_slug: urlSlug,
               });
 
               if (insertError) {
