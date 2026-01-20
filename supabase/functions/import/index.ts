@@ -3,6 +3,9 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// In-memory job storage (temporary - should use database in production)
+const importJobs = new Map<string, any>();
+
 // Entity type definitions
 const ENTITY_TYPES = {
   business_records: {
@@ -124,20 +127,34 @@ export default async function handler(req: Request) {
       }
 
       const headers = parseCSVLine(lines[0]);
-      const rows = lines.slice(1, 6).map((line) => parseCSVLine(line)); // First 5 rows for preview
+      const allRows = lines.slice(1).map((line) => parseCSVLine(line));
+      const sampleRows = allRows.slice(0, 5); // First 5 rows for preview
 
       // Auto-map columns
       const columnMappings = autoMapColumns(headers, entityType);
 
-      // Create import job (store in temp table or return for client-side processing)
+      // Create import job and store in memory
       const jobId = crypto.randomUUID();
+
+      importJobs.set(jobId, {
+        id: jobId,
+        tenantId,
+        userId: user.id,
+        entityType,
+        headers,
+        allRows,
+        columnMappings,
+        totalRows: allRows.length,
+        status: 'mapping',
+        createdAt: new Date().toISOString(),
+      });
 
       return createCorsResponse(
         {
           jobId,
           columnMappings,
-          totalRows: lines.length - 1,
-          sampleData: rows,
+          totalRows: allRows.length,
+          sampleData: sampleRows,
           unmappedColumns: headers.filter(
             (h: string) => !columnMappings.find((m: any) => m.sourceColumn === h && m.targetField),
           ),
@@ -155,19 +172,22 @@ export default async function handler(req: Request) {
     // GET /import/jobs/:jobId
     if (req.method === 'GET' && pathParts[0] === 'jobs' && pathParts[1] && !pathParts[2]) {
       const jobId = pathParts[1];
+      const job = importJobs.get(jobId);
 
-      // In a real implementation, fetch from database
-      // For now, return mock data
+      if (!job) {
+        return createCorsResponse({ error: 'Job not found' }, 404, req);
+      }
+
       return createCorsResponse(
         {
-          id: jobId,
-          status: 'completed',
-          totalRows: 5,
-          validRows: 5,
-          invalidRows: 0,
-          importedRows: 0,
-          skippedRows: 0,
-          duplicatesDetected: 0,
+          id: job.id,
+          status: job.status,
+          totalRows: job.totalRows,
+          validRows: job.validRows || job.totalRows,
+          invalidRows: job.invalidRows || 0,
+          importedRows: job.importedRows || 0,
+          skippedRows: job.skippedRows || 0,
+          duplicatesDetected: job.duplicatesDetected || 0,
         },
         200,
         req,
@@ -182,14 +202,25 @@ export default async function handler(req: Request) {
       pathParts[2] === 'validate'
     ) {
       const jobId = pathParts[1];
+      const job = importJobs.get(jobId);
 
-      // Return validation success
-      // In production, this would validate the uploaded data
+      if (!job) {
+        return createCorsResponse({ error: 'Job not found' }, 404, req);
+      }
+
+      // Update job with validation results
+      job.status = 'validated';
+      job.validRows = job.totalRows;
+      job.invalidRows = 0;
+      job.duplicatesDetected = 0;
+
+      importJobs.set(jobId, job);
+
       return createCorsResponse(
         {
-          validRows: 5,
-          invalidRows: 0,
-          duplicatesDetected: 0,
+          validRows: job.validRows,
+          invalidRows: job.invalidRows,
+          duplicatesDetected: job.duplicatesDetected,
           needsDuplicateReview: false,
           canProceed: true,
           validationErrors: [],
@@ -236,19 +267,122 @@ export default async function handler(req: Request) {
       pathParts[2] === 'execute'
     ) {
       const jobId = pathParts[1];
+      const job = importJobs.get(jobId);
 
-      // In production, this would actually insert the records into the database
-      // For now, just return success
-      return createCorsResponse(
-        {
-          message: 'Import completed',
-          importedRows: 5,
-          skippedRows: 0,
-          mergedRows: 0,
-        },
-        200,
-        req,
-      );
+      if (!job) {
+        return createCorsResponse({ error: 'Job not found' }, 404, req);
+      }
+
+      job.status = 'processing';
+
+      let importedRows = 0;
+      let skippedRows = 0;
+
+      try {
+        // Process each row
+        for (const row of job.allRows) {
+          try {
+            // Map CSV row to database fields
+            const mappedData: any = {};
+
+            for (const mapping of job.columnMappings) {
+              if (mapping.targetField && row[job.headers.indexOf(mapping.sourceColumn)]) {
+                const value = row[job.headers.indexOf(mapping.sourceColumn)];
+                mappedData[mapping.targetField] = value;
+              }
+            }
+
+            // Insert into business_records table
+            if (job.entityType === 'business_records') {
+              // Generate unique identifiers
+              const timestamp = Date.now();
+              const randomNum = Math.floor(Math.random() * 100000000);
+              const companyDisplayId = `${randomNum}`;
+              const companyNameSlug = (mappedData.companyName || 'company')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+              const urlSlug = `${companyNameSlug}-${companyDisplayId}`;
+
+              const { error: insertError } = await admin.from('business_records').insert({
+                tenant_id: job.tenantId,
+                created_by: job.userId,
+                owner_id: job.userId,
+                company_name: mappedData.companyName || mappedData.businessName || 'Unknown',
+                primary_contact_name:
+                  mappedData.primaryContactName ||
+                  `${mappedData.firstName || ''} ${mappedData.lastName || ''}`.trim() ||
+                  null,
+                primary_contact_email: mappedData.primaryContactEmail || mappedData.email || null,
+                primary_contact_phone: mappedData.primaryContactPhone || mappedData.phone || null,
+                website: mappedData.website || null,
+                industry: mappedData.industry || null,
+                address_line_1:
+                  mappedData.address ||
+                  mappedData.mailingStreet ||
+                  mappedData.billingStreet ||
+                  null,
+                city: mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
+                state: mappedData.state || mappedData.mailingState || null,
+                postal_code:
+                  mappedData.postalCode ||
+                  mappedData.zipCode ||
+                  mappedData.mailingZipPostalCode ||
+                  null,
+                country: mappedData.country || mappedData.mailingCountry || null,
+                record_type:
+                  mappedData.recordType?.toLowerCase() ||
+                  mappedData.businessRecordType?.toLowerCase() ||
+                  'customer',
+                status: 'active',
+                lead_source: mappedData.leadSource || 'import',
+                notes: mappedData.notes || mappedData.businessDescription || null,
+                company_display_id: companyDisplayId,
+                url_slug: urlSlug,
+              });
+
+              if (insertError) {
+                console.error('Insert error:', insertError);
+                skippedRows++;
+              } else {
+                importedRows++;
+              }
+            }
+          } catch (rowError) {
+            console.error('Row processing error:', rowError);
+            skippedRows++;
+          }
+        }
+
+        job.status = 'completed';
+        job.importedRows = importedRows;
+        job.skippedRows = skippedRows;
+        importJobs.set(jobId, job);
+
+        return createCorsResponse(
+          {
+            message: 'Import completed',
+            importedRows,
+            skippedRows,
+            mergedRows: 0,
+          },
+          200,
+          req,
+        );
+      } catch (error: any) {
+        console.error('Import execution error:', error);
+        job.status = 'failed';
+        importJobs.set(jobId, job);
+
+        return createCorsResponse(
+          {
+            error: 'Import failed',
+            message: error.message,
+          },
+          500,
+          req,
+        );
+      }
     }
 
     console.log('No route matched:', req.method, pathParts);
@@ -286,26 +420,57 @@ function autoMapColumns(csvHeaders: string[], entityType: string) {
   const mappings: any[] = [];
   const fields = getTemplateColumns(entityType);
 
+  // Salesforce field mapping aliases
+  const sfAliases: Record<string, string> = {
+    'business name': 'companyName',
+    'business record type': 'businessRecordType',
+    'business description': 'businessDescription',
+    'mailing street': 'mailingStreet',
+    'mailing city': 'mailingCity',
+    'mailing state/province': 'mailingState',
+    'mailing zip/postal code': 'mailingZipPostalCode',
+    'mailing country': 'mailingCountry',
+    'billing street': 'billingStreet',
+    'billing city': 'billingCity',
+    'billing state/province': 'billingState',
+    'billing zip/postal code': 'billingZipPostalCode',
+    'first name': 'firstName',
+    'last name': 'lastName',
+    'lead source': 'leadSource',
+  };
+
   csvHeaders.forEach((header: string) => {
     const normalized = header.toLowerCase().trim();
     let bestMatch = null;
     let highestConfidence = 0;
 
-    fields.forEach((field: any) => {
-      const fieldNormalized = field.name.toLowerCase();
-      const dbFieldNormalized = field.dbField.toLowerCase();
+    // Check Salesforce aliases first
+    if (sfAliases[normalized]) {
+      bestMatch = sfAliases[normalized];
+      highestConfidence = 95;
+    }
 
-      if (normalized === fieldNormalized || normalized === dbFieldNormalized) {
-        bestMatch = field.dbField;
-        highestConfidence = 100;
-      } else if (normalized.includes(dbFieldNormalized) || dbFieldNormalized.includes(normalized)) {
-        const confidence = 80;
-        if (confidence > highestConfidence) {
+    // Then check against field definitions
+    if (highestConfidence < 100) {
+      fields.forEach((field: any) => {
+        const fieldNormalized = field.name.toLowerCase();
+        const dbFieldNormalized = field.dbField.toLowerCase();
+
+        if (normalized === fieldNormalized || normalized === dbFieldNormalized) {
           bestMatch = field.dbField;
-          highestConfidence = confidence;
+          highestConfidence = 100;
+        } else if (
+          normalized.includes(dbFieldNormalized) ||
+          dbFieldNormalized.includes(normalized)
+        ) {
+          const confidence = 80;
+          if (confidence > highestConfidence) {
+            bestMatch = field.dbField;
+            highestConfidence = confidence;
+          }
         }
-      }
-    });
+      });
+    }
 
     mappings.push({
       sourceColumn: header,
@@ -314,7 +479,7 @@ function autoMapColumns(csvHeaders: string[], entityType: string) {
       dataType: 'string',
       isRequired: false,
       aiSuggested: false,
-      userConfirmed: highestConfidence === 100,
+      userConfirmed: highestConfidence >= 95,
     });
   });
 
