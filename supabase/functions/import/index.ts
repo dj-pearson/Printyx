@@ -427,39 +427,116 @@ export default async function handler(req: Request) {
                   // Duplicate with no new info
                   skippedRows++;
                 }
+
+                // Ensure customer/lead relationship exists (for both updated and skipped)
+                const recordType =
+                  existingCompany.business_record_type || mappedData.recordType || 'Customer';
+                const isLead = recordType.toLowerCase() === 'lead';
+
+                if (isLead) {
+                  // Check for existing lead relationship
+                  const { data: existingLead } = await admin
+                    .from('leads')
+                    .select('id')
+                    .eq('tenant_id', job.tenantId)
+                    .eq('company_id', existingCompany.id)
+                    .single();
+
+                  if (!existingLead) {
+                    await admin.from('leads').insert({
+                      tenant_id: job.tenantId,
+                      company_id: existingCompany.id,
+                      status: mappedData.status || 'new',
+                      priority: mappedData.priority || 'medium',
+                      source: mappedData.leadSource || mappedData.source || 'import',
+                      created_by: job.userId,
+                    });
+                  }
+                } else {
+                  // Check for existing customer relationship
+                  const { data: existingCustomer } = await admin
+                    .from('customers')
+                    .select('id')
+                    .eq('tenant_id', job.tenantId)
+                    .eq('company_id', existingCompany.id)
+                    .single();
+
+                  if (!existingCustomer) {
+                    await admin.from('customers').insert({
+                      tenant_id: job.tenantId,
+                      company_id: existingCompany.id,
+                      status: 'active',
+                      created_by: job.userId,
+                    });
+                  }
+                }
               } else {
                 // Create new company
-                const { error: insertError } = await admin.from('companies').insert({
-                  tenant_id: job.tenantId,
-                  business_record_type:
-                    mappedData.recordType || mappedData.businessRecordType || 'Customer',
-                  business_name: businessName,
-                  phone: phone,
-                  fax: mappedData.fax || null,
-                  website: mappedData.website || null,
-                  industry: mappedData.industry || null,
-                  description: mappedData.notes || mappedData.businessDescription || null,
-                  billing_address:
-                    mappedData.address ||
-                    mappedData.mailingStreet ||
-                    mappedData.billingStreet ||
-                    null,
-                  billing_city:
-                    mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
-                  billing_state: mappedData.state || mappedData.mailingState || null,
-                  billing_zip:
-                    mappedData.postalCode ||
-                    mappedData.zipCode ||
-                    mappedData.mailingZipPostalCode ||
-                    null,
-                  created_by: job.userId,
-                  business_owner: job.userId,
-                });
+                const { data: newCompany, error: insertError } = await admin
+                  .from('companies')
+                  .insert({
+                    tenant_id: job.tenantId,
+                    business_record_type:
+                      mappedData.recordType || mappedData.businessRecordType || 'Customer',
+                    business_name: businessName,
+                    phone: phone,
+                    fax: mappedData.fax || null,
+                    website: mappedData.website || null,
+                    industry: mappedData.industry || null,
+                    description: mappedData.notes || mappedData.businessDescription || null,
+                    billing_address:
+                      mappedData.address ||
+                      mappedData.mailingStreet ||
+                      mappedData.billingStreet ||
+                      null,
+                    billing_city:
+                      mappedData.city || mappedData.mailingCity || mappedData.billingCity || null,
+                    billing_state: mappedData.state || mappedData.mailingState || null,
+                    billing_zip:
+                      mappedData.postalCode ||
+                      mappedData.zipCode ||
+                      mappedData.mailingZipPostalCode ||
+                      null,
+                    created_by: job.userId,
+                    business_owner: job.userId,
+                  })
+                  .select()
+                  .single();
 
-                if (insertError) {
+                if (insertError || !newCompany) {
                   console.error('Insert error:', insertError);
                   skippedRows++;
                 } else {
+                  // Create customer or lead relationship record based on record type
+                  const recordType = newCompany.business_record_type || 'Customer';
+                  const isLead = recordType.toLowerCase() === 'lead';
+
+                  if (isLead) {
+                    const { error: leadError } = await admin.from('leads').insert({
+                      tenant_id: job.tenantId,
+                      company_id: newCompany.id,
+                      status: mappedData.status || 'new',
+                      priority: mappedData.priority || 'medium',
+                      source: mappedData.leadSource || mappedData.source || 'import',
+                      created_by: job.userId,
+                    });
+
+                    if (leadError) {
+                      console.error('Lead relationship error:', leadError);
+                    }
+                  } else {
+                    const { error: customerError } = await admin.from('customers').insert({
+                      tenant_id: job.tenantId,
+                      company_id: newCompany.id,
+                      status: 'active',
+                      created_by: job.userId,
+                    });
+
+                    if (customerError) {
+                      console.error('Customer relationship error:', customerError);
+                    }
+                  }
+
                   importedRows++;
                 }
               }
