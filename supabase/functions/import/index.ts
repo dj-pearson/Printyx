@@ -386,6 +386,27 @@ export default async function handler(req: Request) {
 
                     if (!customerInsertError) {
                       relationshipCreated = true;
+
+                      // Ensure at least one company contact exists (required for customers page)
+                      const { data: existingContacts } = await admin
+                        .from('company_contacts')
+                        .select('id')
+                        .eq('company_id', existingCompany.id)
+                        .limit(1);
+
+                      if (!existingContacts || existingContacts.length === 0) {
+                        // Create a default primary contact
+                        await admin.from('company_contacts').insert({
+                          company_id: existingCompany.id,
+                          tenant_id: job.tenantId,
+                          first_name: mappedData.primaryContactFirstName || 'Primary',
+                          last_name: mappedData.primaryContactLastName || 'Contact',
+                          email: contactEmail || null,
+                          phone: phone || null,
+                          is_primary_contact: true,
+                          created_by: job.userId,
+                        });
+                      }
                     }
                   }
                 }
@@ -547,6 +568,18 @@ export default async function handler(req: Request) {
 
                     if (customerError) {
                       console.error('Customer relationship error:', customerError);
+                    } else {
+                      // Create a default primary contact (required for customers page)
+                      await admin.from('company_contacts').insert({
+                        company_id: newCompany.id,
+                        tenant_id: job.tenantId,
+                        first_name: mappedData.primaryContactFirstName || 'Primary',
+                        last_name: mappedData.primaryContactLastName || 'Contact',
+                        email: mappedData.primaryContactEmail || mappedData.email || null,
+                        phone: phone || null,
+                        is_primary_contact: true,
+                        created_by: job.userId,
+                      });
                     }
                   }
 
