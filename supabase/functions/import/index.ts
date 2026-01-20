@@ -317,7 +317,7 @@ export default async function handler(req: Request) {
                 primary_contact_phone: mappedData.primaryContactPhone || mappedData.phone || null,
                 website: mappedData.website || null,
                 industry: mappedData.industry || null,
-                address_line_1:
+                address_line1:
                   mappedData.address ||
                   mappedData.mailingStreet ||
                   mappedData.billingStreet ||
@@ -335,7 +335,7 @@ export default async function handler(req: Request) {
                   mappedData.businessRecordType?.toLowerCase() ||
                   'customer',
                 status: 'active',
-                lead_source: mappedData.leadSource || 'import',
+                source: mappedData.leadSource || 'import',
                 notes: mappedData.notes || mappedData.businessDescription || null,
                 company_display_id: companyDisplayId,
                 url_slug: urlSlug,
