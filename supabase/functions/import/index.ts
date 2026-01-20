@@ -58,9 +58,14 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
+    // Remove 'import' prefix if present (it's the function name)
+    if (pathParts[0] === 'import') {
+      pathParts.shift();
+    }
+
     // Route handling
     // GET /import/entity-types
-    if (req.method === 'GET' && pathParts[1] === 'entity-types') {
+    if (req.method === 'GET' && pathParts[0] === 'entity-types') {
       const entityTypes = Object.entries(ENTITY_TYPES).map(([type, def]) => ({
         type,
         label: def.label,
@@ -72,8 +77,8 @@ export default async function handler(req: Request) {
     }
 
     // GET /import/templates/:entityType
-    if (req.method === 'GET' && pathParts[1] === 'templates' && pathParts[2]) {
-      const entityType = pathParts[2];
+    if (req.method === 'GET' && pathParts[0] === 'templates' && pathParts[1]) {
+      const entityType = pathParts[1];
 
       // Return template columns based on entity type
       const columns = getTemplateColumns(entityType);
@@ -82,8 +87,8 @@ export default async function handler(req: Request) {
     }
 
     // GET /import/templates/:entityType/download
-    if (req.method === 'GET' && pathParts[1] === 'templates' && pathParts[3] === 'download') {
-      const entityType = pathParts[2];
+    if (req.method === 'GET' && pathParts[0] === 'templates' && pathParts[2] === 'download') {
+      const entityType = pathParts[1];
       const columns = getTemplateColumns(entityType);
 
       // Generate CSV template
@@ -101,7 +106,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /import/upload
-    if (req.method === 'POST' && pathParts[1] === 'upload') {
+    if (req.method === 'POST' && pathParts[0] === 'upload') {
       const formData = await req.formData();
       const file = formData.get('file') as File;
       const entityType = formData.get('entityType') as string;
@@ -143,13 +148,13 @@ export default async function handler(req: Request) {
     }
 
     // GET /import/ai/status
-    if (req.method === 'GET' && pathParts[1] === 'ai' && pathParts[2] === 'status') {
+    if (req.method === 'GET' && pathParts[0] === 'ai' && pathParts[1] === 'status') {
       return createCorsResponse({ available: false }, 200, req);
     }
 
     // GET /import/jobs/:jobId
-    if (req.method === 'GET' && pathParts[1] === 'jobs' && pathParts[2]) {
-      const jobId = pathParts[2];
+    if (req.method === 'GET' && pathParts[0] === 'jobs' && pathParts[1]) {
+      const jobId = pathParts[1];
 
       // In a real implementation, fetch from database
       // For now, return mock data
