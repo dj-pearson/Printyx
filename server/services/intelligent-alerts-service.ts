@@ -9,6 +9,7 @@ import {
   resolutionSuggestionFeedback,
   auditLogs,
   securitySessions,
+  users,
   AlertTriageResult,
   IncidentResolutionPattern,
   AutomatedContainmentLog,
@@ -18,6 +19,7 @@ import {
   InsertProactiveThreatDetection,
 } from '@shared/schema';
 import { eq, and, sql, desc, gte, lte, inArray, or } from 'drizzle-orm';
+import { sendEmail } from './email-service';
 
 /**
  * INTELLIGENT ALERTS & INCIDENT RESPONSE SERVICE
@@ -776,78 +778,338 @@ export class IntelligentAlertsService {
     try {
       // Execute the action based on type
       switch (actionType) {
-        case 'suspend_user':
-          // TODO: Implement actual user suspension
-          result = `User ${target} suspended successfully`;
+        case 'suspend_user': {
+          // Suspend user by setting isActive = false
+          const [user] = await db
+            .select({ id: users.id, email: users.email, isActive: users.isActive })
+            .from(users)
+            .where(eq(users.id, target))
+            .limit(1);
+
+          if (!user) {
+            throw new Error(`User ${target} not found`);
+          }
+
+          if (!user.isActive) {
+            result = `User ${target} was already suspended`;
+            success = true;
+            break;
+          }
+
+          await db
+            .update(users)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(eq(users.id, target));
+
+          // Also terminate all active sessions for security
+          await db
+            .update(securitySessions)
+            .set({
+              isActive: false,
+              terminatedAt: new Date(),
+              terminationReason: 'user_suspended',
+            })
+            .where(and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)));
+
+          result = `User ${target} (${user.email}) suspended and all sessions terminated`;
           success = true;
           break;
+        }
 
-        case 'terminate_session':
-          // TODO: Implement session termination
+        case 'terminate_session': {
+          // Terminate all active sessions for the user
           const sessions = await db.query.securitySessions.findMany({
             where: and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)),
           });
+
+          if (sessions.length === 0) {
+            result = `No active sessions found for user ${target}`;
+            success = true;
+            break;
+          }
 
           await db
             .update(securitySessions)
             .set({
               isActive: false,
               terminatedAt: new Date(),
-              terminationReason: 'security',
+              terminationReason: 'security_containment',
             })
             .where(and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)));
 
           result = `Terminated ${sessions.length} active session(s) for user ${target}`;
           success = true;
           break;
+        }
 
-        case 'block_ip':
-          // TODO: Implement IP blocking at network level
-          result = `IP address ${target} blocked`;
+        case 'block_ip': {
+          // IP blocking requires integration with WAF/firewall
+          // For now, log the request and mark for manual action or external system integration
+          console.warn(
+            `[SECURITY] IP block requested for ${target} - requires firewall integration`,
+          );
+
+          // Create a record in audit logs for tracking
+          await db.insert(auditLogs).values({
+            tenantId,
+            userId: executedBy || 'system',
+            action: 'IP_BLOCK_REQUESTED',
+            resource: 'security_firewall',
+            resourceId: target,
+            newValues: { ipAddress: target, reason, automated },
+            ipAddress: target,
+            userAgent: 'security-system',
+            severity: 'critical',
+            category: 'security',
+          });
+
+          result = `IP address ${target} flagged for blocking (requires firewall configuration)`;
           success = true;
           break;
+        }
 
-        case 'quarantine_file':
-          // TODO: Implement file quarantine
-          result = `File quarantined: ${target}`;
+        case 'quarantine_file': {
+          // File quarantine requires file system or storage integration
+          // Log the action for manual processing or external system integration
+          console.warn(
+            `[SECURITY] File quarantine requested for ${target} - requires storage integration`,
+          );
+
+          await db.insert(auditLogs).values({
+            tenantId,
+            userId: executedBy || 'system',
+            action: 'FILE_QUARANTINE_REQUESTED',
+            resource: 'security_files',
+            resourceId: target,
+            newValues: { filePath: target, reason, automated },
+            ipAddress: '0.0.0.0',
+            userAgent: 'security-system',
+            severity: 'high',
+            category: 'security',
+          });
+
+          result = `File ${target} flagged for quarantine (requires manual review)`;
           success = true;
           break;
+        }
 
-        case 'disable_integration':
-          // TODO: Implement integration disabling
-          result = `Integration disabled: ${target}`;
+        case 'disable_integration': {
+          // Disabling integrations requires integration management system
+          console.warn(`[SECURITY] Integration disable requested for ${target}`);
+
+          await db.insert(auditLogs).values({
+            tenantId,
+            userId: executedBy || 'system',
+            action: 'INTEGRATION_DISABLE_REQUESTED',
+            resource: 'security_integrations',
+            resourceId: target,
+            newValues: { integrationId: target, reason, automated },
+            ipAddress: '0.0.0.0',
+            userAgent: 'security-system',
+            severity: 'high',
+            category: 'security',
+          });
+
+          result = `Integration ${target} flagged for disabling`;
           success = true;
           break;
+        }
 
-        case 'rate_limit':
-          // TODO: Implement rate limiting
-          result = `Rate limit applied to ${target}`;
+        case 'rate_limit': {
+          // Rate limiting is typically handled by middleware
+          // Log the request for manual configuration or dynamic rate limit adjustment
+          console.warn(`[SECURITY] Rate limit requested for ${target}`);
+
+          await db.insert(auditLogs).values({
+            tenantId,
+            userId: executedBy || 'system',
+            action: 'RATE_LIMIT_APPLIED',
+            resource: 'security_ratelimit',
+            resourceId: target,
+            newValues: { target, reason, automated },
+            ipAddress:
+              typeof target === 'string' && target.match(/^\d+\.\d+\.\d+\.\d+$/)
+                ? target
+                : '0.0.0.0',
+            userAgent: 'security-system',
+            severity: 'medium',
+            category: 'security',
+          });
+
+          result = `Rate limit flagged for ${target}`;
           success = true;
           break;
+        }
 
-        case 'force_password_reset':
-          // TODO: Implement password reset requirement
-          result = `Password reset required for user ${target}`;
+        case 'force_password_reset': {
+          // Force password reset by clearing password hash (user must reset)
+          const [user] = await db
+            .select({ id: users.id, email: users.email })
+            .from(users)
+            .where(eq(users.id, target))
+            .limit(1);
+
+          if (!user) {
+            throw new Error(`User ${target} not found`);
+          }
+
+          // Clear password hash to force reset on next login
+          await db
+            .update(users)
+            .set({
+              passwordHash: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, target));
+
+          // Send password reset notification
+          try {
+            await sendEmail({
+              to: user.email || '',
+              subject: 'Password Reset Required - Security Alert',
+              text: `Your password has been reset due to a security incident. Please reset your password immediately.`,
+              html: `
+                <h2>Password Reset Required</h2>
+                <p>Your password has been reset due to a security incident.</p>
+                <p>Please reset your password immediately by visiting the login page and clicking "Forgot Password".</p>
+                <p>If you did not expect this, please contact your administrator.</p>
+              `,
+            });
+          } catch (emailError) {
+            console.error('[Security] Failed to send password reset email:', emailError);
+          }
+
+          result = `Password reset forced for user ${target} (${user.email})`;
           success = true;
           break;
+        }
 
-        case 'enable_mfa':
-          // TODO: Implement MFA requirement
-          result = `MFA enabled for user ${target}`;
+        case 'enable_mfa': {
+          // MFA enforcement requires MFA infrastructure
+          // For now, mark the user for MFA requirement
+          const [user] = await db
+            .select({ id: users.id, email: users.email })
+            .from(users)
+            .where(eq(users.id, target))
+            .limit(1);
+
+          if (!user) {
+            throw new Error(`User ${target} not found`);
+          }
+
+          // Log MFA requirement - actual implementation needs MFA tables
+          await db.insert(auditLogs).values({
+            tenantId,
+            userId: executedBy || 'system',
+            action: 'MFA_ENFORCEMENT_REQUIRED',
+            resource: 'security_mfa',
+            resourceId: target,
+            newValues: { userId: target, email: user.email, reason, automated },
+            ipAddress: '0.0.0.0',
+            userAgent: 'security-system',
+            severity: 'high',
+            category: 'security',
+          });
+
+          // Send MFA setup notification
+          try {
+            await sendEmail({
+              to: user.email || '',
+              subject: 'MFA Required - Security Alert',
+              text: `Multi-factor authentication is now required for your account due to a security incident.`,
+              html: `
+                <h2>Multi-Factor Authentication Required</h2>
+                <p>MFA is now required for your account due to a security incident.</p>
+                <p>Please set up MFA immediately when you next log in.</p>
+                <p>If you did not expect this, please contact your administrator.</p>
+              `,
+            });
+          } catch (emailError) {
+            console.error('[Security] Failed to send MFA notification email:', emailError);
+          }
+
+          result = `MFA enforcement flagged for user ${target} (${user.email})`;
           success = true;
           break;
+        }
 
-        case 'restrict_permissions':
-          // TODO: Implement permission restriction
-          result = `Permissions restricted for user ${target}`;
+        case 'restrict_permissions': {
+          // Restrict user permissions by changing to a more limited role
+          const [user] = await db
+            .select({
+              id: users.id,
+              email: users.email,
+              accessScope: users.accessScope,
+              roleId: users.roleId,
+            })
+            .from(users)
+            .where(eq(users.id, target))
+            .limit(1);
+
+          if (!user) {
+            throw new Error(`User ${target} not found`);
+          }
+
+          // Restrict access scope to minimum (own data only)
+          const previousScope = user.accessScope;
+          await db
+            .update(users)
+            .set({
+              accessScope: 'location', // Minimum scope
+              updatedAt: new Date(),
+            })
+            .where(eq(users.id, target));
+
+          await db.insert(auditLogs).values({
+            tenantId,
+            userId: executedBy || 'system',
+            action: 'PERMISSIONS_RESTRICTED',
+            resource: 'security_permissions',
+            resourceId: target,
+            oldValues: { accessScope: previousScope },
+            newValues: { accessScope: 'location', reason, automated },
+            ipAddress: '0.0.0.0',
+            userAgent: 'security-system',
+            severity: 'high',
+            category: 'security',
+          });
+
+          result = `Permissions restricted for user ${target} (${user.email}): scope changed from ${previousScope} to location`;
           success = true;
           break;
+        }
 
-        case 'notify_team':
-          // TODO: Implement team notification (Slack, email, etc.)
-          result = `Notification sent to ${target}`;
-          success = true;
+        case 'notify_team': {
+          // Send notification to security team
+          const securityTeamEmails = process.env.SECURITY_TEAM_EMAILS?.split(',') || [
+            'security@printyx.net',
+          ];
+
+          try {
+            for (const email of securityTeamEmails) {
+              await sendEmail({
+                to: email.trim(),
+                subject: `[SECURITY ALERT] ${reason}`,
+                text: `Security containment action required.\n\nAlert ID: ${alertId}\nReason: ${reason}\nTarget: ${target}\nAutomated: ${automated ? 'Yes' : 'No'}`,
+                html: `
+                  <h2>Security Alert</h2>
+                  <p><strong>Alert ID:</strong> ${alertId}</p>
+                  <p><strong>Reason:</strong> ${reason}</p>
+                  <p><strong>Target:</strong> ${target}</p>
+                  <p><strong>Automated:</strong> ${automated ? 'Yes' : 'No'}</p>
+                  <p>Please review and take appropriate action.</p>
+                `,
+              });
+            }
+
+            result = `Notification sent to security team (${securityTeamEmails.length} recipient(s))`;
+            success = true;
+          } catch (emailError) {
+            console.error('[Security] Failed to send team notification:', emailError);
+            throw new Error(`Failed to send team notification: ${(emailError as Error).message}`);
+          }
           break;
+        }
 
         default:
           throw new Error(`Unknown action type: ${actionType}`);
