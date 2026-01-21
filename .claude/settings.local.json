@@ -13,7 +13,9 @@
       "Bash(set NODE_OPTIONS=--max-old-space-size=8192)",
       "Bash(npx tsc:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsx:*)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=10 root@209.145.59.219 \"docker exec supabase-db-cgkko0cscowggwk8sss44wkw psql -U postgres -t -c \"\"SELECT COUNT\\(*\\) FROM information_schema.tables WHERE table_schema = ''public'' AND table_type = ''BASE TABLE'';\"\"\")"
     ],
     "deny": [],
     "ask": []
