@@ -2,28 +2,9 @@
 // This is the main entry point for all Edge Functions
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { getCorsHeaders } from './_shared/cors.ts';
 
 const port = parseInt(Deno.env.get('PORT') || '3001');
-
-// CORS Configuration
-const ALLOWED_ORIGINS = [
-  'https://printyx.net',
-  'https://www.printyx.net',
-  'http://localhost:5173',
-  'http://localhost:5000',
-];
-
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers':
-      'authorization, x-client-info, apikey, content-type, x-tenant-id',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Max-Age': '86400',
-  };
-}
 
 // Load all function handlers
 const functions: Record<string, any> = {};
