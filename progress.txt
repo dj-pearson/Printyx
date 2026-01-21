@@ -249,3 +249,58 @@ import { requireAuth } from '../auth-setup';
 
 ---
 
+## Iteration 6 - AUTH-005: Improve Platform Admin Detection Logic
+**Started**: 2026-01-21 17:30 CST
+**Completed**: 2026-01-21 17:40 CST
+**Status**: COMPLETE
+
+### What Was Done:
+1. Read auth-helpers.ts - Found isPlatformAdmin() using pattern matching
+2. Identified security vulnerability: substring matching could false-positive
+3. Implemented 5-priority detection hierarchy with exact matching
+4. Added getRoleLevel() helper function
+5. Created 37 unit tests covering all scenarios
+6. Fixed edge case: handle user.role as either string or object
+7. All tests pass
+
+### Security Fix Details:
+- **Vulnerability**: String pattern matching could match 'administrator_assistant' as admin
+- **Impact**: Non-admin roles could potentially be treated as platform admins
+- **Fix**: Changed to exact role code matching only
+- **Detection Priority**:
+  1. isPlatformUser flag from Supabase JWT (most reliable)
+  2. isPlatformUser flag from user object (middleware)
+  3. roleLevel >= 8 (explicit RBAC level check)
+  4. hasAllPermissions flag (enhanced RBAC middleware)
+  5. Exact role code match for known admin roles
+
+### Exact Admin Roles (whitelist):
+- admin
+- root_admin
+- platform_admin
+- system_admin
+- super_admin
+- company_admin
+
+### Files Created:
+- server/tests/unit/auth-helpers.test.ts - 37 comprehensive tests
+
+### Files Modified:
+- server/utils/auth-helpers.ts - Improved isPlatformAdmin(), added getRoleLevel()
+- prd.json - Marked AUTH-005 as passes: true
+
+### Test Coverage:
+- isPlatformUser flag priority (5 tests)
+- Role level checks (5 tests)
+- hasAllPermissions flag (2 tests)
+- Exact role code matches (6 tests)
+- False positive prevention - SECURITY CRITICAL (8 tests)
+- Edge cases (5 tests)
+- getRoleLevel helper (6 tests)
+
+### Story Status:
+- AUTH-005: **COMPLETE**
+- passes: true
+
+---
+

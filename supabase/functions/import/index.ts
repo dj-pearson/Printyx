@@ -279,9 +279,30 @@ export default async function handler(req: Request) {
       let skippedRows = 0;
       let mergedRows = 0;
 
+      // Timeout protection: process max 100 rows or 45 seconds, whichever comes first
+      const MAX_ROWS_PER_BATCH = 100;
+      const MAX_EXECUTION_TIME = 45000; // 45 seconds
+      const startTime = Date.now();
+
       try {
-        // Process each row
-        for (const row of job.allRows) {
+        // Get the starting position from the request body
+        const body = await req.json();
+        const startIndex = body.startIndex || 0;
+        const rowsToProcess = job.allRows.slice(startIndex, startIndex + MAX_ROWS_PER_BATCH);
+
+        console.log(
+          `[IMPORT] Processing batch: rows ${startIndex} to ${startIndex + rowsToProcess.length} of ${job.allRows.length}`,
+        );
+
+        // Process each row in this batch
+        for (let i = 0; i < rowsToProcess.length; i++) {
+          const row = rowsToProcess[i];
+
+          // Check if we're approaching timeout
+          if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+            console.log(`[IMPORT] Timeout approaching, stopping at row ${startIndex + i}`);
+            break;
+          }
           try {
             // Map CSV row to database fields
             const mappedData: any = {};
@@ -673,18 +694,35 @@ export default async function handler(req: Request) {
           }
         }
 
-        job.status = 'completed';
-        job.importedRows = importedRows;
-        job.skippedRows = skippedRows;
-        job.mergedRows = mergedRows;
+        // Update job progress
+        job.importedRows = (job.importedRows || 0) + importedRows;
+        job.skippedRows = (job.skippedRows || 0) + skippedRows;
+        job.mergedRows = (job.mergedRows || 0) + mergedRows;
+
+        const processedRows = startIndex + rowsToProcess.length;
+        const totalRows = job.allRows.length;
+        const hasMore = processedRows < totalRows;
+
+        if (!hasMore) {
+          job.status = 'completed';
+        }
+
         importJobs.set(jobId, job);
+
+        console.log(
+          `[IMPORT] Batch complete: ${processedRows}/${totalRows} rows processed. Imported: ${job.importedRows}, Skipped: ${job.skippedRows}, Merged: ${job.mergedRows}`,
+        );
 
         return createCorsResponse(
           {
-            message: 'Import completed',
-            importedRows,
-            skippedRows,
-            mergedRows,
+            message: hasMore ? 'Batch completed' : 'Import completed',
+            importedRows: job.importedRows,
+            skippedRows: job.skippedRows,
+            mergedRows: job.mergedRows,
+            processedRows,
+            totalRows,
+            hasMore,
+            nextIndex: hasMore ? processedRows : null,
           },
           200,
           req,
