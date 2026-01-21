@@ -1,5 +1,16 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { Clock, TrendingUp, Activity, Car } from 'lucide-react';
 
 interface TimeEntry {
@@ -40,10 +51,12 @@ interface TimeTrackingChartProps {
 export default function TimeTrackingChart({ entries, summary, metrics }: TimeTrackingChartProps) {
   // Hours by day for line chart
   const dailyHoursData = useMemo(() => {
-    return summary?.hoursByDay?.map(day => ({
-      date: day.date,
-      hours: day.hours,
-    })) || [];
+    return (
+      summary?.hoursByDay?.map((day) => ({
+        date: day.date,
+        hours: day.hours,
+      })) || []
+    );
   }, [summary]);
 
   // Hours by activity type for bar chart
@@ -61,7 +74,9 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
 
     return (
       <div className="bg-background border border-border rounded-lg shadow-lg p-3">
-        <p className="font-semibold text-sm mb-2">{payload[0].payload.date || payload[0].payload.name}</p>
+        <p className="font-semibold text-sm mb-2">
+          {payload[0].payload.date || payload[0].payload.name}
+        </p>
         <div className="space-y-1">
           {payload.map((entry: any, index: number) => (
             <div key={index} className="flex items-center justify-between gap-4 text-xs">
@@ -91,7 +106,9 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2 mb-2">
             <Clock className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Total Hours</span>
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Total Hours
+            </span>
           </div>
           <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
             {summary?.totalHours?.toFixed(1) || 0}
@@ -117,7 +134,9 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
         <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
           <div className="flex items-center gap-2 mb-2">
             <Activity className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-900 dark:text-purple-100">Productive</span>
+            <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
+              Productive
+            </span>
           </div>
           <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
             {summary?.productiveHours?.toFixed(1) || 0}h
@@ -205,7 +224,9 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
                 <div className="text-xs text-muted-foreground">hours</div>
               </div>
               <div className="text-xs text-muted-foreground mt-1">
-                {summary?.totalHours ? `${((hours as number / summary.totalHours) * 100).toFixed(0)}% of total` : ''}
+                {summary?.totalHours
+                  ? `${(((hours as number) / summary.totalHours) * 100).toFixed(0)}% of total`
+                  : ''}
               </div>
             </div>
           ))}
@@ -215,7 +236,9 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
       {/* Billable vs Non-Billable */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-          <h4 className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">Billable Hours</h4>
+          <h4 className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
+            Billable Hours
+          </h4>
           <div className="flex items-baseline gap-2">
             <div className="text-3xl font-bold text-green-700 dark:text-green-300">
               {summary?.billableHours?.toFixed(1) || 0}
@@ -234,7 +257,9 @@ export default function TimeTrackingChart({ entries, summary, metrics }: TimeTra
         </div>
 
         <div className="p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Non-Billable Hours</h4>
+          <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Non-Billable Hours
+          </h4>
           <div className="flex items-baseline gap-2">
             <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">
               {summary?.nonBillableHours?.toFixed(1) || 0}

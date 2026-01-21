@@ -1,12 +1,12 @@
 /**
  * Email Service Adapter
- * 
+ *
  * Provider-agnostic email service that supports multiple providers:
  * - SendGrid
  * - AWS SES
  * - Resend
  * - Simulation mode (default)
- * 
+ *
  * Configuration via environment variables:
  * - EMAIL_PROVIDER: 'sendgrid' | 'aws-ses' | 'resend' | 'simulation'
  * - EMAIL_ENABLED: 'true' | 'false'
@@ -35,7 +35,7 @@ class SimulationEmailProvider implements EmailProvider {
     console.log(`  Subject: ${message.subject}`);
     console.log(`  From: ${message.from || 'notifications@printyx.com'}`);
     console.log(`  Body: ${message.text || message.html.substring(0, 100)}...`);
-    
+
     return {
       success: true,
       messageId: `sim-${Date.now()}-${Math.random().toString(36).substring(7)}`,
@@ -102,17 +102,19 @@ class AWSSESProvider implements EmailProvider {
         },
       });
 
-      const result = await ses.send(new SendEmailCommand({
-        Source: message.from || process.env.AWS_SES_FROM_EMAIL || 'notifications@printyx.com',
-        Destination: { ToAddresses: [message.to] },
-        Message: {
-          Subject: { Data: message.subject },
-          Body: {
-            Html: { Data: message.html },
-            Text: { Data: message.text || '' },
+      const result = await ses.send(
+        new SendEmailCommand({
+          Source: message.from || process.env.AWS_SES_FROM_EMAIL || 'notifications@printyx.com',
+          Destination: { ToAddresses: [message.to] },
+          Message: {
+            Subject: { Data: message.subject },
+            Body: {
+              Html: { Data: message.html },
+              Text: { Data: message.text || '' },
+            },
           },
-        },
-      }));
+        }),
+      );
 
       console.log(`[AWS SES] Email sent successfully`);
       console.log(`  To: ${message.to}, Subject: ${message.subject}`);
@@ -173,48 +175,60 @@ export class EmailService {
 
   constructor() {
     this.enabled = process.env.EMAIL_ENABLED === 'true';
-    
+
     const providerType = process.env.EMAIL_PROVIDER || 'simulation';
-    
+
     switch (providerType) {
       case 'sendgrid':
         if (!process.env.SENDGRID_API_KEY) {
-          console.warn('[EMAIL SERVICE] SendGrid selected but SENDGRID_API_KEY not set. Falling back to simulation.');
+          console.warn(
+            '[EMAIL SERVICE] SendGrid selected but SENDGRID_API_KEY not set. Falling back to simulation.',
+          );
           this.provider = new SimulationEmailProvider();
         } else {
           this.provider = new SendGridProvider(process.env.SENDGRID_API_KEY);
         }
         break;
-      
+
       case 'aws-ses':
-        if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-          console.warn('[EMAIL SERVICE] AWS SES selected but credentials not set. Falling back to simulation.');
+        if (
+          !process.env.AWS_REGION ||
+          !process.env.AWS_ACCESS_KEY_ID ||
+          !process.env.AWS_SECRET_ACCESS_KEY
+        ) {
+          console.warn(
+            '[EMAIL SERVICE] AWS SES selected but credentials not set. Falling back to simulation.',
+          );
           this.provider = new SimulationEmailProvider();
         } else {
           this.provider = new AWSSESProvider(
             process.env.AWS_REGION,
             process.env.AWS_ACCESS_KEY_ID,
-            process.env.AWS_SECRET_ACCESS_KEY
+            process.env.AWS_SECRET_ACCESS_KEY,
           );
         }
         break;
-      
+
       case 'resend':
         if (!process.env.RESEND_API_KEY) {
-          console.warn('[EMAIL SERVICE] Resend selected but RESEND_API_KEY not set. Falling back to simulation.');
+          console.warn(
+            '[EMAIL SERVICE] Resend selected but RESEND_API_KEY not set. Falling back to simulation.',
+          );
           this.provider = new SimulationEmailProvider();
         } else {
           this.provider = new ResendProvider(process.env.RESEND_API_KEY);
         }
         break;
-      
+
       case 'simulation':
       default:
         this.provider = new SimulationEmailProvider();
         break;
     }
-    
-    console.log(`[EMAIL SERVICE] Initialized with provider: ${providerType}, enabled: ${this.enabled}`);
+
+    console.log(
+      `[EMAIL SERVICE] Initialized with provider: ${providerType}, enabled: ${this.enabled}`,
+    );
   }
 
   async send(message: EmailMessage) {
@@ -225,7 +239,7 @@ export class EmailService {
         error: 'Email service is disabled',
       };
     }
-    
+
     return await this.provider.send(message);
   }
 }

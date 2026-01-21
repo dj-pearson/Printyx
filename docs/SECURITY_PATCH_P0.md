@@ -19,6 +19,7 @@ This emergency security patch addresses **52+ completely unprotected admin route
 - Modify billing, discounts, and subscription plans
 
 **Risk Reduction:**
+
 - **Before Patch**: Security Risk Score 8.5/10 (CRITICAL)
 - **After Patch**: Security Risk Score 6/10 (HIGH)
 - **52+ Critical Routes**: Now protected with authentication + root admin authorization
@@ -28,10 +29,12 @@ This emergency security patch addresses **52+ completely unprotected admin route
 ## 🔒 Files Patched
 
 ### 1. server/routes-admin-subscriptions.ts
+
 **Vulnerabilities Fixed:** 16 unprotected routes
 **Impact:** CRITICAL - Financial fraud, revenue loss, data breach
 
 **Changes Applied:**
+
 ```typescript
 ✅ Added: import { requireRootAdmin } from './routes-root-admin';
 ✅ Added: requireAuth middleware (authentication)
@@ -40,30 +43,33 @@ This emergency security patch addresses **52+ completely unprotected admin route
 ```
 
 **Protected Operations:**
-- GET    /subscriptions - View all tenant subscriptions
-- GET    /subscriptions/:id - View subscription details
-- POST   /subscriptions/grant-free - Grant free subscriptions ⚠️ HIGH RISK
-- PATCH  /subscriptions/:id - Modify subscriptions
-- POST   /subscriptions/:id/extend-trial - Extend trials
-- GET    /discounts - View discount codes
-- POST   /discounts - Create discounts
-- PATCH  /discounts/:id - Modify discounts
+
+- GET /subscriptions - View all tenant subscriptions
+- GET /subscriptions/:id - View subscription details
+- POST /subscriptions/grant-free - Grant free subscriptions ⚠️ HIGH RISK
+- PATCH /subscriptions/:id - Modify subscriptions
+- POST /subscriptions/:id/extend-trial - Extend trials
+- GET /discounts - View discount codes
+- POST /discounts - Create discounts
+- PATCH /discounts/:id - Modify discounts
 - DELETE /discounts/:id - Delete discounts
-- GET    /plans - View subscription plans
-- PATCH  /plans/:id - Modify plans
-- GET    /analytics/subscriptions - Subscription analytics
-- GET    /analytics/revenue - Revenue data ⚠️ HIGH RISK
-- POST   /usage/recalculate-all - Recalculate usage
+- GET /plans - View subscription plans
+- PATCH /plans/:id - Modify plans
+- GET /analytics/subscriptions - Subscription analytics
+- GET /analytics/revenue - Revenue data ⚠️ HIGH RISK
+- POST /usage/recalculate-all - Recalculate usage
 
 **Security Level:** Root Admin (Level 7+) required for ALL routes
 
 ---
 
 ### 2. server/routes-user-lifecycle.ts
+
 **Vulnerabilities Fixed:** 17 unprotected routes
 **Impact:** CRITICAL - Identity theft, workforce manipulation, complete user management compromise
 
 **Changes Applied:**
+
 ```typescript
 ✅ Added: import { requireRootAdmin } from './routes-root-admin';
 ✅ Added: import * as fs from 'fs'; import * as path from 'path';
@@ -75,19 +81,21 @@ This emergency security patch addresses **52+ completely unprotected admin route
 ```
 
 **Protected Operations:**
-- GET    /templates - View provisioning templates
-- POST   /templates - Create templates
-- POST   /provision - Provision single user
-- POST   /provision/bulk - Bulk provision users
-- POST   /:userId/offboard - Offboard users
-- POST   /access-review - Trigger access reviews
-- **POST   /:userId/impersonate - IMPERSONATE ANY USER** ⚠️ CRITICAL
-- POST   /impersonate/:sessionId/end - End impersonation
-- GET    /impersonate/active - View active impersonation sessions
+
+- GET /templates - View provisioning templates
+- POST /templates - Create templates
+- POST /provision - Provision single user
+- POST /provision/bulk - Bulk provision users
+- POST /:userId/offboard - Offboard users
+- POST /access-review - Trigger access reviews
+- **POST /:userId/impersonate - IMPERSONATE ANY USER** ⚠️ CRITICAL
+- POST /impersonate/:sessionId/end - End impersonation
+- GET /impersonate/active - View active impersonation sessions
 
 **Security Level:** Root Admin (Level 7+) required for ALL routes
 
 **Audit Logging:**
+
 - All impersonation attempts logged to `/home/user/Printyx/server/audit.log`
 - Logs include: timestamp, action, userId, targetUserId, IP, user agent
 - Console warnings for real-time monitoring
@@ -95,10 +103,12 @@ This emergency security patch addresses **52+ completely unprotected admin route
 ---
 
 ### 3. server/routes-tenant-onboarding.ts
+
 **Vulnerabilities Fixed:** 19 unprotected routes
 **Impact:** CRITICAL - Unauthorized tenant creation, resource exhaustion, platform compromise
 
 **Changes Applied:**
+
 ```typescript
 ✅ Added: import { requireRootAdmin } from './routes-root-admin';
 ✅ Added: requireAuth middleware (authentication)
@@ -107,11 +117,12 @@ This emergency security patch addresses **52+ completely unprotected admin route
 ```
 
 **Protected Operations:**
-- GET    /onboarding/templates - View onboarding templates
-- POST   /onboarding/templates - Create templates
-- POST   /onboarding/start - **START TENANT ONBOARDING** ⚠️ CRITICAL
-- GET    /onboarding/:sessionId - View onboarding session
-- PATCH  /onboarding/:sessionId - Update onboarding progress
+
+- GET /onboarding/templates - View onboarding templates
+- POST /onboarding/templates - Create templates
+- POST /onboarding/start - **START TENANT ONBOARDING** ⚠️ CRITICAL
+- GET /onboarding/:sessionId - View onboarding session
+- PATCH /onboarding/:sessionId - Update onboarding progress
 - Plus 14+ additional tenant provisioning operations
 
 **Security Level:** Root Admin (Level 7+) required for ALL routes
@@ -121,13 +132,13 @@ This emergency security patch addresses **52+ completely unprotected admin route
 ## 🛡️ Security Measures Implemented
 
 ### 1. Authentication Layer
+
 ```typescript
 const requireAuth = (req: any, res: any, next: any) => {
-  const isAuthenticated =
-    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
 
   if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+    return res.status(401).json({ message: 'Authentication required' });
   }
 
   // Normalize user object
@@ -147,6 +158,7 @@ const requireAuth = (req: any, res: any, next: any) => {
 ---
 
 ### 2. Authorization Layer
+
 ```typescript
 export const requireRootAdmin = async (req: any, res: any, next: any) => {
   // Get user with role information
@@ -160,7 +172,7 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
   // Check if user has root admin level (7+) or can access all tenants
   if (user.roleLevel < 7 && !user.canAccessAllTenants) {
     return res.status(403).json({
-      message: "Root admin access required - insufficient privileges",
+      message: 'Root admin access required - insufficient privileges',
     });
   }
 
@@ -173,6 +185,7 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
 ---
 
 ### 3. Audit Logging Layer (User Lifecycle)
+
 ```typescript
 const auditLog = (action: string) => {
   return (req: any, res: any, next: any) => {
@@ -197,6 +210,7 @@ const auditLog = (action: string) => {
 ```
 
 **Effect:**
+
 - All sensitive operations logged
 - Audit trail for compliance and forensics
 - Real-time monitoring via console warnings
@@ -208,13 +222,13 @@ const auditLog = (action: string) => {
 
 ### Before Patch
 
-| Risk Category | Routes Affected | Severity | Exploitability |
-|--------------|----------------|----------|----------------|
-| **Financial Fraud** | 11 | CRITICAL | Trivial |
-| **Identity Theft** | 3 | CRITICAL | Trivial |
-| **User Management** | 14 | CRITICAL | Trivial |
-| **Tenant Provisioning** | 19 | CRITICAL | Trivial |
-| **Data Breach** | 5 | CRITICAL | Trivial |
+| Risk Category           | Routes Affected | Severity | Exploitability |
+| ----------------------- | --------------- | -------- | -------------- |
+| **Financial Fraud**     | 11              | CRITICAL | Trivial        |
+| **Identity Theft**      | 3               | CRITICAL | Trivial        |
+| **User Management**     | 14              | CRITICAL | Trivial        |
+| **Tenant Provisioning** | 19              | CRITICAL | Trivial        |
+| **Data Breach**         | 5               | CRITICAL | Trivial        |
 
 **Total Critical Vulnerabilities:** 52+
 **Exploitability:** Anyone with network access (no authentication required)
@@ -223,13 +237,13 @@ const auditLog = (action: string) => {
 
 ### After Patch
 
-| Risk Category | Routes Affected | Severity | Exploitability |
-|--------------|----------------|----------|----------------|
-| **Financial Fraud** | 0 | LOW | Requires Level 7+ admin |
-| **Identity Theft** | 0 | LOW | Requires Level 7+ admin + logged |
-| **User Management** | 0 | LOW | Requires Level 7+ admin |
-| **Tenant Provisioning** | 0 | LOW | Requires Level 7+ admin |
-| **Data Breach** | 0 | LOW | Requires Level 7+ admin |
+| Risk Category           | Routes Affected | Severity | Exploitability                   |
+| ----------------------- | --------------- | -------- | -------------------------------- |
+| **Financial Fraud**     | 0               | LOW      | Requires Level 7+ admin          |
+| **Identity Theft**      | 0               | LOW      | Requires Level 7+ admin + logged |
+| **User Management**     | 0               | LOW      | Requires Level 7+ admin          |
+| **Tenant Provisioning** | 0               | LOW      | Requires Level 7+ admin          |
+| **Data Breach**         | 0               | LOW      | Requires Level 7+ admin          |
 
 **Total Critical Vulnerabilities:** 0
 **Exploitability:** Requires authenticated Level 7+ Platform Admin account
@@ -258,6 +272,7 @@ const auditLog = (action: string) => {
 ### Manual Testing
 
 **1. Test Authentication Block:**
+
 ```bash
 # Should return 401 Unauthorized
 curl -X GET http://localhost:5000/api/admin/subscriptions
@@ -269,6 +284,7 @@ curl -X POST http://localhost:5000/api/admin/subscriptions/grant-free \
 ```
 
 **2. Test Authorization Block (with regular user):**
+
 ```bash
 # Login as regular user, get session cookie
 # Then try to access admin routes - should return 403 Forbidden
@@ -277,6 +293,7 @@ curl -X GET http://localhost:5000/api/admin/subscriptions \
 ```
 
 **3. Test Authorized Access (with root admin):**
+
 ```bash
 # Login as root admin (Level 7+), get session cookie
 # Should return 200 OK with data
@@ -285,6 +302,7 @@ curl -X GET http://localhost:5000/api/admin/subscriptions \
 ```
 
 **4. Test Impersonation Audit Logging:**
+
 ```bash
 # As root admin, attempt impersonation
 curl -X POST http://localhost:5000/api/users/user-123/impersonate \
@@ -366,18 +384,21 @@ git revert <commit-hash>
 While this patch addresses the **most critical** vulnerabilities, additional work is needed:
 
 ### Priority 1 (Next 48 Hours)
+
 1. **routes/billing.ts** - Add finance role checks (any user can manipulate billing)
 2. **routes-business-records.ts** - Add sales role checks + data scoping
 3. **routes-warehouse.ts** - Add operations role checks
 4. **routes-deals-management.ts** - Add sales role checks + data scoping
 
 ### Priority 2 (Next Week)
+
 5. **routes-customer-portal.ts** - Review and add proper RBAC
 6. **routes-mobile.ts** - Add proper role-based filtering
 7. **routes-service-dispatch.ts** - Add service department role checks
 8. **routes-proposals.ts** - Add sales role checks
 
 ### Priority 3 (Next Month)
+
 9. Standardize RBAC implementation across all routes
 10. Implement data scoping middleware (territory, team, location)
 11. Add RBAC test suite

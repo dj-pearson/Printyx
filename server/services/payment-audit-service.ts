@@ -4,9 +4,9 @@
  * All payment-related actions are logged for audit and compliance purposes
  */
 
-import { db } from "../db";
-import { eq, and, desc, gte, lte, inArray, sql, or } from "drizzle-orm";
-import Stripe from "stripe";
+import { db } from '../db';
+import { eq, and, desc, gte, lte, inArray, sql, or } from 'drizzle-orm';
+import Stripe from 'stripe';
 import {
   paymentAuditTrail,
   paymentMethodChanges,
@@ -14,7 +14,7 @@ import {
   type InsertPaymentAuditTrail,
   type PaymentMethodChange,
   type InsertPaymentMethodChange,
-} from "@shared/soc2-compliance-schema";
+} from '@shared/soc2-compliance-schema';
 
 // ============= TYPES =============
 
@@ -87,7 +87,7 @@ interface PaymentAuditEntry {
  */
 export async function logPaymentAction(
   context: PaymentContext,
-  entry: PaymentAuditEntry
+  entry: PaymentAuditEntry,
 ): Promise<PaymentAuditTrail> {
   const [auditEntry] = await db
     .insert(paymentAuditTrail)
@@ -114,7 +114,7 @@ export async function logPaymentAction(
  */
 export async function logPaymentIntentCreated(
   context: PaymentContext,
-  paymentIntent: Stripe.PaymentIntent
+  paymentIntent: Stripe.PaymentIntent,
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action: 'payment_intent_created',
@@ -133,7 +133,7 @@ export async function logPaymentIntentCreated(
 export async function logPaymentSucceeded(
   context: PaymentContext,
   paymentIntent: Stripe.PaymentIntent,
-  paymentMethod?: Stripe.PaymentMethod
+  paymentMethod?: Stripe.PaymentMethod,
 ): Promise<PaymentAuditTrail> {
   const cardDetails = paymentMethod?.card;
 
@@ -159,7 +159,7 @@ export async function logPaymentSucceeded(
 export async function logPaymentFailed(
   context: PaymentContext,
   paymentIntent: Stripe.PaymentIntent,
-  error?: Stripe.StripeError
+  error?: Stripe.StripeError,
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action: 'payment_intent_failed',
@@ -181,7 +181,7 @@ export async function logPaymentFailed(
  */
 export async function logSubscriptionCreated(
   context: PaymentContext,
-  subscription: Stripe.Subscription
+  subscription: Stripe.Subscription,
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action: 'subscription_created',
@@ -200,7 +200,7 @@ export async function logSubscriptionCreated(
 export async function logSubscriptionUpdated(
   context: PaymentContext,
   subscription: Stripe.Subscription,
-  previousAttributes?: Record<string, any>
+  previousAttributes?: Record<string, any>,
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action: 'subscription_updated',
@@ -220,7 +220,7 @@ export async function logSubscriptionUpdated(
 export async function logSubscriptionCancelled(
   context: PaymentContext,
   subscription: Stripe.Subscription,
-  reason?: string
+  reason?: string,
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action: 'subscription_cancelled',
@@ -242,7 +242,7 @@ export async function logSubscriptionCancelled(
 export async function logInvoiceEvent(
   context: PaymentContext,
   invoice: Stripe.Invoice,
-  action: 'invoice_created' | 'invoice_paid' | 'invoice_failed' | 'invoice_voided'
+  action: 'invoice_created' | 'invoice_paid' | 'invoice_failed' | 'invoice_voided',
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action,
@@ -262,7 +262,7 @@ export async function logInvoiceEvent(
 export async function logRefundEvent(
   context: PaymentContext,
   refund: Stripe.Refund,
-  action: 'refund_initiated' | 'refund_completed' | 'refund_failed'
+  action: 'refund_initiated' | 'refund_completed' | 'refund_failed',
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action,
@@ -284,11 +284,12 @@ export async function logRefundEvent(
 export async function logDisputeEvent(
   context: PaymentContext,
   dispute: Stripe.Dispute,
-  action: 'dispute_created' | 'dispute_won' | 'dispute_lost' | 'chargeback_received'
+  action: 'dispute_created' | 'dispute_won' | 'dispute_lost' | 'chargeback_received',
 ): Promise<PaymentAuditTrail> {
   return logPaymentAction(context, {
     action,
-    status: action === 'dispute_lost' ? 'failure' : (action === 'dispute_won' ? 'success' : 'pending'),
+    status:
+      action === 'dispute_lost' ? 'failure' : action === 'dispute_won' ? 'success' : 'pending',
     stripePaymentIntentId: dispute.payment_intent as string,
     amount: dispute.amount,
     currency: dispute.currency,
@@ -308,7 +309,7 @@ export async function logDisputeEvent(
 export async function logPaymentMethodAdded(
   context: PaymentContext,
   paymentMethod: Stripe.PaymentMethod,
-  isDefault: boolean
+  isDefault: boolean,
 ): Promise<PaymentMethodChange> {
   const [change] = await db
     .insert(paymentMethodChanges)
@@ -351,7 +352,7 @@ export async function logPaymentMethodRemoved(
   cardLast4?: string,
   cardBrand?: string,
   wasDefault?: boolean,
-  reason?: string
+  reason?: string,
 ): Promise<PaymentMethodChange> {
   const [change] = await db
     .insert(paymentMethodChanges)
@@ -390,7 +391,7 @@ export async function logPaymentMethodRemoved(
 export async function logPaymentMethodSetDefault(
   context: PaymentContext,
   paymentMethod: Stripe.PaymentMethod,
-  previousDefaultId?: string
+  previousDefaultId?: string,
 ): Promise<PaymentMethodChange> {
   const [change] = await db
     .insert(paymentMethodChanges)
@@ -429,7 +430,7 @@ export async function logPaymentMethodSetDefault(
  */
 export async function logWebhookEvent(
   tenantId: string,
-  event: Stripe.Event
+  event: Stripe.Event,
 ): Promise<PaymentAuditTrail | null> {
   const context: PaymentContext = {
     tenantId,
@@ -577,7 +578,7 @@ export async function getPaymentAuditTrail(
     endDate?: Date;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: PaymentAuditTrail[]; total: number }> {
   const conditions = [eq(paymentAuditTrail.tenantId, tenantId)];
 
@@ -632,7 +633,7 @@ export async function getPaymentMethodHistory(
     endDate?: Date;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: PaymentMethodChange[]; total: number }> {
   const conditions = [eq(paymentMethodChanges.tenantId, tenantId)];
 
@@ -675,7 +676,7 @@ export async function getPaymentMethodHistory(
 export async function getPaymentMetrics(
   tenantId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<{
   totalTransactions: number;
   successfulTransactions: number;
@@ -694,8 +695,8 @@ export async function getPaymentMetrics(
       and(
         eq(paymentAuditTrail.tenantId, tenantId),
         gte(paymentAuditTrail.timestamp, startDate),
-        lte(paymentAuditTrail.timestamp, endDate)
-      )
+        lte(paymentAuditTrail.timestamp, endDate),
+      ),
     );
 
   let totalTransactions = 0;
@@ -741,9 +742,10 @@ export async function getPaymentMetrics(
     totalTransactions,
     successfulTransactions,
     failedTransactions,
-    successRate: totalTransactions > 0
-      ? Math.round((successfulTransactions / totalTransactions) * 100 * 100) / 100
-      : 0,
+    successRate:
+      totalTransactions > 0
+        ? Math.round((successfulTransactions / totalTransactions) * 100 * 100) / 100
+        : 0,
     totalAmount,
     refundedAmount,
     disputeCount,
@@ -758,7 +760,7 @@ export async function getPaymentMetrics(
 export async function checkSuspiciousActivity(
   tenantId: string,
   userId: string,
-  timeWindowMinutes: number = 60
+  timeWindowMinutes: number = 60,
 ): Promise<{
   suspicious: boolean;
   reasons: string[];
@@ -777,13 +779,15 @@ export async function checkSuspiciousActivity(
         eq(paymentAuditTrail.tenantId, tenantId),
         eq(paymentAuditTrail.userId, userId),
         eq(paymentAuditTrail.status, 'failure'),
-        gte(paymentAuditTrail.timestamp, windowStart)
-      )
+        gte(paymentAuditTrail.timestamp, windowStart),
+      ),
     );
 
   const recentFailures = failedPayments?.count || 0;
   if (recentFailures >= 3) {
-    reasons.push(`${recentFailures} failed payment attempts in the last ${timeWindowMinutes} minutes`);
+    reasons.push(
+      `${recentFailures} failed payment attempts in the last ${timeWindowMinutes} minutes`,
+    );
   }
 
   // Check payment method changes
@@ -794,13 +798,15 @@ export async function checkSuspiciousActivity(
       and(
         eq(paymentMethodChanges.tenantId, tenantId),
         eq(paymentMethodChanges.userId, userId),
-        gte(paymentMethodChanges.timestamp, windowStart)
-      )
+        gte(paymentMethodChanges.timestamp, windowStart),
+      ),
     );
 
   const recentPaymentMethodChanges = methodChanges?.count || 0;
   if (recentPaymentMethodChanges >= 5) {
-    reasons.push(`${recentPaymentMethodChanges} payment method changes in the last ${timeWindowMinutes} minutes`);
+    reasons.push(
+      `${recentPaymentMethodChanges} payment method changes in the last ${timeWindowMinutes} minutes`,
+    );
   }
 
   return {

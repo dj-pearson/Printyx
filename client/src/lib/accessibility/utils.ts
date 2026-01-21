@@ -13,9 +13,7 @@ import { CONTRAST_RATIOS, FONT_SIZE_SCALE, type FontSizeKey } from './constants'
 function getLuminance(r: number, g: number, b: number): number {
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const srgb = c / 255;
-    return srgb <= 0.03928
-      ? srgb / 12.92
-      : Math.pow((srgb + 0.055) / 1.055, 2.4);
+    return srgb <= 0.03928 ? srgb / 12.92 : Math.pow((srgb + 0.055) / 1.055, 2.4);
   });
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
@@ -86,12 +84,17 @@ export function meetsContrastRequirement(
   foreground: string,
   background: string,
   level: 'AA' | 'AAA' = 'AA',
-  isLargeText: boolean = false
+  isLargeText: boolean = false,
 ): boolean {
   const ratio = getContrastRatio(foreground, background);
-  const minRatio = level === 'AAA'
-    ? (isLargeText ? CONTRAST_RATIOS.enhancedLargeText : CONTRAST_RATIOS.enhancedNormalText)
-    : (isLargeText ? CONTRAST_RATIOS.largeText : CONTRAST_RATIOS.normalText);
+  const minRatio =
+    level === 'AAA'
+      ? isLargeText
+        ? CONTRAST_RATIOS.enhancedLargeText
+        : CONTRAST_RATIOS.enhancedNormalText
+      : isLargeText
+        ? CONTRAST_RATIOS.largeText
+        : CONTRAST_RATIOS.normalText;
   return ratio >= minRatio;
 }
 
@@ -152,8 +155,8 @@ export function focusFirst(container: HTMLElement): void {
 export function getFocusableElements(container: HTMLElement): NodeListOf<Element> {
   return container.querySelectorAll(
     'a[href], button:not([disabled]), textarea:not([disabled]), ' +
-    'input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
-    '[tabindex]:not([tabindex="-1"])'
+      'input:not([disabled]):not([type="hidden"]), select:not([disabled]), ' +
+      '[tabindex]:not([tabindex="-1"])',
   );
 }
 
@@ -201,7 +204,7 @@ export function generateA11yId(prefix: string = 'a11y'): string {
  */
 export function announceToScreenReader(
   message: string,
-  priority: 'polite' | 'assertive' = 'polite'
+  priority: 'polite' | 'assertive' = 'polite',
 ): void {
   const announcement = document.createElement('div');
   announcement.setAttribute('role', 'status');
@@ -251,9 +254,11 @@ export function getAccessibleName(element: HTMLElement): string {
   }
 
   // Check for associated label
-  if (element instanceof HTMLInputElement ||
-      element instanceof HTMLSelectElement ||
-      element instanceof HTMLTextAreaElement) {
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+  ) {
     const id = element.id;
     if (id) {
       const label = document.querySelector(`label[for="${id}"]`);
@@ -275,7 +280,7 @@ export function setupKeyboardNavigation(
     orientation?: 'horizontal' | 'vertical' | 'both';
     loop?: boolean;
     onSelect?: (element: HTMLElement) => void;
-  } = {}
+  } = {},
 ): () => void {
   const { orientation = 'vertical', loop = true, onSelect } = options;
 

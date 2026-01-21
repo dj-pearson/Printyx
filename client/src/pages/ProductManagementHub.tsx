@@ -1,19 +1,10 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Package, 
-  Search, 
-  Edit, 
-  Save, 
-  X, 
-  DollarSign,
-  TrendingUp,
-  Settings
-} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Package, Search, Edit, Save, X, DollarSign, TrendingUp, Settings } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -29,7 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Form,
   FormControl,
@@ -37,28 +28,28 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import { useAuth } from "@/hooks/useAuth";
+} from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import { useAuth } from '@/hooks/useAuth';
 
 // Form schemas
 const productMarkupSchema = z.object({
-  productId: z.string().min(1, "Product ID is required"),
-  productType: z.string().min(1, "Product type is required"),
-  dealerCost: z.string().min(1, "Dealer cost is required"),
-  companyMarkupPercentage: z.string().min(1, "Company markup percentage is required"),
+  productId: z.string().min(1, 'Product ID is required'),
+  productType: z.string().min(1, 'Product type is required'),
+  dealerCost: z.string().min(1, 'Dealer cost is required'),
+  companyMarkupPercentage: z.string().min(1, 'Company markup percentage is required'),
   minimumSalePrice: z.string().optional(),
   suggestedRetailPrice: z.string().optional(),
 });
@@ -79,8 +70,8 @@ interface ProductWithPricing {
 }
 
 export default function ProductManagementHub() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [isMarkupDialogOpen, setIsMarkupDialogOpen] = useState(false);
   const [currentEditProduct, setCurrentEditProduct] = useState<ProductWithPricing | null>(null);
@@ -93,17 +84,17 @@ export default function ProductManagementHub() {
 
   // Fetch all products with pricing information
   const { data: products = [], isLoading } = useQuery<ProductWithPricing[]>({
-    queryKey: ["/api/products/with-pricing"],
+    queryKey: ['/api/products/with-pricing'],
   });
 
   // Fetch company pricing settings
   const { data: companySettings } = useQuery({
-    queryKey: ["/api/pricing/company-settings"],
+    queryKey: ['/api/pricing/company-settings'],
   });
 
   // Fetch product pricing for inline editing
   const { data: productPricing = [] } = useQuery({
-    queryKey: ["/api/pricing/products"],
+    queryKey: ['/api/pricing/products'],
   });
 
   // Update product pricing mutation
@@ -111,20 +102,20 @@ export default function ProductManagementHub() {
     mutationFn: async (data: ProductMarkupFormData) => {
       const companyPrice = calculateCompanyPrice(
         parseFloat(data.dealerCost),
-        parseFloat(data.companyMarkupPercentage)
+        parseFloat(data.companyMarkupPercentage),
       );
-      
-      return apiRequest("/api/pricing/products", "POST", {
+
+      return apiRequest('/api/pricing/products', 'POST', {
         ...data,
         companyPrice: companyPrice.toString(),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products/with-pricing"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/pricing/products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products/with-pricing'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pricing/products'] });
       toast({
-        title: "Success",
-        description: "Product pricing updated successfully",
+        title: 'Success',
+        description: 'Product pricing updated successfully',
       });
       setIsMarkupDialogOpen(false);
       setCurrentEditProduct(null);
@@ -134,13 +125,13 @@ export default function ProductManagementHub() {
   // Bulk update pricing mutation
   const bulkUpdatePricingMutation = useMutation({
     mutationFn: async (updates: { productId: string; markupPercentage: string }[]) => {
-      return apiRequest("/api/pricing/products/bulk-update", "POST", { updates });
+      return apiRequest('/api/pricing/products/bulk-update', 'POST', { updates });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/products/with-pricing"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/products/with-pricing'] });
       toast({
-        title: "Success",
-        description: "Bulk pricing updates applied successfully",
+        title: 'Success',
+        description: 'Bulk pricing updates applied successfully',
       });
     },
   });
@@ -149,12 +140,12 @@ export default function ProductManagementHub() {
   const markupForm = useForm<ProductMarkupFormData>({
     resolver: zodResolver(productMarkupSchema),
     defaultValues: {
-      productId: "",
-      productType: "",
-      dealerCost: "",
-      companyMarkupPercentage: "",
-      minimumSalePrice: "",
-      suggestedRetailPrice: "",
+      productId: '',
+      productType: '',
+      dealerCost: '',
+      companyMarkupPercentage: '',
+      minimumSalePrice: '',
+      suggestedRetailPrice: '',
     },
   });
 
@@ -164,7 +155,7 @@ export default function ProductManagementHub() {
   };
 
   const formatCurrency = (value: string | number | undefined): string => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -174,14 +165,15 @@ export default function ProductManagementHub() {
 
   // Filter products
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.modelNumber?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
+    const matchesSearch =
+      product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.modelNumber?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   // Get unique categories
-  const categories = Array.from(new Set(products.map(p => p.category))).filter(Boolean);
+  const categories = Array.from(new Set(products.map((p) => p.category))).filter(Boolean);
 
   // Handle inline editing
   const handleInlineEdit = (product: ProductWithPricing) => {
@@ -189,10 +181,11 @@ export default function ProductManagementHub() {
     markupForm.reset({
       productId: product.id,
       productType: product.category,
-      dealerCost: product.dealerCost || "",
-      companyMarkupPercentage: product.companyMarkupPercentage || companySettings?.defaultMarkupPercentage || "20",
-      minimumSalePrice: product.minimumSalePrice || "",
-      suggestedRetailPrice: product.suggestedRetailPrice || "",
+      dealerCost: product.dealerCost || '',
+      companyMarkupPercentage:
+        product.companyMarkupPercentage || companySettings?.defaultMarkupPercentage || '20',
+      minimumSalePrice: product.minimumSalePrice || '',
+      suggestedRetailPrice: product.suggestedRetailPrice || '',
     });
     setIsMarkupDialogOpen(true);
   };
@@ -204,27 +197,32 @@ export default function ProductManagementHub() {
 
   // Apply default markup to all products without custom pricing
   const applyDefaultMarkupToAll = () => {
-    const productsWithoutPricing = products.filter(p => !p.hasCustomPricing);
-    const updates = productsWithoutPricing.map(p => ({
+    const productsWithoutPricing = products.filter((p) => !p.hasCustomPricing);
+    const updates = productsWithoutPricing.map((p) => ({
       productId: p.id,
-      markupPercentage: companySettings?.defaultMarkupPercentage || "20"
+      markupPercentage: companySettings?.defaultMarkupPercentage || '20',
     }));
     bulkUpdatePricingMutation.mutate(updates);
   };
 
   return (
-    <MainLayout title="Product Management Hub" description="Manage products with company admin markup capabilities">
+    <MainLayout
+      title="Product Management Hub"
+      description="Manage products with company admin markup capabilities"
+    >
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Product Management Hub</h1>
-            <p className="text-gray-600">Manage products with pricing markup for company administrators</p>
+            <p className="text-gray-600">
+              Manage products with pricing markup for company administrators
+            </p>
           </div>
           {isCompanyAdmin && (
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={applyDefaultMarkupToAll}
                 disabled={bulkUpdatePricingMutation.isPending}
               >
@@ -269,10 +267,9 @@ export default function ProductManagementHub() {
               Product Listings with Pricing Control
             </CardTitle>
             <CardDescription>
-              {isCompanyAdmin 
-                ? "Configure individual product markup percentages and pricing rules"
-                : "View product information and current pricing"
-              }
+              {isCompanyAdmin
+                ? 'Configure individual product markup percentages and pricing rules'
+                : 'View product information and current pricing'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -296,7 +293,7 @@ export default function ProductManagementHub() {
                   {filteredProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{product.modelNumber || "N/A"}</TableCell>
+                      <TableCell>{product.modelNumber || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{product.category}</Badge>
                       </TableCell>
@@ -312,14 +309,16 @@ export default function ProductManagementHub() {
                       </TableCell>
                       <TableCell>
                         {product.companyPrice ? (
-                          <span className="font-medium">{formatCurrency(product.companyPrice)}</span>
+                          <span className="font-medium">
+                            {formatCurrency(product.companyPrice)}
+                          </span>
                         ) : (
                           <span className="text-gray-400">Not calculated</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={product.hasCustomPricing ? "default" : "outline"}>
-                          {product.hasCustomPricing ? "Custom Pricing" : "Default Pricing"}
+                        <Badge variant={product.hasCustomPricing ? 'default' : 'outline'}>
+                          {product.hasCustomPricing ? 'Custom Pricing' : 'Default Pricing'}
                         </Badge>
                       </TableCell>
                       {isCompanyAdmin && (
@@ -348,7 +347,8 @@ export default function ProductManagementHub() {
             <DialogHeader>
               <DialogTitle>Configure Product Markup</DialogTitle>
               <DialogDescription>
-                Set dealer cost, company markup percentage, and pricing rules for {currentEditProduct?.name}
+                Set dealer cost, company markup percentage, and pricing rules for{' '}
+                {currentEditProduct?.name}
               </DialogDescription>
             </DialogHeader>
             <Form {...markupForm}>
@@ -367,7 +367,7 @@ export default function ProductManagementHub() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={markupForm.control}
                     name="companyMarkupPercentage"
@@ -381,7 +381,7 @@ export default function ProductManagementHub() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={markupForm.control}
                     name="minimumSalePrice"
@@ -395,7 +395,7 @@ export default function ProductManagementHub() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={markupForm.control}
                     name="suggestedRetailPrice"
@@ -412,22 +412,24 @@ export default function ProductManagementHub() {
                 </div>
 
                 {/* Live calculation preview */}
-                {markupForm.watch("dealerCost") && markupForm.watch("companyMarkupPercentage") && (
+                {markupForm.watch('dealerCost') && markupForm.watch('companyMarkupPercentage') && (
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-medium mb-2">Pricing Preview</h4>
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="text-gray-600">Dealer Cost:</span>
-                        <div className="font-medium">{formatCurrency(markupForm.watch("dealerCost"))}</div>
+                        <div className="font-medium">
+                          {formatCurrency(markupForm.watch('dealerCost'))}
+                        </div>
                       </div>
                       <div>
                         <span className="text-gray-600">Company Price:</span>
                         <div className="font-medium text-green-600">
                           {formatCurrency(
                             calculateCompanyPrice(
-                              parseFloat(markupForm.watch("dealerCost") || "0"),
-                              parseFloat(markupForm.watch("companyMarkupPercentage") || "0")
-                            )
+                              parseFloat(markupForm.watch('dealerCost') || '0'),
+                              parseFloat(markupForm.watch('companyMarkupPercentage') || '0'),
+                            ),
                           )}
                         </div>
                       </div>
@@ -436,18 +438,22 @@ export default function ProductManagementHub() {
                         <div className="font-medium text-blue-600">
                           {formatCurrency(
                             calculateCompanyPrice(
-                              parseFloat(markupForm.watch("dealerCost") || "0"),
-                              parseFloat(markupForm.watch("companyMarkupPercentage") || "0")
-                            ) - parseFloat(markupForm.watch("dealerCost") || "0")
+                              parseFloat(markupForm.watch('dealerCost') || '0'),
+                              parseFloat(markupForm.watch('companyMarkupPercentage') || '0'),
+                            ) - parseFloat(markupForm.watch('dealerCost') || '0'),
                           )}
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
-                
+
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsMarkupDialogOpen(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsMarkupDialogOpen(false)}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit" disabled={updateProductPricingMutation.isPending}>

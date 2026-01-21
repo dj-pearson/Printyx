@@ -353,7 +353,7 @@ export const SCOPES = {
  */
 export function requirePermissionAndLevel(
   permission: string | string[],
-  minLevel: number
+  minLevel: number,
 ): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
     const permCheck = requirePermission(permission, { minLevel });
@@ -365,7 +365,7 @@ export function requirePermissionAndLevel(
  * Create middleware for manager-level access with specific permission
  */
 export function requireManagerAccess(
-  permission: string | string[]
+  permission: string | string[],
 ): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return requirePermissionAndLevel(permission, ROLE_LEVELS.MANAGER);
 }
@@ -374,7 +374,7 @@ export function requireManagerAccess(
  * Create middleware for director-level access with specific permission
  */
 export function requireDirectorAccess(
-  permission: string | string[]
+  permission: string | string[],
 ): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return requirePermissionAndLevel(permission, ROLE_LEVELS.REGIONAL_DIRECTOR);
 }
@@ -383,7 +383,7 @@ export function requireDirectorAccess(
  * Create middleware for executive-level access with specific permission
  */
 export function requireExecutiveAccess(
-  permission: string | string[]
+  permission: string | string[],
 ): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return requirePermissionAndLevel(permission, ROLE_LEVELS.EXECUTIVE);
 }
@@ -392,7 +392,7 @@ export function requireExecutiveAccess(
  * Create middleware that requires MFA for sensitive operations
  */
 export function requireSensitiveAccess(
-  permission: string | string[]
+  permission: string | string[],
 ): (req: AuthenticatedRequest, res: Response, next: NextFunction) => void {
   return requirePermissionWithMFA(permission);
 }

@@ -20,7 +20,7 @@ import {
   requirePermission,
   PERMISSIONS,
   ROLE_LEVELS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 /**
@@ -75,9 +75,7 @@ router.get('/subscriptions', async (req, res) => {
     const subscriptions = await query;
 
     // Get total count
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(tenantSubscriptions);
+    const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(tenantSubscriptions);
 
     res.json({
       subscriptions,
@@ -138,7 +136,7 @@ router.post('/subscriptions/grant-free', async (req, res) => {
     const subscription = await SubscriptionService.grantFreeSubscription(
       tenantId,
       planSlug,
-      reason
+      reason,
     );
 
     res.status(201).json({
@@ -161,13 +159,7 @@ router.post('/subscriptions/grant-free', async (req, res) => {
 router.patch('/subscriptions/:id', async (req, res) => {
   try {
     const subscriptionId = req.params.id;
-    const {
-      status,
-      customLimits,
-      notes,
-      isFree,
-      amount,
-    } = req.body;
+    const { status, customLimits, notes, isFree, amount } = req.body;
 
     const updates: any = {
       updatedAt: new Date(),
@@ -278,17 +270,13 @@ router.get('/discounts', async (req, res) => {
     }
 
     if (search) {
-      query = query.where(
-        like(discounts.code, `%${search}%`)
-      );
+      query = query.where(like(discounts.code, `%${search}%`));
     }
 
     const discountsList = await query;
 
     // Get total count
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(discounts);
+    const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(discounts);
 
     res.json({
       discounts: discountsList,
@@ -424,10 +412,7 @@ router.post('/discounts', async (req, res) => {
       createdBy: req.user?.id || null,
     };
 
-    const [discount] = await db
-      .insert(discounts)
-      .values(discountData)
-      .returning();
+    const [discount] = await db.insert(discounts).values(discountData).returning();
 
     res.status(201).json({
       discount,
@@ -517,10 +502,7 @@ router.delete('/discounts/:id', async (req, res) => {
  */
 router.get('/plans', async (req, res) => {
   try {
-    const plans = await db
-      .select()
-      .from(subscriptionPlans)
-      .orderBy(subscriptionPlans.displayOrder);
+    const plans = await db.select().from(subscriptionPlans).orderBy(subscriptionPlans.displayOrder);
 
     res.json({ plans });
   } catch (error) {
@@ -599,8 +581,8 @@ router.get('/analytics/subscriptions', async (req, res) => {
       .where(
         and(
           sql`${tenantSubscriptions.status} IN ('active', 'trialing')`,
-          eq(tenantSubscriptions.isFree, false)
-        )
+          eq(tenantSubscriptions.isFree, false),
+        ),
       );
 
     // Trial conversion rate
@@ -611,9 +593,10 @@ router.get('/analytics/subscriptions', async (req, res) => {
       })
       .from(tenantSubscriptions);
 
-    const conversionRate = trialStats.totalTrials > 0
-      ? (trialStats.converted / (trialStats.totalTrials + trialStats.converted)) * 100
-      : 0;
+    const conversionRate =
+      trialStats.totalTrials > 0
+        ? (trialStats.converted / (trialStats.totalTrials + trialStats.converted)) * 100
+        : 0;
 
     res.json({
       byStatus,
@@ -648,8 +631,8 @@ router.get('/analytics/revenue', async (req, res) => {
       .where(
         and(
           sql`${tenantSubscriptions.status} IN ('active', 'trialing')`,
-          eq(tenantSubscriptions.isFree, false)
-        )
+          eq(tenantSubscriptions.isFree, false),
+        ),
       );
 
     res.json({

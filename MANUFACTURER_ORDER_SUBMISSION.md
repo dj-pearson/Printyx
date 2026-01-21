@@ -7,6 +7,7 @@ The Manufacturer Order Submission system is a comprehensive platform-level integ
 ## Business Value
 
 ### Problem Solved
+
 - **Manual Order Entry**: Eliminates time-consuming manual order entry into multiple manufacturer portals
 - **Order Tracking Complexity**: Centralized tracking of orders across multiple manufacturers
 - **Error-Prone Processes**: Reduces errors from manual data entry and transcription
@@ -14,6 +15,7 @@ The Manufacturer Order Submission system is a comprehensive platform-level integ
 - **Limited Visibility**: Provides real-time visibility into order lifecycle from submission to delivery
 
 ### Key Benefits
+
 - **Time Savings**: Automated order submission saves 2-3 hours per order
 - **Reduced Errors**: API-based submission eliminates manual entry errors
 - **Real-Time Tracking**: Live updates on order status and shipment tracking
@@ -24,7 +26,9 @@ The Manufacturer Order Submission system is a comprehensive platform-level integ
 ## System Architecture
 
 ### Provider-Agnostic Design
+
 The system is built as a platform-level integration where:
+
 - **Dealers Configure Credentials**: Each dealer manages their own manufacturer API keys, EDI credentials, or portal access
 - **Integration Management**: Centralized credential management with health monitoring and automatic token refresh
 - **Multi-Method Support**: Flexible ordering through API, EDI, or web portal methods
@@ -33,7 +37,9 @@ The system is built as a platform-level integration where:
 ### Core Components
 
 #### 1. Manufacturer Connections
+
 Central hub for managing manufacturer integrations:
+
 - **Supported Manufacturers**: Canon, Xerox, HP, Ricoh, Konica Minolta, Sharp, Toshiba, Kyocera, Brother, Lexmark
 - **Connection Methods**:
   - **API**: Direct REST API integration with OAuth2/API key authentication
@@ -43,7 +49,9 @@ Central hub for managing manufacturer integrations:
 - **Credential Management**: Secure storage of API keys, EDI credentials, portal logins
 
 #### 2. Order Management
+
 Complete lifecycle management for manufacturer orders:
+
 - **Order Statuses**: draft, submitted, acknowledged, processing, shipped, delivered, cancelled, error
 - **Order Methods**: API submission, EDI transmission, manual portal entry
 - **Auto-Submission**: Optional automatic order submission when ready
@@ -51,7 +59,9 @@ Complete lifecycle management for manufacturer orders:
 - **Multi-Currency**: Support for USD, CAD, EUR, GBP currencies
 
 #### 3. Order Line Items
+
 Detailed product information for each order:
+
 - **Product Mapping**: Dealer SKU to manufacturer part number mapping
 - **Quantity Tracking**: Ordered, shipped, delivered, cancelled quantities
 - **Pricing**: Unit price, list price, discounts, line totals
@@ -59,14 +69,18 @@ Detailed product information for each order:
 - **Line Status**: pending, processing, shipped, delivered, cancelled, backordered
 
 #### 4. Order Confirmations
+
 Manufacturer acknowledgment processing:
+
 - **Confirmation Types**: order_acknowledgment, shipment_notification, delivery_confirmation, cancellation_notice, change_notification
 - **Processing**: Automatic parsing and processing of manufacturer confirmations
 - **Data Reconciliation**: Compare confirmed vs. ordered quantities and dates
 - **Status Updates**: Automatic order status updates based on confirmations
 
 #### 5. Order Shipments
+
 Comprehensive shipment tracking:
+
 - **Carrier Integration**: UPS, FedEx, USPS, DHL tracking
 - **Real-Time Updates**: Automatic tracking event updates via carrier webhooks
 - **Multi-Package**: Support for orders shipping in multiple packages
@@ -74,7 +88,9 @@ Comprehensive shipment tracking:
 - **Shipment Status**: pending, picked_up, in_transit, out_for_delivery, delivered, exception, returned
 
 #### 6. Order Exceptions
+
 Proactive exception management:
+
 - **Exception Types**: authentication_failed, product_not_found, inventory_unavailable, pricing_mismatch, validation_error, network_error, timeout, duplicate_order, cancellation_failed
 - **Severity Levels**: low, medium, high, critical
 - **Resolution Workflow**: Assign, investigate, resolve, retry
@@ -86,14 +102,18 @@ Proactive exception management:
 ### Tables Overview
 
 #### manufacturer_connections
+
 Stores manufacturer integration credentials and settings
+
 - **Key Fields**: manufacturerType, connectionStatus, apiEndpoint, orderMethod
 - **Authentication**: API keys, OAuth tokens, EDI credentials
 - **Health Metrics**: lastConnectionTest, consecutiveFailures, lastError
 - **Settings**: autoSubmitEnabled, sandboxMode, ediEnabled
 
 #### manufacturer_orders
+
 Central order management
+
 - **Order Info**: orderNumber, manufacturerOrderNumber, orderStatus, orderMethod
 - **Financials**: subtotal, taxAmount, shippingCost, totalAmount, currency
 - **Shipping**: shipTo address, shippingMethod, delivery dates
@@ -101,21 +121,27 @@ Central order management
 - **Automation**: autoSubmitted, retryCount, lastRetryAt
 
 #### manufacturer_order_line_items
+
 Individual product line items
+
 - **Product**: productCode, manufacturerPartNumber, description
 - **Quantities**: quantityOrdered, quantityShipped, quantityDelivered, quantityCancelled
 - **Pricing**: unitPrice, listPrice, discountPercent, lineTotal
 - **Status**: lineStatus, estimatedShipDate, actualShipDate
 
 #### manufacturer_order_confirmations
+
 Manufacturer acknowledgments
+
 - **Confirmation**: confirmationNumber, confirmationType, confirmedAt
 - **Reconciliation**: confirmedAmount, confirmedDeliveryDate
 - **Processing**: confirmationStatus, processedAt, discrepancies
 - **Data**: rawConfirmationData (JSONB)
 
 #### manufacturer_order_shipments
+
 Shipment tracking details
+
 - **Shipment**: shipmentNumber, trackingNumber, carrier
 - **Status**: shipmentStatus, shippedDate, deliveryDates
 - **Packages**: packageCount, totalWeight, dimensions
@@ -123,7 +149,9 @@ Shipment tracking details
 - **Delivery**: deliveredTo, signatureName, signatureTimestamp
 
 #### manufacturer_order_exceptions
+
 Order issues and resolution
+
 - **Exception**: exceptionType, severity, exceptionMessage, exceptionCode
 - **Context**: orderId, connectionId, affectedLineItems
 - **Resolution**: resolved, resolvedAt, resolvedBy, resolutionNotes
@@ -131,7 +159,9 @@ Order issues and resolution
 - **Notifications**: notificationSent, notifiedUsers
 
 ### Composite Indexes (30 Total)
+
 Optimized for multi-tenant queries:
+
 - **Connections**: (tenantId, manufacturerType), (tenantId, connectionStatus)
 - **Orders**: (tenantId, connectionId), (tenantId, orderStatus), (tenantId, orderDate), (tenantId, manufacturerOrderNumber)
 - **Line Items**: (tenantId, orderId), (tenantId, productCode), (tenantId, lineStatus)
@@ -142,6 +172,7 @@ Optimized for multi-tenant queries:
 ## Storage Layer (45 Methods)
 
 ### Manufacturer Connection Operations (8 methods)
+
 - `getManufacturerConnections()` - List connections with filtering
 - `getManufacturerConnection()` - Get single connection
 - `createManufacturerConnection()` - Create new connection
@@ -151,6 +182,7 @@ Optimized for multi-tenant queries:
 - `updateConnectionHealth()` - Update health metrics
 
 ### Manufacturer Order Operations (9 methods)
+
 - `getManufacturerOrders()` - List orders with filtering
 - `getManufacturerOrder()` - Get single order
 - `createManufacturerOrder()` - Create new order
@@ -162,6 +194,7 @@ Optimized for multi-tenant queries:
 - `getManufacturerOrderAnalytics()` - Get analytics data
 
 ### Order Line Item Operations (7 methods)
+
 - `getOrderLineItems()` - List line items for order
 - `getOrderLineItem()` - Get single line item
 - `createOrderLineItem()` - Create new line item
@@ -171,6 +204,7 @@ Optimized for multi-tenant queries:
 - `updateLineItemShipment()` - Update shipment quantities
 
 ### Order Confirmation Operations (5 methods)
+
 - `getOrderConfirmations()` - List confirmations for order
 - `getOrderConfirmation()` - Get single confirmation
 - `createOrderConfirmation()` - Create new confirmation
@@ -178,6 +212,7 @@ Optimized for multi-tenant queries:
 - `processConfirmation()` - Process confirmation logic
 
 ### Order Shipment Operations (9 methods)
+
 - `getOrderShipments()` - List shipments for order
 - `getOrderShipment()` - Get single shipment
 - `getShipmentByTrackingNumber()` - Lookup by tracking
@@ -188,6 +223,7 @@ Optimized for multi-tenant queries:
 - `deliverShipment()` - Mark as delivered
 
 ### Order Exception Operations (7 methods)
+
 - `getOrderExceptions()` - List exceptions for order
 - `getUnresolvedExceptions()` - List unresolved exceptions
 - `getOrderException()` - Get single exception
@@ -199,6 +235,7 @@ Optimized for multi-tenant queries:
 ## API Endpoints (44 Total)
 
 ### Manufacturer Connections (7 endpoints)
+
 ```
 GET    /api/manufacturer-orders/connections
 GET    /api/manufacturer-orders/connections/:id
@@ -210,6 +247,7 @@ PATCH  /api/manufacturer-orders/connections/:id/health
 ```
 
 ### Manufacturer Orders (9 endpoints)
+
 ```
 GET    /api/manufacturer-orders
 GET    /api/manufacturer-orders/:id
@@ -222,6 +260,7 @@ PATCH  /api/manufacturer-orders/:id/fulfillment
 ```
 
 ### Order Line Items (7 endpoints)
+
 ```
 GET    /api/manufacturer-orders/:orderId/line-items
 GET    /api/manufacturer-orders/line-items/:id
@@ -233,6 +272,7 @@ PATCH  /api/manufacturer-orders/line-items/:id/shipment
 ```
 
 ### Order Confirmations (5 endpoints)
+
 ```
 GET    /api/manufacturer-orders/:orderId/confirmations
 GET    /api/manufacturer-orders/confirmations/:id
@@ -242,6 +282,7 @@ POST   /api/manufacturer-orders/confirmations/:id/process
 ```
 
 ### Order Shipments (9 endpoints)
+
 ```
 GET    /api/manufacturer-orders/:orderId/shipments
 GET    /api/manufacturer-orders/shipments/:id
@@ -254,6 +295,7 @@ POST   /api/manufacturer-orders/shipments/:id/deliver
 ```
 
 ### Order Exceptions (7 endpoints)
+
 ```
 GET    /api/manufacturer-orders/:orderId/exceptions
 GET    /api/manufacturer-orders/exceptions/unresolved
@@ -265,6 +307,7 @@ POST   /api/manufacturer-orders/exceptions/:id/retry
 ```
 
 ### Analytics (1 endpoint)
+
 ```
 GET    /api/manufacturer-orders/analytics/dashboard      [Admin/Manager]
 ```
@@ -272,11 +315,13 @@ GET    /api/manufacturer-orders/analytics/dashboard      [Admin/Manager]
 ## Role-Based Access Control
 
 ### Admin/Manager Only Operations
+
 - Create/update/delete manufacturer connections
 - View analytics dashboard
 - Resolve critical exceptions
 
 ### All Authenticated Users
+
 - View orders and shipments
 - Create and submit orders
 - Track order status
@@ -285,17 +330,20 @@ GET    /api/manufacturer-orders/analytics/dashboard      [Admin/Manager]
 ## Security Features
 
 ### Credential Management
+
 - **Encryption**: All API keys and credentials encrypted at rest
 - **OAuth Token Refresh**: Automatic token renewal for OAuth-based connections
 - **Sandbox Mode**: Test credentials without affecting production
 - **Health Monitoring**: Automatic credential validation and failure alerts
 
 ### Multi-Tenancy
+
 - **Tenant Isolation**: All data segregated by tenantId
 - **Row-Level Security**: Enforced at database and application layers
 - **Cross-Tenant Prevention**: No data leakage across tenants
 
 ### Audit Trail
+
 - **Order History**: Complete audit log of all order changes
 - **Exception Tracking**: Full history of exceptions and resolutions
 - **Connection Changes**: Log of all credential and settings updates
@@ -303,6 +351,7 @@ GET    /api/manufacturer-orders/analytics/dashboard      [Admin/Manager]
 ## Integration Patterns
 
 ### API-Based Integration
+
 ```typescript
 // Example: Submit order via Canon API
 POST /api/manufacturer-orders/:id/submit
@@ -313,6 +362,7 @@ POST /api/manufacturer-orders/:id/submit
 ```
 
 ### EDI Integration
+
 ```typescript
 // Example: Submit order via EDI X12 850
 {
@@ -323,6 +373,7 @@ POST /api/manufacturer-orders/:id/submit
 ```
 
 ### Portal Integration
+
 ```typescript
 // Example: Manual portal order
 {
@@ -334,6 +385,7 @@ POST /api/manufacturer-orders/:id/submit
 ## Workflow Examples
 
 ### 1. Create and Submit Order
+
 ```
 1. Dealer creates order in Printyx
 2. Add line items with product codes
@@ -344,6 +396,7 @@ POST /api/manufacturer-orders/:id/submit
 ```
 
 ### 2. Track Shipment
+
 ```
 1. Manufacturer ships order
 2. System receives shipment notification
@@ -353,6 +406,7 @@ POST /api/manufacturer-orders/:id/submit
 ```
 
 ### 3. Handle Exception
+
 ```
 1. Order submission fails (e.g., auth error)
 2. System creates exception record
@@ -365,6 +419,7 @@ POST /api/manufacturer-orders/:id/submit
 ## Analytics & Reporting
 
 ### Dashboard Metrics
+
 - **Order Volume**: Total orders, orders by status, orders by manufacturer
 - **Fulfillment Rates**: On-time delivery %, complete shipment %
 - **Exception Rates**: Exception count, resolution time, retry success rate
@@ -372,17 +427,19 @@ POST /api/manufacturer-orders/:id/submit
 - **Financial**: Total order value, average order value, discounts applied
 
 ### Sample Analytics Query
+
 ```javascript
 const analytics = await storage.getManufacturerOrderAnalytics(tenantId, {
-  connectionId: "canon-connection-id",
-  startDate: new Date("2025-01-01"),
-  endDate: new Date("2025-01-31")
+  connectionId: 'canon-connection-id',
+  startDate: new Date('2025-01-01'),
+  endDate: new Date('2025-01-31'),
 });
 ```
 
 ## Seed Data
 
 The system includes comprehensive seed data:
+
 - **3 Manufacturer Connections**: Canon (active), Xerox (active), HP (inactive)
 - **5 Orders**: Various statuses (delivered, shipped, processing, draft, error)
 - **7 Line Items**: Equipment and supplies
@@ -393,6 +450,7 @@ The system includes comprehensive seed data:
 ## Future Enhancements
 
 ### Planned Features
+
 1. **Automated Order Optimization**: AI-driven order consolidation and timing
 2. **Price Comparison**: Compare pricing across manufacturers
 3. **Predictive Ordering**: ML-based demand forecasting
@@ -405,6 +463,7 @@ The system includes comprehensive seed data:
 ## Best Practices
 
 ### Order Management
+
 1. **Test Connections First**: Always test manufacturer connections before submitting orders
 2. **Use Auto-Submit Carefully**: Enable auto-submit only for high-confidence connections
 3. **Monitor Exceptions**: Set up alerts for critical exceptions
@@ -412,12 +471,14 @@ The system includes comprehensive seed data:
 5. **Sandbox Testing**: Test new manufacturers in sandbox mode before production
 
 ### Performance Optimization
+
 1. **Batch Line Items**: Use bulk creation for multiple line items
 2. **Index Optimization**: Leverage composite indexes for common queries
 3. **Cache Analytics**: Cache frequently-accessed analytics data
 4. **Async Processing**: Use background jobs for order submission and tracking updates
 
 ### Security
+
 1. **Rotate Credentials**: Regularly rotate API keys and credentials
 2. **Monitor Failed Attempts**: Track and investigate authentication failures
 3. **Limit Access**: Restrict connection management to admins
@@ -435,6 +496,7 @@ The system includes comprehensive seed data:
 ## Support
 
 For issues or questions:
+
 1. Check exception logs for error details
 2. Test manufacturer connections for health issues
 3. Review audit trail for order history

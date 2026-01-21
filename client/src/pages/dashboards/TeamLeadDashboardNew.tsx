@@ -7,13 +7,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -131,7 +125,7 @@ export default function TeamLeadDashboardNew() {
             <RefreshCw
               className={cn(
                 'h-4 w-4 mr-2',
-                (coachingLoading || leadLoading || pipelineLoading) && 'animate-spin'
+                (coachingLoading || leadLoading || pipelineLoading) && 'animate-spin',
               )}
             />
             Refresh All
@@ -145,8 +139,7 @@ export default function TeamLeadDashboardNew() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Coaching Attention Needed</AlertTitle>
           <AlertDescription>
-            {coachingData.insights.criticalReps} team member(s) need immediate coaching
-            attention.{' '}
+            {coachingData.insights.criticalReps} team member(s) need immediate coaching attention.{' '}
             {coachingData.insights.highPriorityReps > 0 &&
               `${coachingData.insights.highPriorityReps} additional member(s) showing warning signs.`}
           </AlertDescription>
@@ -175,9 +168,7 @@ export default function TeamLeadDashboardNew() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {pipelineData?.teamInfo?.teamSize || 0}
-            </div>
+            <div className="text-2xl font-bold">{pipelineData?.teamInfo?.teamSize || 0}</div>
             <p className="text-xs text-muted-foreground">Active team members</p>
           </CardContent>
         </Card>
@@ -205,8 +196,7 @@ export default function TeamLeadDashboardNew() {
           <CardContent>
             <div className="text-2xl font-bold">{leadData?.leadsCreated || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {leadData?.conversionMetrics?.overallConversionRate?.toFixed(1) || 0}%
-              conversion
+              {leadData?.conversionMetrics?.overallConversionRate?.toFixed(1) || 0}% conversion
             </p>
           </CardContent>
         </Card>
@@ -225,8 +215,7 @@ export default function TeamLeadDashboardNew() {
               {leadData?.insights?.conversionHealth || 'N/A'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {leadData?.conversionMetrics?.averageLeadAge?.toFixed(0) || 0} days avg
-              age
+              {leadData?.conversionMetrics?.averageLeadAge?.toFixed(0) || 0} days avg age
             </p>
           </CardContent>
         </Card>
@@ -249,31 +238,18 @@ export default function TeamLeadDashboardNew() {
           <Card>
             <CardHeader>
               <CardTitle>Coaching Priorities</CardTitle>
-              <CardDescription>
-                Team members needing attention
-              </CardDescription>
+              <CardDescription>Team members needing attention</CardDescription>
             </CardHeader>
             <CardContent>
               {coachingLoading ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  Loading...
-                </div>
+                <div className="text-center py-4 text-muted-foreground">Loading...</div>
               ) : coachingData?.insights?.coachingPriority?.length > 0 ? (
                 <div className="space-y-3">
                   {coachingData.insights.coachingPriority.map((rep: any) => (
-                    <div
-                      key={rep.userId}
-                      className="p-3 border rounded-lg space-y-2"
-                    >
+                    <div key={rep.userId} className="p-3 border rounded-lg space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{rep.userName}</span>
-                        <Badge
-                          variant={
-                            rep.priority === 'critical'
-                              ? 'destructive'
-                              : 'default'
-                          }
-                        >
+                        <Badge variant={rep.priority === 'critical' ? 'destructive' : 'default'}>
                           {rep.priority}
                         </Badge>
                       </div>
@@ -299,9 +275,7 @@ export default function TeamLeadDashboardNew() {
                       </div>
                       {rep.recommendations?.length > 0 && (
                         <div className="text-xs bg-muted p-2 rounded">
-                          <div className="font-medium mb-1">
-                            Recommendation:
-                          </div>
+                          <div className="font-medium mb-1">Recommendation:</div>
                           {rep.recommendations[0]}
                         </div>
                       )}
@@ -325,29 +299,23 @@ export default function TeamLeadDashboardNew() {
             </CardHeader>
             <CardContent>
               {leadLoading ? (
-                <div className="text-center py-4 text-muted-foreground">
-                  Loading...
-                </div>
+                <div className="text-center py-4 text-muted-foreground">Loading...</div>
               ) : (
                 <div className="space-y-2">
-                  {leadData?.leadsBySource
-                    ?.slice(0, 5)
-                    .map((source: any) => (
-                      <div
-                        key={source.source}
-                        className="flex items-center justify-between p-2 border rounded"
-                      >
-                        <span className="text-sm font-medium">
-                          {source.source}
-                        </span>
-                        <div className="text-right">
-                          <div className="text-sm font-bold">{source.count}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {source.conversionRate.toFixed(0)}% conv
-                          </div>
+                  {leadData?.leadsBySource?.slice(0, 5).map((source: any) => (
+                    <div
+                      key={source.source}
+                      className="flex items-center justify-between p-2 border rounded"
+                    >
+                      <span className="text-sm font-medium">{source.source}</span>
+                      <div className="text-right">
+                        <div className="text-sm font-bold">{source.count}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {source.conversionRate.toFixed(0)}% conv
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -367,15 +335,11 @@ export default function TeamLeadDashboardNew() {
           <Card>
             <CardHeader>
               <CardTitle>Team Member Performance</CardTitle>
-              <CardDescription>
-                Detailed metrics for each team member
-              </CardDescription>
+              <CardDescription>Detailed metrics for each team member</CardDescription>
             </CardHeader>
             <CardContent>
               {pipelineLoading ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Loading...
-                </div>
+                <div className="text-center py-8 text-muted-foreground">Loading...</div>
               ) : pipelineData?.teamMembers ? (
                 <TeamPerformanceTable
                   comparison={pipelineData.teamMembers.map((m: any) => ({
@@ -391,9 +355,7 @@ export default function TeamLeadDashboardNew() {
                   summary={pipelineData.summary}
                 />
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No team data available
-                </div>
+                <div className="text-center py-8 text-muted-foreground">No team data available</div>
               )}
             </CardContent>
           </Card>
@@ -403,22 +365,15 @@ export default function TeamLeadDashboardNew() {
           <Card>
             <CardHeader>
               <CardTitle>Coaching Report</CardTitle>
-              <CardDescription>
-                Detailed coaching opportunities and recommendations
-              </CardDescription>
+              <CardDescription>Detailed coaching opportunities and recommendations</CardDescription>
             </CardHeader>
             <CardContent>
               {coachingLoading ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  Loading...
-                </div>
+                <div className="text-center py-8 text-muted-foreground">Loading...</div>
               ) : (
                 <div className="space-y-4">
                   {coachingData?.opportunities?.map((opp: any) => (
-                    <div
-                      key={opp.userId}
-                      className="p-4 border rounded-lg space-y-3"
-                    >
+                    <div key={opp.userId} className="p-4 border rounded-lg space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">{opp.userName}</h3>
                         <div className="flex gap-1">
@@ -428,9 +383,7 @@ export default function TeamLeadDashboardNew() {
                           {opp.flags.lowConversion && (
                             <Badge variant="destructive">Low Conversion</Badge>
                           )}
-                          {opp.flags.dealsStuck && (
-                            <Badge variant="destructive">Stuck Deals</Badge>
-                          )}
+                          {opp.flags.dealsStuck && <Badge variant="destructive">Stuck Deals</Badge>}
                         </div>
                       </div>
 
@@ -455,9 +408,7 @@ export default function TeamLeadDashboardNew() {
 
                       {opp.recommendations?.length > 0 && (
                         <div className="bg-muted p-3 rounded space-y-1">
-                          <div className="font-medium text-sm">
-                            Recommendations:
-                          </div>
+                          <div className="font-medium text-sm">Recommendations:</div>
                           {opp.recommendations.map((rec: string, i: number) => (
                             <div key={i} className="text-sm flex items-start gap-2">
                               <span className="text-muted-foreground">•</span>
@@ -490,9 +441,7 @@ export default function TeamLeadDashboardNew() {
                       key={status.status}
                       className="flex items-center justify-between p-2 border rounded"
                     >
-                      <span className="text-sm font-medium capitalize">
-                        {status.status}
-                      </span>
+                      <span className="text-sm font-medium capitalize">{status.status}</span>
                       <span className="text-sm font-bold">{status.count}</span>
                     </div>
                   ))}
@@ -502,23 +451,15 @@ export default function TeamLeadDashboardNew() {
               {/* Conversion Metrics */}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                 <div className="text-center">
-                  <div className="text-sm text-muted-foreground">
-                    Conversion Rate
-                  </div>
+                  <div className="text-sm text-muted-foreground">Conversion Rate</div>
                   <div className="text-2xl font-bold">
-                    {leadData?.conversionMetrics?.overallConversionRate?.toFixed(
-                      1
-                    ) || 0}
-                    %
+                    {leadData?.conversionMetrics?.overallConversionRate?.toFixed(1) || 0}%
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-sm text-muted-foreground">
-                    Avg Lead Age
-                  </div>
+                  <div className="text-sm text-muted-foreground">Avg Lead Age</div>
                   <div className="text-2xl font-bold">
-                    {leadData?.conversionMetrics?.averageLeadAge?.toFixed(0) || 0}{' '}
-                    days
+                    {leadData?.conversionMetrics?.averageLeadAge?.toFixed(0) || 0} days
                   </div>
                 </div>
               </div>

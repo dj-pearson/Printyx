@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,16 +26,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 import {
   FileText,
   Plus,
@@ -51,8 +51,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Invoice {
   id: string;
@@ -80,11 +80,11 @@ interface CustomerInvoicesProps {
 }
 
 const statusColors = {
-  open: "bg-blue-100 text-blue-800",
-  paid: "bg-green-100 text-green-800",
-  partial: "bg-yellow-100 text-yellow-800",
-  overdue: "bg-red-100 text-red-800",
-  void: "bg-gray-100 text-gray-800",
+  open: 'bg-blue-100 text-blue-800',
+  paid: 'bg-green-100 text-green-800',
+  partial: 'bg-yellow-100 text-yellow-800',
+  overdue: 'bg-red-100 text-red-800',
+  void: 'bg-gray-100 text-gray-800',
 };
 
 const statusIcons = {
@@ -95,14 +95,11 @@ const statusIcons = {
   void: XCircle,
 };
 
-export function CustomerInvoices({
-  customerId,
-  customerName,
-}: CustomerInvoicesProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+export function CustomerInvoices({ customerId, customerName }: CustomerInvoicesProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
-  const [dateRange, setDateRange] = useState("all");
+  const [dateRange, setDateRange] = useState('all');
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -112,9 +109,9 @@ export function CustomerInvoices({
     queryKey: [`/api/customers/${customerId}/invoices`],
     queryFn: async () => {
       const response = await fetch(`/api/customers/${customerId}/invoices`, {
-        credentials: "include",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to fetch invoices");
+      if (!response.ok) throw new Error('Failed to fetch invoices');
       return response.json();
     },
   });
@@ -126,28 +123,25 @@ export function CustomerInvoices({
       invoice.poNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       invoice.salesRep?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || invoice.invoiceStatus === statusFilter;
+    const matchesStatus = statusFilter === 'all' || invoice.invoiceStatus === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   const toggleInvoiceSelection = (invoiceId: string) => {
     setSelectedInvoices((prev) =>
-      prev.includes(invoiceId)
-        ? prev.filter((id) => id !== invoiceId)
-        : [...prev, invoiceId]
+      prev.includes(invoiceId) ? prev.filter((id) => id !== invoiceId) : [...prev, invoiceId],
     );
   };
 
@@ -166,7 +160,7 @@ export function CustomerInvoices({
       amountPaid: acc.amountPaid + (invoice.amountPaid || 0),
       balanceDue: acc.balanceDue + (invoice.balanceDue || 0),
     }),
-    { totalAmount: 0, amountPaid: 0, balanceDue: 0 }
+    { totalAmount: 0, amountPaid: 0, balanceDue: 0 },
   );
 
   const getStatusIcon = (status: string) => {
@@ -194,9 +188,7 @@ export function CustomerInvoices({
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(totals.totalAmount)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(totals.totalAmount)}</p>
                 <p className="text-sm text-gray-600">Total Billed</p>
               </div>
             </div>
@@ -207,9 +199,7 @@ export function CustomerInvoices({
             <div className="flex items-center">
               <CheckCircle2 className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(totals.amountPaid)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(totals.amountPaid)}</p>
                 <p className="text-sm text-gray-600">Amount Paid</p>
               </div>
             </div>
@@ -220,9 +210,7 @@ export function CustomerInvoices({
             <div className="flex items-center">
               <AlertCircle className="h-8 w-8 text-red-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(totals.balanceDue)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(totals.balanceDue)}</p>
                 <p className="text-sm text-gray-600">Balance Due</p>
               </div>
             </div>
@@ -275,9 +263,7 @@ export function CustomerInvoices({
                     <DialogTitle>Create New Invoice</DialogTitle>
                   </DialogHeader>
                   <div className="p-4">
-                    <p className="text-gray-600">
-                      Invoice creation form would go here...
-                    </p>
+                    <p className="text-gray-600">Invoice creation form would go here...</p>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -289,7 +275,7 @@ export function CustomerInvoices({
             <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
               <span className="text-sm text-blue-800">
                 {selectedInvoices.length} invoice
-                {selectedInvoices.length === 1 ? "" : "s"} selected
+                {selectedInvoices.length === 1 ? '' : 's'} selected
               </span>
               <div className="flex gap-2">
                 <Button size="sm" variant="outline">
@@ -332,9 +318,7 @@ export function CustomerInvoices({
                     <TableHead className="min-w-[100px]">Due Date</TableHead>
                     <TableHead className="min-w-[80px]">Type</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Total Amount
-                    </TableHead>
+                    <TableHead className="min-w-[120px]">Total Amount</TableHead>
                     <TableHead className="min-w-[120px]">Amount Paid</TableHead>
                     <TableHead className="min-w-[120px]">Balance Due</TableHead>
                     <TableHead className="min-w-[100px]">PO Number</TableHead>
@@ -348,56 +332,43 @@ export function CustomerInvoices({
                       <TableCell>
                         <Checkbox
                           checked={selectedInvoices.includes(invoice.id)}
-                          onCheckedChange={() =>
-                            toggleInvoiceSelection(invoice.id)
-                          }
+                          onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-blue-600">
-                          {invoice.invoiceNumber}
-                        </div>
+                        <div className="font-medium text-blue-600">{invoice.invoiceNumber}</div>
                       </TableCell>
                       <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
                       <TableCell>{formatDate(invoice.dueDate)}</TableCell>
                       <TableCell>
-                        <span className="capitalize">
-                          {invoice.invoiceType}
-                        </span>
+                        <span className="capitalize">{invoice.invoiceType}</span>
                       </TableCell>
                       <TableCell>
                         <Badge
                           className={
-                            statusColors[
-                              invoice.invoiceStatus as keyof typeof statusColors
-                            ] || "bg-gray-100"
+                            statusColors[invoice.invoiceStatus as keyof typeof statusColors] ||
+                            'bg-gray-100'
                           }
                         >
                           <div className="flex items-center space-x-1">
                             {getStatusIcon(invoice.invoiceStatus)}
-                            <span className="capitalize">
-                              {invoice.invoiceStatus}
-                            </span>
+                            <span className="capitalize">{invoice.invoiceStatus}</span>
                           </div>
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">
                         {formatCurrency(invoice.totalAmount)}
                       </TableCell>
-                      <TableCell>
-                        {formatCurrency(invoice.amountPaid)}
-                      </TableCell>
+                      <TableCell>{formatCurrency(invoice.amountPaid)}</TableCell>
                       <TableCell
                         className={
-                          invoice.balanceDue > 0
-                            ? "font-medium text-red-600"
-                            : "text-green-600"
+                          invoice.balanceDue > 0 ? 'font-medium text-red-600' : 'text-green-600'
                         }
                       >
                         {formatCurrency(invoice.balanceDue)}
                       </TableCell>
-                      <TableCell>{invoice.poNumber || "-"}</TableCell>
-                      <TableCell>{invoice.salesRep || "-"}</TableCell>
+                      <TableCell>{invoice.poNumber || '-'}</TableCell>
+                      <TableCell>{invoice.salesRep || '-'}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -441,13 +412,11 @@ export function CustomerInvoices({
         <Card>
           <CardContent className="p-12 text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No invoices found
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No invoices found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm
-                ? "No invoices match your search criteria."
-                : "No invoices have been created for this customer yet."}
+                ? 'No invoices match your search criteria.'
+                : 'No invoices have been created for this customer yet.'}
             </p>
             <Button>
               <Plus className="w-4 h-4 mr-2" />

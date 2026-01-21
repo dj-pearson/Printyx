@@ -1,19 +1,19 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Calculator, DollarSign, FileText } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { format } from "date-fns";
+} from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Calculator, DollarSign, FileText } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
 
 interface BillingRulePreviewProps {
   open: boolean;
@@ -22,8 +22,8 @@ interface BillingRulePreviewProps {
 }
 
 export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePreviewProps) {
-  const [testBwPages, setTestBwPages] = useState("1000");
-  const [testColorPages, setTestColorPages] = useState("100");
+  const [testBwPages, setTestBwPages] = useState('1000');
+  const [testColorPages, setTestColorPages] = useState('100');
   const [calculatedResult, setCalculatedResult] = useState<any>(null);
 
   if (!rule) return null;
@@ -32,27 +32,33 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
     const bwPages = parseInt(testBwPages) || 0;
     const colorPages = parseInt(testColorPages) || 0;
 
-    const bwRate = parseFloat(rule.bwRate || "0");
-    const colorRate = parseFloat(rule.colorRate || "0");
-    const baseCharge = parseFloat(rule.baseCharge || "0");
+    const bwRate = parseFloat(rule.bwRate || '0');
+    const colorRate = parseFloat(rule.colorRate || '0');
+    const baseCharge = parseFloat(rule.baseCharge || '0');
     const baseVolumeBw = rule.baseVolumeBw || 0;
     const baseVolumeColor = rule.baseVolumeColor || 0;
-    const overageMultiplier = parseFloat(rule.overageMultiplier || "1");
+    const overageMultiplier = parseFloat(rule.overageMultiplier || '1');
 
     // Calculate billable pages (pages beyond base volume)
     const billableBwPages = Math.max(0, bwPages - baseVolumeBw);
     const billableColorPages = Math.max(0, colorPages - baseVolumeColor);
 
     // Calculate charges
-    const bwCharge = billableBwPages * bwRate * (billableBwPages > 0 && overageMultiplier > 1 ? overageMultiplier : 1);
-    const colorCharge = billableColorPages * colorRate * (billableColorPages > 0 && overageMultiplier > 1 ? overageMultiplier : 1);
+    const bwCharge =
+      billableBwPages *
+      bwRate *
+      (billableBwPages > 0 && overageMultiplier > 1 ? overageMultiplier : 1);
+    const colorCharge =
+      billableColorPages *
+      colorRate *
+      (billableColorPages > 0 && overageMultiplier > 1 ? overageMultiplier : 1);
 
     const subtotal = baseCharge + bwCharge + colorCharge;
 
     // Apply minimum and maximum charges
     let total = subtotal;
-    const minimumCharge = parseFloat(rule.minimumCharge || "0");
-    const maximumCharge = parseFloat(rule.maximumCharge || "0");
+    const minimumCharge = parseFloat(rule.minimumCharge || '0');
+    const maximumCharge = parseFloat(rule.maximumCharge || '0');
 
     if (minimumCharge > 0 && total < minimumCharge) {
       total = minimumCharge;
@@ -82,9 +88,7 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Billing Rule Preview</DialogTitle>
-          <DialogDescription>
-            Review rule details and test calculations
-          </DialogDescription>
+          <DialogDescription>Review rule details and test calculations</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -97,8 +101,8 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
                   <CardDescription className="mt-1">{rule.ruleDescription}</CardDescription>
                 </div>
                 <Badge
-                  variant={rule.ruleStatus === "active" ? "default" : "secondary"}
-                  className={rule.ruleStatus === "active" ? "bg-green-100 text-green-800" : ""}
+                  variant={rule.ruleStatus === 'active' ? 'default' : 'secondary'}
+                  className={rule.ruleStatus === 'active' ? 'bg-green-100 text-green-800' : ''}
                 >
                   {rule.ruleStatus}
                 </Badge>
@@ -108,7 +112,7 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <Label className="text-muted-foreground text-xs">Type</Label>
-                  <p className="font-medium capitalize">{rule.ruleType.replace("_", " ")}</p>
+                  <p className="font-medium capitalize">{rule.ruleType.replace('_', ' ')}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Billing Cycle</Label>
@@ -121,7 +125,7 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
                 <div>
                   <Label className="text-muted-foreground text-xs">Effective Date</Label>
                   <p className="font-medium">
-                    {format(new Date(rule.effectiveStartDate), "MMM d, yyyy")}
+                    {format(new Date(rule.effectiveStartDate), 'MMM d, yyyy')}
                   </p>
                 </div>
               </div>
@@ -241,7 +245,9 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
                     {calculatedResult.baseCharge > 0 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Base Charge:</span>
-                        <span className="font-medium">${calculatedResult.baseCharge.toFixed(2)}</span>
+                        <span className="font-medium">
+                          ${calculatedResult.baseCharge.toFixed(2)}
+                        </span>
                       </div>
                     )}
 
@@ -254,7 +260,9 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
                         {calculatedResult.bwCharge > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">B&W Charges:</span>
-                            <span className="font-medium">${calculatedResult.bwCharge.toFixed(2)}</span>
+                            <span className="font-medium">
+                              ${calculatedResult.bwCharge.toFixed(2)}
+                            </span>
                           </div>
                         )}
                       </>
@@ -269,7 +277,9 @@ export function BillingRulePreview({ open, onOpenChange, rule }: BillingRulePrev
                         {calculatedResult.colorCharge > 0 && (
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Color Charges:</span>
-                            <span className="font-medium">${calculatedResult.colorCharge.toFixed(2)}</span>
+                            <span className="font-medium">
+                              ${calculatedResult.colorCharge.toFixed(2)}
+                            </span>
                           </div>
                         )}
                       </>

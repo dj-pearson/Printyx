@@ -134,7 +134,6 @@ export interface BillingContext {
 // =============================================================================
 
 class BillingEngineService {
-
   // ===========================================================================
   // INVOICE GENERATION
   // ===========================================================================
@@ -146,7 +145,7 @@ class BillingEngineService {
   async generateInvoiceFromContract(
     contractId: string,
     tenantId: string,
-    options: InvoiceGenerationOptions = {}
+    options: InvoiceGenerationOptions = {},
   ): Promise<Invoice> {
     const startTime = Date.now();
 
@@ -167,7 +166,7 @@ class BillingEngineService {
         contract.customerId,
         null, // equipmentId
         billingPeriodStart,
-        tenantId
+        tenantId,
       );
 
       // 4. Fetch meter readings if not provided
@@ -177,7 +176,7 @@ class BillingEngineService {
           contractId,
           billingPeriodStart,
           billingPeriodEnd,
-          tenantId
+          tenantId,
         );
       }
 
@@ -185,7 +184,7 @@ class BillingEngineService {
       const validation = await this.validateMeterReadings(
         meterReadings,
         contract.equipmentId,
-        tenantId
+        tenantId,
       );
 
       if (!validation.isValid && validation.errors.length > 0) {
@@ -199,7 +198,7 @@ class BillingEngineService {
         billingRules,
         billingPeriodStart,
         billingPeriodEnd,
-        tenantId
+        tenantId,
       );
 
       // 7. Calculate invoice totals
@@ -250,11 +249,11 @@ class BillingEngineService {
       await this.logInvoiceGeneration(
         invoice.id,
         'automated',
-        billingRules.map(r => r.id),
-        meterReadings.map(m => m.id),
+        billingRules.map((r) => r.id),
+        meterReadings.map((m) => m.id),
         processingTime,
         lineItems.length,
-        tenantId
+        tenantId,
       );
 
       // 12. Auto-send if requested
@@ -275,7 +274,7 @@ class BillingEngineService {
         Date.now() - startTime,
         0,
         tenantId,
-        error.message
+        error.message,
       );
 
       throw error;
@@ -285,10 +284,7 @@ class BillingEngineService {
   /**
    * Auto-generate invoice triggered by service ticket completion
    */
-  async autoGenerateFromServiceTicket(
-    ticketId: string,
-    tenantId: string
-  ): Promise<Invoice> {
+  async autoGenerateFromServiceTicket(ticketId: string, tenantId: string): Promise<Invoice> {
     try {
       // 1. Load service ticket with parts and labor
       const ticket = await this.getServiceTicketDetails(ticketId, tenantId);
@@ -305,8 +301,8 @@ class BillingEngineService {
             eq(autoInvoiceGeneration.sourceType, 'service_ticket'),
             eq(autoInvoiceGeneration.sourceId, ticketId),
             eq(autoInvoiceGeneration.tenantId, tenantId),
-            eq(autoInvoiceGeneration.generationStatus, 'completed')
-          )
+            eq(autoInvoiceGeneration.generationStatus, 'completed'),
+          ),
         )
         .limit(1);
 
@@ -409,7 +405,7 @@ class BillingEngineService {
    */
   async autoGenerateFromWarehouseOperation(
     operationId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<Invoice> {
     // Similar implementation to service ticket generation
     // This would handle parts shipments, equipment installations, etc.
@@ -421,7 +417,7 @@ class BillingEngineService {
    */
   async batchGenerateForSchedule(
     scheduleId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<BulkGenerationResult> {
     const result: BulkGenerationResult = {
       successful: 0,
@@ -454,7 +450,7 @@ class BillingEngineService {
   async calculateLineItemPrice(
     item: LineItemInput,
     contract: Contract,
-    billingRules: BillingRule[]
+    billingRules: BillingRule[],
   ): Promise<LineItemCalculation> {
     const breakdown = {
       baseAmount: 0,
@@ -480,7 +476,7 @@ class BillingEngineService {
           if (rule.tieredRates) {
             const tieredResult = this.applyTieredPricing(
               item.quantity,
-              rule.tieredRates as TieredRate[]
+              rule.tieredRates as TieredRate[],
             );
             breakdown.tieredAmount = tieredResult.amount;
             appliedRules.push(`Tiered: ${rule.ruleName}`);
@@ -491,7 +487,7 @@ class BillingEngineService {
           if (rule.volumeDiscounts) {
             const discountResult = this.applyVolumeDiscounts(
               amount,
-              rule.volumeDiscounts as VolumeDiscount[]
+              rule.volumeDiscounts as VolumeDiscount[],
             );
             breakdown.volumeDiscount = discountResult.discount;
             appliedRules.push(`Volume Discount: ${rule.ruleName}`);
@@ -517,7 +513,11 @@ class BillingEngineService {
       }
     }
 
-    const subtotal = breakdown.baseAmount + breakdown.tieredAmount - breakdown.volumeDiscount + breakdown.overageCharge;
+    const subtotal =
+      breakdown.baseAmount +
+      breakdown.tieredAmount -
+      breakdown.volumeDiscount +
+      breakdown.overageCharge;
     const total = subtotal * breakdown.timeBasedMultiplier;
 
     return {
@@ -533,10 +533,7 @@ class BillingEngineService {
   /**
    * Apply tiered pricing based on usage volume
    */
-  private applyTieredPricing(
-    usage: number,
-    tiers: TieredRate[]
-  ): PricingBreakdown {
+  private applyTieredPricing(usage: number, tiers: TieredRate[]): PricingBreakdown {
     let totalAmount = 0;
     let remainingUsage = usage;
     const details: string[] = [];
@@ -570,7 +567,7 @@ class BillingEngineService {
    */
   private applyVolumeDiscounts(
     totalAmount: number,
-    discountRules: VolumeDiscount[]
+    discountRules: VolumeDiscount[],
   ): { discount: number; percent: number } {
     // Sort by threshold descending to find highest applicable discount
     const sortedRules = [...discountRules].sort((a, b) => b.threshold - a.threshold);
@@ -595,7 +592,7 @@ class BillingEngineService {
   async validateMeterReadings(
     readings: MeterReading[],
     equipmentId: string | null | undefined,
-    tenantId: string
+    tenantId: string,
   ): Promise<ValidationResult> {
     const result: ValidationResult = {
       isValid: true,
@@ -618,7 +615,9 @@ class BillingEngineService {
       // Check for negative readings
       if (reading.blackWhiteCount < 0 || reading.colorCount < 0) {
         result.isValid = false;
-        result.errors.push(`Negative reading detected: BW=${reading.blackWhiteCount}, Color=${reading.colorCount}`);
+        result.errors.push(
+          `Negative reading detected: BW=${reading.blackWhiteCount}, Color=${reading.colorCount}`,
+        );
 
         await this.createMeterAnomaly({
           meterReadingId: reading.id,
@@ -636,7 +635,7 @@ class BillingEngineService {
         const anomalies = await this.detectAnomalies(reading, historicalReadings, tenantId);
         result.anomalies.push(...anomalies);
 
-        if (anomalies.some(a => a.severity === 'critical' || a.severity === 'high')) {
+        if (anomalies.some((a) => a.severity === 'critical' || a.severity === 'high')) {
           result.warnings.push(`Anomalies detected for reading ${reading.id}`);
         }
       }
@@ -651,22 +650,26 @@ class BillingEngineService {
   private async detectAnomalies(
     currentReading: MeterReading,
     historicalReadings: MeterReading[],
-    tenantId: string
+    tenantId: string,
   ): Promise<MeterAnomaly[]> {
     const anomalies: MeterAnomaly[] = [];
 
     if (historicalReadings.length === 0) return anomalies;
 
     // Calculate average usage
-    const avgBw = historicalReadings.reduce((sum, r) => sum + r.blackWhiteCount, 0) / historicalReadings.length;
-    const avgColor = historicalReadings.reduce((sum, r) => sum + r.colorCount, 0) / historicalReadings.length;
+    const avgBw =
+      historicalReadings.reduce((sum, r) => sum + r.blackWhiteCount, 0) / historicalReadings.length;
+    const avgColor =
+      historicalReadings.reduce((sum, r) => sum + r.colorCount, 0) / historicalReadings.length;
 
     // Calculate standard deviation
     const stdDevBw = Math.sqrt(
-      historicalReadings.reduce((sum, r) => sum + Math.pow(r.blackWhiteCount - avgBw, 2), 0) / historicalReadings.length
+      historicalReadings.reduce((sum, r) => sum + Math.pow(r.blackWhiteCount - avgBw, 2), 0) /
+        historicalReadings.length,
     );
     const stdDevColor = Math.sqrt(
-      historicalReadings.reduce((sum, r) => sum + Math.pow(r.colorCount - avgColor, 2), 0) / historicalReadings.length
+      historicalReadings.reduce((sum, r) => sum + Math.pow(r.colorCount - avgColor, 2), 0) /
+        historicalReadings.length,
     );
 
     // Detect spikes (3 standard deviations)
@@ -756,7 +759,7 @@ class BillingEngineService {
     customerId: string,
     equipmentId: string | null,
     effectiveDate: Date,
-    tenantId: string
+    tenantId: string,
   ): Promise<BillingRule[]> {
     const rules = await db
       .select()
@@ -766,12 +769,12 @@ class BillingEngineService {
           eq(billingRules.tenantId, tenantId),
           eq(billingRules.ruleStatus, 'active'),
           lte(billingRules.effectiveStartDate, effectiveDate),
-          sql`(${billingRules.effectiveEndDate} IS NULL OR ${billingRules.effectiveEndDate} >= ${effectiveDate})`
-        )
+          sql`(${billingRules.effectiveEndDate} IS NULL OR ${billingRules.effectiveEndDate} >= ${effectiveDate})`,
+        ),
       );
 
     // Filter by applicability
-    const applicableRules = rules.filter(rule => {
+    const applicableRules = rules.filter((rule) => {
       // Contract-specific rules
       if (rule.contractId && rule.contractId !== contractId) return false;
 
@@ -803,7 +806,7 @@ class BillingEngineService {
    */
   async calculateBillingMetrics(
     tenantId: string,
-    dateRange: { start: Date; end: Date }
+    dateRange: { start: Date; end: Date },
   ): Promise<BillingMetrics> {
     const { start, end } = dateRange;
 
@@ -819,8 +822,8 @@ class BillingEngineService {
         and(
           eq(invoices.tenantId, tenantId),
           gte(invoices.invoiceDate, start),
-          lte(invoices.invoiceDate, end)
-        )
+          lte(invoices.invoiceDate, end),
+        ),
       );
 
     const totalRevenue = revenueResult?.total || 0;
@@ -840,8 +843,8 @@ class BillingEngineService {
           eq(invoices.invoiceStatus, 'paid'),
           gte(invoices.invoiceDate, start),
           lte(invoices.invoiceDate, end),
-          isNotNull(invoices.paymentDate)
-        )
+          isNotNull(invoices.paymentDate),
+        ),
       );
 
     const averageDaysToPayment = paymentDaysResult?.avgDays || 0;
@@ -857,15 +860,14 @@ class BillingEngineService {
         and(
           eq(autoInvoiceGeneration.tenantId, tenantId),
           gte(autoInvoiceGeneration.triggeredAt, start),
-          lte(autoInvoiceGeneration.triggeredAt, end)
-        )
+          lte(autoInvoiceGeneration.triggeredAt, end),
+        ),
       );
 
     const autoInvoiceTotal = autoInvoiceResult?.total || 0;
     const autoInvoiceSuccessful = autoInvoiceResult?.successful || 0;
-    const autoInvoiceSuccessRate = autoInvoiceTotal > 0
-      ? (autoInvoiceSuccessful / autoInvoiceTotal) * 100
-      : 0;
+    const autoInvoiceSuccessRate =
+      autoInvoiceTotal > 0 ? (autoInvoiceSuccessful / autoInvoiceTotal) * 100 : 0;
 
     // MRR/ARR calculation (simplified)
     const mrr = paidRevenue / this.getMonthsDiff(start, end);
@@ -889,7 +891,7 @@ class BillingEngineService {
   async calculateBillingHealthScore(tenantId: string): Promise<HealthScore> {
     const last30Days = {
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      end: new Date()
+      end: new Date(),
     };
 
     const metrics = await this.calculateBillingMetrics(tenantId, last30Days);
@@ -898,7 +900,7 @@ class BillingEngineService {
     const collectionEfficiency = Math.min(metrics.collectionRate, 100);
 
     // Issuance timeliness (inverse of average days, normalized)
-    const issuanceTimeliness = Math.max(0, 100 - (metrics.invoiceIssuanceDelay * 10));
+    const issuanceTimeliness = Math.max(0, 100 - metrics.invoiceIssuanceDelay * 10);
 
     // Dispute rate (would need dispute count)
     const disputeRate = 100; // Placeholder
@@ -907,12 +909,11 @@ class BillingEngineService {
     const paymentMethodDiversity = 80; // Placeholder
 
     // Overall score (weighted average)
-    const score = (
-      collectionEfficiency * 0.40 +
-      issuanceTimeliness * 0.30 +
-      disputeRate * 0.20 +
-      paymentMethodDiversity * 0.10
-    );
+    const score =
+      collectionEfficiency * 0.4 +
+      issuanceTimeliness * 0.3 +
+      disputeRate * 0.2 +
+      paymentMethodDiversity * 0.1;
 
     return {
       score: Math.round(score),
@@ -941,7 +942,7 @@ class BillingEngineService {
     contractId: string,
     start: Date,
     end: Date,
-    tenantId: string
+    tenantId: string,
   ): Promise<MeterReading[]> {
     const readings = await db
       .select()
@@ -951,8 +952,8 @@ class BillingEngineService {
           eq(meterReadings.contractId, contractId),
           eq(meterReadings.tenantId, tenantId),
           gte(meterReadings.readingDate, start),
-          lte(meterReadings.readingDate, end)
-        )
+          lte(meterReadings.readingDate, end),
+        ),
       )
       .orderBy(desc(meterReadings.readingDate));
 
@@ -962,17 +963,12 @@ class BillingEngineService {
   private async getHistoricalMeterReadings(
     equipmentId: string,
     tenantId: string,
-    limit: number
+    limit: number,
   ): Promise<MeterReading[]> {
     const readings = await db
       .select()
       .from(meterReadings)
-      .where(
-        and(
-          eq(meterReadings.equipmentId, equipmentId),
-          eq(meterReadings.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(meterReadings.equipmentId, equipmentId), eq(meterReadings.tenantId, tenantId)))
       .orderBy(desc(meterReadings.readingDate))
       .limit(limit);
 
@@ -985,7 +981,7 @@ class BillingEngineService {
     rules: BillingRule[],
     periodStart: Date,
     periodEnd: Date,
-    tenantId: string
+    tenantId: string,
   ): Promise<Partial<InvoiceLineItem>[]> {
     const lineItems: Partial<InvoiceLineItem>[] = [];
 
@@ -1027,7 +1023,10 @@ class BillingEngineService {
     return lineItems;
   }
 
-  private async calculateLineItemsFromServiceTicket(ticket: any, tenantId: string): Promise<Partial<InvoiceLineItem>[]> {
+  private async calculateLineItemsFromServiceTicket(
+    ticket: any,
+    tenantId: string,
+  ): Promise<Partial<InvoiceLineItem>[]> {
     const lineItems: Partial<InvoiceLineItem>[] = [];
 
     // Add labor charges
@@ -1068,7 +1067,11 @@ class BillingEngineService {
     };
   }
 
-  private async calculateInvoiceTax(subtotal: number, customerId: string, tenantId: string): Promise<number> {
+  private async calculateInvoiceTax(
+    subtotal: number,
+    customerId: string,
+    tenantId: string,
+  ): Promise<number> {
     // This would implement tax calculation logic
     // Placeholder: 8% sales tax
     return subtotal * 0.08;
@@ -1135,7 +1138,8 @@ class BillingEngineService {
   }
 
   private getMonthsDiff(start: Date, end: Date): number {
-    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    const months =
+      (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
     return Math.max(months, 1);
   }
 
@@ -1200,7 +1204,7 @@ class BillingEngineService {
     processingTime: number,
     lineItemCount: number,
     tenantId: string,
-    errorMessage?: string
+    errorMessage?: string,
   ): Promise<void> {
     // This would create a record in invoiceGenerationLogs table
     // Placeholder implementation

@@ -24,7 +24,7 @@ router.get('/health-scores', async (req: Request, res: Response) => {
 
   try {
     const { healthStatus, trend, minScore, maxScore } = req.query;
-    
+
     const filters: any = {};
     if (healthStatus) filters.healthStatus = healthStatus as string;
     if (trend) filters.trend = trend as string;
@@ -48,11 +48,11 @@ router.get('/health-scores/:id', async (req: Request, res: Response) => {
 
   try {
     const score = await storage.getHealthScore(req.params.id);
-    
+
     if (!score || score.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Health score not found' });
     }
-    
+
     res.json(score);
   } catch (error) {
     console.error('Get health score error:', error);
@@ -112,11 +112,11 @@ router.get('/health-scores/customer/:customerId', async (req: Request, res: Resp
 
   try {
     const score = await storage.getHealthScoreByCustomer(req.params.customerId, user.tenantId);
-    
+
     if (!score) {
       return res.status(404).json({ error: 'Health score not found for customer' });
     }
-    
+
     res.json(score);
   } catch (error) {
     console.error('Get health score by customer error:', error);
@@ -133,7 +133,11 @@ router.get('/health-scores/customer/:customerId/history', async (req: Request, r
 
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-    const history = await storage.getHealthScoreHistory(req.params.customerId, user.tenantId, limit);
+    const history = await storage.getHealthScoreHistory(
+      req.params.customerId,
+      user.tenantId,
+      limit,
+    );
     res.json(history);
   } catch (error) {
     console.error('Get health score history error:', error);
@@ -188,7 +192,7 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
 
   try {
     const { churnRisk, interventionRequired } = req.query;
-    
+
     const filters: any = {};
     if (churnRisk) filters.churnRisk = churnRisk as string;
     if (interventionRequired) filters.interventionRequired = interventionRequired === 'true';
@@ -210,11 +214,11 @@ router.get('/churn-predictions/:id', async (req: Request, res: Response) => {
 
   try {
     const prediction = await storage.getChurnPrediction(req.params.id);
-    
+
     if (!prediction || prediction.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Churn prediction not found' });
     }
-    
+
     res.json(prediction);
   } catch (error) {
     console.error('Get churn prediction error:', error);
@@ -230,7 +234,9 @@ router.post('/churn-predictions', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to create churn predictions' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to create churn predictions' });
   }
 
   try {
@@ -280,12 +286,15 @@ router.get('/churn-predictions/customer/:customerId', async (req: Request, res: 
   }
 
   try {
-    const prediction = await storage.getChurnPredictionByCustomer(req.params.customerId, user.tenantId);
-    
+    const prediction = await storage.getChurnPredictionByCustomer(
+      req.params.customerId,
+      user.tenantId,
+    );
+
     if (!prediction) {
       return res.status(404).json({ error: 'Churn prediction not found for customer' });
     }
-    
+
     res.json(prediction);
   } catch (error) {
     console.error('Get churn prediction by customer error:', error);
@@ -356,7 +365,7 @@ router.get('/interventions', async (req: Request, res: Response) => {
 
   try {
     const { status, interventionType, priority, assignedTo } = req.query;
-    
+
     const filters: any = {};
     if (status) filters.status = status as string;
     if (interventionType) filters.interventionType = interventionType as string;
@@ -380,11 +389,11 @@ router.get('/interventions/:id', async (req: Request, res: Response) => {
 
   try {
     const intervention = await storage.getIntervention(req.params.id);
-    
+
     if (!intervention || intervention.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Intervention not found' });
     }
-    
+
     res.json(intervention);
   } catch (error) {
     console.error('Get intervention error:', error);
@@ -443,7 +452,10 @@ router.get('/interventions/customer/:customerId', async (req: Request, res: Resp
   }
 
   try {
-    const interventions = await storage.getInterventionsByCustomer(req.params.customerId, user.tenantId);
+    const interventions = await storage.getInterventionsByCustomer(
+      req.params.customerId,
+      user.tenantId,
+    );
     res.json(interventions);
   } catch (error) {
     console.error('Get interventions by customer error:', error);
@@ -459,7 +471,9 @@ router.post('/interventions/:id/assign', async (req: Request, res: Response) => 
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to assign interventions' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to assign interventions' });
   }
 
   try {
@@ -499,7 +513,12 @@ router.post('/interventions/:id/complete', async (req: Request, res: Response) =
       return res.status(400).json({ error: 'outcome is required' });
     }
 
-    const completed = await storage.completeIntervention(req.params.id, user.tenantId, outcome, notes);
+    const completed = await storage.completeIntervention(
+      req.params.id,
+      user.tenantId,
+      outcome,
+      notes,
+    );
     res.json(completed);
   } catch (error) {
     console.error('Complete intervention error:', error);
@@ -515,7 +534,9 @@ router.post('/interventions/:id/cancel', async (req: Request, res: Response) => 
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to cancel interventions' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to cancel interventions' });
   }
 
   try {
@@ -580,7 +601,7 @@ router.get('/journeys', async (req: Request, res: Response) => {
 
   try {
     const { currentStage, lifecyclePhase, journeyHealth } = req.query;
-    
+
     const filters: any = {};
     if (currentStage) filters.currentStage = currentStage as string;
     if (lifecyclePhase) filters.lifecyclePhase = lifecyclePhase as string;
@@ -603,11 +624,11 @@ router.get('/journeys/:id', async (req: Request, res: Response) => {
 
   try {
     const journey = await storage.getJourney(req.params.id);
-    
+
     if (!journey || journey.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Journey not found' });
     }
-    
+
     res.json(journey);
   } catch (error) {
     console.error('Get journey error:', error);
@@ -666,11 +687,11 @@ router.get('/journeys/customer/:customerId', async (req: Request, res: Response)
 
   try {
     const journey = await storage.getJourneyByCustomer(req.params.customerId, user.tenantId);
-    
+
     if (!journey) {
       return res.status(404).json({ error: 'Journey not found for customer' });
     }
-    
+
     res.json(journey);
   } catch (error) {
     console.error('Get journey by customer error:', error);
@@ -722,7 +743,11 @@ router.post('/journeys/:id/record-touchpoint', async (req: Request, res: Respons
       return res.status(400).json({ error: 'touchpointType is required' });
     }
 
-    const updated = await storage.recordJourneyTouchpoint(req.params.id, user.tenantId, touchpointType);
+    const updated = await storage.recordJourneyTouchpoint(
+      req.params.id,
+      user.tenantId,
+      touchpointType,
+    );
     res.json(updated);
   } catch (error) {
     console.error('Record journey touchpoint error:', error);
@@ -757,7 +782,7 @@ router.get('/renewals', async (req: Request, res: Response) => {
 
   try {
     const { renewalStatus, renewalRisk, daysUntilMax } = req.query;
-    
+
     const filters: any = {};
     if (renewalStatus) filters.renewalStatus = renewalStatus as string;
     if (renewalRisk) filters.renewalRisk = renewalRisk as string;
@@ -780,11 +805,11 @@ router.get('/renewals/:id', async (req: Request, res: Response) => {
 
   try {
     const renewal = await storage.getRenewalOpportunity(req.params.id);
-    
+
     if (!renewal || renewal.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Renewal opportunity not found' });
     }
-    
+
     res.json(renewal);
   } catch (error) {
     console.error('Get renewal opportunity error:', error);
@@ -860,11 +885,11 @@ router.get('/renewals/contract/:contractId', async (req: Request, res: Response)
 
   try {
     const renewal = await storage.getRenewalByContract(req.params.contractId, user.tenantId);
-    
+
     if (!renewal) {
       return res.status(404).json({ error: 'Renewal opportunity not found for contract' });
     }
-    
+
     res.json(renewal);
   } catch (error) {
     console.error('Get renewal by contract error:', error);
@@ -880,7 +905,9 @@ router.post('/renewals/:id/assign-csm', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to assign renewals' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to assign renewals' });
   }
 
   try {

@@ -64,8 +64,8 @@ let SentryProfiler: typeof import('@sentry/profiling-node') | null = null;
 
 // Build configuration from environment
 function buildConfig(): APMConfig {
-  const provider = (process.env.APM_PROVIDER as APMProvider) ||
-    (process.env.SENTRY_DSN ? 'sentry' : 'none');
+  const provider =
+    (process.env.APM_PROVIDER as APMProvider) || (process.env.SENTRY_DSN ? 'sentry' : 'none');
 
   return {
     provider,
@@ -229,18 +229,24 @@ async function initSentry(config: APMConfig): Promise<APMInstance> {
         Sentry!.setContext(name, context);
       },
       startTransaction: (context) => {
-        return Sentry!.startSpan({
-          name: context.name,
-          op: context.op,
-          attributes: context.data as Record<string, string | number | boolean | undefined>,
-        }, () => {});
+        return Sentry!.startSpan(
+          {
+            name: context.name,
+            op: context.op,
+            attributes: context.data as Record<string, string | number | boolean | undefined>,
+          },
+          () => {},
+        );
       },
       startSpan: (context) => {
-        return Sentry!.startSpan({
-          name: context.description || context.op,
-          op: context.op,
-          attributes: context.data as Record<string, string | number | boolean | undefined>,
-        }, () => {});
+        return Sentry!.startSpan(
+          {
+            name: context.description || context.op,
+            op: context.op,
+            attributes: context.data as Record<string, string | number | boolean | undefined>,
+          },
+          () => {},
+        );
       },
       flush: (timeout) => Sentry!.flush(timeout),
       close: (timeout) => Sentry!.close(timeout),
@@ -369,16 +375,9 @@ export function setupSentryErrorHandler(_app: Express): void {
 /**
  * Wrap an async function with APM tracing
  */
-export function withSpan<T>(
-  name: string,
-  op: string,
-  fn: () => Promise<T>,
-): Promise<T> {
+export function withSpan<T>(name: string, op: string, fn: () => Promise<T>): Promise<T> {
   if (currentConfig?.provider === 'sentry' && Sentry && currentConfig.enableTracing) {
-    return Sentry.startSpan(
-      { name, op },
-      async () => fn(),
-    );
+    return Sentry.startSpan({ name, op }, async () => fn());
   }
   return fn();
 }
@@ -400,11 +399,7 @@ export function traceDBOperation<T>(
 /**
  * Create a wrapper for external HTTP calls with tracing
  */
-export function traceHTTPCall<T>(
-  method: string,
-  url: string,
-  fn: () => Promise<T>,
-): Promise<T> {
+export function traceHTTPCall<T>(method: string, url: string, fn: () => Promise<T>): Promise<T> {
   return withSpan(`${method} ${url}`, 'http.client', async () => {
     apmInstance.setContext('http', { method, url });
     return fn();

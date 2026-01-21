@@ -3,6 +3,7 @@
 ## 🎯 Implementation Status
 
 ### ✅ COMPLETED
+
 - [x] Complete database schema (12 tables)
 - [x] Subscription service layer (3 services)
 - [x] API endpoints (30+ endpoints)
@@ -14,11 +15,13 @@
 - [x] TypeScript compilation verified
 
 ### ⏸️ REQUIRES DATABASE ACCESS
+
 - [ ] Database migration (`npm run db:push`)
 - [ ] Seed subscription plans (`npx tsx server/seed-subscription-plans.ts`)
 - [ ] API endpoint testing
 
 ### 🎨 FRONTEND (Next Phase)
+
 - [ ] Subscription status banner
 - [ ] Pricing page
 - [ ] Subscription settings page
@@ -47,21 +50,26 @@ This guide provides a comprehensive overview of the subscription system implemen
 ## 📂 Files Created
 
 ### Database Schema
+
 - `shared/schema-subscriptions.ts` - Complete subscription database schema (11 tables)
 
 ### Backend Services
+
 - `server/services/subscription-service.ts` - Core subscription business logic
 - `server/services/usage-tracking-service.ts` - Usage metrics and limit tracking
 - `server/services/subscription-jobs.ts` - Automated scheduled tasks
 
 ### API Routes
+
 - `server/routes-subscriptions.ts` - User-facing subscription endpoints
 - `server/routes-admin-subscriptions.ts` - Admin subscription management endpoints
 
 ### Middleware
+
 - `server/middleware/subscription.ts` - Subscription validation and feature gating
 
 ### Seed Data
+
 - `server/seed-subscription-plans.ts` - Default subscription plans and features
 
 ---
@@ -100,6 +108,7 @@ This guide provides a comprehensive overview of the subscription system implemen
 ### Schema Updates
 
 **tenants table** - Added fields:
+
 - `subscription` - Current subscription status
 - `billingStatus` - Billing payment status
 - `lastActivity` - Last activity timestamp
@@ -141,6 +150,7 @@ npx tsx server/seed-subscription-plans.ts
 ```
 
 This creates:
+
 - 3 subscription plans (Starter, Professional, Enterprise)
 - 45+ feature definitions
 - Feature-to-plan mappings
@@ -193,54 +203,68 @@ import('./services/subscription-jobs')
 ### User Subscription Endpoints
 
 **GET /api/subscriptions/plans**
+
 - Get all available subscription plans (public)
 
 **GET /api/subscriptions/current**
+
 - Get current subscription status and usage
 
 **POST /api/subscriptions/create**
+
 - Create new subscription with trial
 - Body: `{ planSlug, billingCycle, startTrial?, discountCode? }`
 
 **POST /api/subscriptions/upgrade**
+
 - Upgrade or downgrade subscription
 - Body: `{ newPlanSlug, billingCycle?, immediate? }`
 
 **POST /api/subscriptions/cancel**
+
 - Cancel subscription
 - Body: `{ immediate? }`
 
 **POST /api/subscriptions/convert-trial**
+
 - Convert trial to paid subscription
 - Body: `{ paymentMethodId? }`
 
 **GET /api/subscriptions/usage**
+
 - Get current usage statistics
 
 **GET /api/subscriptions/features**
+
 - Get available features for current plan
 
 **GET /api/subscriptions/notifications**
+
 - Get subscription-related notifications
 
 ### Admin Endpoints
 
 **POST /api/admin/subscriptions/grant-free**
+
 - Grant free subscription to tenant
 - Body: `{ tenantId, planSlug, reason }`
 
 **PATCH /api/admin/subscriptions/:id**
+
 - Update subscription settings (override limits)
 
 **POST /api/admin/subscriptions/:id/extend-trial**
+
 - Extend trial period
 - Body: `{ days }`
 
 **POST /api/admin/discounts**
+
 - Create discount code
 - Body: `{ code, name, type, percentOff/amountOff, ... }`
 
 **GET /api/admin/analytics/subscriptions**
+
 - Get subscription analytics (MRR, conversion rates, etc.)
 
 ---
@@ -248,6 +272,7 @@ import('./services/subscription-jobs')
 ## 🎯 Subscription Flows Covered
 
 ### 1. New User Sign-Up → Trial
+
 ```
 User signs up → Create tenant → Start 30-day trial →
 Onboarding flow → Trial expiration warnings (7, 3, 1 day) →
@@ -255,18 +280,21 @@ Trial expires → Prompt for payment or cancel
 ```
 
 ### 2. Trial → Paid Conversion
+
 ```
 User in trial → Add payment method → Convert to paid →
 Billing starts next cycle → No interruption
 ```
 
 ### 3. Plan Upgrade
+
 ```
 User on Starter → Click upgrade → Select Professional →
 Immediate upgrade → Pro-rated billing → New limits active
 ```
 
 ### 4. Usage Limit Exceeded
+
 ```
 Usage reaches 80% → Warning notification →
 Usage exceeds 100% → Upgrade prompt banner →
@@ -274,6 +302,7 @@ Admin can grant temporary increase or user upgrades
 ```
 
 ### 5. Free Subscription (Admin Grant)
+
 ```
 Admin grants free Enterprise → No billing required →
 Full features enabled → No upgrade prompts shown →
@@ -281,12 +310,14 @@ Annual renewal (stays free)
 ```
 
 ### 6. Discount Code Application
+
 ```
 User enters code → Validate (expiry, limits, plan applicability) →
 Apply discount → Reduced price shown → Tracked in redemptions
 ```
 
 ### 7. Subscription Cancellation
+
 ```
 User cancels → Choose immediate or end-of-period →
 If end-of-period: continues until renewal date →
@@ -300,21 +331,25 @@ Access removed when subscription ends
 ### Middleware Usage
 
 **Require active subscription:**
+
 ```typescript
 app.get('/api/premium-feature', requireActiveSubscription, handler);
 ```
 
 **Require specific feature:**
+
 ```typescript
 app.get('/api/analytics', requireFeature('advanced_analytics'), handler);
 ```
 
 **Require premium plan:**
+
 ```typescript
 app.get('/api/api-access', requirePremiumPlan, handler);
 ```
 
 **Require enterprise plan:**
+
 ```typescript
 app.get('/api/sso', requireEnterprisePlan, handler);
 ```
@@ -388,6 +423,7 @@ The `SubscriptionJobs` service runs automated tasks:
 The schema is ready for Stripe integration:
 
 ### Required Environment Variables
+
 ```env
 STRIPE_SECRET_KEY=sk_...
 STRIPE_PUBLISHABLE_KEY=pk_...
@@ -395,11 +431,13 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ### Stripe Fields in Schema
+
 - `stripeCustomerId` - Customer ID
 - `stripeSubscriptionId` - Subscription ID
 - `stripePaymentIntentId` - Payment ID
 
 ### Next Steps for Stripe Integration
+
 1. Install Stripe: `npm install stripe`
 2. Create `server/integrations/stripe.ts`
 3. Implement payment method creation
@@ -493,6 +531,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 ## 🔍 Scenarios Handled
 
 ### ✅ Trial Management
+
 - [x] Automatic trial start on sign-up
 - [x] Trial expiration warnings (7, 3, 1 day)
 - [x] Auto-conversion if payment method on file
@@ -500,6 +539,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 - [x] Admin can extend trial periods
 
 ### ✅ Usage Limits
+
 - [x] Real-time usage tracking
 - [x] Warnings at 80% of limit
 - [x] Alerts when exceeding limits
@@ -507,18 +547,21 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 - [x] Admin can override limits
 
 ### ✅ Subscription Transitions
+
 - [x] Upgrade preserves data and access
 - [x] Downgrade effective at next billing cycle (optional immediate)
 - [x] Cancellation can be immediate or scheduled
 - [x] Pro-rated billing calculations ready (needs Stripe)
 
 ### ✅ Free Subscriptions
+
 - [x] Admin can grant free access
 - [x] Free users see no upgrade prompts
 - [x] Free users have full feature access
 - [x] Tracked separately from paid subscriptions
 
 ### ✅ Discount System
+
 - [x] Percentage discounts
 - [x] Fixed amount discounts
 - [x] Free trial extensions
@@ -528,6 +571,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 - [x] First-time customer restrictions
 
 ### ✅ Notifications
+
 - [x] Trial expiration warnings
 - [x] Payment failures
 - [x] Usage limit warnings
@@ -539,6 +583,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 ## 🎯 Next Steps
 
 ### Immediate (Required for Launch)
+
 1. ✅ Database migration (`npm run db:push`)
 2. ✅ Seed subscription plans (`npx tsx server/seed-subscription-plans.ts`)
 3. ⏸️ Integrate routes into `server/routes.ts`
@@ -546,6 +591,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 5. ⏸️ Test subscription creation flow
 
 ### Short Term (1-2 weeks)
+
 1. ⏸️ Create pricing page component
 2. ⏸️ Create subscription settings page
 3. ⏸️ Create subscription status banner
@@ -553,6 +599,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 5. ⏸️ Add payment method management UI
 
 ### Medium Term (2-4 weeks)
+
 1. ⏸️ Build usage dashboard
 2. ⏸️ Create onboarding flows
 3. ⏸️ Add subscription analytics dashboard (admin)
@@ -564,6 +611,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 ## 📈 Metrics to Track
 
 ### Business Metrics
+
 - Monthly Recurring Revenue (MRR)
 - Annual Recurring Revenue (ARR)
 - Trial conversion rate
@@ -572,6 +620,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 - Customer lifetime value (CLV)
 
 ### Usage Metrics
+
 - Active users per tenant
 - Storage utilization
 - API call volume
@@ -579,6 +628,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 - Overage frequency
 
 ### System Health
+
 - Trial expiration notification delivery
 - Usage calculation accuracy
 - Payment success rate
@@ -589,6 +639,7 @@ curl -X POST http://localhost:5000/api/admin/discounts \
 ## 🛠️ Troubleshooting
 
 ### Database Schema Not Updating
+
 ```bash
 # Force push schema
 npm run db:push
@@ -598,17 +649,20 @@ psql $DATABASE_URL
 ```
 
 ### Subscription Not Creating
+
 - Check database connection
 - Verify plan slug exists
 - Check tenant has no active subscription
 - Review server logs for errors
 
 ### Usage Not Tracking
+
 - Verify middleware is applied
 - Check trackApiCall is executing
 - Recalculate usage manually: `POST /api/admin/usage/recalculate-all`
 
 ### Jobs Not Running
+
 - Check SubscriptionJobs.startAll() is called
 - Review server logs for job execution
 - Manually trigger: `POST /api/admin/trials/check-expirations`
@@ -622,14 +676,11 @@ psql $DATABASE_URL
 ```typescript
 import { SubscriptionService } from './services/subscription-service';
 
-const hasAnalytics = await SubscriptionService.hasFeature(
-  tenantId,
-  'advanced_analytics'
-);
+const hasAnalytics = await SubscriptionService.hasFeature(tenantId, 'advanced_analytics');
 
 if (!hasAnalytics) {
   return res.status(403).json({
-    error: 'Upgrade to Professional plan for advanced analytics'
+    error: 'Upgrade to Professional plan for advanced analytics',
   });
 }
 ```

@@ -18,9 +18,9 @@ const router = express.Router();
 router.get('/api/incident-response/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const incidentResponseData = {
@@ -36,7 +36,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
         mttr: 3.8, // mean time to resolution in hours
         slaCompliance: 94.7, // percentage
         escalatedIncidents: 2,
-        falsePositives: 8
+        falsePositives: 8,
       },
 
       // Active Incidents
@@ -68,8 +68,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           indicators: [
             'Unusual bulk data access pattern',
             'Large file transfers to external email',
-            'After-hours system access'
-          ]
+            'After-hours system access',
+          ],
         },
         {
           id: 'INC-2025-006',
@@ -98,8 +98,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           indicators: [
             'Suspicious PowerShell execution',
             'Unusual network traffic patterns',
-            'Registry modifications'
-          ]
+            'Registry modifications',
+          ],
         },
         {
           id: 'INC-2025-005',
@@ -128,9 +128,9 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           indicators: [
             'Suspicious email domains',
             'Executive targeting pattern',
-            'Credential harvesting URLs'
-          ]
-        }
+            'Credential harvesting URLs',
+          ],
+        },
       ],
 
       // Incident Statistics and Trends
@@ -142,7 +142,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           { month: '2024-11', incidents: 21, resolved: 20, avgTime: 3.9 },
           { month: '2024-12', incidents: 18, resolved: 17, avgTime: 3.7 },
           { month: '2025-01', incidents: 24, resolved: 22, avgTime: 4.2 },
-          { month: '2025-02', incidents: 7, resolved: 0, avgTime: 0 } // current month
+          { month: '2025-02', incidents: 7, resolved: 0, avgTime: 0 }, // current month
         ],
 
         categoriesBreakdown: [
@@ -151,14 +151,14 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           { category: 'network_intrusion', count: 22, percentage: 17.9, avgSeverity: 'high' },
           { category: 'data_breach', count: 18, percentage: 14.6, avgSeverity: 'critical' },
           { category: 'insider_threat', count: 12, percentage: 9.8, avgSeverity: 'medium' },
-          { category: 'ddos', count: 8, percentage: 6.5, avgSeverity: 'low' }
+          { category: 'ddos', count: 8, percentage: 6.5, avgSeverity: 'low' },
         ],
 
         severityDistribution: {
           critical: { count: 8, percentage: 6.5, avgResolutionTime: 2.1 },
           high: { count: 31, percentage: 25.2, avgResolutionTime: 6.8 },
           medium: { count: 52, percentage: 42.3, avgResolutionTime: 12.4 },
-          low: { count: 32, percentage: 26.0, avgResolutionTime: 24.7 }
+          low: { count: 32, percentage: 26.0, avgResolutionTime: 24.7 },
         },
 
         detectionSources: [
@@ -166,8 +166,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           { source: 'EDR/XDR', incidents: 32, percentage: 26.0 },
           { source: 'Network Monitoring', incidents: 23, percentage: 18.7 },
           { source: 'User Reports', incidents: 15, percentage: 12.2 },
-          { source: 'Vulnerability Scanners', incidents: 8, percentage: 6.5 }
-        ]
+          { source: 'Vulnerability Scanners', incidents: 8, percentage: 6.5 },
+        ],
       },
 
       // Response Team Performance
@@ -184,7 +184,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             slaCompliance: 97.3,
             workload: 'high',
             status: 'available',
-            onCallSchedule: 'Week 1-2 February'
+            onCallSchedule: 'Week 1-2 February',
           },
           {
             name: 'Incident Response Team Beta',
@@ -197,7 +197,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             slaCompliance: 94.2,
             workload: 'medium',
             status: 'available',
-            onCallSchedule: 'Week 3-4 February'
+            onCallSchedule: 'Week 3-4 February',
           },
           {
             name: 'Incident Response Team Gamma',
@@ -210,8 +210,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             slaCompliance: 91.8,
             workload: 'low',
             status: 'on_standby',
-            onCallSchedule: 'Emergency Backup'
-          }
+            onCallSchedule: 'Emergency Backup',
+          },
         ],
 
         individuals: [
@@ -226,7 +226,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             specialties: ['Data Breaches', 'Forensics', 'Compliance'],
             certifications: ['GCIH', 'GCFA', 'CISSP'],
             availability: 'on_call',
-            performance: 'excellent'
+            performance: 'excellent',
           },
           {
             name: 'Mike Rodriguez',
@@ -239,9 +239,9 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             specialties: ['Malware Analysis', 'Network Security', 'Threat Hunting'],
             certifications: ['GCTI', 'GREM', 'CEH'],
             availability: 'available',
-            performance: 'good'
-          }
-        ]
+            performance: 'good',
+          },
+        ],
       },
 
       // Threat Intelligence Integration
@@ -249,7 +249,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
         activeThreatFeeds: 12,
         iocMatches: 156,
         newThreats: 23,
-        
+
         currentThreats: [
           {
             threatId: 'TI-2025-001',
@@ -264,10 +264,10 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             iocs: [
               { type: 'domain', value: 'malicious-domain.com', confidence: 95 },
               { type: 'ip', value: '192.168.1.100', confidence: 87 },
-              { type: 'hash', value: 'a1b2c3d4e5f6...', confidence: 92 }
+              { type: 'hash', value: 'a1b2c3d4e5f6...', confidence: 92 },
             ],
             mitigation: 'Block domains, monitor for lateral movement techniques',
-            relevanceScore: 78.5
+            relevanceScore: 78.5,
           },
           {
             threatId: 'TI-2025-002',
@@ -281,19 +281,24 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             ttps: ['T1486', 'T1490', 'T1562.001'],
             iocs: [
               { type: 'file', value: 'blackcat.exe', confidence: 98 },
-              { type: 'registry', value: 'HKLM\\Software\\BlackCat', confidence: 96 }
+              { type: 'registry', value: 'HKLM\\Software\\BlackCat', confidence: 96 },
             ],
             mitigation: 'Enhanced backup verification, endpoint hardening',
-            relevanceScore: 85.3
-          }
+            relevanceScore: 85.3,
+          },
         ],
 
         feedSources: [
-          { name: 'Commercial Threat Intelligence', status: 'active', lastUpdate: new Date(), indicators: 15678 },
+          {
+            name: 'Commercial Threat Intelligence',
+            status: 'active',
+            lastUpdate: new Date(),
+            indicators: 15678,
+          },
           { name: 'MISP Community', status: 'active', lastUpdate: new Date(), indicators: 8934 },
           { name: 'Government Feeds', status: 'active', lastUpdate: new Date(), indicators: 4567 },
-          { name: 'Industry Sharing', status: 'active', lastUpdate: new Date(), indicators: 2345 }
-        ]
+          { name: 'Industry Sharing', status: 'active', lastUpdate: new Date(), indicators: 2345 },
+        ],
       },
 
       // Automated Response Capabilities
@@ -308,7 +313,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             avgExecutionTime: 15.7, // minutes
             successRate: 94.2,
             lastUpdated: new Date('2025-01-15T00:00:00Z'),
-            status: 'active'
+            status: 'active',
           },
           {
             id: 'playbook-002',
@@ -319,7 +324,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             avgExecutionTime: 32.4,
             successRate: 89.7,
             lastUpdated: new Date('2025-01-20T00:00:00Z'),
-            status: 'active'
+            status: 'active',
           },
           {
             id: 'playbook-003',
@@ -330,8 +335,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             avgExecutionTime: 8.3,
             successRate: 97.1,
             lastUpdated: new Date('2025-01-25T00:00:00Z'),
-            status: 'active'
-          }
+            status: 'active',
+          },
         ],
 
         automationMetrics: {
@@ -339,7 +344,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           automationSuccessRate: 92.8,
           timesSaved: 847.3, // hours saved through automation
           falsePositiveReduction: 67.4, // percentage
-          humanInterventionRequired: 12.5 // percentage of cases
+          humanInterventionRequired: 12.5, // percentage of cases
         },
 
         integrations: [
@@ -347,8 +352,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           { system: 'EDR (CrowdStrike)', status: 'active', automationLevel: 92 },
           { system: 'Email Security', status: 'active', automationLevel: 78 },
           { system: 'Network Firewall', status: 'active', automationLevel: 89 },
-          { system: 'Identity Management', status: 'active', automationLevel: 76 }
-        ]
+          { system: 'Identity Management', status: 'active', automationLevel: 76 },
+        ],
       },
 
       // Communication and Escalation
@@ -360,7 +365,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             notificationType: 'immediate',
             sentAt: new Date('2025-02-01T08:20:00Z'),
             method: 'email + sms',
-            status: 'acknowledged'
+            status: 'acknowledged',
           },
           {
             incident: 'INC-2025-007',
@@ -368,7 +373,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             notificationType: 'escalation',
             sentAt: new Date('2025-02-01T08:25:00Z'),
             method: 'email',
-            status: 'pending'
+            status: 'pending',
           },
           {
             incident: 'INC-2025-006',
@@ -376,15 +381,35 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
             notificationType: 'standard',
             sentAt: new Date('2025-01-31T22:35:00Z'),
             method: 'slack',
-            status: 'acknowledged'
-          }
+            status: 'acknowledged',
+          },
         ],
 
         escalationMatrix: [
-          { severity: 'critical', immediate: ['CISO', 'CEO'], within_1hr: ['Legal', 'PR'], within_4hr: ['Board'] },
-          { severity: 'high', immediate: ['CISO', 'IT Director'], within_2hr: ['Legal'], within_8hr: ['Executive Team'] },
-          { severity: 'medium', immediate: ['Security Manager'], within_4hr: ['IT Director'], within_24hr: ['CISO'] },
-          { severity: 'low', immediate: ['Security Analyst'], within_8hr: ['Security Manager'], within_72hr: ['IT Director'] }
+          {
+            severity: 'critical',
+            immediate: ['CISO', 'CEO'],
+            within_1hr: ['Legal', 'PR'],
+            within_4hr: ['Board'],
+          },
+          {
+            severity: 'high',
+            immediate: ['CISO', 'IT Director'],
+            within_2hr: ['Legal'],
+            within_8hr: ['Executive Team'],
+          },
+          {
+            severity: 'medium',
+            immediate: ['Security Manager'],
+            within_4hr: ['IT Director'],
+            within_24hr: ['CISO'],
+          },
+          {
+            severity: 'low',
+            immediate: ['Security Analyst'],
+            within_8hr: ['Security Manager'],
+            within_72hr: ['IT Director'],
+          },
         ],
 
         externalCommunications: {
@@ -392,8 +417,8 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           customerNotifications: 0,
           partnerAlerts: 1,
           lawEnforcementReports: 0,
-          insuranceNotifications: 1
-        }
+          insuranceNotifications: 1,
+        },
       },
 
       // Lessons Learned and Improvements
@@ -405,11 +430,11 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           improvementActions: [
             'Implement real-time domain reputation checking',
             'Add additional email security layers',
-            'Update user training on latest phishing techniques'
+            'Update user training on latest phishing techniques',
           ],
           status: 'implemented',
           implementedDate: new Date('2025-01-25T00:00:00Z'),
-          impact: 'Reduced similar incidents by 73%'
+          impact: 'Reduced similar incidents by 73%',
         },
         {
           incidentId: 'INC-2025-001',
@@ -418,17 +443,16 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
           improvementActions: [
             'Refine SIEM alert correlation rules',
             'Update escalation procedures',
-            'Implement alert prioritization algorithm'
+            'Implement alert prioritization algorithm',
           ],
           status: 'in_progress',
           targetDate: new Date('2025-02-15T00:00:00Z'),
-          progress: 65
-        }
-      ]
+          progress: 65,
+        },
+      ],
     };
 
     res.json(incidentResponseData);
-    
   } catch (error) {
     console.error('Error fetching incident response dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch incident response dashboard' });
@@ -440,9 +464,9 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
   try {
     const tenantId = req.user?.tenantId;
     const { incidentId } = req.params;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock detailed incident data
@@ -452,7 +476,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
       severity: 'critical',
       priority: 'p1',
       status: 'investigating',
-      
+
       timeline: [
         {
           timestamp: new Date('2025-02-01T08:15:00Z'),
@@ -460,7 +484,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           event: 'Anomaly Detected',
           description: 'DLP system flagged unusual bulk data access pattern',
           actor: 'DLP System',
-          details: 'Employee accessed 15,000+ customer records in 10 minutes'
+          details: 'Employee accessed 15,000+ customer records in 10 minutes',
         },
         {
           timestamp: new Date('2025-02-01T08:17:00Z'),
@@ -468,7 +492,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           event: 'Alert Generated',
           description: 'High-severity security alert created and routed',
           actor: 'SIEM System',
-          details: 'Alert ID: SIEM-2025-001847, Confidence: 87.5%'
+          details: 'Alert ID: SIEM-2025-001847, Confidence: 87.5%',
         },
         {
           timestamp: new Date('2025-02-01T08:20:00Z'),
@@ -476,7 +500,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           event: 'Incident Declared',
           description: 'Security analyst declared formal incident',
           actor: 'Sarah Chen',
-          details: 'Escalated to P1 Critical due to data sensitivity'
+          details: 'Escalated to P1 Critical due to data sensitivity',
         },
         {
           timestamp: new Date('2025-02-01T08:22:00Z'),
@@ -484,7 +508,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           event: 'User Account Suspended',
           description: 'Suspected user account temporarily suspended',
           actor: 'Sarah Chen',
-          details: 'Account: john.insider@company.com suspended pending investigation'
+          details: 'Account: john.insider@company.com suspended pending investigation',
         },
         {
           timestamp: new Date('2025-02-01T08:25:00Z'),
@@ -492,8 +516,8 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           event: 'Stakeholder Notification',
           description: 'CISO and Legal team notified of critical incident',
           actor: 'Automated System',
-          details: 'Email and SMS notifications sent, acknowledgments received'
-        }
+          details: 'Email and SMS notifications sent, acknowledgments received',
+        },
       ],
 
       evidence: [
@@ -505,7 +529,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           collector: 'Sarah Chen',
           hash: 'sha256:1a2b3c4d5e6f...',
           size: '2.4 MB',
-          status: 'analyzed'
+          status: 'analyzed',
         },
         {
           type: 'network_traffic',
@@ -515,7 +539,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           collector: 'Mike Rodriguez',
           hash: 'sha256:f6e5d4c3b2a1...',
           size: '156 MB',
-          status: 'processing'
+          status: 'processing',
         },
         {
           type: 'user_activity',
@@ -525,8 +549,8 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           collector: 'Jennifer Walsh',
           hash: 'sha256:9z8y7x6w5v4u...',
           size: '894 KB',
-          status: 'ready'
-        }
+          status: 'ready',
+        },
       ],
 
       impactAssessment: {
@@ -535,20 +559,20 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           records: 15247,
           dataTypes: ['PII', 'Contact Information', 'Account Numbers'],
           sensitivity: 'high',
-          regulatoryImplications: ['GDPR', 'CCPA', 'SOX']
+          regulatoryImplications: ['GDPR', 'CCPA', 'SOX'],
         },
         businessImpact: {
           revenue: 0, // no direct revenue impact yet
           operations: 'minimal', // suspended one user account
           reputation: 'potential_high',
           compliance: 'breach_notification_required',
-          estimatedCost: 125000 // potential regulatory fines and response costs
+          estimatedCost: 125000, // potential regulatory fines and response costs
         },
         affectedSystems: [
           { system: 'Customer Database', impact: 'data_accessed', criticality: 'high' },
           { system: 'File Server', impact: 'potential_exfiltration', criticality: 'medium' },
-          { system: 'Email System', impact: 'transmission_method', criticality: 'low' }
-        ]
+          { system: 'Email System', impact: 'transmission_method', criticality: 'low' },
+        ],
       },
 
       responseActions: [
@@ -557,29 +581,29 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
           status: 'completed',
           assignedTo: 'Sarah Chen',
           completedAt: new Date('2025-02-01T08:22:00Z'),
-          effectiveness: 'high'
+          effectiveness: 'high',
         },
         {
           action: 'Network traffic analysis and capture',
           status: 'in_progress',
           assignedTo: 'Mike Rodriguez',
           estimatedCompletion: new Date('2025-02-01T10:00:00Z'),
-          progress: 75
+          progress: 75,
         },
         {
           action: 'Forensic imaging of user workstation',
           status: 'pending',
           assignedTo: 'Digital Forensics Team',
           scheduledStart: new Date('2025-02-01T12:00:00Z'),
-          priority: 'high'
+          priority: 'high',
         },
         {
           action: 'Legal and compliance notification',
           status: 'completed',
           assignedTo: 'Sarah Chen',
           completedAt: new Date('2025-02-01T08:25:00Z'),
-          effectiveness: 'standard'
-        }
+          effectiveness: 'standard',
+        },
       ],
 
       nextSteps: [
@@ -588,12 +612,11 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
         'Interview affected employee and supervisor',
         'Assess scope of data actually exfiltrated',
         'Determine if external transmission occurred',
-        'Prepare regulatory breach notifications if required'
-      ]
+        'Prepare regulatory breach notifications if required',
+      ],
     };
 
     res.json(incidentDetails);
-    
   } catch (error) {
     console.error('Error fetching incident details:', error);
     res.status(500).json({ message: 'Failed to fetch incident details' });
@@ -606,9 +629,9 @@ router.post('/api/incident-response/playbooks/:playbookId/execute', async (req: 
     const tenantId = req.user?.tenantId;
     const { playbookId } = req.params;
     const { incidentId, parameters } = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock playbook execution
@@ -623,16 +646,33 @@ router.post('/api/incident-response/playbooks/:playbookId/execute', async (req: 
       currentStep: 1,
       totalSteps: 12,
       estimatedCompletion: new Date(Date.now() + 15.7 * 60 * 1000), // 15.7 minutes
-      
+
       steps: [
-        { step: 1, name: 'Initial Assessment', status: 'completed', startTime: new Date(), duration: 45 },
-        { step: 2, name: 'Containment Actions', status: 'running', startTime: new Date(), duration: null },
-        { step: 3, name: 'Evidence Collection', status: 'pending', startTime: null, duration: null }
-      ]
+        {
+          step: 1,
+          name: 'Initial Assessment',
+          status: 'completed',
+          startTime: new Date(),
+          duration: 45,
+        },
+        {
+          step: 2,
+          name: 'Containment Actions',
+          status: 'running',
+          startTime: new Date(),
+          duration: null,
+        },
+        {
+          step: 3,
+          name: 'Evidence Collection',
+          status: 'pending',
+          startTime: null,
+          duration: null,
+        },
+      ],
     };
 
     res.status(202).json(execution);
-    
   } catch (error) {
     console.error('Error executing playbook:', error);
     res.status(500).json({ message: 'Failed to execute playbook' });

@@ -107,7 +107,8 @@ router.get('/', async (req: Request, res: Response) => {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Build ORDER BY
-    const orderByColumn = platformDeals[sortBy as keyof typeof platformDeals] || platformDeals.createdAt;
+    const orderByColumn =
+      platformDeals[sortBy as keyof typeof platformDeals] || platformDeals.createdAt;
     const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
     // Fetch deals with business record info
@@ -144,7 +145,7 @@ router.get('/', async (req: Request, res: Response) => {
     console.error('Error fetching deals:', error);
     res.status(500).json({
       error: 'Failed to fetch deals',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -184,9 +185,9 @@ router.get('/pipeline', async (req: Request, res: Response) => {
     });
 
     // Group deals by stage
-    const pipeline = PIPELINE_STAGES.map(stageConfig => {
-      const stageStats = dealsByStage.find(d => d.stage === stageConfig.stage);
-      const stageDeals = allDeals.filter(d => d.stage === stageConfig.stage);
+    const pipeline = PIPELINE_STAGES.map((stageConfig) => {
+      const stageStats = dealsByStage.find((d) => d.stage === stageConfig.stage);
+      const stageDeals = allDeals.filter((d) => d.stage === stageConfig.stage);
 
       return {
         ...stageConfig,
@@ -198,8 +199,14 @@ router.get('/pipeline', async (req: Request, res: Response) => {
     });
 
     // Calculate overall pipeline metrics
-    const totalPipelineValue = dealsByStage.reduce((sum, stage) => sum + Number(stage.totalValue), 0);
-    const totalWeightedValue = dealsByStage.reduce((sum, stage) => sum + Number(stage.weightedValue), 0);
+    const totalPipelineValue = dealsByStage.reduce(
+      (sum, stage) => sum + Number(stage.totalValue),
+      0,
+    );
+    const totalWeightedValue = dealsByStage.reduce(
+      (sum, stage) => sum + Number(stage.weightedValue),
+      0,
+    );
     const totalDeals = dealsByStage.reduce((sum, stage) => sum + Number(stage.count), 0);
 
     res.json({
@@ -214,7 +221,7 @@ router.get('/pipeline', async (req: Request, res: Response) => {
     console.error('Error fetching pipeline:', error);
     res.status(500).json({
       error: 'Failed to fetch pipeline',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -264,31 +271,29 @@ router.get('/stats', async (req: Request, res: Response) => {
       .groupBy(platformDeals.status);
 
     // Calculate win rate
-    const wonDeals = winLossStats.find(s => s.status === 'won');
-    const lostDeals = winLossStats.find(s => s.status === 'lost');
+    const wonDeals = winLossStats.find((s) => s.status === 'won');
+    const lostDeals = winLossStats.find((s) => s.status === 'lost');
     const totalClosed = Number(wonDeals?.count || 0) + Number(lostDeals?.count || 0);
     const winRate = totalClosed > 0 ? (Number(wonDeals?.count || 0) / totalClosed) * 100 : 0;
 
     // Average sales cycle
     const closedDeals = await db.query.platformDeals.findMany({
-      where: and(
-        ...conditions,
-        inArray(platformDeals.status, ['won', 'lost'])
-      )!,
+      where: and(...conditions, inArray(platformDeals.status, ['won', 'lost']))!,
     });
 
     const salesCycleDays = closedDeals
-      .filter(d => d.actualCloseDate && d.createdAt)
-      .map(d => {
+      .filter((d) => d.actualCloseDate && d.createdAt)
+      .map((d) => {
         const days = Math.floor(
-          (d.actualCloseDate!.getTime() - d.createdAt!.getTime()) / (1000 * 60 * 60 * 24)
+          (d.actualCloseDate!.getTime() - d.createdAt!.getTime()) / (1000 * 60 * 60 * 24),
         );
         return days;
       });
 
-    const avgSalesCycle = salesCycleDays.length > 0
-      ? salesCycleDays.reduce((sum, days) => sum + days, 0) / salesCycleDays.length
-      : 0;
+    const avgSalesCycle =
+      salesCycleDays.length > 0
+        ? salesCycleDays.reduce((sum, days) => sum + days, 0) / salesCycleDays.length
+        : 0;
 
     res.json({
       period,
@@ -306,7 +311,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     console.error('Error fetching deal stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -354,7 +359,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.error('Error fetching deal:', error);
     res.status(500).json({
       error: 'Failed to fetch deal',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -387,15 +392,12 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Set forecast category based on stage
     if (!data.forecastCategory) {
-      const stageConfig = PIPELINE_STAGES.find(s => s.stage === data.stage);
+      const stageConfig = PIPELINE_STAGES.find((s) => s.stage === data.stage);
       data.forecastCategory = stageConfig?.category as any;
     }
 
     // Create deal
-    const [newDeal] = await db
-      .insert(platformDeals)
-      .values(data)
-      .returning();
+    const [newDeal] = await db.insert(platformDeals).values(data).returning();
 
     // Log creation activity
     if (newDeal.businessRecordId) {
@@ -415,7 +417,7 @@ router.post('/', async (req: Request, res: Response) => {
     console.error('Error creating deal:', error);
     res.status(500).json({
       error: 'Failed to create deal',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -445,13 +447,14 @@ router.patch('/:id', async (req: Request, res: Response) => {
     // Recalculate weighted value if deal value or probability changed
     if (updates.dealValue || updates.probability !== undefined) {
       const dealValue = updates.dealValue || currentDeal.dealValue;
-      const probability = updates.probability !== undefined ? updates.probability : currentDeal.probability;
+      const probability =
+        updates.probability !== undefined ? updates.probability : currentDeal.probability;
       updates.weightedValue = (Number(dealValue) * probability) / 100;
     }
 
     // Update forecast category if stage changed
     if (updates.stage && updates.stage !== currentDeal.stage) {
-      const stageConfig = PIPELINE_STAGES.find(s => s.stage === updates.stage);
+      const stageConfig = PIPELINE_STAGES.find((s) => s.stage === updates.stage);
       updates.forecastCategory = stageConfig?.category;
       updates.previousStage = currentDeal.stage;
     }
@@ -484,7 +487,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     console.error('Error updating deal:', error);
     res.status(500).json({
       error: 'Failed to update deal',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -512,7 +515,7 @@ router.post('/:id/move-stage', async (req: Request, res: Response) => {
     }
 
     // Get stage configuration
-    const stageConfig = PIPELINE_STAGES.find(s => s.stage === stage);
+    const stageConfig = PIPELINE_STAGES.find((s) => s.stage === stage);
     if (!stageConfig) {
       return res.status(400).json({ error: 'Invalid stage' });
     }
@@ -549,7 +552,7 @@ router.post('/:id/move-stage', async (req: Request, res: Response) => {
     console.error('Error moving deal stage:', error);
     res.status(500).json({
       error: 'Failed to move deal stage',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -599,7 +602,7 @@ router.post('/:id/close-won', async (req: Request, res: Response) => {
     console.error('Error closing deal as won:', error);
     res.status(500).json({
       error: 'Failed to close deal as won',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -650,7 +653,7 @@ router.post('/:id/close-lost', async (req: Request, res: Response) => {
     console.error('Error closing deal as lost:', error);
     res.status(500).json({
       error: 'Failed to close deal as lost',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -681,7 +684,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     console.error('Error deleting deal:', error);
     res.status(500).json({
       error: 'Failed to delete deal',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

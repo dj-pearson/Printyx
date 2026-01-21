@@ -33,14 +33,14 @@ This document describes the implementation of **team-level reporting and stats**
 
 All endpoints enforce proper RBAC permissions using the `requireAnyPermission` middleware:
 
-| Endpoint | Required Permissions | Access Level |
-|----------|---------------------|--------------|
-| `/pipeline-comparison` | `sales.pipeline.view_team` (or higher) | Level 2+ |
-| `/activity-leaderboard` | `sales.activity.view_team` (or higher) | Level 2+ |
-| `/performance-dashboard` | `sales.performance.view_team` (or higher) | Level 3+ |
-| `/lead-management` | `sales.lead.view_team` (or higher) | Level 3+ |
-| `/coaching` | `sales.coaching.view_team` (or higher) | Level 3+ |
-| `/quick-stats` | `sales.performance.view_team` (or higher) | Level 2+ |
+| Endpoint                 | Required Permissions                      | Access Level |
+| ------------------------ | ----------------------------------------- | ------------ |
+| `/pipeline-comparison`   | `sales.pipeline.view_team` (or higher)    | Level 2+     |
+| `/activity-leaderboard`  | `sales.activity.view_team` (or higher)    | Level 2+     |
+| `/performance-dashboard` | `sales.performance.view_team` (or higher) | Level 3+     |
+| `/lead-management`       | `sales.lead.view_team` (or higher)        | Level 3+     |
+| `/coaching`              | `sales.coaching.view_team` (or higher)    | Level 3+     |
+| `/quick-stats`           | `sales.performance.view_team` (or higher) | Level 2+     |
 
 ### Permission Hierarchy
 
@@ -51,6 +51,7 @@ platform > company > regional > location > team > own
 ```
 
 Example:
+
 - User with `sales.pipeline.view_company` can access `/pipeline-comparison`
 - User with `sales.pipeline.view_team` can access `/pipeline-comparison`
 - User with `sales.pipeline.view_own` **cannot** access `/pipeline-comparison`
@@ -65,6 +66,7 @@ const accessibleUserIds = await queryBuilder.getAccessibleUserIds();
 ```
 
 This ensures:
+
 - **Team Leads (Level 2)** see only their direct reports
 - **Supervisors (Level 3)** see all team members at their location
 - **Managers (Level 4+)** see aggregated data across locations/regions
@@ -74,10 +76,12 @@ This ensures:
 ## 📊 Reports Implemented
 
 ### Report 6: Team Pipeline Comparison
+
 **Access:** Level 2+ (Team Lead, Senior Sales Rep)
 **Permission:** `sales.pipeline.view_team`
 
 **Metrics:**
+
 - Pipeline value per rep
 - Weighted pipeline value
 - Deal count
@@ -86,6 +90,7 @@ This ensures:
 - Stage distribution per rep
 
 **Business Value:**
+
 - Identify reps with low pipeline coverage
 - Balance workload across team
 - Forecast team performance
@@ -95,10 +100,12 @@ This ensures:
 ---
 
 ### Report 7: Team Activity Leaderboard
+
 **Access:** Level 2+ (Team Lead, Senior Sales Rep)
 **Permission:** `sales.activity.view_team`
 
 **Metrics:**
+
 - Activities by type (calls, emails, meetings, demos, proposals)
 - Total activities per rep
 - Activity completion rate
@@ -106,6 +113,7 @@ This ensures:
 - Rankings
 
 **Business Value:**
+
 - Identify low activity reps for coaching
 - Recognize top performers
 - Track team engagement
@@ -115,10 +123,12 @@ This ensures:
 ---
 
 ### Report 8: Team Performance Dashboard
+
 **Access:** Level 3+ (Sales Supervisor)
 **Permission:** `sales.performance.view_team`
 
 **Metrics:**
+
 - Team revenue (MTD, QTD, YTD)
 - Team quota attainment
 - Individual quota attainment for each rep
@@ -127,6 +137,7 @@ This ensures:
 - Average lead response time
 
 **Business Value:**
+
 - Monitor team progress toward goals
 - Identify quota attainment gaps
 - Track performance trends
@@ -136,10 +147,12 @@ This ensures:
 ---
 
 ### Report 9: Lead Management Report
+
 **Access:** Level 3+ (Sales Supervisor)
 **Permission:** `sales.lead.view_team`
 
 **Metrics:**
+
 - Leads created (period)
 - Leads by source with conversion rates
 - Leads by status
@@ -149,6 +162,7 @@ This ensures:
 - Overdue follow-ups count
 
 **Business Value:**
+
 - Optimize lead distribution
 - Improve lead response time
 - Identify best/worst lead sources
@@ -159,10 +173,12 @@ This ensures:
 ---
 
 ### Report 10: Coaching Report
+
 **Access:** Level 3+ (Sales Supervisor)
 **Permission:** `sales.coaching.view_team` OR `sales.performance.view_team`
 
 **Metrics Per Rep:**
+
 - Call volume and talk time
 - Meetings held vs planned
 - Quote volume and win rate
@@ -170,15 +186,18 @@ This ensures:
 - Average stage velocity
 
 **Flags:**
+
 - Low activity (< 70% of team average)
 - Low conversion (< 70% of team average)
 - Deals stuck (> 3 deals)
 
 **Recommendations:**
+
 - Auto-generated coaching suggestions based on flags
 - Prioritized by severity (critical, high, medium)
 
 **Business Value:**
+
 - Proactive coaching intervention
 - Performance improvement
 - Rep development
@@ -191,15 +210,18 @@ This ensures:
 ## 🎨 Frontend Components
 
 ### 1. TeamStatsWidget
+
 **Location:** `client/src/components/stats/TeamStatsWidget.tsx`
 
 **Purpose:** Embeddable widget for displaying quick team stats
 
 **Variants:**
+
 - **Compact:** Minimal view with quota, pipeline, team size
 - **Full:** Detailed view with quota progress, pipeline coverage, activity
 
 **Features:**
+
 - Auto-refresh toggle
 - Manual refresh button
 - Real-time data updates
@@ -207,6 +229,7 @@ This ensures:
 - Loading states and error handling
 
 **Usage:**
+
 ```tsx
 // Compact variant (for sidebars)
 <TeamStatsWidget variant="compact" />
@@ -216,6 +239,7 @@ This ensures:
 ```
 
 **RBAC:**
+
 - Requires `sales.performance.view_team` permission
 - Shows permission error if user lacks access
 - No retry on 403 errors
@@ -223,16 +247,19 @@ This ensures:
 ---
 
 ### 2. TeamLeaderboard
+
 **Location:** `client/src/components/stats/TeamLeaderboard.tsx`
 
 **Purpose:** Real-time team rankings across multiple metrics
 
 **Tabs:**
+
 1. **Activity:** Rankings by total activities, with coaching flags
 2. **Pipeline:** Rankings by pipeline value and coverage
 3. **Quota:** Rankings by quota attainment
 
 **Features:**
+
 - Medal/trophy icons for top 3 performers
 - Color-coded status indicators
 - Team summary stats below each tab
@@ -240,14 +267,13 @@ This ensures:
 - Avatar initials for each rep
 
 **Usage:**
+
 ```tsx
-<TeamLeaderboard
-  defaultMetric="activity"
-  showCoachingFlags={true}
-/>
+<TeamLeaderboard defaultMetric="activity" showCoachingFlags={true} />
 ```
 
 **RBAC:**
+
 - Fetches data based on selected metric
 - Each tab queries different endpoint with appropriate permissions
 - Graceful error handling for permission issues
@@ -255,11 +281,13 @@ This ensures:
 ---
 
 ### 3. TeamLeadDashboardNew
+
 **Location:** `client/src/pages/dashboards/TeamLeadDashboardNew.tsx`
 
 **Purpose:** Comprehensive dashboard for Team Leads and Supervisors
 
 **Sections:**
+
 1. **Header:** Quick summary cards (team size, coaching needed, leads, health)
 2. **Alerts:** Coaching alerts, lead management alerts
 3. **Main Grid:**
@@ -271,6 +299,7 @@ This ensures:
    - Lead Management
 
 **Features:**
+
 - Refresh all data with one click
 - Date range filtering
 - Critical alerts at top
@@ -279,6 +308,7 @@ This ensures:
 - Detailed coaching recommendations
 
 **RBAC:**
+
 - Requires minimum Level 2 (Team Lead)
 - Different tabs may require different permission levels
 - Shows only accessible data based on user's scope
@@ -288,18 +318,22 @@ This ensures:
 ## 📡 API Endpoints
 
 ### Base URL
+
 All endpoints are under `/api/team-reports`
 
 ### 1. Pipeline Comparison
+
 ```
 GET /api/team-reports/pipeline-comparison
 ```
 
 **Query Parameters:**
+
 - `dateFrom` (optional): ISO date string
 - `dateTo` (optional): ISO date string
 
 **Response:**
+
 ```json
 {
   "teamMembers": [
@@ -343,15 +377,18 @@ GET /api/team-reports/pipeline-comparison
 ---
 
 ### 2. Activity Leaderboard
+
 ```
 GET /api/team-reports/activity-leaderboard
 ```
 
 **Query Parameters:**
+
 - `dateFrom` (optional): Defaults to 30 days ago
 - `dateTo` (optional): Defaults to now
 
 **Response:**
+
 ```json
 {
   "activities": [
@@ -387,11 +424,13 @@ GET /api/team-reports/activity-leaderboard
 ---
 
 ### 3. Performance Dashboard
+
 ```
 GET /api/team-reports/performance-dashboard
 ```
 
 **Response:**
+
 ```json
 {
   "teamRevenue": {
@@ -434,11 +473,13 @@ GET /api/team-reports/performance-dashboard
 ---
 
 ### 4. Lead Management
+
 ```
 GET /api/team-reports/lead-management
 ```
 
 **Response:**
+
 ```json
 {
   "leadsCreated": 150,
@@ -483,11 +524,13 @@ GET /api/team-reports/lead-management
 ---
 
 ### 5. Coaching Report
+
 ```
 GET /api/team-reports/coaching
 ```
 
 **Response:**
+
 ```json
 {
   "opportunities": [
@@ -543,6 +586,7 @@ GET /api/team-reports/coaching
 ---
 
 ### 6. Quick Stats (For Widgets)
+
 ```
 GET /api/team-reports/quick-stats
 ```
@@ -550,6 +594,7 @@ GET /api/team-reports/quick-stats
 **Purpose:** Lightweight endpoint for in-module widgets
 
 **Response:**
+
 ```json
 {
   "pipeline": {
@@ -578,6 +623,7 @@ GET /api/team-reports/quick-stats
 ---
 
 ### 7. Clear Cache
+
 ```
 POST /api/team-reports/clear-cache
 ```
@@ -586,6 +632,7 @@ POST /api/team-reports/clear-cache
 **Permission:** `sales.reports.manage`
 
 **Body:**
+
 ```json
 {
   "pattern": "team-pipeline" // Optional
@@ -599,43 +646,36 @@ POST /api/team-reports/clear-cache
 ### 1. Sales Supervisor Daily Routine
 
 **Morning:**
+
 1. Open Team Lead Dashboard
 2. Check coaching alerts (critical reps)
 3. Review unassigned leads and overdue follow-ups
 4. Check team quota attainment
 
-**Throughout Day:**
-5. Monitor activity leaderboard (embedded widget in opportunities page)
-6. Check pipeline coverage for each rep
-7. Address low activity flags
+**Throughout Day:** 5. Monitor activity leaderboard (embedded widget in opportunities page) 6. Check pipeline coverage for each rep 7. Address low activity flags
 
-**End of Day:**
-8. Review daily metrics
-9. Plan next day's coaching sessions
+**End of Day:** 8. Review daily metrics 9. Plan next day's coaching sessions
 
 ---
 
 ### 2. Team Lead Coaching Session
 
 **Preparation:**
+
 1. Open Coaching Report tab
 2. Review rep's flags and metrics
 3. Read auto-generated recommendations
 
-**During Session:**
-4. Discuss specific metrics (calls, meetings, quote win rate)
-5. Address stuck deals
-6. Set action items based on recommendations
+**During Session:** 4. Discuss specific metrics (calls, meetings, quote win rate) 5. Address stuck deals 6. Set action items based on recommendations
 
-**Follow-up:**
-7. Monitor rep's activity leaderboard ranking
-8. Track improvement over next 30 days
+**Follow-up:** 7. Monitor rep's activity leaderboard ranking 8. Track improvement over next 30 days
 
 ---
 
 ### 3. Manager Reviewing Team Lead Performance
 
 **Weekly Review:**
+
 1. Compare team pipeline coverage across all teams
 2. Review team quota attainment
 3. Identify teams needing support
@@ -657,15 +697,17 @@ All reports use an in-memory caching layer with the following settings:
 
 ```typescript
 // Example cache key format
-`team-pipeline:${userId}:${JSON.stringify(dateRange)}`
+`team-pipeline:${userId}:${JSON.stringify(dateRange)}`;
 ```
 
 **Benefits:**
+
 - Reduces database load
 - Faster response times
 - Scales better under high concurrency
 
 **Limitations:**
+
 - Data may be up to 5 minutes stale
 - Cache cleared on server restart
 - No distributed caching (yet)
@@ -677,6 +719,7 @@ All reports use an in-memory caching layer with the following settings:
 ### Database Queries
 
 1. **Parallel Execution:**
+
    ```typescript
    const [pipelineData, performanceData, activityData] = await Promise.all([...]);
    ```
@@ -792,6 +835,7 @@ Expected: 200 OK with success message
 ### Data Validation Tests
 
 #### 1. Team Size Consistency
+
 ```sql
 -- Should match across all endpoints
 SELECT teamSize FROM quick_stats;
@@ -800,6 +844,7 @@ SELECT COUNT(DISTINCT userId) FROM activity_leaderboard;
 ```
 
 #### 2. Quota Attainment Calculation
+
 ```sql
 -- Verify formula: (achieved / quota) * 100
 SELECT
@@ -811,6 +856,7 @@ FROM performance_dashboard.individualQuotas;
 ```
 
 #### 3. Pipeline Coverage
+
 ```sql
 -- Verify formula: (pipeline / quota) * 100
 SELECT
@@ -834,6 +880,7 @@ FROM pipeline_comparison.teamMembers;
 **Cause:** User lacks required permission
 
 **Solution:**
+
 1. Check user's role level: `SELECT role_level FROM users WHERE id = ?`
 2. Check user's permissions: `SELECT * FROM user_permissions WHERE user_id = ?`
 3. Verify permission hierarchy in RBAC middleware
@@ -848,6 +895,7 @@ FROM pipeline_comparison.teamMembers;
 **Cause:** HierarchicalQueryBuilder returns no accessible user IDs
 
 **Solution:**
+
 1. Check organizational hierarchy:
    ```sql
    SELECT * FROM organizational_units WHERE id = <user's unit>
@@ -870,6 +918,7 @@ FROM pipeline_comparison.teamMembers;
 **Cause:** Cache TTL hasn't expired
 
 **Solution:**
+
 1. Wait 5 minutes for automatic expiration
 2. OR manually clear cache:
    ```bash
@@ -889,6 +938,7 @@ FROM pipeline_comparison.teamMembers;
 **Cause:** Missing indexes or inefficient queries
 
 **Solution:**
+
 1. Check query explain plan:
    ```sql
    EXPLAIN ANALYZE <query>

@@ -4,15 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Clock, 
-  FileText, 
-  Package, 
-  Wrench, 
-  AlertTriangle, 
+import {
+  Clock,
+  FileText,
+  Package,
+  Wrench,
+  AlertTriangle,
   AlertCircle,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
@@ -66,7 +66,11 @@ const severityConfig = {
 export default function BreachTiles() {
   const [, setLocation] = useLocation();
 
-  const { data: breaches = [], isLoading, refetch } = useQuery<Breach[]>({
+  const {
+    data: breaches = [],
+    isLoading,
+    refetch,
+  } = useQuery<Breach[]>({
     queryKey: ['/api/reports/breaches'],
     queryFn: async () => {
       const response = await fetch('/api/reports/breaches', {
@@ -147,12 +151,7 @@ export default function BreachTiles() {
             Real-time monitoring of service level agreements and process violations
           </CardDescription>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="gap-2"
-        >
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
           <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
@@ -173,12 +172,8 @@ export default function BreachTiles() {
                   <div className="flex items-center gap-3">
                     <Icon className={`h-6 w-6 ${config.iconColor}`} />
                     <div>
-                      <h3 className={`font-semibold ${config.textColor}`}>
-                        {breach.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {breach.description}
-                      </p>
+                      <h3 className={`font-semibold ${config.textColor}`}>{breach.title}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{breach.description}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -188,7 +183,7 @@ export default function BreachTiles() {
                     <ExternalLink className="h-4 w-4 text-gray-400" />
                   </div>
                 </div>
-                
+
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-xs text-gray-500">
                     Last updated: {new Date(breach.lastUpdated).toLocaleTimeString()}
@@ -198,13 +193,14 @@ export default function BreachTiles() {
             );
           })}
         </div>
-        
+
         {breaches.length > 0 && (
           <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
               <p className="text-sm text-amber-800 font-medium">
-                Action Required: {breaches.length} breach{breaches.length !== 1 ? 'es' : ''} detected
+                Action Required: {breaches.length} breach{breaches.length !== 1 ? 'es' : ''}{' '}
+                detected
               </p>
             </div>
             <p className="text-sm text-amber-700 mt-1">

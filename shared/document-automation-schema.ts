@@ -1,324 +1,332 @@
-import { pgTable, text, integer, timestamp, jsonb, boolean, pgEnum } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
+import { pgTable, text, integer, timestamp, jsonb, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { z } from 'zod';
 
 // Document template types
-export const documentTemplateTypeEnum = pgEnum("document_template_type", [
-  "contract",
-  "purchase_order",
-  "invoice",
-  "quote",
-  "proposal",
-  "service_agreement",
-  "work_order",
-  "email",
-  "letter",
-  "form",
-  "report",
-  "custom"
+export const documentTemplateTypeEnum = pgEnum('document_template_type', [
+  'contract',
+  'purchase_order',
+  'invoice',
+  'quote',
+  'proposal',
+  'service_agreement',
+  'work_order',
+  'email',
+  'letter',
+  'form',
+  'report',
+  'custom',
 ]);
 
 // Document formats
-export const documentFormatEnum = pgEnum("document_format", [
-  "pdf",
-  "docx",
-  "html",
-  "markdown",
-  "txt"
+export const documentFormatEnum = pgEnum('document_format', [
+  'pdf',
+  'docx',
+  'html',
+  'markdown',
+  'txt',
 ]);
 
 // OCR processing status
-export const ocrProcessingStatusEnum = pgEnum("ocr_processing_status", [
-  "pending",
-  "processing",
-  "completed",
-  "failed"
+export const ocrProcessingStatusEnum = pgEnum('ocr_processing_status', [
+  'pending',
+  'processing',
+  'completed',
+  'failed',
 ]);
 
 // AI field mapping confidence
-export const aiConfidenceEnum = pgEnum("ai_confidence", [
-  "high",
-  "medium",
-  "low",
-  "manual"
-]);
+export const aiConfidenceEnum = pgEnum('ai_confidence', ['high', 'medium', 'low', 'manual']);
 
 /**
  * Document Templates
  * Store reusable document templates with field placeholders
  */
-export const documentTemplates = pgTable("document_templates", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer("tenant_id").notNull(),
+export const documentTemplates = pgTable('document_templates', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  tenantId: integer('tenant_id').notNull(),
 
   // Template metadata
-  name: text("name").notNull(),
-  description: text("description"),
-  type: documentTemplateTypeEnum("type").notNull(),
-  category: text("category"), // For custom categorization
+  name: text('name').notNull(),
+  description: text('description'),
+  type: documentTemplateTypeEnum('type').notNull(),
+  category: text('category'), // For custom categorization
 
   // Template content
-  content: text("content").notNull(), // HTML/Markdown with placeholders
-  format: documentFormatEnum("format").notNull().default("pdf"),
+  content: text('content').notNull(), // HTML/Markdown with placeholders
+  format: documentFormatEnum('format').notNull().default('pdf'),
 
   // Field mapping
-  fieldMapping: jsonb("field_mapping").notNull(), // Maps placeholders to data sources
+  fieldMapping: jsonb('field_mapping').notNull(), // Maps placeholders to data sources
   // Example: { "{{customer_name}}": "businessRecord.name", "{{total}}": "quote.total" }
 
   // Styling and layout
-  styles: jsonb("styles"), // CSS/styling configuration
-  pageSettings: jsonb("page_settings"), // Page size, margins, orientation
+  styles: jsonb('styles'), // CSS/styling configuration
+  pageSettings: jsonb('page_settings'), // Page size, margins, orientation
 
   // Version control
-  version: integer("version").notNull().default(1),
-  parentTemplateId: integer("parent_template_id"), // For version history
-  isActive: boolean("is_active").notNull().default(true),
+  version: integer('version').notNull().default(1),
+  parentTemplateId: integer('parent_template_id'), // For version history
+  isActive: boolean('is_active').notNull().default(true),
 
   // Usage tracking
-  usageCount: integer("usage_count").notNull().default(0),
-  lastUsedAt: timestamp("last_used_at"),
+  usageCount: integer('usage_count').notNull().default(0),
+  lastUsedAt: timestamp('last_used_at'),
 
   // Access control
-  isPublic: boolean("is_public").notNull().default(false), // Available to all tenants
-  createdBy: integer("created_by").notNull(),
+  isPublic: boolean('is_public').notNull().default(false), // Available to all tenants
+  createdBy: integer('created_by').notNull(),
 
   // Timestamps
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow()
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
  * Generated Documents
  * Store documents generated from templates
  */
-export const generatedDocuments = pgTable("generated_documents", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer("tenant_id").notNull(),
+export const generatedDocuments = pgTable('generated_documents', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  tenantId: integer('tenant_id').notNull(),
 
   // Template reference
-  templateId: integer("template_id").notNull(),
-  templateVersion: integer("template_version").notNull(),
+  templateId: integer('template_id').notNull(),
+  templateVersion: integer('template_version').notNull(),
 
   // Document metadata
-  name: text("name").notNull(),
-  type: documentTemplateTypeEnum("type").notNull(),
-  format: documentFormatEnum("format").notNull(),
+  name: text('name').notNull(),
+  type: documentTemplateTypeEnum('type').notNull(),
+  format: documentFormatEnum('format').notNull(),
 
   // Content
-  content: text("content").notNull(), // Rendered content
-  filePath: text("file_path"), // Path to generated file (PDF, DOCX, etc.)
-  fileSize: integer("file_size"), // In bytes
+  content: text('content').notNull(), // Rendered content
+  filePath: text('file_path'), // Path to generated file (PDF, DOCX, etc.)
+  fileSize: integer('file_size'), // In bytes
 
   // Data context used for generation
-  dataContext: jsonb("data_context").notNull(), // Actual data used to fill template
+  dataContext: jsonb('data_context').notNull(), // Actual data used to fill template
 
   // Related entities
-  workflowId: integer("workflow_id"), // If generated by workflow
-  taskId: integer("task_id"), // If generated for task
-  businessRecordId: integer("business_record_id"),
-  quoteId: integer("quote_id"),
-  dealId: integer("deal_id"),
-  serviceCallId: integer("service_call_id"),
+  workflowId: integer('workflow_id'), // If generated by workflow
+  taskId: integer('task_id'), // If generated for task
+  businessRecordId: integer('business_record_id'),
+  quoteId: integer('quote_id'),
+  dealId: integer('deal_id'),
+  serviceCallId: integer('service_call_id'),
 
   // Delivery tracking
-  emailedTo: jsonb("emailed_to"), // Array of email addresses
-  emailedAt: timestamp("emailed_at"),
-  downloadedCount: integer("downloaded_count").notNull().default(0),
-  lastDownloadedAt: timestamp("last_downloaded_at"),
+  emailedTo: jsonb('emailed_to'), // Array of email addresses
+  emailedAt: timestamp('emailed_at'),
+  downloadedCount: integer('downloaded_count').notNull().default(0),
+  lastDownloadedAt: timestamp('last_downloaded_at'),
 
   // Status
-  isArchived: boolean("is_archived").notNull().default(false),
+  isArchived: boolean('is_archived').notNull().default(false),
 
   // Audit
-  generatedBy: integer("generated_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow()
+  generatedBy: integer('generated_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 /**
  * Document Uploads with OCR
  * Store uploaded documents for OCR processing and AI field extraction
  */
-export const documentUploads = pgTable("document_uploads", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer("tenant_id").notNull(),
+export const documentUploads = pgTable('document_uploads', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  tenantId: integer('tenant_id').notNull(),
 
   // File metadata
-  fileName: text("file_name").notNull(),
-  fileType: text("file_type").notNull(), // MIME type
-  fileSize: integer("file_size").notNull(),
-  filePath: text("file_path").notNull(),
+  fileName: text('file_name').notNull(),
+  fileType: text('file_type').notNull(), // MIME type
+  fileSize: integer('file_size').notNull(),
+  filePath: text('file_path').notNull(),
 
   // OCR processing
-  ocrStatus: ocrProcessingStatusEnum("ocr_status").notNull().default("pending"),
-  ocrText: text("ocr_text"), // Extracted text from OCR
-  ocrConfidence: integer("ocr_confidence"), // 0-100
-  ocrProcessedAt: timestamp("ocr_processed_at"),
-  ocrError: text("ocr_error"),
+  ocrStatus: ocrProcessingStatusEnum('ocr_status').notNull().default('pending'),
+  ocrText: text('ocr_text'), // Extracted text from OCR
+  ocrConfidence: integer('ocr_confidence'), // 0-100
+  ocrProcessedAt: timestamp('ocr_processed_at'),
+  ocrError: text('ocr_error'),
 
   // AI field extraction
-  aiExtractedFields: jsonb("ai_extracted_fields"), // Fields extracted by AI
+  aiExtractedFields: jsonb('ai_extracted_fields'), // Fields extracted by AI
   // Example: { "customer_name": { "value": "Acme Corp", "confidence": "high", "source": "line 1" } }
 
-  aiFieldMapping: jsonb("ai_field_mapping"), // Mapping to target schema
+  aiFieldMapping: jsonb('ai_field_mapping'), // Mapping to target schema
   // Example: { "customer_name": "businessRecord.name", "total": "quote.total" }
 
-  aiProcessedAt: timestamp("ai_processed_at"),
-  aiError: text("ai_error"),
+  aiProcessedAt: timestamp('ai_processed_at'),
+  aiError: text('ai_error'),
 
   // Target entity
-  targetEntityType: text("target_entity_type"), // "quote", "purchase_order", etc.
-  targetEntityId: integer("target_entity_id"), // ID of created/updated entity
+  targetEntityType: text('target_entity_type'), // "quote", "purchase_order", etc.
+  targetEntityId: integer('target_entity_id'), // ID of created/updated entity
 
   // Workflow integration
-  workflowId: integer("workflow_id"),
-  taskId: integer("task_id"),
+  workflowId: integer('workflow_id'),
+  taskId: integer('task_id'),
 
   // Review and approval
-  requiresReview: boolean("requires_review").notNull().default(true),
-  reviewedBy: integer("reviewed_by"),
-  reviewedAt: timestamp("reviewed_at"),
-  reviewNotes: text("review_notes"),
+  requiresReview: boolean('requires_review').notNull().default(true),
+  reviewedBy: integer('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at'),
+  reviewNotes: text('review_notes'),
 
   // Status
-  isProcessed: boolean("is_processed").notNull().default(false),
-  isArchived: boolean("is_archived").notNull().default(false),
+  isProcessed: boolean('is_processed').notNull().default(false),
+  isArchived: boolean('is_archived').notNull().default(false),
 
   // Audit
-  uploadedBy: integer("uploaded_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow()
+  uploadedBy: integer('uploaded_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
  * Document Field Mappings
  * Define how document fields map to database entities
  */
-export const documentFieldMappings = pgTable("document_field_mappings", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer("tenant_id").notNull(),
+export const documentFieldMappings = pgTable('document_field_mappings', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  tenantId: integer('tenant_id').notNull(),
 
   // Mapping configuration
-  name: text("name").notNull(),
-  description: text("description"),
+  name: text('name').notNull(),
+  description: text('description'),
 
   // Source configuration
-  sourceType: text("source_type").notNull(), // "template", "ocr", "api"
-  sourceFields: jsonb("source_fields").notNull(), // Field definitions
+  sourceType: text('source_type').notNull(), // "template", "ocr", "api"
+  sourceFields: jsonb('source_fields').notNull(), // Field definitions
 
   // Target configuration
-  targetEntityType: text("target_entity_type").notNull(), // Table/entity name
-  targetFields: jsonb("target_fields").notNull(), // Field mappings
+  targetEntityType: text('target_entity_type').notNull(), // Table/entity name
+  targetFields: jsonb('target_fields').notNull(), // Field mappings
 
   // Transformation rules
-  transformationRules: jsonb("transformation_rules"), // Data transformation logic
-  validationRules: jsonb("validation_rules"), // Validation constraints
+  transformationRules: jsonb('transformation_rules'), // Data transformation logic
+  validationRules: jsonb('validation_rules'), // Validation constraints
 
   // AI configuration
-  useAiFieldExtraction: boolean("use_ai_field_extraction").notNull().default(true),
-  aiPrompt: text("ai_prompt"), // Custom AI prompt for field extraction
+  useAiFieldExtraction: boolean('use_ai_field_extraction').notNull().default(true),
+  aiPrompt: text('ai_prompt'), // Custom AI prompt for field extraction
 
   // Usage
-  isActive: boolean("is_active").notNull().default(true),
-  usageCount: integer("usage_count").notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  usageCount: integer('usage_count').notNull().default(0),
 
   // Audit
-  createdBy: integer("created_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow()
+  createdBy: integer('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
  * Document Workflow Actions
  * Define document-related actions in workflows
  */
-export const documentWorkflowActions = pgTable("document_workflow_actions", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer("tenant_id").notNull(),
+export const documentWorkflowActions = pgTable('document_workflow_actions', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  tenantId: integer('tenant_id').notNull(),
 
   // Workflow reference
-  workflowId: integer("workflow_id").notNull(),
-  stepId: text("step_id").notNull(), // Reference to workflow step
+  workflowId: integer('workflow_id').notNull(),
+  stepId: text('step_id').notNull(), // Reference to workflow step
 
   // Action type
-  actionType: text("action_type").notNull(), // "generate", "send", "upload", "extract"
+  actionType: text('action_type').notNull(), // "generate", "send", "upload", "extract"
 
   // Document generation
-  templateId: integer("template_id"),
-  generateFormat: documentFormatEnum("generate_format"),
+  templateId: integer('template_id'),
+  generateFormat: documentFormatEnum('generate_format'),
 
   // Document sending
-  sendTo: jsonb("send_to"), // Array of recipients (email, user IDs, roles)
-  sendMethod: text("send_method"), // "email", "notification", "both"
-  emailSubject: text("email_subject"),
-  emailBody: text("email_body"),
+  sendTo: jsonb('send_to'), // Array of recipients (email, user IDs, roles)
+  sendMethod: text('send_method'), // "email", "notification", "both"
+  emailSubject: text('email_subject'),
+  emailBody: text('email_body'),
 
   // Document extraction
-  fieldMappingId: integer("field_mapping_id"),
-  requireReview: boolean("require_review").notNull().default(true),
+  fieldMappingId: integer('field_mapping_id'),
+  requireReview: boolean('require_review').notNull().default(true),
 
   // Conditions
-  conditions: jsonb("conditions"), // When to execute this action
+  conditions: jsonb('conditions'), // When to execute this action
 
   // Status
-  isActive: boolean("is_active").notNull().default(true),
+  isActive: boolean('is_active').notNull().default(true),
 
   // Audit
-  createdBy: integer("created_by").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow()
+  createdBy: integer('created_by').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
  * Document Notifications
  * Track document-related notifications
  */
-export const documentNotifications = pgTable("document_notifications", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  tenantId: integer("tenant_id").notNull(),
+export const documentNotifications = pgTable('document_notifications', {
+  id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+  tenantId: integer('tenant_id').notNull(),
 
   // Document reference
-  documentId: integer("document_id").notNull(),
-  documentType: text("document_type").notNull(), // "generated", "uploaded"
+  documentId: integer('document_id').notNull(),
+  documentType: text('document_type').notNull(), // "generated", "uploaded"
 
   // Recipient
-  recipientUserId: integer("recipient_user_id"),
-  recipientEmail: text("recipient_email"),
-  recipientRole: text("recipient_role"),
+  recipientUserId: integer('recipient_user_id'),
+  recipientEmail: text('recipient_email'),
+  recipientRole: text('recipient_role'),
 
   // Notification details
-  subject: text("subject").notNull(),
-  message: text("message").notNull(),
+  subject: text('subject').notNull(),
+  message: text('message').notNull(),
 
   // Delivery
-  sentVia: text("sent_via").notNull(), // "email", "in-app", "both"
-  sentAt: timestamp("sent_at"),
-  deliveredAt: timestamp("delivered_at"),
+  sentVia: text('sent_via').notNull(), // "email", "in-app", "both"
+  sentAt: timestamp('sent_at'),
+  deliveredAt: timestamp('delivered_at'),
 
   // Engagement
-  viewedAt: timestamp("viewed_at"),
-  downloadedAt: timestamp("downloaded_at"),
+  viewedAt: timestamp('viewed_at'),
+  downloadedAt: timestamp('downloaded_at'),
 
   // Related entities
-  workflowId: integer("workflow_id"),
-  taskId: integer("task_id"),
+  workflowId: integer('workflow_id'),
+  taskId: integer('task_id'),
 
   // Status
-  status: text("status").notNull().default("pending"), // pending, sent, failed
-  error: text("error"),
+  status: text('status').notNull().default('pending'), // pending, sent, failed
+  error: text('error'),
 
   // Audit
-  createdAt: timestamp("created_at").notNull().defaultNow()
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // Zod schemas for validation
 export const insertDocumentTemplateSchema = createInsertSchema(documentTemplates, {
   name: z.string().min(1).max(200),
-  type: z.enum(["contract", "purchase_order", "invoice", "quote", "proposal", "service_agreement", "work_order", "email", "letter", "form", "report", "custom"]),
+  type: z.enum([
+    'contract',
+    'purchase_order',
+    'invoice',
+    'quote',
+    'proposal',
+    'service_agreement',
+    'work_order',
+    'email',
+    'letter',
+    'form',
+    'report',
+    'custom',
+  ]),
   content: z.string().min(1),
-  format: z.enum(["pdf", "docx", "html", "markdown", "txt"]),
+  format: z.enum(['pdf', 'docx', 'html', 'markdown', 'txt']),
   fieldMapping: z.record(z.string()),
   styles: z.record(z.any()).optional(),
-  pageSettings: z.record(z.any()).optional()
+  pageSettings: z.record(z.any()).optional(),
 });
 
 export const selectDocumentTemplateSchema = createSelectSchema(documentTemplates);
@@ -326,7 +334,7 @@ export const selectDocumentTemplateSchema = createSelectSchema(documentTemplates
 export const insertGeneratedDocumentSchema = createInsertSchema(generatedDocuments, {
   name: z.string().min(1).max(200),
   content: z.string().min(1),
-  dataContext: z.record(z.any())
+  dataContext: z.record(z.any()),
 });
 
 export const selectGeneratedDocumentSchema = createSelectSchema(generatedDocuments);
@@ -335,7 +343,7 @@ export const insertDocumentUploadSchema = createInsertSchema(documentUploads, {
   fileName: z.string().min(1),
   fileType: z.string().min(1),
   fileSize: z.number().min(0),
-  filePath: z.string().min(1)
+  filePath: z.string().min(1),
 });
 
 export const selectDocumentUploadSchema = createSelectSchema(documentUploads);
@@ -347,7 +355,7 @@ export const insertDocumentFieldMappingSchema = createInsertSchema(documentField
   sourceFields: z.record(z.any()),
   targetFields: z.record(z.any()),
   transformationRules: z.record(z.any()).optional(),
-  validationRules: z.record(z.any()).optional()
+  validationRules: z.record(z.any()).optional(),
 });
 
 export const selectDocumentFieldMappingSchema = createSelectSchema(documentFieldMappings);
@@ -355,9 +363,9 @@ export const selectDocumentFieldMappingSchema = createSelectSchema(documentField
 export const insertDocumentWorkflowActionSchema = createInsertSchema(documentWorkflowActions, {
   workflowId: z.number(),
   stepId: z.string(),
-  actionType: z.enum(["generate", "send", "upload", "extract"]),
+  actionType: z.enum(['generate', 'send', 'upload', 'extract']),
   sendTo: z.array(z.any()).optional(),
-  conditions: z.record(z.any()).optional()
+  conditions: z.record(z.any()).optional(),
 });
 
 export const selectDocumentWorkflowActionSchema = createSelectSchema(documentWorkflowActions);

@@ -76,7 +76,9 @@ class SimpleHierarchicalQueryBuilder {
         if (this.userContext.teamId) {
           clauses.push(`team_id = '${this.userContext.teamId}'`);
         } else if (this.userContext.managerId) {
-          clauses.push(`(user_id IN (SELECT id FROM users WHERE manager_id = '${this.userContext.id}') OR user_id = '${this.userContext.id}')`);
+          clauses.push(
+            `(user_id IN (SELECT id FROM users WHERE manager_id = '${this.userContext.id}') OR user_id = '${this.userContext.id}')`,
+          );
         } else {
           clauses.push(`user_id = '${this.userContext.id}'`);
         }
@@ -170,7 +172,9 @@ describe('HierarchicalQueryBuilder', () => {
       const whereClause = builder.getSQLWhereClause();
 
       expect(whereClause).toContain("tenant_id = 'tenant-1'");
-      expect(whereClause).toContain("user_id IN (SELECT id FROM users WHERE manager_id = 'manager-1')");
+      expect(whereClause).toContain(
+        "user_id IN (SELECT id FROM users WHERE manager_id = 'manager-1')",
+      );
       expect(whereClause).toContain("user_id = 'manager-1'");
     });
 
@@ -417,7 +421,7 @@ describe('HierarchicalQueryBuilder', () => {
     it('should generate valid SQL for all scope levels', () => {
       const scopes: ScopeLevel[] = ['own', 'team', 'location', 'regional', 'company', 'platform'];
 
-      scopes.forEach(scope => {
+      scopes.forEach((scope) => {
         const user = createUserContext({
           territoryScope: scope,
           locationId: 'loc-1',

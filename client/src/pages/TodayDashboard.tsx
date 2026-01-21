@@ -1,13 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
-import { MainLayout } from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useLocation } from "wouter";
-import { format, formatDistance, isToday, isPast, isFuture, addDays } from "date-fns";
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { apiRequest } from '@/lib/queryClient';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useLocation } from 'wouter';
+import { format, formatDistance, isToday, isPast, isFuture, addDays } from 'date-fns';
 import {
   AlertCircle,
   Calendar,
@@ -25,17 +25,17 @@ import {
   Sparkles,
   ArrowRight,
   MessageSquare,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Activity {
   id: string;
   title: string;
-  type: "call" | "meeting" | "email" | "task" | "follow-up";
+  type: 'call' | 'meeting' | 'email' | 'task' | 'follow-up';
   scheduledDate: string;
   dueDate?: string;
-  priority: "low" | "medium" | "high" | "urgent";
-  status: "pending" | "completed" | "overdue";
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'completed' | 'overdue';
   customerName?: string;
   customerId?: string;
   notes?: string;
@@ -83,14 +83,14 @@ const activityTypeIcons = {
   meeting: Calendar,
   email: Mail,
   task: CheckCircle2,
-  "follow-up": Clock,
+  'follow-up': Clock,
 };
 
 const priorityColors = {
-  low: "text-gray-500 bg-gray-100",
-  medium: "text-blue-600 bg-blue-100",
-  high: "text-orange-600 bg-orange-100",
-  urgent: "text-red-600 bg-red-100",
+  low: 'text-gray-500 bg-gray-100',
+  medium: 'text-blue-600 bg-blue-100',
+  high: 'text-orange-600 bg-orange-100',
+  urgent: 'text-red-600 bg-red-100',
 };
 
 export default function TodayDashboard() {
@@ -99,10 +99,10 @@ export default function TodayDashboard() {
 
   // Fetch today's dashboard data
   const { data, isLoading } = useQuery<TodayViewData>({
-    queryKey: ["/api/dashboards/today"],
+    queryKey: ['/api/dashboards/today'],
     queryFn: async () => {
       try {
-        return await apiRequest("/api/dashboards/today");
+        return await apiRequest('/api/dashboards/today');
       } catch (error) {
         // Fallback with mock data for demo
         return generateMockTodayData();
@@ -114,7 +114,7 @@ export default function TodayDashboard() {
 
   const handleCompleteActivity = async (activityId: string) => {
     // TODO: Implement activity completion
-    console.log("Complete activity:", activityId);
+    console.log('Complete activity:', activityId);
   };
 
   const handleCallCustomer = (customerId: string) => {
@@ -155,7 +155,7 @@ export default function TodayDashboard() {
   return (
     <MainLayout
       title="Today"
-      description={`Good ${getTimeOfDay()}, ${user?.firstName || "there"}! Here's your day at a glance.`}
+      description={`Good ${getTimeOfDay()}, ${user?.firstName || 'there'}! Here's your day at a glance.`}
     >
       <div className="space-y-6">
         {/* Overdue Alert Banner */}
@@ -165,7 +165,7 @@ export default function TodayDashboard() {
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600" />
                 <CardTitle className="text-red-900">
-                  {overdue.length} Overdue {overdue.length === 1 ? "Task" : "Tasks"}
+                  {overdue.length} Overdue {overdue.length === 1 ? 'Task' : 'Tasks'}
                 </CardTitle>
               </div>
             </CardHeader>
@@ -203,7 +203,7 @@ export default function TodayDashboard() {
             label="Quota Attainment"
             value={`${stats.quotaAttainment}%`}
             color="text-blue-600 bg-blue-100"
-            subtitle={stats.quotaAttainment >= 100 ? "🎉 Over target!" : "Keep going!"}
+            subtitle={stats.quotaAttainment >= 100 ? '🎉 Over target!' : 'Keep going!'}
           />
           <StatCard
             icon={TrendingUp}
@@ -349,11 +349,11 @@ export default function TodayDashboard() {
                         className="flex items-start gap-2 text-sm p-2 rounded-md hover:bg-gray-50 transition-colors"
                       >
                         <div className="mt-0.5">
-                          {activityTypeIcons[activity.type] &&
+                          {activityTypeIcons[activity.type] && (
                             <span className="text-gray-500">
-                              {activityTypeIcons[activity.type]({ className: "h-4 w-4" })}
+                              {activityTypeIcons[activity.type]({ className: 'h-4 w-4' })}
                             </span>
-                          }
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{activity.title}</p>
@@ -400,7 +400,7 @@ function StatCard({
     <Card>
       <CardContent className="pt-6">
         <div className="flex items-center gap-3">
-          <div className={cn("p-2 rounded-lg", color)}>
+          <div className={cn('p-2 rounded-lg', color)}>
             <Icon className="h-5 w-5" />
           </div>
           <div className="flex-1">
@@ -430,13 +430,11 @@ function ActivityItem({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border transition-all hover:shadow-sm",
-        isOverdue
-          ? "bg-red-50 border-red-200"
-          : "bg-white border-gray-200 hover:border-gray-300"
+        'flex items-start gap-3 p-3 rounded-lg border transition-all hover:shadow-sm',
+        isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200 hover:border-gray-300',
       )}
     >
-      <div className={cn("p-2 rounded-md", priorityColors[activity.priority])}>
+      <div className={cn('p-2 rounded-md', priorityColors[activity.priority])}>
         {Icon && <Icon className="h-4 w-4" />}
       </div>
       <div className="flex-1 min-w-0">
@@ -446,17 +444,13 @@ function ActivityItem({
         )}
         {activity.scheduledDate && (
           <p className="text-xs text-muted-foreground mt-1">
-            {format(new Date(activity.scheduledDate), "h:mm a")}
+            {format(new Date(activity.scheduledDate), 'h:mm a')}
           </p>
         )}
       </div>
       <div className="flex gap-2">
         {activity.customerId && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onNavigate(activity.customerId!)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => onNavigate(activity.customerId!)}>
             <ArrowRight className="h-4 w-4" />
           </Button>
         )}
@@ -484,9 +478,7 @@ function HotLeadItem({ lead }: { lead: Lead }) {
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <p className="font-medium">{lead.companyName}</p>
-          {lead.contactName && (
-            <p className="text-sm text-muted-foreground">{lead.contactName}</p>
-          )}
+          {lead.contactName && <p className="text-sm text-muted-foreground">{lead.contactName}</p>}
         </div>
         {lead.score && (
           <Badge className="bg-purple-600">
@@ -499,9 +491,7 @@ function HotLeadItem({ lead }: { lead: Lead }) {
           ${lead.estimatedValue.toLocaleString()}
         </p>
       )}
-      {lead.reason && (
-        <p className="text-xs text-muted-foreground mt-2">{lead.reason}</p>
-      )}
+      {lead.reason && <p className="text-xs text-muted-foreground mt-2">{lead.reason}</p>}
       <div className="flex gap-2 mt-3">
         <Button size="sm" variant="outline" className="flex-1">
           <Phone className="h-3 w-3 mr-1" /> Call
@@ -527,9 +517,7 @@ function DealAlertItem({ deal }: { deal: Deal }) {
           <p className="font-medium">{deal.title}</p>
           <p className="text-sm text-muted-foreground">{deal.companyName}</p>
         </div>
-        <p className="text-sm font-medium text-orange-600">
-          {deal.daysSinceUpdate} days
-        </p>
+        <p className="text-sm font-medium text-orange-600">{deal.daysSinceUpdate} days</p>
       </div>
       <p className="text-sm font-medium text-green-600">
         ${deal.value.toLocaleString()} • {deal.probability}%
@@ -562,9 +550,7 @@ function WinItem({ deal }: { deal: Deal }) {
         </div>
         <Trophy className="h-5 w-5 text-yellow-500" />
       </div>
-      <p className="text-lg font-bold text-green-600 mt-2">
-        ${deal.value.toLocaleString()}
-      </p>
+      <p className="text-lg font-bold text-green-600 mt-2">${deal.value.toLocaleString()}</p>
     </div>
   );
 }
@@ -572,9 +558,9 @@ function WinItem({ deal }: { deal: Deal }) {
 // Helper Functions
 function getTimeOfDay(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "morning";
-  if (hour < 18) return "afternoon";
-  return "evening";
+  if (hour < 12) return 'morning';
+  if (hour < 18) return 'afternoon';
+  return 'evening';
 }
 
 function generateMockTodayData(): TodayViewData {
@@ -585,147 +571,147 @@ function generateMockTodayData(): TodayViewData {
   return {
     overdue: [
       {
-        id: "1",
-        title: "Follow up on proposal",
-        type: "call",
+        id: '1',
+        title: 'Follow up on proposal',
+        type: 'call',
         scheduledDate: yesterday.toISOString(),
-        priority: "high",
-        status: "overdue",
-        customerName: "Acme Corporation",
-        customerId: "cust-1",
+        priority: 'high',
+        status: 'overdue',
+        customerName: 'Acme Corporation',
+        customerId: 'cust-1',
       },
       {
-        id: "2",
-        title: "Send contract documents",
-        type: "email",
+        id: '2',
+        title: 'Send contract documents',
+        type: 'email',
         scheduledDate: yesterday.toISOString(),
-        priority: "urgent",
-        status: "overdue",
-        customerName: "TechCorp Inc",
-        customerId: "cust-2",
+        priority: 'urgent',
+        status: 'overdue',
+        customerName: 'TechCorp Inc',
+        customerId: 'cust-2',
       },
     ],
     today: [
       {
-        id: "3",
-        title: "Demo call with prospect",
-        type: "meeting",
+        id: '3',
+        title: 'Demo call with prospect',
+        type: 'meeting',
         scheduledDate: new Date(now.setHours(10, 0)).toISOString(),
-        priority: "high",
-        status: "pending",
-        customerName: "Global Industries",
-        customerId: "cust-3",
+        priority: 'high',
+        status: 'pending',
+        customerName: 'Global Industries',
+        customerId: 'cust-3',
       },
       {
-        id: "4",
-        title: "Check in with key account",
-        type: "call",
+        id: '4',
+        title: 'Check in with key account',
+        type: 'call',
         scheduledDate: new Date(now.setHours(14, 30)).toISOString(),
-        priority: "medium",
-        status: "pending",
-        customerName: "Enterprise Solutions",
-        customerId: "cust-4",
+        priority: 'medium',
+        status: 'pending',
+        customerName: 'Enterprise Solutions',
+        customerId: 'cust-4',
       },
       {
-        id: "5",
-        title: "Send quarterly review",
-        type: "email",
+        id: '5',
+        title: 'Send quarterly review',
+        type: 'email',
         scheduledDate: new Date(now.setHours(16, 0)).toISOString(),
-        priority: "low",
-        status: "pending",
-        customerName: "ABC Company",
-        customerId: "cust-5",
+        priority: 'low',
+        status: 'pending',
+        customerName: 'ABC Company',
+        customerId: 'cust-5',
       },
     ],
     upcoming: [
       {
-        id: "6",
-        title: "Renewal discussion",
-        type: "meeting",
+        id: '6',
+        title: 'Renewal discussion',
+        type: 'meeting',
         scheduledDate: tomorrow.toISOString(),
-        priority: "high",
-        status: "pending",
-        customerName: "Big Corp",
-        customerId: "cust-6",
+        priority: 'high',
+        status: 'pending',
+        customerName: 'Big Corp',
+        customerId: 'cust-6',
       },
       {
-        id: "7",
-        title: "Product training session",
-        type: "meeting",
+        id: '7',
+        title: 'Product training session',
+        type: 'meeting',
         scheduledDate: addDays(now, 2).toISOString(),
-        priority: "medium",
-        status: "pending",
-        customerName: "StartupXYZ",
-        customerId: "cust-7",
+        priority: 'medium',
+        status: 'pending',
+        customerName: 'StartupXYZ',
+        customerId: 'cust-7',
       },
     ],
     hotLeads: [
       {
-        id: "lead-1",
-        companyName: "MegaCorp Industries",
-        contactName: "John Smith",
+        id: 'lead-1',
+        companyName: 'MegaCorp Industries',
+        contactName: 'John Smith',
         estimatedValue: 150000,
         score: 92,
-        status: "qualified",
-        reason: "Opened proposal 5 times, high engagement",
+        status: 'qualified',
+        reason: 'Opened proposal 5 times, high engagement',
       },
       {
-        id: "lead-2",
-        companyName: "FastGrowth LLC",
-        contactName: "Jane Doe",
+        id: 'lead-2',
+        companyName: 'FastGrowth LLC',
+        contactName: 'Jane Doe',
         estimatedValue: 85000,
         score: 88,
-        status: "qualified",
-        reason: "Budget confirmed, decision maker engaged",
+        status: 'qualified',
+        reason: 'Budget confirmed, decision maker engaged',
       },
       {
-        id: "lead-3",
-        companyName: "Innovation Labs",
-        contactName: "Bob Johnson",
+        id: 'lead-3',
+        companyName: 'Innovation Labs',
+        contactName: 'Bob Johnson',
         estimatedValue: 120000,
         score: 85,
-        status: "qualified",
-        reason: "Similar company just purchased, warm referral",
+        status: 'qualified',
+        reason: 'Similar company just purchased, warm referral',
       },
     ],
     pipelineAlerts: [
       {
-        id: "deal-1",
-        title: "Enterprise Software Deal",
-        companyName: "Acme Corp",
+        id: 'deal-1',
+        title: 'Enterprise Software Deal',
+        companyName: 'Acme Corp',
         value: 180000,
-        stage: "proposal",
+        stage: 'proposal',
         daysSinceUpdate: 23,
         probability: 60,
-        staleReason: "Stalled in proposal stage (avg: 12 days)",
+        staleReason: 'Stalled in proposal stage (avg: 12 days)',
       },
       {
-        id: "deal-2",
-        title: "Hardware Upgrade",
-        companyName: "TechCorp",
+        id: 'deal-2',
+        title: 'Hardware Upgrade',
+        companyName: 'TechCorp',
         value: 95000,
-        stage: "negotiation",
+        stage: 'negotiation',
         daysSinceUpdate: 15,
         probability: 70,
-        staleReason: "No contact in 2 weeks",
+        staleReason: 'No contact in 2 weeks',
       },
     ],
     recentWins: [
       {
-        id: "win-1",
-        title: "Annual Support Contract",
-        companyName: "Global Enterprises",
+        id: 'win-1',
+        title: 'Annual Support Contract',
+        companyName: 'Global Enterprises',
         value: 125000,
-        stage: "closed-won",
+        stage: 'closed-won',
         daysSinceUpdate: 1,
         probability: 100,
       },
       {
-        id: "win-2",
-        title: "Cloud Migration Project",
-        companyName: "Local Business Inc",
+        id: 'win-2',
+        title: 'Cloud Migration Project',
+        companyName: 'Local Business Inc',
         value: 75000,
-        stage: "closed-won",
+        stage: 'closed-won',
         daysSinceUpdate: 3,
         probability: 100,
       },
@@ -740,4 +726,4 @@ function generateMockTodayData(): TodayViewData {
 }
 
 // Missing import
-import { Plus } from "lucide-react";
+import { Plus } from 'lucide-react';

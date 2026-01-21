@@ -36,42 +36,42 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'email', targetField: 'email', dataType: 'string' },
       { sourceField: 'phone', targetField: 'direct_phone', dataType: 'string' },
       { sourceField: 'mobile', targetField: 'mobile_phone', dataType: 'string' },
-      
+
       // Professional Information
       { sourceField: 'title', targetField: 'job_title', dataType: 'string' },
       { sourceField: 'managementLevel', targetField: 'management_level', dataType: 'string' },
       { sourceField: 'department', targetField: 'department', dataType: 'string' },
       { sourceField: 'subDepartment', targetField: 'sub_department', dataType: 'string' },
       { sourceField: 'jobFunction', targetField: 'job_function', dataType: 'string' },
-      
+
       // Company Context
       { sourceField: 'companyId', targetField: 'company_external_id', dataType: 'string' },
       { sourceField: 'companyName', targetField: 'company_name', dataType: 'string' },
       { sourceField: 'companyDomain', targetField: 'company_domain', dataType: 'string' },
-      
+
       // Location Information
       { sourceField: 'city', targetField: 'city', dataType: 'string' },
       { sourceField: 'state', targetField: 'state', dataType: 'string' },
       { sourceField: 'country', targetField: 'country', dataType: 'string' },
       { sourceField: 'timeZone', targetField: 'time_zone', dataType: 'string' },
-      
+
       // Social Media & Professional Networks
       { sourceField: 'linkedInUrl', targetField: 'linkedin_url', dataType: 'string' },
       { sourceField: 'twitterUrl', targetField: 'twitter_url', dataType: 'string' },
       { sourceField: 'facebookUrl', targetField: 'facebook_url', dataType: 'string' },
-      
+
       // Enrichment Metadata
       { sourceField: 'personScore', targetField: 'person_score', dataType: 'number' },
       { sourceField: 'verified', targetField: 'is_verified', dataType: 'boolean' },
       { sourceField: 'lastUpdatedDate', targetField: 'last_enriched_date', dataType: 'date' },
-      
+
       // Professional History (JSON fields)
       { sourceField: 'workHistory', targetField: 'work_history', dataType: 'json' },
       { sourceField: 'educationHistory', targetField: 'education_history', dataType: 'json' },
       { sourceField: 'skills', targetField: 'skills', dataType: 'json' },
-    ]
+    ],
   },
-  
+
   {
     sourceSystem: 'apollo',
     sourceObject: 'people',
@@ -86,37 +86,37 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'email', targetField: 'email', dataType: 'string' },
       { sourceField: 'phone', targetField: 'direct_phone', dataType: 'string' },
       { sourceField: 'mobile_phone', targetField: 'mobile_phone', dataType: 'string' },
-      
+
       // Professional Information
       { sourceField: 'title', targetField: 'job_title', dataType: 'string' },
       { sourceField: 'seniority', targetField: 'management_level', dataType: 'string' },
       { sourceField: 'departments', targetField: 'department', dataType: 'json' },
       { sourceField: 'functions', targetField: 'job_function', dataType: 'json' },
-      
+
       // Company Context
       { sourceField: 'organization_id', targetField: 'company_external_id', dataType: 'string' },
       { sourceField: 'organization_name', targetField: 'company_name', dataType: 'string' },
       { sourceField: 'website_url', targetField: 'company_domain', dataType: 'string' },
-      
+
       // Location Information
       { sourceField: 'city', targetField: 'city', dataType: 'string' },
       { sourceField: 'state', targetField: 'state', dataType: 'string' },
       { sourceField: 'country', targetField: 'country', dataType: 'string' },
       { sourceField: 'time_zone', targetField: 'time_zone', dataType: 'string' },
-      
+
       // Social Media & Professional Networks
       { sourceField: 'linkedin_url', targetField: 'linkedin_url', dataType: 'string' },
       { sourceField: 'twitter_url', targetField: 'twitter_url', dataType: 'string' },
       { sourceField: 'facebook_url', targetField: 'facebook_url', dataType: 'string' },
-      
+
       // Enrichment Metadata
       { sourceField: 'person_score', targetField: 'person_score', dataType: 'number' },
       { sourceField: 'email_status', targetField: 'email_verification_status', dataType: 'string' },
       { sourceField: 'updated_at', targetField: 'last_enriched_date', dataType: 'date' },
-      
+
       // Professional History (JSON fields)
       { sourceField: 'employment_history', targetField: 'work_history', dataType: 'json' },
-    ]
+    ],
   },
 
   // =================================================================
@@ -134,7 +134,7 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'website', targetField: 'website', dataType: 'string' },
       { sourceField: 'domain', targetField: 'primary_domain', dataType: 'string' },
       { sourceField: 'phone', targetField: 'main_phone', dataType: 'string' },
-      
+
       // Business Information
       { sourceField: 'industry', targetField: 'primary_industry', dataType: 'string' },
       { sourceField: 'subIndustry', targetField: 'sub_industry', dataType: 'string' },
@@ -144,27 +144,27 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'revenueRange', targetField: 'revenue_range', dataType: 'string' },
       { sourceField: 'founded', targetField: 'founded_year', dataType: 'number' },
       { sourceField: 'type', targetField: 'company_type', dataType: 'string' },
-      
+
       // Location Information
       { sourceField: 'street', targetField: 'street_address', dataType: 'string' },
       { sourceField: 'city', targetField: 'city', dataType: 'string' },
       { sourceField: 'state', targetField: 'state', dataType: 'string' },
       { sourceField: 'zipCode', targetField: 'zip_code', dataType: 'string' },
       { sourceField: 'country', targetField: 'country', dataType: 'string' },
-      
+
       // Corporate Structure
       { sourceField: 'parentCompanyId', targetField: 'parent_company_id', dataType: 'string' },
       { sourceField: 'parentCompanyName', targetField: 'parent_company_name', dataType: 'string' },
-      
+
       // Technology & Business Intelligence
       { sourceField: 'technologies', targetField: 'technologies', dataType: 'json' },
       { sourceField: 'departments', targetField: 'departments', dataType: 'json' },
       { sourceField: 'keyExecutives', targetField: 'key_executives', dataType: 'json' },
-      
+
       // Enrichment Metadata
       { sourceField: 'companyScore', targetField: 'company_score', dataType: 'number' },
       { sourceField: 'lastUpdatedDate', targetField: 'last_enriched_date', dataType: 'date' },
-    ]
+    ],
   },
 
   {
@@ -179,35 +179,43 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'website_url', targetField: 'website', dataType: 'string' },
       { sourceField: 'primary_domain', targetField: 'primary_domain', dataType: 'string' },
       { sourceField: 'phone', targetField: 'main_phone', dataType: 'string' },
-      
+
       // Business Information
       { sourceField: 'industry', targetField: 'primary_industry', dataType: 'string' },
       { sourceField: 'estimated_num_employees', targetField: 'employee_count', dataType: 'number' },
       { sourceField: 'annual_revenue', targetField: 'annual_revenue', dataType: 'decimal' },
       { sourceField: 'publicly_traded_symbol', targetField: 'stock_ticker', dataType: 'string' },
-      
+
       // Location Information
       { sourceField: 'street_address', targetField: 'street_address', dataType: 'string' },
       { sourceField: 'city', targetField: 'city', dataType: 'string' },
       { sourceField: 'state', targetField: 'state', dataType: 'string' },
       { sourceField: 'postal_code', targetField: 'zip_code', dataType: 'string' },
       { sourceField: 'country', targetField: 'country', dataType: 'string' },
-      
+
       // Corporate Structure
-      { sourceField: 'owned_by_organization_id', targetField: 'parent_company_id', dataType: 'string' },
-      
+      {
+        sourceField: 'owned_by_organization_id',
+        targetField: 'parent_company_id',
+        dataType: 'string',
+      },
+
       // Technology & Business Intelligence
       { sourceField: 'technology_names', targetField: 'technologies', dataType: 'json' },
       { sourceField: 'keywords', targetField: 'business_keywords', dataType: 'json' },
-      
+
       // Funding Information
       { sourceField: 'total_funding', targetField: 'total_funding', dataType: 'decimal' },
       { sourceField: 'latest_funding_stage', targetField: 'funding_stage', dataType: 'string' },
-      { sourceField: 'latest_funding_round_date', targetField: 'last_funding_date', dataType: 'date' },
-      
+      {
+        sourceField: 'latest_funding_round_date',
+        targetField: 'last_funding_date',
+        dataType: 'date',
+      },
+
       // Enrichment Metadata
       { sourceField: 'updated_at', targetField: 'last_enriched_date', dataType: 'date' },
-    ]
+    ],
   },
 
   // =================================================================
@@ -230,7 +238,7 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'trending', targetField: 'is_trending', dataType: 'boolean' },
       { sourceField: 'lastSeenDate', targetField: 'last_activity_date', dataType: 'date' },
       { sourceField: 'keywords', targetField: 'intent_keywords', dataType: 'json' },
-    ]
+    ],
   },
 
   // =================================================================
@@ -249,12 +257,16 @@ export const DATA_ENRICHMENT_MAPPINGS: DataEnrichmentTableMapping[] = [
       { sourceField: 'level', targetField: 'organizational_level', dataType: 'number' },
       { sourceField: 'teamSize', targetField: 'team_size', dataType: 'number' },
       { sourceField: 'directReports', targetField: 'direct_reports_count', dataType: 'number' },
-      { sourceField: 'decisionMakingPower', targetField: 'decision_making_power', dataType: 'string' },
+      {
+        sourceField: 'decisionMakingPower',
+        targetField: 'decision_making_power',
+        dataType: 'string',
+      },
       { sourceField: 'budgetAuthority', targetField: 'has_budget_authority', dataType: 'boolean' },
       { sourceField: 'influenceScore', targetField: 'influence_score', dataType: 'number' },
       { sourceField: 'hierarchy', targetField: 'hierarchy_path', dataType: 'json' },
-    ]
-  }
+    ],
+  },
 ];
 
 // Data Transformation Utilities
@@ -306,7 +318,8 @@ export class DataEnrichmentTransformer {
   private static normalizeManagementLevel(level: string): string {
     if (!level) return null;
     const normalized = level.toLowerCase();
-    if (normalized.includes('c-level') || normalized.includes('ceo') || normalized.includes('cto')) return 'C-Level';
+    if (normalized.includes('c-level') || normalized.includes('ceo') || normalized.includes('cto'))
+      return 'C-Level';
     if (normalized.includes('vp') || normalized.includes('vice president')) return 'VP';
     if (normalized.includes('director')) return 'Director';
     if (normalized.includes('manager')) return 'Manager';
@@ -372,7 +385,7 @@ export class DataEnrichmentTransformer {
       try {
         return JSON.parse(skills);
       } catch {
-        return skills.split(',').map(s => s.trim());
+        return skills.split(',').map((s) => s.trim());
       }
     }
     return skills || [];
@@ -380,12 +393,12 @@ export class DataEnrichmentTransformer {
 
   private static parseApolloEmploymentHistory(history: any): any {
     if (Array.isArray(history)) {
-      return history.map(job => ({
+      return history.map((job) => ({
         company: job.organization_name,
         title: job.title,
         start_date: job.start_date,
         end_date: job.end_date,
-        current: job.current
+        current: job.current,
       }));
     }
     return history || [];
@@ -410,7 +423,7 @@ export class DataEnrichmentTransformer {
       try {
         return JSON.parse(technologies);
       } catch {
-        return technologies.split(',').map(t => t.trim());
+        return technologies.split(',').map((t) => t.trim());
       }
     }
     return technologies || [];
@@ -418,9 +431,9 @@ export class DataEnrichmentTransformer {
 
   private static parseApolloTechnologies(technologies: any): any {
     if (Array.isArray(technologies)) {
-      return technologies.map(tech => ({
+      return technologies.map((tech) => ({
         name: tech,
-        category: 'Unknown'
+        category: 'Unknown',
       }));
     }
     return technologies || [];
@@ -452,11 +465,11 @@ export class ProspectingQueryBuilder {
         departments: criteria.departments || ['IT', 'Finance', 'Operations'],
         locations: criteria.locations || ['United States'],
         industries: criteria.industries,
-        intentTopics: criteria.intentTopics || ['Office Technology', 'Managed Print Services']
+        intentTopics: criteria.intentTopics || ['Office Technology', 'Managed Print Services'],
       },
       sort: { field: 'lastUpdatedDate', direction: 'desc' },
       page: criteria.page || 1,
-      rpp: criteria.limit || 100
+      rpp: criteria.limit || 100,
     };
   }
 
@@ -474,7 +487,7 @@ export class ProspectingQueryBuilder {
       departments: criteria.departments,
       technologies: criteria.technologies,
       page: criteria.page || 1,
-      per_page: criteria.limit || 25
+      per_page: criteria.limit || 25,
     };
   }
 }

@@ -110,7 +110,7 @@ class AdvancedSchedulingService {
     tasks: Task[],
     resources: Resource[],
     options: AdvancedSchedulingOptions,
-    existingSchedule: any[] = []
+    existingSchedule: any[] = [],
   ): Promise<SchedulingResult> {
     const startTime = Date.now();
     console.log('🚀 Starting advanced scheduling for', tasks.length, 'tasks...');
@@ -136,18 +136,21 @@ class AdvancedSchedulingService {
 
       // Record performance metrics
       const duration = Date.now() - startTime;
-      PerformanceMonitor.monitorSchedulingAlgorithm(tasks.length, duration, finalResult.scheduledTasks.length);
+      PerformanceMonitor.monitorSchedulingAlgorithm(
+        tasks.length,
+        duration,
+        finalResult.scheduledTasks.length,
+      );
 
       // Store in history for learning
       this.schedulingHistory.push({
         timestamp: new Date(),
         tasks,
-        result: finalResult
+        result: finalResult,
       });
 
       console.log('✅ Advanced scheduling completed in', duration, 'ms');
       return finalResult;
-
     } catch (error) {
       console.error('Advanced scheduling failed:', error);
       return this.fallbackScheduling(tasks, resources, options);
@@ -160,7 +163,7 @@ class AdvancedSchedulingService {
    * Update user patterns based on historical data
    */
   private async updateUserPatterns(tasks: Task[], resources: Resource[]): Promise<void> {
-    for (const resource of resources.filter(r => r.type === 'user')) {
+    for (const resource of resources.filter((r) => r.type === 'user')) {
       if (!this.userPatterns.has(resource.id)) {
         // Initialize pattern for new user
         this.userPatterns.set(resource.id, {
@@ -171,7 +174,7 @@ class AdvancedSchedulingService {
           preferredWorkingHours: { start: 9, end: 17 },
           energyLevels: this.generateInitialEnergyLevels(),
           contextSwitchingCost: 15, // 15 minute penalty
-          learningRate: 0.1
+          learningRate: 0.1,
         });
       }
 
@@ -189,8 +192,8 @@ class AdvancedSchedulingService {
 
     // Analyze recent scheduling history
     const recentHistory = this.schedulingHistory
-      .filter(h => h.timestamp > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) // Last 30 days
-      .filter(h => h.tasks.some(t => t.userId === userId));
+      .filter((h) => h.timestamp > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) // Last 30 days
+      .filter((h) => h.tasks.some((t) => t.userId === userId));
 
     if (recentHistory.length === 0) return;
 
@@ -203,15 +206,23 @@ Recent Scheduling Sessions: ${recentHistory.length}
 Tasks Completed: ${recentHistory.reduce((sum, h) => sum + h.result.scheduledTasks.length, 0)}
 
 Historical Data Summary:
-${recentHistory.slice(0, 5).map(h => `
+${recentHistory
+  .slice(0, 5)
+  .map(
+    (h) => `
 - Date: ${h.timestamp.toISOString().split('T')[0]}
 - Tasks: ${h.tasks.length}
 - Scheduled: ${h.result.scheduledTasks.length}
 - Optimization Score: ${h.result.optimizationScore}
-`).join('')}
+`,
+  )
+  .join('')}
 
 Current Pattern:
-- Productivity Peaks: ${pattern.productivityPeaks.slice(0, 3).map(p => `${p.hour}:00 (${p.score}%)`).join(', ')}
+- Productivity Peaks: ${pattern.productivityPeaks
+        .slice(0, 3)
+        .map((p) => `${p.hour}:00 (${p.score}%)`)
+        .join(', ')}
 - Context Switching Cost: ${pattern.contextSwitchingCost} minutes
 - Preferred Hours: ${pattern.preferredWorkingHours.start}:00 - ${pattern.preferredWorkingHours.end}:00
 
@@ -224,7 +235,7 @@ Return JSON with updated pattern insights:
       const aiResponse = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: patternAnalysisPrompt }],
         temperature: 0.3,
-        max_tokens: 800
+        max_tokens: 800,
       });
 
       const patternInsights = JSON.parse(aiResponse);
@@ -238,7 +249,6 @@ Return JSON with updated pattern insights:
       }
 
       console.log(`📊 Updated patterns for user ${userId}:`, patternInsights.insights?.slice(0, 2));
-
     } catch (error) {
       console.error('Pattern learning failed for user', userId, ':', error);
     }
@@ -251,19 +261,18 @@ Return JSON with updated pattern insights:
     tasks: Task[],
     resources: Resource[],
     options: AdvancedSchedulingOptions,
-    existingSchedule: any[]
+    existingSchedule: any[],
   ): Promise<void> {
-    
     // Create variables for each task
     for (const task of tasks) {
       const availableSlots = this.generateTimeSlots(task, resources);
-      
+
       this.constraintSolver.addVariable({
         id: `task_${task.id}`,
         name: task.title,
         taskId: task.id,
         domain: availableSlots,
-        constraints: []
+        constraints: [],
       });
     }
 
@@ -282,7 +291,11 @@ Return JSON with updated pattern insights:
   /**
    * Add time-based constraints
    */
-  private addTimeConstraints(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): void {
+  private addTimeConstraints(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): void {
     // Due date constraints
     for (const task of tasks) {
       if (task.dueDate) {
@@ -296,7 +309,7 @@ Return JSON with updated pattern insights:
             const slot = values[`task_${task.id}`];
             return slot ? slot.endTime <= task.dueDate : false;
           },
-          description: `Task ${task.title} must complete by ${task.dueDate?.toISOString()}`
+          description: `Task ${task.title} must complete by ${task.dueDate?.toISOString()}`,
         });
       }
     }
@@ -306,8 +319,9 @@ Return JSON with updated pattern insights:
       for (let j = i + 1; j < tasks.length; j++) {
         const task1 = tasks[i];
         const task2 = tasks[j];
-        
-        if (task1.userId === task2.userId) { // Same user
+
+        if (task1.userId === task2.userId) {
+          // Same user
           this.constraintSolver.addConstraint({
             id: `no_overlap_${task1.id}_${task2.id}`,
             type: 'hard',
@@ -317,13 +331,13 @@ Return JSON with updated pattern insights:
             condition: (values) => {
               const slot1 = values[`task_${task1.id}`];
               const slot2 = values[`task_${task2.id}`];
-              
+
               if (!slot1 || !slot2) return true;
-              
+
               // Check for overlap
               return slot1.endTime <= slot2.startTime || slot2.endTime <= slot1.startTime;
             },
-            description: `Tasks ${task1.title} and ${task2.title} cannot overlap`
+            description: `Tasks ${task1.title} and ${task2.title} cannot overlap`,
           });
         }
       }
@@ -333,7 +347,11 @@ Return JSON with updated pattern insights:
   /**
    * Add resource availability constraints
    */
-  private addResourceConstraints(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): void {
+  private addResourceConstraints(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): void {
     for (const task of tasks) {
       this.constraintSolver.addConstraint({
         id: `resource_availability_${task.id}`,
@@ -344,16 +362,16 @@ Return JSON with updated pattern insights:
         condition: (values) => {
           const slot = values[`task_${task.id}`];
           if (!slot) return false;
-          
-          const resource = resources.find(r => r.id === slot.resourceId);
+
+          const resource = resources.find((r) => r.id === slot.resourceId);
           if (!resource) return false;
-          
+
           // Check if resource is available during the slot
-          return resource.availability.some(avail => 
-            avail.start <= slot.startTime && slot.endTime <= avail.end
+          return resource.availability.some(
+            (avail) => avail.start <= slot.startTime && slot.endTime <= avail.end,
           );
         },
-        description: `Resource must be available for task ${task.title}`
+        description: `Resource must be available for task ${task.title}`,
       });
     }
   }
@@ -374,13 +392,13 @@ Return JSON with updated pattern insights:
             condition: (values) => {
               const depSlot = values[`task_${dependencyId}`];
               const taskSlot = values[`task_${task.id}`];
-              
+
               if (!depSlot || !taskSlot) return false;
-              
+
               // Dependency must finish before task starts
               return depSlot.endTime <= taskSlot.startTime;
             },
-            description: `Task ${task.title} depends on completion of ${dependencyId}`
+            description: `Task ${task.title} depends on completion of ${dependencyId}`,
           });
         }
       }
@@ -390,7 +408,11 @@ Return JSON with updated pattern insights:
   /**
    * Add working hours constraints
    */
-  private addWorkingHoursConstraints(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): void {
+  private addWorkingHoursConstraints(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): void {
     if (!options.constraints.respectWorkingHours) return;
 
     for (const task of tasks) {
@@ -403,16 +425,17 @@ Return JSON with updated pattern insights:
         condition: (values) => {
           const slot = values[`task_${task.id}`];
           if (!slot) return false;
-          
+
           const pattern = this.userPatterns.get(task.userId);
           if (!pattern) return true;
-          
+
           const startHour = slot.startTime.getHours();
           const endHour = slot.endTime.getHours();
-          
-          const withinHours = startHour >= pattern.preferredWorkingHours.start && 
-                            endHour <= pattern.preferredWorkingHours.end;
-          
+
+          const withinHours =
+            startHour >= pattern.preferredWorkingHours.start &&
+            endHour <= pattern.preferredWorkingHours.end;
+
           if (options.constraints.allowOvertime) {
             // Soft constraint: return penalty for overtime
             return withinHours ? 0 : (endHour - pattern.preferredWorkingHours.end) * 10;
@@ -421,7 +444,7 @@ Return JSON with updated pattern insights:
             return withinHours;
           }
         },
-        description: `Task ${task.title} should be scheduled within working hours`
+        description: `Task ${task.title} should be scheduled within working hours`,
       });
     }
   }
@@ -429,7 +452,11 @@ Return JSON with updated pattern insights:
   /**
    * Add productivity optimization constraints
    */
-  private addProductivityConstraints(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): void {
+  private addProductivityConstraints(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): void {
     const weight = options.optimizationGoals.maximizeProductivity;
     if (weight === 0) return;
 
@@ -443,17 +470,18 @@ Return JSON with updated pattern insights:
         condition: (values) => {
           const slot = values[`task_${task.id}`];
           if (!slot) return 100; // High penalty for unscheduled
-          
+
           const pattern = this.userPatterns.get(task.userId);
           if (!pattern) return 0;
-          
+
           const hour = slot.startTime.getHours();
-          const productivityScore = pattern.productivityPeaks.find(p => p.hour === hour)?.score || 50;
-          
+          const productivityScore =
+            pattern.productivityPeaks.find((p) => p.hour === hour)?.score || 50;
+
           // Return penalty (inverse of productivity)
           return (100 - productivityScore) * weight;
         },
-        description: `Optimize productivity for task ${task.title}`
+        description: `Optimize productivity for task ${task.title}`,
       });
     }
   }
@@ -461,7 +489,11 @@ Return JSON with updated pattern insights:
   /**
    * Add stress minimization constraints
    */
-  private addStressMinimizationConstraints(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): void {
+  private addStressMinimizationConstraints(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): void {
     const weight = options.optimizationGoals.minimizeStress;
     if (weight === 0) return;
 
@@ -476,21 +508,21 @@ Return JSON with updated pattern insights:
           condition: (values) => {
             const slot = values[`task_${task.id}`];
             if (!slot) return 100;
-            
+
             const pattern = this.userPatterns.get(task.userId);
             if (!pattern) return 0;
-            
+
             const hour = slot.startTime.getHours();
             const energyLevel = pattern.energyLevels[hour] || 'medium';
-            
+
             // High priority tasks during low energy = stress
             if (energyLevel === 'low' && (task.priority === 'asap' || task.priority === 'high')) {
               return 50 * weight;
             }
-            
+
             return 0;
           },
-          description: `Minimize stress for high-priority task ${task.title}`
+          description: `Minimize stress for high-priority task ${task.title}`,
         });
       }
     }
@@ -499,7 +531,11 @@ Return JSON with updated pattern insights:
   /**
    * Add context switching minimization constraints
    */
-  private addContextSwitchingConstraints(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): void {
+  private addContextSwitchingConstraints(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): void {
     const weight = options.optimizationGoals.minimizeContextSwitching;
     if (weight === 0) return;
 
@@ -517,7 +553,7 @@ Return JSON with updated pattern insights:
         for (let j = i + 1; j < userTaskList.length; j++) {
           const task1 = userTaskList[i];
           const task2 = userTaskList[j];
-          
+
           this.constraintSolver.addConstraint({
             id: `context_switch_${task1.id}_${task2.id}`,
             type: 'soft',
@@ -527,22 +563,24 @@ Return JSON with updated pattern insights:
             condition: (values) => {
               const slot1 = values[`task_${task1.id}`];
               const slot2 = values[`task_${task2.id}`];
-              
+
               if (!slot1 || !slot2) return 0;
-              
+
               // If tasks are adjacent in time but different types
-              const timeDiff = Math.abs(slot1.endTime.getTime() - slot2.startTime.getTime()) / (1000 * 60);
+              const timeDiff =
+                Math.abs(slot1.endTime.getTime() - slot2.startTime.getTime()) / (1000 * 60);
               const sameType = this.isSameTaskType(task1, task2);
-              
-              if (timeDiff <= 30 && !sameType) { // Adjacent tasks within 30 minutes
+
+              if (timeDiff <= 30 && !sameType) {
+                // Adjacent tasks within 30 minutes
                 const pattern = this.userPatterns.get(userId);
                 const switchingCost = pattern?.contextSwitchingCost || 15;
                 return switchingCost * weight;
               }
-              
+
               return 0;
             },
-            description: `Minimize context switching between ${task1.title} and ${task2.title}`
+            description: `Minimize context switching between ${task1.title} and ${task2.title}`,
           });
         }
       }
@@ -554,28 +592,28 @@ Return JSON with updated pattern insights:
     const slots = [];
     const now = new Date();
     const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 2 weeks ahead
-    
-    const userResource = resources.find(r => r.id === task.userId && r.type === 'user');
+
+    const userResource = resources.find((r) => r.id === task.userId && r.type === 'user');
     if (!userResource) return slots;
 
     // Generate 30-minute slots
     for (const availability of userResource.availability) {
       const current = new Date(Math.max(now.getTime(), availability.start.getTime()));
-      
+
       while (current.getTime() + task.estimatedDuration * 60 * 1000 <= availability.end.getTime()) {
         const endTime = new Date(current.getTime() + task.estimatedDuration * 60 * 1000);
-        
+
         slots.push({
           startTime: new Date(current),
           endTime,
           resourceId: userResource.id,
-          duration: task.estimatedDuration
+          duration: task.estimatedDuration,
         });
-        
+
         current.setTime(current.getTime() + 30 * 60 * 1000); // 30-minute increments
       }
     }
-    
+
     return slots;
   }
 
@@ -592,14 +630,15 @@ Return JSON with updated pattern insights:
 
   private generateInitialEnergyLevels(): Record<number, 'high' | 'medium' | 'low'> {
     const levels: Record<number, 'high' | 'medium' | 'low'> = {};
-    
+
     for (let hour = 8; hour <= 18; hour++) {
       if (hour <= 11) levels[hour] = 'high';
-      else if (hour === 12 || hour === 13) levels[hour] = 'low'; // Lunch dip
+      else if (hour === 12 || hour === 13)
+        levels[hour] = 'low'; // Lunch dip
       else if (hour <= 16) levels[hour] = 'medium';
       else levels[hour] = 'low';
     }
-    
+
     return levels;
   }
 
@@ -608,11 +647,11 @@ Return JSON with updated pattern insights:
     if (task1.relatedEntityType && task2.relatedEntityType) {
       return task1.relatedEntityType === task2.relatedEntityType;
     }
-    
+
     if (task1.tags && task2.tags) {
-      return task1.tags.some(tag => task2.tags!.includes(tag));
+      return task1.tags.some((tag) => task2.tags!.includes(tag));
     }
-    
+
     return false;
   }
 
@@ -620,7 +659,7 @@ Return JSON with updated pattern insights:
     solution: any,
     tasks: Task[],
     resources: Resource[],
-    options: AdvancedSchedulingOptions
+    options: AdvancedSchedulingOptions,
   ): Promise<SchedulingResult> {
     const scheduledTasks = [];
     const unscheduledTasks = [];
@@ -628,7 +667,7 @@ Return JSON with updated pattern insights:
 
     for (const task of tasks) {
       const slot = solution.solution[`task_${task.id}`];
-      
+
       if (slot) {
         scheduledTasks.push({
           taskId: task.id,
@@ -637,11 +676,12 @@ Return JSON with updated pattern insights:
           assignedResource: slot.resourceId,
           confidence: solution.confidence,
           reasoning: solution.reasoning,
-          constraints: []
+          constraints: [],
         });
-        
+
         // Update resource utilization
-        resourceUtilization[slot.resourceId] = (resourceUtilization[slot.resourceId] || 0) + task.estimatedDuration;
+        resourceUtilization[slot.resourceId] =
+          (resourceUtilization[slot.resourceId] || 0) + task.estimatedDuration;
       } else {
         unscheduledTasks.push(task);
       }
@@ -654,33 +694,39 @@ Return JSON with updated pattern insights:
       optimizationScore: Math.max(0, 100 - solution.cost / 10),
       patternInsights: [],
       recommendations: [],
-      reschedulingTriggers: []
+      reschedulingTriggers: [],
     };
   }
 
   private async enhanceWithPatternRecognition(
     result: SchedulingResult,
     tasks: Task[],
-    resources: Resource[]
+    resources: Resource[],
   ): Promise<SchedulingResult> {
     const insights = [];
     const recommendations = [];
 
     // Analyze scheduling patterns
     for (const [userId, pattern] of this.userPatterns.entries()) {
-      const userTasks = result.scheduledTasks.filter(st => 
-        tasks.find(t => t.id === st.taskId)?.userId === userId
+      const userTasks = result.scheduledTasks.filter(
+        (st) => tasks.find((t) => t.id === st.taskId)?.userId === userId,
       );
 
       if (userTasks.length > 0) {
         // Check if tasks are scheduled during productivity peaks
-        const peakHours = pattern.productivityPeaks.slice(0, 3).map(p => p.hour);
-        const tasksInPeakHours = userTasks.filter(st => peakHours.includes(st.startTime.getHours()));
-        
+        const peakHours = pattern.productivityPeaks.slice(0, 3).map((p) => p.hour);
+        const tasksInPeakHours = userTasks.filter((st) =>
+          peakHours.includes(st.startTime.getHours()),
+        );
+
         if (tasksInPeakHours.length / userTasks.length > 0.6) {
-          insights.push(`User ${userId}: ${Math.round(tasksInPeakHours.length / userTasks.length * 100)}% of tasks scheduled during productivity peaks`);
+          insights.push(
+            `User ${userId}: ${Math.round((tasksInPeakHours.length / userTasks.length) * 100)}% of tasks scheduled during productivity peaks`,
+          );
         } else {
-          recommendations.push(`Consider rescheduling more tasks for user ${userId} during peak hours: ${peakHours.join(', ')}:00`);
+          recommendations.push(
+            `Consider rescheduling more tasks for user ${userId} during peak hours: ${peakHours.join(', ')}:00`,
+          );
         }
       }
     }
@@ -688,42 +734,49 @@ Return JSON with updated pattern insights:
     return {
       ...result,
       patternInsights: insights,
-      recommendations
+      recommendations,
     };
   }
 
-  private addReschedulingTriggers(result: SchedulingResult, options: AdvancedSchedulingOptions): SchedulingResult {
+  private addReschedulingTriggers(
+    result: SchedulingResult,
+    options: AdvancedSchedulingOptions,
+  ): SchedulingResult {
     const triggers = [];
 
     if (options.adaptiveRescheduling) {
       triggers.push({
         condition: 'task_completion_rate < 80%',
         action: 'increase_time_buffers',
-        priority: 8
+        priority: 8,
       });
 
       triggers.push({
         condition: 'new_urgent_task_added',
         action: 'reoptimize_schedule',
-        priority: 9
+        priority: 9,
       });
 
       triggers.push({
         condition: 'resource_becomes_unavailable',
         action: 'reassign_affected_tasks',
-        priority: 10
+        priority: 10,
       });
     }
 
     return {
       ...result,
-      reschedulingTriggers: triggers
+      reschedulingTriggers: triggers,
     };
   }
 
-  private fallbackScheduling(tasks: Task[], resources: Resource[], options: AdvancedSchedulingOptions): SchedulingResult {
+  private fallbackScheduling(
+    tasks: Task[],
+    resources: Resource[],
+    options: AdvancedSchedulingOptions,
+  ): SchedulingResult {
     console.log('⚠️  Using fallback scheduling algorithm');
-    
+
     return {
       scheduledTasks: [],
       unscheduledTasks: tasks,
@@ -731,7 +784,7 @@ Return JSON with updated pattern insights:
       optimizationScore: 0,
       patternInsights: ['Advanced scheduling failed - using fallback'],
       recommendations: ['Check system resources and constraint complexity'],
-      reschedulingTriggers: []
+      reschedulingTriggers: [],
     };
   }
 }

@@ -1,32 +1,32 @@
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { db } from './db';
+import { eq } from 'drizzle-orm';
 import {
   installations,
   serviceSignatures,
   installationChecklists,
   servicePhotos,
-} from "@shared/schema";
+} from '@shared/schema';
 
 async function seedFieldServiceData() {
-  console.log("Starting field service data seeding...");
+  console.log('Starting field service data seeding...');
 
   try {
     // Get the first tenant for testing
     const tenants = await db.query.tenants.findMany({ limit: 1 });
     if (tenants.length === 0) {
-      console.error("No tenants found. Please seed tenants first.");
+      console.error('No tenants found. Please seed tenants first.');
       return;
     }
     const tenantId = tenants[0].id;
     console.log(`Using tenant: ${tenantId}`);
 
     // Clean up existing field service data for this tenant
-    console.log("Cleaning up existing field service data...");
+    console.log('Cleaning up existing field service data...');
     await db.delete(servicePhotos).where(eq(servicePhotos.tenantId, tenantId));
     await db.delete(installationChecklists).where(eq(installationChecklists.tenantId, tenantId));
     await db.delete(serviceSignatures).where(eq(serviceSignatures.tenantId, tenantId));
     await db.delete(installations).where(eq(installations.tenantId, tenantId));
-    console.log("✓ Cleanup complete");
+    console.log('✓ Cleanup complete');
 
     // Get some customers for testing
     const customers = await db.query.businessRecords.findMany({
@@ -35,7 +35,7 @@ async function seedFieldServiceData() {
     });
 
     if (customers.length === 0) {
-      console.error("No customers found. Please seed business records first.");
+      console.error('No customers found. Please seed business records first.');
       return;
     }
 
@@ -61,7 +61,7 @@ async function seedFieldServiceData() {
     });
 
     if (users.length === 0) {
-      console.error("No users found. Please seed users first.");
+      console.error('No users found. Please seed users first.');
       return;
     }
     const userId = users[0].id;
@@ -70,101 +70,99 @@ async function seedFieldServiceData() {
     // SEED INSTALLATIONS
     // ============================================================================
 
-    console.log("Seeding installations...");
+    console.log('Seeding installations...');
 
     const installationData = [
       {
         tenantId,
-        installationNumber: "INST-2024-001",
-        installationType: "new_equipment",
+        installationNumber: 'INST-2024-001',
+        installationType: 'new_equipment',
         customerId: customers[0].id,
         equipmentId: equipment.length > 0 ? equipment[0].id : null,
         serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : null,
-        scheduledDate: new Date("2024-01-15T09:00:00"),
-        completedDate: new Date("2024-01-15T11:30:00"),
+        scheduledDate: new Date('2024-01-15T09:00:00'),
+        completedDate: new Date('2024-01-15T11:30:00'),
         estimatedDuration: 150,
-        assignedTechnicianId:
-          technicians.length > 0 ? technicians[0].id : null,
-        assistingTechnicianIds:
-          technicians.length > 1 ? [technicians[1].id] : [],
-        installationAddress: "123 Main St, Suite 100, New York, NY 10001",
+        assignedTechnicianId: technicians.length > 0 ? technicians[0].id : null,
+        assistingTechnicianIds: technicians.length > 1 ? [technicians[1].id] : [],
+        installationAddress: '123 Main St, Suite 100, New York, NY 10001',
         gpsLatitude: 40.7128,
         gpsLongitude: -74.006,
-        status: "completed",
-        serialNumber: "MX-B455W-001234",
-        modelNumber: "MX-B455W",
+        status: 'completed',
+        serialNumber: 'MX-B455W-001234',
+        modelNumber: 'MX-B455W',
         networkConfigured: true,
         driversInstalled: true,
         userTrainingCompleted: true,
         installationNotes:
-          "Standard installation completed successfully. Network printing configured for entire office.",
-        technicianNotes:
-          "Customer requested additional training for scan-to-email feature.",
+          'Standard installation completed successfully. Network printing configured for entire office.',
+        technicianNotes: 'Customer requested additional training for scan-to-email feature.',
         customerName: customers[0].name,
-        customerEmail: customers[0].email || "contact@example.com",
-        customerPhone: customers[0].phone || "555-0100",
+        customerEmail: customers[0].email || 'contact@example.com',
+        customerPhone: customers[0].phone || '555-0100',
         createdBy: userId,
       },
       {
         tenantId,
-        installationNumber: "INST-2024-002",
-        installationType: "replacement",
+        installationNumber: 'INST-2024-002',
+        installationType: 'replacement',
         customerId: customers[1] ? customers[1].id : customers[0].id,
         equipmentId: equipment.length > 1 ? equipment[1].id : null,
         serviceTicketId: serviceTickets.length > 1 ? serviceTickets[1].id : null,
-        scheduledDate: new Date("2024-01-20T14:00:00"),
+        scheduledDate: new Date('2024-01-20T14:00:00'),
         estimatedDuration: 180,
         assignedTechnicianId:
-          technicians.length > 1 ? technicians[1].id : (technicians.length > 0 ? technicians[0].id : null),
+          technicians.length > 1
+            ? technicians[1].id
+            : technicians.length > 0
+              ? technicians[0].id
+              : null,
         assistingTechnicianIds: [],
-        installationAddress:
-          "456 Business Blvd, Floor 3, Los Angeles, CA 90001",
+        installationAddress: '456 Business Blvd, Floor 3, Los Angeles, CA 90001',
         gpsLatitude: 34.0522,
         gpsLongitude: -118.2437,
-        status: "in_progress",
-        serialNumber: "MX-M905-005678",
-        modelNumber: "MX-M905",
+        status: 'in_progress',
+        serialNumber: 'MX-M905-005678',
+        modelNumber: 'MX-M905',
         networkConfigured: true,
         driversInstalled: false,
         userTrainingCompleted: false,
-        installationNotes: "Replacing older model with high-volume copier.",
-        technicianNotes: "Waiting for customer IT team to approve network settings.",
+        installationNotes: 'Replacing older model with high-volume copier.',
+        technicianNotes: 'Waiting for customer IT team to approve network settings.',
         customerName: customers[1] ? customers[1].name : customers[0].name,
         customerEmail: customers[1]
-          ? customers[1].email || "info@business.com"
-          : "info@business.com",
-        customerPhone: customers[1]
-          ? customers[1].phone || "555-0200"
-          : "555-0200",
+          ? customers[1].email || 'info@business.com'
+          : 'info@business.com',
+        customerPhone: customers[1] ? customers[1].phone || '555-0200' : '555-0200',
         createdBy: userId,
       },
       {
         tenantId,
-        installationNumber: "INST-2024-003",
-        installationType: "upgrade",
+        installationNumber: 'INST-2024-003',
+        installationType: 'upgrade',
         customerId: customers[2] ? customers[2].id : customers[0].id,
         equipmentId: equipment.length > 2 ? equipment[2].id : null,
-        scheduledDate: new Date("2024-01-25T10:00:00"),
+        scheduledDate: new Date('2024-01-25T10:00:00'),
         estimatedDuration: 120,
         assignedTechnicianId:
-          technicians.length > 2 ? technicians[2].id : (technicians.length > 0 ? technicians[0].id : null),
+          technicians.length > 2
+            ? technicians[2].id
+            : technicians.length > 0
+              ? technicians[0].id
+              : null,
         assistingTechnicianIds: [],
-        installationAddress: "789 Corporate Dr, Chicago, IL 60601",
+        installationAddress: '789 Corporate Dr, Chicago, IL 60601',
         gpsLatitude: 41.8781,
         gpsLongitude: -87.6298,
-        status: "scheduled",
-        modelNumber: "MX-C407",
+        status: 'scheduled',
+        modelNumber: 'MX-C407',
         networkConfigured: false,
         driversInstalled: false,
         userTrainingCompleted: false,
-        installationNotes: "Firmware upgrade and feature expansion.",
+        installationNotes: 'Firmware upgrade and feature expansion.',
         customerName: customers[2] ? customers[2].name : customers[0].name,
-        customerEmail: customers[2]
-          ? customers[2].email || "admin@corp.com"
-          : "admin@corp.com",
-        customerPhone: customers[2]
-          ? customers[2].phone || "555-0300"
-          : "555-0300",
+        customerEmail: customers[2] ? customers[2].email || 'admin@corp.com' : 'admin@corp.com',
+        customerPhone: customers[2] ? customers[2].phone || '555-0300' : '555-0300',
         createdBy: userId,
       },
     ];
@@ -180,67 +178,65 @@ async function seedFieldServiceData() {
     // SEED SERVICE SIGNATURES
     // ============================================================================
 
-    console.log("Seeding service signatures...");
+    console.log('Seeding service signatures...');
 
     const signatureData = [
       {
         tenantId,
         serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : null,
         installationId: createdInstallations[0].id,
-        signatureType: "completion",
-        signerName: "John Smith",
-        signerTitle: "Office Manager",
-        signerEmail: "john.smith@example.com",
-        signerPhone: "555-1001",
+        signatureType: 'completion',
+        signerName: 'John Smith',
+        signerTitle: 'Office Manager',
+        signerEmail: 'john.smith@example.com',
+        signerPhone: '555-1001',
         signatureDataUrl:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        signatureMethod: "touchscreen",
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        signatureMethod: 'touchscreen',
         gpsLatitude: 40.7128,
         gpsLongitude: -74.006,
-        locationAddress: "123 Main St, Suite 100, New York, NY 10001",
-        ipAddress: "192.168.1.100",
-        userAgent:
-          "Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15",
+        locationAddress: '123 Main St, Suite 100, New York, NY 10001',
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
         deviceInfo: {
-          platform: "iOS",
-          deviceType: "tablet",
-          screenSize: "2048x2732",
+          platform: 'iOS',
+          deviceType: 'tablet',
+          screenSize: '2048x2732',
         },
-        signedAt: new Date("2024-01-15T11:25:00"),
+        signedAt: new Date('2024-01-15T11:25:00'),
         capturedBy: userId,
         agreementText:
-          "I confirm that the installation has been completed to my satisfaction and all equipment is functioning properly.",
+          'I confirm that the installation has been completed to my satisfaction and all equipment is functioning properly.',
         consentGiven: true,
         verified: true,
         verifiedBy: userId,
-        verifiedAt: new Date("2024-01-15T11:26:00"),
+        verifiedAt: new Date('2024-01-15T11:26:00'),
       },
       {
         tenantId,
         serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : null,
         installationId: createdInstallations[0].id,
-        signatureType: "service_agreement",
-        signerName: "John Smith",
-        signerTitle: "Office Manager",
-        signerEmail: "john.smith@example.com",
+        signatureType: 'service_agreement',
+        signerName: 'John Smith',
+        signerTitle: 'Office Manager',
+        signerEmail: 'john.smith@example.com',
         signatureDataUrl:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        signatureMethod: "stylus",
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        signatureMethod: 'stylus',
         gpsLatitude: 40.7128,
         gpsLongitude: -74.006,
-        locationAddress: "123 Main St, Suite 100, New York, NY 10001",
-        ipAddress: "192.168.1.100",
-        userAgent:
-          "Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15",
+        locationAddress: '123 Main St, Suite 100, New York, NY 10001',
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15',
         deviceInfo: {
-          platform: "iOS",
-          deviceType: "tablet",
-          screenSize: "2048x2732",
+          platform: 'iOS',
+          deviceType: 'tablet',
+          screenSize: '2048x2732',
         },
-        signedAt: new Date("2024-01-15T09:05:00"),
+        signedAt: new Date('2024-01-15T09:05:00'),
         capturedBy: userId,
         agreementText:
-          "I authorize the installation work to proceed and accept responsibility for providing necessary access and resources.",
+          'I authorize the installation work to proceed and accept responsibility for providing necessary access and resources.',
         consentGiven: true,
         verified: false,
       },
@@ -248,68 +244,62 @@ async function seedFieldServiceData() {
         tenantId,
         serviceTicketId: serviceTickets.length > 1 ? serviceTickets[1].id : null,
         installationId: createdInstallations[1].id,
-        signatureType: "work_authorization",
-        signerName: "Sarah Johnson",
-        signerTitle: "IT Director",
-        signerEmail: "sarah.j@business.com",
-        signerPhone: "555-2002",
+        signatureType: 'work_authorization',
+        signerName: 'Sarah Johnson',
+        signerTitle: 'IT Director',
+        signerEmail: 'sarah.j@business.com',
+        signerPhone: '555-2002',
         signatureDataUrl:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        signatureMethod: "finger",
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        signatureMethod: 'finger',
         gpsLatitude: 34.0522,
         gpsLongitude: -118.2437,
-        locationAddress: "456 Business Blvd, Floor 3, Los Angeles, CA 90001",
-        ipAddress: "10.20.30.40",
-        userAgent:
-          "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Mobile Safari/537.36",
+        locationAddress: '456 Business Blvd, Floor 3, Los Angeles, CA 90001',
+        ipAddress: '10.20.30.40',
+        userAgent: 'Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Mobile Safari/537.36',
         deviceInfo: {
-          platform: "Android",
-          deviceType: "tablet",
-          screenSize: "2560x1600",
+          platform: 'Android',
+          deviceType: 'tablet',
+          screenSize: '2560x1600',
         },
-        signedAt: new Date("2024-01-20T14:10:00"),
+        signedAt: new Date('2024-01-20T14:10:00'),
         capturedBy: userId,
         agreementText:
-          "I authorize the replacement work and acknowledge that the old equipment will be removed.",
+          'I authorize the replacement work and acknowledge that the old equipment will be removed.',
         consentGiven: true,
         verified: false,
       },
       {
         tenantId,
         serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : null,
-        signatureType: "work_order_approval",
-        signerName: "Mike Davis",
-        signerTitle: "Facilities Manager",
-        signerEmail: "mdavis@company.com",
+        signatureType: 'work_order_approval',
+        signerName: 'Mike Davis',
+        signerTitle: 'Facilities Manager',
+        signerEmail: 'mdavis@company.com',
         signatureDataUrl:
-          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        signatureMethod: "touchscreen",
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        signatureMethod: 'touchscreen',
         gpsLatitude: 40.7589,
         gpsLongitude: -73.9851,
-        locationAddress: "321 Office Park, New York, NY 10017",
-        ipAddress: "172.16.0.50",
-        userAgent:
-          "Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+        locationAddress: '321 Office Park, New York, NY 10017',
+        ipAddress: '172.16.0.50',
+        userAgent: 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
         deviceInfo: {
-          platform: "iOS",
-          deviceType: "tablet",
-          screenSize: "2048x2732",
+          platform: 'iOS',
+          deviceType: 'tablet',
+          screenSize: '2048x2732',
         },
-        signedAt: new Date("2024-01-18T15:30:00"),
+        signedAt: new Date('2024-01-18T15:30:00'),
         capturedBy: userId,
-        agreementText:
-          "I approve the service work order and confirm authorization to proceed.",
+        agreementText: 'I approve the service work order and confirm authorization to proceed.',
         consentGiven: true,
         verified: true,
         verifiedBy: userId,
-        verifiedAt: new Date("2024-01-18T15:31:00"),
+        verifiedAt: new Date('2024-01-18T15:31:00'),
       },
     ];
 
-    const createdSignatures = await db
-      .insert(serviceSignatures)
-      .values(signatureData)
-      .returning();
+    const createdSignatures = await db.insert(serviceSignatures).values(signatureData).returning();
 
     console.log(`✓ Created ${createdSignatures.length} service signatures`);
 
@@ -317,7 +307,7 @@ async function seedFieldServiceData() {
     // SEED INSTALLATION CHECKLISTS
     // ============================================================================
 
-    console.log("Seeding installation checklists...");
+    console.log('Seeding installation checklists...');
 
     const checklistData = [
       // Checklists for Installation 1 (completed)
@@ -325,15 +315,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 1,
-        category: "pre_installation",
-        itemName: "Verify equipment model and serial number",
-        itemDescription:
-          "Confirm that delivered equipment matches order specifications",
+        category: 'pre_installation',
+        itemName: 'Verify equipment model and serial number',
+        itemDescription: 'Confirm that delivered equipment matches order specifications',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T09:10:00"),
+        completedAt: new Date('2024-01-15T09:10:00'),
         completedBy: userId,
-        notes: "Model MX-B455W confirmed, serial matches purchase order",
+        notes: 'Model MX-B455W confirmed, serial matches purchase order',
         requiresPhoto: true,
         requiresSignature: false,
       },
@@ -341,14 +330,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 2,
-        category: "pre_installation",
-        itemName: "Check installation site clearance",
-        itemDescription: "Ensure adequate space and access for equipment",
+        category: 'pre_installation',
+        itemName: 'Check installation site clearance',
+        itemDescription: 'Ensure adequate space and access for equipment',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T09:15:00"),
+        completedAt: new Date('2024-01-15T09:15:00'),
         completedBy: userId,
-        notes: "3x3 meter space verified, electrical outlet within 2 meters",
+        notes: '3x3 meter space verified, electrical outlet within 2 meters',
         requiresPhoto: false,
         requiresSignature: false,
       },
@@ -356,15 +345,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 3,
-        category: "installation",
-        itemName: "Physical equipment setup",
-        itemDescription:
-          "Unpack, position, and level the equipment at installation site",
+        category: 'installation',
+        itemName: 'Physical equipment setup',
+        itemDescription: 'Unpack, position, and level the equipment at installation site',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T09:45:00"),
+        completedAt: new Date('2024-01-15T09:45:00'),
         completedBy: userId,
-        notes: "Equipment positioned and leveled using built-in leveling feet",
+        notes: 'Equipment positioned and leveled using built-in leveling feet',
         requiresPhoto: true,
         requiresSignature: false,
       },
@@ -372,16 +360,16 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 4,
-        category: "installation",
-        itemName: "Network configuration",
-        itemDescription: "Configure IP address and network connectivity",
+        category: 'installation',
+        itemName: 'Network configuration',
+        itemDescription: 'Configure IP address and network connectivity',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T10:15:00"),
+        completedAt: new Date('2024-01-15T10:15:00'),
         completedBy: userId,
-        notes: "Static IP 192.168.1.150 assigned, network test successful",
-        expectedValue: "Network connectivity test: PASS",
-        actualValue: "Network connectivity test: PASS",
+        notes: 'Static IP 192.168.1.150 assigned, network test successful',
+        expectedValue: 'Network connectivity test: PASS',
+        actualValue: 'Network connectivity test: PASS',
         passed: true,
         requiresPhoto: false,
         requiresSignature: false,
@@ -390,16 +378,16 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 5,
-        category: "testing",
-        itemName: "Print test page",
-        itemDescription: "Verify print quality and functionality",
+        category: 'testing',
+        itemName: 'Print test page',
+        itemDescription: 'Verify print quality and functionality',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T10:30:00"),
+        completedAt: new Date('2024-01-15T10:30:00'),
         completedBy: userId,
-        notes: "Test page printed successfully, excellent quality",
-        expectedValue: "Print quality: Good",
-        actualValue: "Print quality: Excellent",
+        notes: 'Test page printed successfully, excellent quality',
+        expectedValue: 'Print quality: Good',
+        actualValue: 'Print quality: Excellent',
         passed: true,
         requiresPhoto: true,
         requiresSignature: false,
@@ -408,14 +396,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 6,
-        category: "testing",
-        itemName: "Scan functionality test",
-        itemDescription: "Test scan-to-email and scan-to-folder features",
+        category: 'testing',
+        itemName: 'Scan functionality test',
+        itemDescription: 'Test scan-to-email and scan-to-folder features',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T10:45:00"),
+        completedAt: new Date('2024-01-15T10:45:00'),
         completedBy: userId,
-        notes: "Scan-to-email configured and tested successfully",
+        notes: 'Scan-to-email configured and tested successfully',
         requiresPhoto: false,
         requiresSignature: false,
       },
@@ -423,15 +411,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 7,
-        category: "training",
-        itemName: "Customer training - basic operations",
-        itemDescription: "Train customer on copy, print, and scan operations",
+        category: 'training',
+        itemName: 'Customer training - basic operations',
+        itemDescription: 'Train customer on copy, print, and scan operations',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T11:15:00"),
+        completedAt: new Date('2024-01-15T11:15:00'),
         completedBy: userId,
-        notes:
-          "Office manager and 2 staff members trained on basic operations",
+        notes: 'Office manager and 2 staff members trained on basic operations',
         requiresPhoto: false,
         requiresSignature: false,
       },
@@ -439,14 +426,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[0].id,
         itemOrder: 8,
-        category: "completion",
-        itemName: "Customer acceptance signature",
-        itemDescription: "Obtain customer signature confirming installation",
+        category: 'completion',
+        itemName: 'Customer acceptance signature',
+        itemDescription: 'Obtain customer signature confirming installation',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-15T11:25:00"),
+        completedAt: new Date('2024-01-15T11:25:00'),
         completedBy: userId,
-        notes: "Signature obtained from John Smith, Office Manager",
+        notes: 'Signature obtained from John Smith, Office Manager',
         requiresPhoto: false,
         requiresSignature: true,
       },
@@ -456,14 +443,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[1].id,
         itemOrder: 1,
-        category: "pre_installation",
-        itemName: "Equipment removal - old copier",
-        itemDescription: "Disconnect and remove existing equipment",
+        category: 'pre_installation',
+        itemName: 'Equipment removal - old copier',
+        itemDescription: 'Disconnect and remove existing equipment',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-20T14:15:00"),
+        completedAt: new Date('2024-01-20T14:15:00'),
         completedBy: userId,
-        notes: "Old MX-M654 disconnected and staged for removal",
+        notes: 'Old MX-M654 disconnected and staged for removal',
         requiresPhoto: true,
         requiresSignature: false,
       },
@@ -471,14 +458,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[1].id,
         itemOrder: 2,
-        category: "pre_installation",
-        itemName: "Site preparation",
-        itemDescription: "Clean area and prepare for new equipment",
+        category: 'pre_installation',
+        itemName: 'Site preparation',
+        itemDescription: 'Clean area and prepare for new equipment',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-20T14:30:00"),
+        completedAt: new Date('2024-01-20T14:30:00'),
         completedBy: userId,
-        notes: "Area cleaned, electrical connections verified",
+        notes: 'Area cleaned, electrical connections verified',
         requiresPhoto: false,
         requiresSignature: false,
       },
@@ -486,14 +473,14 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[1].id,
         itemOrder: 3,
-        category: "installation",
-        itemName: "Physical equipment setup",
-        itemDescription: "Position and level new equipment",
+        category: 'installation',
+        itemName: 'Physical equipment setup',
+        itemDescription: 'Position and level new equipment',
         isCompleted: true,
         isRequired: true,
-        completedAt: new Date("2024-01-20T15:00:00"),
+        completedAt: new Date('2024-01-20T15:00:00'),
         completedBy: userId,
-        notes: "MX-M905 positioned and leveled",
+        notes: 'MX-M905 positioned and leveled',
         requiresPhoto: true,
         requiresSignature: false,
       },
@@ -501,12 +488,12 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[1].id,
         itemOrder: 4,
-        category: "installation",
-        itemName: "Network configuration",
-        itemDescription: "Configure network settings",
+        category: 'installation',
+        itemName: 'Network configuration',
+        itemDescription: 'Configure network settings',
         isCompleted: false,
         isRequired: true,
-        notes: "Awaiting IT approval for network settings",
+        notes: 'Awaiting IT approval for network settings',
         requiresPhoto: false,
         requiresSignature: false,
       },
@@ -514,9 +501,9 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[1].id,
         itemOrder: 5,
-        category: "testing",
-        itemName: "Print test",
-        itemDescription: "Verify print functionality",
+        category: 'testing',
+        itemName: 'Print test',
+        itemDescription: 'Verify print functionality',
         isCompleted: false,
         isRequired: true,
         requiresPhoto: true,
@@ -528,9 +515,9 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[2].id,
         itemOrder: 1,
-        category: "pre_installation",
-        itemName: "Backup current settings",
-        itemDescription: "Document and backup existing equipment configuration",
+        category: 'pre_installation',
+        itemName: 'Backup current settings',
+        itemDescription: 'Document and backup existing equipment configuration',
         isCompleted: false,
         isRequired: true,
         requiresPhoto: false,
@@ -540,9 +527,9 @@ async function seedFieldServiceData() {
         tenantId,
         installationId: createdInstallations[2].id,
         itemOrder: 2,
-        category: "installation",
-        itemName: "Firmware upgrade",
-        itemDescription: "Install latest firmware version",
+        category: 'installation',
+        itemName: 'Firmware upgrade',
+        itemDescription: 'Install latest firmware version',
         isCompleted: false,
         isRequired: true,
         requiresPhoto: false,
@@ -555,93 +542,88 @@ async function seedFieldServiceData() {
       .values(checklistData)
       .returning();
 
-    console.log(
-      `✓ Created ${createdChecklists.length} installation checklist items`
-    );
+    console.log(`✓ Created ${createdChecklists.length} installation checklist items`);
 
     // ============================================================================
     // SEED SERVICE PHOTOS
     // ============================================================================
 
-    console.log("Seeding service photos...");
+    console.log('Seeding service photos...');
 
     const photoData = [
       {
         tenantId,
-        serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : "unknown",
-        fileName: "inst-001-serial-photo.jpg",
-        originalName: "IMG_0234.jpg",
-        mimeType: "image/jpeg",
+        serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : 'unknown',
+        fileName: 'inst-001-serial-photo.jpg',
+        originalName: 'IMG_0234.jpg',
+        mimeType: 'image/jpeg',
         fileSize: 2048576,
-        objectPath: "public/service-photos/inst-001-serial-photo.jpg",
-        latitude: "40.7128000",
-        longitude: "-74.0060000",
-        address: "123 Main St, Suite 100, New York, NY 10001",
-        category: "completed",
-        description: "Equipment serial number verification - MX-B455W-001234",
+        objectPath: 'public/service-photos/inst-001-serial-photo.jpg',
+        latitude: '40.7128000',
+        longitude: '-74.0060000',
+        address: '123 Main St, Suite 100, New York, NY 10001',
+        category: 'completed',
+        description: 'Equipment serial number verification - MX-B455W-001234',
       },
       {
         tenantId,
-        serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : "unknown",
-        fileName: "inst-001-setup-complete.jpg",
-        originalName: "IMG_0247.jpg",
-        mimeType: "image/jpeg",
+        serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : 'unknown',
+        fileName: 'inst-001-setup-complete.jpg',
+        originalName: 'IMG_0247.jpg',
+        mimeType: 'image/jpeg',
         fileSize: 3145728,
-        objectPath: "public/service-photos/inst-001-setup-complete.jpg",
-        latitude: "40.7128000",
-        longitude: "-74.0060000",
-        address: "123 Main St, Suite 100, New York, NY 10001",
-        category: "completed",
-        description: "Installation completed - equipment positioned and leveled",
+        objectPath: 'public/service-photos/inst-001-setup-complete.jpg',
+        latitude: '40.7128000',
+        longitude: '-74.0060000',
+        address: '123 Main St, Suite 100, New York, NY 10001',
+        category: 'completed',
+        description: 'Installation completed - equipment positioned and leveled',
       },
       {
         tenantId,
-        serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : "unknown",
-        fileName: "inst-001-test-page.jpg",
-        originalName: "IMG_0251.jpg",
-        mimeType: "image/jpeg",
+        serviceTicketId: serviceTickets.length > 0 ? serviceTickets[0].id : 'unknown',
+        fileName: 'inst-001-test-page.jpg',
+        originalName: 'IMG_0251.jpg',
+        mimeType: 'image/jpeg',
         fileSize: 1572864,
-        objectPath: "public/service-photos/inst-001-test-page.jpg",
-        latitude: "40.7128000",
-        longitude: "-74.0060000",
-        address: "123 Main St, Suite 100, New York, NY 10001",
-        category: "completed",
-        description: "Print quality test page - excellent results",
+        objectPath: 'public/service-photos/inst-001-test-page.jpg',
+        latitude: '40.7128000',
+        longitude: '-74.0060000',
+        address: '123 Main St, Suite 100, New York, NY 10001',
+        category: 'completed',
+        description: 'Print quality test page - excellent results',
       },
       {
         tenantId,
-        serviceTicketId: serviceTickets.length > 1 ? serviceTickets[1].id : "unknown",
-        fileName: "inst-002-old-equipment.jpg",
-        originalName: "IMG_1453.jpg",
-        mimeType: "image/jpeg",
+        serviceTicketId: serviceTickets.length > 1 ? serviceTickets[1].id : 'unknown',
+        fileName: 'inst-002-old-equipment.jpg',
+        originalName: 'IMG_1453.jpg',
+        mimeType: 'image/jpeg',
         fileSize: 2621440,
-        objectPath: "public/service-photos/inst-002-old-equipment.jpg",
-        latitude: "34.0522000",
-        longitude: "-118.2437000",
-        address: "456 Business Blvd, Floor 3, Los Angeles, CA 90001",
-        category: "before",
-        description: "Old equipment before removal - MX-M654",
+        objectPath: 'public/service-photos/inst-002-old-equipment.jpg',
+        latitude: '34.0522000',
+        longitude: '-118.2437000',
+        address: '456 Business Blvd, Floor 3, Los Angeles, CA 90001',
+        category: 'before',
+        description: 'Old equipment before removal - MX-M654',
       },
       {
         tenantId,
-        serviceTicketId: serviceTickets.length > 1 ? serviceTickets[1].id : "unknown",
-        fileName: "inst-002-new-equipment.jpg",
-        originalName: "IMG_1472.jpg",
-        mimeType: "image/jpeg",
+        serviceTicketId: serviceTickets.length > 1 ? serviceTickets[1].id : 'unknown',
+        fileName: 'inst-002-new-equipment.jpg',
+        originalName: 'IMG_1472.jpg',
+        mimeType: 'image/jpeg',
         fileSize: 2883584,
-        objectPath: "public/service-photos/inst-002-new-equipment.jpg",
-        latitude: "34.0522000",
-        longitude: "-118.2437000",
-        address: "456 Business Blvd, Floor 3, Los Angeles, CA 90001",
-        category: "during",
-        description: "New equipment positioned - MX-M905",
+        objectPath: 'public/service-photos/inst-002-new-equipment.jpg',
+        latitude: '34.0522000',
+        longitude: '-118.2437000',
+        address: '456 Business Blvd, Floor 3, Los Angeles, CA 90001',
+        category: 'during',
+        description: 'New equipment positioned - MX-M905',
       },
     ];
 
-    const createdPhotos = await db
-      .insert(servicePhotos)
-      .values(photoData)
-      .returning();
+    const createdPhotos = await db.insert(servicePhotos).values(photoData).returning();
 
     console.log(`✓ Created ${createdPhotos.length} service photos`);
 
@@ -649,24 +631,24 @@ async function seedFieldServiceData() {
     // SUMMARY
     // ============================================================================
 
-    console.log("\n=== Field Service Data Seeding Complete ===");
+    console.log('\n=== Field Service Data Seeding Complete ===');
     console.log(`Installations: ${createdInstallations.length}`);
     console.log(`Service Signatures: ${createdSignatures.length}`);
     console.log(`Installation Checklist Items: ${createdChecklists.length}`);
     console.log(`Service Photos: ${createdPhotos.length}`);
-    console.log("===========================================\n");
+    console.log('===========================================\n');
   } catch (error) {
-    console.error("Error seeding field service data:", error);
+    console.error('Error seeding field service data:', error);
     throw error;
   }
 }
 
 seedFieldServiceData()
   .then(() => {
-    console.log("Field service data seeding completed successfully!");
+    console.log('Field service data seeding completed successfully!');
     process.exit(0);
   })
   .catch((error) => {
-    console.error("Failed to seed field service data:", error);
+    console.error('Failed to seed field service data:', error);
     process.exit(1);
   });

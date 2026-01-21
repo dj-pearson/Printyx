@@ -73,6 +73,7 @@ curl -X POST https://your-domain.com/hello \
 ```
 
 **Expected:**
+
 ```json
 {
   "message": "Hello Printyx!",
@@ -85,6 +86,7 @@ curl -X POST https://your-domain.com/hello \
 ## 🎉 You're Done!
 
 Your Edge Functions are now running and accessible at:
+
 - **Base URL:** `https://your-domain.com`
 - **Health:** `https://your-domain.com/health`
 - **Functions:** `https://your-domain.com/{function-name}`
@@ -107,6 +109,7 @@ Now every `git push` will automatically redeploy! 🚀
 ## 📝 Add More Functions
 
 1. Create new function:
+
 ```bash
 mkdir supabase/functions/my-function
 ```
@@ -114,6 +117,7 @@ mkdir supabase/functions/my-function
 2. Add `index.ts` (see template in `supabase/functions/README.md`)
 
 3. Push to GitHub:
+
 ```bash
 git add .
 git commit -m "Add my-function"
@@ -127,14 +131,17 @@ git push
 ## 🐛 Troubleshooting
 
 ### Build Failed?
+
 - Check Dockerfile path is `Dockerfile.edge-functions`
 - Ensure `supabase/functions/` exists in repo
 
 ### Function Not Loading?
+
 - Check function has `index.ts`
 - View logs in Coolify for error details
 
 ### Can't Connect to Supabase?
+
 - Verify `SUPABASE_URL` is correct
 - Check `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -161,4 +168,3 @@ git push
 **Questions?** Check the logs in Coolify or review the full deployment guide.
 
 **Working?** Start building your functions! 🎨
-

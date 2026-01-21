@@ -35,21 +35,23 @@ All admin routes are prefixed with `/api/admin/knowledge-base` and require authe
 
 The system uses an 8-level role hierarchy with the following access levels for Knowledge Base admin:
 
-| Role Level | Role Name | KB Admin Access |
-|-----------|-----------|-----------------|
-| **Level 7+** | **Root/Platform Admin** | Full access including destructive operations |
-| **Level 5-6** | **System Admin** | Dashboard, feedback, AI queue, bulk updates, analytics |
-| **Level 3-4** | **Manager/Director** | Read-only analytics access |
-| **Level 1-2** | **Standard User** | No admin access |
+| Role Level    | Role Name               | KB Admin Access                                        |
+| ------------- | ----------------------- | ------------------------------------------------------ |
+| **Level 7+**  | **Root/Platform Admin** | Full access including destructive operations           |
+| **Level 5-6** | **System Admin**        | Dashboard, feedback, AI queue, bulk updates, analytics |
+| **Level 3-4** | **Manager/Director**    | Read-only analytics access                             |
+| **Level 1-2** | **Standard User**       | No admin access                                        |
 
 ### Access Control by Endpoint
 
 **Root Admin Only (Level 7+):**
+
 - `DELETE /articles/bulk-delete` - Destructive operation
 - `POST /import` - Can modify multiple articles
 - `GET /export` - Contains sensitive data
 
 **System Admin (Level 5+):**
+
 - `GET /dashboard` - Dashboard statistics
 - `POST /articles/bulk-update` - Bulk operations
 - `GET /feedback/pending` - View feedback
@@ -61,6 +63,7 @@ The system uses an 8-level role hierarchy with the following access levels for K
 - `POST /categories/reorder` - Category management
 
 **Manager (Level 3+):**
+
 - `GET /analytics/detailed` - Read-only analytics
 
 ### Security & Authorization
@@ -69,6 +72,7 @@ The system uses an 8-level role hierarchy with the following access levels for K
 All endpoints require a valid session with authentication.
 
 **Authorization Errors:**
+
 ```json
 {
   "message": "Access denied - Requires level 5 or higher"
@@ -77,6 +81,7 @@ All endpoints require a valid session with authentication.
 
 **Audit Logging:**
 All admin operations are logged to the audit log at `server/audit.log` including:
+
 - User ID and role level
 - Action performed
 - Timestamp
@@ -92,9 +97,11 @@ All admin operations are logged to the audit log at `server/audit.log` including
 Get comprehensive dashboard statistics including article counts, views, feedback, and AI queue status.
 
 **Query Parameters:**
+
 - `days` (optional): Number of days for time-based stats (default: 30)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -136,6 +143,7 @@ Get comprehensive dashboard statistics including article counts, views, feedback
 Update multiple articles at once.
 
 **Request Body:**
+
 ```json
 {
   "articleIds": ["uuid-1", "uuid-2", "uuid-3"],
@@ -152,6 +160,7 @@ Update multiple articles at once.
 Delete multiple articles.
 
 **Request Body:**
+
 ```json
 {
   "articleIds": ["uuid-1", "uuid-2"]
@@ -165,6 +174,7 @@ Delete multiple articles.
 Get all pending feedback that needs review.
 
 **Query Parameters:**
+
 - `limit` (default: 50): Number of results
 - `offset` (default: 0): Pagination offset
 
@@ -173,6 +183,7 @@ Get all pending feedback that needs review.
 Resolve a feedback item.
 
 **Request Body:**
+
 ```json
 {
   "resolutionNotes": "Fixed the issue in article v2.1"
@@ -186,6 +197,7 @@ Resolve a feedback item.
 Get AI content generation queue items.
 
 **Query Parameters:**
+
 - `status` (optional): Filter by status (pending, generating, completed, failed)
 - `limit` (default: 50): Number of results
 
@@ -204,6 +216,7 @@ Get version history for an article.
 Restore a previous version of an article.
 
 **Request Body:**
+
 ```json
 {
   "version": 3
@@ -217,6 +230,7 @@ Restore a previous version of an article.
 Import articles from JSON, CSV, or Markdown.
 
 **Request Body:**
+
 ```json
 {
   "format": "json",
@@ -231,6 +245,7 @@ Import articles from JSON, CSV, or Markdown.
 Export articles.
 
 **Query Parameters:**
+
 - `format`: json or csv
 - `categoryId` (optional): Filter by category
 - `status` (optional): Filter by status
@@ -242,6 +257,7 @@ Export articles.
 Get detailed analytics with trends and performance metrics.
 
 **Query Parameters:**
+
 - `startDate`: Start date for analysis
 - `endDate`: End date for analysis
 - `groupBy`: Grouping interval (day, week, month)
@@ -280,6 +296,7 @@ Options:
 ```
 
 Example:
+
 ```bash
 npm run kb:list -- --tenant demo-tenant --status published --limit 10
 ```
@@ -303,6 +320,7 @@ Options:
 ```
 
 Example:
+
 ```bash
 npm run kb:create -- \
   --tenant demo-tenant \
@@ -346,6 +364,7 @@ Options:
 ```
 
 Example:
+
 ```bash
 # Publish specific article
 npm run kb -- publish --tenant demo-tenant --user admin --id article-123
@@ -375,6 +394,7 @@ Options:
 ```
 
 Example:
+
 ```bash
 npm run kb -- generate \
   --tenant demo-tenant \
@@ -396,6 +416,7 @@ Options:
 ```
 
 Example:
+
 ```bash
 npm run kb:import -- \
   --tenant demo-tenant \
@@ -416,6 +437,7 @@ Options:
 ```
 
 Example:
+
 ```bash
 npm run kb:export -- \
   --tenant demo-tenant \
@@ -431,11 +453,13 @@ npm run kb:stats -- --tenant <tenant-id> [--days <number>]
 ```
 
 Example:
+
 ```bash
 npm run kb:stats -- --tenant demo-tenant --days 90
 ```
 
 Output:
+
 ```
 📊 Knowledge Base Statistics
 
@@ -539,6 +563,7 @@ Default Category ID: <category-uuid>
 ### Captured Metadata
 
 The extension captures:
+
 - Page title
 - Author (if available)
 - Publication date (if available)
@@ -600,6 +625,7 @@ Navigate to: `/admin/knowledge-base-admin-dashboard`
 ### Bulk Operations
 
 Select multiple articles using checkboxes, then:
+
 - Publish selected
 - Archive selected
 - Change category
@@ -609,10 +635,12 @@ Select multiple articles using checkboxes, then:
 ### Import/Export
 
 **Export Options:**
+
 - JSON: Full article data with metadata
 - CSV: Simplified tabular format
 
 **Import Options:**
+
 - JSON: Full article import with validation
 - CSV: Bulk article creation
 - Markdown: Convert Markdown files to articles
@@ -751,6 +779,7 @@ knowledge_articles (1:1) article_embeddings
 ### CLI Issues
 
 **Problem**: CLI command not found
+
 ```bash
 # Solution: Use full path
 tsx server/cli/kb-cli.ts <command>
@@ -759,6 +788,7 @@ tsx server/cli/kb-cli.ts <command>
 ```
 
 **Problem**: Database connection error
+
 ```bash
 # Solution: Check DATABASE_URL in .env
 # Ensure PostgreSQL is running
@@ -767,6 +797,7 @@ tsx server/cli/kb-cli.ts <command>
 ### Chrome Extension Issues
 
 **Problem**: Authentication failed
+
 ```
 Solution:
 1. Check API URL is correct
@@ -776,6 +807,7 @@ Solution:
 ```
 
 **Problem**: Content not captured
+
 ```
 Solution:
 1. Check browser console for errors
@@ -787,6 +819,7 @@ Solution:
 ### API Issues
 
 **Problem**: 401 Unauthorized
+
 ```
 Solution:
 1. Include valid auth token in request
@@ -795,6 +828,7 @@ Solution:
 ```
 
 **Problem**: 500 Internal Server Error
+
 ```
 Solution:
 1. Check server logs for details

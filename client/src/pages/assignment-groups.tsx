@@ -266,9 +266,7 @@ export default function AssignmentGroups() {
                       <div>
                         <div className="font-medium">{group.name}</div>
                         {group.description && (
-                          <div className="text-sm text-muted-foreground">
-                            {group.description}
-                          </div>
+                          <div className="text-sm text-muted-foreground">{group.description}</div>
                         )}
                       </div>
                     </TableCell>
@@ -293,11 +291,7 @@ export default function AssignmentGroups() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDialog(group)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(group)}>
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
@@ -343,7 +337,10 @@ export default function AssignmentGroups() {
 
             <div className="space-y-2">
               <Label htmlFor="type">Group Type</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => setFormData({ ...formData, type: value })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -399,19 +396,15 @@ export default function AssignmentGroups() {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCloseDialog}
-              disabled={saveMutation.isPending}
-            >
+            <Button variant="outline" onClick={handleCloseDialog} disabled={saveMutation.isPending}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saveMutation.isPending}>
               {saveMutation.isPending
                 ? 'Saving...'
                 : selectedGroup
-                ? 'Update Group'
-                : 'Create Group'}
+                  ? 'Update Group'
+                  : 'Create Group'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -423,8 +416,8 @@ export default function AssignmentGroups() {
           <DialogHeader>
             <DialogTitle>Delete Assignment Group</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedGroup?.name}"? This action cannot be
-              undone. Workflows using this group may need to be reconfigured.
+              Are you sure you want to delete "{selectedGroup?.name}"? This action cannot be undone.
+              Workflows using this group may need to be reconfigured.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

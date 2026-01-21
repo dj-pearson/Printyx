@@ -4,9 +4,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -23,7 +42,7 @@ import {
   Download,
   RefreshCw,
   Search,
-  Filter
+  Filter,
 } from 'lucide-react';
 
 interface Device {
@@ -97,39 +116,53 @@ export default function ManufacturerIntegrationDevices() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'online': return <Wifi className="h-4 w-4 text-green-600" />;
-      case 'offline': return <WifiOff className="h-4 w-4 text-gray-600" />;
-      case 'error': return <AlertCircle className="h-4 w-4 text-red-600" />;
-      case 'maintenance': return <Settings className="h-4 w-4 text-yellow-600" />;
-      default: return <AlertCircle className="h-4 w-4 text-gray-600" />;
+      case 'online':
+        return <Wifi className="h-4 w-4 text-green-600" />;
+      case 'offline':
+        return <WifiOff className="h-4 w-4 text-gray-600" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      case 'maintenance':
+        return <Settings className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-600" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'bg-green-100 text-green-800';
-      case 'offline': return 'bg-gray-100 text-gray-800';
-      case 'error': return 'bg-red-100 text-red-800';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'online':
+        return 'bg-green-100 text-green-800';
+      case 'offline':
+        return 'bg-gray-100 text-gray-800';
+      case 'error':
+        return 'bg-red-100 text-red-800';
+      case 'maintenance':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const filteredDevices = devices.filter(device => {
-    const matchesSearch = device.device.deviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          device.device.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          device.device.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          device.device.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const filteredDevices = devices.filter((device) => {
+    const matchesSearch =
+      device.device.deviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      device.device.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      device.device.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      device.device.location?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus = statusFilter === 'all' || device.device.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
-  const deviceStatusCounts = devices.reduce((acc, device) => {
-    acc[device.device.status] = (acc[device.device.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const deviceStatusCounts = devices.reduce(
+    (acc, device) => {
+      acc[device.device.status] = (acc[device.device.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   if (isLoading) {
     return (
@@ -175,7 +208,9 @@ export default function ManufacturerIntegrationDevices() {
             <Wifi className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{deviceStatusCounts.online || 0}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {deviceStatusCounts.online || 0}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -184,7 +219,9 @@ export default function ManufacturerIntegrationDevices() {
             <WifiOff className="h-4 w-4 text-gray-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{deviceStatusCounts.offline || 0}</div>
+            <div className="text-2xl font-bold text-gray-600">
+              {deviceStatusCounts.offline || 0}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -202,7 +239,9 @@ export default function ManufacturerIntegrationDevices() {
             <Settings className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{deviceStatusCounts.maintenance || 0}</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {deviceStatusCounts.maintenance || 0}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -284,8 +323,12 @@ export default function ManufacturerIntegrationDevices() {
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div className="font-medium capitalize">{device.integration.manufacturer}</div>
-                      <div className="text-sm text-muted-foreground">{device.integration.integrationName}</div>
+                      <div className="font-medium capitalize">
+                        {device.integration.manufacturer}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {device.integration.integrationName}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -300,17 +343,18 @@ export default function ManufacturerIntegrationDevices() {
                       <span>{device.device.location || 'Not specified'}</span>
                     </div>
                     {device.device.department && (
-                      <div className="text-sm text-muted-foreground">{device.device.department}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {device.device.department}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3 text-muted-foreground" />
                       <span className="text-sm">
-                        {device.device.lastSeen 
+                        {device.device.lastSeen
                           ? new Date(device.device.lastSeen).toLocaleString()
-                          : 'Never'
-                        }
+                          : 'Never'}
                       </span>
                     </div>
                   </TableCell>
@@ -336,20 +380,26 @@ export default function ManufacturerIntegrationDevices() {
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl">
                           <DialogHeader>
-                            <DialogTitle>Device Metrics - {selectedDevice?.device.deviceName}</DialogTitle>
+                            <DialogTitle>
+                              Device Metrics - {selectedDevice?.device.deviceName}
+                            </DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4">
                             {deviceMetrics.length === 0 ? (
                               <div className="text-center py-8">
                                 <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                <p className="text-muted-foreground">No metrics available for this device</p>
+                                <p className="text-muted-foreground">
+                                  No metrics available for this device
+                                </p>
                               </div>
                             ) : (
                               <div className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-3">
                                   <Card>
                                     <CardHeader className="pb-2">
-                                      <CardTitle className="text-sm">Latest Total Impressions</CardTitle>
+                                      <CardTitle className="text-sm">
+                                        Latest Total Impressions
+                                      </CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                       <div className="text-2xl font-bold">
@@ -378,17 +428,28 @@ export default function ManufacturerIntegrationDevices() {
                                     </CardContent>
                                   </Card>
                                 </div>
-                                
+
                                 <div className="border rounded-lg p-4">
                                   <h4 className="font-semibold mb-2">Recent Metrics</h4>
                                   <div className="space-y-2 max-h-64 overflow-y-auto">
                                     {deviceMetrics.slice(0, 10).map((metric) => (
-                                      <div key={metric.id} className="flex justify-between items-center text-sm border-b pb-2">
-                                        <span>{new Date(metric.collectionTimestamp).toLocaleString()}</span>
+                                      <div
+                                        key={metric.id}
+                                        className="flex justify-between items-center text-sm border-b pb-2"
+                                      >
+                                        <span>
+                                          {new Date(metric.collectionTimestamp).toLocaleString()}
+                                        </span>
                                         <div className="flex gap-4">
-                                          <span>Total: {metric.totalImpressions?.toLocaleString() || 0}</span>
-                                          <span>B&W: {metric.bwImpressions?.toLocaleString() || 0}</span>
-                                          <span>Color: {metric.colorImpressions?.toLocaleString() || 0}</span>
+                                          <span>
+                                            Total: {metric.totalImpressions?.toLocaleString() || 0}
+                                          </span>
+                                          <span>
+                                            B&W: {metric.bwImpressions?.toLocaleString() || 0}
+                                          </span>
+                                          <span>
+                                            Color: {metric.colorImpressions?.toLocaleString() || 0}
+                                          </span>
                                           <span>{metric.responseTime}ms</span>
                                         </div>
                                       </div>

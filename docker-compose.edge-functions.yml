@@ -10,7 +10,7 @@ services:
         - BUILDKIT_INLINE_CACHE=1
     container_name: printyx-edge-functions
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       # Update these with your actual Supabase credentials
       - SUPABASE_URL=${SUPABASE_URL:-http://localhost:54321}
@@ -23,7 +23,13 @@ services:
       - printyx-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "deno", "eval", "fetch('http://localhost:8000/health').then(r => r.ok ? Deno.exit(0) : Deno.exit(1))"]
+      test:
+        [
+          'CMD',
+          'deno',
+          'eval',
+          "fetch('http://localhost:8000/health').then(r => r.ok ? Deno.exit(0) : Deno.exit(1))",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -32,7 +38,6 @@ services:
 networks:
   printyx-network:
     driver: bridge
-
 # To run:
 # docker-compose -f docker-compose.edge-functions.yml up -d
 

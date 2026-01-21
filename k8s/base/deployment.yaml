@@ -24,8 +24,8 @@ spec:
         app.kubernetes.io/component: app
       annotations:
         # Force rolling restart when config changes
-        checksum/config: "{{ include (print $.Template.BasePath \"/configmap.yaml\") . | sha256sum }}"
-        checksum/secret: "{{ include (print $.Template.BasePath \"/secret.yaml\") . | sha256sum }}"
+        checksum/config: '{{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}'
+        checksum/secret: '{{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}'
     spec:
       serviceAccountName: printyx
       securityContext:
@@ -79,11 +79,11 @@ spec:
           # Resource limits and requests
           resources:
             requests:
-              cpu: "100m"
-              memory: "256Mi"
+              cpu: '100m'
+              memory: '256Mi'
             limits:
-              cpu: "1000m"
-              memory: "1Gi"
+              cpu: '1000m'
+              memory: '1Gi'
 
           # Liveness probe - is the container alive?
           livenessProbe:
@@ -115,7 +115,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 30  # 5 minutes to start
+            failureThreshold: 30 # 5 minutes to start
             successThreshold: 1
 
           # Security context for the container

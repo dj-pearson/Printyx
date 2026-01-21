@@ -15,7 +15,15 @@ interface KPIDefinition {
   name: string;
   code: string;
   description: string;
-  category: 'sales' | 'service' | 'finance' | 'operations' | 'hr' | 'it' | 'compliance' | 'executive';
+  category:
+    | 'sales'
+    | 'service'
+    | 'finance'
+    | 'operations'
+    | 'hr'
+    | 'it'
+    | 'compliance'
+    | 'executive';
   organizationalScope: 'platform' | 'company' | 'regional' | 'location' | 'team' | 'individual';
   requiredPermissions: string[];
   calculationSql: string;
@@ -1394,40 +1402,43 @@ export async function seedKPIs() {
     // Seed each KPI
     for (const kpi of ALL_KPIS) {
       try {
-        await db.insert(kpiDefinitions).values({
-          tenantId: systemTenantId,
-          name: kpi.name,
-          code: kpi.code,
-          description: kpi.description || '',
-          category: kpi.category,
-          calculationSql: kpi.calculationSql,
-          targetValue: kpi.targetValue?.toString() || null,
-          targetType: kpi.targetType || 'absolute',
-          displayFormat: kpi.displayFormat,
-          prefix: kpi.prefix || null,
-          suffix: kpi.suffix || null,
-          decimalPlaces: kpi.decimalPlaces || 0,
-          colorScheme: kpi.colorScheme || {},
-          alertEnabled: kpi.alertEnabled || false,
-          alertThresholds: kpi.alertThresholds || {},
-          alertRecipients: kpi.alertRecipients || [],
-          requiredPermissions: kpi.requiredPermissions,
-          organizationalScope: kpi.organizationalScope,
-          refreshFrequency: kpi.refreshFrequency || 3600,
-          cacheDuration: kpi.cacheDuration || 1800,
-          isActive: true,
-          isHighPriority: kpi.isHighPriority || false,
-          tags: kpi.tags || [],
-          createdBy: systemUserId,
-        }).onConflictDoUpdate({
-          target: [kpiDefinitions.code, kpiDefinitions.tenantId],
-          set: {
+        await db
+          .insert(kpiDefinitions)
+          .values({
+            tenantId: systemTenantId,
             name: kpi.name,
+            code: kpi.code,
             description: kpi.description || '',
+            category: kpi.category,
             calculationSql: kpi.calculationSql,
-            updatedAt: new Date(),
-          },
-        });
+            targetValue: kpi.targetValue?.toString() || null,
+            targetType: kpi.targetType || 'absolute',
+            displayFormat: kpi.displayFormat,
+            prefix: kpi.prefix || null,
+            suffix: kpi.suffix || null,
+            decimalPlaces: kpi.decimalPlaces || 0,
+            colorScheme: kpi.colorScheme || {},
+            alertEnabled: kpi.alertEnabled || false,
+            alertThresholds: kpi.alertThresholds || {},
+            alertRecipients: kpi.alertRecipients || [],
+            requiredPermissions: kpi.requiredPermissions,
+            organizationalScope: kpi.organizationalScope,
+            refreshFrequency: kpi.refreshFrequency || 3600,
+            cacheDuration: kpi.cacheDuration || 1800,
+            isActive: true,
+            isHighPriority: kpi.isHighPriority || false,
+            tags: kpi.tags || [],
+            createdBy: systemUserId,
+          })
+          .onConflictDoUpdate({
+            target: [kpiDefinitions.code, kpiDefinitions.tenantId],
+            set: {
+              name: kpi.name,
+              description: kpi.description || '',
+              calculationSql: kpi.calculationSql,
+              updatedAt: new Date(),
+            },
+          });
 
         successCount++;
         console.log(`  ✅ ${kpi.code.padEnd(45)} - ${kpi.name}`);

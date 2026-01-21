@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Smartphone,
   Tablet,
@@ -22,8 +22,8 @@ import {
   User,
   Camera,
   FileText,
-  Download
-} from "lucide-react";
+  Download,
+} from 'lucide-react';
 
 interface MobileMetrics {
   activeUsers: number;
@@ -41,14 +41,14 @@ interface DeviceBreakdown {
 }
 
 export default function MobileOptimization() {
-  const [selectedDevice, setSelectedDevice] = useState<string>("mobile");
+  const [selectedDevice, setSelectedDevice] = useState<string>('mobile');
 
   const { data: mobileMetrics, isLoading } = useQuery<MobileMetrics>({
-    queryKey: ["/api/mobile/metrics"],
+    queryKey: ['/api/mobile/metrics'],
   });
 
   const { data: deviceBreakdown } = useQuery<DeviceBreakdown>({
-    queryKey: ["/api/mobile/devices"],
+    queryKey: ['/api/mobile/devices'],
   });
 
   // Mock data for demo
@@ -56,15 +56,15 @@ export default function MobileOptimization() {
     activeUsers: 234,
     offlineCapability: 95,
     avgResponseTime: 1.2,
-    dataUsage: "2.4MB",
+    dataUsage: '2.4MB',
     batteryOptimization: 88,
-    crashRate: 0.02
+    crashRate: 0.02,
   };
 
   const mockDeviceBreakdown = {
     mobile: 68,
     tablet: 22,
-    desktop: 10
+    desktop: 10,
   };
 
   const metrics = mobileMetrics || mockMetrics;
@@ -73,78 +73,90 @@ export default function MobileOptimization() {
   const mobileFeatures = [
     {
       icon: MapPin,
-      title: "GPS Integration",
-      description: "Real-time technician location tracking and optimized routing",
-      status: "active",
-      usage: "85% adoption"
+      title: 'GPS Integration',
+      description: 'Real-time technician location tracking and optimized routing',
+      status: 'active',
+      usage: '85% adoption',
     },
     {
       icon: Camera,
-      title: "Photo Documentation",
-      description: "Equipment photos, before/after service images, and damage reports",
-      status: "active", 
-      usage: "92% adoption"
+      title: 'Photo Documentation',
+      description: 'Equipment photos, before/after service images, and damage reports',
+      status: 'active',
+      usage: '92% adoption',
     },
     {
       icon: Wifi,
-      title: "Offline Sync",
-      description: "Work orders sync automatically when connection is restored",
-      status: "active",
-      usage: "95% reliability"
+      title: 'Offline Sync',
+      description: 'Work orders sync automatically when connection is restored',
+      status: 'active',
+      usage: '95% reliability',
     },
     {
       icon: Battery,
-      title: "Battery Optimization",
-      description: "Background sync optimization to preserve device battery life",
-      status: "optimized",
-      usage: "88% efficiency"
+      title: 'Battery Optimization',
+      description: 'Background sync optimization to preserve device battery life',
+      status: 'optimized',
+      usage: '88% efficiency',
     },
     {
       icon: FileText,
-      title: "Digital Forms",
-      description: "Customer signatures, service reports, and completion forms",
-      status: "active",
-      usage: "78% paperless"
+      title: 'Digital Forms',
+      description: 'Customer signatures, service reports, and completion forms',
+      status: 'active',
+      usage: '78% paperless',
     },
     {
       icon: Clock,
-      title: "Time Tracking",
-      description: "Automatic time tracking with arrival/departure timestamps",
-      status: "active",
-      usage: "91% accuracy"
-    }
+      title: 'Time Tracking',
+      description: 'Automatic time tracking with arrival/departure timestamps',
+      status: 'active',
+      usage: '91% accuracy',
+    },
   ];
 
   const performanceMetrics = [
-    { label: "App Load Time", value: "1.2s", target: "< 2s", status: "good" },
-    { label: "API Response", value: "450ms", target: "< 500ms", status: "good" },
-    { label: "Image Upload", value: "2.1s", target: "< 3s", status: "good" },
-    { label: "Offline Storage", value: "25MB", target: "< 50MB", status: "good" },
-    { label: "Memory Usage", value: "120MB", target: "< 200MB", status: "good" },
-    { label: "CPU Usage", value: "15%", target: "< 20%", status: "good" }
+    { label: 'App Load Time', value: '1.2s', target: '< 2s', status: 'good' },
+    { label: 'API Response', value: '450ms', target: '< 500ms', status: 'good' },
+    { label: 'Image Upload', value: '2.1s', target: '< 3s', status: 'good' },
+    { label: 'Offline Storage', value: '25MB', target: '< 50MB', status: 'good' },
+    { label: 'Memory Usage', value: '120MB', target: '< 200MB', status: 'good' },
+    { label: 'CPU Usage', value: '15%', target: '< 20%', status: 'good' },
   ];
 
   const recentUpdates = [
     {
-      version: "v2.4.1",
-      date: "2024-12-15",
-      changes: ["Improved offline sync reliability", "Battery optimization updates", "Bug fixes for photo upload"]
+      version: 'v2.4.1',
+      date: '2024-12-15',
+      changes: [
+        'Improved offline sync reliability',
+        'Battery optimization updates',
+        'Bug fixes for photo upload',
+      ],
     },
     {
-      version: "v2.4.0", 
-      date: "2024-12-01",
-      changes: ["Added GPS tracking for technicians", "Enhanced digital signature capture", "Performance improvements"]
+      version: 'v2.4.0',
+      date: '2024-12-01',
+      changes: [
+        'Added GPS tracking for technicians',
+        'Enhanced digital signature capture',
+        'Performance improvements',
+      ],
     },
     {
-      version: "v2.3.2",
-      date: "2024-11-20",
-      changes: ["Fixed crash on Android 14", "Improved form validation", "Updated security certificates"]
-    }
+      version: 'v2.3.2',
+      date: '2024-11-20',
+      changes: [
+        'Fixed crash on Android 14',
+        'Improved form validation',
+        'Updated security certificates',
+      ],
+    },
   ];
 
   return (
-    <MainLayout 
-      title="Mobile Optimization" 
+    <MainLayout
+      title="Mobile Optimization"
       description="Monitor and optimize mobile app performance for field technicians"
     >
       <div className="space-y-6">
@@ -154,8 +166,12 @@ export default function MobileOptimization() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Active Mobile Users</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.activeUsers}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
+                    Active Mobile Users
+                  </p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {metrics.activeUsers}
+                  </p>
                   <p className="text-xs text-green-600">+12% from last month</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -170,7 +186,9 @@ export default function MobileOptimization() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Offline Capability</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.offlineCapability}%</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {metrics.offlineCapability}%
+                  </p>
                   <p className="text-xs text-green-600">Excellent coverage</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -185,7 +203,9 @@ export default function MobileOptimization() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Avg Response Time</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{metrics.avgResponseTime}s</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {metrics.avgResponseTime}s
+                  </p>
                   <p className="text-xs text-green-600">Target: &lt; 2s</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -214,12 +234,15 @@ export default function MobileOptimization() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="w-full h-full bg-blue-600 rounded-full" style={{ width: `${devices.mobile}%` }}></div>
+                    <div
+                      className="w-full h-full bg-blue-600 rounded-full"
+                      style={{ width: `${devices.mobile}%` }}
+                    ></div>
                   </div>
                   <span className="text-sm font-medium w-12">{devices.mobile}%</span>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Tablet className="h-5 w-5 text-green-600" />
@@ -227,12 +250,15 @@ export default function MobileOptimization() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="w-full h-full bg-green-600 rounded-full" style={{ width: `${devices.tablet}%` }}></div>
+                    <div
+                      className="w-full h-full bg-green-600 rounded-full"
+                      style={{ width: `${devices.tablet}%` }}
+                    ></div>
                   </div>
                   <span className="text-sm font-medium w-12">{devices.tablet}%</span>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Monitor className="h-5 w-5 text-gray-600" />
@@ -240,7 +266,10 @@ export default function MobileOptimization() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="w-full h-full bg-gray-600 rounded-full" style={{ width: `${devices.desktop}%` }}></div>
+                    <div
+                      className="w-full h-full bg-gray-600 rounded-full"
+                      style={{ width: `${devices.desktop}%` }}
+                    ></div>
                   </div>
                   <span className="text-sm font-medium w-12">{devices.desktop}%</span>
                 </div>
@@ -319,7 +348,10 @@ export default function MobileOptimization() {
                       </div>
                       <ul className="space-y-1">
                         {update.changes.map((change, changeIndex) => (
-                          <li key={changeIndex} className="text-sm text-gray-600 flex items-start gap-2">
+                          <li
+                            key={changeIndex}
+                            className="text-sm text-gray-600 flex items-start gap-2"
+                          >
                             <CheckCircle className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
                             {change}
                           </li>
@@ -347,7 +379,7 @@ export default function MobileOptimization() {
                     </div>
                     <Badge variant="default">Enabled</Badge>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-medium">Data Compression</div>
@@ -355,7 +387,7 @@ export default function MobileOptimization() {
                     </div>
                     <Badge variant="default">Enabled</Badge>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-medium">Offline Caching</div>
@@ -379,7 +411,7 @@ export default function MobileOptimization() {
                     </div>
                     <Badge variant="default">Active</Badge>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-medium">Schedule Changes</div>
@@ -387,7 +419,7 @@ export default function MobileOptimization() {
                     </div>
                     <Badge variant="default">Active</Badge>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-medium">Emergency Calls</div>

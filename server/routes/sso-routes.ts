@@ -12,7 +12,15 @@ const router = Router();
 
 // Validation schemas
 const createProviderSchema = z.object({
-  providerType: z.enum(['azure_ad', 'okta', 'google_workspace', 'onelogin', 'ping_identity', 'custom_saml', 'custom_oidc']),
+  providerType: z.enum([
+    'azure_ad',
+    'okta',
+    'google_workspace',
+    'onelogin',
+    'ping_identity',
+    'custom_saml',
+    'custom_oidc',
+  ]),
   protocol: z.enum(['saml2', 'oidc']),
   name: z.string().min(1).max(255),
   displayName: z.string().max(255).optional(),
@@ -64,7 +72,7 @@ router.get('/providers', async (req: Request, res: Response) => {
     const providers = await ssoService.listProviders(tenantId);
 
     // Remove sensitive data
-    const sanitizedProviders = providers.map(p => ({
+    const sanitizedProviders = providers.map((p) => ({
       id: p.id,
       providerType: p.providerType,
       protocol: p.protocol,
@@ -280,7 +288,7 @@ router.post('/callback/saml/:providerId', async (req: Request, res: Response) =>
       providerId,
       callbackData,
       req.ip,
-      req.headers['user-agent']
+      req.headers['user-agent'],
     );
 
     if (!result.success) {
@@ -352,7 +360,7 @@ router.get('/callback/oidc/:providerId', async (req: Request, res: Response) => 
       providerId,
       callbackData,
       req.ip,
-      req.headers['user-agent']
+      req.headers['user-agent'],
     );
 
     if (!result.success) {
@@ -547,7 +555,7 @@ router.post('/providers/:id/test', async (req: Request, res: Response) => {
       }
     }
 
-    const allPassed = tests.every(t => t.passed);
+    const allPassed = tests.every((t) => t.passed);
 
     res.json({
       success: allPassed,

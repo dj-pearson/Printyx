@@ -36,7 +36,8 @@ export function PWAInstallPrompt({ onDismiss, variant = 'card' }: PWAInstallProm
     if (result === 'accepted') {
       toast({
         title: 'App Installed!',
-        description: 'Printyx has been installed successfully. You can now access it from your home screen.',
+        description:
+          'Printyx has been installed successfully. You can now access it from your home screen.',
       });
     } else if (result === 'dismissed') {
       toast({
@@ -113,12 +114,7 @@ export function PWAInstallPrompt({ onDismiss, variant = 'card' }: PWAInstallProm
             </div>
           </div>
           {onDismiss && (
-            <Button
-              onClick={onDismiss}
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 p-0"
-            >
+            <Button onClick={onDismiss} size="sm" variant="ghost" className="h-8 w-8 p-0">
               <X className="h-4 w-4" />
             </Button>
           )}

@@ -5,10 +5,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { ServiceManagerReportingService } from '../services/service-manager-reporting-service';
-import {
-  enhanceUserContext,
-  requirePermission,
-} from '../middleware/enhanced-rbac-middleware';
+import { enhanceUserContext, requirePermission } from '../middleware/enhanced-rbac-middleware';
 
 const router = Router();
 
@@ -37,25 +34,32 @@ router.get(
 
       const data = await ServiceManagerReportingService.getRegionalServiceCallOverview(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Enrich response with insights
-      const priorityBreakdown = data.aggregated.reduce((acc, agg) => {
-        acc[agg.priority.toLowerCase()] = {
-          totalCalls: agg.totalCalls,
-          avgCallsPerRegion: agg.avgCallsPerRegion,
-          avgDuration: agg.avgDuration,
-        };
-        return acc;
-      }, {} as Record<string, any>);
+      const priorityBreakdown = data.aggregated.reduce(
+        (acc, agg) => {
+          acc[agg.priority.toLowerCase()] = {
+            totalCalls: agg.totalCalls,
+            avgCallsPerRegion: agg.avgCallsPerRegion,
+            avgDuration: agg.avgDuration,
+          };
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
 
       res.json({
         ...data,
         insights: {
           priorityBreakdown,
-          healthStatus: data.summary.avgFirstTimeFixRate >= 85 ? 'healthy' :
-                       data.summary.avgFirstTimeFixRate >= 70 ? 'fair' : 'needs_attention',
+          healthStatus:
+            data.summary.avgFirstTimeFixRate >= 85
+              ? 'healthy'
+              : data.summary.avgFirstTimeFixRate >= 70
+                ? 'fair'
+                : 'needs_attention',
         },
       });
     } catch (error) {
@@ -65,7 +69,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -90,22 +94,24 @@ router.get(
 
       const data = await ServiceManagerReportingService.getRegionalServicePerformanceMetrics(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Calculate performance distribution
       const ftfDistribution = {
-        excellent: data.regions.filter(r => r.firstTimeFixRate >= 85).length,
-        good: data.regions.filter(r => r.firstTimeFixRate >= 70 && r.firstTimeFixRate < 85).length,
-        fair: data.regions.filter(r => r.firstTimeFixRate >= 60 && r.firstTimeFixRate < 70).length,
-        poor: data.regions.filter(r => r.firstTimeFixRate < 60).length,
+        excellent: data.regions.filter((r) => r.firstTimeFixRate >= 85).length,
+        good: data.regions.filter((r) => r.firstTimeFixRate >= 70 && r.firstTimeFixRate < 85)
+          .length,
+        fair: data.regions.filter((r) => r.firstTimeFixRate >= 60 && r.firstTimeFixRate < 70)
+          .length,
+        poor: data.regions.filter((r) => r.firstTimeFixRate < 60).length,
       };
 
       const slaDistribution = {
-        excellent: data.regions.filter(r => r.slaCompliance >= 95).length,
-        good: data.regions.filter(r => r.slaCompliance >= 85 && r.slaCompliance < 95).length,
-        fair: data.regions.filter(r => r.slaCompliance >= 75 && r.slaCompliance < 85).length,
-        poor: data.regions.filter(r => r.slaCompliance < 75).length,
+        excellent: data.regions.filter((r) => r.slaCompliance >= 95).length,
+        good: data.regions.filter((r) => r.slaCompliance >= 85 && r.slaCompliance < 95).length,
+        fair: data.regions.filter((r) => r.slaCompliance >= 75 && r.slaCompliance < 85).length,
+        poor: data.regions.filter((r) => r.slaCompliance < 75).length,
       };
 
       res.json({
@@ -114,7 +120,9 @@ router.get(
           ftfDistribution,
           slaDistribution,
           topPerformers: data.regions.slice(0, 3),
-          needsAttention: data.regions.filter(r => r.firstTimeFixRate < 70 || r.slaCompliance < 85),
+          needsAttention: data.regions.filter(
+            (r) => r.firstTimeFixRate < 70 || r.slaCompliance < 85,
+          ),
         },
       });
     } catch (error) {
@@ -124,7 +132,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -149,20 +157,22 @@ router.get(
 
       const data = await ServiceManagerReportingService.getRegionalSLATracking(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // SLA distribution breakdown
       const slaDistribution = {
-        onTrack: data.slas.filter(sla => sla.slaCompliancePercent >= 90).length,
-        nearTarget: data.slas.filter(sla => sla.slaCompliancePercent >= 75 && sla.slaCompliancePercent < 90).length,
-        atRisk: data.slas.filter(sla => sla.slaCompliancePercent < 75).length,
+        onTrack: data.slas.filter((sla) => sla.slaCompliancePercent >= 90).length,
+        nearTarget: data.slas.filter(
+          (sla) => sla.slaCompliancePercent >= 75 && sla.slaCompliancePercent < 90,
+        ).length,
+        atRisk: data.slas.filter((sla) => sla.slaCompliancePercent < 75).length,
       };
 
       // Identify critical regions
       const criticalRegions = data.slas
-        .filter(sla => sla.overdueCalls > 10 || sla.slaCompliancePercent < 70)
-        .map(sla => ({
+        .filter((sla) => sla.overdueCalls > 10 || sla.slaCompliancePercent < 70)
+        .map((sla) => ({
           regionId: sla.regionId,
           regionName: sla.regionName,
           compliance: sla.slaCompliancePercent,
@@ -185,7 +195,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -210,7 +220,7 @@ router.get(
 
       const data = await ServiceManagerReportingService.getRegionalTechnicianActivitySummary(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Activity breakdown aggregation
@@ -223,9 +233,11 @@ router.get(
 
       // Utilization distribution
       const utilizationDistribution = {
-        high: data.activities.filter(act => act.utilizationRate >= 80).length,
-        medium: data.activities.filter(act => act.utilizationRate >= 60 && act.utilizationRate < 80).length,
-        low: data.activities.filter(act => act.utilizationRate < 60).length,
+        high: data.activities.filter((act) => act.utilizationRate >= 80).length,
+        medium: data.activities.filter(
+          (act) => act.utilizationRate >= 60 && act.utilizationRate < 80,
+        ).length,
+        low: data.activities.filter((act) => act.utilizationRate < 60).length,
       };
 
       res.json({
@@ -245,7 +257,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -271,7 +283,7 @@ router.post(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 export default router;

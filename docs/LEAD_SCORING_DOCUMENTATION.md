@@ -96,25 +96,26 @@ The Lead Scoring & Qualification Engine is a comprehensive system for automatica
 
 Configurable rules for automatic lead scoring across 5 categories.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | varchar (PK) | Unique rule identifier (UUID) |
-| `tenant_id` | varchar | Multi-tenant isolation |
-| `rule_name` | varchar(200) | Human-readable rule name |
-| `rule_description` | text | Detailed rule explanation |
-| `category` | varchar(50) | Rule category: demographic, firmographic, behavioral, engagement, bant |
-| `field` | varchar(100) | Business record field to evaluate |
-| `operator` | varchar(50) | Comparison operator: equals, greater_than, contains, in_list, etc. |
-| `value` | jsonb | Comparison value (supports complex data) |
-| `score_points` | integer | Points awarded when rule matches (can be negative) |
-| `max_score` | integer | Maximum points this rule can contribute |
-| `priority` | integer | Rule evaluation priority (1-10, higher = more important) |
-| `is_active` | boolean | Whether rule is currently active |
-| `created_by` | varchar | User who created the rule |
-| `created_at` | timestamp | Creation timestamp |
-| `updated_at` | timestamp | Last modification timestamp |
+| Column             | Type         | Description                                                            |
+| ------------------ | ------------ | ---------------------------------------------------------------------- |
+| `id`               | varchar (PK) | Unique rule identifier (UUID)                                          |
+| `tenant_id`        | varchar      | Multi-tenant isolation                                                 |
+| `rule_name`        | varchar(200) | Human-readable rule name                                               |
+| `rule_description` | text         | Detailed rule explanation                                              |
+| `category`         | varchar(50)  | Rule category: demographic, firmographic, behavioral, engagement, bant |
+| `field`            | varchar(100) | Business record field to evaluate                                      |
+| `operator`         | varchar(50)  | Comparison operator: equals, greater_than, contains, in_list, etc.     |
+| `value`            | jsonb        | Comparison value (supports complex data)                               |
+| `score_points`     | integer      | Points awarded when rule matches (can be negative)                     |
+| `max_score`        | integer      | Maximum points this rule can contribute                                |
+| `priority`         | integer      | Rule evaluation priority (1-10, higher = more important)               |
+| `is_active`        | boolean      | Whether rule is currently active                                       |
+| `created_by`       | varchar      | User who created the rule                                              |
+| `created_at`       | timestamp    | Creation timestamp                                                     |
+| `updated_at`       | timestamp    | Last modification timestamp                                            |
 
 **Indexes:**
+
 - `idx_lead_scoring_rules_tenant` on (tenant_id)
 - `idx_lead_scoring_rules_category` on (category)
 - `idx_lead_scoring_rules_active` on (is_active)
@@ -123,21 +124,22 @@ Configurable rules for automatic lead scoring across 5 categories.
 
 Tracks individual scoring factors applied to each lead.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | varchar (PK) | Unique factor identifier (UUID) |
-| `lead_id` | varchar (FK) | Reference to business_records |
-| `rule_id` | varchar (FK) | Reference to lead_scoring_rules |
-| `tenant_id` | varchar | Multi-tenant isolation |
-| `factor_name` | varchar(200) | Name of the factor |
-| `factor_category` | varchar(50) | Category from parent rule |
-| `points_awarded` | integer | Points awarded for this factor |
-| `evaluated_field` | varchar(100) | Field that was evaluated |
-| `evaluated_value` | jsonb | Value at time of evaluation |
-| `rule_condition` | jsonb | Condition that was matched |
-| `evaluated_at` | timestamp | When factor was evaluated |
+| Column            | Type         | Description                     |
+| ----------------- | ------------ | ------------------------------- |
+| `id`              | varchar (PK) | Unique factor identifier (UUID) |
+| `lead_id`         | varchar (FK) | Reference to business_records   |
+| `rule_id`         | varchar (FK) | Reference to lead_scoring_rules |
+| `tenant_id`       | varchar      | Multi-tenant isolation          |
+| `factor_name`     | varchar(200) | Name of the factor              |
+| `factor_category` | varchar(50)  | Category from parent rule       |
+| `points_awarded`  | integer      | Points awarded for this factor  |
+| `evaluated_field` | varchar(100) | Field that was evaluated        |
+| `evaluated_value` | jsonb        | Value at time of evaluation     |
+| `rule_condition`  | jsonb        | Condition that was matched      |
+| `evaluated_at`    | timestamp    | When factor was evaluated       |
 
 **Indexes:**
+
 - `idx_lead_scoring_factors_lead` on (lead_id)
 - `idx_lead_scoring_factors_tenant` on (tenant_id)
 
@@ -145,52 +147,53 @@ Tracks individual scoring factors applied to each lead.
 
 BANT framework assessment for systematic lead qualification.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | varchar (PK) | Unique qualification identifier (UUID) |
-| `lead_id` | varchar (FK, unique) | Reference to business_records (one per lead) |
-| `tenant_id` | varchar | Multi-tenant isolation |
-| **Budget Fields** | | |
-| `budget_identified` | boolean | Whether budget has been identified |
-| `budget_amount` | decimal | Estimated budget amount |
-| `budget_timeframe` | varchar(50) | Budget timeframe: current_quarter, next_quarter, etc. |
-| `budget_approved` | boolean | Whether budget has been approved |
-| `budget_score` | integer | Budget component score (0-25) |
-| `budget_notes` | text | Additional budget notes |
-| **Authority Fields** | | |
-| `decision_maker_identified` | boolean | Whether decision maker is known |
-| `decision_maker_name` | varchar(200) | Decision maker's name |
-| `decision_maker_title` | varchar(200) | Decision maker's title |
-| `decision_maker_contact` | varchar(200) | Decision maker's contact info |
-| `decision_process` | text | Description of decision-making process |
-| `authority_score` | integer | Authority component score (0-25) |
-| `authority_notes` | text | Additional authority notes |
-| **Need Fields** | | |
-| `need_identified` | boolean | Whether need has been identified |
-| `need_type` | varchar(100) | Type of need: new_equipment, replacement, expansion |
-| `need_urgency` | varchar(50) | Urgency level: critical, high, medium, low |
-| `need_description` | text | Detailed need description |
-| `pain_points` | text[] | Array of identified pain points |
-| `need_score` | integer | Need component score (0-25) |
-| `need_notes` | text | Additional need notes |
-| **Timeline Fields** | | |
-| `timeline_identified` | boolean | Whether timeline is known |
-| `expected_close_date` | timestamp | Expected deal close date |
-| `decision_timeline` | varchar(50) | Decision timeframe: immediate, 30_days, 90_days, etc. |
-| `implementation_timeline` | varchar(50) | Expected implementation duration |
-| `blockers` | text[] | Array of identified blockers |
-| `timeline_score` | integer | Timeline component score (0-25) |
-| `timeline_notes` | text | Additional timeline notes |
-| **Overall Fields** | | |
-| `total_bant_score` | integer | Total BANT score (0-100) |
-| `qualification_status` | varchar(50) | Status: highly_qualified, qualified, partially_qualified, unqualified |
-| `qualified_date` | timestamp | Date lead was qualified |
-| `assessed_by` | varchar | User who performed assessment |
-| `last_assessed_at` | timestamp | Last assessment timestamp |
-| `created_at` | timestamp | Creation timestamp |
-| `updated_at` | timestamp | Last modification timestamp |
+| Column                      | Type                 | Description                                                           |
+| --------------------------- | -------------------- | --------------------------------------------------------------------- |
+| `id`                        | varchar (PK)         | Unique qualification identifier (UUID)                                |
+| `lead_id`                   | varchar (FK, unique) | Reference to business_records (one per lead)                          |
+| `tenant_id`                 | varchar              | Multi-tenant isolation                                                |
+| **Budget Fields**           |                      |                                                                       |
+| `budget_identified`         | boolean              | Whether budget has been identified                                    |
+| `budget_amount`             | decimal              | Estimated budget amount                                               |
+| `budget_timeframe`          | varchar(50)          | Budget timeframe: current_quarter, next_quarter, etc.                 |
+| `budget_approved`           | boolean              | Whether budget has been approved                                      |
+| `budget_score`              | integer              | Budget component score (0-25)                                         |
+| `budget_notes`              | text                 | Additional budget notes                                               |
+| **Authority Fields**        |                      |                                                                       |
+| `decision_maker_identified` | boolean              | Whether decision maker is known                                       |
+| `decision_maker_name`       | varchar(200)         | Decision maker's name                                                 |
+| `decision_maker_title`      | varchar(200)         | Decision maker's title                                                |
+| `decision_maker_contact`    | varchar(200)         | Decision maker's contact info                                         |
+| `decision_process`          | text                 | Description of decision-making process                                |
+| `authority_score`           | integer              | Authority component score (0-25)                                      |
+| `authority_notes`           | text                 | Additional authority notes                                            |
+| **Need Fields**             |                      |                                                                       |
+| `need_identified`           | boolean              | Whether need has been identified                                      |
+| `need_type`                 | varchar(100)         | Type of need: new_equipment, replacement, expansion                   |
+| `need_urgency`              | varchar(50)          | Urgency level: critical, high, medium, low                            |
+| `need_description`          | text                 | Detailed need description                                             |
+| `pain_points`               | text[]               | Array of identified pain points                                       |
+| `need_score`                | integer              | Need component score (0-25)                                           |
+| `need_notes`                | text                 | Additional need notes                                                 |
+| **Timeline Fields**         |                      |                                                                       |
+| `timeline_identified`       | boolean              | Whether timeline is known                                             |
+| `expected_close_date`       | timestamp            | Expected deal close date                                              |
+| `decision_timeline`         | varchar(50)          | Decision timeframe: immediate, 30_days, 90_days, etc.                 |
+| `implementation_timeline`   | varchar(50)          | Expected implementation duration                                      |
+| `blockers`                  | text[]               | Array of identified blockers                                          |
+| `timeline_score`            | integer              | Timeline component score (0-25)                                       |
+| `timeline_notes`            | text                 | Additional timeline notes                                             |
+| **Overall Fields**          |                      |                                                                       |
+| `total_bant_score`          | integer              | Total BANT score (0-100)                                              |
+| `qualification_status`      | varchar(50)          | Status: highly_qualified, qualified, partially_qualified, unqualified |
+| `qualified_date`            | timestamp            | Date lead was qualified                                               |
+| `assessed_by`               | varchar              | User who performed assessment                                         |
+| `last_assessed_at`          | timestamp            | Last assessment timestamp                                             |
+| `created_at`                | timestamp            | Creation timestamp                                                    |
+| `updated_at`                | timestamp            | Last modification timestamp                                           |
 
 **Indexes:**
+
 - `idx_bant_qualification_lead` on (lead_id)
 - `idx_bant_qualification_tenant` on (tenant_id)
 - `idx_bant_qualification_status` on (qualification_status)
@@ -199,35 +202,36 @@ BANT framework assessment for systematic lead qualification.
 
 Historical record of all lead score calculations.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | varchar (PK) | Unique calculation identifier (UUID) |
-| `lead_id` | varchar (FK) | Reference to business_records |
-| `tenant_id` | varchar | Multi-tenant isolation |
-| **Score Components** | | |
-| `demographic_score` | integer | Points from demographic factors (max 20) |
-| `firmographic_score` | integer | Points from firmographic factors (max 20) |
-| `behavioral_score` | integer | Points from behavioral factors (max 20) |
-| `engagement_score` | integer | Points from engagement tracking (max 20) |
-| `bant_score` | integer | Points from BANT qualification (max 25) |
-| `total_score` | integer | Total calculated score (0-100) |
-| `previous_score` | integer | Previous total score for comparison |
-| `score_change` | integer | Change from previous score |
-| **Classification** | | |
-| `lead_grade` | varchar(10) | Letter grade: A+, A, B+, B, C+, C, D |
-| `lead_tier` | varchar(20) | Tier classification: hot, warm, cold |
-| **AI/Prediction** | | |
-| `prediction_score` | integer | ML-predicted score (future enhancement) |
-| `confidence_level` | varchar(20) | Prediction confidence: high, medium, low |
-| **Actions** | | |
-| `recommended_action` | varchar(100) | Suggested next step: contact_immediately, nurture, request_more_info, disqualify |
-| **Metadata** | | |
-| `calculation_method` | varchar(50) | Method used: rule_based, ml_prediction, hybrid |
-| `rules_applied` | text[] | Array of rule IDs that matched |
-| `calculated_at` | timestamp | Calculation timestamp |
-| `calculation_duration` | integer | Calculation time in milliseconds |
+| Column                 | Type         | Description                                                                      |
+| ---------------------- | ------------ | -------------------------------------------------------------------------------- |
+| `id`                   | varchar (PK) | Unique calculation identifier (UUID)                                             |
+| `lead_id`              | varchar (FK) | Reference to business_records                                                    |
+| `tenant_id`            | varchar      | Multi-tenant isolation                                                           |
+| **Score Components**   |              |                                                                                  |
+| `demographic_score`    | integer      | Points from demographic factors (max 20)                                         |
+| `firmographic_score`   | integer      | Points from firmographic factors (max 20)                                        |
+| `behavioral_score`     | integer      | Points from behavioral factors (max 20)                                          |
+| `engagement_score`     | integer      | Points from engagement tracking (max 20)                                         |
+| `bant_score`           | integer      | Points from BANT qualification (max 25)                                          |
+| `total_score`          | integer      | Total calculated score (0-100)                                                   |
+| `previous_score`       | integer      | Previous total score for comparison                                              |
+| `score_change`         | integer      | Change from previous score                                                       |
+| **Classification**     |              |                                                                                  |
+| `lead_grade`           | varchar(10)  | Letter grade: A+, A, B+, B, C+, C, D                                             |
+| `lead_tier`            | varchar(20)  | Tier classification: hot, warm, cold                                             |
+| **AI/Prediction**      |              |                                                                                  |
+| `prediction_score`     | integer      | ML-predicted score (future enhancement)                                          |
+| `confidence_level`     | varchar(20)  | Prediction confidence: high, medium, low                                         |
+| **Actions**            |              |                                                                                  |
+| `recommended_action`   | varchar(100) | Suggested next step: contact_immediately, nurture, request_more_info, disqualify |
+| **Metadata**           |              |                                                                                  |
+| `calculation_method`   | varchar(50)  | Method used: rule_based, ml_prediction, hybrid                                   |
+| `rules_applied`        | text[]       | Array of rule IDs that matched                                                   |
+| `calculated_at`        | timestamp    | Calculation timestamp                                                            |
+| `calculation_duration` | integer      | Calculation time in milliseconds                                                 |
 
 **Indexes:**
+
 - `idx_lead_score_calc_lead` on (lead_id)
 - `idx_lead_score_calc_tenant_score` on (tenant_id, total_score DESC)
 - `idx_lead_score_calc_grade` on (lead_grade)
@@ -236,21 +240,22 @@ Historical record of all lead score calculations.
 
 Audit trail of qualification status changes.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | varchar (PK) | Unique history entry identifier (UUID) |
-| `lead_id` | varchar (FK) | Reference to business_records |
-| `tenant_id` | varchar | Multi-tenant isolation |
-| `previous_status` | varchar(50) | Previous qualification status |
-| `new_status` | varchar(50) | New qualification status |
-| `status_reason` | text | Reason for status change |
-| `score_at_change` | integer | Total score at time of change |
-| `bant_score_at_change` | integer | BANT score at time of change |
-| `changed_by` | varchar | User who triggered change |
-| `changed_at` | timestamp | Change timestamp |
-| `change_reason` | varchar(100) | Categorized change reason: bant_assessment, score_threshold, manual_update |
+| Column                 | Type         | Description                                                                |
+| ---------------------- | ------------ | -------------------------------------------------------------------------- |
+| `id`                   | varchar (PK) | Unique history entry identifier (UUID)                                     |
+| `lead_id`              | varchar (FK) | Reference to business_records                                              |
+| `tenant_id`            | varchar      | Multi-tenant isolation                                                     |
+| `previous_status`      | varchar(50)  | Previous qualification status                                              |
+| `new_status`           | varchar(50)  | New qualification status                                                   |
+| `status_reason`        | text         | Reason for status change                                                   |
+| `score_at_change`      | integer      | Total score at time of change                                              |
+| `bant_score_at_change` | integer      | BANT score at time of change                                               |
+| `changed_by`           | varchar      | User who triggered change                                                  |
+| `changed_at`           | timestamp    | Change timestamp                                                           |
+| `change_reason`        | varchar(100) | Categorized change reason: bant_assessment, score_threshold, manual_update |
 
 **Indexes:**
+
 - `idx_lead_qualification_history_lead` on (lead_id)
 - `idx_lead_qualification_history_tenant` on (tenant_id)
 
@@ -258,20 +263,21 @@ Audit trail of qualification status changes.
 
 Tracks all lead interaction and engagement activities.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | varchar (PK) | Unique engagement identifier (UUID) |
-| `lead_id` | varchar (FK) | Reference to business_records |
-| `tenant_id` | varchar | Multi-tenant isolation |
-| `engagement_type` | varchar(100) | Type: email_open, email_click, call_answered, website_visit, form_submit, demo_request, etc. |
-| `engagement_channel` | varchar(50) | Channel: email, phone, website, social_media, in_person |
-| `engagement_source` | varchar(200) | Source identifier (campaign ID, form ID, etc.) |
-| `engagement_value` | integer | Scoring value of this engagement (default 1) |
-| `engagement_metadata` | jsonb | Additional engagement data |
-| `engaged_at` | timestamp | Engagement timestamp |
-| `user_id` | varchar | User associated with engagement |
+| Column                | Type         | Description                                                                                  |
+| --------------------- | ------------ | -------------------------------------------------------------------------------------------- |
+| `id`                  | varchar (PK) | Unique engagement identifier (UUID)                                                          |
+| `lead_id`             | varchar (FK) | Reference to business_records                                                                |
+| `tenant_id`           | varchar      | Multi-tenant isolation                                                                       |
+| `engagement_type`     | varchar(100) | Type: email_open, email_click, call_answered, website_visit, form_submit, demo_request, etc. |
+| `engagement_channel`  | varchar(50)  | Channel: email, phone, website, social_media, in_person                                      |
+| `engagement_source`   | varchar(200) | Source identifier (campaign ID, form ID, etc.)                                               |
+| `engagement_value`    | integer      | Scoring value of this engagement (default 1)                                                 |
+| `engagement_metadata` | jsonb        | Additional engagement data                                                                   |
+| `engaged_at`          | timestamp    | Engagement timestamp                                                                         |
+| `user_id`             | varchar      | User associated with engagement                                                              |
 
 **Indexes:**
+
 - `idx_lead_engagement_lead` on (lead_id)
 - `idx_lead_engagement_tenant_date` on (tenant_id, engaged_at DESC)
 - `idx_lead_engagement_type` on (engagement_type)
@@ -472,12 +478,14 @@ The BANT framework systematically qualifies leads across four critical dimension
 ### 1. Budget (0-25 points)
 
 **Questions to Answer:**
+
 - Has the prospect identified a budget?
 - What is the estimated budget amount?
 - What is the budget timeframe?
 - Is the budget already approved?
 
 **Scoring:**
+
 - Budget identified: +15 points
 - Budget approved: +10 additional points
 - Total possible: 25 points
@@ -485,24 +493,28 @@ The BANT framework systematically qualifies leads across four critical dimension
 ### 2. Authority (0-25 points)
 
 **Questions to Answer:**
+
 - Have we identified the decision maker?
 - What is their name, title, and contact information?
 - What is the decision-making process?
 - Who else is involved in the decision?
 
 **Scoring:**
+
 - Decision maker identified: +25 points
 - Total possible: 25 points
 
 ### 3. Need (0-25 points)
 
 **Questions to Answer:**
+
 - Has a clear need been identified?
 - What type of need is it? (new equipment, replacement, expansion)
 - What is the urgency level? (critical, high, medium, low)
 - What are the specific pain points?
 
 **Scoring:**
+
 - Need identified: +15 points
 - Critical urgency: +10 additional points
 - High urgency: +5 additional points
@@ -511,12 +523,14 @@ The BANT framework systematically qualifies leads across four critical dimension
 ### 4. Timeline (0-25 points)
 
 **Questions to Answer:**
+
 - Is there a known timeline for the decision?
 - What is the expected close date?
 - How soon do they need to make a decision?
 - What are the potential blockers?
 
 **Scoring:**
+
 - Timeline identified: +15 points
 - Immediate decision: +10 additional points
 - 30-day decision: +5 additional points
@@ -524,12 +538,12 @@ The BANT framework systematically qualifies leads across four critical dimension
 
 ### BANT Qualification Levels
 
-| Total Score | Status | Action |
-|------------|--------|--------|
-| 75-100 | Highly Qualified | Priority engagement, allocate top resources |
-| 50-74 | Qualified | Standard sales process, regular follow-up |
-| 25-49 | Partially Qualified | Nurture campaign, gather more information |
-| 0-24 | Unqualified | Low priority, automated drip campaign |
+| Total Score | Status              | Action                                      |
+| ----------- | ------------------- | ------------------------------------------- |
+| 75-100      | Highly Qualified    | Priority engagement, allocate top resources |
+| 50-74       | Qualified           | Standard sales process, regular follow-up   |
+| 25-49       | Partially Qualified | Nurture campaign, gather more information   |
+| 0-24        | Unqualified         | Low priority, automated drip campaign       |
 
 ---
 
@@ -539,13 +553,13 @@ The BANT framework systematically qualifies leads across four critical dimension
 
 Lead scoring combines 5 weighted components into a total score (0-100):
 
-| Component | Max Points | Weight | Description |
-|-----------|-----------|--------|-------------|
-| Demographic | 20 | 20% | Company size, industry, location |
-| Firmographic | 20 | 20% | Revenue, growth, market position |
-| Behavioral | 20 | 20% | Actions taken, sales interactions |
-| Engagement | 20 | 20% | Email opens, calls, website visits |
-| BANT | 25 | 20% | Budget, Authority, Need, Timeline assessment (weighted at 0.8) |
+| Component    | Max Points | Weight | Description                                                    |
+| ------------ | ---------- | ------ | -------------------------------------------------------------- |
+| Demographic  | 20         | 20%    | Company size, industry, location                               |
+| Firmographic | 20         | 20%    | Revenue, growth, market position                               |
+| Behavioral   | 20         | 20%    | Actions taken, sales interactions                              |
+| Engagement   | 20         | 20%    | Email opens, calls, website visits                             |
+| BANT         | 25         | 20%    | Budget, Authority, Need, Timeline assessment (weighted at 0.8) |
 
 ### Calculation Process
 
@@ -556,6 +570,7 @@ Lead scoring combines 5 weighted components into a total score (0-100):
    - Factors are tracked for audit trail
 
 2. **Component Scoring**
+
    ```
    Demographic Score = min(Sum of matching demographic rules, 20)
    Firmographic Score = min(Sum of matching firmographic rules, 20)
@@ -565,6 +580,7 @@ Lead scoring combines 5 weighted components into a total score (0-100):
    ```
 
 3. **Total Score Calculation**
+
    ```
    Total Score = min(
      Demographic + Firmographic + Behavioral + Engagement + (BANT * 0.8),
@@ -574,32 +590,32 @@ Lead scoring combines 5 weighted components into a total score (0-100):
 
 4. **Grade Assignment**
 
-   | Score Range | Grade | Description |
-   |-------------|-------|-------------|
-   | 90-100 | A+ | Exceptional lead, highest priority |
-   | 80-89 | A | Excellent lead, high priority |
-   | 70-79 | B+ | Very good lead, good fit |
-   | 60-69 | B | Good lead, standard priority |
-   | 50-59 | C+ | Fair lead, nurture required |
-   | 40-49 | C | Below average, qualify further |
-   | 0-39 | D | Poor fit, consider disqualifying |
+   | Score Range | Grade | Description                        |
+   | ----------- | ----- | ---------------------------------- |
+   | 90-100      | A+    | Exceptional lead, highest priority |
+   | 80-89       | A     | Excellent lead, high priority      |
+   | 70-79       | B+    | Very good lead, good fit           |
+   | 60-69       | B     | Good lead, standard priority       |
+   | 50-59       | C+    | Fair lead, nurture required        |
+   | 40-49       | C     | Below average, qualify further     |
+   | 0-39        | D     | Poor fit, consider disqualifying   |
 
 5. **Tier Classification**
 
-   | Score Range | Tier | Priority |
-   |-------------|------|----------|
-   | 75-100 | Hot | Immediate contact |
-   | 50-74 | Warm | Standard follow-up |
-   | 0-49 | Cold | Nurture campaign |
+   | Score Range | Tier | Priority           |
+   | ----------- | ---- | ------------------ |
+   | 75-100      | Hot  | Immediate contact  |
+   | 50-74       | Warm | Standard follow-up |
+   | 0-49        | Cold | Nurture campaign   |
 
 6. **Recommended Action**
 
-   | Score Range | Action | Description |
-   |-------------|--------|-------------|
-   | 75-100 | contact_immediately | Assign to top rep, call within 24 hours |
-   | 50-74 | nurture | Add to nurture campaign, regular touchpoints |
-   | 30-49 | request_more_info | Gather additional qualifying information |
-   | 0-29 | disqualify | Move to long-term drip or archive |
+   | Score Range | Action              | Description                                  |
+   | ----------- | ------------------- | -------------------------------------------- |
+   | 75-100      | contact_immediately | Assign to top rep, call within 24 hours      |
+   | 50-74       | nurture             | Add to nurture campaign, regular touchpoints |
+   | 30-49       | request_more_info   | Gather additional qualifying information     |
+   | 0-29        | disqualify          | Move to long-term drip or archive            |
 
 ---
 
@@ -610,6 +626,7 @@ The seeding process creates a complete BANT-based scoring system:
 ### Scoring Rules Created (13 rules)
 
 **Demographic Rules (5 rules)**
+
 1. Large Enterprise (500+ employees) → 15 points
 2. Mid-Market Company (100-500 employees) → 10 points
 3. Target Industry - Legal → 10 points
@@ -617,15 +634,18 @@ The seeding process creates a complete BANT-based scoring system:
 5. Target Industry - Financial Services → 10 points
 
 **Firmographic Rules (3 rules)**
+
 1. High Annual Revenue ($10M+) → 15 points
 2. Medium Annual Revenue ($1M-$10M) → 10 points
 3. Has Website → 5 points
 
 **Behavioral Rules (2 rules)**
+
 1. Assigned to Sales Rep → 10 points
 2. High Priority Lead → 15 points
 
 **Engagement Rules (3 rules)**
+
 1. Lead Status - Qualified → 20 points
 2. Lead Status - Proposal → 15 points
 3. Lead Status - Contacted → 10 points
@@ -633,6 +653,7 @@ The seeding process creates a complete BANT-based scoring system:
 ### Sample Leads Created (5 leads)
 
 **1. Acme Legal Services LLP**
+
 - Grade: A+ (Score: 90+)
 - Tier: Hot
 - Industry: Legal, 750 employees, $15M revenue
@@ -641,6 +662,7 @@ The seeding process creates a complete BANT-based scoring system:
 - Engagement: 4 activities tracked
 
 **2. Springfield Medical Center**
+
 - Grade: A (Score: 80-89)
 - Tier: Hot
 - Industry: Healthcare, 450 employees, $8.5M revenue
@@ -649,6 +671,7 @@ The seeding process creates a complete BANT-based scoring system:
 - Engagement: 4 activities tracked
 
 **3. Downtown Financial Group**
+
 - Grade: B+ (Score: 70-79)
 - Tier: Warm
 - Industry: Finance, 320 employees, $6.2M revenue
@@ -657,6 +680,7 @@ The seeding process creates a complete BANT-based scoring system:
 - Engagement: 2 activities tracked
 
 **4. Tech Startup Inc**
+
 - Grade: B/C+ (Score: 50-69)
 - Tier: Warm
 - Industry: Technology, 85 employees, $1.2M revenue
@@ -665,6 +689,7 @@ The seeding process creates a complete BANT-based scoring system:
 - Engagement: 2 activities tracked
 
 **5. Small Business LLC**
+
 - Grade: C/D (Score: 30-49)
 - Tier: Cold
 - Industry: Retail, 25 employees, $500K revenue
@@ -673,6 +698,7 @@ The seeding process creates a complete BANT-based scoring system:
 - Engagement: None
 
 **Engagement Activities Tracked:**
+
 - Email Opens (+2 points each)
 - Email Clicks (+5 points each)
 - Website Visits (+3 points each)
@@ -752,19 +778,19 @@ POST /api/lead-scoring/bant/lead_123
   "budgetTimeframe": "current_quarter",
   "budgetApproved": true,
   "budgetNotes": "Approved by CFO",
-  
+
   "decisionMakerIdentified": true,
   "decisionMakerName": "Jane Smith",
   "decisionMakerTitle": "VP Operations",
   "decisionMakerContact": "jane.smith@company.com",
   "decisionProcess": "VP approval required",
-  
+
   "needIdentified": true,
   "needType": "replacement",
   "needUrgency": "high",
   "needDescription": "Current equipment failing frequently",
   "painPoints": ["high_downtime", "poor_quality", "high_service_costs"],
-  
+
   "timelineIdentified": true,
   "expectedCloseDate": "2025-12-15",
   "decisionTimeline": "30_days",
@@ -962,31 +988,37 @@ Response: {
 The Lead Scoring & Qualification Engine provides copier dealers with:
 
 ✅ **Complete Backend Infrastructure**
+
 - 6 database tables with comprehensive indexes
 - 30+ storage methods for all operations
 - 20+ API endpoints for scoring, BANT, and analytics
 
 ✅ **BANT Framework Implementation**
+
 - Systematic qualification across 4 dimensions
 - Automatic scoring and status assignment
 - Complete audit trail
 
 ✅ **Flexible Scoring System**
+
 - 5 scoring categories with configurable rules
 - Automatic score calculation (0-100)
 - Grade assignment (A+ to D) and tier classification (hot/warm/cold)
 
 ✅ **Comprehensive Tracking**
+
 - Engagement monitoring across all channels
 - Qualification history and status changes
 - Scoring factor breakdown
 
 ✅ **Analytics & Insights**
+
 - Scoring performance metrics
 - BANT qualification statistics
 - Top-performing rules identification
 
 ✅ **Seed Data**
+
 - 13 pre-configured scoring rules
 - 5 sample leads with full scoring
 - BANT assessments and engagement tracking

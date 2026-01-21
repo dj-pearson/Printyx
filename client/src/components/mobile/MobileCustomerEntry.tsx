@@ -1,16 +1,22 @@
-import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { 
-  User, 
-  Building, 
-  Phone, 
-  Mail, 
+import { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import {
+  User,
+  Building,
+  Phone,
+  Mail,
   MapPin,
   Camera,
   Mic,
@@ -18,10 +24,10 @@ import {
   UserPlus,
   FileText,
   CheckCircle,
-  AlertCircle
-} from "lucide-react";
-import { useMobileDetection } from "@/hooks/useExternalIntegrations";
-import { useToast } from "@/hooks/use-toast";
+  AlertCircle,
+} from 'lucide-react';
+import { useMobileDetection } from '@/hooks/useExternalIntegrations';
+import { useToast } from '@/hooks/use-toast';
 
 interface CustomerFormData {
   // Company Information
@@ -29,13 +35,13 @@ interface CustomerFormData {
   industry: string;
   companySize: string;
   website: string;
-  
+
   // Primary Contact
   contactName: string;
   contactTitle: string;
   contactPhone: string;
   contactEmail: string;
-  
+
   // Address Information
   addressLine1: string;
   addressLine2: string;
@@ -43,7 +49,7 @@ interface CustomerFormData {
   state: string;
   postalCode: string;
   country: string;
-  
+
   // Business Details
   customerType: 'lead' | 'prospect' | 'customer';
   priority: 'low' | 'medium' | 'high';
@@ -57,46 +63,52 @@ interface MobileCustomerEntryProps {
   className?: string;
 }
 
-export function MobileCustomerEntry({ editingCustomer, onSave, className }: MobileCustomerEntryProps) {
-  const [formData, setFormData] = useState<CustomerFormData>(editingCustomer || {
-    companyName: '',
-    industry: '',
-    companySize: '',
-    website: '',
-    contactName: '',
-    contactTitle: '',
-    contactPhone: '',
-    contactEmail: '',
-    addressLine1: '',
-    addressLine2: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'US',
-    customerType: 'lead',
-    priority: 'medium',
-    source: '',
-    notes: ''
-  });
+export function MobileCustomerEntry({
+  editingCustomer,
+  onSave,
+  className,
+}: MobileCustomerEntryProps) {
+  const [formData, setFormData] = useState<CustomerFormData>(
+    editingCustomer || {
+      companyName: '',
+      industry: '',
+      companySize: '',
+      website: '',
+      contactName: '',
+      contactTitle: '',
+      contactPhone: '',
+      contactEmail: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'US',
+      customerType: 'lead',
+      priority: 'medium',
+      source: '',
+      notes: '',
+    },
+  );
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isRecording, setIsRecording] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  
+
   const { isMobile, orientation } = useMobileDetection();
   const { toast } = useToast();
 
   const updateFormData = (field: keyof CustomerFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear validation errors for this field
     if (validationErrors.includes(field)) {
-      setValidationErrors(prev => prev.filter(error => error !== field));
+      setValidationErrors((prev) => prev.filter((error) => error !== field));
     }
   };
 
   const validateStep = (step: number): boolean => {
     const errors: string[] = [];
-    
+
     switch (step) {
       case 1: // Company Information
         if (!formData.companyName.trim()) errors.push('companyName');
@@ -113,33 +125,33 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
         if (!formData.state.trim()) errors.push('state');
         break;
     }
-    
+
     setValidationErrors(errors);
     return errors.length === 0;
   };
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 4));
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
     } else {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
       });
     }
   };
 
   const handlePrevious = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleSave = () => {
     if (validateStep(currentStep)) {
       onSave?.(formData);
       toast({
-        title: "Customer Saved",
-        description: `${formData.companyName} has been saved successfully`
+        title: 'Customer Saved',
+        description: `${formData.companyName} has been saved successfully`,
       });
     }
   };
@@ -147,44 +159,54 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
   const handleVoiceInput = async (field: keyof CustomerFormData) => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       toast({
-        title: "Voice Input Unavailable",
-        description: "Speech recognition not supported in this browser",
-        variant: "destructive"
+        title: 'Voice Input Unavailable',
+        description: 'Speech recognition not supported in this browser',
+        variant: 'destructive',
       });
       return;
     }
 
     setIsRecording(true);
-    
+
     // Mock voice input for demonstration
     setTimeout(() => {
       const voiceInput = `Voice input for ${field}`;
       updateFormData(field, voiceInput);
       setIsRecording(false);
       toast({
-        title: "Voice Input Captured",
-        description: `Added text to ${field}`
+        title: 'Voice Input Captured',
+        description: `Added text to ${field}`,
       });
     }, 2000);
   };
 
   const getStepTitle = (step: number): string => {
     switch (step) {
-      case 1: return "Company Information";
-      case 2: return "Contact Details";
-      case 3: return "Address Information";
-      case 4: return "Business Details";
-      default: return "Customer Entry";
+      case 1:
+        return 'Company Information';
+      case 2:
+        return 'Contact Details';
+      case 3:
+        return 'Address Information';
+      case 4:
+        return 'Business Details';
+      default:
+        return 'Customer Entry';
     }
   };
 
   const getStepIcon = (step: number) => {
     switch (step) {
-      case 1: return <Building className="h-5 w-5" />;
-      case 2: return <User className="h-5 w-5" />;
-      case 3: return <MapPin className="h-5 w-5" />;
-      case 4: return <FileText className="h-5 w-5" />;
-      default: return <User className="h-5 w-5" />;
+      case 1:
+        return <Building className="h-5 w-5" />;
+      case 2:
+        return <User className="h-5 w-5" />;
+      case 3:
+        return <MapPin className="h-5 w-5" />;
+      case 4:
+        return <FileText className="h-5 w-5" />;
+      default:
+        return <User className="h-5 w-5" />;
     }
   };
 
@@ -193,15 +215,15 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
     label: string,
     type: 'text' | 'email' | 'tel' | 'textarea' | 'select' = 'text',
     options?: { value: string; label: string }[],
-    required = false
+    required = false,
   ) => {
     const hasError = validationErrors.includes(field);
     const fieldId = `field-${field}`;
-    
+
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor={fieldId} className={required ? "font-medium" : ""}>
+          <Label htmlFor={fieldId} className={required ? 'font-medium' : ''}>
             {label} {required && <span className="text-red-500">*</span>}
           </Label>
           <Button
@@ -213,26 +235,23 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
             <Mic className={`h-4 w-4 ${isRecording ? 'animate-pulse text-red-500' : ''}`} />
           </Button>
         </div>
-        
+
         {type === 'textarea' ? (
           <Textarea
             id={fieldId}
             value={formData[field]}
             onChange={(e) => updateFormData(field, e.target.value)}
-            className={hasError ? "border-red-500" : ""}
+            className={hasError ? 'border-red-500' : ''}
             rows={3}
             placeholder={`Enter ${label.toLowerCase()}...`}
           />
         ) : type === 'select' ? (
-          <Select
-            value={formData[field]}
-            onValueChange={(value) => updateFormData(field, value)}
-          >
-            <SelectTrigger className={hasError ? "border-red-500" : ""}>
+          <Select value={formData[field]} onValueChange={(value) => updateFormData(field, value)}>
+            <SelectTrigger className={hasError ? 'border-red-500' : ''}>
               <SelectValue placeholder={`Select ${label.toLowerCase()}...`} />
             </SelectTrigger>
             <SelectContent>
-              {options?.map(option => (
+              {options?.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -245,11 +264,11 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
             type={type}
             value={formData[field]}
             onChange={(e) => updateFormData(field, e.target.value)}
-            className={hasError ? "border-red-500" : ""}
+            className={hasError ? 'border-red-500' : ''}
             placeholder={`Enter ${label.toLowerCase()}...`}
           />
         )}
-        
+
         {hasError && (
           <p className="text-sm text-red-500 flex items-center gap-1">
             <AlertCircle className="h-3 w-3" />
@@ -270,14 +289,12 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
               {getStepIcon(currentStep)}
               {getStepTitle(currentStep)}
             </CardTitle>
-            <Badge variant="outline">
-              Step {currentStep} of 4
-            </Badge>
+            <Badge variant="outline">Step {currentStep} of 4</Badge>
           </div>
-          
+
           {/* Progress Bar */}
           <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-            <div 
+            <div
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(currentStep / 4) * 100}%` }}
             />
@@ -291,21 +308,27 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
           {currentStep === 1 && (
             <div className="space-y-4">
               {renderField('companyName', 'Company Name', 'text', undefined, true)}
-              {renderField('industry', 'Industry', 'select', [
-                { value: 'healthcare', label: 'Healthcare' },
-                { value: 'education', label: 'Education' },
-                { value: 'legal', label: 'Legal Services' },
-                { value: 'finance', label: 'Financial Services' },
-                { value: 'manufacturing', label: 'Manufacturing' },
-                { value: 'retail', label: 'Retail' },
-                { value: 'other', label: 'Other' }
-              ], true)}
+              {renderField(
+                'industry',
+                'Industry',
+                'select',
+                [
+                  { value: 'healthcare', label: 'Healthcare' },
+                  { value: 'education', label: 'Education' },
+                  { value: 'legal', label: 'Legal Services' },
+                  { value: 'finance', label: 'Financial Services' },
+                  { value: 'manufacturing', label: 'Manufacturing' },
+                  { value: 'retail', label: 'Retail' },
+                  { value: 'other', label: 'Other' },
+                ],
+                true,
+              )}
               {renderField('companySize', 'Company Size', 'select', [
                 { value: '1-10', label: '1-10 employees' },
                 { value: '11-50', label: '11-50 employees' },
                 { value: '51-200', label: '51-200 employees' },
                 { value: '201-1000', label: '201-1000 employees' },
-                { value: '1000+', label: '1000+ employees' }
+                { value: '1000+', label: '1000+ employees' },
               ])}
               {renderField('website', 'Website', 'text')}
             </div>
@@ -333,7 +356,7 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
                 {renderField('country', 'Country', 'select', [
                   { value: 'US', label: 'United States' },
                   { value: 'CA', label: 'Canada' },
-                  { value: 'MX', label: 'Mexico' }
+                  { value: 'MX', label: 'Mexico' },
                 ])}
               </div>
             </div>
@@ -344,12 +367,12 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
               {renderField('customerType', 'Customer Type', 'select', [
                 { value: 'lead', label: 'Lead' },
                 { value: 'prospect', label: 'Prospect' },
-                { value: 'customer', label: 'Customer' }
+                { value: 'customer', label: 'Customer' },
               ])}
               {renderField('priority', 'Priority', 'select', [
                 { value: 'low', label: 'Low Priority' },
                 { value: 'medium', label: 'Medium Priority' },
-                { value: 'high', label: 'High Priority' }
+                { value: 'high', label: 'High Priority' },
               ])}
               {renderField('source', 'Lead Source', 'select', [
                 { value: 'website', label: 'Website' },
@@ -357,7 +380,7 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
                 { value: 'cold-call', label: 'Cold Call' },
                 { value: 'trade-show', label: 'Trade Show' },
                 { value: 'social-media', label: 'Social Media' },
-                { value: 'other', label: 'Other' }
+                { value: 'other', label: 'Other' },
               ])}
               {renderField('notes', 'Notes', 'textarea')}
             </div>
@@ -375,7 +398,7 @@ export function MobileCustomerEntry({ editingCustomer, onSave, className }: Mobi
         >
           Previous
         </Button>
-        
+
         {currentStep < 4 ? (
           <Button onClick={handleNext} className="flex-1">
             Next

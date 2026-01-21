@@ -1,7 +1,12 @@
 import type { Express } from 'express';
 import { Router } from 'express';
 import { db } from './db';
-import { equipment, businessRecords, serviceTickets, clientCollectedMetrics } from '../shared/schema';
+import {
+  equipment,
+  businessRecords,
+  serviceTickets,
+  clientCollectedMetrics,
+} from '../shared/schema';
 import { eq, and, sql, desc, gte, lt } from 'drizzle-orm';
 import { predictiveServiceDispatchService } from './services/predictive-service-dispatch-service';
 
@@ -9,7 +14,7 @@ const router = Router();
 
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
-    return res.status(401).json({ message: "Authentication required" });
+    return res.status(401).json({ message: 'Authentication required' });
   }
   next();
 };
@@ -28,7 +33,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
     const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const thirtyDaysAgo = new Date();
@@ -52,12 +57,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
-      .where(
-        and(
-          eq(equipment.tenantId, tenantId),
-          eq(equipment.status, 'active')
-        )
-      )
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
       .orderBy(equipment.nextServiceDue);
 
     // Calculate health metrics for each equipment
@@ -65,13 +65,17 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       equipmentList.map(async (item) => {
         const now = new Date();
         const lastService = item.lastServiceDate ? new Date(item.lastServiceDate) : null;
-        const nextDue = item.nextServiceDue ? new Date(item.nextServiceDue) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+        const nextDue = item.nextServiceDue
+          ? new Date(item.nextServiceDue)
+          : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
         const daysSinceService = lastService
           ? Math.floor((now.getTime() - lastService.getTime()) / (1000 * 60 * 60 * 24))
           : 9999;
 
-        const daysUntilDue = Math.floor((nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const daysUntilDue = Math.floor(
+          (nextDue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        );
 
         // Calculate health score (0-100)
         let healthScore = 100;
@@ -117,7 +121,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
             where: and(
               eq(clientCollectedMetrics.serialNumber, item.serialNumber || ''),
               eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
-              gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo)
+              gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
             ),
             orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
             limit: 10,
@@ -126,7 +130,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
           if (recentMetrics.length > 0) {
             const analysis = await (predictiveServiceDispatchService as any).analyzeDeviceHealth(
               recentMetrics,
-              tenantId
+              tenantId,
             );
             aiPrediction = {
               failureRisk: analysis.predictedFailureRisk || 0,
@@ -171,21 +175,24 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
           estimatedIssues: estimatedIssues.length > 0 ? estimatedIssues : undefined,
           aiPrediction,
         };
-      })
+      }),
     );
 
     // Calculate summary statistics
-    const overdueCount = equipmentHealth.filter(i => i.urgency === 'overdue').length;
-    const urgentCount = equipmentHealth.filter(i => i.urgency === 'urgent').length;
-    const soonCount = equipmentHealth.filter(i => i.urgency === 'soon').length;
-    const scheduledCount = equipmentHealth.filter(i => i.urgency === 'scheduled').length;
+    const overdueCount = equipmentHealth.filter((i) => i.urgency === 'overdue').length;
+    const urgentCount = equipmentHealth.filter((i) => i.urgency === 'urgent').length;
+    const soonCount = equipmentHealth.filter((i) => i.urgency === 'soon').length;
+    const scheduledCount = equipmentHealth.filter((i) => i.urgency === 'scheduled').length;
 
-    const averageHealthScore = equipmentHealth.length > 0
-      ? Math.round(equipmentHealth.reduce((sum, i) => sum + i.healthScore, 0) / equipmentHealth.length)
-      : 100;
+    const averageHealthScore =
+      equipmentHealth.length > 0
+        ? Math.round(
+            equipmentHealth.reduce((sum, i) => sum + i.healthScore, 0) / equipmentHealth.length,
+          )
+        : 100;
 
     // Devices at risk (health score < 60)
-    const devicesAtRisk = equipmentHealth.filter(i => i.healthScore < 60).length;
+    const devicesAtRisk = equipmentHealth.filter((i) => i.healthScore < 60).length;
 
     // Estimate prevented emergencies
     const preventableEmergencies = Math.floor(devicesAtRisk * 0.7);
@@ -198,9 +205,10 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
 
     // Uptime improvement calculation
     const totalPossibleDowntime = equipmentHealth.length * 30 * 24;
-    const uptimeImprovement = totalPossibleDowntime > 0
-      ? ((downtimePreventedHours / totalPossibleDowntime) * 100).toFixed(2)
-      : '0.00';
+    const uptimeImprovement =
+      totalPossibleDowntime > 0
+        ? ((downtimePreventedHours / totalPossibleDowntime) * 100).toFixed(2)
+        : '0.00';
 
     res.json({
       success: true,
@@ -221,7 +229,6 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       },
       equipment: equipmentHealth,
     });
-
   } catch (error) {
     console.error('[PREDICTIVE MAINTENANCE HUB] Error:', error);
     res.status(500).json({
@@ -242,7 +249,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
     const { scheduledDate, priority = 'medium', notes, technicianId } = req.body;
 
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Get equipment details
@@ -256,12 +263,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
         location: equipment.location,
       })
       .from(equipment)
-      .where(
-        and(
-          eq(equipment.id, equipmentId),
-          eq(equipment.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
       .limit(1);
 
     if (!equipmentItem) {
@@ -279,7 +281,8 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
         equipmentId: equipmentItem.id,
         ticketNumber,
         title: `Predictive Maintenance - ${equipmentItem.make} ${equipmentItem.model}`,
-        description: notes || `AI-recommended preventive maintenance for ${equipmentItem.serialNumber}`,
+        description:
+          notes || `AI-recommended preventive maintenance for ${equipmentItem.serialNumber}`,
         priority: priority,
         status: 'pending',
         scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
@@ -289,7 +292,9 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
       })
       .returning();
 
-    console.log(`[PREDICTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`);
+    console.log(
+      `[PREDICTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`,
+    );
 
     res.json({
       success: true,
@@ -301,7 +306,6 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
         technicianId: ticket.technicianId,
       },
     });
-
   } catch (error) {
     console.error('[PREDICTIVE MAINTENANCE] Error scheduling service:', error);
     res.status(500).json({
@@ -328,10 +332,12 @@ router.post('/api/predictive-maintenance/analyze/:serialNumber', async (req: any
 
     const result = await predictiveServiceDispatchService.analyzeAndDispatch(
       serialNumber,
-      tenantId
+      tenantId,
     );
 
-    console.log(`✅ Analysis complete in ${result.processingTimeMs}ms - Dispatch: ${result.dispatchCreated}`);
+    console.log(
+      `✅ Analysis complete in ${result.processingTimeMs}ms - Dispatch: ${result.dispatchCreated}`,
+    );
 
     res.json({
       success: true,
@@ -375,7 +381,7 @@ router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) =
       try {
         const result = await predictiveServiceDispatchService.analyzeAndDispatch(
           serialNumber,
-          tenantId
+          tenantId,
         );
         results.push({ serialNumber, ...result });
       } catch (error: any) {
@@ -387,7 +393,7 @@ router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) =
       success: true,
       analyzed: results.length,
       failed: errors.length,
-      dispatchesCreated: results.filter(r => r.dispatchCreated).length,
+      dispatchesCreated: results.filter((r) => r.dispatchCreated).length,
       results,
       errors,
     });
@@ -418,15 +424,10 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
     const activeEquipment = await db
       .select({ serialNumber: equipment.serialNumber })
       .from(equipment)
-      .where(
-        and(
-          eq(equipment.tenantId, tenantId),
-          eq(equipment.status, 'active')
-        )
-      );
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
 
     const serialNumbers = activeEquipment
-      .map(e => e.serialNumber)
+      .map((e) => e.serialNumber)
       .filter((sn): sn is string => sn !== null && sn !== undefined);
 
     console.log(`📊 Found ${serialNumbers.length} devices to analyze`);
@@ -443,7 +444,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
         try {
           const result = await predictiveServiceDispatchService.analyzeAndDispatch(
             serialNumber,
-            tenantId
+            tenantId,
           );
           results.push({ serialNumber, ...result });
         } catch (error: any) {
@@ -458,11 +459,11 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
       success: true,
       analyzed: results.length,
       failed: errors.length,
-      dispatchesCreated: results.filter(r => r.dispatchCreated).length,
+      dispatchesCreated: results.filter((r) => r.dispatchCreated).length,
       summary: {
         totalDevices: serialNumbers.length,
-        requiresAttention: results.filter(r => r.dispatchCreated).length,
-        healthy: results.filter(r => !r.dispatchCreated).length,
+        requiresAttention: results.filter((r) => r.dispatchCreated).length,
+        healthy: results.filter((r) => !r.dispatchCreated).length,
       },
       results: results.slice(0, 50), // Return first 50 for display
       errors,
@@ -500,21 +501,19 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
         model: equipment.model,
       })
       .from(equipment)
-      .where(
-        and(
-          eq(equipment.tenantId, tenantId),
-          eq(equipment.status, 'active')
-        )
-      );
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
 
-    const partsForecast: Record<string, {
-      partName: string;
-      category: string;
-      quantity: number;
-      priority: string;
-      estimatedCost: number;
-      devices: string[];
-    }> = {};
+    const partsForecast: Record<
+      string,
+      {
+        partName: string;
+        category: string;
+        quantity: number;
+        priority: string;
+        estimatedCost: number;
+        devices: string[];
+      }
+    > = {};
 
     // Analyze each device for parts needs
     for (const device of activeEquipment) {
@@ -525,7 +524,7 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
           where: and(
             eq(clientCollectedMetrics.serialNumber, device.serialNumber),
             eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
-            gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo)
+            gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
           ),
           orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
           limit: 1,
@@ -612,8 +611,8 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
         totalParts: forecast.reduce((sum, part) => sum + part.quantity, 0),
         uniqueParts: forecast.length,
         totalEstimatedCost: totalCost,
-        criticalParts: forecast.filter(p => p.priority === 'critical').length,
-        urgentParts: forecast.filter(p => p.priority === 'urgent').length,
+        criticalParts: forecast.filter((p) => p.priority === 'critical').length,
+        urgentParts: forecast.filter((p) => p.priority === 'urgent').length,
       },
     });
   } catch (error) {

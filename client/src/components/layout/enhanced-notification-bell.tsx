@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
   AlertTriangle,
@@ -11,8 +11,8 @@ import {
   CheckCheck,
   Trash2,
   ExternalLink,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,24 +20,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
 
-export type NotificationPriority = "critical" | "high" | "medium" | "low";
+export type NotificationPriority = 'critical' | 'high' | 'medium' | 'low';
 export type NotificationType =
-  | "equipment_down"
-  | "payment_failed"
-  | "service_due"
-  | "contract_expiring"
-  | "meter_reading_due"
-  | "low_supplies"
-  | "general";
+  | 'equipment_down'
+  | 'payment_failed'
+  | 'service_due'
+  | 'contract_expiring'
+  | 'meter_reading_due'
+  | 'low_supplies'
+  | 'general';
 
 export interface Notification {
   id: string;
@@ -45,7 +45,7 @@ export interface Notification {
   priority: NotificationPriority;
   title: string;
   message: string;
-  category: "service" | "billing" | "inventory" | "system" | "customer";
+  category: 'service' | 'billing' | 'inventory' | 'system' | 'customer';
   createdAt: string;
   read: boolean;
   actionUrl?: string;
@@ -62,27 +62,27 @@ interface GroupedNotifications {
 
 function getPriorityIcon(priority: NotificationPriority) {
   switch (priority) {
-    case "critical":
+    case 'critical':
       return <AlertCircle className="h-4 w-4 text-red-600" />;
-    case "high":
+    case 'high':
       return <AlertTriangle className="h-4 w-4 text-orange-600" />;
-    case "medium":
+    case 'medium':
       return <Info className="h-4 w-4 text-blue-600" />;
-    case "low":
+    case 'low':
       return <CheckCircle className="h-4 w-4 text-gray-600" />;
   }
 }
 
 function getPriorityColor(priority: NotificationPriority) {
   switch (priority) {
-    case "critical":
-      return "bg-red-500";
-    case "high":
-      return "bg-orange-500";
-    case "medium":
-      return "bg-blue-500";
-    case "low":
-      return "bg-gray-500";
+    case 'critical':
+      return 'bg-red-500';
+    case 'high':
+      return 'bg-orange-500';
+    case 'medium':
+      return 'bg-blue-500';
+    case 'low':
+      return 'bg-gray-500';
   }
 }
 
@@ -92,7 +92,7 @@ function groupNotifications(notifications: Notification[]): GroupedNotifications
       acc[notification.priority].push(notification);
       return acc;
     },
-    { critical: [], high: [], medium: [], low: [] } as GroupedNotifications
+    { critical: [], high: [], medium: [], low: [] } as GroupedNotifications,
   );
 }
 
@@ -116,23 +116,23 @@ function batchSimilarNotifications(notifications: Notification[]): Array<{
   return Array.from(batches.entries())
     .map(([type, items]) => {
       const count = items.length;
-      let summary = "";
+      let summary = '';
 
       switch (type) {
-        case "meter_reading_due":
-          summary = `${count} meter reading${count > 1 ? "s" : ""} due this week`;
+        case 'meter_reading_due':
+          summary = `${count} meter reading${count > 1 ? 's' : ''} due this week`;
           break;
-        case "service_due":
-          summary = `${count} service${count > 1 ? "s" : ""} scheduled`;
+        case 'service_due':
+          summary = `${count} service${count > 1 ? 's' : ''} scheduled`;
           break;
-        case "contract_expiring":
-          summary = `${count} contract${count > 1 ? "s" : ""} expiring soon`;
+        case 'contract_expiring':
+          summary = `${count} contract${count > 1 ? 's' : ''} expiring soon`;
           break;
-        case "low_supplies":
-          summary = `${count} item${count > 1 ? "s" : ""} low in stock`;
+        case 'low_supplies':
+          summary = `${count} item${count > 1 ? 's' : ''} low in stock`;
           break;
         default:
-          summary = `${count} ${type.replace(/_/g, " ")} notification${count > 1 ? "s" : ""}`;
+          summary = `${count} ${type.replace(/_/g, ' ')} notification${count > 1 ? 's' : ''}`;
       }
 
       return { type, count, items, summary };
@@ -143,26 +143,26 @@ function batchSimilarNotifications(notifications: Notification[]): Array<{
 
 export function EnhancedNotificationBell() {
   const [open, setOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<"all" | "unread">("unread");
+  const [selectedTab, setSelectedTab] = useState<'all' | 'unread'>('unread');
   const queryClient = useQueryClient();
 
   // Fetch notifications
   const { data: notifications = [] } = useQuery<Notification[]>({
-    queryKey: ["/api/notifications"],
+    queryKey: ['/api/notifications'],
     queryFn: async () => {
       // Fallback to alerts endpoint if notifications endpoint doesn't exist
       try {
-        return await apiRequest("/api/notifications");
+        return await apiRequest('/api/notifications');
       } catch (err) {
-        const alerts = await apiRequest("/api/performance/alerts");
+        const alerts = await apiRequest('/api/performance/alerts');
         // Transform alerts to notifications format
         return alerts.map((alert: any) => ({
           id: alert.id,
-          type: "general" as NotificationType,
-          priority: alert.severity || "medium",
-          title: alert.category || "System Alert",
+          type: 'general' as NotificationType,
+          priority: alert.severity || 'medium',
+          title: alert.category || 'System Alert',
           message: alert.message,
-          category: alert.category || "system",
+          category: alert.category || 'system',
           createdAt: alert.createdAt || new Date().toISOString(),
           read: false,
         }));
@@ -174,20 +174,20 @@ export function EnhancedNotificationBell() {
   // Mark as read mutation
   const markAsReadMutation = useMutation({
     mutationFn: (notificationId: string) =>
-      apiRequest(`/api/notifications/${notificationId}/read`, "POST"),
+      apiRequest(`/api/notifications/${notificationId}/read`, 'POST'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     },
   });
 
   // Mark all as read mutation
   const markAllAsReadMutation = useMutation({
-    mutationFn: () => apiRequest("/api/notifications/read-all", "POST"),
+    mutationFn: () => apiRequest('/api/notifications/read-all', 'POST'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       toast({
-        title: "All notifications marked as read",
-        variant: "default",
+        title: 'All notifications marked as read',
+        variant: 'default',
       });
     },
   });
@@ -195,29 +195,27 @@ export function EnhancedNotificationBell() {
   // Delete notification mutation
   const deleteNotificationMutation = useMutation({
     mutationFn: (notificationId: string) =>
-      apiRequest(`/api/notifications/${notificationId}`, "DELETE"),
+      apiRequest(`/api/notifications/${notificationId}`, 'DELETE'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
     },
   });
 
   // Show critical notifications as toasts
   useEffect(() => {
-    const critical = notifications.find(
-      (n) => n.priority === "critical" && !n.read
-    );
+    const critical = notifications.find((n) => n.priority === 'critical' && !n.read);
     if (critical) {
       toast({
         title: critical.title,
         description: critical.message,
-        variant: "destructive",
+        variant: 'destructive',
         action: critical.actionUrl ? (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.location.href = critical.actionUrl!}
+            onClick={() => (window.location.href = critical.actionUrl!)}
           >
-            {critical.actionLabel || "View"}
+            {critical.actionLabel || 'View'}
           </Button>
         ) : undefined,
       });
@@ -225,8 +223,7 @@ export function EnhancedNotificationBell() {
   }, [notifications]);
 
   const unreadNotifications = notifications.filter((n) => !n.read);
-  const displayNotifications =
-    selectedTab === "unread" ? unreadNotifications : notifications;
+  const displayNotifications = selectedTab === 'unread' ? unreadNotifications : notifications;
 
   const grouped = groupNotifications(displayNotifications);
   const batches = batchSimilarNotifications(displayNotifications);
@@ -237,26 +234,18 @@ export function EnhancedNotificationBell() {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          aria-label="Notifications"
-        >
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell
-            className={cn(
-              "h-5 w-5 transition-all",
-              hasCritical && "animate-pulse text-red-600"
-            )}
+            className={cn('h-5 w-5 transition-all', hasCritical && 'animate-pulse text-red-600')}
           />
           {unreadCount > 0 && (
             <Badge
               className={cn(
-                "absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs",
-                hasCritical ? "bg-red-500" : "bg-blue-500"
+                'absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs',
+                hasCritical ? 'bg-red-500' : 'bg-blue-500',
               )}
             >
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}
         </Button>
@@ -308,7 +297,7 @@ export function EnhancedNotificationBell() {
         {displayNotifications.length === 0 && (
           <div className="p-8 text-center text-sm text-muted-foreground">
             <Bell className="h-12 w-12 mx-auto mb-2 opacity-20" />
-            <p>No {selectedTab === "unread" ? "unread" : ""} notifications</p>
+            <p>No {selectedTab === 'unread' ? 'unread' : ''} notifications</p>
           </div>
         )}
       </DropdownMenuContent>
@@ -329,16 +318,14 @@ export function EnhancedNotificationBell() {
                 className="p-3 rounded-md bg-muted/50 hover:bg-muted cursor-pointer"
                 onClick={() => {
                   // Could expand to show individual items
-                  console.log("Batch clicked", batch);
+                  console.log('Batch clicked', batch);
                 }}
               >
                 <div className="flex items-start gap-3">
                   {getPriorityIcon(batch.items[0].priority)}
                   <div className="flex-1 space-y-1">
                     <div className="text-sm font-medium">{batch.summary}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Click to see details
-                    </div>
+                    <div className="text-xs text-muted-foreground">Click to see details</div>
                   </div>
                   <Badge variant="secondary" className="text-xs">
                     {batch.count}
@@ -357,12 +344,10 @@ export function EnhancedNotificationBell() {
               <AlertCircle className="h-3 w-3" />
               Critical ({grouped.critical.length})
             </div>
-            {grouped.critical.map((notification) =>
-              renderNotification(notification)
+            {grouped.critical.map((notification) => renderNotification(notification))}
+            {(grouped.high.length > 0 || grouped.medium.length > 0 || grouped.low.length > 0) && (
+              <DropdownMenuSeparator className="my-2" />
             )}
-            {(grouped.high.length > 0 ||
-              grouped.medium.length > 0 ||
-              grouped.low.length > 0) && <DropdownMenuSeparator className="my-2" />}
           </>
         )}
 
@@ -397,8 +382,8 @@ export function EnhancedNotificationBell() {
       <div
         key={notification.id}
         className={cn(
-          "p-3 rounded-md hover:bg-accent cursor-pointer transition-colors",
-          !notification.read && "bg-blue-50/50 dark:bg-blue-950/20"
+          'p-3 rounded-md hover:bg-accent cursor-pointer transition-colors',
+          !notification.read && 'bg-blue-50/50 dark:bg-blue-950/20',
         )}
         onClick={() => {
           if (!notification.read) {
@@ -413,16 +398,14 @@ export function EnhancedNotificationBell() {
           {getPriorityIcon(notification.priority)}
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2">
-              <div className="text-sm font-medium truncate">
-                {notification.title}
-              </div>
+              <div className="text-sm font-medium truncate">{notification.title}</div>
               {!notification.read && (
-                <div className={cn("h-2 w-2 rounded-full", getPriorityColor(notification.priority))} />
+                <div
+                  className={cn('h-2 w-2 rounded-full', getPriorityColor(notification.priority))}
+                />
               )}
             </div>
-            <div className="text-xs text-muted-foreground line-clamp-2">
-              {notification.message}
-            </div>
+            <div className="text-xs text-muted-foreground line-clamp-2">{notification.message}</div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />

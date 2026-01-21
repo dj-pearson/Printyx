@@ -7,19 +7,21 @@ Your Coolify deployment failed with build errors in the main Printyx app (not Ed
 ## Errors Fixed
 
 ### 1. ✅ `server/routes-custom-reports.ts` - Line 34
+
 **Error:** `No matching export in "shared/schema.ts" for import "contacts"`
 
 **Fix:** Changed `contacts` to `contracts` (typo)
 
 ```typescript
 // Before:
-import { businessRecords, opportunities, equipment, contacts, invoices } from "@shared/schema";
+import { businessRecords, opportunities, equipment, contacts, invoices } from '@shared/schema';
 
 // After:
-import { businessRecords, opportunities, equipment, contracts, invoices } from "@shared/schema";
+import { businessRecords, opportunities, equipment, contracts, invoices } from '@shared/schema';
 ```
 
 ### 2. ✅ `server/services/automated-billing-service.ts` - Lines 11 & 14
+
 **Error:** Missing exports `billingSchedules` and `invoiceGenerationLogs` in schema
 
 **Fix:** Added placeholder exports and documentation note
@@ -43,6 +45,7 @@ These warnings don't stop the build but should be fixed eventually:
 ## Next Steps
 
 1. **Commit and push these fixes:**
+
    ```bash
    git add .
    git commit -m "Fix build errors in routes and services"
@@ -63,4 +66,3 @@ These warnings don't stop the build but should be fixed eventually:
 ## Build Status
 
 After these fixes, your main app should build successfully! 🎉
-

@@ -45,22 +45,24 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const data = await TeamReportingService.getTeamPipelineComparison(
-        req.user!,
-        dateRange
-      );
+      const data = await TeamReportingService.getTeamPipelineComparison(req.user!, dateRange);
 
       // Add insights
-      const pipelineCoverageStatus = data.summary.teamPipelineCoverage >= 300 ? 'excellent' :
-                                     data.summary.teamPipelineCoverage >= 200 ? 'good' :
-                                     data.summary.teamPipelineCoverage >= 100 ? 'fair' : 'needs_attention';
+      const pipelineCoverageStatus =
+        data.summary.teamPipelineCoverage >= 300
+          ? 'excellent'
+          : data.summary.teamPipelineCoverage >= 200
+            ? 'good'
+            : data.summary.teamPipelineCoverage >= 100
+              ? 'fair'
+              : 'needs_attention';
 
       res.json({
         ...data,
         insights: {
           pipelineCoverageStatus,
           topPerformers: data.teamMembers.slice(0, 3),
-          lowCoverage: data.teamMembers.filter(m => m.pipelineCoverage < 100),
+          lowCoverage: data.teamMembers.filter((m) => m.pipelineCoverage < 100),
           averageCoverage: data.summary.teamPipelineCoverage,
         },
       });
@@ -71,7 +73,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -100,10 +102,7 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const data = await TeamReportingService.getTeamActivityLeaderboard(
-        req.user!,
-        dateRange
-      );
+      const data = await TeamReportingService.getTeamActivityLeaderboard(req.user!, dateRange);
 
       // Calculate activity type breakdown
       const activityTypeBreakdown = {
@@ -114,9 +113,10 @@ router.get(
         proposals: data.activities.reduce((sum, a) => sum + a.proposals, 0),
       };
 
-      const completionRateAvg = data.activities.length > 0
-        ? data.activities.reduce((sum, a) => sum + a.completionRate, 0) / data.activities.length
-        : 0;
+      const completionRateAvg =
+        data.activities.length > 0
+          ? data.activities.reduce((sum, a) => sum + a.completionRate, 0) / data.activities.length
+          : 0;
 
       res.json({
         ...data,
@@ -134,7 +134,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -163,21 +163,27 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const data = await TeamReportingService.getTeamPerformanceDashboard(
-        req.user!,
-        dateRange
-      );
+      const data = await TeamReportingService.getTeamPerformanceDashboard(req.user!, dateRange);
 
       // Calculate performance indicators
-      const quotaAttainmentStatus = data.teamQuota.attainment >= 100 ? 'exceeding' :
-                                     data.teamQuota.attainment >= 90 ? 'on_track' :
-                                     data.teamQuota.attainment >= 75 ? 'fair' : 'at_risk';
+      const quotaAttainmentStatus =
+        data.teamQuota.attainment >= 100
+          ? 'exceeding'
+          : data.teamQuota.attainment >= 90
+            ? 'on_track'
+            : data.teamQuota.attainment >= 75
+              ? 'fair'
+              : 'at_risk';
 
-      const winRateStatus = data.metrics.teamWinRate >= 40 ? 'excellent' :
-                           data.metrics.teamWinRate >= 25 ? 'good' : 'needs_improvement';
+      const winRateStatus =
+        data.metrics.teamWinRate >= 40
+          ? 'excellent'
+          : data.metrics.teamWinRate >= 25
+            ? 'good'
+            : 'needs_improvement';
 
-      const repsOnTrack = data.individualQuotas.filter(q => q.onTrack).length;
-      const repsAtRisk = data.individualQuotas.filter(q => !q.onTrack).length;
+      const repsOnTrack = data.individualQuotas.filter((q) => q.onTrack).length;
+      const repsAtRisk = data.individualQuotas.filter((q) => !q.onTrack).length;
 
       res.json({
         ...data,
@@ -190,7 +196,7 @@ router.get(
             .sort((a, b) => b.attainment - a.attainment)
             .slice(0, 3),
           needsAttention: data.individualQuotas
-            .filter(q => q.attainment < 75)
+            .filter((q) => q.attainment < 75)
             .sort((a, b) => a.attainment - b.attainment),
         },
       });
@@ -201,7 +207,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -230,22 +236,28 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const data = await TeamReportingService.getLeadManagementReport(
-        req.user!,
-        dateRange
-      );
+      const data = await TeamReportingService.getLeadManagementReport(req.user!, dateRange);
 
       // Calculate lead health indicators
-      const conversionHealth = data.conversionMetrics.overallConversionRate >= 20 ? 'healthy' :
-                              data.conversionMetrics.overallConversionRate >= 10 ? 'fair' : 'poor';
+      const conversionHealth =
+        data.conversionMetrics.overallConversionRate >= 20
+          ? 'healthy'
+          : data.conversionMetrics.overallConversionRate >= 10
+            ? 'fair'
+            : 'poor';
 
-      const responseTimeHealth = data.conversionMetrics.averageLeadResponseTime <= 2 ? 'excellent' :
-                                 data.conversionMetrics.averageLeadResponseTime <= 24 ? 'good' : 'needs_improvement';
+      const responseTimeHealth =
+        data.conversionMetrics.averageLeadResponseTime <= 2
+          ? 'excellent'
+          : data.conversionMetrics.averageLeadResponseTime <= 24
+            ? 'good'
+            : 'needs_improvement';
 
       const urgentActions = {
         unassignedLeads: data.conversionMetrics.leadsUnassigned,
         overdueFollowups: data.conversionMetrics.leadsOverdueForFollowup,
-        total: data.conversionMetrics.leadsUnassigned + data.conversionMetrics.leadsOverdueForFollowup,
+        total:
+          data.conversionMetrics.leadsUnassigned + data.conversionMetrics.leadsOverdueForFollowup,
       };
 
       res.json({
@@ -256,7 +268,7 @@ router.get(
           urgentActions,
           topSources: data.leadsBySource.slice(0, 5),
           worstConvertingSources: data.leadsBySource
-            .filter(s => s.count >= 5)
+            .filter((s) => s.count >= 5)
             .sort((a, b) => a.conversionRate - b.conversionRate)
             .slice(0, 3),
         },
@@ -268,7 +280,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -298,14 +310,11 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const data = await TeamReportingService.getCoachingReport(
-        req.user!,
-        dateRange
-      );
+      const data = await TeamReportingService.getCoachingReport(req.user!, dateRange);
 
       // Prioritize coaching opportunities
       const prioritizedOpportunities = data.opportunities
-        .map(opp => {
+        .map((opp) => {
           const flagCount = [
             opp.flags.lowActivity,
             opp.flags.lowConversion,
@@ -319,12 +328,14 @@ router.get(
         })
         .sort((a, b) => {
           const priorityOrder = { critical: 0, high: 1, medium: 2 };
-          return priorityOrder[a.priority as keyof typeof priorityOrder] -
-                 priorityOrder[b.priority as keyof typeof priorityOrder];
+          return (
+            priorityOrder[a.priority as keyof typeof priorityOrder] -
+            priorityOrder[b.priority as keyof typeof priorityOrder]
+          );
         });
 
-      const criticalReps = prioritizedOpportunities.filter(o => o.priority === 'critical');
-      const highPriorityReps = prioritizedOpportunities.filter(o => o.priority === 'high');
+      const criticalReps = prioritizedOpportunities.filter((o) => o.priority === 'critical');
+      const highPriorityReps = prioritizedOpportunities.filter((o) => o.priority === 'high');
 
       res.json({
         ...data,
@@ -332,9 +343,10 @@ router.get(
         insights: {
           criticalReps: criticalReps.length,
           highPriorityReps: highPriorityReps.length,
-          mostCommonIssue: data.summary.improvementAreas.length > 0
-            ? data.summary.improvementAreas.sort((a, b) => b.affectedReps - a.affectedReps)[0]
-            : null,
+          mostCommonIssue:
+            data.summary.improvementAreas.length > 0
+              ? data.summary.improvementAreas.sort((a, b) => b.affectedReps - a.affectedReps)[0]
+              : null,
           coachingPriority: criticalReps.slice(0, 5),
         },
       });
@@ -345,7 +357,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -386,7 +398,7 @@ router.get(
           quotaAttainment: performanceData.teamQuota.attainment,
           revenue: performanceData.teamRevenue.mtd,
           winRate: performanceData.metrics.teamWinRate,
-          repsOnTrack: performanceData.individualQuotas.filter(q => q.onTrack).length,
+          repsOnTrack: performanceData.individualQuotas.filter((q) => q.onTrack).length,
           totalReps: performanceData.individualQuotas.length,
         },
         activity: {
@@ -404,7 +416,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -438,7 +450,7 @@ router.post(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 export default router;

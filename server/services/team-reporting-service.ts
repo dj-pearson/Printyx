@@ -198,7 +198,7 @@ class ReportCache {
       return;
     }
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -218,7 +218,7 @@ export class TeamReportingService {
    */
   static async getTeamPipelineComparison(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<TeamPipelineComparison> {
     const cacheKey = `team-pipeline:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<TeamPipelineComparison>(cacheKey);
@@ -246,9 +246,10 @@ export class TeamReportingService {
     }
 
     // Build date filter
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Fetch team member pipeline data
     const pipelineQuery = sql`
@@ -343,9 +344,10 @@ export class TeamReportingService {
         totalPipeline,
         totalDeals,
         averagePipelinePerRep: teamMembers.length > 0 ? totalPipeline / teamMembers.length : 0,
-        teamPipelineCoverage: teamMembers.length > 0
-          ? teamMembers.reduce((sum, m) => sum + m.pipelineCoverage, 0) / teamMembers.length
-          : 0,
+        teamPipelineCoverage:
+          teamMembers.length > 0
+            ? teamMembers.reduce((sum, m) => sum + m.pipelineCoverage, 0) / teamMembers.length
+            : 0,
         topPerformer,
       },
       teamInfo: {
@@ -366,7 +368,7 @@ export class TeamReportingService {
    */
   static async getTeamActivityLeaderboard(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<TeamActivityLeaderboard> {
     const cacheKey = `team-activity:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<TeamActivityLeaderboard>(cacheKey);
@@ -415,7 +417,10 @@ export class TeamReportingService {
     const results = await db.execute(activityQuery);
 
     // Calculate average for low activity detection
-    const totalActivitiesSum = results.rows.reduce((sum, row: any) => sum + Number(row.total_activities), 0);
+    const totalActivitiesSum = results.rows.reduce(
+      (sum, row: any) => sum + Number(row.total_activities),
+      0,
+    );
     const averagePerRep = results.rows.length > 0 ? totalActivitiesSum / results.rows.length : 0;
     const lowActivityThreshold = averagePerRep * 0.5; // 50% of average
 
@@ -439,7 +444,7 @@ export class TeamReportingService {
     });
 
     const topPerformer = activities.length > 0 ? activities[0] : null;
-    const lowPerformers = activities.filter(a => a.isLowActivity);
+    const lowPerformers = activities.filter((a) => a.isLowActivity);
 
     const result: TeamActivityLeaderboard = {
       activities,
@@ -462,7 +467,7 @@ export class TeamReportingService {
    */
   static async getTeamPerformanceDashboard(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<TeamPerformanceDashboard> {
     const cacheKey = `team-performance:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<TeamPerformanceDashboard>(cacheKey);
@@ -613,7 +618,7 @@ export class TeamReportingService {
    */
   static async getLeadManagementReport(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<LeadManagementReport> {
     const cacheKey = `lead-management:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<LeadManagementReport>(cacheKey);
@@ -728,7 +733,7 @@ export class TeamReportingService {
    */
   static async getCoachingReport(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<CoachingReport> {
     const cacheKey = `coaching-report:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<CoachingReport>(cacheKey);
@@ -825,9 +830,13 @@ export class TeamReportingService {
     };
 
     if (results.rows.length > 0) {
-      teamAverages.callVolume = results.rows.reduce((sum, r: any) => sum + Number(r.call_volume), 0) / results.rows.length;
-      teamAverages.quoteVolume = results.rows.reduce((sum, r: any) => sum + Number(r.quote_volume), 0) / results.rows.length;
-      teamAverages.quoteWinRate = results.rows.reduce((sum, r: any) => sum + Number(r.quote_win_rate), 0) / results.rows.length;
+      teamAverages.callVolume =
+        results.rows.reduce((sum, r: any) => sum + Number(r.call_volume), 0) / results.rows.length;
+      teamAverages.quoteVolume =
+        results.rows.reduce((sum, r: any) => sum + Number(r.quote_volume), 0) / results.rows.length;
+      teamAverages.quoteWinRate =
+        results.rows.reduce((sum, r: any) => sum + Number(r.quote_win_rate), 0) /
+        results.rows.length;
     }
 
     // Build coaching opportunities
@@ -846,7 +855,8 @@ export class TeamReportingService {
       const recommendations: string[] = [];
       if (lowActivity) recommendations.push('Increase daily call volume to match team average');
       if (lowConversion) recommendations.push('Review proposal techniques and pricing strategy');
-      if (dealsStuckFlag) recommendations.push('Focus on moving stale opportunities forward or disqualifying');
+      if (dealsStuckFlag)
+        recommendations.push('Focus on moving stale opportunities forward or disqualifying');
       if (Number(row.meetings_held) < Number(row.meetings_planned) * 0.8) {
         recommendations.push('Improve meeting attendance and follow-through');
       }
@@ -874,8 +884,8 @@ export class TeamReportingService {
     });
 
     // Calculate summary
-    const needsAttention = opportunities.filter(o =>
-      o.flags.lowActivity || o.flags.lowConversion || o.flags.dealsStuck
+    const needsAttention = opportunities.filter(
+      (o) => o.flags.lowActivity || o.flags.lowConversion || o.flags.dealsStuck,
     ).length;
 
     const criticalFlags = opportunities.reduce((sum, o) => {
@@ -889,17 +899,17 @@ export class TeamReportingService {
     const improvementAreas = [
       {
         area: 'Low Activity',
-        affectedReps: opportunities.filter(o => o.flags.lowActivity).length,
+        affectedReps: opportunities.filter((o) => o.flags.lowActivity).length,
       },
       {
         area: 'Low Conversion',
-        affectedReps: opportunities.filter(o => o.flags.lowConversion).length,
+        affectedReps: opportunities.filter((o) => o.flags.lowConversion).length,
       },
       {
         area: 'Stuck Deals',
-        affectedReps: opportunities.filter(o => o.flags.dealsStuck).length,
+        affectedReps: opportunities.filter((o) => o.flags.dealsStuck).length,
       },
-    ].filter(area => area.affectedReps > 0);
+    ].filter((area) => area.affectedReps > 0);
 
     const result: CoachingReport = {
       opportunities,

@@ -39,12 +39,7 @@ export function registerTemplateRoutes(app: Express) {
       const [template] = await db
         .select()
         .from(projectTemplates)
-        .where(
-          and(
-            eq(projectTemplates.id, templateId),
-            eq(projectTemplates.tenantId, tenantId)
-          )
-        );
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
 
       if (!template) {
         return res.status(404).json({ error: 'Template not found' });
@@ -69,10 +64,7 @@ export function registerTemplateRoutes(app: Express) {
         createdBy: userId,
       };
 
-      const [newTemplate] = await db
-        .insert(projectTemplates)
-        .values(templateData)
-        .returning();
+      const [newTemplate] = await db.insert(projectTemplates).values(templateData).returning();
 
       res.status(201).json(newTemplate);
     } catch (error) {
@@ -90,12 +82,7 @@ export function registerTemplateRoutes(app: Express) {
       const [updatedTemplate] = await db
         .update(projectTemplates)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(
-          and(
-            eq(projectTemplates.id, templateId),
-            eq(projectTemplates.tenantId, tenantId)
-          )
-        )
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)))
         .returning();
 
       if (!updatedTemplate) {
@@ -117,12 +104,7 @@ export function registerTemplateRoutes(app: Express) {
 
       await db
         .delete(projectTemplates)
-        .where(
-          and(
-            eq(projectTemplates.id, templateId),
-            eq(projectTemplates.tenantId, tenantId)
-          )
-        );
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
 
       res.json({ success: true });
     } catch (error) {
@@ -142,12 +124,7 @@ export function registerTemplateRoutes(app: Express) {
       const [template] = await db
         .select()
         .from(projectTemplates)
-        .where(
-          and(
-            eq(projectTemplates.id, templateId),
-            eq(projectTemplates.tenantId, tenantId)
-          )
-        );
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
 
       if (!template) {
         return res.status(404).json({ error: 'Template not found' });
@@ -167,10 +144,7 @@ export function registerTemplateRoutes(app: Express) {
         endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
       };
 
-      const [newProject] = await db
-        .insert(projects)
-        .values(projectData)
-        .returning();
+      const [newProject] = await db.insert(projects).values(projectData).returning();
 
       // Create tasks from template
       if (template.taskTemplate && Array.isArray(template.taskTemplate)) {
@@ -215,12 +189,7 @@ export function registerTemplateRoutes(app: Express) {
       const [project] = await db
         .select()
         .from(projects)
-        .where(
-          and(
-            eq(projects.id, projectId),
-            eq(projects.tenantId, tenantId)
-          )
-        );
+        .where(and(eq(projects.id, projectId), eq(projects.tenantId, tenantId)));
 
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
@@ -230,12 +199,7 @@ export function registerTemplateRoutes(app: Express) {
       const projectTasks = await db
         .select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.projectId, projectId),
-            eq(tasks.tenantId, tenantId)
-          )
-        );
+        .where(and(eq(tasks.projectId, projectId), eq(tasks.tenantId, tenantId)));
 
       // Build task template
       const taskTemplate = projectTasks.map((task) => ({
@@ -257,10 +221,7 @@ export function registerTemplateRoutes(app: Express) {
         createdBy: userId,
       };
 
-      const [newTemplate] = await db
-        .insert(projectTemplates)
-        .values(templateData)
-        .returning();
+      const [newTemplate] = await db.insert(projectTemplates).values(templateData).returning();
 
       res.status(201).json(newTemplate);
     } catch (error) {

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import TaskList from '@/components/tasks/TaskList';
-import { 
+import {
   Brain,
   CheckCircle2,
   Clock,
@@ -15,7 +15,7 @@ import {
   BarChart3,
   Lightbulb,
   Settings,
-  Plus
+  Plus,
 } from 'lucide-react';
 
 interface TaskStats {
@@ -55,7 +55,7 @@ export default function TaskManagementPage() {
       id: 'suggestion-1',
       type: 'task',
       title: 'Follow up with website lead',
-      description: 'Visitor downloaded pricing guide 3 days ago but hasn\'t been contacted',
+      description: "Visitor downloaded pricing guide 3 days ago but hasn't been contacted",
       confidence: 0.78,
       actionLabel: 'Create Task',
     },
@@ -107,17 +107,13 @@ export default function TaskManagementPage() {
             Intelligent task scheduling and productivity optimization
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-3">
-          <Button 
-            variant="outline"
-            onClick={handleAIScheduling}
-            disabled={isScheduling}
-          >
+          <Button variant="outline" onClick={handleAIScheduling} disabled={isScheduling}>
             <Zap className={`h-4 w-4 mr-2 ${isScheduling ? 'animate-pulse' : ''}`} />
             {isScheduling ? 'AI Scheduling...' : 'AI Schedule Optimization'}
           </Button>
-          
+
           <Button variant="outline">
             <Settings className="h-4 w-4 mr-2" />
             Preferences
@@ -137,15 +133,11 @@ export default function TaskManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Productivity Score</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {stats.productivityScore}%
-                </p>
+                <p className="text-2xl font-bold text-green-600">{stats.productivityScore}%</p>
               </div>
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              +12% from last week
-            </p>
+            <p className="text-xs text-gray-500 mt-1">+12% from last week</p>
           </CardContent>
         </Card>
 
@@ -188,15 +180,11 @@ export default function TaskManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">AI Scheduled</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {stats.aiScheduled}
-                </p>
+                <p className="text-2xl font-bold text-orange-600">{stats.aiScheduled}</p>
               </div>
               <Brain className="h-8 w-8 text-orange-600" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {stats.overdue} overdue tasks
-            </p>
+            <p className="text-xs text-gray-500 mt-1">{stats.overdue} overdue tasks</p>
           </CardContent>
         </Card>
       </div>
@@ -207,7 +195,7 @@ export default function TaskManagementPage() {
         <div className="xl:col-span-3">
           <TaskList />
         </div>
-        
+
         {/* AI Insights Sidebar */}
         <div className="space-y-4">
           {/* AI Suggestions */}
@@ -219,7 +207,7 @@ export default function TaskManagementPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {aiSuggestions.map(suggestion => (
+              {aiSuggestions.map((suggestion) => (
                 <div key={suggestion.id} className="border rounded-lg p-3">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-medium text-sm">{suggestion.title}</h4>
@@ -227,23 +215,23 @@ export default function TaskManagementPage() {
                       {Math.round(suggestion.confidence * 100)}% confidence
                     </Badge>
                   </div>
-                  
-                  <p className="text-xs text-gray-600 mb-3">
-                    {suggestion.description}
-                  </p>
-                  
+
+                  <p className="text-xs text-gray-600 mb-3">{suggestion.description}</p>
+
                   <div className="flex items-center justify-between">
-                    <Badge 
-                      variant="secondary" 
+                    <Badge
+                      variant="secondary"
                       className={`text-xs ${
-                        suggestion.type === 'task' ? 'bg-blue-100 text-blue-800' :
-                        suggestion.type === 'scheduling' ? 'bg-green-100 text-green-800' :
-                        'bg-purple-100 text-purple-800'
+                        suggestion.type === 'task'
+                          ? 'bg-blue-100 text-blue-800'
+                          : suggestion.type === 'scheduling'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-purple-100 text-purple-800'
                       }`}
                     >
                       {suggestion.type}
                     </Badge>
-                    
+
                     <Button variant="outline" size="sm" className="text-xs">
                       {suggestion.actionLabel}
                     </Button>
@@ -268,14 +256,14 @@ export default function TaskManagementPage() {
                   {stats.inProgress}
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Overdue</span>
                 <Badge variant="outline" className="bg-red-50 text-red-700">
                   {stats.overdue}
                 </Badge>
               </div>
-              
+
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">AI Optimized</span>
                 <Badge variant="outline" className="bg-green-50 text-green-700">
@@ -311,12 +299,12 @@ export default function TaskManagementPage() {
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule Focus Time
               </Button>
-              
+
               <Button variant="outline" size="sm" className="w-full justify-start">
                 <Brain className="h-4 w-4 mr-2" />
                 AI Task Analysis
               </Button>
-              
+
               <Button variant="outline" size="sm" className="w-full justify-start">
                 <Zap className="h-4 w-4 mr-2" />
                 Bulk Task Import
@@ -339,12 +327,10 @@ export default function TaskManagementPage() {
             </CardHeader>
             <CardContent>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-800 mb-2 font-medium">
-                  🧠 Batch Similar Tasks
-                </p>
+                <p className="text-sm text-yellow-800 mb-2 font-medium">🧠 Batch Similar Tasks</p>
                 <p className="text-xs text-yellow-700">
-                  Group similar tasks like phone calls or emails together. 
-                  This reduces context switching and can improve efficiency by up to 25%.
+                  Group similar tasks like phone calls or emails together. This reduces context
+                  switching and can improve efficiency by up to 25%.
                 </p>
               </div>
             </CardContent>

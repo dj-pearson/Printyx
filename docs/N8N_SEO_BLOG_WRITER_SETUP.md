@@ -63,13 +63,13 @@ PERPLEXITY_API_KEY=pplx-...
 
 ### Environment Variable Descriptions
 
-| Variable | Description | Where to Get |
-|----------|-------------|--------------|
-| `PRINTYX_SUPABASE_URL` | Your Supabase REST API URL. For self-hosted, this is typically your Kong gateway URL (e.g., `https://api.printyx.net`) | Coolify Supabase service config |
-| `PRINTYX_SUPABASE_SERVICE_ROLE_KEY` | Service role JWT for admin operations. Has full database access, bypasses RLS | Supabase Dashboard > Settings > API |
-| `OPENAI_API_KEY` | OpenAI API key for GPT and DALL-E | https://platform.openai.com/api-keys |
-| `CLAUDE_API_KEY` | Anthropic API key for Claude models | https://console.anthropic.com/settings/keys |
-| `PERPLEXITY_API_KEY` | Perplexity API key for research | https://www.perplexity.ai/settings/api |
+| Variable                            | Description                                                                                                            | Where to Get                                |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `PRINTYX_SUPABASE_URL`              | Your Supabase REST API URL. For self-hosted, this is typically your Kong gateway URL (e.g., `https://api.printyx.net`) | Coolify Supabase service config             |
+| `PRINTYX_SUPABASE_SERVICE_ROLE_KEY` | Service role JWT for admin operations. Has full database access, bypasses RLS                                          | Supabase Dashboard > Settings > API         |
+| `OPENAI_API_KEY`                    | OpenAI API key for GPT and DALL-E                                                                                      | https://platform.openai.com/api-keys        |
+| `CLAUDE_API_KEY`                    | Anthropic API key for Claude models                                                                                    | https://console.anthropic.com/settings/keys |
+| `PERPLEXITY_API_KEY`                | Perplexity API key for research                                                                                        | https://www.perplexity.ai/settings/api      |
 
 ## Step 2: Database Setup
 
@@ -82,6 +82,7 @@ npm run db:push
 ```
 
 This creates:
+
 - `blog_content_queue` table with status tracking
 - Required indexes for efficient querying
 
@@ -138,6 +139,7 @@ ORDER BY ordinal_position;
 Unlike the original workflow, this version uses **direct HTTP requests** with environment variables. No N8N credentials need to be configured - all API keys are read from `$env.*` variables.
 
 This approach:
+
 - Simplifies setup (no credential management in N8N)
 - Makes it easier to update keys (just change env vars)
 - Works better with Coolify's environment management
@@ -146,28 +148,28 @@ This approach:
 
 ### Models Used
 
-| Stage | API | Model | Purpose |
-|-------|-----|-------|---------|
-| Research | Perplexity | `sonar-pro` | Web search, SERP data, competitor analysis |
-| SERP Analysis | OpenAI | `gpt-4o-mini` | Parse research into structured JSON |
-| Title Refinement | Anthropic | `claude-3-5-haiku` | Optimize title for CTR |
-| Key Takeaways | Anthropic | `claude-3-5-haiku` | Summary bullet points |
-| Outline | Anthropic | `claude-3-5-haiku` | Article structure |
-| Content Writing | Anthropic | `claude-3-5-sonnet` | Main 2500-3500 word article |
-| Humanizing | Anthropic | `claude-3-5-haiku` | Remove AI-sounding phrases |
-| SEO Metadata | OpenAI | `gpt-4o-mini` | Meta title, description, slug |
-| Image Generation | OpenAI | `dall-e-3` | Featured image (1792x1024) |
+| Stage            | API        | Model               | Purpose                                    |
+| ---------------- | ---------- | ------------------- | ------------------------------------------ |
+| Research         | Perplexity | `sonar-pro`         | Web search, SERP data, competitor analysis |
+| SERP Analysis    | OpenAI     | `gpt-4o-mini`       | Parse research into structured JSON        |
+| Title Refinement | Anthropic  | `claude-3-5-haiku`  | Optimize title for CTR                     |
+| Key Takeaways    | Anthropic  | `claude-3-5-haiku`  | Summary bullet points                      |
+| Outline          | Anthropic  | `claude-3-5-haiku`  | Article structure                          |
+| Content Writing  | Anthropic  | `claude-3-5-sonnet` | Main 2500-3500 word article                |
+| Humanizing       | Anthropic  | `claude-3-5-haiku`  | Remove AI-sounding phrases                 |
+| SEO Metadata     | OpenAI     | `gpt-4o-mini`       | Meta title, description, slug              |
+| Image Generation | OpenAI     | `dall-e-3`          | Featured image (1792x1024)                 |
 
 ### Estimated Cost per Article
 
-| Component | Estimated Cost |
-|-----------|---------------|
-| Perplexity Research | ~$0.02 |
-| OpenAI GPT-4o-mini (2 calls) | ~$0.01 |
-| Claude Haiku (4 calls) | ~$0.04 |
-| Claude Sonnet (1 call) | ~$0.15 |
-| DALL-E 3 Image | ~$0.04 |
-| **Total per article** | **~$0.26** |
+| Component                    | Estimated Cost |
+| ---------------------------- | -------------- |
+| Perplexity Research          | ~$0.02         |
+| OpenAI GPT-4o-mini (2 calls) | ~$0.01         |
+| Claude Haiku (4 calls)       | ~$0.04         |
+| Claude Sonnet (1 call)       | ~$0.15         |
+| DALL-E 3 Image               | ~$0.04         |
+| **Total per article**        | **~$0.26**     |
 
 At 5 articles/day = ~$39/month
 
@@ -199,18 +201,18 @@ INSERT INTO blog_content_queue (
 
 From `content_category` enum:
 
-| Category | Description |
-|----------|-------------|
-| `operational_efficiency` | Workflow and process optimization |
-| `meter_billing` | Meter reading and billing automation |
-| `service_operations` | Service dispatch and technician management |
-| `business_growth` | Sales, marketing, revenue growth |
-| `integration` | Third-party integrations |
-| `mobile` | Mobile apps and field service |
-| `analytics` | Reporting and business intelligence |
-| `automation` | Process automation and AI |
-| `security` | Data security and compliance |
-| `industry_news` | Industry trends and updates |
+| Category                 | Description                                |
+| ------------------------ | ------------------------------------------ |
+| `operational_efficiency` | Workflow and process optimization          |
+| `meter_billing`          | Meter reading and billing automation       |
+| `service_operations`     | Service dispatch and technician management |
+| `business_growth`        | Sales, marketing, revenue growth           |
+| `integration`            | Third-party integrations                   |
+| `mobile`                 | Mobile apps and field service              |
+| `analytics`              | Reporting and business intelligence        |
+| `automation`             | Process automation and AI                  |
+| `security`               | Data security and compliance               |
+| `industry_news`          | Industry trends and updates                |
 
 ### 5.3 Monitor Queue Status
 
@@ -269,7 +271,7 @@ Edit the **Schedule Trigger** node:
     "interval": [
       {
         "field": "hours",
-        "hoursInterval": 6  // Change this value
+        "hoursInterval": 6 // Change this value
       }
     ]
   }
@@ -277,6 +279,7 @@ Edit the **Schedule Trigger** node:
 ```
 
 Options:
+
 - `1` - Every hour
 - `6` - Every 6 hours (default)
 - `12` - Twice daily
@@ -295,44 +298,58 @@ limit=5  // Change to desired batch size
 ### Common Issues
 
 #### Issue: `401 Unauthorized` from Supabase
+
 ```
 Error: Invalid API key
 ```
+
 **Cause**: Wrong key or missing `Authorization` header
 **Solution**:
+
 1. Verify `PRINTYX_SUPABASE_SERVICE_ROLE_KEY` is the **service role** key (not anon key)
 2. Check the key hasn't expired
 3. Ensure the environment variable is properly set in Coolify
 
 #### Issue: `403 Forbidden` on Storage Upload
+
 ```
 Error: new row violates row-level security policy
 ```
+
 **Solution**: Create the storage policies from Step 2.2
 
 #### Issue: OpenAI Rate Limit
+
 ```
 Error: 429 Too Many Requests
 ```
+
 **Solution**:
+
 1. Reduce batch size
 2. Increase schedule interval
 3. Check your OpenAI usage tier
 
 #### Issue: Claude API Error
+
 ```
 Error: invalid_api_key
 ```
+
 **Solution**:
+
 1. Verify `CLAUDE_API_KEY` starts with `sk-ant-`
 2. Check key hasn't been revoked
 3. Ensure account has API access enabled
 
 #### Issue: Content Too Short
+
 ```
 Generated article under 2000 words
 ```
+
 **Solution**: The Content Writer prompt specifies 2,500-3,500 words. If consistently short:
+
 1. Check research data is being passed correctly
 2. Verify outline has enough sections
 3. Consider increasing `max_tokens` in the Content Writer node
@@ -386,7 +403,7 @@ const router = Router();
 router.get('/api/blog-content-queue', requireAuth, async (req, res) => {
   const items = await db.query.blogContentQueue.findMany({
     orderBy: (q, { desc }) => [desc(q.createdAt)],
-    limit: 50
+    limit: 50,
   });
   res.json(items);
 });
@@ -398,7 +415,8 @@ router.post('/api/blog-content-queue', requireAuth, async (req, res) => {
     return res.status(400).json({ error: parsed.error });
   }
 
-  const result = await db.insert(blogContentQueue)
+  const result = await db
+    .insert(blogContentQueue)
     .values({
       ...parsed.data,
       requestedBy: req.user.id,
@@ -411,7 +429,8 @@ router.post('/api/blog-content-queue', requireAuth, async (req, res) => {
 
 // Cancel queue item
 router.patch('/api/blog-content-queue/:id/cancel', requireAuth, async (req, res) => {
-  const result = await db.update(blogContentQueue)
+  const result = await db
+    .update(blogContentQueue)
     .set({ status: 'cancelled' })
     .where(eq(blogContentQueue.id, req.params.id))
     .returning();
@@ -427,11 +446,12 @@ export default router;
 ```typescript
 // Publish a generated draft
 router.patch('/api/blog-posts/:id/publish', requireAuth, async (req, res) => {
-  const result = await db.update(blogPosts)
+  const result = await db
+    .update(blogPosts)
     .set({
       status: 'published',
       publishedAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     })
     .where(eq(blogPosts.id, req.params.id))
     .returning();

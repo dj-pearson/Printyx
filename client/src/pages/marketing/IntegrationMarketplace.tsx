@@ -1,7 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, ArrowRight, Network, Plug, Zap, TrendingUp, Users, Lock, Printer } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  CheckCircle,
+  ArrowRight,
+  Network,
+  Plug,
+  Zap,
+  TrendingUp,
+  Users,
+  Lock,
+  Printer,
+} from 'lucide-react';
 
 const IntegrationMarketplace = () => {
   return (
@@ -9,16 +19,17 @@ const IntegrationMarketplace = () => {
       {/* Schema.org WebPage Markup */}
       <script type="application/ld+json">
         {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "Integration Marketplace - Network Effects That Compound Over Time",
-          "description": "Printyx's integration marketplace connects your dealer ecosystem. Pre-built integrations for accounting, CRM, MPS tools, and more. API-first platform that grows more valuable as the network expands.",
-          "url": "https://printyx.com/integration-marketplace",
-          "mainEntity": {
-            "@type": "SoftwareApplication",
-            "name": "Printyx Integration Marketplace",
-            "applicationCategory": "BusinessApplication"
-          }
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: 'Integration Marketplace - Network Effects That Compound Over Time',
+          description:
+            "Printyx's integration marketplace connects your dealer ecosystem. Pre-built integrations for accounting, CRM, MPS tools, and more. API-first platform that grows more valuable as the network expands.",
+          url: 'https://printyx.com/integration-marketplace',
+          mainEntity: {
+            '@type': 'SoftwareApplication',
+            name: 'Printyx Integration Marketplace',
+            applicationCategory: 'BusinessApplication',
+          },
         })}
       </script>
 
@@ -30,7 +41,7 @@ const IntegrationMarketplace = () => {
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="hover:bg-gray-100"
                 >
                   <Printer className="h-6 w-6 text-blue-600 mr-2" />
@@ -38,15 +49,12 @@ const IntegrationMarketplace = () => {
                 </Button>
               </div>
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/login'}
-                >
+                <Button variant="outline" onClick={() => (window.location.href = '/login')}>
                   Login
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                 </Button>
@@ -63,20 +71,22 @@ const IntegrationMarketplace = () => {
                 Network Effects Moat
               </Badge>
               <h1 className="text-5xl md:text-6xl font-bold mb-6">
-                Your Ecosystem.<br />
+                Your Ecosystem.
+                <br />
                 <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
                   All Connected.
                 </span>
               </h1>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed mb-8">
-                Legacy systems lock you into rigid workflows and limited integrations. Printyx's API-first platform
-                connects your entire ecosystem—and becomes more powerful as the network grows.
+                Legacy systems lock you into rigid workflows and limited integrations. Printyx's
+                API-first platform connects your entire ecosystem—and becomes more powerful as the
+                network grows.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
                   size="lg"
                   className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -85,7 +95,7 @@ const IntegrationMarketplace = () => {
                   size="lg"
                   variant="outline"
                   className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                  onClick={() => window.location.href = '/login'}
+                  onClick={() => (window.location.href = '/login')}
                 >
                   Explore Integrations
                 </Button>
@@ -114,7 +124,8 @@ const IntegrationMarketplace = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">Accounting Systems</h3>
                   <p className="text-gray-600 mb-4">
-                    Seamless sync with QuickBooks, NetSuite, Sage, and more. Automated invoice creation, payment tracking, and reconciliation.
+                    Seamless sync with QuickBooks, NetSuite, Sage, and more. Automated invoice
+                    creation, payment tracking, and reconciliation.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• QuickBooks Online/Desktop</li>
@@ -132,7 +143,8 @@ const IntegrationMarketplace = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">CRM Platforms</h3>
                   <p className="text-gray-600 mb-4">
-                    Bi-directional sync with leading CRMs. Keep customer data, opportunities, and activities aligned across systems.
+                    Bi-directional sync with leading CRMs. Keep customer data, opportunities, and
+                    activities aligned across systems.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Salesforce</li>
@@ -150,7 +162,8 @@ const IntegrationMarketplace = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">E-Automate Migration</h3>
                   <p className="text-gray-600 mb-4">
-                    Proven migration tools for e-automate data. Import customers, equipment, contracts, and service history with zero data loss.
+                    Proven migration tools for e-automate data. Import customers, equipment,
+                    contracts, and service history with zero data loss.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Customer migration</li>
@@ -168,7 +181,8 @@ const IntegrationMarketplace = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">Sales & Lead Gen</h3>
                   <p className="text-gray-600 mb-4">
-                    Enrich leads with business intelligence from Apollo, ZoomInfo, and more. Automated prospect research and qualification.
+                    Enrich leads with business intelligence from Apollo, ZoomInfo, and more.
+                    Automated prospect research and qualification.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Apollo.io</li>
@@ -186,7 +200,8 @@ const IntegrationMarketplace = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">MPS & Fleet Tools</h3>
                   <p className="text-gray-600 mb-4">
-                    Connect managed print service platforms for automated meter collection, supplies ordering, and fleet monitoring.
+                    Connect managed print service platforms for automated meter collection, supplies
+                    ordering, and fleet monitoring.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• PrintFleet/FM Audit</li>
@@ -204,7 +219,8 @@ const IntegrationMarketplace = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">Custom Integrations</h3>
                   <p className="text-gray-600 mb-4">
-                    Build custom integrations with our RESTful API, webhooks, and developer tools. Full API documentation and support.
+                    Build custom integrations with our RESTful API, webhooks, and developer tools.
+                    Full API documentation and support.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• RESTful API</li>
@@ -226,7 +242,8 @@ const IntegrationMarketplace = () => {
                 Network Effects: The Advantage That Compounds
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Unlike features competitors can copy, network effects create an expanding moat over time
+                Unlike features competitors can copy, network effects create an expanding moat over
+                time
               </p>
             </div>
 
@@ -237,8 +254,8 @@ const IntegrationMarketplace = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    As our dealer network grows, partners build more integrations targeting our platform.
-                    Each new integration makes Printyx more valuable for all dealers.
+                    As our dealer network grows, partners build more integrations targeting our
+                    platform. Each new integration makes Printyx more valuable for all dealers.
                   </p>
                   <div className="bg-blue-50 rounded-lg p-4">
                     <p className="text-sm text-gray-700 font-semibold mb-2">Current Growth:</p>
@@ -282,7 +299,9 @@ const IntegrationMarketplace = () => {
                     predictions, pricing optimization, and automated workflows for everyone.
                   </p>
                   <div className="bg-green-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-700 font-semibold mb-2">Continuous Improvement:</p>
+                    <p className="text-sm text-gray-700 font-semibold mb-2">
+                      Continuous Improvement:
+                    </p>
                     <ul className="text-sm text-gray-600 space-y-1">
                       <li>• Better failure predictions</li>
                       <li>• Smarter pricing models</li>
@@ -300,11 +319,10 @@ const IntegrationMarketplace = () => {
         <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">
-                API-First Platform Built for Integration
-              </h2>
+              <h2 className="text-4xl font-bold mb-4">API-First Platform Built for Integration</h2>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-                Legacy systems bolt on APIs as afterthoughts. We built Printyx API-first from day one.
+                Legacy systems bolt on APIs as afterthoughts. We built Printyx API-first from day
+                one.
               </p>
             </div>
 
@@ -317,21 +335,27 @@ const IntegrationMarketplace = () => {
                       <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
                         <strong className="block">RESTful Architecture</strong>
-                        <span className="text-blue-100 text-sm">Standard HTTP methods, JSON responses, predictable endpoints</span>
+                        <span className="text-blue-100 text-sm">
+                          Standard HTTP methods, JSON responses, predictable endpoints
+                        </span>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
                         <strong className="block">Webhook Events</strong>
-                        <span className="text-blue-100 text-sm">Real-time notifications for data changes</span>
+                        <span className="text-blue-100 text-sm">
+                          Real-time notifications for data changes
+                        </span>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
                         <strong className="block">OAuth 2.0 Security</strong>
-                        <span className="text-blue-100 text-sm">Industry-standard authentication and authorization</span>
+                        <span className="text-blue-100 text-sm">
+                          Industry-standard authentication and authorization
+                        </span>
                       </div>
                     </li>
                   </ul>
@@ -346,21 +370,27 @@ const IntegrationMarketplace = () => {
                       <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
                         <strong className="block">Comprehensive Documentation</strong>
-                        <span className="text-blue-100 text-sm">Every endpoint documented with examples</span>
+                        <span className="text-blue-100 text-sm">
+                          Every endpoint documented with examples
+                        </span>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
                         <strong className="block">Interactive API Explorer</strong>
-                        <span className="text-blue-100 text-sm">Test endpoints directly in browser</span>
+                        <span className="text-blue-100 text-sm">
+                          Test endpoints directly in browser
+                        </span>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0 mt-0.5" />
                       <div>
                         <strong className="block">SDK Libraries</strong>
-                        <span className="text-blue-100 text-sm">Pre-built clients for popular languages</span>
+                        <span className="text-blue-100 text-sm">
+                          Pre-built clients for popular languages
+                        </span>
                       </div>
                     </li>
                   </ul>
@@ -387,9 +417,9 @@ const IntegrationMarketplace = () => {
                 <CardContent className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-3">First-Mover Advantage</h3>
                   <p className="text-gray-700">
-                    We're building the dealer ecosystem now. By the time legacy vendors realize they need
-                    an integration marketplace, we'll have 50+ integrations and thousands of active dealers.
-                    Partners won't build for a platform with no users.
+                    We're building the dealer ecosystem now. By the time legacy vendors realize they
+                    need an integration marketplace, we'll have 50+ integrations and thousands of
+                    active dealers. Partners won't build for a platform with no users.
                   </p>
                 </CardContent>
               </Card>
@@ -409,8 +439,9 @@ const IntegrationMarketplace = () => {
                 <CardContent className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-3">Data Moat Expands</h3>
                   <p className="text-gray-700">
-                    Every new dealer makes our AI smarter for all dealers. Competitors starting from zero
-                    would need years to collect equivalent training data—and by then, we're even further ahead.
+                    Every new dealer makes our AI smarter for all dealers. Competitors starting from
+                    zero would need years to collect equivalent training data—and by then, we're
+                    even further ahead.
                   </p>
                 </CardContent>
               </Card>
@@ -425,14 +456,14 @@ const IntegrationMarketplace = () => {
               Join the Growing Network
             </h2>
             <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              Every week you wait, our network grows stronger and the gap widens.
-              Be an early adopter and benefit from the compounding advantages.
+              Every week you wait, our network grows stronger and the gap widens. Be an early
+              adopter and benefit from the compounding advantages.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                onClick={() => window.location.href = '/signup'}
+                onClick={() => (window.location.href = '/signup')}
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -441,7 +472,7 @@ const IntegrationMarketplace = () => {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => window.location.href = '/login'}
+                onClick={() => (window.location.href = '/login')}
               >
                 Explore API Docs
               </Button>

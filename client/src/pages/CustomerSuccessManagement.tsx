@@ -5,17 +5,57 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { HeartHandshake, TrendingUp, AlertTriangle, Users, Target, Activity, BarChart3, RefreshCw, Star, ThumbsUp, MessageCircle } from 'lucide-react';
+import {
+  HeartHandshake,
+  TrendingUp,
+  AlertTriangle,
+  Users,
+  Target,
+  Activity,
+  BarChart3,
+  RefreshCw,
+  Star,
+  ThumbsUp,
+  MessageCircle,
+} from 'lucide-react';
 import { useLocation } from 'wouter';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, RadialBarChart, RadialBar } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  RadialBarChart,
+  RadialBar,
+} from 'recharts';
 import MainLayout from '@/components/layout/main-layout';
 
 interface CustomerHealthScore {
@@ -75,30 +115,44 @@ interface CustomerHealthScore {
 
 const getHealthStatusColor = (status: string) => {
   switch (status) {
-    case 'excellent': return 'bg-green-100 text-green-800';
-    case 'healthy': return 'bg-blue-100 text-blue-800';
-    case 'at_risk': return 'bg-yellow-100 text-yellow-800';
-    case 'critical': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'excellent':
+      return 'bg-green-100 text-green-800';
+    case 'healthy':
+      return 'bg-blue-100 text-blue-800';
+    case 'at_risk':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'critical':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
   }
 };
 
 const getRiskLevelColor = (level: string) => {
   switch (level) {
-    case 'very_low': return 'bg-green-100 text-green-800';
-    case 'low': return 'bg-blue-100 text-blue-800';
-    case 'medium': return 'bg-yellow-100 text-yellow-800';
-    case 'high': return 'bg-orange-100 text-orange-800';
-    case 'critical': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'very_low':
+      return 'bg-green-100 text-green-800';
+    case 'low':
+      return 'bg-blue-100 text-blue-800';
+    case 'medium':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'high':
+      return 'bg-orange-100 text-orange-800';
+    case 'critical':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
   }
 };
 
 const getTrendIcon = (trend: string) => {
   switch (trend) {
-    case 'improving': case 'growing': case 'excellent':
+    case 'improving':
+    case 'growing':
+    case 'excellent':
       return <TrendingUp className="h-4 w-4 text-green-600" />;
-    case 'declining': case 'worsening':
+    case 'declining':
+    case 'worsening':
       return <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />;
     default:
       return <Activity className="h-4 w-4 text-gray-600" />;
@@ -117,45 +171,47 @@ export default function CustomerSuccessManagement() {
   // Fetch customer health scores
   const { data: healthScores = [], isLoading: healthLoading } = useQuery<CustomerHealthScore[]>({
     queryKey: ['/api/customer-success/health-scores'],
-    select: (data: any[]) => data.map(score => ({
-      ...score,
-      metrics: {
-        ...score.metrics,
-        lastPaymentDate: new Date(score.metrics.lastPaymentDate)
-      },
-      alerts: score.alerts.map((alert: any) => ({
-        ...alert,
-        dueDate: new Date(alert.dueDate)
+    select: (data: any[]) =>
+      data.map((score) => ({
+        ...score,
+        metrics: {
+          ...score.metrics,
+          lastPaymentDate: new Date(score.metrics.lastPaymentDate),
+        },
+        alerts: score.alerts.map((alert: any) => ({
+          ...alert,
+          dueDate: new Date(alert.dueDate),
+        })),
+        lastUpdated: new Date(score.lastUpdated),
+        nextReviewDate: new Date(score.nextReviewDate),
       })),
-      lastUpdated: new Date(score.lastUpdated),
-      nextReviewDate: new Date(score.nextReviewDate)
-    }))
   });
 
   // Fetch usage analytics
   const { data: usageAnalytics } = useQuery({
-    queryKey: ['/api/customer-success/usage-analytics', selectedPeriod]
+    queryKey: ['/api/customer-success/usage-analytics', selectedPeriod],
   });
 
   // Fetch satisfaction data
   const { data: satisfactionData } = useQuery({
-    queryKey: ['/api/customer-success/satisfaction']
+    queryKey: ['/api/customer-success/satisfaction'],
   });
 
   // Calculate health scores mutation
   const calculateHealthMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('/api/customer-success/calculate-health', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
+    mutationFn: (data: any) =>
+      apiRequest('/api/customer-success/calculate-health', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/customer-success/health-scores'] });
       setIsCalculatingHealth(false);
       toast({
-        title: "Health Scores Updated",
-        description: "Customer health scores have been recalculated successfully.",
+        title: 'Health Scores Updated',
+        description: 'Customer health scores have been recalculated successfully.',
       });
-    }
+    },
   });
 
   const handleCalculateHealth = () => {
@@ -165,7 +221,7 @@ export default function CustomerSuccessManagement() {
 
   if (healthLoading) {
     return (
-      <MainLayout 
+      <MainLayout
         title="Customer Success Management"
         description="Monitor customer health, usage patterns, and satisfaction"
       >
@@ -179,27 +235,32 @@ export default function CustomerSuccessManagement() {
     );
   }
 
-  const averageHealthScore = healthScores.length > 0 
-    ? healthScores.reduce((sum, score) => sum + score.overallHealthScore, 0) / healthScores.length 
-    : 0;
-  
-  const atRiskCustomers = healthScores.filter(score => score.riskLevel === 'medium' || score.riskLevel === 'high').length;
+  const averageHealthScore =
+    healthScores.length > 0
+      ? healthScores.reduce((sum, score) => sum + score.overallHealthScore, 0) / healthScores.length
+      : 0;
+
+  const atRiskCustomers = healthScores.filter(
+    (score) => score.riskLevel === 'medium' || score.riskLevel === 'high',
+  ).length;
   const totalAlerts = healthScores.reduce((sum, score) => sum + score.alerts.length, 0);
 
   return (
-    <MainLayout 
+    <MainLayout
       title="Customer Success Management"
       description="Monitor customer health, usage patterns, and satisfaction"
     >
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Customer Success Management</h1>
-          <p className="text-gray-600 mt-2">Monitor customer health, usage patterns, and satisfaction</p>
+          <p className="text-gray-600 mt-2">
+            Monitor customer health, usage patterns, and satisfaction
+          </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleCalculateHealth}
             disabled={isCalculatingHealth}
             className="flex items-center gap-2"
@@ -207,14 +268,14 @@ export default function CustomerSuccessManagement() {
             <RefreshCw className={`h-4 w-4 ${isCalculatingHealth ? 'animate-spin' : ''}`} />
             {isCalculatingHealth ? 'Calculating...' : 'Refresh Health Scores'}
           </Button>
-          <Button 
+          <Button
             variant="default"
             onClick={() => setLocation('/meter-readings')}
             className="flex items-center gap-2"
           >
             Enable Monitoring
           </Button>
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setLocation('/service-hub')}
             className="flex items-center gap-2"
@@ -233,9 +294,7 @@ export default function CustomerSuccessManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{averageHealthScore.toFixed(1)}</div>
-            <p className="text-xs text-muted-foreground">
-              Out of 100 possible points
-            </p>
+            <p className="text-xs text-muted-foreground">Out of 100 possible points</p>
             <Progress value={averageHealthScore} className="mt-2" />
           </CardContent>
         </Card>
@@ -247,9 +306,7 @@ export default function CustomerSuccessManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{atRiskCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              Require immediate attention
-            </p>
+            <p className="text-xs text-muted-foreground">Require immediate attention</p>
             <div className="text-xs text-gray-600 mt-1">
               {((atRiskCustomers / healthScores.length) * 100).toFixed(1)}% of total customers
             </div>
@@ -263,9 +320,7 @@ export default function CustomerSuccessManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{totalAlerts}</div>
-            <p className="text-xs text-muted-foreground">
-              Pending action items
-            </p>
+            <p className="text-xs text-muted-foreground">Pending action items</p>
             {satisfactionData && (
               <div className="text-xs text-gray-600 mt-1">
                 NPS Score: {satisfactionData.summary.npsScore}
@@ -282,10 +337,10 @@ export default function CustomerSuccessManagement() {
           <CardContent>
             {satisfactionData && (
               <>
-                <div className="text-2xl font-bold">{satisfactionData.summary.overallSatisfaction.toFixed(1)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Average satisfaction rating
-                </p>
+                <div className="text-2xl font-bold">
+                  {satisfactionData.summary.overallSatisfaction.toFixed(1)}
+                </div>
+                <p className="text-xs text-muted-foreground">Average satisfaction rating</p>
                 <div className="text-xs text-gray-600 mt-1">
                   {satisfactionData.summary.responseRate}% response rate
                 </div>
@@ -308,8 +363,12 @@ export default function CustomerSuccessManagement() {
             <Card>
               <CardContent className="text-center py-12">
                 <HeartHandshake className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Health Scores Available</h3>
-                <p className="text-gray-600 mb-4">Calculate customer health scores to get started.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Health Scores Available
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Calculate customer health scores to get started.
+                </p>
                 <Button onClick={handleCalculateHealth}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Calculate Health Scores
@@ -332,7 +391,7 @@ export default function CustomerSuccessManagement() {
                             {score.riskLevel.replace('_', ' ')} risk
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
                           <div>
                             <span className="font-medium">Account Manager:</span>
@@ -341,8 +400,7 @@ export default function CustomerSuccessManagement() {
                           </div>
                           <div>
                             <span className="font-medium">Contract Value:</span>
-                            <br />
-                            ${score.metrics.contractValue.toLocaleString()}
+                            <br />${score.metrics.contractValue.toLocaleString()}
                           </div>
                           <div>
                             <span className="font-medium">Months Remaining:</span>
@@ -364,7 +422,10 @@ export default function CustomerSuccessManagement() {
                               <div key={key} className="text-center">
                                 <div className="text-lg font-bold text-blue-700">{value}</div>
                                 <div className="text-xs text-blue-600 capitalize">
-                                  {key.replace('Health', '').replace(/([A-Z])/g, ' $1').trim()}
+                                  {key
+                                    .replace('Health', '')
+                                    .replace(/([A-Z])/g, ' $1')
+                                    .trim()}
                                 </div>
                                 <Progress value={value} className="mt-1 h-2" />
                               </div>
@@ -394,7 +455,9 @@ export default function CustomerSuccessManagement() {
                               {score.riskFactors.map((risk, idx) => (
                                 <div key={idx} className="text-sm">
                                   <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium text-yellow-700">{risk.factor}</span>
+                                    <span className="font-medium text-yellow-700">
+                                      {risk.factor}
+                                    </span>
                                     <Badge variant="outline" className="text-xs">
                                       {risk.severity} impact
                                     </Badge>
@@ -412,7 +475,9 @@ export default function CustomerSuccessManagement() {
                         {/* Opportunities */}
                         {score.opportunities.length > 0 && (
                           <div className="bg-green-50 rounded-lg p-3 mb-4">
-                            <h5 className="font-medium text-green-800 mb-2">Growth Opportunities</h5>
+                            <h5 className="font-medium text-green-800 mb-2">
+                              Growth Opportunities
+                            </h5>
                             <div className="space-y-2">
                               {score.opportunities.map((opp, idx) => (
                                 <div key={idx} className="text-sm">
@@ -464,19 +529,19 @@ export default function CustomerSuccessManagement() {
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="text-right ml-6">
                         <div className="text-3xl font-bold text-blue-600">
                           {score.overallHealthScore}
                         </div>
                         <div className="text-xs text-gray-500">Health Score</div>
-                        
+
                         <div className="mt-4 space-y-1 text-xs">
                           <div>Renewal: {score.metrics.renewalProbability}%</div>
                           <div>Satisfaction: {score.metrics.satisfactionScore.toFixed(1)}/5</div>
                           <div>Utilization: {score.metrics.usageUtilization}%</div>
                         </div>
-                        
+
                         <div className="mt-4 text-xs text-gray-600">
                           <div>Last updated: {format(score.lastUpdated, 'MMM dd')}</div>
                           <div>Next review: {format(score.nextReviewDate, 'MMM dd')}</div>
@@ -491,11 +556,7 @@ export default function CustomerSuccessManagement() {
                       <Button size="sm" variant="outline">
                         Schedule Meeting
                       </Button>
-                      {score.alerts.length > 0 && (
-                        <Button size="sm">
-                          Take Action
-                        </Button>
-                      )}
+                      {score.alerts.length > 0 && <Button size="sm">Take Action</Button>}
                     </div>
                   </CardContent>
                 </Card>
@@ -517,10 +578,12 @@ export default function CustomerSuccessManagement() {
                     <div className="space-y-4">
                       <div className="flex justify-between">
                         <span>Average Utilization</span>
-                        <span className="font-bold">{usageAnalytics.summary.averageUtilization}%</span>
+                        <span className="font-bold">
+                          {usageAnalytics.summary.averageUtilization}%
+                        </span>
                       </div>
                       <Progress value={usageAnalytics.summary.averageUtilization} />
-                      
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <div className="text-gray-600">Monthly Volume</div>
@@ -546,20 +609,22 @@ export default function CustomerSuccessManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {usageAnalytics.optimizationOpportunities.slice(0, 3).map((opp: any, idx: number) => (
-                        <div key={idx} className="p-3 bg-gray-50 rounded-lg">
-                          <div className="font-medium capitalize">
-                            {opp.type.replace('_', ' ')}
+                      {usageAnalytics.optimizationOpportunities
+                        .slice(0, 3)
+                        .map((opp: any, idx: number) => (
+                          <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                            <div className="font-medium capitalize">
+                              {opp.type.replace('_', ' ')}
+                            </div>
+                            <div className="text-sm text-gray-600 mb-2">{opp.description}</div>
+                            <div className="flex justify-between text-xs">
+                              <span>
+                                Potential: ${opp.potentialSavings || opp.potentialRevenue}
+                              </span>
+                              <span>ROI: {opp.roi}%</span>
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-600 mb-2">
-                            {opp.description}
-                          </div>
-                          <div className="flex justify-between text-xs">
-                            <span>Potential: ${opp.potentialSavings || opp.potentialRevenue}</span>
-                            <span>ROI: {opp.roi}%</span>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -577,17 +642,19 @@ export default function CustomerSuccessManagement() {
                         <div className="flex justify-between items-start mb-3">
                           <h4 className="font-medium">{customer.customerName}</h4>
                           <div className="text-right">
-                            <div className="font-bold">{customer.usageTrends.currentMonth.toLocaleString()}</div>
+                            <div className="font-bold">
+                              {customer.usageTrends.currentMonth.toLocaleString()}
+                            </div>
                             <div className="text-xs text-gray-600">Monthly volume</div>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {customer.equipment.map((eq: any, idx: number) => (
                             <div key={idx} className="bg-gray-50 rounded p-3">
                               <div className="font-medium text-sm">{eq.model}</div>
                               <div className="text-xs text-gray-600 mb-2">{eq.serialNumber}</div>
-                              
+
                               <div className="space-y-1 text-xs">
                                 <div className="flex justify-between">
                                   <span>Utilization</span>
@@ -644,18 +711,18 @@ export default function CustomerSuccessManagement() {
                         <div className="text-sm text-gray-600">Overall Satisfaction</div>
                         <div className="flex justify-center mt-2">
                           {[1, 2, 3, 4, 5].map((star) => (
-                            <Star 
+                            <Star
                               key={star}
                               className={`h-5 w-5 ${
-                                star <= satisfactionData.summary.overallSatisfaction 
-                                  ? 'text-yellow-400 fill-current' 
+                                star <= satisfactionData.summary.overallSatisfaction
+                                  ? 'text-yellow-400 fill-current'
                                   : 'text-gray-300'
                               }`}
                             />
                           ))}
                         </div>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="text-center">
                           <div className="text-lg font-bold text-green-600">
@@ -681,24 +748,32 @@ export default function CustomerSuccessManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {Object.entries(satisfactionData.categoryTrends).map(([key, trend]: [string, any]) => (
-                        <div key={key} className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                            <div className="flex items-center gap-1">
-                              <span className="font-medium">{trend.current.toFixed(1)}</span>
-                              {getTrendIcon(trend.trend)}
+                      {Object.entries(satisfactionData.categoryTrends).map(
+                        ([key, trend]: [string, any]) => (
+                          <div key={key} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="capitalize">
+                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <span className="font-medium">{trend.current.toFixed(1)}</span>
+                                {getTrendIcon(trend.trend)}
+                              </div>
+                            </div>
+                            <Progress value={(trend.current / 5) * 100} className="h-2" />
+                            <div className="flex justify-between text-xs text-gray-600">
+                              <span>Target: {trend.target}</span>
+                              <span
+                                className={
+                                  trend.trend === 'improving' ? 'text-green-600' : 'text-gray-600'
+                                }
+                              >
+                                {trend.trend}
+                              </span>
                             </div>
                           </div>
-                          <Progress value={(trend.current / 5) * 100} className="h-2" />
-                          <div className="flex justify-between text-xs text-gray-600">
-                            <span>Target: {trend.target}</span>
-                            <span className={trend.trend === 'improving' ? 'text-green-600' : 'text-gray-600'}>
-                              {trend.trend}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -721,18 +796,24 @@ export default function CustomerSuccessManagement() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-bold">{survey.scores.overall.toFixed(1)}</div>
+                            <div className="text-lg font-bold">
+                              {survey.scores.overall.toFixed(1)}
+                            </div>
                             <div className="text-sm text-gray-600">Overall Score</div>
-                            <Badge className={survey.category === 'promoter' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                            <Badge
+                              className={
+                                survey.category === 'promoter'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }
+                            >
                               {survey.category}
                             </Badge>
                           </div>
                         </div>
-                        
-                        <div className="text-sm text-gray-700 mb-3 italic">
-                          "{survey.feedback}"
-                        </div>
-                        
+
+                        <div className="text-sm text-gray-700 mb-3 italic">"{survey.feedback}"</div>
+
                         {survey.actionItems.length > 0 && (
                           <div className="bg-blue-50 rounded p-3">
                             <div className="font-medium text-blue-800 mb-2">Action Items:</div>
@@ -761,7 +842,7 @@ export default function CustomerSuccessManagement() {
             <CardContent>
               <div className="space-y-4">
                 {healthScores
-                  .filter(score => score.riskFactors.length > 0 || score.opportunities.length > 0)
+                  .filter((score) => score.riskFactors.length > 0 || score.opportunities.length > 0)
                   .map((score) => (
                     <div key={score.customerId} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-3">
@@ -776,7 +857,7 @@ export default function CustomerSuccessManagement() {
                           <div className="text-sm text-gray-600">Health Score</div>
                         </div>
                       </div>
-                      
+
                       {score.riskFactors.length > 0 && (
                         <div className="mb-3">
                           <div className="font-medium text-red-700 mb-2">Risk Mitigation:</div>
@@ -791,10 +872,12 @@ export default function CustomerSuccessManagement() {
                           ))}
                         </div>
                       )}
-                      
+
                       {score.opportunities.length > 0 && (
                         <div className="mb-3">
-                          <div className="font-medium text-green-700 mb-2">Growth Opportunities:</div>
+                          <div className="font-medium text-green-700 mb-2">
+                            Growth Opportunities:
+                          </div>
                           {score.opportunities.map((opp, idx) => (
                             <div key={idx} className="bg-green-50 rounded p-3 mb-2">
                               <div className="flex justify-between items-start">
@@ -802,7 +885,9 @@ export default function CustomerSuccessManagement() {
                                   <div className="font-medium text-green-800 capitalize">
                                     {opp.type.replace('_', ' ')}
                                   </div>
-                                  <div className="text-sm text-green-700 mb-2">{opp.description}</div>
+                                  <div className="text-sm text-green-700 mb-2">
+                                    {opp.description}
+                                  </div>
                                   <div className="text-sm font-medium text-green-800">
                                     Recommended Action: {opp.action}
                                   </div>
@@ -820,7 +905,7 @@ export default function CustomerSuccessManagement() {
                           ))}
                         </div>
                       )}
-                      
+
                       <div className="flex justify-end gap-2">
                         <Button size="sm" variant="outline">
                           Schedule Call
@@ -828,9 +913,7 @@ export default function CustomerSuccessManagement() {
                         <Button size="sm" variant="outline">
                           Create Task
                         </Button>
-                        <Button size="sm">
-                          Take Action
-                        </Button>
+                        <Button size="sm">Take Action</Button>
                       </div>
                     </div>
                   ))}

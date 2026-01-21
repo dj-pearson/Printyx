@@ -9,14 +9,14 @@ import {
   purchaseOrders,
   serviceTickets,
   invoices,
-  meterReadings
+  meterReadings,
 } from '../shared/schema';
 // RBAC Integration
 import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 const router = Router();
@@ -27,7 +27,7 @@ router.use(enhanceUserContext);
 // Breach detection endpoint
 router.get('/reports/breaches', async (req: any, res) => {
   try {
-    const tenantId = req.headers['x-tenant-id'] as string || 'default-tenant';
+    const tenantId = (req.headers['x-tenant-id'] as string) || 'default-tenant';
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
@@ -48,8 +48,8 @@ router.get('/reports/breaches', async (req: any, res) => {
             eq(businessRecords.tenantId, tenantId),
             eq(businessRecords.recordType, 'lead'),
             eq(businessRecords.status, 'new'),
-            lt(businessRecords.createdAt, twentyFourHoursAgo)
-          )
+            lt(businessRecords.createdAt, twentyFourHoursAgo),
+          ),
         );
 
       if (salesResponseBreach[0]?.count > 0) {
@@ -61,7 +61,7 @@ router.get('/reports/breaches', async (req: any, res) => {
           description: `${salesResponseBreach[0]?.count || 0} leads not contacted within 24 hours`,
           drillThroughUrl: '/leads-management?filter=sla_breach',
           icon: 'Clock',
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         });
       }
     } catch (error) {
@@ -76,8 +76,8 @@ router.get('/reports/breaches', async (req: any, res) => {
         and(
           eq(proposals.tenantId, tenantId),
           eq(proposals.status, 'draft'),
-          lt(proposals.createdAt, fourteenDaysAgo)
-        )
+          lt(proposals.createdAt, fourteenDaysAgo),
+        ),
       );
 
     if (proposalAging[0]?.count > 0) {
@@ -89,7 +89,7 @@ router.get('/reports/breaches', async (req: any, res) => {
         description: `${proposalAging[0]?.count || 0} proposals aging > 14 days`,
         drillThroughUrl: '/proposal-builder?filter=aging&days=14',
         icon: 'FileText',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       });
     }
 
@@ -101,8 +101,8 @@ router.get('/reports/breaches', async (req: any, res) => {
         and(
           eq(purchaseOrders.tenantId, tenantId),
           sql`expected_date IS NOT NULL`,
-          sql`approved_date IS NOT NULL`
-        )
+          sql`approved_date IS NOT NULL`,
+        ),
       );
 
     if (poVariance[0]?.count > 0) {
@@ -114,7 +114,7 @@ router.get('/reports/breaches', async (req: any, res) => {
         description: `${poVariance[0]?.count || 0} orders with extended lead times`,
         drillThroughUrl: '/admin/purchase-orders?filter=variance_gt_2x',
         icon: 'Package',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       });
     }
 
@@ -126,8 +126,8 @@ router.get('/reports/breaches', async (req: any, res) => {
         and(
           eq(serviceTickets.tenantId, tenantId),
           sql`status IN ('open', 'in_progress')`,
-          lt(serviceTickets.createdAt, fiveDaysAgo)
-        )
+          lt(serviceTickets.createdAt, fiveDaysAgo),
+        ),
       );
 
     if (serviceSLABreach[0]?.count > 0) {
@@ -139,7 +139,7 @@ router.get('/reports/breaches', async (req: any, res) => {
         description: `${serviceSLABreach[0]?.count || 0} service tickets aging > 5 days`,
         drillThroughUrl: '/service-hub?filter=sla_breach',
         icon: 'Wrench',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       });
     }
 
@@ -151,8 +151,8 @@ router.get('/reports/breaches', async (req: any, res) => {
         and(
           eq(invoices.tenantId, tenantId),
           eq(invoices.status, 'draft'),
-          lt(invoices.createdAt, twentyFourHoursAgo)
-        )
+          lt(invoices.createdAt, twentyFourHoursAgo),
+        ),
       );
 
     if (billingDelay[0]?.count > 0) {
@@ -164,7 +164,7 @@ router.get('/reports/breaches', async (req: any, res) => {
         description: `${billingDelay[0]?.count || 0} invoices not issued within 24h`,
         drillThroughUrl: '/advanced-billing?filter=issuance_delay_gt_24h',
         icon: 'DollarSign',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       });
     }
 
@@ -178,8 +178,8 @@ router.get('/reports/breaches', async (req: any, res) => {
       .where(
         and(
           eq(meterReadings.tenantId, tenantId),
-          lt(meterReadings.readingDate, sixtyDaysAgo) // Last reading more than 60 days ago
-        )
+          lt(meterReadings.readingDate, sixtyDaysAgo), // Last reading more than 60 days ago
+        ),
       );
 
     if (missedMeterReads[0]?.count > 0) {
@@ -191,12 +191,11 @@ router.get('/reports/breaches', async (req: any, res) => {
         description: `${missedMeterReads[0]?.count || 0} devices missing > 2 cycles`,
         drillThroughUrl: '/meter-readings?filter=missed_cycles&n=2',
         icon: 'TrendingUp',
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       });
     }
 
     res.json(breaches);
-
   } catch (error) {
     console.error('Error fetching breach metrics:', error);
     // Return empty array instead of error to prevent frontend crashes
@@ -213,24 +212,34 @@ router.get('/reports/breach-summary', async (req, res) => {
     }
 
     // Get total counts for each breach type from the main endpoint
-    const breachResponse = await fetch(`${req.protocol}://${req.get('host')}/api/reports/breaches`, {
-      headers: { 'x-tenant-id': tenantId }
-    });
-    
+    const breachResponse = await fetch(
+      `${req.protocol}://${req.get('host')}/api/reports/breaches`,
+      {
+        headers: { 'x-tenant-id': tenantId },
+      },
+    );
+
     const breaches = await breachResponse.json();
-    
+
     const summary = {
       totalBreaches: breaches.reduce((sum: number, breach: any) => sum + breach.count, 0),
-      criticalCount: breaches.filter((b: any) => b.severity === 'critical').reduce((sum: number, b: any) => sum + b.count, 0),
-      highCount: breaches.filter((b: any) => b.severity === 'high').reduce((sum: number, b: any) => sum + b.count, 0),
-      mediumCount: breaches.filter((b: any) => b.severity === 'medium').reduce((sum: number, b: any) => sum + b.count, 0),
-      lowCount: breaches.filter((b: any) => b.severity === 'low').reduce((sum: number, b: any) => sum + b.count, 0),
+      criticalCount: breaches
+        .filter((b: any) => b.severity === 'critical')
+        .reduce((sum: number, b: any) => sum + b.count, 0),
+      highCount: breaches
+        .filter((b: any) => b.severity === 'high')
+        .reduce((sum: number, b: any) => sum + b.count, 0),
+      mediumCount: breaches
+        .filter((b: any) => b.severity === 'medium')
+        .reduce((sum: number, b: any) => sum + b.count, 0),
+      lowCount: breaches
+        .filter((b: any) => b.severity === 'low')
+        .reduce((sum: number, b: any) => sum + b.count, 0),
       breachTypes: breaches.length,
-      lastCheck: new Date().toISOString()
+      lastCheck: new Date().toISOString(),
     };
 
     res.json(summary);
-
   } catch (error) {
     console.error('Error fetching breach summary:', error);
     res.status(500).json({ error: 'Failed to fetch breach summary' });

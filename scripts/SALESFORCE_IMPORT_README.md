@@ -8,7 +8,7 @@ Automatically transforms Salesforce "Businesses & Contacts" exports into Printyx
 ✅ **Smart Contact Selection** - Prioritizes contacts with emails and important titles (CEO, CFO, etc.)  
 ✅ **Field Mapping** - Automatically maps Salesforce fields to Printyx fields  
 ✅ **Data Validation** - Shows summary stats and sample data  
-✅ **E-Automate Support** - Preserves EA Customer Numbers  
+✅ **E-Automate Support** - Preserves EA Customer Numbers
 
 ## Installation
 
@@ -72,25 +72,26 @@ Your Salesforce export has **one row per contact**. The script:
 
 ### 2. Field Mapping
 
-| Salesforce Field | → | Printyx Field |
-|---|---|---|
-| Business Name | → | company_name |
-| Business ID | → | external_salesforce_id |
-| Business Record Type | → | record_type (lowercased) |
-| First Name + Last Name | → | primary_contact_name |
-| Email | → | primary_contact_email |
-| Phone | → | primary_contact_phone |
-| Title | → | primary_contact_title |
-| Mailing Street | → | address_line1 |
-| Mailing City | → | city |
-| Mailing State | → | state |
-| Mailing Zip | → | postal_code |
-| EA Customer Number | → | customer_number |
-| + more... | | |
+| Salesforce Field       | →   | Printyx Field            |
+| ---------------------- | --- | ------------------------ |
+| Business Name          | →   | company_name             |
+| Business ID            | →   | external_salesforce_id   |
+| Business Record Type   | →   | record_type (lowercased) |
+| First Name + Last Name | →   | primary_contact_name     |
+| Email                  | →   | primary_contact_email    |
+| Phone                  | →   | primary_contact_phone    |
+| Title                  | →   | primary_contact_title    |
+| Mailing Street         | →   | address_line1            |
+| Mailing City           | →   | city                     |
+| Mailing State          | →   | state                    |
+| Mailing Zip            | →   | postal_code              |
+| EA Customer Number     | →   | customer_number          |
+| + more...              |     |                          |
 
 ### 3. Adds Required Fields
 
 The script automatically adds:
+
 - `tenant_id` (from config)
 - `status` = "active"
 - `lead_source` = "salesforce_import"
@@ -136,6 +137,7 @@ pip install pandas openpyxl lxml html5lib
 ### Tenant ID / User ID Not Set
 
 Get these from Printyx:
+
 1. Login to Printyx
 2. Go to Settings → Admin → System Settings
 3. Copy your Tenant ID and User ID
@@ -144,6 +146,7 @@ Get these from Printyx:
 ### File Not Found
 
 Use absolute path:
+
 ```bash
 python transform-salesforce-import.py "C:\Users\dpearson\Downloads\report1768836481860.xls"
 ```
@@ -164,6 +167,7 @@ After running the script:
 ## Support
 
 For issues or questions, check:
+
 - Printyx documentation
 - This README
 - The script's inline comments

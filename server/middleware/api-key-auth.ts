@@ -6,7 +6,11 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { apiKeyService, ApiKeyValidationResult, RateLimitResult } from '../services/api-key-service';
+import {
+  apiKeyService,
+  ApiKeyValidationResult,
+  RateLimitResult,
+} from '../services/api-key-service';
 import { randomBytes } from 'crypto';
 
 // Extend Express Request type
@@ -76,22 +80,15 @@ function setRateLimitHeaders(res: Response, rateLimit: RateLimitResult): void {
   const remaining = Math.min(
     rateLimit.remaining.minute,
     rateLimit.remaining.hour,
-    rateLimit.remaining.day
+    rateLimit.remaining.day,
   );
 
   // Use the nearest reset time
-  const resetTimes = [
-    rateLimit.resetAt.minute,
-    rateLimit.resetAt.hour,
-    rateLimit.resetAt.day,
-  ];
+  const resetTimes = [rateLimit.resetAt.minute, rateLimit.resetAt.hour, rateLimit.resetAt.day];
   const nearestReset = resetTimes.reduce((a, b) => (a < b ? a : b));
 
   res.setHeader(RATE_LIMIT_HEADERS.remaining, remaining.toString());
-  res.setHeader(
-    RATE_LIMIT_HEADERS.reset,
-    Math.floor(nearestReset.getTime() / 1000).toString()
-  );
+  res.setHeader(RATE_LIMIT_HEADERS.reset, Math.floor(nearestReset.getTime() / 1000).toString());
 }
 
 /**
@@ -105,7 +102,7 @@ export function requireApiKey(
     requiredScopes?: string[];
     requiredPermissions?: string[];
     optional?: boolean;
-  } = {}
+  } = {},
 ) {
   return async (req: Request, res: Response, next: NextFunction) => {
     // Generate request ID for tracking
@@ -123,7 +120,8 @@ export function requireApiKey(
     if (!apiKey) {
       return res.status(401).json({
         error: 'API key required',
-        message: 'Provide an API key via X-API-Key header, Authorization: Bearer header, or api_key query parameter',
+        message:
+          'Provide an API key via X-API-Key header, Authorization: Bearer header, or api_key query parameter',
       });
     }
 
@@ -131,11 +129,18 @@ export function requireApiKey(
     const validation = await apiKeyService.validateApiKey(apiKey, req.ip);
 
     if (!validation.valid) {
-      const statusCode = validation.errorCode === 'RATE_LIMITED' ? 429 :
-                        validation.errorCode === 'EXPIRED' ? 401 :
-                        validation.errorCode === 'REVOKED' ? 401 :
-                        validation.errorCode === 'INACTIVE' ? 401 :
-                        validation.errorCode === 'IP_RESTRICTED' ? 403 : 401;
+      const statusCode =
+        validation.errorCode === 'RATE_LIMITED'
+          ? 429
+          : validation.errorCode === 'EXPIRED'
+            ? 401
+            : validation.errorCode === 'REVOKED'
+              ? 401
+              : validation.errorCode === 'INACTIVE'
+                ? 401
+                : validation.errorCode === 'IP_RESTRICTED'
+                  ? 403
+                  : 401;
 
       return res.status(statusCode).json({
         error: validation.error,
@@ -148,8 +153,8 @@ export function requireApiKey(
     // Check required scopes
     if (options.requiredScopes && options.requiredScopes.length > 0) {
       const keyScopes = (key.scopes as string[]) || [];
-      const hasAllScopes = options.requiredScopes.every(scope =>
-        keyScopes.includes(scope) || keyScopes.includes('*')
+      const hasAllScopes = options.requiredScopes.every(
+        (scope) => keyScopes.includes(scope) || keyScopes.includes('*'),
       );
 
       if (!hasAllScopes) {
@@ -164,8 +169,8 @@ export function requireApiKey(
     // Check required permissions
     if (options.requiredPermissions && options.requiredPermissions.length > 0) {
       const keyPermissions = (key.permissions as string[]) || [];
-      const hasAllPermissions = options.requiredPermissions.every(perm =>
-        keyPermissions.includes(perm) || keyPermissions.includes('*')
+      const hasAllPermissions = options.requiredPermissions.every(
+        (perm) => keyPermissions.includes(perm) || keyPermissions.includes('*'),
       );
 
       if (!hasAllPermissions) {
@@ -240,26 +245,28 @@ export function logApiKeyUsage() {
       if (req.apiKey) {
         const responseTimeMs = Date.now() - startTime;
 
-        apiKeyService.logUsage(
-          req.apiKey.id,
-          req.apiKey.tenantId,
-          {
-            requestId: req.requestId || '',
-            method: req.method,
-            path: req.path,
-            queryParams: req.query,
-            clientIp: req.ip,
-            userAgent: req.headers['user-agent'],
-            origin: req.headers['origin'] as string,
-          },
-          {
-            statusCode: res.statusCode,
-            responseTimeMs,
-            errorMessage: res.statusCode >= 400 ? chunk?.toString() : undefined,
-          }
-        ).catch(err => {
-          console.error('[API Key Usage] Failed to log usage:', err);
-        });
+        apiKeyService
+          .logUsage(
+            req.apiKey.id,
+            req.apiKey.tenantId,
+            {
+              requestId: req.requestId || '',
+              method: req.method,
+              path: req.path,
+              queryParams: req.query,
+              clientIp: req.ip,
+              userAgent: req.headers['user-agent'],
+              origin: req.headers['origin'] as string,
+            },
+            {
+              statusCode: res.statusCode,
+              responseTimeMs,
+              errorMessage: res.statusCode >= 400 ? chunk?.toString() : undefined,
+            },
+          )
+          .catch((err) => {
+            console.error('[API Key Usage] Failed to log usage:', err);
+          });
       }
 
       return originalEnd(chunk, encoding, callback);
@@ -296,7 +303,7 @@ export function requireScopes(...scopes: string[]) {
       return res.status(401).json({ error: 'API key required' });
     }
 
-    const hasAllScopes = scopes.every(scope => hasScope(req, scope));
+    const hasAllScopes = scopes.every((scope) => hasScope(req, scope));
 
     if (!hasAllScopes) {
       return res.status(403).json({
@@ -319,7 +326,7 @@ export function requirePermissions(...permissions: string[]) {
       return res.status(401).json({ error: 'API key required' });
     }
 
-    const hasAllPermissions = permissions.every(perm => hasPermission(req, perm));
+    const hasAllPermissions = permissions.every((perm) => hasPermission(req, perm));
 
     if (!hasAllPermissions) {
       return res.status(403).json({
@@ -342,7 +349,7 @@ export function apiKeyAuth(
     requiredPermissions?: string[];
     rateLimit?: boolean;
     logUsage?: boolean;
-  } = {}
+  } = {},
 ) {
   const middlewares = [
     requireApiKey({
@@ -381,8 +388,8 @@ export function hybridAuth(options: { requiredScopes?: string[] } = {}) {
         // Check scopes
         if (options.requiredScopes && options.requiredScopes.length > 0) {
           const keyScopes = (key.scopes as string[]) || [];
-          const hasAllScopes = options.requiredScopes.every(scope =>
-            keyScopes.includes(scope) || keyScopes.includes('*')
+          const hasAllScopes = options.requiredScopes.every(
+            (scope) => keyScopes.includes(scope) || keyScopes.includes('*'),
           );
 
           if (!hasAllScopes) {

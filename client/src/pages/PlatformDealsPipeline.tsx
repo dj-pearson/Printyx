@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   DollarSign,
   TrendingUp,
@@ -20,11 +20,11 @@ import {
   Edit,
   ArrowRight,
   CheckCircle2,
-  XCircle
-} from "lucide-react";
-import { format } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
-import { useLocation } from "wouter";
+  XCircle,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
+import { useLocation } from 'wouter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,8 +32,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+} from '@/components/ui/dropdown-menu';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface Deal {
   id: string;
@@ -75,8 +75,12 @@ export default function PlatformDealsPipeline() {
   const [, setLocation] = useLocation();
 
   // Fetch pipeline data
-  const { data: pipelineData, isLoading, refetch } = useQuery<{ pipeline: PipelineStage[] }>({
-    queryKey: ["/api/platform-deals/pipeline"],
+  const {
+    data: pipelineData,
+    isLoading,
+    refetch,
+  } = useQuery<{ pipeline: PipelineStage[] }>({
+    queryKey: ['/api/platform-deals/pipeline'],
     refetchInterval: 30000,
   });
 
@@ -92,10 +96,10 @@ export default function PlatformDealsPipeline() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/platform-deals/pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platform-deals/pipeline'] });
       toast({
-        title: "Success",
-        description: "Deal moved successfully",
+        title: 'Success',
+        description: 'Deal moved successfully',
       });
     },
   });
@@ -112,10 +116,10 @@ export default function PlatformDealsPipeline() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/platform-deals/pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platform-deals/pipeline'] });
       toast({
-        title: "Success",
-        description: "Deal marked as won!",
+        title: 'Success',
+        description: 'Deal marked as won!',
       });
     },
   });
@@ -132,10 +136,10 @@ export default function PlatformDealsPipeline() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/platform-deals/pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platform-deals/pipeline'] });
       toast({
-        title: "Deal Closed",
-        description: "Deal marked as lost",
+        title: 'Deal Closed',
+        description: 'Deal marked as lost',
       });
     },
   });
@@ -157,11 +161,11 @@ export default function PlatformDealsPipeline() {
   const totalDeals = pipeline.reduce((sum, stage) => sum + stage.count, 0);
 
   const getStageColor = (stageName: string) => {
-    return STAGE_CONFIG.find(s => s.stage === stageName)?.color || 'bg-gray-100';
+    return STAGE_CONFIG.find((s) => s.stage === stageName)?.color || 'bg-gray-100';
   };
 
   const getStageDisplayName = (stageName: string) => {
-    return STAGE_CONFIG.find(s => s.stage === stageName)?.displayName || stageName;
+    return STAGE_CONFIG.find((s) => s.stage === stageName)?.displayName || stageName;
   };
 
   return (
@@ -174,9 +178,7 @@ export default function PlatformDealsPipeline() {
               <Briefcase className="w-8 h-8 text-primary" />
               Sales Pipeline
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Track deals through your sales process
-            </p>
+            <p className="text-muted-foreground mt-1">Track deals through your sales process</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => refetch()}>
@@ -234,7 +236,8 @@ export default function PlatformDealsPipeline() {
               <div className="text-2xl font-bold">
                 {totalWeightedValue > 0
                   ? ((totalWeightedValue / totalPipelineValue) * 100).toFixed(1)
-                  : 0}%
+                  : 0}
+                %
               </div>
               <p className="text-xs text-muted-foreground">Expected conversion</p>
             </CardContent>
@@ -263,17 +266,14 @@ export default function PlatformDealsPipeline() {
             <CardContent>
               <ScrollArea className="w-full whitespace-nowrap">
                 <div className="flex gap-4 pb-4">
-                  {STAGE_CONFIG.filter(config =>
-                    pipeline.some(s => s.stage === config.stage)
+                  {STAGE_CONFIG.filter((config) =>
+                    pipeline.some((s) => s.stage === config.stage),
                   ).map((stageConfig) => {
-                    const stage = pipeline.find(s => s.stage === stageConfig.stage);
+                    const stage = pipeline.find((s) => s.stage === stageConfig.stage);
                     if (!stage) return null;
 
                     return (
-                      <div
-                        key={stage.stage}
-                        className="flex-shrink-0 w-80 space-y-3"
-                      >
+                      <div key={stage.stage} className="flex-shrink-0 w-80 space-y-3">
                         {/* Stage Header */}
                         <div className={`${getStageColor(stage.stage)} p-4 rounded-lg`}>
                           <div className="flex items-center justify-between mb-2">
@@ -283,11 +283,15 @@ export default function PlatformDealsPipeline() {
                           <div className="space-y-1 text-sm">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Total:</span>
-                              <span className="font-semibold">{formatCurrency(stage.totalValue)}</span>
+                              <span className="font-semibold">
+                                {formatCurrency(stage.totalValue)}
+                              </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Weighted:</span>
-                              <span className="font-semibold">{formatCurrency(stage.weightedValue)}</span>
+                              <span className="font-semibold">
+                                {formatCurrency(stage.weightedValue)}
+                              </span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Probability:</span>
@@ -311,24 +315,31 @@ export default function PlatformDealsPipeline() {
                                     {deal.dealName}
                                   </h4>
                                   <DropdownMenu>
-                                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuTrigger
+                                      asChild
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
                                         <MoreVertical className="w-4 h-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                      <DropdownMenuItem onClick={(e) => {
-                                        e.stopPropagation();
-                                        setLocation(`/platform-crm/deals/${deal.id}`);
-                                      }}>
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setLocation(`/platform-crm/deals/${deal.id}`);
+                                        }}
+                                      >
                                         <Eye className="w-4 h-4 mr-2" />
                                         View Details
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={(e) => {
-                                        e.stopPropagation();
-                                        setLocation(`/platform-crm/deals/${deal.id}/edit`);
-                                      }}>
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setLocation(`/platform-crm/deals/${deal.id}/edit`);
+                                        }}
+                                      >
                                         <Edit className="w-4 h-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
@@ -349,7 +360,10 @@ export default function PlatformDealsPipeline() {
                                           e.stopPropagation();
                                           const reason = prompt('Reason for loss:');
                                           if (reason) {
-                                            closeLostMutation.mutate({ dealId: deal.id, lostReason: reason });
+                                            closeLostMutation.mutate({
+                                              dealId: deal.id,
+                                              lostReason: reason,
+                                            });
                                           }
                                         }}
                                       >
@@ -363,7 +377,9 @@ export default function PlatformDealsPipeline() {
                                 {/* Company */}
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                   <Building2 className="w-3 h-3" />
-                                  <span className="truncate">{deal.businessRecordName || 'Unknown'}</span>
+                                  <span className="truncate">
+                                    {deal.businessRecordName || 'Unknown'}
+                                  </span>
                                 </div>
 
                                 {/* Value */}
@@ -381,7 +397,10 @@ export default function PlatformDealsPipeline() {
                                   {deal.expectedCloseDate && (
                                     <div className="flex items-center gap-1">
                                       <Calendar className="w-3 h-3" />
-                                      <span>Close: {format(new Date(deal.expectedCloseDate), 'MMM d, yyyy')}</span>
+                                      <span>
+                                        Close:{' '}
+                                        {format(new Date(deal.expectedCloseDate), 'MMM d, yyyy')}
+                                      </span>
                                     </div>
                                   )}
                                   {deal.assignedRep && (
@@ -401,12 +420,14 @@ export default function PlatformDealsPipeline() {
                                       className="w-full text-xs"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        const currentIndex = STAGE_CONFIG.findIndex(s => s.stage === stage.stage);
+                                        const currentIndex = STAGE_CONFIG.findIndex(
+                                          (s) => s.stage === stage.stage,
+                                        );
                                         const nextStage = STAGE_CONFIG[currentIndex + 1];
                                         if (nextStage) {
                                           moveStageMutation.mutate({
                                             dealId: deal.id,
-                                            newStage: nextStage.stage
+                                            newStage: nextStage.stage,
                                           });
                                         }
                                       }}

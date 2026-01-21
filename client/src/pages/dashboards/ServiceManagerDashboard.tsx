@@ -26,7 +26,11 @@ export default function ServiceManagerDashboard() {
   });
 
   // Fetch regional service calls overview (Report 33)
-  const { data: serviceCallsData, isLoading: serviceCallsLoading, refetch: refetchServiceCalls } = useQuery({
+  const {
+    data: serviceCallsData,
+    isLoading: serviceCallsLoading,
+    refetch: refetchServiceCalls,
+  } = useQuery({
     queryKey: ['service-manager-reports', 'regional', 'service-calls', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -116,12 +120,8 @@ export default function ServiceManagerDashboard() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {serviceCallsData?.summary?.totalRegions || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across your territory
-            </p>
+            <div className="text-2xl font-bold">{serviceCallsData?.summary?.totalRegions || 0}</div>
+            <p className="text-xs text-muted-foreground">Across your territory</p>
           </CardContent>
         </Card>
 
@@ -131,9 +131,7 @@ export default function ServiceManagerDashboard() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {serviceCallsData?.summary?.totalCalls || 0}
-            </div>
+            <div className="text-2xl font-bold">{serviceCallsData?.summary?.totalCalls || 0}</div>
             <p className="text-xs text-muted-foreground">
               {format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}
             </p>
@@ -152,7 +150,8 @@ export default function ServiceManagerDashboard() {
             <p className="text-xs text-muted-foreground">
               {serviceCallsData?.insights?.healthStatus === 'healthy' && 'Excellent performance'}
               {serviceCallsData?.insights?.healthStatus === 'fair' && 'Good performance'}
-              {serviceCallsData?.insights?.healthStatus === 'needs_attention' && 'Needs improvement'}
+              {serviceCallsData?.insights?.healthStatus === 'needs_attention' &&
+                'Needs improvement'}
             </p>
           </CardContent>
         </Card>
@@ -167,7 +166,8 @@ export default function ServiceManagerDashboard() {
               {slaData?.summary?.overallCompliance?.toFixed(1) || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {slaData?.summary?.regionsOnTrack || 0} on track / {slaData?.summary?.regionsAtRisk || 0} at risk
+              {slaData?.summary?.regionsOnTrack || 0} on track /{' '}
+              {slaData?.summary?.regionsAtRisk || 0} at risk
             </p>
           </CardContent>
         </Card>
@@ -194,7 +194,10 @@ export default function ServiceManagerDashboard() {
               ) : (
                 <div className="space-y-4">
                   {serviceCallsData?.aggregated?.map((priority: any) => (
-                    <div key={priority.priority} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={priority.priority}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div>
                         <div className="font-medium">{priority.priority}</div>
                         <div className="text-sm text-muted-foreground">
@@ -227,17 +230,25 @@ export default function ServiceManagerDashboard() {
               ) : (
                 <div className="space-y-2">
                   {performanceData?.regions?.map((region: any) => (
-                    <div key={region.regionId} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={region.regionId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
-                        <div className="font-medium">#{region.ranking} {region.regionName}</div>
+                        <div className="font-medium">
+                          #{region.ranking} {region.regionName}
+                        </div>
                         <div className="text-sm text-muted-foreground">
-                          {region.locationCount} locations · {region.technicianCount} techs · {region.totalCalls} calls
+                          {region.locationCount} locations · {region.technicianCount} techs ·{' '}
+                          {region.totalCalls} calls
                         </div>
                       </div>
                       <div className="text-right space-y-1">
                         <div className="text-sm">FTF: {region.firstTimeFixRate.toFixed(1)}%</div>
                         <div className="text-sm">SLA: {region.slaCompliance.toFixed(1)}%</div>
-                        <div className="text-sm">Utilization: {region.utilizationRate.toFixed(1)}%</div>
+                        <div className="text-sm">
+                          Utilization: {region.utilizationRate.toFixed(1)}%
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -259,15 +270,21 @@ export default function ServiceManagerDashboard() {
               ) : (
                 <div className="space-y-2">
                   {slaData?.slas?.map((sla: any) => (
-                    <div key={sla.regionId} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={sla.regionId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
                         <div className="font-medium">{sla.regionName}</div>
                         <div className="text-sm text-muted-foreground">
-                          {sla.locationCount} locations · {sla.onTimeCalls} on time · {sla.atRiskCalls} at risk · {sla.overdueCalls} overdue
+                          {sla.locationCount} locations · {sla.onTimeCalls} on time ·{' '}
+                          {sla.atRiskCalls} at risk · {sla.overdueCalls} overdue
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`text-2xl font-bold ${sla.onTrack ? 'text-green-600' : 'text-red-600'}`}>
+                        <div
+                          className={`text-2xl font-bold ${sla.onTrack ? 'text-green-600' : 'text-red-600'}`}
+                        >
                           {sla.slaCompliancePercent.toFixed(1)}%
                         </div>
                         <div className="text-sm text-muted-foreground">
@@ -303,8 +320,13 @@ export default function ServiceManagerDashboard() {
                         <div>Documentation: {activity.documentationHours.toFixed(1)}h</div>
                       </div>
                       <div className="mt-2 pt-2 border-t flex justify-between text-sm">
-                        <span>Total: {activity.totalHours.toFixed(1)}h ({activity.locationCount} locations)</span>
-                        <span className="font-medium">Utilization: {activity.utilizationRate.toFixed(1)}%</span>
+                        <span>
+                          Total: {activity.totalHours.toFixed(1)}h ({activity.locationCount}{' '}
+                          locations)
+                        </span>
+                        <span className="font-medium">
+                          Utilization: {activity.utilizationRate.toFixed(1)}%
+                        </span>
                       </div>
                     </div>
                   ))}

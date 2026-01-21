@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import type { SupabaseUser } from './supabase-auth';
+import { isPlatformAdmin, getUserId } from '../utils/auth-helpers';
 
 export interface TenantRequest extends Request {
   tenant?: {
@@ -13,6 +14,96 @@ export interface TenantRequest extends Request {
   tenantId?: string;
   user?: any;
   supabaseUser?: SupabaseUser;
+}
+
+/**
+ * Security: Log tenant context mismatches for audit trail
+ */
+function logTenantSecurityEvent(
+  eventType: 'TENANT_MISMATCH' | 'CROSS_TENANT_ACCESS' | 'ADMIN_BYPASS',
+  details: {
+    userId?: string;
+    requestedTenantId: string;
+    userTenantId?: string;
+    isAdmin: boolean;
+    path: string;
+    method: string;
+    ip?: string;
+  },
+): void {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    event: eventType,
+    ...details,
+  };
+
+  if (eventType === 'TENANT_MISMATCH') {
+    console.warn('[SECURITY] Tenant mismatch attempt:', JSON.stringify(logEntry));
+  } else if (eventType === 'ADMIN_BYPASS') {
+    console.info('[SECURITY] Admin cross-tenant access:', JSON.stringify(logEntry));
+  } else {
+    console.info('[SECURITY] Tenant event:', JSON.stringify(logEntry));
+  }
+}
+
+/**
+ * Validate that the x-tenant-id header matches the user's assigned tenant.
+ * Platform admins can access any tenant.
+ * Returns the validated tenant ID or null if validation fails.
+ */
+function validateTenantHeader(
+  req: TenantRequest,
+  headerTenantId: string,
+): { valid: boolean; tenantId?: string; reason?: string } {
+  const userTenantId = req.supabaseUser?.tenantId || req.user?.tenantId;
+  const userId = getUserId(req as Request);
+  const isAdmin = isPlatformAdmin(req as Request);
+
+  // If user is not authenticated, allow the header (public endpoints)
+  if (!userId) {
+    return { valid: true, tenantId: headerTenantId };
+  }
+
+  // Platform admins can access any tenant
+  if (isAdmin) {
+    logTenantSecurityEvent('ADMIN_BYPASS', {
+      userId,
+      requestedTenantId: headerTenantId,
+      userTenantId,
+      isAdmin: true,
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+    });
+    return { valid: true, tenantId: headerTenantId };
+  }
+
+  // If user has no tenant assigned (unusual), reject cross-tenant access
+  if (!userTenantId) {
+    return {
+      valid: false,
+      reason: 'User has no assigned tenant',
+    };
+  }
+
+  // Validate header matches user's assigned tenant
+  if (headerTenantId !== userTenantId) {
+    logTenantSecurityEvent('TENANT_MISMATCH', {
+      userId,
+      requestedTenantId: headerTenantId,
+      userTenantId,
+      isAdmin: false,
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+    });
+    return {
+      valid: false,
+      reason: 'Tenant ID mismatch - access denied',
+    };
+  }
+
+  return { valid: true, tenantId: headerTenantId };
 }
 
 // Configuration for tenant routing
@@ -70,27 +161,22 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       return next();
     }
 
-    // Priority 2: x-tenant-id header (only when no JWT tenant - for API key auth scenarios)
-    // Note: API key validation should set req.user.tenantId if authenticated
+    // Priority 2: x-tenant-id header (for self-hosted and API scenarios)
+    // SECURITY: Validate header against user's JWT tenant to prevent cross-tenant access
+    const headerTenantId = req.get('x-tenant-id');
     if (headerTenantId && headerTenantId.length > 0) {
-      // If user is authenticated but has no JWT tenant, validate header against user's DB tenant
-      if (req.user?.tenantId && req.user.tenantId !== headerTenantId) {
-        const userIsPlatformAdmin =
-          req.user?.isPlatformUser || (req.user?.role?.level && req.user.role.level >= 8);
-        if (!userIsPlatformAdmin) {
-          console.warn(
-            `[TENANT SECURITY] User ${req.user?.id} header tenant mismatch: header=${headerTenantId}, user=${req.user.tenantId}`,
-          );
-          return res.status(403).json({
-            error: 'Forbidden',
-            message: 'You do not have permission to access this tenant.',
-            code: 'TENANT_ACCESS_DENIED',
-          });
-        }
+      const validation = validateTenantHeader(req, headerTenantId);
+
+      if (!validation.valid) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          message: validation.reason || 'Cross-tenant access denied',
+          code: 'TENANT_ACCESS_DENIED',
+        });
       }
 
-      req.tenantId = headerTenantId;
-      // console.log(`[TENANT DEBUG] Using x-tenant-id header: ${req.tenantId}`);
+      req.tenantId = validation.tenantId;
+      // console.log(`[TENANT DEBUG] Using validated x-tenant-id header: ${req.tenantId}`);
       return next();
     }
 

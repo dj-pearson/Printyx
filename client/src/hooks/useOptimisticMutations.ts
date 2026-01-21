@@ -36,16 +36,16 @@ export function useOptimisticCustomerMutation() {
         queryClient.setQueryData(['/api/business-records'], context.previousCustomers);
       }
       toast({
-        title: "Error",
-        description: "Failed to create customer. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create customer. Please try again.',
+        variant: 'destructive',
       });
     },
     onSuccess: (data) => {
       invalidateRelatedQueries('CUSTOMER_DATA');
       toast({
-        title: "Success",
-        description: "Customer created successfully",
+        title: 'Success',
+        description: 'Customer created successfully',
       });
     },
   });
@@ -61,12 +61,16 @@ export function useOptimisticServiceTicketMutation() {
     },
     onMutate: async (newTicket) => {
       await queryClient.cancelQueries({ queryKey: ['/api/service-tickets'] });
-      
+
       const previousTickets = queryClient.getQueryData(['/api/service-tickets']);
 
       queryClient.setQueryData(['/api/service-tickets'], (old: any) => {
-        if (!old) return [{ ...newTicket, id: `temp-${Date.now()}`, isOptimistic: true, status: 'open' }];
-        return [{ ...newTicket, id: `temp-${Date.now()}`, isOptimistic: true, status: 'open' }, ...old];
+        if (!old)
+          return [{ ...newTicket, id: `temp-${Date.now()}`, isOptimistic: true, status: 'open' }];
+        return [
+          { ...newTicket, id: `temp-${Date.now()}`, isOptimistic: true, status: 'open' },
+          ...old,
+        ];
       });
 
       return { previousTickets };
@@ -76,16 +80,16 @@ export function useOptimisticServiceTicketMutation() {
         queryClient.setQueryData(['/api/service-tickets'], context.previousTickets);
       }
       toast({
-        title: "Error",
-        description: "Failed to create service ticket. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create service ticket. Please try again.',
+        variant: 'destructive',
       });
     },
     onSuccess: () => {
       invalidateRelatedQueries('SERVICE_DATA');
       toast({
-        title: "Success",
-        description: "Service ticket created successfully",
+        title: 'Success',
+        description: 'Service ticket created successfully',
       });
     },
   });
@@ -101,16 +105,14 @@ export function useOptimisticTicketStatusUpdate() {
     },
     onMutate: async ({ id, status }) => {
       await queryClient.cancelQueries({ queryKey: ['/api/service-tickets'] });
-      
+
       const previousTickets = queryClient.getQueryData(['/api/service-tickets']);
 
       // Update ticket status optimistically
       queryClient.setQueryData(['/api/service-tickets'], (old: any) => {
         if (!old) return old;
-        return old.map((ticket: any) => 
-          ticket.id === id 
-            ? { ...ticket, status, updatedAt: new Date().toISOString() }
-            : ticket
+        return old.map((ticket: any) =>
+          ticket.id === id ? { ...ticket, status, updatedAt: new Date().toISOString() } : ticket,
         );
       });
 
@@ -121,16 +123,16 @@ export function useOptimisticTicketStatusUpdate() {
         queryClient.setQueryData(['/api/service-tickets'], context.previousTickets);
       }
       toast({
-        title: "Error", 
-        description: "Failed to update ticket status. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update ticket status. Please try again.',
+        variant: 'destructive',
       });
     },
     onSuccess: () => {
       invalidateRelatedQueries('SERVICE_DATA');
       toast({
-        title: "Success",
-        description: "Ticket status updated successfully",
+        title: 'Success',
+        description: 'Ticket status updated successfully',
       });
     },
   });
@@ -142,23 +144,23 @@ export function useOptimisticInventoryUpdate() {
 
   return useMutation({
     mutationFn: async ({ id, quantity }: { id: string; quantity: number }) => {
-      return await apiRequest(`/api/inventory/${id}`, { 
-        method: 'PATCH', 
-        body: JSON.stringify({ currentStock: quantity }) 
+      return await apiRequest(`/api/inventory/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ currentStock: quantity }),
       });
     },
     onMutate: async ({ id, quantity }) => {
       await queryClient.cancelQueries({ queryKey: ['/api/inventory'] });
-      
+
       const previousInventory = queryClient.getQueryData(['/api/inventory']);
 
       // Update inventory optimistically
       queryClient.setQueryData(['/api/inventory'], (old: any) => {
         if (!old) return old;
-        return old.map((item: any) => 
-          item.id === id 
+        return old.map((item: any) =>
+          item.id === id
             ? { ...item, currentStock: quantity, updatedAt: new Date().toISOString() }
-            : item
+            : item,
         );
       });
 
@@ -169,16 +171,16 @@ export function useOptimisticInventoryUpdate() {
         queryClient.setQueryData(['/api/inventory'], context.previousInventory);
       }
       toast({
-        title: "Error",
-        description: "Failed to update inventory. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update inventory. Please try again.',
+        variant: 'destructive',
       });
     },
     onSuccess: () => {
       invalidateRelatedQueries('INVENTORY_DATA');
       toast({
-        title: "Success",
-        description: "Inventory updated successfully",
+        title: 'Success',
+        description: 'Inventory updated successfully',
       });
     },
   });

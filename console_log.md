@@ -38,34 +38,34 @@ stallwart.build.js:1 stallwart: failed ping 1
 Printyx:1 The source list for the Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
 Printyx:1 The Content-Security-Policy directive 'default-src' contains 'report-uri' as a source expression. Did you want to add it as a directive and forget a semicolon?
 Printyx:1 The source list for Content Security Policy directive 'default-src' contains a source with an invalid path: '/api/4509669501698048/security/?sentry_key=7eb3d90eb4660416caf507087367e67e'. The query component, including the '?', will be ignored.
-_app-379e29ef11d3ccc0.js:13 
-      /////////////////////
-   ///////////////////////////
-  ////////@@@@@@@//////////////
-  ////////@@@@@@@//////////////
-  ////////@@@@@@@//////////////        Curious and driven?
-  ///////////////@@@@@@@///////        Work with us!
-  ///////////////@@@@@@@///////
-  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
-  ////////@@@@@@@//////////////
-  ////////@@@@@@@//////////////
-  ////////@@@@@@#//////////////
-   ///////////////////////////
-      /////////////////////
-      
+\_app-379e29ef11d3ccc0.js:13
+/////////////////////
+///////////////////////////
+////////@@@@@@@//////////////
+////////@@@@@@@//////////////
+////////@@@@@@@////////////// Curious and driven?
+///////////////@@@@@@@/////// Work with us!
+///////////////@@@@@@@///////
+///////////////@@@@@@@/////// https://join.replit.com/hack.with.us
+////////@@@@@@@//////////////
+////////@@@@@@@//////////////
+////////@@@@@@#//////////////
+///////////////////////////
+/////////////////////
+
 _app-379e29ef11d3ccc0.js:13 [LaunchDarkly] LaunchDarkly client initialized
-_app-379e29ef11d3ccc0.js:13 Adding extension: API Request Tester Object
-attached_assets/image_1755205416450.png:1  Failed to load resource: the server responded with a status of 404 ()
-attached_assets/image_1755205670240.png:1  Failed to load resource: the server responded with a status of 404 ()
+\_app-379e29ef11d3ccc0.js:13 Adding extension: API Request Tester Object
+attached_assets/image_1755205416450.png:1 Failed to load resource: the server responded with a status of 404 ()
+attached_assets/image_1755205670240.png:1 Failed to load resource: the server responded with a status of 404 ()
 Printyx:1 Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.
-_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
-(anonymous) @ _app-379e29ef11d3ccc0.js:13
-_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
-(anonymous) @ _app-379e29ef11d3ccc0.js:13
-_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
-(anonymous) @ _app-379e29ef11d3ccc0.js:13
-_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
-(anonymous) @ _app-379e29ef11d3ccc0.js:13
+\_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
+(anonymous) @ \_app-379e29ef11d3ccc0.js:13
+\_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
+(anonymous) @ \_app-379e29ef11d3ccc0.js:13
+\_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
+(anonymous) @ \_app-379e29ef11d3ccc0.js:13
+\_app-379e29ef11d3ccc0.js:13 If you do not provide children, you must specify an aria-label for accessibility
+(anonymous) @ \_app-379e29ef11d3ccc0.js:13
 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
 Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.
@@ -148,28 +148,28 @@ Allow attribute will take precedence over 'allowpaymentrequest'.
 Allow attribute will take precedence over 'allowpaymentrequest'.
 Allow attribute will take precedence over 'allowpaymentrequest'.
 Allow attribute will take precedence over 'allowpaymentrequest'.
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
-1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf:1  Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf:1 Failed to load resource: the server responded with a status of 500 (Internal Server Error)
 stallwart.build.js:1 stallwart: failed ping 1
-eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+eruda.js:2 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ VM18 eruda.js:2
 apply @ VM19 injected.js:253
 window.fetch @ VM34 main.tsx:41
 mutationFn @ VM144 QuoteView.tsx:87
-fn @ VM44 @tanstack_react-query.js:1189
+fn @ VM44 @tanstack*react-query.js:1189
 run @ VM44 @tanstack_react-query.js:494
 start @ VM44 @tanstack_react-query.js:536
 execute @ VM44 @tanstack_react-query.js:1225
@@ -192,7 +192,7 @@ dispatchEventForPluginEventSystem @ VM40 chunk-RPCDYKBN.js:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ VM40 chunk-RPCDYKBN.js:5478
 dispatchEvent @ VM40 chunk-RPCDYKBN.js:5472
 dispatchDiscreteEvent @ VM40 chunk-RPCDYKBN.js:5449
-eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+eruda.js:2 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ VM18 eruda.js:2
 apply @ VM19 injected.js:253
 window.fetch @ VM34 main.tsx:41
@@ -204,7 +204,7 @@ start @ VM44 @tanstack_react-query.js:536
 fetch @ VM44 @tanstack_react-query.js:926
 executeFetch_fn @ VM44 @tanstack_react-query.js:2211
 (anonymous) @ VM44 @tanstack_react-query.js:2245
-eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+eruda.js:2 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ VM18 eruda.js:2
 apply @ VM19 injected.js:253
 window.fetch @ VM34 main.tsx:41
@@ -221,7 +221,7 @@ start @ VM44 @tanstack_react-query.js:536
 fetch @ VM44 @tanstack_react-query.js:926
 executeFetch_fn @ VM44 @tanstack_react-query.js:2211
 (anonymous) @ VM44 @tanstack_react-query.js:2245
-eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+eruda.js:2 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ VM18 eruda.js:2
 apply @ VM19 injected.js:253
 window.fetch @ VM34 main.tsx:41
@@ -244,14 +244,14 @@ fetch @ VM44 @tanstack_react-query.js:926
 executeFetch_fn @ VM44 @tanstack_react-query.js:2211
 (anonymous) @ VM44 @tanstack_react-query.js:2245
 eruda.js:2 [vite] server connection lost. Polling for restart...
-eruda.js:2  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/ 502 (Bad Gateway)
+eruda.js:2 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/ 502 (Bad Gateway)
 window.fetch @ VM18 eruda.js:2
 apply @ VM19 injected.js:253
 window.fetch @ VM34 main.tsx:41
 ping @ VM20 client:736
 waitForSuccessfulPing @ VM20 client:749
 (anonymous) @ VM20 client:561
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -311,7 +311,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -371,7 +371,7 @@ performConcurrentWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18718
 workLoop @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:197
 flushWork @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:176
 performWorkUntilDeadline @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -431,7 +431,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js:18718
 workLoop @ chunk-RPCDYKBN.js:197
 flushWork @ chunk-RPCDYKBN.js:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -496,7 +496,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -561,7 +561,7 @@ performConcurrentWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18718
 workLoop @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:197
 flushWork @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:176
 performWorkUntilDeadline @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -626,7 +626,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js:18718
 workLoop @ chunk-RPCDYKBN.js:197
 flushWork @ chunk-RPCDYKBN.js:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -696,7 +696,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -766,7 +766,7 @@ performConcurrentWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18718
 workLoop @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:197
 flushWork @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:176
 performWorkUntilDeadline @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -836,7 +836,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js:18718
 workLoop @ chunk-RPCDYKBN.js:197
 flushWork @ chunk-RPCDYKBN.js:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -863,7 +863,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -890,7 +890,7 @@ commitRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18895
 flushSyncCallbacks @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:9119
 (anonymous) @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -917,7 +917,7 @@ commitRoot @ chunk-RPCDYKBN.js:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js:9119
 (anonymous) @ chunk-RPCDYKBN.js:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -943,7 +943,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -969,7 +969,7 @@ commitRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18895
 flushSyncCallbacks @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:9119
 (anonymous) @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -995,7 +995,7 @@ commitRoot @ chunk-RPCDYKBN.js:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js:9119
 (anonymous) @ chunk-RPCDYKBN.js:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1027,7 +1027,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1059,7 +1059,7 @@ commitRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18895
 flushSyncCallbacks @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:9119
 (anonymous) @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1091,7 +1091,7 @@ commitRoot @ chunk-RPCDYKBN.js:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js:9119
 (anonymous) @ chunk-RPCDYKBN.js:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1122,7 +1122,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1153,7 +1153,7 @@ commitRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18895
 flushSyncCallbacks @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:9119
 (anonymous) @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1184,7 +1184,7 @@ commitRoot @ chunk-RPCDYKBN.js:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js:9119
 (anonymous) @ chunk-RPCDYKBN.js:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1220,7 +1220,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1256,7 +1256,7 @@ commitRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18895
 flushSyncCallbacks @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:9119
 (anonymous) @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1292,7 +1292,7 @@ commitRoot @ chunk-RPCDYKBN.js:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js:9119
 (anonymous) @ chunk-RPCDYKBN.js:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1329,7 +1329,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1366,7 +1366,7 @@ commitRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18895
 flushSyncCallbacks @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:9119
 (anonymous) @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18627
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1403,7 +1403,7 @@ commitRoot @ chunk-RPCDYKBN.js:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js:9119
 (anonymous) @ chunk-RPCDYKBN.js:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1449,7 +1449,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1495,7 +1495,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1541,7 +1541,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js:5478
 dispatchEvent @ chunk-RPCDYKBN.js:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1592,7 +1592,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1643,7 +1643,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1694,7 +1694,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1722,7 +1722,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1750,7 +1750,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1778,7 +1778,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -1834,7 +1834,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1890,7 +1890,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -1947,7 +1947,7 @@ dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay 
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
 stallwart.build.js:1 stallwart: failed ping 1
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -2020,7 +2020,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2093,7 +2093,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2166,7 +2166,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -2194,7 +2194,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2222,7 +2222,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2250,7 +2250,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -2328,7 +2328,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2406,7 +2406,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2484,7 +2484,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -2512,7 +2512,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2540,7 +2540,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2568,7 +2568,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -2651,7 +2651,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2734,7 +2734,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -2819,7 +2819,209 @@ dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
 stallwart.build.js:1 stallwart: failed ping 1
 stallwart.build.js:1 stallwart: failed ping 2
-gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404:1  GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
+gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404:1 GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
+Image
+* @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+oq @ framework-c2921b07f595aac2.js:1
+oQ @ framework-c2921b07f595aac2.js:1
+806ad7172e9c70b2ee6a2ff2bb0bf390:1 GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
 Image
 _ @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
@@ -3021,209 +3223,7 @@ oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
 oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
-806ad7172e9c70b2ee6a2ff2bb0bf390:1  GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
-Image
-_ @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-oq @ framework-c2921b07f595aac2.js:1
-oQ @ framework-c2921b07f595aac2.js:1
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -3251,7 +3251,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -3279,7 +3279,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…bAidUXY_xgc7TDNb:41
@@ -3307,7 +3307,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -3367,7 +3367,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…o4C4SQpfuO51KFnh:41
@@ -3427,7 +3427,7 @@ performConcurrentWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18718
 workLoop @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:197
 flushWork @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:176
 performWorkUntilDeadline @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -3492,7 +3492,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…o4C4SQpfuO51KFnh:41
@@ -3557,7 +3557,7 @@ performConcurrentWorkOnRoot @ 1ae0dc68-fc15-4804-a…js?v=3b3e4a15:18718
 workLoop @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:197
 flushWork @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:176
 performWorkUntilDeadline @ 1ae0dc68-fc15-4804-a…N.js?v=3b3e4a15:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -3585,7 +3585,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ 1ae0dc68-fc15-4804-a…da/3.2.3/eruda.js:2
 apply @ 1ae0dc68-fc15-4804-a…ols/injected.js:253
 window.fetch @ 1ae0dc68-fc15-4804-a…o4C4SQpfuO51KFnh:41
@@ -3613,7 +3613,7 @@ dispatchEventForPluginEventSystem @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5478
 dispatchEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ 1ae0dc68-fc15-4804-a….js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -3683,7 +3683,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ main.tsx:41
@@ -3753,7 +3753,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js:18718
 workLoop @ chunk-RPCDYKBN.js:197
 flushWork @ chunk-RPCDYKBN.js:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -3781,7 +3781,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ eruda.js:2
 apply @ injected.js:253
 window.fetch @ main.tsx:41
@@ -3810,7 +3810,7 @@ dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay 
 dispatchEvent @ chunk-RPCDYKBN.js:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js:5449
 stallwart.build.js:1 stallwart: failed ping 1
-806ad7172e9c70b2ee6a2ff2bb0bf390:1  GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
+806ad7172e9c70b2ee6a2ff2bb0bf390:1 GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
 Image
 _ @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
@@ -4012,9 +4012,9 @@ oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
 oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
-806ad7172e9c70b2ee6a2ff2bb0bf390:1  GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
+806ad7172e9c70b2ee6a2ff2bb0bf390:1 GET https://gravatar.com/avatar/806ad7172e9c70b2ee6a2ff2bb0bf390?d=404 404 (Not Found)
 Image
-_ @ framework-c2921b07f595aac2.js:1
+\_ @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
 oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
@@ -4214,7 +4214,7 @@ oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
 oq @ framework-c2921b07f595aac2.js:1
 oQ @ framework-c2921b07f595aac2.js:1
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4274,7 +4274,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4339,7 +4339,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4367,7 +4367,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4437,7 +4437,7 @@ performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18718
 workLoop @ chunk-RPCDYKBN.js?v=3b3e4a15:197
 flushWork @ chunk-RPCDYKBN.js?v=3b3e4a15:176
 performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=3b3e4a15:384
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4465,7 +4465,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4492,7 +4492,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4524,7 +4524,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4550,7 +4550,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4587,7 +4587,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4618,7 +4618,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4645,7 +4645,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4677,7 +4677,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/metrics 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4713,7 +4713,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4750,7 +4750,7 @@ commitRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:19277
 performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=3b3e4a15:18895
 flushSyncCallbacks @ chunk-RPCDYKBN.js?v=3b3e4a15:9119
 (anonymous) @ chunk-RPCDYKBN.js?v=3b3e4a15:18627
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4796,7 +4796,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4847,7 +4847,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4875,7 +4875,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/performance/alerts 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4931,7 +4931,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52
@@ -4959,7 +4959,7 @@ dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=3b3e4a15:7173
 dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=3b3e4a15:5478
 dispatchEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5472
 dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=3b3e4a15:5449
-injected.js:253  GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
+injected.js:253 GET https://1ae0dc68-fc15-4804-aadf-3417c5bfedcd-00-2jj1pve2wfxm.kirk.replit.dev/api/proposals/daf62fa0-5464-4912-a038-40a000fa0259/export/manager-pdf 500 (Internal Server Error)
 window.fetch @ Network.js:219
 apply @ injected.js:253
 window.fetch @ main.tsx:52

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Plus,
   MoreHorizontal,
@@ -25,8 +25,8 @@ import {
   Timer,
   Users,
   GripVertical,
-} from "lucide-react";
-import { format, isToday, isTomorrow, isAfter, isBefore } from "date-fns";
+} from 'lucide-react';
+import { format, isToday, isTomorrow, isAfter, isBefore } from 'date-fns';
 import {
   DndContext,
   DragEndEvent,
@@ -39,15 +39,15 @@ import {
   closestCorners,
   useDroppable,
   useDraggable,
-} from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "in_progress" | "review" | "completed" | "cancelled";
-  priority: "low" | "medium" | "high" | "urgent";
+  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string;
   assignedToName?: string;
   assignedToAvatar?: string;
@@ -70,24 +70,20 @@ interface TaskBoardViewProps {
 }
 
 const statusColumns = [
-  { id: "todo", title: "To Do", color: "bg-gray-100", limit: null },
-  { id: "in_progress", title: "In Progress", color: "bg-blue-100", limit: 5 },
-  { id: "review", title: "Review", color: "bg-purple-100", limit: 3 },
-  { id: "completed", title: "Completed", color: "bg-green-100", limit: null },
+  { id: 'todo', title: 'To Do', color: 'bg-gray-100', limit: null },
+  { id: 'in_progress', title: 'In Progress', color: 'bg-blue-100', limit: 5 },
+  { id: 'review', title: 'Review', color: 'bg-purple-100', limit: 3 },
+  { id: 'completed', title: 'Completed', color: 'bg-green-100', limit: null },
 ];
 
 const priorityConfig = {
-  urgent: { label: "Urgent", color: "bg-red-500", icon: "🔥" },
-  high: { label: "High", color: "bg-orange-500", icon: "⚡" },
-  medium: { label: "Medium", color: "bg-yellow-500", icon: "📌" },
-  low: { label: "Low", color: "bg-green-500", icon: "📋" },
+  urgent: { label: 'Urgent', color: 'bg-red-500', icon: '🔥' },
+  high: { label: 'High', color: 'bg-orange-500', icon: '⚡' },
+  medium: { label: 'Medium', color: 'bg-yellow-500', icon: '📌' },
+  low: { label: 'Low', color: 'bg-green-500', icon: '📋' },
 };
 
-export function TaskBoardView({
-  groupedTasks,
-  onInlineEdit,
-  teamMembers,
-}: TaskBoardViewProps) {
+export function TaskBoardView({ groupedTasks, onInlineEdit, teamMembers }: TaskBoardViewProps) {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   // Configure sensors for mobile-first drag and drop
@@ -103,14 +99,17 @@ export function TaskBoardView({
         delay: 150, // 150ms hold before drag starts (better than 200ms)
         tolerance: 10, // 10px tolerance for tap vs drag (increased for mobile)
       },
-    })
+    }),
   );
 
   // Organize tasks by status for board view
-  const tasksByStatus = statusColumns.reduce((acc, column) => {
-    acc[column.id] = [];
-    return acc;
-  }, {} as Record<string, Task[]>);
+  const tasksByStatus = statusColumns.reduce(
+    (acc, column) => {
+      acc[column.id] = [];
+      return acc;
+    },
+    {} as Record<string, Task[]>,
+  );
 
   // Flatten all tasks and organize by status
   groupedTasks.forEach(([groupName, tasks]) => {
@@ -134,7 +133,7 @@ export function TaskBoardView({
       const newStatus = over.id as string;
 
       if (task && task.status !== newStatus) {
-        onInlineEdit(task.id, "status", newStatus);
+        onInlineEdit(task.id, 'status', newStatus);
       }
     }
 
@@ -193,10 +192,7 @@ export function TaskBoardView({
 }
 
 // Helper function to find task by ID
-function findTaskById(
-  taskId: string,
-  tasksByStatus: Record<string, Task[]>
-): Task | null {
+function findTaskById(taskId: string, tasksByStatus: Record<string, Task[]>): Task | null {
   for (const tasks of Object.values(tasksByStatus)) {
     const task = tasks.find((t) => t.id === taskId);
     if (task) return task;
@@ -232,19 +228,14 @@ function DroppableColumn({
       className="flex-shrink-0 w-[85vw] sm:w-80 md:w-[320px] lg:w-[340px] snap-center md:snap-align-none"
     >
       <Card
-        className={`h-full transition-colors ${
-          isOver ? "ring-2 ring-blue-500 ring-offset-2" : ""
-        }`}
+        className={`h-full transition-colors ${isOver ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}
       >
         {/* Touch-friendly column header with proper padding */}
         <CardHeader className={`pb-3 pt-4 px-4 sm:px-4 ${color}`}>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm sm:text-base font-semibold flex items-center gap-2">
               {title}
-              <Badge
-                variant={isOverLimit ? "destructive" : "secondary"}
-                className="text-xs"
-              >
+              <Badge variant={isOverLimit ? 'destructive' : 'secondary'} className="text-xs">
                 {tasks.length}
                 {limit && ` / ${limit}`}
               </Badge>
@@ -258,9 +249,7 @@ function DroppableColumn({
             </Button>
           </div>
           {limit && isOverLimit && (
-            <p className="text-xs text-red-600 mt-1">
-              Over limit - consider moving some tasks
-            </p>
+            <p className="text-xs text-red-600 mt-1">Over limit - consider moving some tasks</p>
           )}
         </CardHeader>
 
@@ -303,10 +292,9 @@ function DraggableTaskCard({
   teamMembers: any[];
   onInlineEdit: (taskId: string, field: string, value: any) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: task.id,
-    });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -345,14 +333,14 @@ function TaskCard({
 
   const getDueDateColor = (status: string | null) => {
     switch (status) {
-      case "overdue":
-        return "text-red-600 bg-red-50";
-      case "today":
-        return "text-yellow-600 bg-yellow-50";
-      case "tomorrow":
-        return "text-blue-600 bg-blue-50";
+      case 'overdue':
+        return 'text-red-600 bg-red-50';
+      case 'today':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'tomorrow':
+        return 'text-blue-600 bg-blue-50';
       default:
-        return "text-gray-600 bg-gray-50";
+        return 'text-gray-600 bg-gray-50';
     }
   };
 
@@ -360,9 +348,9 @@ function TaskCard({
     <Card
       className={`
         hover:shadow-md transition-all border-l-4 touch-manipulation
-        ${isDragging ? "shadow-xl opacity-50" : "active:scale-[0.98]"}
+        ${isDragging ? 'shadow-xl opacity-50' : 'active:scale-[0.98]'}
       `}
-      style={{ borderLeftColor: priorityConf.color.replace("bg-", "#") }}
+      style={{ borderLeftColor: priorityConf.color.replace('bg-', '#') }}
     >
       <CardContent className="p-4 space-y-3 min-h-[44px]">
         {/* Task Header with Drag Handle */}
@@ -376,9 +364,7 @@ function TaskCard({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm leading-tight line-clamp-2">
-              {task.title}
-            </h4>
+            <h4 className="font-medium text-sm leading-tight line-clamp-2">{task.title}</h4>
             {task.projectName && (
               <Badge variant="outline" className="text-xs mt-1">
                 {task.projectName}
@@ -417,9 +403,7 @@ function TaskCard({
 
         {/* Task Description */}
         {task.description && (
-          <p className="text-xs text-gray-600 line-clamp-2">
-            {task.description}
-          </p>
+          <p className="text-xs text-gray-600 line-clamp-2">{task.description}</p>
         )}
 
         {/* Tags */}
@@ -453,24 +437,24 @@ function TaskCard({
         {task.dueDate && (
           <div
             className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${getDueDateColor(
-              dueDateStatus
+              dueDateStatus,
             )}`}
           >
-            {dueDateStatus === "overdue" ? (
+            {dueDateStatus === 'overdue' ? (
               <AlertTriangle className="h-3 w-3" />
-            ) : dueDateStatus === "today" ? (
+            ) : dueDateStatus === 'today' ? (
               <Clock className="h-3 w-3" />
             ) : (
               <Calendar className="h-3 w-3" />
             )}
             <span>
-              {dueDateStatus === "today"
-                ? "Due today"
-                : dueDateStatus === "tomorrow"
-                ? "Due tomorrow"
-                : dueDateStatus === "overdue"
-                ? "Overdue"
-                : format(new Date(task.dueDate), "MMM dd")}
+              {dueDateStatus === 'today'
+                ? 'Due today'
+                : dueDateStatus === 'tomorrow'
+                  ? 'Due tomorrow'
+                  : dueDateStatus === 'overdue'
+                    ? 'Overdue'
+                    : format(new Date(task.dueDate), 'MMM dd')}
             </span>
           </div>
         )}
@@ -525,7 +509,7 @@ function TaskCard({
               <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
                 <AvatarImage src={assignee.avatar} />
                 <AvatarFallback className="text-xs">
-                  {assignee.name?.charAt(0)?.toUpperCase() || "?"}
+                  {assignee.name?.charAt(0)?.toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
             ) : (
@@ -546,8 +530,8 @@ function getDueDateStatus(dueDate?: string): string | null {
   const due = new Date(dueDate);
   const now = new Date();
 
-  if (isToday(due)) return "today";
-  if (isBefore(due, now)) return "overdue";
-  if (isTomorrow(due)) return "tomorrow";
-  return "upcoming";
+  if (isToday(due)) return 'today';
+  if (isBefore(due, now)) return 'overdue';
+  if (isTomorrow(due)) return 'tomorrow';
+  return 'upcoming';
 }

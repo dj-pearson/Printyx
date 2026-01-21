@@ -6,7 +6,12 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { articleRatings, articleVotes, knowledgeArticles, readingHistory } from '../../shared/knowledge-base-schema';
+import {
+  articleRatings,
+  articleVotes,
+  knowledgeArticles,
+  readingHistory,
+} from '../../shared/knowledge-base-schema';
 import { eq, and, desc, sql, avg, count } from 'drizzle-orm';
 
 const router = Router();
@@ -52,12 +57,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
         oneStarCount: sql<number>`count(*) filter (where ${articleRatings.rating} = 1)`,
       })
       .from(articleRatings)
-      .where(
-        and(
-          eq(articleRatings.articleId, articleId),
-          eq(articleRatings.tenantId, tenantId)
-        )
-      );
+      .where(and(eq(articleRatings.articleId, articleId), eq(articleRatings.tenantId, tenantId)));
 
     // Get vote statistics
     const [voteStats] = await db
@@ -68,12 +68,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
         inaccurateCount: sql<number>`count(*) filter (where ${articleVotes.voteType} = 'inaccurate')`,
       })
       .from(articleVotes)
-      .where(
-        and(
-          eq(articleVotes.articleId, articleId),
-          eq(articleVotes.tenantId, tenantId)
-        )
-      );
+      .where(and(eq(articleVotes.articleId, articleId), eq(articleVotes.tenantId, tenantId)));
 
     // Get recent reviews (ratings with comments)
     const recentReviews = await db
@@ -90,8 +85,8 @@ router.get('/:articleId', async (req: Request, res: Response) => {
         and(
           eq(articleRatings.articleId, articleId),
           eq(articleRatings.tenantId, tenantId),
-          sql`${articleRatings.comment} IS NOT NULL`
-        )
+          sql`${articleRatings.comment} IS NOT NULL`,
+        ),
       )
       .orderBy(desc(articleRatings.createdAt))
       .limit(10);
@@ -160,8 +155,8 @@ router.post('/', async (req: Request, res: Response) => {
         and(
           eq(readingHistory.userId, userId),
           eq(readingHistory.articleId, articleId),
-          eq(readingHistory.completed, true)
-        )
+          eq(readingHistory.completed, true),
+        ),
       )
       .limit(1);
 
@@ -175,8 +170,8 @@ router.post('/', async (req: Request, res: Response) => {
         and(
           eq(articleRatings.userId, userId),
           eq(articleRatings.articleId, articleId),
-          eq(articleRatings.ratingType, ratingType)
-        )
+          eq(articleRatings.ratingType, ratingType),
+        ),
       )
       .limit(1);
 
@@ -216,7 +211,8 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: existing.length > 0 ? 'Rating updated successfully' : 'Rating submitted successfully',
+      message:
+        existing.length > 0 ? 'Rating updated successfully' : 'Rating submitted successfully',
       rating: result,
     });
   } catch (error) {
@@ -246,8 +242,8 @@ router.get('/user/:articleId', async (req: Request, res: Response) => {
         and(
           eq(articleRatings.userId, userId),
           eq(articleRatings.articleId, articleId),
-          eq(articleRatings.ratingType, ratingType as string)
-        )
+          eq(articleRatings.ratingType, ratingType as string),
+        ),
       )
       .limit(1);
 
@@ -295,12 +291,7 @@ router.post('/votes', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleVotes)
-      .where(
-        and(
-          eq(articleVotes.userId, userId),
-          eq(articleVotes.articleId, articleId)
-        )
-      )
+      .where(and(eq(articleVotes.userId, userId), eq(articleVotes.articleId, articleId)))
       .limit(1);
 
     let result;
@@ -361,12 +352,7 @@ router.get('/votes/user/:articleId', async (req: Request, res: Response) => {
     const vote = await db
       .select()
       .from(articleVotes)
-      .where(
-        and(
-          eq(articleVotes.userId, userId),
-          eq(articleVotes.articleId, articleId)
-        )
-      )
+      .where(and(eq(articleVotes.userId, userId), eq(articleVotes.articleId, articleId)))
       .limit(1);
 
     res.json({
@@ -397,12 +383,7 @@ router.delete('/:ratingId', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleRatings)
-      .where(
-        and(
-          eq(articleRatings.id, ratingId),
-          eq(articleRatings.userId, userId)
-        )
-      )
+      .where(and(eq(articleRatings.id, ratingId), eq(articleRatings.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -412,9 +393,7 @@ router.delete('/:ratingId', async (req: Request, res: Response) => {
       });
     }
 
-    await db
-      .delete(articleRatings)
-      .where(eq(articleRatings.id, ratingId));
+    await db.delete(articleRatings).where(eq(articleRatings.id, ratingId));
 
     res.json({
       success: true,
@@ -443,12 +422,7 @@ router.delete('/votes/:voteId', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleVotes)
-      .where(
-        and(
-          eq(articleVotes.id, voteId),
-          eq(articleVotes.userId, userId)
-        )
-      )
+      .where(and(eq(articleVotes.id, voteId), eq(articleVotes.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -458,9 +432,7 @@ router.delete('/votes/:voteId', async (req: Request, res: Response) => {
       });
     }
 
-    await db
-      .delete(articleVotes)
-      .where(eq(articleVotes.id, voteId));
+    await db.delete(articleVotes).where(eq(articleVotes.id, voteId));
 
     res.json({
       success: true,

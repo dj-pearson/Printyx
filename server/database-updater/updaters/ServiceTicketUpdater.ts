@@ -33,17 +33,17 @@ export interface ServiceTicketData {
 
 export class ServiceTicketUpdater extends BaseUpdater {
   private priorities = {
-    'low': 0.40,
-    'medium': 0.35,
-    'high': 0.20,
-    'urgent': 0.05,
+    low: 0.4,
+    medium: 0.35,
+    high: 0.2,
+    urgent: 0.05,
   };
 
   private statuses = {
-    'open': 0.30,
-    'assigned': 0.25,
+    open: 0.3,
+    assigned: 0.25,
     'in-progress': 0.25,
-    'completed': 0.20,
+    completed: 0.2,
   };
 
   private ticketCounter = 1000; // Starting ticket number
@@ -51,7 +51,7 @@ export class ServiceTicketUpdater extends BaseUpdater {
 
   constructor(options: UpdaterOptions) {
     super('service_tickets', options);
-    
+
     if (!options.customerId) {
       throw new Error('Service ticket updater requires customer ID');
     }
@@ -63,9 +63,11 @@ export class ServiceTicketUpdater extends BaseUpdater {
   protected async validateExecution(): Promise<void> {
     // Fetch available equipment for this customer
     this.availableEquipmentIds = await this.fetchCustomerEquipmentIds();
-    
+
     if (this.availableEquipmentIds.length === 0) {
-      this.logger.warn('No equipment found for customer, will create tickets without equipment reference');
+      this.logger.warn(
+        'No equipment found for customer, will create tickets without equipment reference',
+      );
     }
 
     // Get next ticket number
@@ -82,10 +84,10 @@ export class ServiceTicketUpdater extends BaseUpdater {
    */
   protected async generateData(): Promise<ServiceTicketData[]> {
     const tickets: ServiceTicketData[] = [];
-    
+
     // Generate 1-2 service tickets per execution
     const ticketCount = this.randomInRange(1, 2);
-    
+
     for (let i = 0; i < ticketCount; i++) {
       const ticket = await this.generateSingleTicket();
       tickets.push(ticket);
@@ -147,7 +149,7 @@ export class ServiceTicketUpdater extends BaseUpdater {
     const priority = this.selectFromDistribution(this.priorities);
     const status = this.selectFromDistribution(this.statuses);
     const ticketType = this.selectTicketType();
-    
+
     const ticket: ServiceTicketData = {
       id: this.generateUuid(),
       tenantId: this.tenantId,
@@ -187,16 +189,16 @@ export class ServiceTicketUpdater extends BaseUpdater {
    */
   private selectTicketType(): string {
     const types = {
-      'paper_jam': 0.20,
-      'quality_issue': 0.15,
-      'network_connectivity': 0.12,
-      'preventive_maintenance': 0.10,
-      'toner_replacement': 0.08,
-      'drum_replacement': 0.08,
-      'error_codes': 0.10,
-      'user_training': 0.05,
-      'software_issue': 0.07,
-      'hardware_failure': 0.05,
+      paper_jam: 0.2,
+      quality_issue: 0.15,
+      network_connectivity: 0.12,
+      preventive_maintenance: 0.1,
+      toner_replacement: 0.08,
+      drum_replacement: 0.08,
+      error_codes: 0.1,
+      user_training: 0.05,
+      software_issue: 0.07,
+      hardware_failure: 0.05,
     };
 
     return this.selectFromDistribution(types);
@@ -340,7 +342,8 @@ export class ServiceTicketUpdater extends BaseUpdater {
       ],
     };
 
-    const typeDescriptions = descriptions[ticketType as keyof typeof descriptions] || descriptions.paper_jam;
+    const typeDescriptions =
+      descriptions[ticketType as keyof typeof descriptions] || descriptions.paper_jam;
     return this.randomFromArray(typeDescriptions);
   }
 
@@ -358,7 +361,11 @@ export class ServiceTicketUpdater extends BaseUpdater {
       error_codes: ['diagnostic_troubleshooting', 'mechanical_repair', 'electrical_systems'],
       user_training: ['customer_training', 'software_configuration'],
       software_issue: ['software_troubleshooting', 'network_configuration'],
-      hardware_failure: ['advanced_mechanical_repair', 'electrical_systems', 'component_replacement'],
+      hardware_failure: [
+        'advanced_mechanical_repair',
+        'electrical_systems',
+        'component_replacement',
+      ],
     };
 
     return skillSets[ticketType as keyof typeof skillSets] || ['general_maintenance'];
@@ -422,7 +429,7 @@ export class ServiceTicketUpdater extends BaseUpdater {
     const area = this.randomInRange(200, 999);
     const exchange = this.randomInRange(200, 999);
     const number = this.randomInRange(1000, 9999);
-    
+
     return `(${area}) ${exchange}-${number}`;
   }
 
@@ -470,12 +477,12 @@ export class ServiceTicketUpdater extends BaseUpdater {
     const daysBack = this.randomInRange(0, 3);
     const date = new Date();
     date.setDate(date.getDate() - daysBack);
-    
+
     // Set random business hour
     const hour = this.randomInRange(8, 17);
     const minute = this.randomInRange(0, 59);
     date.setHours(hour, minute, 0, 0);
-    
+
     return date;
   }
 
@@ -516,14 +523,11 @@ export class ServiceTicketUpdater extends BaseUpdater {
         .select({ id: equipment.id })
         .from(equipment)
         .where(
-          and(
-            eq(equipment.tenantId, this.tenantId),
-            eq(equipment.customerId, this.customerId!)
-          )
+          and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, this.customerId!)),
         )
         .limit(20);
 
-      return equipmentRecords.map(record => record.id);
+      return equipmentRecords.map((record) => record.id);
     } catch (error) {
       this.logger.error('Failed to fetch customer equipment IDs', error);
       return [];

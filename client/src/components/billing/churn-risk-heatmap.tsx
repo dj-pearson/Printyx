@@ -1,20 +1,15 @@
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
-import { AlertCircle, TrendingDown, Phone, Mail } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card } from '@/components/ui/card';
+import { AlertCircle, TrendingDown, Phone, Mail } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChurnPrediction {
   customerId: string;
   customerName: string;
   churnRisk: number;
-  riskLevel: "low" | "medium" | "high" | "critical";
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
   factors: Array<{
     factor: string;
     impact: number;
@@ -40,39 +35,39 @@ export function ChurnRiskHeatmap({ data }: ChurnRiskHeatmapProps) {
 
   const getRiskColor = (riskLevel: string) => {
     switch (riskLevel) {
-      case "critical":
-        return "bg-red-500";
-      case "high":
-        return "bg-orange-500";
-      case "medium":
-        return "bg-amber-500";
-      case "low":
-        return "bg-green-500";
+      case 'critical':
+        return 'bg-red-500';
+      case 'high':
+        return 'bg-orange-500';
+      case 'medium':
+        return 'bg-amber-500';
+      case 'low':
+        return 'bg-green-500';
       default:
-        return "bg-gray-500";
+        return 'bg-gray-500';
     }
   };
 
   const getRiskBadge = (riskLevel: string, churnRisk: number) => {
     const colors: Record<string, string> = {
-      critical: "bg-red-100 text-red-800",
-      high: "bg-orange-100 text-orange-800",
-      medium: "bg-amber-100 text-amber-800",
-      low: "bg-green-100 text-green-800",
+      critical: 'bg-red-100 text-red-800',
+      high: 'bg-orange-100 text-orange-800',
+      medium: 'bg-amber-100 text-amber-800',
+      low: 'bg-green-100 text-green-800',
     };
 
     return (
-      <Badge className={colors[riskLevel] || ""}>
+      <Badge className={colors[riskLevel] || ''}>
         {riskLevel.toUpperCase()} ({churnRisk}%)
       </Badge>
     );
   };
 
   const getImpactColor = (impact: number) => {
-    if (impact > 0) return "text-green-600";
-    if (impact < -20) return "text-red-600";
-    if (impact < 0) return "text-orange-600";
-    return "text-gray-600";
+    if (impact > 0) return 'text-green-600';
+    if (impact < -20) return 'text-red-600';
+    if (impact < 0) return 'text-orange-600';
+    return 'text-gray-600';
   };
 
   // Sort by risk level (highest first)
@@ -133,14 +128,17 @@ export function ChurnRiskHeatmap({ data }: ChurnRiskHeatmapProps) {
               <div className="grid grid-cols-2 gap-2">
                 {customer.factors.map((factor, index) => (
                   <div key={index} className="flex items-start gap-2 text-sm">
-                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
-                      factor.impact > 0 ? "bg-green-500" : "bg-red-500"
-                    }`} />
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full mt-1.5 ${
+                        factor.impact > 0 ? 'bg-green-500' : 'bg-red-500'
+                      }`}
+                    />
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{factor.factor}:</span>
                         <span className={`text-xs font-medium ${getImpactColor(factor.impact)}`}>
-                          {factor.impact > 0 ? "+" : ""}{factor.impact}
+                          {factor.impact > 0 ? '+' : ''}
+                          {factor.impact}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground">{factor.description}</p>

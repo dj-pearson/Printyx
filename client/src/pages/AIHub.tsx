@@ -33,7 +33,7 @@ import {
   Mic,
   FileText,
   Target,
-  Lightbulb
+  Lightbulb,
 } from 'lucide-react';
 
 interface AICapability {
@@ -54,75 +54,101 @@ export default function AIHub() {
     {
       id: 'ai-employees',
       title: 'AI Employees',
-      description: 'Intelligent agents and workflow automation with specialized AI employees for various business functions.',
+      description:
+        'Intelligent agents and workflow automation with specialized AI employees for various business functions.',
       icon: Bot,
       path: '/ai-employees',
       status: 'active',
       usageCount: 247,
       accuracy: 94,
       lastUsed: '2025-01-15',
-      features: ['Sales Assistant AI', 'Support Agent AI', 'Data Analyst AI', 'Project Manager AI']
+      features: ['Sales Assistant AI', 'Support Agent AI', 'Data Analyst AI', 'Project Manager AI'],
     },
     {
       id: 'calendar-integration',
       title: 'Calendar Integration',
-      description: 'Smart scheduling and event management with AI-powered calendar optimization and conflict resolution.',
+      description:
+        'Smart scheduling and event management with AI-powered calendar optimization and conflict resolution.',
       icon: Calendar,
       path: '/calendar',
       status: 'active',
       usageCount: 156,
       accuracy: 96,
       lastUsed: '2025-01-15',
-      features: ['Smart Scheduling', 'Conflict Resolution', 'Meeting Optimization', 'Time Blocking']
+      features: [
+        'Smart Scheduling',
+        'Conflict Resolution',
+        'Meeting Optimization',
+        'Time Blocking',
+      ],
     },
     {
       id: 'meeting-transcription',
       title: 'Meeting Transcription',
-      description: 'AI-powered meeting recording, transcription, and intelligent note generation with action item extraction.',
+      description:
+        'AI-powered meeting recording, transcription, and intelligent note generation with action item extraction.',
       icon: Video,
       path: '/meeting-transcription',
       status: 'active',
       usageCount: 89,
       accuracy: 92,
       lastUsed: '2025-01-14',
-      features: ['Real-time Transcription', 'Speaker Recognition', 'Action Items', 'Meeting Highlights']
+      features: [
+        'Real-time Transcription',
+        'Speaker Recognition',
+        'Action Items',
+        'Meeting Highlights',
+      ],
     },
     {
       id: 'ai-search',
       title: 'AI Search & Knowledge',
-      description: 'Vector database search, AI query processing, and intelligent knowledge discovery across all content.',
+      description:
+        'Vector database search, AI query processing, and intelligent knowledge discovery across all content.',
       icon: Search,
       path: '/ai-search',
       status: 'beta',
       usageCount: 312,
       accuracy: 89,
       lastUsed: '2025-01-15',
-      features: ['Semantic Search', 'Knowledge Graphs', 'Content Discovery', 'Answer Generation']
+      features: ['Semantic Search', 'Knowledge Graphs', 'Content Discovery', 'Answer Generation'],
     },
     {
       id: 'ai-task-scheduling',
       title: 'AI Task Scheduling',
-      description: 'Enhanced AI task scheduling and dependency management with intelligent automation and optimization.',
+      description:
+        'Enhanced AI task scheduling and dependency management with intelligent automation and optimization.',
       icon: Brain,
       path: '/ai-task-scheduling',
       status: 'active',
       usageCount: 178,
       accuracy: 91,
       lastUsed: '2025-01-15',
-      features: ['Smart Scheduling', 'Dependency Analysis', 'Workload Balancing', 'Priority Optimization']
+      features: [
+        'Smart Scheduling',
+        'Dependency Analysis',
+        'Workload Balancing',
+        'Priority Optimization',
+      ],
     },
     {
       id: 'conversation-ai',
       title: 'Conversation AI',
-      description: 'Advanced conversational AI dashboard for customer interactions and support automation.',
+      description:
+        'Advanced conversational AI dashboard for customer interactions and support automation.',
       icon: MessageSquare,
       path: '/conversational-ai-dashboard',
       status: 'active',
       usageCount: 423,
       accuracy: 95,
       lastUsed: '2025-01-15',
-      features: ['Chatbot Management', 'Natural Language Processing', 'Intent Recognition', 'Response Generation']
-    }
+      features: [
+        'Chatbot Management',
+        'Natural Language Processing',
+        'Intent Recognition',
+        'Response Generation',
+      ],
+    },
   ]);
 
   const [stats] = useState({
@@ -131,7 +157,7 @@ export default function AIHub() {
     timeSaved: 156.5, // hours
     activeAIAgents: 12,
     dailyProcessedRequests: 847,
-    automationRate: 78
+    automationRate: 78,
   });
 
   const getStatusBadge = (status: string) => {
@@ -148,8 +174,8 @@ export default function AIHub() {
   };
 
   return (
-    <MainLayout 
-      title="AI Hub" 
+    <MainLayout
+      title="AI Hub"
       description="Central command center for all AI-powered features and intelligent automation"
     >
       {/* AI Hub Action Buttons */}
@@ -276,9 +302,7 @@ export default function AIHub() {
                     </div>
                   </div>
                 </div>
-                <CardDescription className="mt-3">
-                  {capability.description}
-                </CardDescription>
+                <CardDescription className="mt-3">{capability.description}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Performance Metrics */}
@@ -304,7 +328,9 @@ export default function AIHub() {
                       </div>
                     ))}
                     {capability.features.length > 3 && (
-                      <p className="text-xs text-gray-500">+{capability.features.length - 3} more features</p>
+                      <p className="text-xs text-gray-500">
+                        +{capability.features.length - 3} more features
+                      </p>
                     )}
                   </div>
                 </div>
@@ -319,7 +345,7 @@ export default function AIHub() {
 
                 {/* Action Button */}
                 <Link href={capability.path}>
-                  <Button 
+                  <Button
                     className="w-full flex items-center justify-center gap-2 group-hover:bg-purple-600 group-hover:text-white transition-colors"
                     variant={capability.status === 'coming_soon' ? 'outline' : 'default'}
                     disabled={capability.status === 'coming_soon'}
@@ -350,9 +376,7 @@ export default function AIHub() {
             <Lightbulb className="h-5 w-5 text-yellow-500" />
             Quick AI Actions
           </CardTitle>
-          <CardDescription>
-            Frequently used AI-powered actions and shortcuts
-          </CardDescription>
+          <CardDescription>Frequently used AI-powered actions and shortcuts</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -398,9 +422,7 @@ export default function AIHub() {
             <Activity className="h-5 w-5 text-green-500" />
             AI System Health
           </CardTitle>
-          <CardDescription>
-            Monitor the health and performance of all AI systems
-          </CardDescription>
+          <CardDescription>Monitor the health and performance of all AI systems</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

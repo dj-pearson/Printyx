@@ -1,26 +1,20 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { MainLayout } from "@/components/layout/main-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -28,9 +22,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   CheckSquare,
   Plus,
@@ -49,16 +43,16 @@ import {
   Users,
   Target,
   TrendingUp,
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "in_progress" | "review" | "completed" | "cancelled";
-  priority: "low" | "medium" | "high" | "urgent";
+  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string;
   assignedToName?: string;
   projectId?: string;
@@ -76,7 +70,7 @@ interface Project {
   id: string;
   name: string;
   description?: string;
-  status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
+  status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
   projectManager?: string;
   projectManagerName?: string;
   customerId?: string;
@@ -93,58 +87,58 @@ interface Project {
 }
 
 export default function BasicTaskManagement() {
-  const [selectedView, setSelectedView] = useState<
-    "my-tasks" | "all-tasks" | "projects"
-  >("my-tasks");
-  const [selectedPriority, setSelectedPriority] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedView, setSelectedView] = useState<'my-tasks' | 'all-tasks' | 'projects'>(
+    'my-tasks',
+  );
+  const [selectedPriority, setSelectedPriority] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const { toast } = useToast();
 
   // Form state for creating tasks
   const [taskForm, setTaskForm] = useState({
-    title: "",
-    description: "",
-    priority: "medium",
-    assignedTo: "",
-    dueDate: "",
-    estimatedHours: "",
+    title: '',
+    description: '',
+    priority: 'medium',
+    assignedTo: '',
+    dueDate: '',
+    estimatedHours: '',
   });
 
   // Form state for creating projects
   const [projectForm, setProjectForm] = useState({
-    name: "",
-    description: "",
-    projectManager: "",
-    customerId: "",
-    startDate: "",
-    endDate: "",
-    estimatedBudget: "",
+    name: '',
+    description: '',
+    projectManager: '',
+    customerId: '',
+    startDate: '',
+    endDate: '',
+    estimatedBudget: '',
   });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery<Task[]>({
-    queryKey: ["/api/tasks", selectedView, selectedPriority, selectedStatus],
+    queryKey: ['/api/tasks', selectedView, selectedPriority, selectedStatus],
   });
 
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ['/api/projects'],
   });
 
   const { data: taskStats } = useQuery({
-    queryKey: ["/api/tasks/stats"],
+    queryKey: ['/api/tasks/stats'],
   });
 
   const createTask = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/tasks", "POST", data);
+      return apiRequest('/api/tasks', 'POST', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/stats'] });
       toast({
-        title: "Task Created",
-        description: "The task has been created successfully.",
+        title: 'Task Created',
+        description: 'The task has been created successfully.',
       });
       setIsCreateTaskOpen(false);
     },
@@ -152,31 +146,25 @@ export default function BasicTaskManagement() {
 
   const createProject = useMutation({
     mutationFn: async (data: any) => {
-      return apiRequest("/api/projects", "POST", data);
+      return apiRequest('/api/projects', 'POST', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       toast({
-        title: "Project Created",
-        description: "The project has been created successfully.",
+        title: 'Project Created',
+        description: 'The project has been created successfully.',
       });
       setIsCreateProjectOpen(false);
     },
   });
 
   const updateTaskStatus = useMutation({
-    mutationFn: async ({
-      taskId,
-      status,
-    }: {
-      taskId: string;
-      status: string;
-    }) => {
-      return apiRequest(`/api/tasks/${taskId}`, "PATCH", { status });
+    mutationFn: async ({ taskId, status }: { taskId: string; status: string }) => {
+      return apiRequest(`/api/tasks/${taskId}`, 'PATCH', { status });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/stats'] });
     },
   });
 
@@ -198,55 +186,53 @@ export default function BasicTaskManagement() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "urgent":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "high":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "low":
-        return "bg-green-100 text-green-800 border-green-200";
+      case 'urgent':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low':
+        return 'bg-green-100 text-green-800 border-green-200';
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "in_progress":
-        return "bg-blue-100 text-blue-800";
-      case "review":
-        return "bg-purple-100 text-purple-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'review':
+        return 'bg-purple-100 text-purple-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getProjectStatusColor = (status: string) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800";
-      case "active":
-        return "bg-blue-100 text-blue-800";
-      case "on_hold":
-        return "bg-yellow-100 text-yellow-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'active':
+        return 'bg-blue-100 text-blue-800';
+      case 'on_hold':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const filteredTasks = displayTasks.filter((task) => {
-    if (selectedPriority !== "all" && task.priority !== selectedPriority)
-      return false;
-    if (selectedStatus !== "all" && task.status !== selectedStatus)
-      return false;
-    if (selectedView === "my-tasks") {
+    if (selectedPriority !== 'all' && task.priority !== selectedPriority) return false;
+    if (selectedStatus !== 'all' && task.status !== selectedStatus) return false;
+    if (selectedView === 'my-tasks') {
       // In real app, filter by current user
       return true;
     }
@@ -254,10 +240,7 @@ export default function BasicTaskManagement() {
   });
 
   return (
-    <MainLayout
-      title="Task Management"
-      description="Manage personal tasks and complex projects"
-    >
+    <MainLayout title="Task Management" description="Manage personal tasks and complex projects">
       <div className="space-y-6">
         {/* Overview Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -265,9 +248,7 @@ export default function BasicTaskManagement() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    My Tasks
-                  </p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">My Tasks</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                     {displayStats.totalTasks}
                   </p>
@@ -284,9 +265,7 @@ export default function BasicTaskManagement() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    In Progress
-                  </p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">In Progress</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                     {displayStats.inProgressTasks}
                   </p>
@@ -303,9 +282,7 @@ export default function BasicTaskManagement() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    Completed
-                  </p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Completed</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                     {displayStats.completedTasks}
                   </p>
@@ -322,9 +299,7 @@ export default function BasicTaskManagement() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">
-                    Overdue
-                  </p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">Overdue</p>
                   <p className="text-2xl sm:text-3xl font-bold text-red-600">
                     {displayStats.overdueTasks}
                   </p>
@@ -352,10 +327,7 @@ export default function BasicTaskManagement() {
             </TabsList>
 
             <div className="flex gap-2">
-              <Dialog
-                open={isCreateTaskOpen}
-                onOpenChange={setIsCreateTaskOpen}
-              >
+              <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
@@ -376,9 +348,7 @@ export default function BasicTaskManagement() {
                         id="task-title"
                         placeholder="Enter task title"
                         value={taskForm.title}
-                        onChange={(e) =>
-                          setTaskForm({ ...taskForm, title: e.target.value })
-                        }
+                        onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
@@ -400,9 +370,7 @@ export default function BasicTaskManagement() {
                         <Label>Priority</Label>
                         <Select
                           value={taskForm.priority}
-                          onValueChange={(value) =>
-                            setTaskForm({ ...taskForm, priority: value })
-                          }
+                          onValueChange={(value) => setTaskForm({ ...taskForm, priority: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -419,18 +387,14 @@ export default function BasicTaskManagement() {
                         <Label>Assign To</Label>
                         <Select
                           value={taskForm.assignedTo}
-                          onValueChange={(value) =>
-                            setTaskForm({ ...taskForm, assignedTo: value })
-                          }
+                          onValueChange={(value) => setTaskForm({ ...taskForm, assignedTo: value })}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select assignee" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="tech1">John Smith</SelectItem>
-                            <SelectItem value="admin1">
-                              Sarah Johnson
-                            </SelectItem>
+                            <SelectItem value="admin1">Sarah Johnson</SelectItem>
                             <SelectItem value="admin2">Mike Wilson</SelectItem>
                           </SelectContent>
                         </Select>
@@ -469,19 +433,16 @@ export default function BasicTaskManagement() {
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsCreateTaskOpen(false)}
-                    >
+                    <Button variant="outline" onClick={() => setIsCreateTaskOpen(false)}>
                       Cancel
                     </Button>
                     <Button
                       onClick={() => {
                         if (!taskForm.title.trim()) {
                           toast({
-                            title: "Error",
-                            description: "Please enter a task title.",
-                            variant: "destructive",
+                            title: 'Error',
+                            description: 'Please enter a task title.',
+                            variant: 'destructive',
                           });
                           return;
                         }
@@ -497,12 +458,12 @@ export default function BasicTaskManagement() {
                         });
                         // Reset form
                         setTaskForm({
-                          title: "",
-                          description: "",
-                          priority: "medium",
-                          assignedTo: "",
-                          dueDate: "",
-                          estimatedHours: "",
+                          title: '',
+                          description: '',
+                          priority: 'medium',
+                          assignedTo: '',
+                          dueDate: '',
+                          estimatedHours: '',
                         });
                       }}
                     >
@@ -512,10 +473,7 @@ export default function BasicTaskManagement() {
                 </DialogContent>
               </Dialog>
 
-              <Dialog
-                open={isCreateProjectOpen}
-                onOpenChange={setIsCreateProjectOpen}
-              >
+              <Dialog open={isCreateProjectOpen} onOpenChange={setIsCreateProjectOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline">
                     <Folder className="h-4 w-4 mr-2" />
@@ -532,17 +490,11 @@ export default function BasicTaskManagement() {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="project-name">Project Name</Label>
-                      <Input
-                        id="project-name"
-                        placeholder="Enter project name"
-                      />
+                      <Input id="project-name" placeholder="Enter project name" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="project-description">Description</Label>
-                      <Textarea
-                        id="project-description"
-                        placeholder="Enter project description"
-                      />
+                      <Textarea id="project-description" placeholder="Enter project description" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -564,12 +516,8 @@ export default function BasicTaskManagement() {
                             <SelectValue placeholder="Select customer" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1">
-                              TechCorp Solutions
-                            </SelectItem>
-                            <SelectItem value="2">
-                              Global Manufacturing Inc
-                            </SelectItem>
+                            <SelectItem value="1">TechCorp Solutions</SelectItem>
+                            <SelectItem value="2">Global Manufacturing Inc</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -586,24 +534,14 @@ export default function BasicTaskManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label>Estimated Budget</Label>
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        min="0"
-                        step="0.01"
-                      />
+                      <Input type="number" placeholder="0.00" min="0" step="0.01" />
                     </div>
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsCreateProjectOpen(false)}
-                    >
+                    <Button variant="outline" onClick={() => setIsCreateProjectOpen(false)}>
                       Cancel
                     </Button>
-                    <Button onClick={() => createProject.mutate({})}>
-                      Create Project
-                    </Button>
+                    <Button onClick={() => createProject.mutate({})}>Create Project</Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -619,10 +557,7 @@ export default function BasicTaskManagement() {
                     <CardDescription>Tasks assigned to you</CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Select
-                      value={selectedPriority}
-                      onValueChange={setSelectedPriority}
-                    >
+                    <Select value={selectedPriority} onValueChange={setSelectedPriority}>
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -634,10 +569,7 @@ export default function BasicTaskManagement() {
                         <SelectItem value="low">Low</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select
-                      value={selectedStatus}
-                      onValueChange={setSelectedStatus}
-                    >
+                    <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                       <SelectTrigger className="w-32">
                         <SelectValue />
                       </SelectTrigger>
@@ -666,18 +598,13 @@ export default function BasicTaskManagement() {
                           onClick={() =>
                             updateTaskStatus.mutate({
                               taskId: task.id,
-                              status:
-                                task.status === "completed"
-                                  ? "todo"
-                                  : "completed",
+                              status: task.status === 'completed' ? 'todo' : 'completed',
                             })
                           }
                         >
                           <CheckCircle
                             className={`h-5 w-5 ${
-                              task.status === "completed"
-                                ? "text-green-600"
-                                : "text-gray-400"
+                              task.status === 'completed' ? 'text-green-600' : 'text-gray-400'
                             }`}
                           />
                         </Button>
@@ -685,30 +612,20 @@ export default function BasicTaskManagement() {
                           <div className="flex items-center gap-2 mb-1">
                             <h4
                               className={`font-medium ${
-                                task.status === "completed"
-                                  ? "line-through text-gray-500"
-                                  : ""
+                                task.status === 'completed' ? 'line-through text-gray-500' : ''
                               }`}
                             >
                               {task.title}
                             </h4>
-                            <Badge
-                              className={getPriorityColor(task.priority)}
-                              variant="outline"
-                            >
+                            <Badge className={getPriorityColor(task.priority)} variant="outline">
                               {task.priority}
                             </Badge>
-                            <Badge
-                              className={getStatusColor(task.status)}
-                              variant="secondary"
-                            >
-                              {task.status.replace("_", " ")}
+                            <Badge className={getStatusColor(task.status)} variant="secondary">
+                              {task.status.replace('_', ' ')}
                             </Badge>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-gray-600 mb-2">
-                              {task.description}
-                            </p>
+                            <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             {task.assignedToName && (
@@ -736,18 +653,14 @@ export default function BasicTaskManagement() {
                               </div>
                             )}
                           </div>
-                          {task.completionPercentage > 0 &&
-                            task.status !== "completed" && (
-                              <div className="mt-2">
-                                <Progress
-                                  value={task.completionPercentage}
-                                  className="h-2"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {task.completionPercentage}% complete
-                                </p>
-                              </div>
-                            )}
+                          {task.completionPercentage > 0 && task.status !== 'completed' && (
+                            <div className="mt-2">
+                              <Progress value={task.completionPercentage} className="h-2" />
+                              <p className="text-xs text-gray-500 mt-1">
+                                {task.completionPercentage}% complete
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -772,9 +685,7 @@ export default function BasicTaskManagement() {
             <Card>
               <CardHeader>
                 <CardTitle>All Tasks</CardTitle>
-                <CardDescription>
-                  Overview of all tasks across the organization
-                </CardDescription>
+                <CardDescription>Overview of all tasks across the organization</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -787,9 +698,7 @@ export default function BasicTaskManagement() {
                         <Button variant="ghost" size="sm">
                           <CheckCircle
                             className={`h-5 w-5 ${
-                              task.status === "completed"
-                                ? "text-green-600"
-                                : "text-gray-400"
+                              task.status === 'completed' ? 'text-green-600' : 'text-gray-400'
                             }`}
                           />
                         </Button>
@@ -797,24 +706,16 @@ export default function BasicTaskManagement() {
                           <div className="flex items-center gap-2 mb-1">
                             <h4
                               className={`font-medium ${
-                                task.status === "completed"
-                                  ? "line-through text-gray-500"
-                                  : ""
+                                task.status === 'completed' ? 'line-through text-gray-500' : ''
                               }`}
                             >
                               {task.title}
                             </h4>
-                            <Badge
-                              className={getPriorityColor(task.priority)}
-                              variant="outline"
-                            >
+                            <Badge className={getPriorityColor(task.priority)} variant="outline">
                               {task.priority}
                             </Badge>
-                            <Badge
-                              className={getStatusColor(task.status)}
-                              variant="secondary"
-                            >
-                              {task.status.replace("_", " ")}
+                            <Badge className={getStatusColor(task.status)} variant="secondary">
+                              {task.status.replace('_', ' ')}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-gray-500">
@@ -859,19 +760,15 @@ export default function BasicTaskManagement() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">
-                            {project.name}
-                          </CardTitle>
+                          <CardTitle className="text-lg">{project.name}</CardTitle>
                           <Badge
                             className={getProjectStatusColor(project.status)}
                             variant="secondary"
                           >
-                            {project.status.replace("_", " ")}
+                            {project.status.replace('_', ' ')}
                           </Badge>
                         </div>
-                        <CardDescription className="mt-1">
-                          {project.description}
-                        </CardDescription>
+                        <CardDescription className="mt-1">{project.description}</CardDescription>
                       </div>
                       <Button variant="outline">
                         <Target className="h-4 w-4 mr-2" />
@@ -885,12 +782,8 @@ export default function BasicTaskManagement() {
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-gray-500" />
                           <div>
-                            <p className="text-sm font-medium">
-                              Project Manager
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {project.projectManagerName}
-                            </p>
+                            <p className="text-sm font-medium">Project Manager</p>
+                            <p className="text-sm text-gray-600">{project.projectManagerName}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -899,12 +792,8 @@ export default function BasicTaskManagement() {
                             <p className="text-sm font-medium">Timeline</p>
                             <p className="text-sm text-gray-600">
                               {project.startDate &&
-                                new Date(
-                                  project.startDate
-                                ).toLocaleDateString()}{" "}
-                              -{" "}
-                              {project.endDate &&
-                                new Date(project.endDate).toLocaleDateString()}
+                                new Date(project.startDate).toLocaleDateString()}{' '}
+                              - {project.endDate && new Date(project.endDate).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -914,9 +803,7 @@ export default function BasicTaskManagement() {
                             <p className="text-sm font-medium">Budget</p>
                             <p className="text-sm text-gray-600">
                               {project.estimatedBudget &&
-                                `$${(
-                                  project.estimatedBudget / 100
-                                ).toLocaleString()}`}
+                                `$${(project.estimatedBudget / 100).toLocaleString()}`}
                             </p>
                           </div>
                         </div>
@@ -925,33 +812,22 @@ export default function BasicTaskManagement() {
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium">Progress</p>
-                          <p className="text-sm text-gray-600">
-                            {project.completionPercentage}%
-                          </p>
+                          <p className="text-sm text-gray-600">{project.completionPercentage}%</p>
                         </div>
-                        <Progress
-                          value={project.completionPercentage}
-                          className="h-2"
-                        />
+                        <Progress value={project.completionPercentage} className="h-2" />
                       </div>
 
                       <div className="flex items-center justify-between text-sm">
                         <div>
-                          <span className="font-medium">
-                            {project.completedTaskCount}
-                          </span>
+                          <span className="font-medium">{project.completedTaskCount}</span>
                           <span className="text-gray-600">
-                            {" "}
+                            {' '}
                             of {project.taskCount} tasks completed
                           </span>
                         </div>
                         <div className="flex gap-1">
                           {project.tags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="outline"
-                              className="text-xs"
-                            >
+                            <Badge key={tag} variant="outline" className="text-xs">
                               {tag}
                             </Badge>
                           ))}

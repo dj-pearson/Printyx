@@ -5,19 +5,25 @@
 Out of **634 issues** found, here's the breakdown:
 
 ### ✅ Auto-Fixable (~30-40%)
+
 These can be fixed with automated scripts:
+
 - Simple column renames with suggestions
 - Removing non-existent columns from queries
 - Consistent patterns across files
 
 ### 🔍 Needs Manual Review (~40-50%)
+
 These require your judgment:
+
 - `app_metadata` & `user_metadata` (valid on Supabase auth.User)
 - Nested data structures (API responses vs database queries)
 - Business logic decisions (which field to use)
 
 ### ⚠️ False Positives (~10-20%)
+
 These might not be issues:
+
 - Columns from external APIs
 - Computed properties
 - Dynamic column names
@@ -65,11 +71,13 @@ After auto-fix, tackle remaining issues by category:
 ## 📊 Issue Categories
 
 ### Category 1: Invalid Metadata Access
+
 **Example**: `user.app_metadata`, `user.user_metadata`
 
 **Issue**: Validator thinks these don't exist, but they're valid on Supabase `auth.User`
 
-**Fix**: 
+**Fix**:
+
 ```typescript
 // ✅ Valid for auth.User objects
 const metadata = user.user_metadata;
@@ -82,11 +90,13 @@ const appData = user.app_metadata;
 **Action**: Review and mark as valid if using Supabase auth
 
 ### Category 2: Nested Data Structures
+
 **Example**: `customer.company_name`, `row.primary_contact_email`
 
 **Issue**: Data comes from Edge Function with nested structure
 
 **Fix**:
+
 ```typescript
 // ❌ BEFORE
 const name = customer.company_name;
@@ -95,7 +105,7 @@ const name = customer.company_name;
 const name = customer.companies?.business_name;
 
 // Or transform in useMemo
-const enriched = customers.map(c => ({
+const enriched = customers.map((c) => ({
   ...c,
   companyName: c.companies?.business_name,
 }));
@@ -104,11 +114,13 @@ const enriched = customers.map(c => ({
 **Action**: Add data transformation layer (we did this for customers.tsx!)
 
 ### Category 3: Wrong Table
+
 **Example**: `customers.customer_since`
 
 **Issue**: Column exists but in different table
 
 **Fix**:
+
 ```typescript
 // ❌ BEFORE
 .select('id, customer_since')
@@ -125,6 +137,7 @@ const enriched = customers.map(c => ({
 **Action**: Update query to include nested select
 
 ### Category 4: Doesn't Exist Anywhere
+
 **Example**: `access_scope`, `is_platform_user`
 
 **Issue**: Column was removed/never existed
@@ -136,12 +149,14 @@ const enriched = customers.map(c => ({
 ## 🛠️ Tools Available
 
 ### 1. View Validation Report
+
 ```powershell
 # Open detailed report
 code tools/schema-validation/VALIDATION_REPORT.md
 ```
 
 ### 2. Check Specific Table
+
 ```powershell
 # See what columns actually exist
 npx tsx tools/schema-validation/view-table.ts users
@@ -150,12 +165,14 @@ npx tsx tools/schema-validation/view-table.ts companies
 ```
 
 ### 3. Auto-Fix Preview
+
 ```powershell
 # See what can be auto-fixed
 npx tsx tools/schema-validation/auto-fix.ts --rules
 ```
 
 ### 4. Validate After Fixes
+
 ```powershell
 # Check progress
 npx tsx tools/schema-validation/validate-code.ts
@@ -186,6 +203,7 @@ npx tsx tools/schema-validation/validate-code.ts
 **Goal**: Reduce from 634 to < 50 issues
 
 **Expected outcome**:
+
 - ✅ All database queries use valid columns
 - ✅ Nested data properly transformed
 - ✅ Auth metadata correctly accessed
@@ -194,6 +212,7 @@ npx tsx tools/schema-validation/validate-code.ts
 ## 📞 Need Help?
 
 If you're unsure about a fix:
+
 1. Check `VALIDATION_REPORT.md` for suggestions
 2. Run `view-table.ts` to see actual schema
 3. Look at similar working code (like our CustomerDetail.tsx fix)

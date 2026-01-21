@@ -9,15 +9,18 @@
 ## 🎯 Situation Confirmed
 
 ### What We Know:
+
 - ✅ You have **complete NEON backups** ready
 - ✅ Supabase is running (41 new feature tables)
 - ❌ **177 core business tables MISSING** from Supabase
 - ❌ No users, companies, customers, invoices, quotes, etc.
 
 ### Why This Happened:
+
 You started building **new features** in Supabase (AI, Calendar, Meetings) but **never migrated the core business data** from NEON.
 
 ### Impact:
+
 - **CRITICAL**: No access to historical business data
 - **BLOCKER**: Can't view old customers/invoices/quotes
 - **WORKAROUND**: We manually created some tables (companies, company_contacts)
@@ -32,6 +35,7 @@ You started building **new features** in Supabase (AI, Calendar, Meetings) but *
 These are **required** for basic operations:
 
 #### Priority 1A: Core Identity & Access (30 min)
+
 ```sql
 ✅ users          - User accounts
 ✅ tenants        - Multi-tenant setup
@@ -43,6 +47,7 @@ These are **required** for basic operations:
 ```
 
 #### Priority 1B: Business Records (30 min)
+
 ```sql
 ✅ companies      - Company master data
 ✅ company_contacts - Contact information
@@ -53,6 +58,7 @@ These are **required** for basic operations:
 ```
 
 #### Priority 1C: Sales & Revenue (30 min)
+
 ```sql
 ✅ quotes         - Quote management
 ✅ quote_line_items - Quote details
@@ -70,6 +76,7 @@ These are **required** for basic operations:
 ### Phase 2: Operations & Service (2-3 hours)
 
 #### Priority 2A: Service Management
+
 ```sql
 ✅ service_tickets - Service requests
 ✅ service_ticket_updates - Ticket history
@@ -82,6 +89,7 @@ These are **required** for basic operations:
 ```
 
 #### Priority 2B: Equipment & Inventory
+
 ```sql
 ✅ equipment      - Equipment tracking
 ✅ customer_equipment - Customer devices
@@ -94,6 +102,7 @@ These are **required** for basic operations:
 ```
 
 #### Priority 2C: Customer Portal & Communication
+
 ```sql
 ✅ customer_portal_access
 ✅ customer_portal_activity_log
@@ -110,6 +119,7 @@ These are **required** for basic operations:
 ### Phase 3: Advanced Features & Analytics (1-2 hours)
 
 #### Priority 3A: Financial Management
+
 ```sql
 ✅ accounts_payable
 ✅ accounts_receivable
@@ -122,6 +132,7 @@ These are **required** for basic operations:
 ```
 
 #### Priority 3B: Analytics & Reporting
+
 ```sql
 ✅ commission_calculations
 ✅ commission_analytics
@@ -133,6 +144,7 @@ These are **required** for basic operations:
 ```
 
 #### Priority 3C: Integrations & Automation
+
 ```sql
 ✅ quickbooks_integrations
 ✅ manufacturer_integrations
@@ -153,6 +165,7 @@ These are **required** for basic operations:
 **Uses**: `database-exports/complete-with-schema.sql`
 
 **Steps**:
+
 ```bash
 # 1. Backup current Supabase (your 41 new tables)
 pg_dump $SUPABASE_DB_URL > backup-current-supabase-$(date +%Y%m%d).sql
@@ -177,6 +190,7 @@ done
 **Uses**: Individual table exports
 
 **Phase 1 Script**:
+
 ```bash
 #!/bin/bash
 # migrate-phase1.sh
@@ -210,6 +224,7 @@ cd deployment
 ```
 
 **What it does**:
+
 - Backs up current state
 - Cleans NEON-specific commands
 - Applies schema
@@ -285,15 +300,15 @@ psql $SUPABASE_DB_URL -c "SELECT COUNT(*) FROM information_schema.tables WHERE t
 
 # Check core tables exist
 psql $SUPABASE_DB_URL <<EOF
-SELECT table_name FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public'
 AND table_name IN ('users', 'companies', 'customers', 'invoices', 'quotes')
 ORDER BY table_name;
 EOF
 
 # Check data counts
 psql $SUPABASE_DB_URL <<EOF
-SELECT 
+SELECT
   (SELECT COUNT(*) FROM users) as users,
   (SELECT COUNT(*) FROM companies) as companies,
   (SELECT COUNT(*) FROM customers) as customers,
@@ -340,13 +355,14 @@ psql $SUPABASE_DB_URL < task-management-migration.sql
 ### Before You Start:
 
 1. **Backup Supabase First!**
+
    ```bash
    pg_dump $SUPABASE_DB_URL > critical-backup-$(date +%Y%m%d-%H%M%S).sql
    ```
 
 2. **Downtime Warning**: Your app may be down during migration (30-60 min)
 
-3. **Data Conflicts**: 
+3. **Data Conflicts**:
    - You manually created `companies` and `company_contacts`
    - These will conflict with NEON data
    - Drop them first or merge data
@@ -364,6 +380,7 @@ psql $SUPABASE_DB_URL < task-management-migration.sql
 1. **Test Everything**: Don't assume it works - test each feature
 
 2. **Update Schema Docs**: Run schema extraction again:
+
    ```bash
    npx tsx tools/schema-validation/extract-schema.ts
    ```
@@ -394,11 +411,13 @@ echo "✅ Migration complete! Verify with: psql $SUPABASE_DB_URL -c '\dt'"
 ### If migration fails:
 
 1. **Restore from backup**:
+
    ```bash
    psql $SUPABASE_DB_URL < emergency-backup.sql
    ```
 
 2. **Check for errors**:
+
    ```bash
    psql $SUPABASE_DB_URL < database-exports/complete-with-schema.sql 2>&1 | tee migration-errors.log
    ```
@@ -411,14 +430,17 @@ echo "✅ Migration complete! Verify with: psql $SUPABASE_DB_URL -c '\dt'"
 ### Common Issues:
 
 **"relation already exists"**:
+
 - Drop the existing table first
 - Or use `CREATE TABLE IF NOT EXISTS`
 
 **"permission denied"**:
+
 - Make sure you're using service_role key
 - Check database user permissions
 
 **"foreign key constraint violation"**:
+
 - Import in dependency order
 - Or disable constraints temporarily
 
@@ -440,14 +462,14 @@ After migration, you should have:
 
 ## 🕐 Time Estimate
 
-| Phase | Time | Complexity |
-|-------|------|------------|
-| Preparation | 15 min | Easy |
-| Schema Migration | 30 min | Medium |
-| Data Import | 60 min | Medium |
-| Verification | 30 min | Easy |
-| Testing | 30 min | Easy |
-| **Total** | **2-3 hours** | **Medium** |
+| Phase            | Time          | Complexity |
+| ---------------- | ------------- | ---------- |
+| Preparation      | 15 min        | Easy       |
+| Schema Migration | 30 min        | Medium     |
+| Data Import      | 60 min        | Medium     |
+| Verification     | 30 min        | Easy       |
+| Testing          | 30 min        | Easy       |
+| **Total**        | **2-3 hours** | **Medium** |
 
 ---
 

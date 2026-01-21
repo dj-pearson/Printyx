@@ -1,9 +1,21 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function LocationPerformanceTable({ locations, summary, insights }: any) {
-  const formatCurrency = (value: number) => value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value.toFixed(0)}`;
+  const formatCurrency = (value: number) =>
+    value >= 1000000
+      ? `$${(value / 1000000).toFixed(1)}M`
+      : value >= 1000
+        ? `$${(value / 1000).toFixed(0)}K`
+        : `$${value.toFixed(0)}`;
 
   return (
     <div className="space-y-4">
@@ -36,13 +48,25 @@ export default function LocationPerformanceTable({ locations, summary, insights 
                 <TableCell>{loc.dealsWon}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    {loc.winRate >= 50 ? <TrendingUp className="h-3 w-3 text-green-600" /> : <TrendingDown className="h-3 w-3 text-red-600" />}
+                    {loc.winRate >= 50 ? (
+                      <TrendingUp className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3 text-red-600" />
+                    )}
                     <span>{loc.winRate.toFixed(0)}%</span>
                   </div>
                 </TableCell>
                 <TableCell>{formatCurrency(loc.averageDealSize)}</TableCell>
                 <TableCell>
-                  <Badge variant={loc.quotaAttainment >= 100 ? 'success' : loc.quotaAttainment >= 80 ? 'default' : 'destructive' as any}>
+                  <Badge
+                    variant={
+                      loc.quotaAttainment >= 100
+                        ? 'success'
+                        : loc.quotaAttainment >= 80
+                          ? 'default'
+                          : ('destructive' as any)
+                    }
+                  >
                     {loc.quotaAttainment.toFixed(0)}%
                   </Badge>
                 </TableCell>

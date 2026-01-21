@@ -1,4 +1,5 @@
 # Phase 1 Implementation Plan
+
 ## User Acquisition & Onboarding - Weeks 1-4
 
 **Branch:** `claude/phase-1-implementation-011CUvaaMQFU38ejVxbpXUSm`
@@ -22,6 +23,7 @@ This plan addresses the 4 critical blockers preventing user acquisition and acti
 ## 1. Password Recovery Implementation
 
 ### 1.1 Database Schema
+
 ```sql
 -- Add to users table or create password_resets table
 CREATE TABLE password_resets (
@@ -35,20 +37,24 @@ CREATE TABLE password_resets (
 ```
 
 ### 1.2 API Endpoints
+
 - `POST /api/auth/forgot-password` - Request reset (sends email)
 - `POST /api/auth/reset-password` - Reset with token
 - `GET /api/auth/verify-reset-token` - Validate token before showing form
 
 ### 1.3 UI Components
+
 - `client/src/pages/ForgotPassword.tsx` - Email entry form
 - `client/src/pages/ResetPassword.tsx` - New password form
 - Update `Login.tsx` - Add "Forgot Password?" link
 
 ### 1.4 Email Templates
+
 - Password reset email with secure link
 - Password changed confirmation email
 
 ### 1.5 Security Considerations
+
 - Token expires in 1 hour
 - Token single-use only
 - Rate limiting on reset requests (5 per hour per email)
@@ -59,6 +65,7 @@ CREATE TABLE password_resets (
 ## 2. Self-Service Signup Flow
 
 ### 2.1 Database Schema
+
 ```sql
 -- Extend tenants table
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS
@@ -76,6 +83,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS
 ```
 
 ### 2.2 Signup Wizard Pages
+
 1. **Company Information** (`/signup/step-1`)
    - Company name
    - Industry (dropdown)
@@ -119,12 +127,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS
    - "Go to Dashboard" button
 
 ### 2.3 API Endpoints
+
 - `POST /api/auth/signup` - Create tenant + admin user
 - `POST /api/auth/verify-email` - Verify email token
 - `POST /api/auth/resend-verification` - Resend email
 - `GET /api/auth/check-email` - Check if email exists (for validation)
 
 ### 2.4 Email Sequence
+
 - Immediate: Email verification
 - Immediate after verify: Welcome email
 - Day 1: Getting started guide
@@ -134,6 +144,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS
 - Day 14: Trial ended - upgrade prompt
 
 ### 2.5 Marketing Homepage Updates
+
 - Change "Coming October 1st" to "Start Free Trial"
 - Add prominent "Get Started" CTA
 - Update navigation: "Sign Up" button
@@ -144,6 +155,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS
 ## 3. Payment Integration & Billing Page
 
 ### 3.1 Database Schema
+
 ```sql
 -- Add payment methods table
 CREATE TABLE payment_methods (
@@ -186,12 +198,15 @@ CREATE TABLE invoices (
 ```
 
 ### 3.2 Stripe Integration Setup
+
 - Install: `npm install stripe @stripe/stripe-js @stripe/react-stripe-js`
 - Server-side: `server/services/stripe.ts`
 - Client components: `client/src/components/payment/`
 
 ### 3.3 Billing Page Components (`/settings/billing`)
+
 **Sections:**
+
 1. **Payment Methods**
    - Current card (last 4 digits, expiry)
    - "Update Payment Method" button
@@ -214,12 +229,14 @@ CREATE TABLE invoices (
    - Plan details
 
 ### 3.4 Payment Method Dialog
+
 - Stripe Elements card input
 - Billing address form
 - "Save Payment Method" button
 - Security badges (PCI compliant, SSL)
 
 ### 3.5 API Endpoints
+
 - `POST /api/billing/payment-methods` - Add payment method
 - `PUT /api/billing/payment-methods/:id` - Update payment method
 - `DELETE /api/billing/payment-methods/:id` - Remove payment method
@@ -228,6 +245,7 @@ CREATE TABLE invoices (
 - `POST /api/billing/update-billing-info` - Update address/tax ID
 
 ### 3.6 Stripe Webhooks
+
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
@@ -241,6 +259,7 @@ CREATE TABLE invoices (
 ## 4. First-Time User Onboarding
 
 ### 4.1 Database Schema
+
 ```sql
 -- Onboarding progress tracking
 CREATE TABLE user_onboarding (
@@ -272,6 +291,7 @@ CREATE TABLE quick_start_checklist (
 ### 4.2 Onboarding Wizard Flow
 
 **Welcome Modal** (shows on first login after email verification)
+
 ```
 ┌──────────────────────────────────────────────┐
 │  🎉 Welcome to Printyx, [First Name]!       │
@@ -289,28 +309,33 @@ CREATE TABLE quick_start_checklist (
 ```
 
 **Step 1: Company Profile**
+
 - Upload logo
 - Add locations (at least one)
 - Set business hours
 - Configure currency/locale
 
 **Step 2: Invite Team**
+
 - Email + Role assignment
 - Send invites (skippable)
 - Pre-filled roles: Sales Manager, Service Manager, Admin
 
 **Step 3: Basic Configuration**
+
 - Customer number format: [PREFIX]-[NUMBER]
 - Service ticket prefix
 - Default tax rate
 - (All have smart defaults)
 
 **Step 4: Quick Tour**
+
 - Role-based highlights (5 features)
 - Interactive tooltips
 - "Learn More" links
 
 **Step 5: Quick Start Checklist**
+
 ```
 Your Quick Start Guide:
 ☐ Add your first customer
@@ -323,12 +348,14 @@ Your Quick Start Guide:
 ```
 
 ### 4.3 Onboarding Components
+
 - `client/src/components/onboarding/WelcomeModal.tsx`
 - `client/src/components/onboarding/OnboardingWizard.tsx`
 - `client/src/components/onboarding/QuickStartWidget.tsx`
 - `client/src/components/onboarding/FeatureTour.tsx`
 
 ### 4.4 API Endpoints
+
 - `GET /api/onboarding/status` - Get user onboarding state
 - `POST /api/onboarding/complete-step` - Mark step completed
 - `POST /api/onboarding/skip` - Skip onboarding
@@ -336,7 +363,9 @@ Your Quick Start Guide:
 - `POST /api/onboarding/checklist/complete-item` - Mark item done
 
 ### 4.5 Quick Start Checklist Widget
+
 **Persistent Dashboard Widget:**
+
 - Collapsible/expandable
 - Shows progress bar
 - Each item links to relevant page
@@ -344,24 +373,29 @@ Your Quick Start Guide:
 - Dismissible (with confirmation)
 
 ### 4.6 Role-Based Onboarding
+
 Different flows based on user role:
 
 **Tenant Admin:**
+
 - Full setup wizard
 - Focus on configuration & team setup
 
 **Sales Rep (invited user):**
+
 - Welcome message
 - CRM tour (leads, deals, quotes)
 - Quick start: Add first lead
 
 **Service Technician:**
+
 - Welcome message
 - Service hub tour
 - Mobile app download prompt
 - Quick start: View assigned tickets
 
 **Billing Manager:**
+
 - Welcome message
 - Billing tour
 - Quick start: Review AR
@@ -373,6 +407,7 @@ Different flows based on user role:
 ### 5.1 Test Scenarios
 
 **Password Recovery:**
+
 - [ ] Request reset for existing email
 - [ ] Request reset for non-existent email (no error disclosure)
 - [ ] Token expiry after 1 hour
@@ -382,6 +417,7 @@ Different flows based on user role:
 - [ ] Password reset success
 
 **Signup Flow:**
+
 - [ ] Complete full wizard
 - [ ] Email verification
 - [ ] Duplicate email detection
@@ -392,6 +428,7 @@ Different flows based on user role:
 - [ ] First login after signup
 
 **Billing Page:**
+
 - [ ] Add payment method
 - [ ] Update payment method
 - [ ] View invoice history
@@ -399,6 +436,7 @@ Different flows based on user role:
 - [ ] Update billing address
 
 **Payment Integration:**
+
 - [ ] Stripe test card acceptance
 - [ ] Card validation
 - [ ] 3D Secure handling
@@ -406,6 +444,7 @@ Different flows based on user role:
 - [ ] Webhook processing
 
 **User Onboarding:**
+
 - [ ] Welcome modal shows on first login
 - [ ] Each wizard step saves progress
 - [ ] Skip functionality
@@ -413,6 +452,7 @@ Different flows based on user role:
 - [ ] Role-based flows work correctly
 
 ### 5.2 Edge Cases
+
 - Signup interrupted mid-flow (resume)
 - Email verification link expires
 - Multiple browser tabs during signup
@@ -421,6 +461,7 @@ Different flows based on user role:
 - Network failures during critical operations
 
 ### 5.3 Performance
+
 - Signup wizard loads in <1 second
 - Payment method save <2 seconds
 - Email delivery <30 seconds
@@ -431,22 +472,26 @@ Different flows based on user role:
 ## 6. Implementation Timeline
 
 ### Week 1: Foundation
+
 - **Day 1-2:** Password recovery (backend + frontend + emails)
 - **Day 3-5:** Signup wizard pages (UI components)
 - **Day 6-7:** Signup API endpoints + email verification
 
 ### Week 2: Payment & Billing
+
 - **Day 8-9:** Stripe integration setup
 - **Day 10-11:** Billing page UI components
 - **Day 11-12:** Payment method management APIs
 - **Day 12:** Invoice history + webhooks
 
 ### Week 3: Onboarding
+
 - **Day 13-14:** Onboarding wizard components
 - **Day 15:** Quick start checklist widget
 - **Day 16:** Role-based onboarding logic
 
 ### Week 4: Testing & Launch
+
 - **Day 17-18:** End-to-end testing
 - **Day 19:** Bug fixes + polish
 - **Day 20:** Documentation + launch
@@ -456,6 +501,7 @@ Different flows based on user role:
 ## 7. Launch Checklist
 
 ### Pre-Launch
+
 - [ ] All test scenarios pass
 - [ ] Stripe webhooks configured in production
 - [ ] Email templates tested
@@ -464,6 +510,7 @@ Different flows based on user role:
 - [ ] Backup created
 
 ### Launch
+
 - [ ] Update marketing homepage
 - [ ] Enable signup flow
 - [ ] Monitor error logs
@@ -471,6 +518,7 @@ Different flows based on user role:
 - [ ] Send announcement (if applicable)
 
 ### Post-Launch (Week 1)
+
 - [ ] Monitor signup completion rate
 - [ ] Check email delivery rates
 - [ ] Review payment success rate
@@ -483,27 +531,27 @@ Different flows based on user role:
 
 Track these KPIs weekly:
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Signup starts | 50/week | 0 |
-| Signup completions | 40/week (80%) | 0 |
-| Email verification rate | 90% | - |
-| Payment method added | 50% in trial | 0 |
-| Onboarding completion | 70% | 0 |
-| Trial-to-paid conversion | 25% → 40% | - |
-| Time to first value | <15 min | - |
+| Metric                   | Target        | Current |
+| ------------------------ | ------------- | ------- |
+| Signup starts            | 50/week       | 0       |
+| Signup completions       | 40/week (80%) | 0       |
+| Email verification rate  | 90%           | -       |
+| Payment method added     | 50% in trial  | 0       |
+| Onboarding completion    | 70%           | 0       |
+| Trial-to-paid conversion | 25% → 40%     | -       |
+| Time to first value      | <15 min       | -       |
 
 ---
 
 ## 9. Risk Mitigation
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Stripe integration issues | Medium | High | Thorough testing, sandbox first |
-| Email deliverability | Medium | High | Use SendGrid/Mailgun, monitor bounce rates |
-| Signup fraud | Low | Medium | Add reCAPTCHA, email verification |
-| Database performance | Low | Medium | Index optimization, connection pooling |
-| User abandonment in wizard | High | High | Save progress, allow resume |
+| Risk                       | Probability | Impact | Mitigation                                 |
+| -------------------------- | ----------- | ------ | ------------------------------------------ |
+| Stripe integration issues  | Medium      | High   | Thorough testing, sandbox first            |
+| Email deliverability       | Medium      | High   | Use SendGrid/Mailgun, monitor bounce rates |
+| Signup fraud               | Low         | Medium | Add reCAPTCHA, email verification          |
+| Database performance       | Low         | Medium | Index optimization, connection pooling     |
+| User abandonment in wizard | High        | High   | Save progress, allow resume                |
 
 ---
 

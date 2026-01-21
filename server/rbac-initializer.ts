@@ -6,7 +6,7 @@ import { enhancedRoles, organizationalUnits } from './enhanced-rbac-schema';
 
 /**
  * RBAC System Initializer
- * 
+ *
  * This module handles the initialization of the Enhanced RBAC system for new tenants
  * and provides utilities for checking and managing RBAC system state.
  */
@@ -15,10 +15,15 @@ export class RBACInitializer {
   /**
    * Initialize RBAC system for a tenant
    */
-  async initializeTenant(tenantId: string, dealerType: 'small' | 'standard' | 'enterprise', userId: string) {
+  async initializeTenant(
+    tenantId: string,
+    dealerType: 'small' | 'standard' | 'enterprise',
+    userId: string,
+  ) {
     try {
       // Check if already initialized
-      const existingRoles = await db.select()
+      const existingRoles = await db
+        .select()
         .from(enhancedRoles)
         .where(eq(enhancedRoles.tenantId, tenantId))
         .limit(1);
@@ -28,21 +33,24 @@ export class RBACInitializer {
       }
 
       // Create company organizational unit first
-      const [companyUnit] = await db.insert(organizationalUnits).values({
-        id: `company-${tenantId}`,
-        tenantId,
-        name: 'Company',
-        code: 'COMPANY',
-        tier: 'COMPANY',
-        parentUnitId: null,
-        lft: 1,
-        rgt: 2,
-        depth: 0,
-        description: 'Company-wide organizational unit',
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }).returning();
+      const [companyUnit] = await db
+        .insert(organizationalUnits)
+        .values({
+          id: `company-${tenantId}`,
+          tenantId,
+          name: 'Company',
+          code: 'COMPANY',
+          tier: 'COMPANY',
+          parentUnitId: null,
+          lft: 1,
+          rgt: 2,
+          depth: 0,
+          description: 'Company-wide organizational unit',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
 
       // Initialize based on dealer type
       switch (dealerType) {
@@ -68,7 +76,7 @@ export class RBACInitializer {
         isActive: true,
         effectiveFrom: new Date(),
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       });
 
       console.log(`RBAC system initialized for tenant ${tenantId} (${dealerType})`);
@@ -76,7 +84,7 @@ export class RBACInitializer {
         success: true,
         tenantId,
         dealerType,
-        companyUnitId: companyUnit.id
+        companyUnitId: companyUnit.id,
       };
     } catch (error) {
       console.error('RBAC initialization error:', error);
@@ -89,7 +97,8 @@ export class RBACInitializer {
    */
   async isInitialized(tenantId: string): Promise<boolean> {
     try {
-      const roles = await db.select()
+      const roles = await db
+        .select()
         .from(enhancedRoles)
         .where(eq(enhancedRoles.tenantId, tenantId))
         .limit(1);
@@ -107,7 +116,7 @@ export class RBACInitializer {
   async getInitializationStatus(tenantId: string) {
     try {
       const isInit = await this.isInitialized(tenantId);
-      
+
       if (!isInit) {
         return {
           initialized: false,
@@ -116,22 +125,26 @@ export class RBACInitializer {
             'Define organizational structure',
             'Set up role hierarchy',
             'Configure permissions',
-            'Assign initial roles'
-          ]
+            'Assign initial roles',
+          ],
         };
       }
 
       // Get system statistics
-      const [roleCount] = await db.select({ count: db.$count(enhancedRoles, eq(enhancedRoles.tenantId, tenantId)) });
-      const [unitCount] = await db.select({ count: db.$count(organizationalUnits, eq(organizationalUnits.tenantId, tenantId)) });
+      const [roleCount] = await db.select({
+        count: db.$count(enhancedRoles, eq(enhancedRoles.tenantId, tenantId)),
+      });
+      const [unitCount] = await db.select({
+        count: db.$count(organizationalUnits, eq(organizationalUnits.tenantId, tenantId)),
+      });
 
       return {
         initialized: true,
         stats: {
           totalRoles: roleCount.count,
-          organizationalUnits: unitCount.count
+          organizationalUnits: unitCount.count,
         },
-        recommendation: 'RBAC system is active and ready for management'
+        recommendation: 'RBAC system is active and ready for management',
       };
     } catch (error) {
       console.error('Error getting RBAC status:', error);
@@ -194,19 +207,26 @@ export class RBACInitializer {
       const issues: string[] = [];
 
       // Check for orphaned roles
-      const rolesWithoutUnits = await db.select()
+      const rolesWithoutUnits = await db
+        .select()
         .from(enhancedRoles)
-        .leftJoin(organizationalUnits, eq(enhancedRoles.organizationalUnitId, organizationalUnits.id))
+        .leftJoin(
+          organizationalUnits,
+          eq(enhancedRoles.organizationalUnitId, organizationalUnits.id),
+        )
         .where(eq(enhancedRoles.tenantId, tenantId));
 
-      rolesWithoutUnits.forEach(row => {
+      rolesWithoutUnits.forEach((row) => {
         if (row.enhanced_roles.organizationalUnitId && !row.organizational_units) {
-          issues.push(`Role ${row.enhanced_roles.name} references non-existent organizational unit`);
+          issues.push(
+            `Role ${row.enhanced_roles.name} references non-existent organizational unit`,
+          );
         }
       });
 
       // Check hierarchy consistency
-      const units = await db.select()
+      const units = await db
+        .select()
         .from(organizationalUnits)
         .where(eq(organizationalUnits.tenantId, tenantId))
         .orderBy(organizationalUnits.lft);
@@ -223,7 +243,7 @@ export class RBACInitializer {
       return {
         isValid: issues.length === 0,
         issues,
-        testedComponents: ['role-unit-references', 'hierarchy-integrity', 'nested-set-model']
+        testedComponents: ['role-unit-references', 'hierarchy-integrity', 'nested-set-model'],
       };
     } catch (error) {
       console.error('RBAC validation error:', error);

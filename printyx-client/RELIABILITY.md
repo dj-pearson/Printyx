@@ -13,12 +13,14 @@ The Printyx Monitoring Client is designed to achieve **99.9% uptime** and **100%
 **Solution**: All metrics are buffered to disk if submission fails.
 
 **Features:**
+
 - Persistent storage survives client restarts
 - Maximum buffer size: 1000 submissions
 - Automatic cleanup of submissions older than 7 days
 - File permissions: 600 (owner only)
 
 **Exponential Backoff Schedule:**
+
 ```
 Attempt 1: Immediate
 Attempt 2: 30 seconds
@@ -30,10 +32,12 @@ Attempt 7+: 16-30 minutes (capped)
 ```
 
 **Buffer Locations:**
+
 - Linux: `/var/lib/printyx-client/buffer.json`
 - Default: `./buffer.json`
 
 **Usage:**
+
 ```typescript
 // Automatic buffering on failure
 try {
@@ -51,6 +55,7 @@ try {
 **Retry Task**: Runs every minute, attempts to submit buffered data.
 
 **Recovery Process:**
+
 1. Client collects metrics every N minutes
 2. If submission fails → metrics buffered to disk
 3. Every minute, retry task checks for ready submissions
@@ -61,6 +66,7 @@ try {
 **Maximum Retention:** 7 days (configurable)
 
 **Guarantees:**
+
 - ✅ No data loss during network outages
 - ✅ No data loss during platform maintenance
 - ✅ No data loss on client restart
@@ -77,9 +83,11 @@ try {
 **Features:**
 
 #### Counter Rollover Detection
+
 Printers typically have 8-digit counters (max: 99,999,999). When they reach the maximum, they roll over to 0.
 
 **Example:**
+
 ```
 Previous reading: 99,999,950
 Current reading:          75
@@ -88,6 +96,7 @@ Correct calculation: (99,999,999 - 99,999,950) + 75 + 1 = 125 ✅
 ```
 
 **Implementation:**
+
 ```typescript
 if (current < previous) {
   // Rollover detected
@@ -97,15 +106,18 @@ if (current < previous) {
 ```
 
 #### Duplicate Detection
+
 Prevents billing the same reading twice.
 
 **Detection Logic:**
+
 - Compare all meter values (total, B&W, color, large format)
 - If ALL values are identical → duplicate
 - Duplicate readings are logged but NOT submitted
 - Only new usage is reported
 
 **Example:**
+
 ```
 Reading 1: Total=1000, BW=700, Color=300
 Reading 2: Total=1000, BW=700, Color=300  → Duplicate (skipped)
@@ -115,15 +127,18 @@ Differential: Total=50, BW=20, Color=30
 ```
 
 #### Differential Calculations
+
 Only report NEW usage since last reading.
 
 **Metrics Tracked:**
+
 - `totalImpressions`: All prints
 - `bwImpressions`: Black & white prints
 - `colorImpressions`: Color prints
 - `largeImpressions`: Large format prints
 
 **Example:**
+
 ```
 Previous: Total=1000, BW=700, Color=300
 Current:  Total=1050, BW=720, Color=330
@@ -137,6 +152,7 @@ Billing: 20 BW clicks + 30 color clicks = accurate invoice
 ```
 
 #### First Reading Handling
+
 - First reading for a device is recorded but NOT billed
 - Establishes baseline for future differentials
 - Prevents charging for historical usage
@@ -146,6 +162,7 @@ Billing: 20 BW clicks + 30 color clicks = accurate invoice
 **File**: `meters.json`
 
 **Stored Per Device:**
+
 ```json
 {
   "SERIAL123:192.168.1.100": {
@@ -169,6 +186,7 @@ Billing: 20 BW clicks + 30 color clicks = accurate invoice
 ```
 
 **Benefits:**
+
 - Survives client restarts
 - Maintains accuracy across service interruptions
 - Historical tracking for auditing
@@ -176,12 +194,14 @@ Billing: 20 BW clicks + 30 color clicks = accurate invoice
 ### 3. Data Validation
 
 **Validation Rules:**
+
 1. **Timestamp Validation**: Ensure readings are chronological
 2. **Meter Sanity Checks**: Detect impossible values
 3. **Differential Limits**: Flag suspiciously large differentials
 4. **Device Identification**: Verify serial number + IP address
 
 **Example Validations:**
+
 ```typescript
 // Impossible to print 1 million pages in 5 minutes
 if (differential > 1000000 && timeDiff < 300) {
@@ -199,22 +219,25 @@ if (bwImpressions + colorImpressions > totalImpressions) {
 ### 1. Threshold-Based Alerts
 
 **Threshold Levels:**
+
 - **Critical** (≤10%): Trigger immediate order
 - **Warning** (≤20%): Notify for review
 - **Info**: Track usage trends
 
 **Alert Generation:**
+
 ```typescript
 interface TonerAlert {
-  color: string;           // 'black', 'cyan', 'magenta', 'yellow'
-  level: number;           // Current percentage
+  color: string; // 'black', 'cyan', 'magenta', 'yellow'
+  level: number; // Current percentage
   severity: 'critical' | 'warning' | 'info';
-  message: string;         // Human-readable alert
-  shouldOrder: boolean;    // Auto-order flag
+  message: string; // Human-readable alert
+  shouldOrder: boolean; // Auto-order flag
 }
 ```
 
 **Example:**
+
 ```
 Device: Canon iR-ADV C5550i (Serial: ABC123)
 Toner Levels:
@@ -227,11 +250,13 @@ Toner Levels:
 ### 2. Trend Analysis
 
 **Rapid Depletion Detection:**
+
 - Compare current level vs. previous reading
 - If drop > 10% → High usage alert
 - Predict days until empty based on usage rate
 
 **Example:**
+
 ```
 Previous Reading: Black=35%
 Current Reading:  Black=15%
@@ -242,12 +267,14 @@ Alert: "High usage detected - toner may need replacement soon"
 ### 3. Server-Side Alert Processing
 
 **Integration Points:**
+
 1. **Notification System**: Send alerts to technicians/admins
 2. **Supply Ordering**: Trigger automatic toner orders
 3. **Customer Portal**: Display toner status
 4. **Service Contracts**: Check if toner is covered
 
 **Server Logic:**
+
 ```typescript
 if (tonerLevel <= CRITICAL_THRESHOLD) {
   // Check service contract
@@ -269,6 +296,7 @@ if (tonerLevel <= CRITICAL_THRESHOLD) {
 ### 1. Click Charge Calculation
 
 **Billing Data Provided:**
+
 ```json
 {
   "differential": {
@@ -284,6 +312,7 @@ if (tonerLevel <= CRITICAL_THRESHOLD) {
 ```
 
 **Server Billing Logic:**
+
 ```typescript
 // Get service contract rates
 const contract = await getServiceContract(deviceId);
@@ -310,18 +339,20 @@ await createInvoiceLineItem({
   colorClicks,
   bwOverage,
   colorOverage,
-  totalCharge
+  totalCharge,
 });
 ```
 
 ### 2. Billing Period Accuracy
 
 **Challenges:**
+
 - Meters collected continuously
 - Billing periods are monthly/quarterly
 - Need to align readings with billing dates
 
 **Solution:**
+
 ```typescript
 // Query meter readings for billing period
 const startReading = await getClosestReading(startDate);
@@ -329,7 +360,7 @@ const endReading = await getClosestReading(endDate);
 
 const usage = {
   bw: endReading.bw - startReading.bw,
-  color: endReading.color - startReading.color
+  color: endReading.color - startReading.color,
 };
 
 // Handle rollovers within period
@@ -341,12 +372,14 @@ if (usage.bw < 0) {
 ### 3. Audit Trail
 
 **Complete Traceability:**
+
 - Every meter reading stored in `deviceMetrics` table
 - Client submission logged in `clientActivityLogs`
 - Rollover events flagged in `rawData`
 - Duplicate detections logged
 
 **Audit Query Example:**
+
 ```sql
 SELECT
   collectionTimestamp,
@@ -367,21 +400,23 @@ ORDER BY collectionTimestamp;
 
 **How We Achieve This:**
 
-| Component | Strategy | Recovery Time |
-|-----------|----------|---------------|
-| **Client Crash** | systemd auto-restart | <10 seconds |
-| **Network Outage** | Offline buffering | Immediate (buffered) |
-| **Platform Downtime** | Retry with backoff | 30s - 30min |
-| **Printer Offline** | Skip and retry next cycle | Next collection cycle |
-| **Database Error** | Retry with backoff | 30s - 30min |
+| Component             | Strategy                  | Recovery Time         |
+| --------------------- | ------------------------- | --------------------- |
+| **Client Crash**      | systemd auto-restart      | <10 seconds           |
+| **Network Outage**    | Offline buffering         | Immediate (buffered)  |
+| **Platform Downtime** | Retry with backoff        | 30s - 30min           |
+| **Printer Offline**   | Skip and retry next cycle | Next collection cycle |
+| **Database Error**    | Retry with backoff        | 30s - 30min           |
 
 **Monitoring:**
+
 - Client heartbeat every 5 minutes
 - Platform monitors last heartbeat
 - Alert if no heartbeat for 15 minutes
 - Buffer status logged every submission
 
 **Self-Healing:**
+
 - Automatic service restart (systemd)
 - Exponential backoff prevents overwhelming platform
 - Buffered submissions persist across restarts
@@ -392,6 +427,7 @@ ORDER BY collectionTimestamp;
 ### Test Scenarios
 
 **1. Network Outage:**
+
 ```bash
 # Simulate network failure
 sudo iptables -A OUTPUT -p tcp --dport 443 -j DROP
@@ -408,6 +444,7 @@ sudo iptables -D OUTPUT -p tcp --dport 443 -j DROP
 ```
 
 **2. Counter Rollover:**
+
 ```typescript
 // Simulate rollover in test
 const previous = { totalImpressions: 99999990 };
@@ -419,6 +456,7 @@ const diff = meterTracker.processMetrics({...});
 ```
 
 **3. Duplicate Detection:**
+
 ```bash
 # Collect metrics twice without device usage
 printyx-client test 192.168.1.100  # Reading 1
@@ -458,10 +496,12 @@ printyx-client test 192.168.1.100  # Reading 2 (should be duplicate)
 ### Buffered Submissions Not Clearing
 
 **Symptoms:**
+
 - Buffer size keeps growing
 - Retry attempts failing
 
 **Checks:**
+
 ```bash
 # Check buffer status
 sudo cat /var/lib/printyx-client/buffer.json | jq '.[] | {id, attempts, timestamp}'
@@ -476,6 +516,7 @@ sudo journalctl -u printyx-client --since "1 hour ago" | grep "buffered submissi
 ```
 
 **Solutions:**
+
 1. Verify API key is valid
 2. Check firewall rules allow outbound 443
 3. Verify platform is accessible
@@ -484,11 +525,13 @@ sudo journalctl -u printyx-client --since "1 hour ago" | grep "buffered submissi
 ### Inaccurate Meter Readings
 
 **Symptoms:**
+
 - Billing discrepancies
 - Negative differentials
 - Missing usage
 
 **Checks:**
+
 ```bash
 # Check meter state
 sudo cat /var/lib/printyx-client/meters.json | jq
@@ -501,6 +544,7 @@ sudo journalctl -u printyx-client | grep "duplicate"
 ```
 
 **Solutions:**
+
 1. Verify printer meters haven't been manually reset
 2. Check for device replacement (new device, same IP)
 3. Verify SNMP access to printer
@@ -509,10 +553,12 @@ sudo journalctl -u printyx-client | grep "duplicate"
 ### Missed Toner Alerts
 
 **Symptoms:**
+
 - Toner depleted without warning
 - No supply orders triggered
 
 **Checks:**
+
 ```bash
 # Check toner levels being reported
 sudo journalctl -u printyx-client | grep "Toner Alert"
@@ -529,6 +575,7 @@ ORDER BY collectionTimestamp DESC LIMIT 5;
 ```
 
 **Solutions:**
+
 1. Verify toner levels in SNMP responses
 2. Check alert thresholds in server code
 3. Verify notification system integration
@@ -539,24 +586,28 @@ ORDER BY collectionTimestamp DESC LIMIT 5;
 The Printyx Monitoring Client provides **enterprise-grade reliability and accuracy** through:
 
 ✅ **99.9% Uptime:**
+
 - Offline buffering with persistent storage
 - Automatic retry with exponential backoff
 - Self-healing with systemd watchdog
 - Complete audit trail
 
 ✅ **100% Accuracy:**
+
 - Counter rollover detection and handling
 - Duplicate reading prevention
 - Differential calculations for billing
 - First reading baseline establishment
 
 ✅ **Toner Replenishment:**
+
 - Real-time threshold monitoring
 - Automatic alert generation
 - Trend analysis for predictive ordering
 - Service contract integration
 
 ✅ **Billing Integration:**
+
 - Accurate click charges
 - Billing period alignment
 - Overage calculations

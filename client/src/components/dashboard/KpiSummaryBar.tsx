@@ -1,7 +1,7 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { Activity, TrendingUp, AlertTriangle, Gauge } from "lucide-react";
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
+import { Activity, TrendingUp, AlertTriangle, Gauge } from 'lucide-react';
 
 type Metrics = {
   responseTime?: number;
@@ -14,32 +14,32 @@ type Metrics = {
   activeUsers?: number;
 };
 
-export default function KpiSummaryBar({ className = "" }: { className?: string }) {
+export default function KpiSummaryBar({ className = '' }: { className?: string }) {
   const { data } = useQuery<Metrics>({
-    queryKey: ["/api/performance/metrics"],
+    queryKey: ['/api/performance/metrics'],
   });
 
   const metrics = data || {};
 
   const items = [
     {
-      label: "Avg Response",
-      value: metrics.responseTime ? `${Math.round(metrics.responseTime)} ms` : "-",
+      label: 'Avg Response',
+      value: metrics.responseTime ? `${Math.round(metrics.responseTime)} ms` : '-',
       Icon: Gauge,
     },
     {
-      label: "Throughput",
-      value: metrics.throughput ? `${Math.round(metrics.throughput)}/min` : "-",
+      label: 'Throughput',
+      value: metrics.throughput ? `${Math.round(metrics.throughput)}/min` : '-',
       Icon: Activity,
     },
     {
-      label: "Error Rate",
-      value: metrics.errorRate != null ? `${(metrics.errorRate * 100).toFixed(2)}%` : "-",
+      label: 'Error Rate',
+      value: metrics.errorRate != null ? `${(metrics.errorRate * 100).toFixed(2)}%` : '-',
       Icon: AlertTriangle,
     },
     {
-      label: "Uptime",
-      value: metrics.uptime != null ? `${(metrics.uptime * 100).toFixed(2)}%` : "-",
+      label: 'Uptime',
+      value: metrics.uptime != null ? `${(metrics.uptime * 100).toFixed(2)}%` : '-',
       Icon: TrendingUp,
     },
   ];
@@ -60,5 +60,3 @@ export default function KpiSummaryBar({ className = "" }: { className?: string }
     </div>
   );
 }
-
-

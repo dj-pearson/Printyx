@@ -59,18 +59,19 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-30T23:59:59Z')
+        new Date('2025-09-30T23:59:59Z'),
       );
 
       expect(result.scheduledTasks.length).toBeGreaterThan(0);
-      
+
       // High priority task should be scheduled before low priority
-      const highPriorityTask = result.scheduledTasks.find(t => t.id === 'task-1');
-      const lowPriorityTask = result.scheduledTasks.find(t => t.id === 'task-3');
-      
+      const highPriorityTask = result.scheduledTasks.find((t) => t.id === 'task-1');
+      const lowPriorityTask = result.scheduledTasks.find((t) => t.id === 'task-3');
+
       if (highPriorityTask && lowPriorityTask) {
-        expect(highPriorityTask.aiSuggestedStart.getTime())
-          .toBeLessThan(lowPriorityTask.aiSuggestedStart.getTime());
+        expect(highPriorityTask.aiSuggestedStart.getTime()).toBeLessThan(
+          lowPriorityTask.aiSuggestedStart.getTime(),
+        );
       }
     });
 
@@ -80,13 +81,13 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
-      result.scheduledTasks.forEach(task => {
+      result.scheduledTasks.forEach((task) => {
         const startHour = task.aiSuggestedStart.getHours();
         const endHour = task.aiSuggestedEnd.getHours();
-        
+
         expect(startHour).toBeGreaterThanOrEqual(9); // 9 AM start
         expect(endHour).toBeLessThanOrEqual(17); // 5 PM end
       });
@@ -98,10 +99,10 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'), // Friday
-        new Date('2025-09-29T23:59:59Z') // Monday
+        new Date('2025-09-29T23:59:59Z'), // Monday
       );
 
-      result.scheduledTasks.forEach(task => {
+      result.scheduledTasks.forEach((task) => {
         const dayOfWeek = task.aiSuggestedStart.getDay();
         expect(dayOfWeek).not.toBe(0); // Not Sunday
         expect(dayOfWeek).not.toBe(6); // Not Saturday
@@ -114,7 +115,7 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       expect(result.scheduledTasks).toHaveLength(0);
@@ -136,11 +137,11 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         existingEvents,
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       // Tasks should not overlap with existing events
-      result.scheduledTasks.forEach(task => {
+      result.scheduledTasks.forEach((task) => {
         const taskStart = task.aiSuggestedStart.getTime();
         const taskEnd = task.aiSuggestedEnd.getTime();
         const eventStart = new Date('2025-09-26T10:00:00Z').getTime();
@@ -157,10 +158,10 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-30T23:59:59Z')
+        new Date('2025-09-30T23:59:59Z'),
       );
 
-      result.scheduledTasks.forEach(task => {
+      result.scheduledTasks.forEach((task) => {
         expect(task.aiSchedulingConfidence).toBeGreaterThanOrEqual(0);
         expect(task.aiSchedulingConfidence).toBeLessThanOrEqual(1);
         expect(task.aiSchedulingReasoning).toBeDefined();
@@ -174,15 +175,16 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z') // 2 days
+        new Date('2025-09-27T23:59:59Z'), // 2 days
       );
 
       expect(result.utilizationPercentage).toBeGreaterThanOrEqual(0);
       expect(result.utilizationPercentage).toBeLessThanOrEqual(100);
-      
+
       // Total scheduled duration should match sum of individual tasks
       const expectedDuration = result.scheduledTasks.reduce(
-        (sum, task) => sum + task.estimatedDuration, 0
+        (sum, task) => sum + task.estimatedDuration,
+        0,
       );
       expect(result.totalScheduledDuration).toBe(expectedDuration);
     });
@@ -193,13 +195,13 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       expect(Array.isArray(result.optimizationInsights)).toBe(true);
       expect(result.optimizationInsights.length).toBeGreaterThan(0);
-      
-      result.optimizationInsights.forEach(insight => {
+
+      result.optimizationInsights.forEach((insight) => {
         expect(typeof insight).toBe('string');
         expect(insight.length).toBeGreaterThan(0);
       });
@@ -208,7 +210,7 @@ describe('Task Scheduling Service', () => {
 
   describe('Edge Cases and Error Handling', () => {
     test('should handle tasks with no due date', async () => {
-      const tasksWithoutDueDate = mockTasks.map(task => ({
+      const tasksWithoutDueDate = mockTasks.map((task) => ({
         ...task,
         dueDate: undefined,
       }));
@@ -218,12 +220,13 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       expect(result).toBeDefined();
-      expect(result.scheduledTasks.length + result.unscheduledTasks.length)
-        .toBe(tasksWithoutDueDate.length);
+      expect(result.scheduledTasks.length + result.unscheduledTasks.length).toBe(
+        tasksWithoutDueDate.length,
+      );
     });
 
     test('should handle very long tasks', async () => {
@@ -241,7 +244,7 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       // Should either schedule across multiple days or mark as unscheduled
@@ -264,12 +267,12 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       // Overdue tasks should get high priority treatment
       if (result.scheduledTasks.length > 0) {
-        const scheduledOverdue = result.scheduledTasks.find(t => t.id === 'overdue-task');
+        const scheduledOverdue = result.scheduledTasks.find((t) => t.id === 'overdue-task');
         if (scheduledOverdue) {
           expect(scheduledOverdue.aiPriorityScore).toBeGreaterThan(80);
         }
@@ -283,7 +286,7 @@ describe('Task Scheduling Service', () => {
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-27T23:59:59Z')
+        new Date('2025-09-27T23:59:59Z'),
       );
 
       // Should still return a valid result structure
@@ -309,13 +312,13 @@ describe('Task Scheduling Service', () => {
       }));
 
       const startTime = Date.now();
-      
+
       const result = await TaskSchedulingService.scheduleTasksWithAI(
         largeTasks,
         mockPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-12-31T23:59:59Z') // 3+ months
+        new Date('2025-12-31T23:59:59Z'), // 3+ months
       );
 
       const executionTime = Date.now() - startTime;
@@ -345,12 +348,11 @@ describe('Task Scheduling Service', () => {
         complexPreferences,
         [],
         new Date('2025-09-26T00:00:00Z'),
-        new Date('2025-09-30T23:59:59Z')
+        new Date('2025-09-30T23:59:59Z'),
       );
 
       expect(result).toBeDefined();
-      expect(result.scheduledTasks.length + result.unscheduledTasks.length)
-        .toBe(mockTasks.length);
+      expect(result.scheduledTasks.length + result.unscheduledTasks.length).toBe(mockTasks.length);
     });
   });
 });

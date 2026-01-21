@@ -34,10 +34,7 @@ export default function LoginScreen() {
     try {
       await login(email, password);
     } catch (error: any) {
-      Alert.alert(
-        'Login Failed',
-        error.response?.data?.message || 'Invalid email or password'
-      );
+      Alert.alert('Login Failed', error.response?.data?.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +72,12 @@ export default function LoginScreen() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={styles.inputIcon} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color="#6b7280"
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -86,10 +88,7 @@ export default function LoginScreen() {
               autoCorrect={false}
               editable={!isLoading}
             />
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-            >
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={20}
@@ -104,17 +103,13 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={isLoading}
           >
-            <Text style={styles.loginButtonText}>
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Text>
+            <Text style={styles.loginButtonText}>{isLoading ? 'Signing in...' : 'Sign In'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Need help? Contact your administrator
-          </Text>
+          <Text style={styles.footerText}>Need help? Contact your administrator</Text>
         </View>
       </View>
     </KeyboardAvoidingView>

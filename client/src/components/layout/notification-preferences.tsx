@@ -1,37 +1,28 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Bell,
-  Mail,
-  MessageSquare,
-  Smartphone,
-  Moon,
-  Volume2,
-  Clock,
-  Filter,
-} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, Mail, MessageSquare, Smartphone, Moon, Volume2, Clock, Filter } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 export interface NotificationChannel {
   inApp: boolean;
@@ -45,7 +36,7 @@ export interface NotificationTypePreference {
   label: string;
   description: string;
   channels: NotificationChannel;
-  priority: "critical" | "high" | "medium" | "low";
+  priority: 'critical' | 'high' | 'medium' | 'low';
   enabled: boolean;
 }
 
@@ -58,7 +49,7 @@ export interface NotificationPreferences {
   };
   digestMode: {
     enabled: boolean;
-    frequency: "hourly" | "daily" | "weekly";
+    frequency: 'hourly' | 'daily' | 'weekly';
     time?: string; // HH:MM for daily/weekly
   };
   soundEnabled: boolean;
@@ -72,67 +63,67 @@ interface NotificationPreferencesDialogProps {
 
 const DEFAULT_NOTIFICATION_TYPES: NotificationTypePreference[] = [
   {
-    type: "equipment_down",
-    label: "Equipment Down",
-    description: "Critical equipment failures requiring immediate attention",
+    type: 'equipment_down',
+    label: 'Equipment Down',
+    description: 'Critical equipment failures requiring immediate attention',
     channels: { inApp: true, email: true, sms: true, push: true },
-    priority: "critical",
+    priority: 'critical',
     enabled: true,
   },
   {
-    type: "payment_failed",
-    label: "Payment Failed",
-    description: "Failed payment attempts from customers",
+    type: 'payment_failed',
+    label: 'Payment Failed',
+    description: 'Failed payment attempts from customers',
     channels: { inApp: true, email: true, sms: false, push: true },
-    priority: "high",
+    priority: 'high',
     enabled: true,
   },
   {
-    type: "service_due",
-    label: "Service Due",
-    description: "Upcoming scheduled service appointments",
+    type: 'service_due',
+    label: 'Service Due',
+    description: 'Upcoming scheduled service appointments',
     channels: { inApp: true, email: true, sms: false, push: false },
-    priority: "medium",
+    priority: 'medium',
     enabled: true,
   },
   {
-    type: "contract_expiring",
-    label: "Contract Expiring",
-    description: "Customer contracts nearing expiration",
+    type: 'contract_expiring',
+    label: 'Contract Expiring',
+    description: 'Customer contracts nearing expiration',
     channels: { inApp: true, email: true, sms: false, push: false },
-    priority: "high",
+    priority: 'high',
     enabled: true,
   },
   {
-    type: "meter_reading_due",
-    label: "Meter Reading Due",
-    description: "Meter readings that need to be submitted",
+    type: 'meter_reading_due',
+    label: 'Meter Reading Due',
+    description: 'Meter readings that need to be submitted',
     channels: { inApp: true, email: false, sms: false, push: false },
-    priority: "medium",
+    priority: 'medium',
     enabled: true,
   },
   {
-    type: "low_supplies",
-    label: "Low Supplies",
-    description: "Inventory items below threshold",
+    type: 'low_supplies',
+    label: 'Low Supplies',
+    description: 'Inventory items below threshold',
     channels: { inApp: true, email: false, sms: false, push: false },
-    priority: "low",
+    priority: 'low',
     enabled: true,
   },
   {
-    type: "new_customer_message",
-    label: "Customer Messages",
-    description: "New messages from customers via portal",
+    type: 'new_customer_message',
+    label: 'Customer Messages',
+    description: 'New messages from customers via portal',
     channels: { inApp: true, email: true, sms: false, push: true },
-    priority: "medium",
+    priority: 'medium',
     enabled: true,
   },
   {
-    type: "team_mention",
-    label: "Team Mentions",
-    description: "When someone mentions you in a note or comment",
+    type: 'team_mention',
+    label: 'Team Mentions',
+    description: 'When someone mentions you in a note or comment',
     channels: { inApp: true, email: false, sms: false, push: true },
-    priority: "medium",
+    priority: 'medium',
     enabled: true,
   },
 ];
@@ -145,16 +136,16 @@ export function NotificationPreferencesDialog({
 
   // Fetch current preferences
   const { data: preferences, isLoading } = useQuery<NotificationPreferences>({
-    queryKey: ["/api/user/notification-preferences"],
+    queryKey: ['/api/user/notification-preferences'],
     queryFn: async () => {
       try {
-        return await apiRequest("/api/user/notification-preferences");
+        return await apiRequest('/api/user/notification-preferences');
       } catch (err) {
         // Return defaults if endpoint doesn't exist
         return {
           types: DEFAULT_NOTIFICATION_TYPES,
-          quietHours: { enabled: false, start: "22:00", end: "08:00" },
-          digestMode: { enabled: false, frequency: "daily" as const, time: "09:00" },
+          quietHours: { enabled: false, start: '22:00', end: '08:00' },
+          digestMode: { enabled: false, frequency: 'daily' as const, time: '09:00' },
           soundEnabled: true,
           desktopNotifications: true,
         };
@@ -174,20 +165,20 @@ export function NotificationPreferencesDialog({
   // Save preferences mutation
   const saveMutation = useMutation({
     mutationFn: (prefs: NotificationPreferences) =>
-      apiRequest("/api/user/notification-preferences", "PUT", prefs),
+      apiRequest('/api/user/notification-preferences', 'PUT', prefs),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user/notification-preferences"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/notification-preferences'] });
       toast({
-        title: "Preferences saved",
-        description: "Your notification preferences have been updated.",
+        title: 'Preferences saved',
+        description: 'Your notification preferences have been updated.',
       });
       onOpenChange(false);
     },
     onError: () => {
       toast({
-        title: "Failed to save",
-        description: "Could not save notification preferences. Please try again.",
-        variant: "destructive",
+        title: 'Failed to save',
+        description: 'Could not save notification preferences. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -197,7 +188,7 @@ export function NotificationPreferencesDialog({
     setLocalPreferences({
       ...localPreferences,
       types: localPreferences.types.map((t) =>
-        t.type === typeId ? { ...t, enabled: !t.enabled } : t
+        t.type === typeId ? { ...t, enabled: !t.enabled } : t,
       ),
     });
   };
@@ -209,7 +200,7 @@ export function NotificationPreferencesDialog({
       types: localPreferences.types.map((t) =>
         t.type === typeId
           ? { ...t, channels: { ...t.channels, [channel]: !t.channels[channel] } }
-          : t
+          : t,
       ),
     });
   };
@@ -220,16 +211,16 @@ export function NotificationPreferencesDialog({
     }
   };
 
-  const getPriorityColor = (priority: NotificationTypePreference["priority"]) => {
+  const getPriorityColor = (priority: NotificationTypePreference['priority']) => {
     switch (priority) {
-      case "critical":
-        return "bg-red-500";
-      case "high":
-        return "bg-orange-500";
-      case "medium":
-        return "bg-blue-500";
-      case "low":
-        return "bg-gray-400";
+      case 'critical':
+        return 'bg-red-500';
+      case 'high':
+        return 'bg-orange-500';
+      case 'medium':
+        return 'bg-blue-500';
+      case 'low':
+        return 'bg-gray-400';
     }
   };
 
@@ -245,9 +236,7 @@ export function NotificationPreferencesDialog({
             <Bell className="h-5 w-5" />
             Notification Preferences
           </DialogTitle>
-          <DialogDescription>
-            Customize how and when you receive notifications
-          </DialogDescription>
+          <DialogDescription>Customize how and when you receive notifications</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 mt-4">
@@ -278,9 +267,7 @@ export function NotificationPreferencesDialog({
                 <Smartphone className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <Label>Desktop Notifications</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Show browser push notifications
-                  </p>
+                  <p className="text-xs text-muted-foreground">Show browser push notifications</p>
                 </div>
               </div>
               <Switch
@@ -338,7 +325,7 @@ export function NotificationPreferencesDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 24 }, (_, i) => {
-                        const hour = i.toString().padStart(2, "0");
+                        const hour = i.toString().padStart(2, '0');
                         return (
                           <SelectItem key={hour} value={`${hour}:00`}>
                             {hour}:00
@@ -365,7 +352,7 @@ export function NotificationPreferencesDialog({
                     </SelectTrigger>
                     <SelectContent>
                       {Array.from({ length: 24 }, (_, i) => {
-                        const hour = i.toString().padStart(2, "0");
+                        const hour = i.toString().padStart(2, '0');
                         return (
                           <SelectItem key={hour} value={`${hour}:00`}>
                             {hour}:00
@@ -429,11 +416,11 @@ export function NotificationPreferencesDialog({
                   </SelectContent>
                 </Select>
 
-                {localPreferences.digestMode.frequency !== "hourly" && (
+                {localPreferences.digestMode.frequency !== 'hourly' && (
                   <>
                     <Label className="text-xs">at</Label>
                     <Select
-                      value={localPreferences.digestMode.time || "09:00"}
+                      value={localPreferences.digestMode.time || '09:00'}
                       onValueChange={(value) =>
                         setLocalPreferences({
                           ...localPreferences,
@@ -446,7 +433,7 @@ export function NotificationPreferencesDialog({
                       </SelectTrigger>
                       <SelectContent>
                         {Array.from({ length: 24 }, (_, i) => {
-                          const hour = i.toString().padStart(2, "0");
+                          const hour = i.toString().padStart(2, '0');
                           return (
                             <SelectItem key={hour} value={`${hour}:00`}>
                               {hour}:00
@@ -472,7 +459,7 @@ export function NotificationPreferencesDialog({
 
             <div className="space-y-3">
               {localPreferences.types.map((type) => (
-                <Card key={type.type} className={!type.enabled ? "opacity-50" : ""}>
+                <Card key={type.type} className={!type.enabled ? 'opacity-50' : ''}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -481,9 +468,7 @@ export function NotificationPreferencesDialog({
                         />
                         <div>
                           <CardTitle className="text-sm">{type.label}</CardTitle>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {type.description}
-                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
                         </div>
                       </div>
                       <Switch
@@ -499,37 +484,37 @@ export function NotificationPreferencesDialog({
                         <Label className="text-xs text-muted-foreground">Channels:</Label>
                         <div className="flex items-center gap-2">
                           <Button
-                            variant={type.channels.inApp ? "secondary" : "ghost"}
+                            variant={type.channels.inApp ? 'secondary' : 'ghost'}
                             size="sm"
                             className="h-7 px-2"
-                            onClick={() => handleToggleChannel(type.type, "inApp")}
+                            onClick={() => handleToggleChannel(type.type, 'inApp')}
                           >
                             <Bell className="h-3 w-3 mr-1" />
                             App
                           </Button>
                           <Button
-                            variant={type.channels.email ? "secondary" : "ghost"}
+                            variant={type.channels.email ? 'secondary' : 'ghost'}
                             size="sm"
                             className="h-7 px-2"
-                            onClick={() => handleToggleChannel(type.type, "email")}
+                            onClick={() => handleToggleChannel(type.type, 'email')}
                           >
                             <Mail className="h-3 w-3 mr-1" />
                             Email
                           </Button>
                           <Button
-                            variant={type.channels.sms ? "secondary" : "ghost"}
+                            variant={type.channels.sms ? 'secondary' : 'ghost'}
                             size="sm"
                             className="h-7 px-2"
-                            onClick={() => handleToggleChannel(type.type, "sms")}
+                            onClick={() => handleToggleChannel(type.type, 'sms')}
                           >
                             <MessageSquare className="h-3 w-3 mr-1" />
                             SMS
                           </Button>
                           <Button
-                            variant={type.channels.push ? "secondary" : "ghost"}
+                            variant={type.channels.push ? 'secondary' : 'ghost'}
                             size="sm"
                             className="h-7 px-2"
-                            onClick={() => handleToggleChannel(type.type, "push")}
+                            onClick={() => handleToggleChannel(type.type, 'push')}
                           >
                             <Smartphone className="h-3 w-3 mr-1" />
                             Push
@@ -550,7 +535,7 @@ export function NotificationPreferencesDialog({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saveMutation.isPending}>
-            {saveMutation.isPending ? "Saving..." : "Save Preferences"}
+            {saveMutation.isPending ? 'Saving...' : 'Save Preferences'}
           </Button>
         </div>
       </DialogContent>

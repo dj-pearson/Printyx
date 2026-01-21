@@ -7,11 +7,13 @@
 ## 🚨 CRITICAL ISSUES FOUND
 
 ### 1. Hybrid Architecture Risk
+
 - **Problem:** Application uses both Express routes (`/server`) AND Edge Functions
 - **Impact:** Security inconsistencies, maintenance burden, deployment complexity
 - **Status:** 🔴 HIGH PRIORITY
 
 ### 2. Missing Edge Functions
+
 - **Problem:** Only 11 Edge Functions created, need 50+
 - **Impact:** Many features broken or insecure
 - **List:**
@@ -27,6 +29,7 @@
   - ❌ `/api/quotes` - Quote creation broken
 
 ### 3. Inconsistent Authentication
+
 - **Problem:** Mixed patterns (session vs JWT)
 - **Impact:** Security vulnerabilities, unpredictable auth
 - **Status:** 🟡 MEDIUM PRIORITY
@@ -110,7 +113,10 @@ export default async function handler(req: Request) {
   const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   const supabase = createSupabaseClient(req);
-  const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(jwt);
 
   if (userError || !user) {
     return createCorsResponse({ error: 'Unauthorized' }, 401, req);
@@ -118,8 +124,7 @@ export default async function handler(req: Request) {
 
   // 3. Tenant ID Extraction
   const tenantId =
-    (user.app_metadata?.tenantId as string) ||
-    (user.app_metadata?.tenant_id as string);
+    (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
 
   if (!tenantId) {
     return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -127,10 +132,7 @@ export default async function handler(req: Request) {
 
   // 4. Database Operations (always filter by tenant_id!)
   const admin = createSupabaseServiceClient();
-  const { data, error } = await admin
-    .from('table_name')
-    .select('*')
-    .eq('tenant_id', tenantId);  // ⚠️ CRITICAL: Always filter!
+  const { data, error } = await admin.from('table_name').select('*').eq('tenant_id', tenantId); // ⚠️ CRITICAL: Always filter!
 
   return createCorsResponse(data || [], 200, req);
 }
@@ -156,6 +158,7 @@ ssh root@209.145.59.219 "docker logs qc8gw0k4oo4gs4owggg80s8w 2>&1 | grep 'Loade
 ### 2. Test Core CRM (1 hour)
 
 Open these pages and verify they work:
+
 - ✅ https://printyx.net/leads-management - Works
 - ✅ https://printyx.net/leads/:id - Fixed today
 - ✅ https://printyx.net/task-hub - Works
@@ -165,6 +168,7 @@ Open these pages and verify they work:
 ### 3. Create Priority Edge Functions (4 hours)
 
 Based on user impact:
+
 1. `/api/me` - Highest (all users)
 2. `/api/customers` - High (sales team)
 3. `/api/service-tickets` - High (service team)
@@ -176,22 +180,22 @@ Based on user impact:
 
 ### Edge Functions Status
 
-| Function | Status | Auth | Users | Priority |
-|----------|--------|------|-------|----------|
-| `business-records` | ✅ Working | Yes | All Sales | CRITICAL |
-| `tasks` | ✅ Working | Yes | All Users | CRITICAL |
-| `projects` | ✅ Working | Yes | All Users | CRITICAL |
-| `users` | ✅ Working | Yes | All Users | CRITICAL |
-| `me` | ❌ 404 | Yes | All Users | 🔴 FIX NOW |
-| `customers` | ❌ Missing | - | Sales | 🔴 CREATE NOW |
-| `service-tickets` | ❌ Missing | - | Service | 🔴 CREATE NOW |
-| `contacts` | ❌ Missing | - | Sales | 🟡 CREATE SOON |
-| `reports` | ❌ Missing | - | Executives | 🟡 CREATE SOON |
-| `territories` | ❌ Missing | - | Sales Mgmt | 🟢 CREATE LATER |
-| `catalog` | ❌ Missing | - | Product Mgmt | 🟢 CREATE LATER |
-| `pricing` | ❌ Missing | - | Sales | 🟢 CREATE LATER |
-| `inventory` | ❌ Missing | - | Warehouse | 🟢 CREATE LATER |
-| `quotes` | ❌ Missing | - | Sales | 🟢 CREATE LATER |
+| Function           | Status     | Auth | Users        | Priority        |
+| ------------------ | ---------- | ---- | ------------ | --------------- |
+| `business-records` | ✅ Working | Yes  | All Sales    | CRITICAL        |
+| `tasks`            | ✅ Working | Yes  | All Users    | CRITICAL        |
+| `projects`         | ✅ Working | Yes  | All Users    | CRITICAL        |
+| `users`            | ✅ Working | Yes  | All Users    | CRITICAL        |
+| `me`               | ❌ 404     | Yes  | All Users    | 🔴 FIX NOW      |
+| `customers`        | ❌ Missing | -    | Sales        | 🔴 CREATE NOW   |
+| `service-tickets`  | ❌ Missing | -    | Service      | 🔴 CREATE NOW   |
+| `contacts`         | ❌ Missing | -    | Sales        | 🟡 CREATE SOON  |
+| `reports`          | ❌ Missing | -    | Executives   | 🟡 CREATE SOON  |
+| `territories`      | ❌ Missing | -    | Sales Mgmt   | 🟢 CREATE LATER |
+| `catalog`          | ❌ Missing | -    | Product Mgmt | 🟢 CREATE LATER |
+| `pricing`          | ❌ Missing | -    | Sales        | 🟢 CREATE LATER |
+| `inventory`        | ❌ Missing | -    | Warehouse    | 🟢 CREATE LATER |
+| `quotes`           | ❌ Missing | -    | Sales        | 🟢 CREATE LATER |
 
 ### Old Server Routes
 
@@ -215,11 +219,12 @@ Based on user impact:
 After creating each Edge Function:
 
 1. **Authentication Test**
+
    ```bash
    # No token
    curl https://functions.printyx.net/function-name
    # Expected: 401 Unauthorized
-   
+
    # With token
    curl https://functions.printyx.net/function-name \
      -H "Authorization: Bearer YOUR_TOKEN"
@@ -254,6 +259,7 @@ After creating each Edge Function:
 
 **Cause:** Missing or invalid JWT
 **Fix:**
+
 ```typescript
 // Check JWT extraction
 const authHeader = req.headers.get('Authorization');
@@ -268,6 +274,7 @@ console.log('Error:', userError);
 
 **Cause:** Wrong `tenant_id` or missing filter
 **Fix:**
+
 ```typescript
 // Always log tenant_id
 console.log('Tenant ID:', tenantId);
@@ -280,6 +287,7 @@ console.log('Tenant ID:', tenantId);
 
 **Cause:** Missing `.single()` on Supabase query
 **Fix:**
+
 ```typescript
 // Single record
 const { data, error } = await admin
@@ -287,31 +295,33 @@ const { data, error } = await admin
   .select('*')
   .eq('id', id)
   .eq('tenant_id', tenantId)
-  .single();  // ⬅️ Add this!
+  .single(); // ⬅️ Add this!
 ```
 
 ### Issue 4: Edge Function Not Loading
 
 **Cause:** Missing `export default` or syntax error
 **Fix:**
+
 ```typescript
 // ✅ Correct
-export default async function handler(req: Request) { }
+export default async function handler(req: Request) {}
 
 // ❌ Wrong
-export async function handler(req: Request) { }
+export async function handler(req: Request) {}
 ```
 
 ### Issue 5: CORS Errors
 
 **Cause:** Missing CORS headers
 **Fix:**
+
 ```typescript
 // Always use createCorsResponse
 return createCorsResponse(data, 200, req);
 
 // Never use raw Response
-return new Response(JSON.stringify(data));  // ❌ Wrong
+return new Response(JSON.stringify(data)); // ❌ Wrong
 ```
 
 ---
@@ -328,14 +338,17 @@ return new Response(JSON.stringify(data));  // ❌ Wrong
 ## 🎓 LEARNING RESOURCES
 
 ### Supabase Edge Functions
+
 - [Official Docs](https://supabase.com/docs/guides/functions)
 - [Deno Deploy](https://deno.com/deploy/docs)
 
 ### Authentication
+
 - [Supabase Auth](https://supabase.com/docs/guides/auth)
 - [JWT Tokens](https://jwt.io/)
 
 ### RLS Policies
+
 - [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security)
 
 ---
@@ -343,12 +356,14 @@ return new Response(JSON.stringify(data));  // ❌ Wrong
 ## 📞 HELP & SUPPORT
 
 **Questions about migration?**
+
 - Check this guide first
 - Review the full migration plan
 - Test in development before production
 - Monitor error logs during deployment
 
 **Deployment Issues?**
+
 - Check Edge Function logs: `docker logs CONTAINER_ID`
 - Verify environment variables
 - Test JWT token in browser console
@@ -373,4 +388,3 @@ return new Response(JSON.stringify(data));  // ❌ Wrong
 ---
 
 **Remember:** Every Edge Function MUST validate JWT and filter by `tenant_id`!
-

@@ -27,6 +27,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().optional(),
   SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_JWT_SECRET: z.string().optional(),
 
   // Stripe (optional but recommended for billing)
   STRIPE_SECRET_KEY: z.string().optional(),
@@ -93,6 +94,9 @@ export function validateEnvironment(): ValidationResult {
     }
     if (!process.env.SUPABASE_ANON_KEY) {
       errors.push('SUPABASE_ANON_KEY: Required in production for authentication');
+    }
+    if (!process.env.SUPABASE_JWT_SECRET) {
+      errors.push('SUPABASE_JWT_SECRET: Required in production for JWT verification');
     }
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       warnings.push('SUPABASE_SERVICE_ROLE_KEY: Recommended for server-side auth operations');
@@ -205,6 +209,68 @@ export function isTestMode(): boolean {
   return process.env.NODE_ENV === 'test' || process.env.TEST_MODE === 'true';
 }
 
+/**
+ * Check if JWT authentication is properly configured
+ */
+export interface JwtConfigStatus {
+  configured: boolean;
+  supabaseUrl: boolean;
+  anonKey: boolean;
+  jwtSecret: boolean;
+  serviceRoleKey: boolean;
+  errors: string[];
+}
+
+export function checkJwtConfiguration(): JwtConfigStatus {
+  const errors: string[] = [];
+
+  const supabaseUrl = !!process.env.SUPABASE_URL;
+  const anonKey = !!process.env.SUPABASE_ANON_KEY;
+  const jwtSecret = !!process.env.SUPABASE_JWT_SECRET;
+  const serviceRoleKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) {
+    errors.push('SUPABASE_URL is not configured');
+  }
+  if (!anonKey) {
+    errors.push('SUPABASE_ANON_KEY is not configured');
+  }
+  if (!jwtSecret) {
+    errors.push('SUPABASE_JWT_SECRET is not configured - JWT verification will fail');
+  }
+
+  const configured = supabaseUrl && anonKey && jwtSecret;
+
+  return {
+    configured,
+    supabaseUrl,
+    anonKey,
+    jwtSecret,
+    serviceRoleKey,
+    errors,
+  };
+}
+
+/**
+ * Log JWT configuration status at startup
+ */
+export function logJwtConfigurationStatus(): void {
+  const status = checkJwtConfiguration();
+
+  if (status.configured) {
+    console.log('[JWT] ✅ JWT authentication is properly configured');
+  } else {
+    console.warn('[JWT] ⚠️  JWT authentication is NOT fully configured:');
+    status.errors.forEach((error) => console.warn(`  - ${error}`));
+
+    if (isProduction()) {
+      console.error('[JWT] ❌ CRITICAL: JWT must be configured in production!');
+    } else {
+      console.warn('[JWT] Running in development mode - some auth features may not work');
+    }
+  }
+}
+
 export default {
   validateEnvironment,
   validateEnvironmentOrFail,
@@ -212,4 +278,6 @@ export default {
   isProduction,
   isDevelopment,
   isTestMode,
+  checkJwtConfiguration,
+  logJwtConfigurationStatus,
 };

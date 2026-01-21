@@ -1,4 +1,10 @@
-import { BaseManufacturerAdapter, DeviceInfo, MeterReading, CollectionResult, IntegrationConfig } from './base-adapter';
+import {
+  BaseManufacturerAdapter,
+  DeviceInfo,
+  MeterReading,
+  CollectionResult,
+  IntegrationConfig,
+} from './base-adapter';
 
 /**
  * Canon Data Collection Agent (DCA) and eMaintenance Integration Adapter
@@ -15,15 +21,12 @@ export class CanonAdapter extends BaseManufacturerAdapter {
   async testConnection(): Promise<boolean> {
     try {
       this.validateConfig();
-      
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/v1/health`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
-      
+
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/v1/health`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
       return response.ok;
     } catch (error) {
       console.error('Canon connection test failed:', error);
@@ -58,24 +61,21 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
   private async authenticateWithApiKey(): Promise<boolean> {
     try {
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/v1/auth/token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            apiKey: this.config.authCredentials.apiKey,
-            clientId: this.config.authCredentials.clientId
-          })
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/v1/auth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          apiKey: this.config.authCredentials.apiKey,
+          clientId: this.config.authCredentials.clientId,
+        }),
+      });
 
       const data = await this.handleApiResponse(response);
       this.accessToken = data.access_token;
-      this.tokenExpiresAt = new Date(Date.now() + (data.expires_in * 1000));
-      
+      this.tokenExpiresAt = new Date(Date.now() + data.expires_in * 1000);
+
       return true;
     } catch (error) {
       console.error('Canon API key authentication failed:', error);
@@ -85,17 +85,14 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
   async discoverDevices(): Promise<DeviceInfo[]> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/v1/devices`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/v1/devices`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
       const data = await this.handleApiResponse(response);
       return this.mapCanonDevices(data.devices || []);
@@ -106,7 +103,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
   }
 
   private mapCanonDevices(devices: any[]): DeviceInfo[] {
-    return devices.map(device => ({
+    return devices.map((device) => ({
       deviceId: device.device_id || device.id,
       serialNumber: device.serial_number,
       modelNumber: device.model || device.model_name,
@@ -116,7 +113,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
       capabilities: device.capabilities || ['meter_reading', 'status_monitoring'],
       supportedMetrics: [
         'total_prints',
-        'black_white_prints', 
+        'black_white_prints',
         'color_prints',
         'total_copies',
         'black_white_copies',
@@ -128,16 +125,16 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         'toner_magenta_level',
         'toner_yellow_level',
         'paper_level',
-        'drum_life_remaining'
-      ]
+        'drum_life_remaining',
+      ],
     }));
   }
 
   async collectDeviceMetrics(deviceId: string): Promise<CollectionResult> {
     const startTime = Date.now();
-    
+
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -145,19 +142,19 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         `${this.config.apiEndpoint}/api/v1/devices/${deviceId}/meters`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
-        }
+          headers: this.getAuthHeaders(),
+        },
       );
 
       const data = await this.handleApiResponse(response);
       const metrics = this.mapCanonMetrics(data);
-      
+
       return {
         success: true,
         deviceId,
         metrics,
         rawResponse: data,
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     } catch (error) {
       return {
@@ -165,7 +162,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         deviceId,
         metrics: [],
         error: error instanceof Error ? error.message : 'Unknown error',
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     }
   }
@@ -185,7 +182,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
           numericValue: data.counters.total_prints,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { total_prints: data.counters.total_prints }
+          rawData: { total_prints: data.counters.total_prints },
         });
       }
 
@@ -197,7 +194,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
           numericValue: data.counters.bw_prints,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { bw_prints: data.counters.bw_prints }
+          rawData: { bw_prints: data.counters.bw_prints },
         });
       }
 
@@ -209,7 +206,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
           numericValue: data.counters.color_prints,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { color_prints: data.counters.color_prints }
+          rawData: { color_prints: data.counters.color_prints },
         });
       }
 
@@ -222,7 +219,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
           numericValue: data.counters.total_copies,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { total_copies: data.counters.total_copies }
+          rawData: { total_copies: data.counters.total_copies },
         });
       }
 
@@ -235,7 +232,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
           numericValue: data.counters.total_scans,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { total_scans: data.counters.total_scans }
+          rawData: { total_scans: data.counters.total_scans },
         });
       }
     }
@@ -251,7 +248,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
             numericValue: level,
             unit: 'percent',
             measurementTimestamp: timestamp,
-            rawData: { [supply]: level }
+            rawData: { [supply]: level },
           });
         }
       });
@@ -265,7 +262,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         metricCategory: 'status',
         stringValue: data.status.state || 'unknown',
         measurementTimestamp: timestamp,
-        rawData: data.status
+        rawData: data.status,
       });
 
       if (data.status.errors && data.status.errors.length > 0) {
@@ -275,7 +272,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
           metricCategory: 'error',
           jsonValue: data.status.errors,
           measurementTimestamp: timestamp,
-          rawData: { errors: data.status.errors }
+          rawData: { errors: data.status.errors },
         });
       }
     }
@@ -285,7 +282,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
   async getDeviceInfo(deviceId: string): Promise<DeviceInfo | null> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -293,8 +290,8 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         `${this.config.apiEndpoint}/api/v1/devices/${deviceId}`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
-        }
+          headers: this.getAuthHeaders(),
+        },
       );
 
       const device = await this.handleApiResponse(response);
@@ -307,7 +304,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
   async updateDeviceConfig(deviceId: string, config: any): Promise<boolean> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -316,8 +313,8 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         {
           method: 'PUT',
           headers: this.getAuthHeaders(),
-          body: JSON.stringify(config)
-        }
+          body: JSON.stringify(config),
+        },
       );
 
       return response.ok;
@@ -329,8 +326,8 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
   protected getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'X-Canon-API-Version': this.config.apiVersion || '1.0'
+      Accept: 'application/json',
+      'X-Canon-API-Version': this.config.apiVersion || '1.0',
     };
 
     if (this.accessToken) {
@@ -348,7 +345,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
     // Clear existing token and re-authenticate
     this.accessToken = undefined;
     this.tokenExpiresAt = undefined;
-    
+
     const success = await this.authenticate();
     if (!success) {
       throw new Error('Re-authentication failed');

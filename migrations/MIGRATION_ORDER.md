@@ -1,14 +1,17 @@
 # Migration Execution Order
 
 ## Problem
+
 The database contains non-UUID values (like "lead-001") in foreign key columns that need to be converted to UUID type.
 
 ## Solution: Run migrations in this order
 
 ### Step 1: Pre-Migration Check
+
 **File:** `002_pre_migration_checks.sql`
 
 This will identify any data quality issues:
+
 - Invalid UUID formats
 - Orphaned records
 
@@ -17,13 +20,16 @@ supabase db execute -f migrations/002_pre_migration_checks.sql
 ```
 
 **Expected Output:**
+
 - If query returns rows: You have data issues that need cleanup
 - If query returns no rows: Skip to Step 3
 
 ### Step 2: Data Cleanup (Only if Step 1 found issues)
+
 **File:** `002_data_cleanup.sql`
 
 This script will:
+
 - Find all non-UUID values in foreign key columns
 - Set them to NULL (safer than deleting)
 - Log all changes for review
@@ -34,6 +40,7 @@ supabase db execute -f migrations/002_data_cleanup.sql
 ```
 
 **What this does:**
+
 - Sets invalid `company_id` values to NULL in `company_contacts`
 - Sets invalid `company_id` values to NULL in `customers`
 - Sets invalid `contact_id` values to NULL in `customers`
@@ -43,6 +50,7 @@ supabase db execute -f migrations/002_data_cleanup.sql
 **Review the output** to see what was cleaned up. The records will still exist, just with NULL foreign keys.
 
 ### Step 3: Apply Foreign Key Constraints Migration
+
 **File:** `002_add_foreign_key_constraints.sql`
 
 Now that data is clean, apply the actual migration:
@@ -52,6 +60,7 @@ supabase db push
 ```
 
 This will:
+
 - Convert column types from `character varying` to `uuid`
 - Add foreign key constraints
 - Add performance indexes
@@ -59,14 +68,18 @@ This will:
 ## Important Notes
 
 ### About NULL Values
+
 Records with NULL foreign keys after cleanup will:
+
 - Still exist in the database
 - Won't have company/contact relationships
 - Can be manually linked to companies later
 - Won't cause errors when creating new customers
 
 ### After Migration
+
 You should:
+
 1. Review the cleanup log to see which records were affected
 2. Consider creating companies for the orphaned records
 3. Manually link those records to the new companies
@@ -75,8 +88,8 @@ You should:
 
 ```sql
 -- Find company_contacts with NULL company_id
-SELECT id, first_name, last_name, email 
-FROM company_contacts 
+SELECT id, first_name, last_name, email
+FROM company_contacts
 WHERE company_id IS NULL;
 
 -- Create a company for them
@@ -85,7 +98,7 @@ VALUES (gen_random_uuid(), 'your-tenant-id', 'Company Name', NOW())
 RETURNING id;
 
 -- Link the contact to the company
-UPDATE company_contacts 
+UPDATE company_contacts
 SET company_id = 'new-company-uuid-from-above'
 WHERE id = 'contact-id';
 ```

@@ -174,7 +174,7 @@ export function registerWhiteLabelRoutes(app: Express) {
       const template = await whiteLabelService.upsertEmailTemplate(
         tenantId,
         templateKey,
-        validation.data
+        validation.data,
       );
 
       res.json({
@@ -301,11 +301,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         return res.status(404).json({ error: 'Configuration or template not found' });
       }
 
-      const rendered = whiteLabelService.renderEmailTemplate(
-        template,
-        variables || {},
-        config
-      );
+      const rendered = whiteLabelService.renderEmailTemplate(template, variables || {}, config);
 
       res.json({
         success: true,
@@ -330,7 +326,7 @@ export function registerWhiteLabelRoutes(app: Express) {
           and(
             eq(whiteLabelConfig.customDomain, domain),
             eq(whiteLabelConfig.customDomainVerified, true),
-            eq(whiteLabelConfig.isActive, true)
+            eq(whiteLabelConfig.isActive, true),
           ),
       });
 

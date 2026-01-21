@@ -75,7 +75,7 @@ async function createRBACTables() {
       )
     `);
 
-    // Create role_permissions table  
+    // Create role_permissions table
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS role_permissions (
         id VARCHAR(255) PRIMARY KEY,

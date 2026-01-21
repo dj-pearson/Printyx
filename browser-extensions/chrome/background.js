@@ -43,8 +43,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'capture') {
     handleCapture(message.data)
-      .then(response => sendResponse({ success: true, data: response }))
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .then((response) => sendResponse({ success: true, data: response }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
     return true; // Keep channel open for async response
   } else if (message.action === 'getSettings') {
     chrome.storage.sync.get(['apiUrl', 'authToken', 'tenantId', 'userId'], (result) => {
@@ -143,7 +143,13 @@ async function handleCapture(data) {
  * Save content to knowledge base via API
  */
 async function saveToKnowledgeBase(data) {
-  const settings = await chrome.storage.sync.get(['apiUrl', 'authToken', 'tenantId', 'userId', 'defaultCategoryId']);
+  const settings = await chrome.storage.sync.get([
+    'apiUrl',
+    'authToken',
+    'tenantId',
+    'userId',
+    'defaultCategoryId',
+  ]);
 
   if (!settings.authToken) {
     throw new Error('Not authenticated. Please configure the extension.');
@@ -179,7 +185,7 @@ async function saveToKnowledgeBase(data) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${settings.authToken}`,
+      Authorization: `Bearer ${settings.authToken}`,
       'X-Tenant-ID': settings.tenantId,
     },
     body: JSON.stringify(articleData),

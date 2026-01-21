@@ -14,7 +14,14 @@
       "Bash(npx tsc:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(ls -la \"C:\\\\Users\\\\pears\\\\Documents\\\\Printyx\\\\Printyx\\\\supabase\\\\functions\\\\me\"\" 2>/dev/null || echo \"Directory does not exist \")"
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsx:*)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=10 root@209.145.59.219 \"docker exec supabase-db-cgkko0cscowggwk8sss44wkw psql -U postgres -t -c \"\"SELECT COUNT\\(*\\) FROM information_schema.tables WHERE table_schema = ''public'' AND table_type = ''BASE TABLE'';\"\"\")",
+      "Bash(findstr:*)",
+      "Bash(npm run test:unit:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run format:write:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

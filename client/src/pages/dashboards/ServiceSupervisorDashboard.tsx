@@ -26,7 +26,11 @@ export default function ServiceSupervisorDashboard() {
   });
 
   // Fetch location service calls overview (Report 29)
-  const { data: serviceCallsData, isLoading: serviceCallsLoading, refetch: refetchServiceCalls } = useQuery({
+  const {
+    data: serviceCallsData,
+    isLoading: serviceCallsLoading,
+    refetch: refetchServiceCalls,
+  } = useQuery({
     queryKey: ['service-supervisor-reports', 'location', 'service-calls', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -119,9 +123,7 @@ export default function ServiceSupervisorDashboard() {
             <div className="text-2xl font-bold">
               {serviceCallsData?.summary?.totalLocations || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Across your territory
-            </p>
+            <p className="text-xs text-muted-foreground">Across your territory</p>
           </CardContent>
         </Card>
 
@@ -131,9 +133,7 @@ export default function ServiceSupervisorDashboard() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {serviceCallsData?.summary?.totalCalls || 0}
-            </div>
+            <div className="text-2xl font-bold">{serviceCallsData?.summary?.totalCalls || 0}</div>
             <p className="text-xs text-muted-foreground">
               {format(dateRange.from, 'MMM d')} - {format(dateRange.to, 'MMM d')}
             </p>
@@ -152,7 +152,8 @@ export default function ServiceSupervisorDashboard() {
             <p className="text-xs text-muted-foreground">
               {serviceCallsData?.insights?.healthStatus === 'healthy' && 'Excellent performance'}
               {serviceCallsData?.insights?.healthStatus === 'fair' && 'Good performance'}
-              {serviceCallsData?.insights?.healthStatus === 'needs_attention' && 'Needs improvement'}
+              {serviceCallsData?.insights?.healthStatus === 'needs_attention' &&
+                'Needs improvement'}
             </p>
           </CardContent>
         </Card>
@@ -167,7 +168,8 @@ export default function ServiceSupervisorDashboard() {
               {slaData?.summary?.overallCompliance?.toFixed(1) || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {slaData?.summary?.locationsOnTrack || 0} on track / {slaData?.summary?.locationsAtRisk || 0} at risk
+              {slaData?.summary?.locationsOnTrack || 0} on track /{' '}
+              {slaData?.summary?.locationsAtRisk || 0} at risk
             </p>
           </CardContent>
         </Card>
@@ -194,7 +196,10 @@ export default function ServiceSupervisorDashboard() {
               ) : (
                 <div className="space-y-4">
                   {serviceCallsData?.aggregated?.map((priority: any) => (
-                    <div key={priority.priority} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={priority.priority}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div>
                         <div className="font-medium">{priority.priority}</div>
                         <div className="text-sm text-muted-foreground">
@@ -227,9 +232,14 @@ export default function ServiceSupervisorDashboard() {
               ) : (
                 <div className="space-y-2">
                   {performanceData?.locations?.map((location: any) => (
-                    <div key={location.locationId} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={location.locationId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
-                        <div className="font-medium">#{location.ranking} {location.locationName}</div>
+                        <div className="font-medium">
+                          #{location.ranking} {location.locationName}
+                        </div>
                         <div className="text-sm text-muted-foreground">
                           {location.technicianCount} techs · {location.totalCalls} calls
                         </div>
@@ -258,15 +268,21 @@ export default function ServiceSupervisorDashboard() {
               ) : (
                 <div className="space-y-2">
                   {slaData?.slas?.map((sla: any) => (
-                    <div key={sla.locationId} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={sla.locationId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
                         <div className="font-medium">{sla.locationName}</div>
                         <div className="text-sm text-muted-foreground">
-                          {sla.onTimeCalls} on time · {sla.atRiskCalls} at risk · {sla.overdueCalls} overdue
+                          {sla.onTimeCalls} on time · {sla.atRiskCalls} at risk · {sla.overdueCalls}{' '}
+                          overdue
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`text-2xl font-bold ${sla.onTrack ? 'text-green-600' : 'text-red-600'}`}>
+                        <div
+                          className={`text-2xl font-bold ${sla.onTrack ? 'text-green-600' : 'text-red-600'}`}
+                        >
                           {sla.slaCompliancePercent.toFixed(1)}%
                         </div>
                         <div className="text-sm text-muted-foreground">
@@ -303,7 +319,9 @@ export default function ServiceSupervisorDashboard() {
                       </div>
                       <div className="mt-2 pt-2 border-t flex justify-between text-sm">
                         <span>Total: {activity.totalHours.toFixed(1)}h</span>
-                        <span className="font-medium">Utilization: {activity.utilizationRate.toFixed(1)}%</span>
+                        <span className="font-medium">
+                          Utilization: {activity.utilizationRate.toFixed(1)}%
+                        </span>
                       </div>
                     </div>
                   ))}

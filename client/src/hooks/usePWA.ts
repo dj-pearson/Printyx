@@ -12,7 +12,7 @@ import {
   canInstall,
   isInstalled,
   listenForNetworkChanges,
-  isOffline as checkIsOffline
+  isOffline as checkIsOffline,
 } from '@/lib/pwa';
 
 interface UsePWAReturn {
@@ -112,6 +112,6 @@ export function usePWA(): UsePWAReturn {
     updateAvailable,
     applyUpdate,
     isOffline: offline,
-    registration
+    registration,
   };
 }

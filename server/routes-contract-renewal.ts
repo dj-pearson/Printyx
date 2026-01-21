@@ -1,14 +1,14 @@
-import { Router, type Request, Response, NextFunction } from "express";
+import { Router, type Request, Response, NextFunction } from 'express';
 import { db } from './db';
-import { eq, and, desc } from "drizzle-orm";
-import { contractRenewalTracking, renewalProposals } from "@shared/schema";
-import * as renewalService from "./services/contract-renewal-service";
+import { eq, and, desc } from 'drizzle-orm';
+import { contractRenewalTracking, renewalProposals } from '@shared/schema';
+import * as renewalService from './services/contract-renewal-service';
 // RBAC Integration
 import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 const router = Router();
@@ -23,7 +23,7 @@ const router = Router();
 function requireTenant(req: Request, res: Response, next: NextFunction) {
   const tenantId = (req as any).tenantId || (req.session as any)?.tenantId;
   if (!tenantId) {
-    return res.status(403).json({ error: "Tenant context required" });
+    return res.status(403).json({ error: 'Tenant context required' });
   }
   (req as any).tenantId = tenantId;
   next();
@@ -37,27 +37,29 @@ router.use(enhanceUserContext);
  * GET /api/contract-renewal/dashboard
  * Get dashboard metrics and overview - requires customer view permission
  */
-router.get("/dashboard",
+router.get(
+  '/dashboard',
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: Request, res: Response) => {
-  try {
-    const tenantId = (req as any).tenantId;
-    const metrics = await renewalService.getDashboardMetrics(tenantId);
-    res.json(metrics);
-  } catch (error) {
-    console.error("Error fetching dashboard metrics:", error);
-    res.status(500).json({
-      error: "Failed to fetch dashboard metrics",
-      details: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
-});
+    try {
+      const tenantId = (req as any).tenantId;
+      const metrics = await renewalService.getDashboardMetrics(tenantId);
+      res.json(metrics);
+    } catch (error) {
+      console.error('Error fetching dashboard metrics:', error);
+      res.status(500).json({
+        error: 'Failed to fetch dashboard metrics',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  },
+);
 
 /**
  * GET /api/contract-renewal/contracts
  * Get all contracts being tracked for renewal
  */
-router.get("/contracts", async (req: Request, res: Response) => {
+router.get('/contracts', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const { status, risk } = req.query;
@@ -70,10 +72,10 @@ router.get("/contracts", async (req: Request, res: Response) => {
 
     res.json(contracts);
   } catch (error) {
-    console.error("Error fetching contracts:", error);
+    console.error('Error fetching contracts:', error);
     res.status(500).json({
-      error: "Failed to fetch contracts",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch contracts',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -82,17 +84,17 @@ router.get("/contracts", async (req: Request, res: Response) => {
  * GET /api/contract-renewal/expiring
  * Get contracts expiring within specified days
  */
-router.get("/expiring", async (req: Request, res: Response) => {
+router.get('/expiring', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const days = parseInt(req.query.days as string) || 90;
     const contracts = await renewalService.getExpiringContracts(tenantId, days);
     res.json(contracts);
   } catch (error) {
-    console.error("Error fetching expiring contracts:", error);
+    console.error('Error fetching expiring contracts:', error);
     res.status(500).json({
-      error: "Failed to fetch expiring contracts",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch expiring contracts',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -101,16 +103,16 @@ router.get("/expiring", async (req: Request, res: Response) => {
  * GET /api/contract-renewal/at-risk
  * Get contracts at high risk of churn
  */
-router.get("/at-risk", async (req: Request, res: Response) => {
+router.get('/at-risk', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const contracts = await renewalService.getContractsAtRisk(tenantId);
     res.json(contracts);
   } catch (error) {
-    console.error("Error fetching at-risk contracts:", error);
+    console.error('Error fetching at-risk contracts:', error);
     res.status(500).json({
-      error: "Failed to fetch at-risk contracts",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch at-risk contracts',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -119,22 +121,22 @@ router.get("/at-risk", async (req: Request, res: Response) => {
  * POST /api/contract-renewal/analyze/:contractTrackingId
  * Analyze a single contract and predict renewal likelihood
  */
-router.post("/analyze/:contractTrackingId", async (req: Request, res: Response) => {
+router.post('/analyze/:contractTrackingId', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
 
     if (isNaN(contractTrackingId)) {
-      return res.status(400).json({ error: "Invalid contract tracking ID" });
+      return res.status(400).json({ error: 'Invalid contract tracking ID' });
     }
 
     const analysis = await renewalService.analyzeContractRenewal(tenantId, contractTrackingId);
     res.json(analysis);
   } catch (error) {
-    console.error("Error analyzing contract:", error);
+    console.error('Error analyzing contract:', error);
     res.status(500).json({
-      error: "Failed to analyze contract",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to analyze contract',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -143,16 +145,16 @@ router.post("/analyze/:contractTrackingId", async (req: Request, res: Response) 
  * POST /api/contract-renewal/analyze-all
  * Batch analyze all expiring contracts
  */
-router.post("/analyze-all", async (req: Request, res: Response) => {
+router.post('/analyze-all', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const results = await renewalService.analyzeExpiringContracts(tenantId);
     res.json(results);
   } catch (error) {
-    console.error("Error analyzing contracts:", error);
+    console.error('Error analyzing contracts:', error);
     res.status(500).json({
-      error: "Failed to analyze contracts",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to analyze contracts',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -161,13 +163,13 @@ router.post("/analyze-all", async (req: Request, res: Response) => {
  * POST /api/contract-renewal/generate-proposal/:contractTrackingId
  * Generate renewal proposal with AI-optimized pricing
  */
-router.post("/generate-proposal/:contractTrackingId", async (req: Request, res: Response) => {
+router.post('/generate-proposal/:contractTrackingId', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
 
     if (isNaN(contractTrackingId)) {
-      return res.status(400).json({ error: "Invalid contract tracking ID" });
+      return res.status(400).json({ error: 'Invalid contract tracking ID' });
     }
 
     // First analyze
@@ -177,7 +179,7 @@ router.post("/generate-proposal/:contractTrackingId", async (req: Request, res: 
     const recommendations = await renewalService.generateRenewalProposal(
       tenantId,
       contractTrackingId,
-      analysis
+      analysis,
     );
 
     // Create proposal
@@ -185,15 +187,15 @@ router.post("/generate-proposal/:contractTrackingId", async (req: Request, res: 
       tenantId,
       contractTrackingId,
       analysis,
-      recommendations
+      recommendations,
     );
 
     res.json(proposal);
   } catch (error) {
-    console.error("Error generating proposal:", error);
+    console.error('Error generating proposal:', error);
     res.status(500).json({
-      error: "Failed to generate proposal",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to generate proposal',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -202,7 +204,7 @@ router.post("/generate-proposal/:contractTrackingId", async (req: Request, res: 
  * GET /api/contract-renewal/proposals
  * Get all renewal proposals
  */
-router.get("/proposals", async (req: Request, res: Response) => {
+router.get('/proposals', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const { status } = req.query;
@@ -215,10 +217,10 @@ router.get("/proposals", async (req: Request, res: Response) => {
 
     res.json(proposals);
   } catch (error) {
-    console.error("Error fetching proposals:", error);
+    console.error('Error fetching proposals:', error);
     res.status(500).json({
-      error: "Failed to fetch proposals",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch proposals',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -227,32 +229,29 @@ router.get("/proposals", async (req: Request, res: Response) => {
  * GET /api/contract-renewal/proposals/:proposalId
  * Get specific proposal details
  */
-router.get("/proposals/:proposalId", async (req: Request, res: Response) => {
+router.get('/proposals/:proposalId', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const proposalId = parseInt(req.params.proposalId);
 
     if (isNaN(proposalId)) {
-      return res.status(400).json({ error: "Invalid proposal ID" });
+      return res.status(400).json({ error: 'Invalid proposal ID' });
     }
 
     const proposal = await db.query.renewalProposals.findFirst({
-      where: and(
-        eq(renewalProposals.id, proposalId),
-        eq(renewalProposals.tenantId, tenantId)
-      ),
+      where: and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)),
     });
 
     if (!proposal) {
-      return res.status(404).json({ error: "Proposal not found" });
+      return res.status(404).json({ error: 'Proposal not found' });
     }
 
     res.json(proposal);
   } catch (error) {
-    console.error("Error fetching proposal:", error);
+    console.error('Error fetching proposal:', error);
     res.status(500).json({
-      error: "Failed to fetch proposal",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch proposal',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -261,14 +260,14 @@ router.get("/proposals/:proposalId", async (req: Request, res: Response) => {
  * PATCH /api/contract-renewal/proposals/:proposalId/status
  * Update proposal status (e.g., send, accept, reject)
  */
-router.patch("/proposals/:proposalId/status", async (req: Request, res: Response) => {
+router.patch('/proposals/:proposalId/status', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const proposalId = parseInt(req.params.proposalId);
     const { status, customerResponse, responseDate, rejectionReason } = req.body;
 
     if (isNaN(proposalId)) {
-      return res.status(400).json({ error: "Invalid proposal ID" });
+      return res.status(400).json({ error: 'Invalid proposal ID' });
     }
 
     const updates: any = {
@@ -291,22 +290,19 @@ router.patch("/proposals/:proposalId/status", async (req: Request, res: Response
     const [updatedProposal] = await db
       .update(renewalProposals)
       .set(updates)
-      .where(and(
-        eq(renewalProposals.id, proposalId),
-        eq(renewalProposals.tenantId, tenantId)
-      ))
+      .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)))
       .returning();
 
     if (!updatedProposal) {
-      return res.status(404).json({ error: "Proposal not found" });
+      return res.status(404).json({ error: 'Proposal not found' });
     }
 
     res.json(updatedProposal);
   } catch (error) {
-    console.error("Error updating proposal status:", error);
+    console.error('Error updating proposal status:', error);
     res.status(500).json({
-      error: "Failed to update proposal status",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to update proposal status',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -315,19 +311,19 @@ router.patch("/proposals/:proposalId/status", async (req: Request, res: Response
  * GET /api/contract-renewal/contract/:contractTrackingId
  * Get detailed contract information with proposals
  */
-router.get("/contract/:contractTrackingId", async (req: Request, res: Response) => {
+router.get('/contract/:contractTrackingId', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
 
     if (isNaN(contractTrackingId)) {
-      return res.status(400).json({ error: "Invalid contract tracking ID" });
+      return res.status(400).json({ error: 'Invalid contract tracking ID' });
     }
 
     const contract = await db.query.contractRenewalTracking.findFirst({
       where: and(
         eq(contractRenewalTracking.id, contractTrackingId),
-        eq(contractRenewalTracking.tenantId, tenantId)
+        eq(contractRenewalTracking.tenantId, tenantId),
       ),
       with: {
         proposals: {
@@ -341,15 +337,15 @@ router.get("/contract/:contractTrackingId", async (req: Request, res: Response) 
     });
 
     if (!contract) {
-      return res.status(404).json({ error: "Contract not found" });
+      return res.status(404).json({ error: 'Contract not found' });
     }
 
     res.json(contract);
   } catch (error) {
-    console.error("Error fetching contract details:", error);
+    console.error('Error fetching contract details:', error);
     res.status(500).json({
-      error: "Failed to fetch contract details",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch contract details',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -358,14 +354,14 @@ router.get("/contract/:contractTrackingId", async (req: Request, res: Response) 
  * PATCH /api/contract-renewal/contract/:contractTrackingId
  * Update contract tracking information
  */
-router.patch("/contract/:contractTrackingId", async (req: Request, res: Response) => {
+router.patch('/contract/:contractTrackingId', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
     const updates = req.body;
 
     if (isNaN(contractTrackingId)) {
-      return res.status(400).json({ error: "Invalid contract tracking ID" });
+      return res.status(400).json({ error: 'Invalid contract tracking ID' });
     }
 
     const [updatedContract] = await db
@@ -374,22 +370,24 @@ router.patch("/contract/:contractTrackingId", async (req: Request, res: Response
         ...updates,
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(contractRenewalTracking.id, contractTrackingId),
-        eq(contractRenewalTracking.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(contractRenewalTracking.id, contractTrackingId),
+          eq(contractRenewalTracking.tenantId, tenantId),
+        ),
+      )
       .returning();
 
     if (!updatedContract) {
-      return res.status(404).json({ error: "Contract not found" });
+      return res.status(404).json({ error: 'Contract not found' });
     }
 
     res.json(updatedContract);
   } catch (error) {
-    console.error("Error updating contract:", error);
+    console.error('Error updating contract:', error);
     res.status(500).json({
-      error: "Failed to update contract",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to update contract',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -398,16 +396,16 @@ router.patch("/contract/:contractTrackingId", async (req: Request, res: Response
  * GET /api/contract-renewal/rules
  * Get renewal automation rules
  */
-router.get("/rules", async (req: Request, res: Response) => {
+router.get('/rules', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const rules = await renewalService.getRenewalAutomationRules(tenantId);
     res.json(rules);
   } catch (error) {
-    console.error("Error fetching rules:", error);
+    console.error('Error fetching rules:', error);
     res.status(500).json({
-      error: "Failed to fetch rules",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to fetch rules',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -416,17 +414,17 @@ router.get("/rules", async (req: Request, res: Response) => {
  * PUT /api/contract-renewal/rules
  * Update renewal automation rules
  */
-router.put("/rules", async (req: Request, res: Response) => {
+router.put('/rules', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const updates = req.body;
     const rules = await renewalService.updateRenewalAutomationRules(tenantId, updates);
     res.json(rules);
   } catch (error) {
-    console.error("Error updating rules:", error);
+    console.error('Error updating rules:', error);
     res.status(500).json({
-      error: "Failed to update rules",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to update rules',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -435,14 +433,14 @@ router.put("/rules", async (req: Request, res: Response) => {
  * POST /api/contract-renewal/proposals/:proposalId/send
  * Send proposal to customer
  */
-router.post("/proposals/:proposalId/send", async (req: Request, res: Response) => {
+router.post('/proposals/:proposalId/send', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).tenantId;
     const proposalId = parseInt(req.params.proposalId);
     const { sendVia = 'email' } = req.body;
 
     if (isNaN(proposalId)) {
-      return res.status(400).json({ error: "Invalid proposal ID" });
+      return res.status(400).json({ error: 'Invalid proposal ID' });
     }
 
     const [proposal] = await db
@@ -453,14 +451,11 @@ router.post("/proposals/:proposalId/send", async (req: Request, res: Response) =
         sentVia,
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(renewalProposals.id, proposalId),
-        eq(renewalProposals.tenantId, tenantId)
-      ))
+      .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)))
       .returning();
 
     if (!proposal) {
-      return res.status(404).json({ error: "Proposal not found" });
+      return res.status(404).json({ error: 'Proposal not found' });
     }
 
     // Update contract tracking
@@ -471,17 +466,19 @@ router.post("/proposals/:proposalId/send", async (req: Request, res: Response) =
         proposalSentAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(contractRenewalTracking.id, proposal.contractRenewalTrackingId),
-        eq(contractRenewalTracking.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          eq(contractRenewalTracking.id, proposal.contractRenewalTrackingId),
+          eq(contractRenewalTracking.tenantId, tenantId),
+        ),
+      );
 
     res.json(proposal);
   } catch (error) {
-    console.error("Error sending proposal:", error);
+    console.error('Error sending proposal:', error);
     res.status(500).json({
-      error: "Failed to send proposal",
-      details: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to send proposal',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

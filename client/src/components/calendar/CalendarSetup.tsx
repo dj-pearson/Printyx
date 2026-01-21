@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useCalendar } from './CalendarProvider';
 import { Calendar, Settings, Link, Unlink, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -27,7 +33,7 @@ export const CalendarSetup: React.FC = () => {
     return isConnected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
   };
 
-  const connectedCount = providers.filter(p => p.isConnected).length;
+  const connectedCount = providers.filter((p) => p.isConnected).length;
 
   return (
     <>
@@ -50,11 +56,14 @@ export const CalendarSetup: React.FC = () => {
             </Badge>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <div className="space-y-3">
             {providers.map((provider) => (
-              <div key={provider.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={provider.id}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{getProviderIcon(provider.type)}</span>
                   <div>
@@ -64,12 +73,12 @@ export const CalendarSetup: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Badge className={getStatusColor(provider.isConnected)}>
                     {provider.isConnected ? 'Connected' : 'Not Connected'}
                   </Badge>
-                  
+
                   {provider.isConnected ? (
                     <Button
                       size="sm"
@@ -80,10 +89,7 @@ export const CalendarSetup: React.FC = () => {
                       Disconnect
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      onClick={() => connectProvider(provider.type)}
-                    >
+                    <Button size="sm" onClick={() => connectProvider(provider.type)}>
                       <Link className="h-4 w-4 mr-1" />
                       Connect
                     </Button>
@@ -92,7 +98,7 @@ export const CalendarSetup: React.FC = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="mt-4 pt-4 border-t">
             <Button
               variant="outline"
@@ -112,22 +118,19 @@ export const CalendarSetup: React.FC = () => {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Calendar Settings</DialogTitle>
-            <DialogDescription>
-              Configure your calendar integration preferences
-            </DialogDescription>
+            <DialogDescription>Configure your calendar integration preferences</DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="space-y-2">
               <h4 className="font-medium">Integration Status</h4>
               <div className="text-sm text-gray-600">
-                {connectedCount > 0 
+                {connectedCount > 0
                   ? `${connectedCount} calendar provider${connectedCount > 1 ? 's' : ''} connected`
-                  : 'No calendar providers connected'
-                }
+                  : 'No calendar providers connected'}
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium">Features</h4>
               <div className="space-y-1 text-sm text-gray-600">
@@ -137,20 +140,18 @@ export const CalendarSetup: React.FC = () => {
                 <div>✓ Meeting link generation for virtual demos</div>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <h4 className="font-medium">Security</h4>
               <div className="text-sm text-gray-600">
-                All calendar integrations use secure OAuth 2.0 authentication. 
-                Tokens are encrypted and stored securely. You can revoke access at any time.
+                All calendar integrations use secure OAuth 2.0 authentication. Tokens are encrypted
+                and stored securely. You can revoke access at any time.
               </div>
             </div>
           </div>
-          
+
           <div className="flex justify-end">
-            <Button onClick={() => setIsSetupDialogOpen(false)}>
-              Close
-            </Button>
+            <Button onClick={() => setIsSetupDialogOpen(false)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

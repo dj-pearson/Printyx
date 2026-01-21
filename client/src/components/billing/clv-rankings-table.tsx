@@ -5,10 +5,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { TrendingUp, Award, Star } from "lucide-react";
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { TrendingUp, Award, Star } from 'lucide-react';
 
 interface CustomerLifetimeValue {
   customerId: string;
@@ -99,9 +99,7 @@ export function CLVRankingsTable({ data }: CLVRankingsTableProps) {
                 {/* Historical Value */}
                 <TableCell className="text-right">
                   <div>
-                    <p className="font-medium">
-                      ${customer.historicalValue.toLocaleString()}
-                    </p>
+                    <p className="font-medium">${customer.historicalValue.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">Actual</p>
                   </div>
                 </TableCell>
@@ -119,9 +117,7 @@ export function CLVRankingsTable({ data }: CLVRankingsTableProps) {
                 {/* Average Monthly Revenue */}
                 <TableCell className="text-right">
                   <div>
-                    <p className="font-medium">
-                      ${customer.averageMonthlyRevenue.toFixed(0)}
-                    </p>
+                    <p className="font-medium">${customer.averageMonthlyRevenue.toFixed(0)}</p>
                     <p className="text-xs text-muted-foreground">/month</p>
                   </div>
                 </TableCell>
@@ -129,7 +125,7 @@ export function CLVRankingsTable({ data }: CLVRankingsTableProps) {
                 {/* Customer Age */}
                 <TableCell className="text-center">
                   <Badge variant="outline">
-                    {customer.customerAge} {customer.customerAge === 1 ? "month" : "months"}
+                    {customer.customerAge} {customer.customerAge === 1 ? 'month' : 'months'}
                   </Badge>
                 </TableCell>
 

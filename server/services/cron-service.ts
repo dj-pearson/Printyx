@@ -42,7 +42,9 @@ export class CronService {
         console.log('[CRON] Running trial email processing...');
         try {
           const results = await TrialManagementService.processTrialEmails();
-          console.log(`[CRON] Trial emails processed: ${results.sent} sent, ${results.errors} errors`);
+          console.log(
+            `[CRON] Trial emails processed: ${results.sent} sent, ${results.errors} errors`,
+          );
         } catch (error) {
           console.error('[CRON] Trial email processing failed:', error);
         }
@@ -59,7 +61,7 @@ export class CronService {
    */
   static shutdown() {
     console.log('[CRON] Stopping all scheduled tasks...');
-    this.intervals.forEach(interval => clearInterval(interval));
+    this.intervals.forEach((interval) => clearInterval(interval));
     this.intervals = [];
     this.jobs = [];
     console.log('[CRON] All tasks stopped');

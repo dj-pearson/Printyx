@@ -3,17 +3,10 @@
  * Displays key metrics and statistics for tasks
  */
 
-import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  TrendingUp,
-  Target,
-  Brain,
-} from "lucide-react";
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CheckCircle2, Clock, AlertCircle, TrendingUp, Target, Brain } from 'lucide-react';
 
 interface TaskHubStatsProps {
   stats: any;
@@ -37,46 +30,46 @@ export function TaskHubStats({ stats, isLoading }: TaskHubStatsProps) {
 
   const statCards = [
     {
-      label: "Total Tasks",
+      label: 'Total Tasks',
       value: stats?.total || 0,
       icon: Target,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
     },
     {
-      label: "In Progress",
+      label: 'In Progress',
       value: stats?.in_progress || 0,
       icon: Clock,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
     },
     {
-      label: "Completed",
+      label: 'Completed',
       value: stats?.completed || 0,
       icon: CheckCircle2,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
     },
     {
-      label: "Overdue",
+      label: 'Overdue',
       value: stats?.overdue || 0,
       icon: AlertCircle,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
     },
     {
-      label: "AI Scheduled",
+      label: 'AI Scheduled',
       value: stats?.aiScheduled || 0,
       icon: Brain,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
     },
     {
-      label: "Productivity",
-      value: stats?.productivityScore ? `${stats.productivityScore}%` : "N/A",
+      label: 'Productivity',
+      value: stats?.productivityScore ? `${stats.productivityScore}%` : 'N/A',
       icon: TrendingUp,
-      color: "text-teal-600",
-      bgColor: "bg-teal-50",
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-50',
     },
   ];
 
@@ -87,12 +80,8 @@ export function TaskHubStats({ stats, isLoading }: TaskHubStatsProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  {stat.label}
-                </p>
-                <p className={`text-2xl font-bold ${stat.color}`}>
-                  {stat.value}
-                </p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{stat.label}</p>
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
               </div>
               <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />

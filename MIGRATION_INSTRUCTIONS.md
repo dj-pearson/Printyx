@@ -8,16 +8,19 @@
 ## 📋 What You Have
 
 ### Database Exports (Complete Schema)
+
 - **`database-exports/complete-with-schema.sql`** (870 KB) - ✅ **Use This One!**
   - Full schema with all tables, enums, and structure
   - From your old NEON database
   - Ready to import to Supabase
 
 ### Migration Scripts Created
+
 - **`database-exports/apply-schema-to-supabase.sh`** (Linux/Mac/Server)
 - **`APPLY_SCHEMA.ps1`** (Windows PowerShell)
 
 ### Supabase Migrations
+
 - `001_rls_policies.sql` - Row Level Security
 - `002_users_rls_policies.sql` - User-specific RLS
 - `003_users_security_constraints.sql` - Security triggers
@@ -40,6 +43,7 @@ bash database-exports/apply-schema-to-supabase.sh
 ```
 
 The script will:
+
 1. ✅ Test database connection
 2. ✅ Create automatic backup
 3. ✅ Apply complete schema (127+ tables)
@@ -63,10 +67,12 @@ cd C:\Users\dpearson\Documents\Printyx
 ## 📊 What Gets Created
 
 ### Core Tables (20+)
+
 - `tenants`, `users`, `roles`, `teams`, `locations`
 - `sessions`, `user_settings`, `mfa_backup_codes`
 
 ### Business Tables (30+)
+
 - `business_records` (unified leads/customers)
 - `business_record_activities`
 - `lead_contacts`, `customer_contacts`
@@ -75,6 +81,7 @@ cd C:\Users\dpearson\Documents\Printyx
 - `quotes`, `quote_line_items`
 
 ### Operations Tables (25+)
+
 - `service_tickets`, `service_ticket_updates`
 - `equipment`, `meter_readings`
 - `contracts`, `contract_tiered_rates`
@@ -83,11 +90,13 @@ cd C:\Users\dpearson\Documents\Printyx
 - `technicians`, `technician_availability`
 
 ### Product Tables (10+)
+
 - `product_models`, `product_accessories`
 - `accessory_model_compatibility`
 - `cpc_rates`, `product_pricing`
 
 ### Additional Tables (40+)
+
 - `proposals`, `proposal_line_items`, `proposal_sections`
 - `leases`, `lease_payments`, `lease_renewals`
 - `equipment_onboarding_checklists`
@@ -100,20 +109,25 @@ cd C:\Users\dpearson\Documents\Printyx
 ## 🔧 Database Triggers & Hooks (Auto-Enabled)
 
 ### Automatic Timestamps
+
 All tables with `updated_at` column will auto-update on every change.
 
 ### Auto-Generated Numbers
+
 - **Quotes**: `Q-20260113-000001`
 - **Invoices**: `INV-20260113-000001`
 - **Tickets**: `TKT-20260113-000001`
 
 ### Cascade Deletes
+
 Deleting a `business_record` automatically deletes:
+
 - Related activities
 - Related contacts
 - Related history
 
 ### Audit Logging Framework
+
 Ready for you to enable detailed change tracking.
 
 ## ✅ Verification Steps
@@ -186,6 +200,7 @@ bash database-exports/apply-schema-to-supabase.sh
 ## 🎯 Next Steps After Migration
 
 1. **Test All Edge Functions**
+
    ```bash
    curl https://functions.printyx.net/me
    curl https://functions.printyx.net/tasks
@@ -200,6 +215,7 @@ bash database-exports/apply-schema-to-supabase.sh
    - Verify data persists
 
 3. **Monitor Performance**
+
    ```sql
    -- Check slow queries
    SELECT * FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10;
@@ -225,4 +241,3 @@ bash database-exports/apply-schema-to-supabase.sh
 **Priority**: HIGH 🔴  
 **Estimated Time**: 5-10 minutes  
 **Risk**: LOW (automatic backup included)
-

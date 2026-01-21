@@ -27,30 +27,31 @@
 
 ### Role Level Distribution
 
-| Role Level | Role Name | # of Testers | Department |
-|------------|-----------|--------------|------------|
-| **Level 1** | Sales Representative | 3 | Sales |
-| **Level 1** | Field Technician | 2 | Service |
-| **Level 2** | Senior Sales Rep | 2 | Sales |
-| **Level 2** | Senior Technician | 1 | Service |
-| **Level 3** | Sales Supervisor | 2 | Sales |
-| **Level 3** | Service Supervisor | 1 | Service |
-| **Level 4** | Sales Manager | 2 | Sales |
-| **Level 4** | Service Manager | 2 | Service |
-| **Level 4** | Branch Manager | 1 | Operations |
-| **Level 5** | Regional Sales Director | 1 | Sales |
-| **Level 5** | Regional Service Manager | 1 | Service |
-| **Level 6** | VP Sales | 1 | Executive |
-| **Level 6** | VP Service | 1 | Executive |
-| **Level 6** | Controller | 1 | Finance |
-| **Level 7** | CEO | 1 | Executive |
-| **Level 7** | CFO | 1 | Executive |
-| **Level 8** | Platform Admin | 1 | Printyx Staff |
-| **TOTAL** | | **24** | |
+| Role Level  | Role Name                | # of Testers | Department    |
+| ----------- | ------------------------ | ------------ | ------------- |
+| **Level 1** | Sales Representative     | 3            | Sales         |
+| **Level 1** | Field Technician         | 2            | Service       |
+| **Level 2** | Senior Sales Rep         | 2            | Sales         |
+| **Level 2** | Senior Technician        | 1            | Service       |
+| **Level 3** | Sales Supervisor         | 2            | Sales         |
+| **Level 3** | Service Supervisor       | 1            | Service       |
+| **Level 4** | Sales Manager            | 2            | Sales         |
+| **Level 4** | Service Manager          | 2            | Service       |
+| **Level 4** | Branch Manager           | 1            | Operations    |
+| **Level 5** | Regional Sales Director  | 1            | Sales         |
+| **Level 5** | Regional Service Manager | 1            | Service       |
+| **Level 6** | VP Sales                 | 1            | Executive     |
+| **Level 6** | VP Service               | 1            | Executive     |
+| **Level 6** | Controller               | 1            | Finance       |
+| **Level 7** | CEO                      | 1            | Executive     |
+| **Level 7** | CFO                      | 1            | Executive     |
+| **Level 8** | Platform Admin           | 1            | Printyx Staff |
+| **TOTAL**   |                          | **24**       |               |
 
 ### Selection Criteria
 
 Ideal UAT participants:
+
 - ✅ Regular system users (daily/weekly usage)
 - ✅ Familiar with current reporting (if any)
 - ✅ Represent different locations/regions
@@ -66,8 +67,10 @@ Ideal UAT participants:
 **Sales Representative Test Scenarios** (30 minutes)
 
 #### Scenario 1: Daily Pipeline Review
+
 **Objective**: Execute "My Sales Pipeline" report and understand the data
 **Steps**:
+
 1. Login to staging environment
 2. Navigate to **Reports** → **Sales** → **My Sales Pipeline**
 3. Verify report loads in < 5 seconds
@@ -77,19 +80,22 @@ Ideal UAT participants:
 7. Verify filtered results correct
 
 **Expected Result**:
+
 - ✅ Report shows only user's own opportunities
 - ✅ Data matches what user expects
 - ✅ Filters work correctly
 - ✅ UI is intuitive
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 #### Scenario 2: Activity Tracking
+
 **Objective**: Review personal activity report
 **Steps**:
+
 1. Navigate to **Reports** → **Sales** → **My Activity**
 2. Review call count, meeting count, email count
 3. Compare "This Week" vs "Last Week"
@@ -97,39 +103,45 @@ Ideal UAT participants:
 5. Open CSV in Excel to verify data
 
 **Expected Result**:
+
 - ✅ Activity counts match user's recollection
 - ✅ Trend comparison clear
 - ✅ CSV export downloads successfully
 - ✅ CSV opens correctly in Excel
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 #### Scenario 3: Permission Validation (Negative Test)
+
 **Objective**: Verify sales rep CANNOT access team reports
 **Steps**:
+
 1. Navigate to **Reports** → **Sales**
 2. Verify "Team Sales Dashboard" is NOT visible in menu
 3. Try direct URL access (if known)
 4. Verify proper error message
 
 **Expected Result**:
+
 - ✅ Team/Location/Company reports not visible
 - ✅ Direct access returns "Permission Denied" error
 - ✅ Error message is user-friendly
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 **Field Technician Test Scenarios** (30 minutes)
 
 #### Scenario 4: Mobile Service Call Report
+
 **Objective**: View assigned service calls on mobile device
 **Steps**:
+
 1. Open app on mobile phone (iPhone or Android)
 2. Navigate to **Reports** → **Service** → **My Service Calls**
 3. Verify today's schedule displays
@@ -138,13 +150,14 @@ Ideal UAT participants:
 6. Verify map view loads (if available)
 
 **Expected Result**:
+
 - ✅ Mobile UI renders correctly
 - ✅ All calls visible and readable
 - ✅ Touch targets large enough (48px minimum)
 - ✅ Map view helpful for navigation
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
@@ -153,8 +166,10 @@ Ideal UAT participants:
 **Sales Manager Test Scenarios** (45 minutes)
 
 #### Scenario 5: Team Dashboard
+
 **Objective**: Monitor team performance and identify coaching opportunities
 **Steps**:
+
 1. Navigate to **Reports** → **Sales** → **Team Sales Dashboard**
 2. Review team quota attainment
 3. Identify top performer
@@ -163,19 +178,22 @@ Ideal UAT participants:
 6. Take screenshot for coaching session
 
 **Expected Result**:
+
 - ✅ All team members visible
 - ✅ Performance rankings accurate
 - ✅ Drill-down functionality works
 - ✅ Actionable insights provided
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 #### Scenario 6: Report Scheduling
+
 **Objective**: Schedule weekly team dashboard email
 **Steps**:
+
 1. While viewing "Team Sales Dashboard"
 2. Click **Schedule** button
 3. Set frequency: "Weekly"
@@ -187,19 +205,22 @@ Ideal UAT participants:
 9. Verify schedule appears in "My Scheduled Reports"
 
 **Expected Result**:
+
 - ✅ Schedule UI intuitive
 - ✅ Schedule saves successfully
 - ✅ Confirmation email sent
 - ✅ Schedule appears in list
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 #### Scenario 7: Export to Excel
+
 **Objective**: Export location sales data for executive presentation
 **Steps**:
+
 1. Navigate to **Reports** → **Sales** → **Location Sales Performance**
 2. Apply date filter: "Last Quarter"
 3. Click **Export** → **Excel**
@@ -209,13 +230,14 @@ Ideal UAT participants:
 7. Create pivot table or chart from data
 
 **Expected Result**:
+
 - ✅ Export downloads in < 10 seconds
 - ✅ File opens correctly in Excel
 - ✅ Data formatted properly
 - ✅ Data usable for presentations
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
@@ -224,8 +246,10 @@ Ideal UAT participants:
 **Regional Director Test Scenarios** (45 minutes)
 
 #### Scenario 8: Multi-Location Comparison
+
 **Objective**: Compare performance across locations to identify best practices
 **Steps**:
+
 1. Navigate to **Reports** → **Sales** → **Location Comparison**
 2. View all locations in region
 3. Sort by "Quota Attainment" descending
@@ -234,13 +258,14 @@ Ideal UAT participants:
 6. Export comparison as PDF for leadership meeting
 
 **Expected Result**:
+
 - ✅ All locations in region visible
 - ✅ No locations from other regions visible (data isolation)
 - ✅ Comparison metrics clear
 - ✅ PDF export professional quality
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
@@ -249,8 +274,10 @@ Ideal UAT participants:
 **CEO Test Scenarios** (60 minutes)
 
 #### Scenario 9: Executive Dashboard
+
 **Objective**: Get company-wide snapshot for board meeting
 **Steps**:
+
 1. Navigate to **Reports** → **Executive** → **CEO Dashboard**
 2. Review all KPI cards (Revenue, Growth, CAC, CLV, NPS, etc.)
 3. Click on "Revenue" to drill down
@@ -259,19 +286,22 @@ Ideal UAT participants:
 6. Export dashboard as PDF
 
 **Expected Result**:
+
 - ✅ All key metrics visible at-a-glance
 - ✅ Drill-down provides deeper context
 - ✅ AI insights actionable
 - ✅ PDF suitable for board presentation
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 #### Scenario 10: Cross-Department Analysis
+
 **Objective**: Access reports from all departments (Sales, Service, Finance, Operations)
 **Steps**:
+
 1. Execute "VP Sales Dashboard"
 2. Execute "VP Service Dashboard"
 3. Execute "CFO Dashboard"
@@ -280,13 +310,14 @@ Ideal UAT participants:
 6. Compare metrics across departments
 
 **Expected Result**:
+
 - ✅ CEO has access to ALL reports
 - ✅ Data consistent across departments
 - ✅ No permission errors
 - ✅ Cross-functional insights evident
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
@@ -295,27 +326,30 @@ Ideal UAT participants:
 ### Performance Testing
 
 #### Scenario 11: Report Load Time
+
 **Objective**: Validate reports load within acceptable timeframes
 **Test**: Execute 5 different reports and measure load time
 
-| Report Name | Expected Time | Actual Time | Pass/Fail |
-|-------------|---------------|-------------|-----------|
-| My Sales Pipeline | < 5s | ______s | ______ |
-| Team Dashboard | < 10s | ______s | ______ |
-| Regional Dashboard | < 15s | ______s | ______ |
-| Executive Dashboard | < 20s | ______s | ______ |
-| Large Export (1000+ rows) | < 30s | ______s | ______ |
+| Report Name               | Expected Time | Actual Time | Pass/Fail |
+| ------------------------- | ------------- | ----------- | --------- |
+| My Sales Pipeline         | < 5s          | **\_\_**s   | **\_\_**  |
+| Team Dashboard            | < 10s         | **\_\_**s   | **\_\_**  |
+| Regional Dashboard        | < 15s         | **\_\_**s   | **\_\_**  |
+| Executive Dashboard       | < 20s         | **\_\_**s   | **\_\_**  |
+| Large Export (1000+ rows) | < 30s         | **\_\_**s   | **\_\_**  |
 
-**Overall Pass/Fail**: _______________
+**Overall Pass/Fail**: ******\_\_\_******
 
 ---
 
 ### Usability Testing
 
 #### Scenario 12: First-Time User Experience
+
 **Objective**: Assess intuitiveness for users unfamiliar with reporting
 **Participant**: Select 2-3 users who haven't seen the reporting system
 **Steps**:
+
 1. Ask user to find and execute "My Sales Pipeline" without instruction
 2. Observe steps taken, clicks, confusion points
 3. Ask user to apply a date filter
@@ -323,22 +357,25 @@ Ideal UAT participants:
 5. Interview user about experience (5-10 min)
 
 **Questions to Ask**:
+
 - How easy was it to find the report? (1-5 scale)
 - Were the navigation labels clear?
 - Did the report meet your expectations?
 - Would you use this regularly?
 - Any suggestions for improvement?
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 ### Regression Testing
 
 #### Scenario 13: Existing Functionality Intact
+
 **Objective**: Ensure new reporting doesn't break existing features
 **Steps**:
+
 1. Create a new lead
 2. Convert lead to customer
 3. Create a quote
@@ -346,67 +383,78 @@ Ideal UAT participants:
 5. Verify all workflows function normally
 
 **Expected Result**:
+
 - ✅ No errors in standard workflows
 - ✅ Data saves correctly
 - ✅ UI/UX unchanged (unless intentionally improved)
 
-**Pass/Fail**: _______________
-**Notes**: _______________________________________________________________
+**Pass/Fail**: ******\_\_\_******
+**Notes**: ******************************\_\_\_******************************
 
 ---
 
 ### Mobile & Browser Testing
 
 #### Scenario 14: Cross-Browser Compatibility
+
 **Objective**: Validate reports work on all supported browsers
 **Browsers to Test**:
+
 - [ ] Chrome (latest)
 - [ ] Firefox (latest)
 - [ ] Safari (latest)
 - [ ] Edge (latest)
 
 **Test Steps** (for each browser):
+
 1. Login
 2. Execute 3 different reports
 3. Export 1 report
 4. Verify UI renders correctly
 
 **Expected Result**:
+
 - ✅ No layout issues
 - ✅ All functionality works
 - ✅ Performance acceptable
 
 **Pass/Fail per Browser**:
-- Chrome: _______________
-- Firefox: _______________
-- Safari: _______________
-- Edge: _______________
+
+- Chrome: ******\_\_\_******
+- Firefox: ******\_\_\_******
+- Safari: ******\_\_\_******
+- Edge: ******\_\_\_******
 
 ---
 
 #### Scenario 15: Mobile Responsiveness
+
 **Objective**: Validate reports work on mobile devices
 **Devices to Test**:
+
 - [ ] iPhone 12+ (iOS 15+)
 - [ ] Samsung Galaxy S21+ (Android 12+)
 - [ ] iPad Pro
 
 **Test Steps** (for each device):
+
 1. Login on mobile browser
 2. Execute mobile-optimized reports
 3. Verify touch interactions work
 4. Test swipe gestures (if applicable)
 
 **Expected Result**:
+
 - ✅ Readable text (no tiny fonts)
 - ✅ Touch targets adequate (48px+)
 - ✅ No horizontal scrolling
 - ✅ Performance acceptable
 
 **Pass/Fail per Device**:
-- iPhone: _______________
-- Android: _______________
-- iPad: _______________
+
+- iPhone: ******\_\_\_******
+- Android: ******\_\_\_******
+- iPad: ******\_\_\_******
 
 ---
 
@@ -414,32 +462,37 @@ Ideal UAT participants:
 
 When a test fails, please report using this template:
 
-**Bug ID**: _______________
-**Test Scenario**: _______________
+**Bug ID**: ******\_\_\_******
+**Test Scenario**: ******\_\_\_******
 **Severity**: Critical / High / Medium / Low
 **Priority**: P0 (Blocker) / P1 (Must Fix) / P2 (Should Fix) / P3 (Nice to Fix)
 
 **Steps to Reproduce**:
-1. _______________
-2. _______________
-3. _______________
+
+1. ***
+2. ***
+3. ***
 
 **Expected Behavior**:
-_______________________________________________________________
+
+---
 
 **Actual Behavior**:
-_______________________________________________________________
+
+---
 
 **Screenshots/Videos**:
 [Attach files or links]
 
 **Environment**:
-- Browser: _______________
-- Device: _______________
-- User Role: _______________
+
+- Browser: ******\_\_\_******
+- Device: ******\_\_\_******
+- User Role: ******\_\_\_******
 
 **Workaround** (if any):
-_______________________________________________________________
+
+---
 
 ---
 
@@ -448,21 +501,25 @@ _______________________________________________________________
 ### Day 1: Onboarding & Individual Reports (Monday)
 
 **9:00 AM - 10:00 AM**: UAT Kickoff Meeting
+
 - Introduction to new reporting system
 - Review test scenarios
 - Q&A
 
 **10:00 AM - 12:00 PM**: Individual Contributor Testing (Level 1-2)
+
 - Sales Reps test personal reports
 - Field Technicians test service reports
 - QA observers assist and take notes
 
 **1:00 PM - 3:00 PM**: First feedback session
+
 - Collect initial impressions
 - Address critical bugs
 - Adjust test plan if needed
 
 **3:00 PM - 5:00 PM**: Bug triage
+
 - Prioritize bugs
 - Assign fixes to engineering
 
@@ -471,16 +528,19 @@ _______________________________________________________________
 ### Day 2: Manager Reports (Tuesday)
 
 **9:00 AM - 12:00 PM**: Manager Testing (Level 3-4)
+
 - Test team/location dashboards
 - Test report scheduling
 - Test export functionality
 
 **1:00 PM - 3:00 PM**: Export & Scheduling Focus
+
 - Deep dive into export features
 - Test all formats (CSV, Excel, PDF)
 - Validate scheduled report delivery
 
 **3:00 PM - 5:00 PM**: Bug fixes & re-testing
+
 - Deploy bug fixes to staging
 - Re-test failed scenarios
 
@@ -489,16 +549,19 @@ _______________________________________________________________
 ### Day 3: Director & Executive Reports (Wednesday)
 
 **9:00 AM - 12:00 PM**: Director Testing (Level 5-6)
+
 - Multi-location comparisons
 - Regional dashboards
 - Strategic planning reports
 
 **1:00 PM - 3:00 PM**: Executive Testing (Level 7)
+
 - CEO/CFO/COO dashboards
 - Board reports
 - Company-wide analytics
 
 **3:00 PM - 5:00 PM**: Permission & Security Testing
+
 - Validate RBAC enforcement
 - Test tenant isolation
 - Attempt privilege escalation (negative tests)
@@ -508,16 +571,19 @@ _______________________________________________________________
 ### Day 4: Cross-Cutting Concerns (Thursday)
 
 **9:00 AM - 12:00 PM**: Performance Testing
+
 - Load time measurements
 - Concurrent user testing
 - Export performance
 
 **1:00 PM - 3:00 PM**: Mobile & Browser Testing
+
 - Test on multiple devices
 - Cross-browser validation
 - Responsive design checks
 
 **3:00 PM - 5:00 PM**: Regression Testing
+
 - Validate existing features work
 - Integration testing
 - End-to-end workflows
@@ -527,20 +593,24 @@ _______________________________________________________________
 ### Day 5: Final Validation & Sign-Off (Friday)
 
 **9:00 AM - 11:00 AM**: Re-test Critical Bugs
+
 - Verify all P0/P1 bugs fixed
 - Final smoke tests
 
 **11:00 AM - 12:00 PM**: UAT Summary Meeting
+
 - Review test results
 - Discuss outstanding issues
 - Go/No-Go decision
 
 **1:00 PM - 3:00 PM**: Documentation Review
+
 - Review user guide
 - Validate help tooltips
 - Check video tutorials
 
 **3:00 PM - 5:00 PM**: UAT Sign-Off
+
 - Stakeholder approval
 - Final UAT report
 - Plan production deployment
@@ -552,6 +622,7 @@ _______________________________________________________________
 UAT is considered successful if:
 
 ✅ **Functional Criteria** (Must Pass):
+
 - [ ] 100% of P0 bugs fixed
 - [ ] 90%+ of P1 bugs fixed
 - [ ] All 75 reports execute without errors
@@ -560,16 +631,19 @@ UAT is considered successful if:
 - [ ] Report scheduling delivers emails successfully
 
 ✅ **Performance Criteria** (Must Pass):
+
 - [ ] 95%+ of reports load in < 10 seconds
 - [ ] 100% of exports complete in < 60 seconds
 - [ ] System handles 100+ concurrent users
 
 ✅ **Usability Criteria** (Should Pass):
+
 - [ ] 80%+ user satisfaction score (survey)
 - [ ] 90%+ of users complete test scenarios without assistance
 - [ ] No critical usability issues reported
 
 ✅ **Business Criteria** (Should Pass):
+
 - [ ] Stakeholders approve for production
 - [ ] Documentation complete and accurate
 - [ ] Training materials ready
@@ -610,10 +684,10 @@ UAT is considered successful if:
 
 **UAT Participant Feedback Form**
 
-**Participant Name**: _______________
-**Role**: _______________
-**Department**: _______________
-**Date**: _______________
+**Participant Name**: ******\_\_\_******
+**Role**: ******\_\_\_******
+**Department**: ******\_\_\_******
+**Date**: ******\_\_\_******
 
 ### Overall Experience
 
@@ -654,20 +728,26 @@ UAT is considered successful if:
 ### Open-Ended Feedback
 
 8. What do you like most about the reporting system?
-   _______________________________________________________________
-   _______________________________________________________________
+
+   ***
+
+   ***
 
 9. What needs improvement?
-   _______________________________________________________________
-   _______________________________________________________________
+
+   ***
+
+   ***
 
 10. Any features you'd like to see added?
-    _______________________________________________________________
-    _______________________________________________________________
+
+    ***
+
+    ***
 
 11. Additional comments:
-    _______________________________________________________________
-    _______________________________________________________________
+    ***
+    ***
 
 **Thank you for participating in UAT!**
 

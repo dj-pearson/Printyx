@@ -154,7 +154,7 @@ class ReportCache {
       return;
     }
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -172,7 +172,7 @@ export class SalesManagerReportingService {
    */
   static async getRegionalPipelineOverview(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalPipelineOverview> {
     const cacheKey = `regional-pipeline:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalPipelineOverview>(cacheKey);
@@ -195,9 +195,10 @@ export class SalesManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Get pipeline by region and stage
     const result = await db.execute(sql`
@@ -217,7 +218,7 @@ export class SalesManagerReportingService {
         AND o.tenant_id = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
-      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
         AND r.tenant_id = ${userContext.tenantId}
       GROUP BY r.id, r.name, o.stage
       ORDER BY r.name, CASE o.stage
@@ -242,8 +243,11 @@ export class SalesManagerReportingService {
     }));
 
     // Aggregate by stage across all regions
-    const stageMap = new Map<string, { totalDeals: number; totalValue: number; regionCount: number }>();
-    pipelines.forEach(p => {
+    const stageMap = new Map<
+      string,
+      { totalDeals: number; totalValue: number; regionCount: number }
+    >();
+    pipelines.forEach((p) => {
       const existing = stageMap.get(p.stage) || { totalDeals: 0, totalValue: 0, regionCount: 0 };
       existing.totalDeals += p.dealCount;
       existing.totalValue += p.totalValue;
@@ -255,15 +259,16 @@ export class SalesManagerReportingService {
       stage,
       totalDeals: data.totalDeals,
       totalValue: data.totalValue,
-      avgValuePerRegion: Math.round(data.totalValue / data.regionCount * 100) / 100,
+      avgValuePerRegion: Math.round((data.totalValue / data.regionCount) * 100) / 100,
     }));
 
     const totalPipeline = pipelines.reduce((sum, p) => sum + p.totalValue, 0);
     const totalDeals = pipelines.reduce((sum, p) => sum + p.dealCount, 0);
-    const avgConversion = pipelines.reduce((sum, p) => sum + p.conversionRate, 0) / (pipelines.length || 1);
+    const avgConversion =
+      pipelines.reduce((sum, p) => sum + p.conversionRate, 0) / (pipelines.length || 1);
 
     const summary = {
-      totalRegions: new Set(pipelines.map(p => p.regionId)).size,
+      totalRegions: new Set(pipelines.map((p) => p.regionId)).size,
       totalPipeline,
       totalDeals,
       averageDealSize: totalDeals > 0 ? Math.round((totalPipeline / totalDeals) * 100) / 100 : 0,
@@ -280,7 +285,7 @@ export class SalesManagerReportingService {
    */
   static async getRegionalPerformanceMetrics(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalPerformanceMetrics> {
     const cacheKey = `regional-performance:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalPerformanceMetrics>(cacheKey);
@@ -302,9 +307,10 @@ export class SalesManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.closed_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.closed_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       WITH regional_metrics AS (
@@ -326,7 +332,7 @@ export class SalesManagerReportingService {
         LEFT JOIN activities a ON a.user_id = u.id
           AND a.tenant_id = ${userContext.tenantId}
           ${dateFilter}
-        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
           AND r.tenant_id = ${userContext.tenantId}
         GROUP BY r.id, r.name
       ),
@@ -339,7 +345,7 @@ export class SalesManagerReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN sales_quotas q ON q.user_id = u.id
           AND q.tenant_id = ${userContext.tenantId}
-        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
           AND r.tenant_id = ${userContext.tenantId}
         GROUP BY r.id
       )
@@ -400,7 +406,7 @@ export class SalesManagerReportingService {
    */
   static async getRegionalQuotaTracking(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalQuotaTracking> {
     const cacheKey = `regional-quota:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalQuotaTracking>(cacheKey);
@@ -422,9 +428,10 @@ export class SalesManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.closed_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.closed_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       WITH regional_quotas AS (
@@ -438,7 +445,7 @@ export class SalesManagerReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN sales_quotas q ON q.user_id = u.id
           AND q.tenant_id = ${userContext.tenantId}
-        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
           AND r.tenant_id = ${userContext.tenantId}
         GROUP BY r.id, r.name
       ),
@@ -452,7 +459,7 @@ export class SalesManagerReportingService {
         LEFT JOIN opportunities o ON o.owner_id = u.id
           AND o.tenant_id = ${userContext.tenantId}
           ${dateFilter}
-        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
           AND r.tenant_id = ${userContext.tenantId}
         GROUP BY r.id
       ),
@@ -466,7 +473,7 @@ export class SalesManagerReportingService {
         LEFT JOIN opportunities o ON o.owner_id = u.id
           AND o.tenant_id = ${userContext.tenantId}
           AND o.stage NOT IN ('Closed Won', 'Closed Lost', 'Cancelled')
-        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
           AND r.tenant_id = ${userContext.tenantId}
         GROUP BY r.id
       )
@@ -514,9 +521,10 @@ export class SalesManagerReportingService {
     const summary = {
       totalQuota,
       totalRevenue,
-      overallAttainment: totalQuota > 0 ? Math.round((totalRevenue / totalQuota) * 100 * 100) / 100 : 0,
-      regionsOnTrack: quotas.filter(q => q.onTrack).length,
-      regionsAtRisk: quotas.filter(q => !q.onTrack).length,
+      overallAttainment:
+        totalQuota > 0 ? Math.round((totalRevenue / totalQuota) * 100 * 100) / 100 : 0,
+      regionsOnTrack: quotas.filter((q) => q.onTrack).length,
+      regionsAtRisk: quotas.filter((q) => !q.onTrack).length,
     };
 
     const response = { quotas, summary };
@@ -529,7 +537,7 @@ export class SalesManagerReportingService {
    */
   static async getRegionalActivitySummary(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalActivitySummary> {
     const cacheKey = `regional-activity:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalActivitySummary>(cacheKey);
@@ -549,9 +557,10 @@ export class SalesManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND a.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND a.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -571,7 +580,7 @@ export class SalesManagerReportingService {
       LEFT JOIN activities a ON a.user_id = u.id
         AND a.tenant_id = ${userContext.tenantId}
         ${dateFilter}
-      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
         AND r.tenant_id = ${userContext.tenantId}
       GROUP BY r.id, r.name
       ORDER BY total_activities DESC
@@ -598,7 +607,8 @@ export class SalesManagerReportingService {
 
     const summary = {
       totalActivities,
-      averagePerRegion: activities.length > 0 ? Math.round((totalActivities / activities.length) * 100) / 100 : 0,
+      averagePerRegion:
+        activities.length > 0 ? Math.round((totalActivities / activities.length) * 100) / 100 : 0,
       mostActiveRegion: activities.length > 0 ? activities[0] : null,
     };
 

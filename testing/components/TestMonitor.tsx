@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { createContext7 } from "context7";
+import React, { useState, useEffect } from 'react';
+import { createContext7 } from 'context7';
 
 // Test monitoring context
 const TestMonitorContext = createContext7({
@@ -25,7 +25,7 @@ const TestMonitorContext = createContext7({
     },
     realTimeErrors: [],
     realTimeWarnings: [],
-    connectionStatus: "disconnected",
+    connectionStatus: 'disconnected',
   },
 
   actions: {
@@ -35,7 +35,7 @@ const TestMonitorContext = createContext7({
       ws.onopen = () => {
         context.setState({
           isConnected: true,
-          connectionStatus: "connected",
+          connectionStatus: 'connected',
         });
       };
 
@@ -47,13 +47,13 @@ const TestMonitorContext = createContext7({
       ws.onclose = () => {
         context.setState({
           isConnected: false,
-          connectionStatus: "disconnected",
+          connectionStatus: 'disconnected',
         });
       };
 
       ws.onerror = () => {
         context.setState({
-          connectionStatus: "error",
+          connectionStatus: 'error',
         });
       };
 
@@ -62,11 +62,11 @@ const TestMonitorContext = createContext7({
 
     handleMessage: (context, message) => {
       switch (message.type) {
-        case "initialState":
+        case 'initialState':
           context.setState(message.data);
           break;
 
-        case "progress":
+        case 'progress':
           context.setState({
             progress: {
               current: message.data.current,
@@ -78,7 +78,7 @@ const TestMonitorContext = createContext7({
           });
           break;
 
-        case "routeComplete":
+        case 'routeComplete':
           const routeResult = message.data;
           const currentState = context.getState();
 
@@ -89,11 +89,9 @@ const TestMonitorContext = createContext7({
           // Update summary
           const summary = {
             totalRoutes: updatedRoutes.length,
-            successful: updatedRoutes.filter((r) => r.status === "success")
-              .length,
-            errors: updatedRoutes.filter((r) => r.status === "error").length,
-            warnings: updatedRoutes.filter((r) => r.status === "warning")
-              .length,
+            successful: updatedRoutes.filter((r) => r.status === 'success').length,
+            errors: updatedRoutes.filter((r) => r.status === 'error').length,
+            warnings: updatedRoutes.filter((r) => r.status === 'warning').length,
           };
 
           context.setState({
@@ -133,7 +131,7 @@ const TestMonitorContext = createContext7({
           }
           break;
 
-        case "error":
+        case 'error':
           const currentErrors = context.getState().realTimeErrors;
           context.setState({
             realTimeErrors: [
@@ -157,7 +155,7 @@ interface TestMonitorProps {
 }
 
 export const TestMonitor: React.FC<TestMonitorProps> = ({
-  wsUrl = "ws://localhost:8080/test-monitor",
+  wsUrl = 'ws://localhost:8080/test-monitor',
   autoConnect = true,
 }) => {
   const [context] = useState(() => TestMonitorContext);
@@ -191,7 +189,7 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
       const websocket = context.actions.connect(wsUrl);
       setWs(websocket);
     } catch (error) {
-      console.error("Failed to connect to test monitor:", error);
+      console.error('Failed to connect to test monitor:', error);
     }
   };
 
@@ -204,27 +202,27 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "connected":
-        return "text-green-600";
-      case "disconnected":
-        return "text-gray-600";
-      case "error":
-        return "text-red-600";
+      case 'connected':
+        return 'text-green-600';
+      case 'disconnected':
+        return 'text-gray-600';
+      case 'error':
+        return 'text-red-600';
       default:
-        return "text-gray-600";
+        return 'text-gray-600';
     }
   };
 
   const getRouteStatusIcon = (status: string) => {
     switch (status) {
-      case "success":
-        return "✅";
-      case "error":
-        return "❌";
-      case "warning":
-        return "⚠️";
+      case 'success':
+        return '✅';
+      case 'error':
+        return '❌';
+      case 'warning':
+        return '⚠️';
       default:
-        return "⏳";
+        return '⏳';
     }
   };
 
@@ -238,16 +236,14 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
             <div className="connection-status flex items-center gap-2">
               <div
                 className={`w-3 h-3 rounded-full ${
-                  state.connectionStatus === "connected"
-                    ? "bg-green-500"
-                    : state.connectionStatus === "error"
-                    ? "bg-red-500"
-                    : "bg-gray-400"
+                  state.connectionStatus === 'connected'
+                    ? 'bg-green-500'
+                    : state.connectionStatus === 'error'
+                      ? 'bg-red-500'
+                      : 'bg-gray-400'
                 }`}
               ></div>
-              <span
-                className={`text-sm ${getStatusColor(state.connectionStatus)}`}
-              >
+              <span className={`text-sm ${getStatusColor(state.connectionStatus)}`}>
                 {state.connectionStatus}
               </span>
             </div>
@@ -278,8 +274,7 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
                 Testing: {state.currentRoute} ({state.currentViewport})
               </div>
               <div className="text-sm font-medium">
-                {state.progress.current} / {state.progress.total} (
-                {state.progress.percentage}%)
+                {state.progress.current} / {state.progress.total} ({state.progress.percentage}%)
               </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -309,16 +304,12 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
         </div>
 
         <div className="bg-red-50 p-4 rounded border-l-4 border-red-500">
-          <div className="text-2xl font-bold text-red-700">
-            {state.results.summary.errors}
-          </div>
+          <div className="text-2xl font-bold text-red-700">{state.results.summary.errors}</div>
           <div className="text-sm text-red-600">Errors</div>
         </div>
 
         <div className="bg-yellow-50 p-4 rounded border-l-4 border-yellow-500">
-          <div className="text-2xl font-bold text-yellow-700">
-            {state.results.summary.warnings}
-          </div>
+          <div className="text-2xl font-bold text-yellow-700">{state.results.summary.warnings}</div>
           <div className="text-sm text-yellow-600">Warnings</div>
         </div>
       </div>
@@ -326,21 +317,14 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
       <div className="grid grid-cols-2 gap-6">
         {/* Recent Routes */}
         <div className="recent-routes">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">
-            📋 Recent Routes
-          </h3>
+          <h3 className="text-lg font-semibold mb-3 text-gray-800">📋 Recent Routes</h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {state.results.recentRoutes.map((route, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded"
-              >
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                 <div className="flex items-center gap-2">
                   <span>{getRouteStatusIcon(route.status)}</span>
                   <span className="font-mono text-sm">{route.route}</span>
-                  <span className="text-xs text-gray-500">
-                    ({route.viewport})
-                  </span>
+                  <span className="text-xs text-gray-500">({route.viewport})</span>
                 </div>
                 <div className="text-xs text-gray-600">{route.loadTime}ms</div>
               </div>
@@ -350,9 +334,7 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
 
         {/* Real-time Issues */}
         <div className="real-time-issues">
-          <h3 className="text-lg font-semibold mb-3 text-gray-800">
-            🚨 Live Issues
-          </h3>
+          <h3 className="text-lg font-semibold mb-3 text-gray-800">🚨 Live Issues</h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {/* Errors */}
             {state.realTimeErrors.slice(-5).map((error, index) => (
@@ -362,9 +344,7 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="font-mono text-sm text-red-700">
-                      {error.route}
-                    </div>
+                    <div className="font-mono text-sm text-red-700">{error.route}</div>
                     <div className="text-sm text-red-600">{error.message}</div>
                   </div>
                   <div className="text-xs text-red-500">
@@ -382,12 +362,8 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="font-mono text-sm text-yellow-700">
-                      {warning.route}
-                    </div>
-                    <div className="text-sm text-yellow-600">
-                      {warning.message}
-                    </div>
+                    <div className="font-mono text-sm text-yellow-700">{warning.route}</div>
+                    <div className="text-sm text-yellow-600">{warning.message}</div>
                   </div>
                   <div className="text-xs text-yellow-500">
                     {warning.timestamp?.toLocaleTimeString()}
@@ -403,9 +379,7 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
       <div className="actions mt-6 flex gap-4">
         <button
           className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-          onClick={() =>
-            window.open("./test-results/test-report.html", "_blank")
-          }
+          onClick={() => window.open('./test-results/test-report.html', '_blank')}
         >
           📊 View Full Report
         </button>
@@ -414,11 +388,11 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
           className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
           onClick={() => {
             const data = JSON.stringify(state.results, null, 2);
-            const blob = new Blob([data], { type: "application/json" });
+            const blob = new Blob([data], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
+            const a = document.createElement('a');
             a.href = url;
-            a.download = "test-results.json";
+            a.download = 'test-results.json';
             a.click();
           }}
         >
@@ -427,9 +401,7 @@ export const TestMonitor: React.FC<TestMonitorProps> = ({
 
         <button
           className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-          onClick={() =>
-            window.open("./test-results/actionable-report.json", "_blank")
-          }
+          onClick={() => window.open('./test-results/actionable-report.json', '_blank')}
         >
           🎯 Action Items
         </button>

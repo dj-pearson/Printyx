@@ -33,48 +33,73 @@ export async function seedSalesWorkflowAutomation() {
     // ==================== Seed Sales Territories ====================
     console.log('📍 Seeding sales territories...');
 
-    const eastCoastTerritory = await db.insert(salesTerritories).values({
-      tenantId,
-      territoryName: 'East Coast',
-      territoryCode: 'EC-001',
-      description: 'Eastern seaboard states',
-      territoryType: 'geographic',
-      geographicRules: {
-        states: ['NY', 'NJ', 'PA', 'MD', 'VA', 'NC', 'SC', 'GA', 'FL', 'MA', 'CT', 'RI', 'NH', 'ME', 'VT'],
-      },
-      isActive: true,
-      priority: 10,
-      monthlyQuota: '150000.00',
-    }).returning();
+    const eastCoastTerritory = await db
+      .insert(salesTerritories)
+      .values({
+        tenantId,
+        territoryName: 'East Coast',
+        territoryCode: 'EC-001',
+        description: 'Eastern seaboard states',
+        territoryType: 'geographic',
+        geographicRules: {
+          states: [
+            'NY',
+            'NJ',
+            'PA',
+            'MD',
+            'VA',
+            'NC',
+            'SC',
+            'GA',
+            'FL',
+            'MA',
+            'CT',
+            'RI',
+            'NH',
+            'ME',
+            'VT',
+          ],
+        },
+        isActive: true,
+        priority: 10,
+        monthlyQuota: '150000.00',
+      })
+      .returning();
 
-    const westCoastTerritory = await db.insert(salesTerritories).values({
-      tenantId,
-      territoryName: 'West Coast',
-      territoryCode: 'WC-001',
-      description: 'Western states',
-      territoryType: 'geographic',
-      geographicRules: {
-        states: ['CA', 'OR', 'WA', 'NV', 'AZ'],
-      },
-      isActive: true,
-      priority: 10,
-      monthlyQuota: '200000.00',
-    }).returning();
+    const westCoastTerritory = await db
+      .insert(salesTerritories)
+      .values({
+        tenantId,
+        territoryName: 'West Coast',
+        territoryCode: 'WC-001',
+        description: 'Western states',
+        territoryType: 'geographic',
+        geographicRules: {
+          states: ['CA', 'OR', 'WA', 'NV', 'AZ'],
+        },
+        isActive: true,
+        priority: 10,
+        monthlyQuota: '200000.00',
+      })
+      .returning();
 
-    const enterpriseTerritory = await db.insert(salesTerritories).values({
-      tenantId,
-      territoryName: 'Enterprise Accounts',
-      territoryCode: 'ENT-001',
-      description: 'Large enterprise customers (500+ employees)',
-      territoryType: 'account_size',
-      accountRules: {
-        companySizeMin: 500,
-        revenueMin: 50000000,
-      },
-      isActive: true,
-      priority: 20,
-      monthlyQuota: '500000.00',
-    }).returning();
+    const enterpriseTerritory = await db
+      .insert(salesTerritories)
+      .values({
+        tenantId,
+        territoryName: 'Enterprise Accounts',
+        territoryCode: 'ENT-001',
+        description: 'Large enterprise customers (500+ employees)',
+        territoryType: 'account_size',
+        accountRules: {
+          companySizeMin: 500,
+          revenueMin: 50000000,
+        },
+        isActive: true,
+        priority: 20,
+        monthlyQuota: '500000.00',
+      })
+      .returning();
 
     console.log(`✅ Created ${3} sales territories`);
 
@@ -123,7 +148,23 @@ export async function seedSalesWorkflowAutomation() {
       assignmentType: 'territory',
       criteria: {
         geography: {
-          states: ['NY', 'NJ', 'PA', 'MD', 'VA', 'NC', 'SC', 'GA', 'FL', 'MA', 'CT', 'RI', 'NH', 'ME', 'VT'],
+          states: [
+            'NY',
+            'NJ',
+            'PA',
+            'MD',
+            'VA',
+            'NC',
+            'SC',
+            'GA',
+            'FL',
+            'MA',
+            'CT',
+            'RI',
+            'NH',
+            'ME',
+            'VT',
+          ],
         },
       },
       territoryId: eastCoastTerritory[0].id,
@@ -247,7 +288,8 @@ export async function seedSalesWorkflowAutomation() {
         },
         {
           taskName: 'Complete Handoff Documentation',
-          description: 'Document all account details, special requirements, and customer preferences',
+          description:
+            'Document all account details, special requirements, and customer preferences',
           assignToRole: 'sales_rep',
           category: 'documentation',
           isRequired: true,
@@ -543,17 +585,20 @@ export async function seedSalesWorkflowAutomation() {
 
     await db.insert(workflowTemplates).values({
       name: 'Lead Speed-to-Response Automation',
-      description: 'Automatically assign and alert reps when new leads arrive for immediate follow-up',
+      description:
+        'Automatically assign and alert reps when new leads arrive for immediate follow-up',
       category: 'Sales',
       version: '1.0.0',
       complexity: 'simple',
       estimatedTimeSaved: 120,
       featured: true,
       definition: {
-        triggers: [{
-          type: 'event',
-          eventName: 'lead_created',
-        }],
+        triggers: [
+          {
+            type: 'event',
+            eventName: 'lead_created',
+          },
+        ],
         steps: [
           {
             orderIndex: 0,
@@ -570,7 +615,8 @@ export async function seedSalesWorkflowAutomation() {
             actionType: 'sms',
             config: {
               to: '{{assignedRep.phone}}',
-              message: 'New lead assigned: {{lead.name}} from {{lead.company}}. Contact within 5 minutes!',
+              message:
+                'New lead assigned: {{lead.name}} from {{lead.company}}. Contact within 5 minutes!',
             },
           },
           {
@@ -607,10 +653,12 @@ export async function seedSalesWorkflowAutomation() {
       estimatedTimeSaved: 180,
       featured: true,
       definition: {
-        triggers: [{
-          type: 'event',
-          eventName: 'contract_signed',
-        }],
+        triggers: [
+          {
+            type: 'event',
+            eventName: 'contract_signed',
+          },
+        ],
         steps: [
           {
             orderIndex: 0,
@@ -666,10 +714,12 @@ export async function seedSalesWorkflowAutomation() {
       estimatedTimeSaved: 240,
       featured: true,
       definition: {
-        triggers: [{
-          type: 'schedule',
-          cronExpression: '0 9 * * *', // Daily at 9 AM
-        }],
+        triggers: [
+          {
+            type: 'schedule',
+            cronExpression: '0 9 * * *', // Daily at 9 AM
+          },
+        ],
         steps: [
           {
             orderIndex: 0,

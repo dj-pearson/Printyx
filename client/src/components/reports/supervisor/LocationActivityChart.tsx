@@ -1,4 +1,13 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 export default function LocationActivityChart({ activities, summary, insights }: any) {
   const chartData = activities.map((a: any) => ({
@@ -17,23 +26,33 @@ export default function LocationActivityChart({ activities, summary, insights }:
       <div className="grid grid-cols-5 gap-4">
         <div className="p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg text-center">
           <div className="text-sm text-blue-900 dark:text-blue-100">Calls</div>
-          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{insights?.activityBreakdown?.calls || 0}</div>
+          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+            {insights?.activityBreakdown?.calls || 0}
+          </div>
         </div>
         <div className="p-3 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg text-center">
           <div className="text-sm text-purple-900 dark:text-purple-100">Emails</div>
-          <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{insights?.activityBreakdown?.emails || 0}</div>
+          <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+            {insights?.activityBreakdown?.emails || 0}
+          </div>
         </div>
         <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg text-center">
           <div className="text-sm text-green-900 dark:text-green-100">Meetings</div>
-          <div className="text-2xl font-bold text-green-700 dark:text-green-300">{insights?.activityBreakdown?.meetings || 0}</div>
+          <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+            {insights?.activityBreakdown?.meetings || 0}
+          </div>
         </div>
         <div className="p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg text-center">
           <div className="text-sm text-orange-900 dark:text-orange-100">Demos</div>
-          <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">{insights?.activityBreakdown?.demos || 0}</div>
+          <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+            {insights?.activityBreakdown?.demos || 0}
+          </div>
         </div>
         <div className="p-3 bg-pink-50 dark:bg-pink-950 border border-pink-200 dark:border-pink-800 rounded-lg text-center">
           <div className="text-sm text-pink-900 dark:text-pink-100">Proposals</div>
-          <div className="text-2xl font-bold text-pink-700 dark:text-pink-300">{insights?.activityBreakdown?.proposals || 0}</div>
+          <div className="text-2xl font-bold text-pink-700 dark:text-pink-300">
+            {insights?.activityBreakdown?.proposals || 0}
+          </div>
         </div>
       </div>
 
@@ -42,7 +61,14 @@ export default function LocationActivityChart({ activities, summary, insights }:
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-            <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+            <XAxis
+              dataKey="name"
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              className="text-xs"
+              tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            />
             <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip />
             <Legend wrapperStyle={{ fontSize: '12px' }} />

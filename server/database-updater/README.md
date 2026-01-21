@@ -1,11 +1,13 @@
 # Database Updater System
 
 ## Overview
+
 A modular, CRON-based database updater system for Root Admin to inject new information into specific tenant tables with realistic, time-based data generation.
 
 ## Architecture
 
 ### Core Components
+
 - **BaseUpdater**: Abstract base class for all updaters
 - **UpdaterRegistry**: Central registry for managing updaters
 - **CronScheduler**: CRON-based scheduling system
@@ -13,6 +15,7 @@ A modular, CRON-based database updater system for Root Admin to inject new infor
 - **Logger**: Comprehensive logging and monitoring
 
 ### Table Handlers
+
 - **BusinessRecordActivityUpdater**: Updates business_record_activities table
 - **ServiceTicketUpdater**: Updates service_tickets table
 - **BusinessRecordUpdater**: Creates new leads in business_records table
@@ -20,10 +23,12 @@ A modular, CRON-based database updater system for Root Admin to inject new infor
 ## Configuration
 
 ### Target Parameters
+
 - **Tenant ID**: `550e8400-e29b-41d4-a716-446655440000`
 - **Customer ID**: `cust-1` (for service tickets)
 
 ### Default Schedule
+
 - **Business Activities**: Every 2 hours during business hours (9 AM - 5 PM, Mon-Fri)
 - **Service Tickets**: Every 6 hours
 - **New Leads**: Daily at 10 AM

@@ -1,12 +1,20 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Clock, AlertTriangle, User, Calendar, TrendingDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  User,
+  Calendar,
+  TrendingDown,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -14,12 +22,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import MainLayout from "@/components/layout/main-layout";
-import { usePricingVisibility } from "@/hooks/usePricingVisibility";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import MainLayout from '@/components/layout/main-layout';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface ApprovalRequest {
   approval: {
@@ -60,8 +68,8 @@ export default function PriceApprovals() {
   const queryClient = useQueryClient();
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [actionType, setActionType] = useState<"approve" | "reject">("approve");
-  const [notes, setNotes] = useState("");
+  const [actionType, setActionType] = useState<'approve' | 'reject'>('approve');
+  const [notes, setNotes] = useState('');
 
   const { data: approvals = [], isLoading } = useQuery<ApprovalRequest[]>({
     queryKey: ['/api/pricing/approvals/pending'],
@@ -79,43 +87,43 @@ export default function PriceApprovals() {
       queryClient.invalidateQueries({ queryKey: ['/api/pricing/approvals/pending'] });
       setDialogOpen(false);
       setSelectedApproval(null);
-      setNotes("");
+      setNotes('');
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Price change ${actionType === 'approve' ? 'approved' : 'rejected'} successfully.`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to process approval",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to process approval',
+        variant: 'destructive',
       });
     },
   });
 
   const formatCurrency = (value: string | number | null): string => {
-    if (value === null || value === undefined) return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    if (value === null || value === undefined) return '—';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return '—';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 2,
     }).format(num);
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
-  const handleAction = (approval: ApprovalRequest, type: "approve" | "reject") => {
+  const handleAction = (approval: ApprovalRequest, type: 'approve' | 'reject') => {
     setSelectedApproval(approval);
     setActionType(type);
     setDialogOpen(true);
@@ -126,15 +134,15 @@ export default function PriceApprovals() {
 
     approveMutation.mutate({
       id: selectedApproval.approval.id,
-      status: actionType === "approve" ? "approved" : "rejected",
+      status: actionType === 'approve' ? 'approved' : 'rejected',
       notes,
     });
   };
 
   const getImpactColor = (percentage: number): string => {
-    if (percentage >= 20) return "text-red-600";
-    if (percentage >= 10) return "text-orange-600";
-    return "text-yellow-600";
+    if (percentage >= 20) return 'text-red-600';
+    if (percentage >= 10) return 'text-orange-600';
+    return 'text-yellow-600';
   };
 
   if (!visibility?.showDealerCost) {
@@ -143,7 +151,8 @@ export default function PriceApprovals() {
         <Card>
           <CardContent className="p-6">
             <p className="text-muted-foreground">
-              You do not have permission to view price approvals. Only managers and above can access this page.
+              You do not have permission to view price approvals. Only managers and above can access
+              this page.
             </p>
           </CardContent>
         </Card>
@@ -183,10 +192,11 @@ export default function PriceApprovals() {
                     ? (
                         approvals.reduce(
                           (sum, a) => sum + parseFloat(a.approval.discountPercentage),
-                          0
+                          0,
                         ) / approvals.length
                       ).toFixed(1)
-                    : "0"}%
+                    : '0'}
+                  %
                 </p>
               </div>
             </CardContent>
@@ -201,7 +211,7 @@ export default function PriceApprovals() {
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
                 <p className="text-2xl font-bold">
                   {formatCurrency(
-                    approvals.reduce((sum, a) => sum + parseFloat(a.approval.requestedPrice), 0)
+                    approvals.reduce((sum, a) => sum + parseFloat(a.approval.requestedPrice), 0),
                   )}
                 </p>
               </div>
@@ -267,7 +277,7 @@ export default function PriceApprovals() {
                               size="sm"
                               variant="outline"
                               className="border-green-600 text-green-600 hover:bg-green-50"
-                              onClick={() => handleAction(item, "approve")}
+                              onClick={() => handleAction(item, 'approve')}
                             >
                               <CheckCircle className="h-4 w-4 mr-1" />
                               Approve
@@ -276,7 +286,7 @@ export default function PriceApprovals() {
                               size="sm"
                               variant="outline"
                               className="border-red-600 text-red-600 hover:bg-red-50"
-                              onClick={() => handleAction(item, "reject")}
+                              onClick={() => handleAction(item, 'reject')}
                             >
                               <XCircle className="h-4 w-4 mr-1" />
                               Reject
@@ -310,28 +320,31 @@ export default function PriceApprovals() {
                           </div>
                           <div className="space-y-1">
                             <p className="text-xs text-muted-foreground">Discount %</p>
-                            <p className={`text-sm font-bold ${getImpactColor(parseFloat(item.approval.discountPercentage))}`}>
+                            <p
+                              className={`text-sm font-bold ${getImpactColor(parseFloat(item.approval.discountPercentage))}`}
+                            >
                               {parseFloat(item.approval.discountPercentage).toFixed(1)}%
                             </p>
                           </div>
                         </div>
 
                         {/* Margin Impact */}
-                        {item.approval.originalMarginPercentage && item.approval.newMarginPercentage && (
-                          <Alert>
-                            <TrendingDown className="h-4 w-4" />
-                            <AlertDescription>
-                              <strong>Margin Impact:</strong> From{" "}
-                              {parseFloat(item.approval.originalMarginPercentage).toFixed(1)}% to{" "}
-                              {parseFloat(item.approval.newMarginPercentage).toFixed(1)}% (
-                              {(
-                                parseFloat(item.approval.newMarginPercentage) -
-                                parseFloat(item.approval.originalMarginPercentage)
-                              ).toFixed(1)}
-                              % decrease)
-                            </AlertDescription>
-                          </Alert>
-                        )}
+                        {item.approval.originalMarginPercentage &&
+                          item.approval.newMarginPercentage && (
+                            <Alert>
+                              <TrendingDown className="h-4 w-4" />
+                              <AlertDescription>
+                                <strong>Margin Impact:</strong> From{' '}
+                                {parseFloat(item.approval.originalMarginPercentage).toFixed(1)}% to{' '}
+                                {parseFloat(item.approval.newMarginPercentage).toFixed(1)}% (
+                                {(
+                                  parseFloat(item.approval.newMarginPercentage) -
+                                  parseFloat(item.approval.originalMarginPercentage)
+                                ).toFixed(1)}
+                                % decrease)
+                              </AlertDescription>
+                            </Alert>
+                          )}
 
                         {/* Request Reason */}
                         <div className="space-y-2">
@@ -354,12 +367,12 @@ export default function PriceApprovals() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {actionType === "approve" ? "Approve" : "Reject"} Price Change Request
+                {actionType === 'approve' ? 'Approve' : 'Reject'} Price Change Request
               </DialogTitle>
               <DialogDescription>
-                {actionType === "approve"
-                  ? "Approve this price change request. You can add notes for the sales rep."
-                  : "Reject this price change request. Please provide a reason for rejection."}
+                {actionType === 'approve'
+                  ? 'Approve this price change request. You can add notes for the sales rep.'
+                  : 'Reject this price change request. Please provide a reason for rejection.'}
               </DialogDescription>
             </DialogHeader>
 
@@ -369,7 +382,8 @@ export default function PriceApprovals() {
                   <div className="flex justify-between text-sm">
                     <span>Sales Rep:</span>
                     <span className="font-medium">
-                      {selectedApproval.requestedBy.firstName} {selectedApproval.requestedBy.lastName}
+                      {selectedApproval.requestedBy.firstName}{' '}
+                      {selectedApproval.requestedBy.lastName}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -388,16 +402,16 @@ export default function PriceApprovals() {
 
                 <div className="space-y-2">
                   <Label htmlFor="notes">
-                    {actionType === "approve" ? "Approval Notes (Optional)" : "Rejection Reason"}
+                    {actionType === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason'}
                   </Label>
                   <Textarea
                     id="notes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder={
-                      actionType === "approve"
-                        ? "Add any notes or conditions for this approval..."
-                        : "Explain why this request is being rejected..."
+                      actionType === 'approve'
+                        ? 'Add any notes or conditions for this approval...'
+                        : 'Explain why this request is being rejected...'
                     }
                     rows={4}
                   />
@@ -411,14 +425,14 @@ export default function PriceApprovals() {
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={approveMutation.isPending || (actionType === "reject" && !notes.trim())}
-                variant={actionType === "approve" ? "default" : "destructive"}
+                disabled={approveMutation.isPending || (actionType === 'reject' && !notes.trim())}
+                variant={actionType === 'approve' ? 'default' : 'destructive'}
               >
                 {approveMutation.isPending
-                  ? "Processing..."
-                  : actionType === "approve"
-                  ? "Approve"
-                  : "Reject"}
+                  ? 'Processing...'
+                  : actionType === 'approve'
+                    ? 'Approve'
+                    : 'Reject'}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -10,7 +10,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,12 +39,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import {
   DollarSign,
@@ -137,7 +139,11 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
   const [newBlocker, setNewBlocker] = useState('');
 
   // Fetch existing BANT data
-  const { data: bantData, isLoading, refetch } = useQuery({
+  const {
+    data: bantData,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['bant-assessment', leadId],
     queryFn: async () => {
       const res = await fetch(`/api/lead-scoring/bant/${leadId}`);
@@ -254,7 +260,13 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
       else timelineScore = 15;
     }
 
-    return { budgetScore, authorityScore, needScore, timelineScore, total: budgetScore + authorityScore + needScore + timelineScore };
+    return {
+      budgetScore,
+      authorityScore,
+      needScore,
+      timelineScore,
+      total: budgetScore + authorityScore + needScore + timelineScore,
+    };
   };
 
   const estimatedScores = calculateEstimatedScore();
@@ -262,7 +274,8 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
   const getQualificationBadge = (total: number) => {
     if (total >= 75) return { label: 'Highly Qualified', color: 'bg-green-100 text-green-800' };
     if (total >= 50) return { label: 'Qualified', color: 'bg-blue-100 text-blue-800' };
-    if (total >= 25) return { label: 'Partially Qualified', color: 'bg-yellow-100 text-yellow-800' };
+    if (total >= 25)
+      return { label: 'Partially Qualified', color: 'bg-yellow-100 text-yellow-800' };
     return { label: 'Unqualified', color: 'bg-red-100 text-red-800' };
   };
 
@@ -448,9 +461,7 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
                 </div>
                 <span>Need</span>
                 <Badge variant="outline">{estimatedScores.needScore}/25</Badge>
-                {formData.needIdentified && (
-                  <CheckCircle className="h-4 w-4 text-green-500 ml-2" />
-                )}
+                {formData.needIdentified && <CheckCircle className="h-4 w-4 text-green-500 ml-2" />}
               </div>
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
@@ -649,7 +660,9 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
             </div>
             <div className="text-center p-3 border rounded-lg">
               <div className="text-sm text-muted-foreground">Authority</div>
-              <div className="text-2xl font-bold text-blue-600">{estimatedScores.authorityScore}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {estimatedScores.authorityScore}
+              </div>
             </div>
             <div className="text-center p-3 border rounded-lg">
               <div className="text-sm text-muted-foreground">Need</div>
@@ -657,7 +670,9 @@ export default function BANTAssessment({ leadId, onUpdate }: BANTAssessmentProps
             </div>
             <div className="text-center p-3 border rounded-lg">
               <div className="text-sm text-muted-foreground">Timeline</div>
-              <div className="text-2xl font-bold text-orange-600">{estimatedScores.timelineScore}</div>
+              <div className="text-2xl font-bold text-orange-600">
+                {estimatedScores.timelineScore}
+              </div>
             </div>
           </div>
 

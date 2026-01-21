@@ -1,5 +1,5 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -14,8 +14,47 @@ import {
   Calendar,
   ArrowRight,
   ExternalLink,
+  Edit2,
+  Trash2,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format, formatDistance } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface Activity {
   id: string;
@@ -47,32 +86,151 @@ interface ActivityTimelineProps {
 export function ActivityTimeline({ businessRecordId, className }: ActivityTimelineProps) {
   console.log('🔍 ActivityTimeline - businessRecordId:', businessRecordId);
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    subject: '',
+    description: '',
+    activityType: '',
+    direction: '',
+    callDuration: '',
+    callOutcome: '',
+    outcome: '',
+    nextAction: '',
+    priority: '',
+  });
+
   const {
     data: activities,
     isLoading,
     error,
+    refetch,
   } = useQuery<Activity[]>({
     queryKey: [`/api/companies/${businessRecordId}/activities`],
     queryFn: async () => {
       console.log('🔍 ActivityTimeline - Fetching activities for company:', businessRecordId);
-      const response = await fetch(`/api/companies/${businessRecordId}/activities`, {
-        credentials: 'include',
-      });
+      const data = await apiRequest(`/api/companies/${businessRecordId}/activities`);
+      console.log('🔍 ActivityTimeline - Fetched activities:', data);
 
-      console.log('🔍 ActivityTimeline - Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🔍 ActivityTimeline - Error response:', errorText);
-        throw new Error(`Failed to fetch activities: ${response.status} - ${errorText}`);
+      // Log first activity for debugging date issues
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('🔍 ActivityTimeline - First activity dates:', {
+          createdAt: data[0].createdAt,
+          scheduledDate: data[0].scheduledDate,
+          dueDate: data[0].dueDate,
+          followUpDate: data[0].followUpDate,
+        });
       }
 
-      const data = await response.json();
-      console.log('🔍 ActivityTimeline - Fetched activities:', data);
-      return data;
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!businessRecordId, // Only run query if businessRecordId is defined
   });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (activityId: string) => {
+      await apiRequest(`/api/activities/${activityId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Activity deleted',
+        description: 'The activity has been successfully deleted.',
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/companies/${businessRecordId}/activities`],
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete activity',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Edit mutation
+  const editMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest(`/api/activities/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Activity updated',
+        description: 'The activity has been successfully updated.',
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/companies/${businessRecordId}/activities`],
+      });
+      setEditDialogOpen(false);
+      setActivityToEdit(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update activity',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleDeleteClick = (activityId: string) => {
+    setActivityToDelete(activityId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (activityToDelete) {
+      deleteMutation.mutate(activityToDelete);
+      setDeleteDialogOpen(false);
+      setActivityToDelete(null);
+    }
+  };
+
+  const handleEditClick = (activity: Activity) => {
+    setActivityToEdit(activity);
+    setEditFormData({
+      subject: activity.subject || '',
+      description: activity.description || '',
+      activityType: activity.activityType || '',
+      direction: activity.direction || '',
+      callDuration: activity.callDuration?.toString() || '',
+      callOutcome: activity.callOutcome || '',
+      outcome: activity.outcome || '',
+      nextAction: activity.nextAction || '',
+      priority: 'medium',
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = () => {
+    if (!activityToEdit) return;
+
+    const updateData: any = {
+      subject: editFormData.subject,
+      notes: editFormData.description,
+      activityType: editFormData.activityType,
+    };
+
+    // Add optional fields if they have values
+    if (editFormData.direction) updateData.direction = editFormData.direction;
+    if (editFormData.callDuration) updateData.durationMinutes = parseInt(editFormData.callDuration);
+    if (editFormData.callOutcome) updateData.outcome = editFormData.callOutcome;
+    if (editFormData.outcome) updateData.outcome = editFormData.outcome;
+    if (editFormData.nextAction) updateData.nextAction = editFormData.nextAction;
+
+    editMutation.mutate({ id: activityToEdit.id, data: updateData });
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -123,8 +281,30 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     }
   };
 
-  const formatActivityTime = (dateString: string) => {
+  // Safe date formatter that handles null/invalid dates
+  const safeFormatDate = (
+    dateString: string | null | undefined,
+    formatString: string,
+  ): string | null => {
+    if (!dateString) return null;
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return format(date, formatString);
+  };
+
+  const formatActivityTime = (dateString: string | null | undefined) => {
+    // Handle invalid or missing dates
+    if (!dateString) {
+      return { distance: 'Unknown time', formatted: 'No date' };
+    }
+
+    const date = new Date(dateString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return { distance: 'Invalid date', formatted: 'Invalid date' };
+    }
+
     const now = new Date();
     const distance = formatDistance(date, now, { addSuffix: true });
     const formatted = format(date, 'MMM d, yyyy p');
@@ -157,13 +337,11 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     return (
       <Card className={className}>
         <CardContent className="p-6 text-center">
-          <p className="text-gray-500">Failed to load activities</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={() => window.location.reload()}
-          >
+          <p className="text-gray-500 mb-2">Failed to load activities</p>
+          <p className="text-sm text-gray-400 mb-3">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
             Retry
           </Button>
         </CardContent>
@@ -222,8 +400,34 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500" title={formatted}>
-                        {distance}
+                      <div className="flex items-center space-x-2">
+                        <div className="text-xs text-gray-500" title={formatted}>
+                          {distance}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-gray-100"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditClick(activity)}>
+                              <Edit2 className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(activity.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
 
@@ -264,9 +468,9 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                           <Calendar className="h-3 w-3" />
                           <span>
                             {activity.scheduledDate &&
-                              format(new Date(activity.scheduledDate), 'MMM d, yyyy p')}
+                              safeFormatDate(activity.scheduledDate, 'MMM d, yyyy p')}
                             {activity.dueDate &&
-                              `Due: ${format(new Date(activity.dueDate), 'MMM d, yyyy')}`}
+                              ` Due: ${safeFormatDate(activity.dueDate, 'MMM d, yyyy')}`}
                           </span>
                         </div>
                       )}
@@ -289,14 +493,15 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                       )}
 
                       {/* Follow-up Date */}
-                      {activity.followUpDate && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Calendar className="h-3 w-3 text-blue-500" />
-                          <span className="text-blue-600">
-                            Follow-up: {format(new Date(activity.followUpDate), 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                      )}
+                      {activity.followUpDate &&
+                        safeFormatDate(activity.followUpDate, 'MMM d, yyyy') && (
+                          <div className="flex items-center space-x-2 text-sm">
+                            <Calendar className="h-3 w-3 text-blue-500" />
+                            <span className="text-blue-600">
+                              Follow-up: {safeFormatDate(activity.followUpDate, 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                        )}
                     </div>
 
                     {/* Created by */}
@@ -315,6 +520,184 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
           </div>
         );
       })}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Activity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this activity? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setActivityToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Activity Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Activity</DialogTitle>
+            <DialogDescription>Update the activity details below.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Activity Type */}
+            <div className="space-y-2">
+              <Label htmlFor="activityType">Activity Type *</Label>
+              <Select
+                value={editFormData.activityType}
+                onValueChange={(value) => setEditFormData({ ...editFormData, activityType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call">Call</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="meeting">Meeting</SelectItem>
+                  <SelectItem value="note">Note</SelectItem>
+                  <SelectItem value="task">Task</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject *</Label>
+              <Input
+                id="subject"
+                value={editFormData.subject}
+                onChange={(e) => setEditFormData({ ...editFormData, subject: e.target.value })}
+                placeholder="e.g., Follow-up call with customer"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                placeholder="Add details about this activity..."
+                rows={4}
+              />
+            </div>
+
+            {/* Call-specific fields */}
+            {editFormData.activityType === 'call' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="direction">Direction</Label>
+                    <Select
+                      value={editFormData.direction}
+                      onValueChange={(value) =>
+                        setEditFormData({ ...editFormData, direction: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select direction" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inbound">Inbound</SelectItem>
+                        <SelectItem value="outbound">Outbound</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="callDuration">Duration (minutes)</Label>
+                    <Input
+                      id="callDuration"
+                      type="number"
+                      value={editFormData.callDuration}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, callDuration: e.target.value })
+                      }
+                      placeholder="e.g., 15"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="callOutcome">Call Outcome</Label>
+                  <Select
+                    value={editFormData.callOutcome}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, callOutcome: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select outcome" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="no_response">No Response</SelectItem>
+                      <SelectItem value="voicemail">Voicemail</SelectItem>
+                      <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {/* Outcome */}
+            <div className="space-y-2">
+              <Label htmlFor="outcome">Outcome</Label>
+              <Select
+                value={editFormData.outcome}
+                onValueChange={(value) => setEditFormData({ ...editFormData, outcome: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select outcome" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Next Action */}
+            <div className="space-y-2">
+              <Label htmlFor="nextAction">Next Action</Label>
+              <Input
+                id="nextAction"
+                value={editFormData.nextAction}
+                onChange={(e) => setEditFormData({ ...editFormData, nextAction: e.target.value })}
+                placeholder="e.g., Send quote, Schedule demo"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setActivityToEdit(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editMutation.isPending}>
+              {editMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

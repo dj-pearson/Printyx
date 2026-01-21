@@ -10,11 +10,11 @@ import { TenantRequest } from './tenancy';
  */
 export const requireTenant = (req: TenantRequest, res: Response, next: NextFunction) => {
   if (!req.tenantId) {
-    return res.status(401).json({ 
-      message: "Tenant identification required",
-      code: "TENANT_REQUIRED"
+    return res.status(401).json({
+      message: 'Tenant identification required',
+      code: 'TENANT_REQUIRED',
     });
   }
-  
+
   next();
 };

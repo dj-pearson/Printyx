@@ -134,7 +134,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Printyx is a comprehensive SaaS platform designed specifically for copier dealers to manage their entire business operations. From CRM and service dispatch to meter billing and inventory management, Printyx provides all the tools you need in one unified system.',
+            content:
+              'Printyx is a comprehensive SaaS platform designed specifically for copier dealers to manage their entire business operations. From CRM and service dispatch to meter billing and inventory management, Printyx provides all the tools you need in one unified system.',
             order: 2,
           },
           {
@@ -174,7 +175,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Navigate to Settings > Company Profile and enter your company information, including name, address, contact details, and logo.',
+            content:
+              'Navigate to Settings > Company Profile and enter your company information, including name, address, contact details, and logo.',
             order: 2,
           },
           {
@@ -184,7 +186,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Go to CRM > Customers and click "Add Customer". Fill in the customer details and save.',
+            content:
+              'Go to CRM > Customers and click "Add Customer". Fill in the customer details and save.',
             order: 4,
           },
           {
@@ -194,7 +197,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Navigate to Equipment > Add Equipment and enter the equipment details for your customer.',
+            content:
+              'Navigate to Equipment > Add Equipment and enter the equipment details for your customer.',
             order: 6,
           },
         ],
@@ -218,7 +222,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Leads can be created manually or imported from various sources. To create a lead manually, navigate to CRM > Leads and click "Add Lead".',
+            content:
+              'Leads can be created manually or imported from various sources. To create a lead manually, navigate to CRM > Leads and click "Add Lead".',
             order: 2,
           },
           {
@@ -228,7 +233,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'The platform includes AI-powered lead scoring to help you prioritize your outreach. Leads are automatically scored based on factors like company size, industry, and engagement.',
+            content:
+              'The platform includes AI-powered lead scoring to help you prioritize your outreach. Leads are automatically scored based on factors like company size, industry, and engagement.',
             order: 4,
           },
           {
@@ -238,7 +244,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Once a lead is qualified, convert it to an opportunity by clicking the "Convert to Opportunity" button. This preserves all lead history while moving it into your active sales pipeline.',
+            content:
+              'Once a lead is qualified, convert it to an opportunity by clicking the "Convert to Opportunity" button. This preserves all lead history while moving it into your active sales pipeline.',
             order: 6,
           },
         ],
@@ -249,7 +256,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
     {
       category: 'fleet-monitoring',
       title: 'Setting Up Fleet Monitoring and Toner Tracking',
-      excerpt: 'Configure remote monitoring to track toner levels and equipment status in real-time',
+      excerpt:
+        'Configure remote monitoring to track toner levels and equipment status in real-time',
       difficultyLevel: 'intermediate',
       contentType: 'tutorial',
       tags: ['fleet monitoring', 'toner', 'monitoring', 'setup'],
@@ -262,7 +270,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Fleet monitoring allows you to track equipment status, toner levels, and receive alerts when supplies are low. This enables proactive service and automated toner ordering.',
+            content:
+              'Fleet monitoring allows you to track equipment status, toner levels, and receive alerts when supplies are low. This enables proactive service and automated toner ordering.',
             order: 2,
           },
           {
@@ -274,7 +283,7 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
             type: 'list',
             content: [
               'Download the Printyx monitoring client from Settings > Fleet Monitoring',
-              'Install the client on a computer in the customer\'s network',
+              "Install the client on a computer in the customer's network",
               'Configure network settings and enter the API key',
               'The client will automatically discover network devices',
               'Approve discovered devices in the admin panel',
@@ -288,7 +297,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Set toner alert thresholds in Settings > Fleet Monitoring > Alert Rules. The default threshold is 15%, but you can customize this per customer or equipment type.',
+            content:
+              'Set toner alert thresholds in Settings > Fleet Monitoring > Alert Rules. The default threshold is 15%, but you can customize this per customer or equipment type.',
             order: 6,
           },
           {
@@ -298,7 +308,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Enable automatic toner ordering in the workflow automation section. When toner levels reach the threshold, the system will automatically create a supply order and notify the customer.',
+            content:
+              'Enable automatic toner ordering in the workflow automation section. When toner levels reach the threshold, the system will automatically create a supply order and notify the customer.',
             order: 8,
           },
         ],
@@ -322,7 +333,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Navigate to Service > Service Calls and click "Create Service Call". Select the customer, equipment, and enter the issue description.',
+            content:
+              'Navigate to Service > Service Calls and click "Create Service Call". Select the customer, equipment, and enter the issue description.',
             order: 2,
           },
           {
@@ -332,7 +344,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'The system will suggest technicians based on availability, location, and skill set. You can also manually assign a technician from the dropdown.',
+            content:
+              'The system will suggest technicians based on availability, location, and skill set. You can also manually assign a technician from the dropdown.',
             order: 4,
           },
           {
@@ -342,7 +355,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Technicians receive notifications on their mobile devices and can view service call details, update status, and upload photos from the field.',
+            content:
+              'Technicians receive notifications on their mobile devices and can view service call details, update status, and upload photos from the field.',
             order: 6,
           },
         ],
@@ -366,7 +380,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Meter readings can be collected automatically via network monitoring, manually entered, or submitted by customers through the portal.',
+            content:
+              'Meter readings can be collected automatically via network monitoring, manually entered, or submitted by customers through the portal.',
             order: 2,
           },
           {
@@ -376,7 +391,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Set up tiered billing rates in Settings > Billing > Rate Tables. You can define different rates for black & white and color copies, with volume tiers and overages.',
+            content:
+              'Set up tiered billing rates in Settings > Billing > Rate Tables. You can define different rates for black & white and color copies, with volume tiers and overages.',
             order: 4,
           },
           {
@@ -386,7 +402,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Invoices are automatically generated based on your billing cycle settings. The system calculates copy counts, applies rate tables, and generates itemized invoices.',
+            content:
+              'Invoices are automatically generated based on your billing cycle settings. The system calculates copy counts, applies rate tables, and generates itemized invoices.',
             order: 6,
           },
         ],
@@ -410,7 +427,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'The knowledge base uses AI-powered semantic search to understand the intent of your questions and find relevant articles, even if they don\'t contain the exact keywords you used.',
+            content:
+              "The knowledge base uses AI-powered semantic search to understand the intent of your questions and find relevant articles, even if they don't contain the exact keywords you used.",
             order: 2,
           },
           {
@@ -420,7 +438,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'When you search, the AI analyzes multiple articles and generates a comprehensive answer that synthesizes information from various sources, with citations to the source articles.',
+            content:
+              'When you search, the AI analyzes multiple articles and generates a comprehensive answer that synthesizes information from various sources, with citations to the source articles.',
             order: 4,
           },
           {
@@ -430,7 +449,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Rate answers as helpful or unhelpful to improve the AI\'s accuracy over time. You can also suggest corrections if information is outdated or incorrect.',
+            content:
+              "Rate answers as helpful or unhelpful to improve the AI's accuracy over time. You can also suggest corrections if information is outdated or incorrect.",
             order: 6,
           },
         ],
@@ -454,7 +474,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Workflows can be triggered by events (like new service calls), schedules (daily, weekly), or manually. Choose the trigger that best fits your use case.',
+            content:
+              'Workflows can be triggered by events (like new service calls), schedules (daily, weekly), or manually. Choose the trigger that best fits your use case.',
             order: 2,
           },
           {
@@ -482,7 +503,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Trigger: When toner level < 15%. Actions: 1) Check if customer has toner included in contract, 2) Create supply order for appropriate toner, 3) Send email notification to customer, 4) Update equipment status.',
+            content:
+              'Trigger: When toner level < 15%. Actions: 1) Check if customer has toner included in contract, 2) Create supply order for appropriate toner, 3) Send email notification to customer, 4) Update equipment status.',
             order: 6,
           },
         ],
@@ -506,7 +528,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'Click "Forgot Password" on the login page and enter your email address. You\'ll receive a password reset link within a few minutes. Check your spam folder if you don\'t see it.',
+            content:
+              'Click "Forgot Password" on the login page and enter your email address. You\'ll receive a password reset link within a few minutes. Check your spam folder if you don\'t see it.',
             order: 2,
           },
           {
@@ -516,7 +539,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'After 5 failed login attempts, your account is temporarily locked for security. Wait 15 minutes and try again, or contact your administrator to unlock your account.',
+            content:
+              'After 5 failed login attempts, your account is temporarily locked for security. Wait 15 minutes and try again, or contact your administrator to unlock your account.',
             order: 4,
           },
           {
@@ -526,7 +550,8 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
           },
           {
             type: 'paragraph',
-            content: 'If you\'re having trouble with MFA codes, ensure your device\'s time is synchronized. You can also use backup codes provided during MFA setup, or contact your administrator to reset MFA.',
+            content:
+              "If you're having trouble with MFA codes, ensure your device's time is synchronized. You can also use backup codes provided during MFA setup, or contact your administrator to reset MFA.",
             order: 6,
           },
         ],

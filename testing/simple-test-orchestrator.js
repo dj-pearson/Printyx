@@ -1,6 +1,6 @@
-const ComprehensiveRouteTest = require("./comprehensive-route-test");
-const fs = require("fs");
-const path = require("path");
+const ComprehensiveRouteTest = require('./comprehensive-route-test');
+const fs = require('fs');
+const path = require('path');
 
 // Simple state management without external dependencies
 class SimpleTestState {
@@ -81,9 +81,9 @@ class SimpleTestState {
     // Update summary
     const summary = {
       totalRoutes: updatedRoutes.length,
-      successful: updatedRoutes.filter((r) => r.status === "success").length,
-      errors: updatedRoutes.filter((r) => r.status === "error").length,
-      warnings: updatedRoutes.filter((r) => r.status === "warning").length,
+      successful: updatedRoutes.filter((r) => r.status === 'success').length,
+      errors: updatedRoutes.filter((r) => r.status === 'error').length,
+      warnings: updatedRoutes.filter((r) => r.status === 'warning').length,
       startTime: currentResults.summary.startTime,
       endTime: null,
     };
@@ -93,10 +93,7 @@ class SimpleTestState {
     const allForms = updatedRoutes.flatMap((r) => r.forms || []);
 
     // Update performance metrics
-    const totalLoadTime = updatedRoutes.reduce(
-      (sum, r) => sum + (r.loadTime || 0),
-      0
-    );
+    const totalLoadTime = updatedRoutes.reduce((sum, r) => sum + (r.loadTime || 0), 0);
     const averageLoadTime = totalLoadTime / updatedRoutes.length;
     const slowRoutes = updatedRoutes.filter((r) => (r.loadTime || 0) > 3000);
 
@@ -196,13 +193,13 @@ class SimpleTestOrchestrator {
   async runTest(options = {}) {
     const {
       includeScreenshots = true,
-      viewports = ["desktop", "tablet", "mobile"],
+      viewports = ['desktop', 'tablet', 'mobile'],
       maxButtonsPerPage = 5,
       realTimeUpdates = false, // Disabled for simplicity
     } = options;
 
     try {
-      console.log("🚀 Starting Simple Test Orchestrator...");
+      console.log('🚀 Starting Simple Test Orchestrator...');
 
       // Initialize test state
       this.testState.startTest();
@@ -227,7 +224,7 @@ class SimpleTestOrchestrator {
 
       return this.testState.getState().results;
     } catch (error) {
-      console.error("❌ Test orchestration failed:", error.message);
+      console.error('❌ Test orchestration failed:', error.message);
       this.testState.addError(error);
       this.testState.completeTest();
       throw error;
@@ -238,14 +235,14 @@ class SimpleTestOrchestrator {
     this.testState.updateProgress(current, total, route, viewport);
     console.log(
       `📊 Progress: ${current}/${total} (${Math.round(
-        (current / total) * 100
-      )}%) - ${route} [${viewport}]`
+        (current / total) * 100,
+      )}%) - ${route} [${viewport}]`,
     );
   }
 
   handleRouteComplete(routeResult) {
     this.testState.addResult(routeResult);
-    const status = routeResult.status === "success" ? "✅" : "❌";
+    const status = routeResult.status === 'success' ? '✅' : '❌';
     console.log(`${status} ${routeResult.route} (${routeResult.loadTime}ms)`);
   }
 
@@ -260,7 +257,7 @@ class SimpleTestOrchestrator {
 
   async generateFinalReports() {
     const state = this.testState.getState();
-    const reportDir = "./test-results";
+    const reportDir = './test-results';
 
     // Ensure directory exists
     if (!fs.existsSync(reportDir)) {
@@ -268,15 +265,14 @@ class SimpleTestOrchestrator {
     }
 
     // Generate JSON report
-    const jsonPath = path.join(reportDir, "simple-test-results.json");
+    const jsonPath = path.join(reportDir, 'simple-test-results.json');
     fs.writeFileSync(jsonPath, JSON.stringify(state.results, null, 2));
 
     // Generate summary report
-    const summaryPath = path.join(reportDir, "simple-test-summary.json");
+    const summaryPath = path.join(reportDir, 'simple-test-summary.json');
     const summary = {
       ...state.results.summary,
-      testDuration:
-        state.results.summary.endTime - state.results.summary.startTime,
+      testDuration: state.results.summary.endTime - state.results.summary.startTime,
       errorCount: state.errors.length,
       warningCount: state.warnings.length,
       screenshotCount: state.screenshots.length,
@@ -307,7 +303,7 @@ class SimpleTestOrchestrator {
     const loadTimes = routes.map((r) => r.loadTime).filter(Boolean);
 
     if (loadTimes.length === 0) {
-      return { message: "No performance data available" };
+      return { message: 'No performance data available' };
     }
 
     return {
@@ -334,131 +330,131 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
   }
 
   async runTests() {
-    console.log("🚀 Starting Enhanced Route Testing...");
+    console.log('🚀 Starting Enhanced Route Testing...');
 
     // Import config from base class
     const CONFIG = {
-      baseUrl: "http://localhost:5000",
+      baseUrl: 'http://localhost:5000',
       timeout: 30000,
       viewports: [
-        { width: 1920, height: 1080, device: "desktop" },
-        { width: 768, height: 1024, device: "tablet" },
-        { width: 375, height: 667, device: "mobile" },
+        { width: 1920, height: 1080, device: 'desktop' },
+        { width: 768, height: 1024, device: 'tablet' },
+        { width: 375, height: 667, device: 'mobile' },
       ],
       screenshots: true,
-      screenshotDir: "./test-results/screenshots",
-      reportDir: "./test-results",
+      screenshotDir: './test-results/screenshots',
+      reportDir: './test-results',
     };
 
     const viewportsToTest = CONFIG.viewports.filter((vp) =>
-      this.options.viewports.includes(vp.device)
+      this.options.viewports.includes(vp.device),
     );
 
     // Import routes from base class
     const ALL_ROUTES = [
-      "/",
-      "/leads-management",
-      "/lead-detail/:id",
-      "/customers",
-      "/customer-detail/:id",
-      "/deals-management",
-      "/contacts",
-      "/company-contacts",
-      "/invoices",
-      "/service-dispatch",
-      "/service-dispatch-enhanced",
-      "/inventory",
-      "/billing",
-      "/reports",
-      "/settings",
-      "/dashboard",
-      "/task-management",
-      "/basic-tasks",
-      "/pricing-management",
-      "/product-hub",
-      "/product-management-hub",
-      "/product-models",
-      "/product-accessories",
-      "/software-products",
-      "/service-products",
-      "/supplies",
-      "/vendors",
-      "/vendor-management",
-      "/purchase-orders",
-      "/accounts-payable",
-      "/accounts-receivable",
-      "/chart-of-accounts",
-      "/journal-entries",
-      "/advanced-billing-engine",
-      "/meter-billing",
-      "/meter-readings",
-      "/contracts",
-      "/quote-proposal-generation",
-      "/demo-scheduling",
-      "/crm-enhanced",
-      "/crm-goals-dashboard",
-      "/sales-pipeline-forecasting",
-      "/customer-success-management",
-      "/commission-management",
-      "/data-enrichment",
-      "/advanced-analytics-dashboard",
-      "/ai-analytics-dashboard",
-      "/predictive-analytics",
-      "/advanced-reporting",
-      "/financial-forecasting",
-      "/business-process-optimization",
-      "/workflow-automation",
-      "/document-management",
-      "/esignature-integration",
-      "/integration-hub",
-      "/system-integrations",
-      "/erp-integration",
-      "/quickbooks-integration",
-      "/salesforce-integration",
-      "/customer-self-service-portal",
-      "/equipment-lifecycle",
-      "/equipment-lifecycle-management",
-      "/preventive-maintenance-scheduling",
-      "/preventive-maintenance-automation",
-      "/remote-monitoring",
-      "/service-analytics",
-      "/service-dispatch-optimization",
-      "/mobile-field-operations",
-      "/mobile-field-service",
-      "/mobile-service-app",
-      "/mobile-optimization",
-      "/performance-monitoring",
-      "/security-compliance-management",
-      "/incident-response-system",
-      "/deployment-readiness",
-      "/tenant-setup",
-      "/business-records",
-      "/warehouse-operations",
-      "/managed-services",
-      "/professional-services",
+      '/',
+      '/leads-management',
+      '/lead-detail/:id',
+      '/customers',
+      '/customer-detail/:id',
+      '/deals-management',
+      '/contacts',
+      '/company-contacts',
+      '/invoices',
+      '/service-dispatch',
+      '/service-dispatch-enhanced',
+      '/inventory',
+      '/billing',
+      '/reports',
+      '/settings',
+      '/dashboard',
+      '/task-management',
+      '/basic-tasks',
+      '/pricing-management',
+      '/product-hub',
+      '/product-management-hub',
+      '/product-models',
+      '/product-accessories',
+      '/software-products',
+      '/service-products',
+      '/supplies',
+      '/vendors',
+      '/vendor-management',
+      '/purchase-orders',
+      '/accounts-payable',
+      '/accounts-receivable',
+      '/chart-of-accounts',
+      '/journal-entries',
+      '/advanced-billing-engine',
+      '/meter-billing',
+      '/meter-readings',
+      '/contracts',
+      '/quote-proposal-generation',
+      '/demo-scheduling',
+      '/crm-enhanced',
+      '/crm-goals-dashboard',
+      '/sales-pipeline-forecasting',
+      '/customer-success-management',
+      '/commission-management',
+      '/data-enrichment',
+      '/advanced-analytics-dashboard',
+      '/ai-analytics-dashboard',
+      '/predictive-analytics',
+      '/advanced-reporting',
+      '/financial-forecasting',
+      '/business-process-optimization',
+      '/workflow-automation',
+      '/document-management',
+      '/esignature-integration',
+      '/integration-hub',
+      '/system-integrations',
+      '/erp-integration',
+      '/quickbooks-integration',
+      '/salesforce-integration',
+      '/customer-self-service-portal',
+      '/equipment-lifecycle',
+      '/equipment-lifecycle-management',
+      '/preventive-maintenance-scheduling',
+      '/preventive-maintenance-automation',
+      '/remote-monitoring',
+      '/service-analytics',
+      '/service-dispatch-optimization',
+      '/mobile-field-operations',
+      '/mobile-field-service',
+      '/mobile-service-app',
+      '/mobile-optimization',
+      '/performance-monitoring',
+      '/security-compliance-management',
+      '/incident-response-system',
+      '/deployment-readiness',
+      '/tenant-setup',
+      '/business-records',
+      '/warehouse-operations',
+      '/managed-services',
+      '/professional-services',
     ];
 
     this.totalRoutes = ALL_ROUTES.length * viewportsToTest.length;
 
-    const puppeteer = require("puppeteer");
+    const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
       headless: true,
       args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--no-first-run",
-        "--no-zygote",
-        "--single-process",
-        "--disable-gpu",
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
       ],
     });
 
     try {
       for (const viewport of viewportsToTest) {
         console.log(
-          `\n📱 Testing ${viewport.device} viewport (${viewport.width}x${viewport.height})`
+          `\n📱 Testing ${viewport.device} viewport (${viewport.width}x${viewport.height})`,
         );
         await this.testViewport(browser, viewport, ALL_ROUTES, CONFIG);
       }
@@ -478,8 +474,8 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
     });
 
     const consoleErrors = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
         consoleErrors.push(msg.text());
       }
     });
@@ -499,7 +495,7 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
     const routeTest = {
       route,
       viewport: viewport.device,
-      status: "pending",
+      status: 'pending',
       loadTime: 0,
       httpStatus: null,
       errors: [],
@@ -515,7 +511,7 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
 
       const startTime = Date.now();
       const response = await page.goto(`${config.baseUrl}${route}`, {
-        waitUntil: "networkidle0",
+        waitUntil: 'networkidle0',
         timeout: config.timeout,
       });
 
@@ -525,15 +521,13 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
 
       // Check for successful response
       if (response && response.status() >= 200 && response.status() < 300) {
-        routeTest.status = "success";
+        routeTest.status = 'success';
       } else if (response && response.status() === 404) {
-        routeTest.status = "error";
+        routeTest.status = 'error';
         routeTest.errors.push(`404 Not Found`);
       } else {
-        routeTest.status = "warning";
-        routeTest.warnings.push(
-          `HTTP ${response ? response.status() : "no response"}`
-        );
+        routeTest.status = 'warning';
+        routeTest.warnings.push(`HTTP ${response ? response.status() : 'no response'}`);
       }
 
       // Test page interactions
@@ -543,15 +537,15 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
       if (config.screenshots) {
         const screenshotPath = `${config.screenshotDir}/${
           viewport.device
-        }-${route.replace(/[\/\:]/g, "_")}.png`;
-        if (!require("fs").existsSync(config.screenshotDir)) {
-          require("fs").mkdirSync(config.screenshotDir, { recursive: true });
+        }-${route.replace(/[\/\:]/g, '_')}.png`;
+        if (!require('fs').existsSync(config.screenshotDir)) {
+          require('fs').mkdirSync(config.screenshotDir, { recursive: true });
         }
         await page.screenshot({ path: screenshotPath, fullPage: true });
         routeTest.screenshot = screenshotPath;
       }
     } catch (error) {
-      routeTest.status = "error";
+      routeTest.status = 'error';
       routeTest.errors.push(error.message);
     }
 
@@ -562,12 +556,7 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
 
     // Update progress
     this.currentRouteIndex++;
-    this.onProgress(
-      this.currentRouteIndex,
-      this.totalRoutes,
-      route,
-      viewport.device
-    );
+    this.onProgress(this.currentRouteIndex, this.totalRoutes, route, viewport.device);
 
     // Add to results
     if (!this.results) {
@@ -594,31 +583,18 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
   async testButtonClicks(page, routeTest) {
     try {
       const buttons = await page.$$(
-        'button, input[type="button"], input[type="submit"], a[role="button"]'
+        'button, input[type="button"], input[type="submit"], a[role="button"]',
       );
 
-      for (
-        let i = 0;
-        i < Math.min(buttons.length, this.options.maxButtonsPerPage || 5);
-        i++
-      ) {
+      for (let i = 0; i < Math.min(buttons.length, this.options.maxButtonsPerPage || 5); i++) {
         const button = buttons[i];
         try {
           const text = await page.evaluate(
-            (el) =>
-              el.textContent ||
-              el.value ||
-              el.getAttribute("aria-label") ||
-              "Button",
-            button
+            (el) => el.textContent || el.value || el.getAttribute('aria-label') || 'Button',
+            button,
           );
           const hasHandler = await page.evaluate((el) => {
-            return !!(
-              el.onclick ||
-              el.addEventListener ||
-              el.getAttribute("href") ||
-              el.form
-            );
+            return !!(el.onclick || el.addEventListener || el.getAttribute('href') || el.form);
           }, button);
 
           routeTest.buttons.push({
@@ -637,20 +613,16 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
 
   async testFormSubmissions(page, routeTest) {
     try {
-      const forms = await page.$$("form");
+      const forms = await page.$$('form');
 
       for (let i = 0; i < forms.length; i++) {
         const form = forms[i];
         try {
-          const action = await page.evaluate(
-            (el) => el.action || el.getAttribute("action"),
-            form
-          );
-          const method = await page.evaluate((el) => el.method || "GET", form);
+          const action = await page.evaluate((el) => el.action || el.getAttribute('action'), form);
+          const method = await page.evaluate((el) => el.method || 'GET', form);
           const hasSubmitHandler = await page.evaluate((el) => {
             return !!(
-              el.onsubmit ||
-              el.querySelector('input[type="submit"], button[type="submit"]')
+              el.onsubmit || el.querySelector('input[type="submit"], button[type="submit"]')
             );
           }, form);
 
@@ -671,23 +643,11 @@ class SimpleEnhancedRouteTest extends ComprehensiveRouteTest {
 
   async generateReport() {
     // Simple report generation
-    console.log("\n📊 Test Summary:");
+    console.log('\n📊 Test Summary:');
     console.log(`Total routes tested: ${this.results.routes.length}`);
-    console.log(
-      `Successful: ${
-        this.results.routes.filter((r) => r.status === "success").length
-      }`
-    );
-    console.log(
-      `Errors: ${
-        this.results.routes.filter((r) => r.status === "error").length
-      }`
-    );
-    console.log(
-      `Warnings: ${
-        this.results.routes.filter((r) => r.status === "warning").length
-      }`
-    );
+    console.log(`Successful: ${this.results.routes.filter((r) => r.status === 'success').length}`);
+    console.log(`Errors: ${this.results.routes.filter((r) => r.status === 'error').length}`);
+    console.log(`Warnings: ${this.results.routes.filter((r) => r.status === 'warning').length}`);
   }
 }
 

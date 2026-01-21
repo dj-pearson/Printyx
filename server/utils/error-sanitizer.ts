@@ -34,9 +34,11 @@ export function sanitizeError(error: any, isDevelopment: boolean = false): Sanit
   // Map specific error types to user-friendly messages
   if (error?.code === 'ECONNREFUSED') {
     sanitized.message = 'Service temporarily unavailable';
-  } else if (error?.code === '23505') { // PostgreSQL unique violation
+  } else if (error?.code === '23505') {
+    // PostgreSQL unique violation
     sanitized.message = 'This record already exists';
-  } else if (error?.code === '23503') { // PostgreSQL foreign key violation
+  } else if (error?.code === '23503') {
+    // PostgreSQL foreign key violation
     sanitized.message = 'Cannot delete: record is referenced elsewhere';
   } else if (error?.code === 'ETIMEDOUT') {
     sanitized.message = 'Request timed out';
@@ -57,7 +59,7 @@ export function sendErrorResponse(
   res: Response,
   error: any,
   statusCode: number = 500,
-  requestId?: string
+  requestId?: string,
 ) {
   const isDevelopment = process.env.NODE_ENV === 'development';
   const sanitized = sanitizeError(error, isDevelopment);
@@ -107,7 +109,7 @@ export function sanitizeForLogging(data: any): any {
   const cloned = Array.isArray(data) ? [...data] : { ...data };
 
   for (const key in cloned) {
-    if (sensitiveFields.some(field => key.toLowerCase().includes(field.toLowerCase()))) {
+    if (sensitiveFields.some((field) => key.toLowerCase().includes(field.toLowerCase()))) {
       cloned[key] = '[REDACTED]';
     } else if (typeof cloned[key] === 'object' && cloned[key] !== null) {
       cloned[key] = sanitizeForLogging(cloned[key]);
@@ -121,8 +123,8 @@ export function sanitizeForLogging(data: any): any {
  * Middleware to add request ID to all requests
  */
 export function requestIdMiddleware(req: any, res: any, next: any) {
-  req.requestId = req.headers['x-request-id'] ||
-    `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  req.requestId =
+    req.headers['x-request-id'] || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   res.setHeader('X-Request-Id', req.requestId);
   next();
 }

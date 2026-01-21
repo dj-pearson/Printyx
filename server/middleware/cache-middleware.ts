@@ -20,7 +20,10 @@ export function cacheControl(maxAge: number = 300) {
     if (req.method === 'GET') {
       // Use 'private' for tenant-specific data
       // Browser can cache but CDN/proxies should not
-      res.setHeader('Cache-Control', `private, max-age=${maxAge}, stale-while-revalidate=${maxAge * 2}`);
+      res.setHeader(
+        'Cache-Control',
+        `private, max-age=${maxAge}, stale-while-revalidate=${maxAge * 2}`,
+      );
     } else {
       // Ensure mutating requests are never cached
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -40,7 +43,7 @@ export function etag() {
   return (req: Request, res: Response, next: NextFunction) => {
     const originalJson = res.json.bind(res);
 
-    res.json = function(data: any) {
+    res.json = function (data: any) {
       const body = JSON.stringify(data);
       const hash = createHash('md5').update(body).digest('hex');
       const etagValue = `"${hash}"`;

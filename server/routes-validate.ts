@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { db } from './db';
 import { sql, and, eq, gte, lt, count, desc } from 'drizzle-orm';
-import { 
-  businessRecords, 
-  proposals, 
-  purchaseOrders, 
-  serviceTickets, 
+import {
+  businessRecords,
+  proposals,
+  purchaseOrders,
+  serviceTickets,
   invoices,
   quotes,
-  equipment 
+  equipment,
 } from '../shared/schema';
 
 const router = Router();
@@ -20,7 +20,7 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
   try {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { quoteId } = req.params;
-    
+
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
@@ -36,7 +36,7 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
         status: quotes.status,
         totalAmount: quotes.totalAmount,
         description: quotes.description,
-        validUntil: quotes.validUntil
+        validUntil: quotes.validUntil,
       })
       .from(quotes)
       .where(and(eq(quotes.id, quoteId), eq(quotes.tenantId, tenantId)))
@@ -49,47 +49,47 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
 
     // Validate required quote fields
     if (!quote.title?.trim()) {
-      errors.push({ 
-        field: 'title', 
+      errors.push({
+        field: 'title',
         message: 'Quote title is required',
         action: 'Add quote title',
-        actionLink: `/quotes/${quoteId}/edit`
+        actionLink: `/quotes/${quoteId}/edit`,
       });
     }
 
     if (!quote.businessRecordId) {
-      errors.push({ 
-        field: 'customer', 
+      errors.push({
+        field: 'customer',
         message: 'Customer assignment is required',
         action: 'Assign customer',
-        actionLink: `/quotes/${quoteId}/edit`
+        actionLink: `/quotes/${quoteId}/edit`,
       });
     }
 
     if (!quote.totalAmount || quote.totalAmount <= 0) {
-      errors.push({ 
-        field: 'amount', 
+      errors.push({
+        field: 'amount',
         message: 'Quote amount must be greater than zero',
         action: 'Add pricing',
-        actionLink: `/quotes/${quoteId}/pricing`
+        actionLink: `/quotes/${quoteId}/pricing`,
       });
     }
 
     if (!quote.description?.trim()) {
-      errors.push({ 
-        field: 'description', 
+      errors.push({
+        field: 'description',
         message: 'Quote description is required',
         action: 'Add description',
-        actionLink: `/quotes/${quoteId}/edit`
+        actionLink: `/quotes/${quoteId}/edit`,
       });
     }
 
     if (quote.status === 'draft') {
-      errors.push({ 
-        field: 'status', 
+      errors.push({
+        field: 'status',
         message: 'Quote must be finalized before creating proposal',
         action: 'Finalize quote',
-        actionLink: `/quotes/${quoteId}/finalize`
+        actionLink: `/quotes/${quoteId}/finalize`,
       });
     }
 
@@ -98,24 +98,25 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
       const [customer] = await db
         .select({ id: businessRecords.id, name: businessRecords.name })
         .from(businessRecords)
-        .where(and(
-          eq(businessRecords.id, quote.businessRecordId),
-          eq(businessRecords.tenantId, tenantId)
-        ))
+        .where(
+          and(
+            eq(businessRecords.id, quote.businessRecordId),
+            eq(businessRecords.tenantId, tenantId),
+          ),
+        )
         .limit(1);
 
       if (!customer) {
-        errors.push({ 
-          field: 'customer', 
+        errors.push({
+          field: 'customer',
           message: 'Assigned customer not found',
           action: 'Verify customer',
-          actionLink: `/customers`
+          actionLink: `/customers`,
         });
       }
     }
 
     res.json({ valid: errors.length === 0, errors });
-
   } catch (error) {
     console.error('Error validating quote for proposal:', error);
     res.status(500).json({ error: 'Validation check failed' });
@@ -127,7 +128,7 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
   try {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { proposalId } = req.params;
-    
+
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
@@ -145,65 +146,68 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
         executiveSummary: proposals.executiveSummary,
         solutionOverview: proposals.solutionOverview,
         investmentSummary: proposals.investmentSummary,
-        termsAndConditions: proposals.termsAndConditions
+        termsAndConditions: proposals.termsAndConditions,
       })
       .from(proposals)
       .where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)))
       .limit(1);
 
     if (!proposal) {
-      errors.push({ field: 'proposal', message: 'Proposal not found', action: 'Create proposal first' });
+      errors.push({
+        field: 'proposal',
+        message: 'Proposal not found',
+        action: 'Create proposal first',
+      });
       return res.json({ valid: false, errors });
     }
 
     // Validate required proposal sections
     if (!proposal.executiveSummary?.trim()) {
-      errors.push({ 
-        field: 'executive_summary', 
+      errors.push({
+        field: 'executive_summary',
         message: 'Executive summary is required for contract generation',
         action: 'Add executive summary',
-        actionLink: `/proposals/${proposalId}/edit#executive-summary`
+        actionLink: `/proposals/${proposalId}/edit#executive-summary`,
       });
     }
 
     if (!proposal.solutionOverview?.trim()) {
-      errors.push({ 
-        field: 'solution_overview', 
+      errors.push({
+        field: 'solution_overview',
         message: 'Solution overview is required for contract generation',
         action: 'Add solution overview',
-        actionLink: `/proposals/${proposalId}/edit#solution-overview`
+        actionLink: `/proposals/${proposalId}/edit#solution-overview`,
       });
     }
 
     if (!proposal.investmentSummary?.trim()) {
-      errors.push({ 
-        field: 'investment_summary', 
+      errors.push({
+        field: 'investment_summary',
         message: 'Investment summary is required for contract generation',
         action: 'Add investment summary',
-        actionLink: `/proposals/${proposalId}/edit#investment-summary`
+        actionLink: `/proposals/${proposalId}/edit#investment-summary`,
       });
     }
 
     if (!proposal.termsAndConditions?.trim()) {
-      errors.push({ 
-        field: 'terms_conditions', 
+      errors.push({
+        field: 'terms_conditions',
         message: 'Terms and conditions are required for contract generation',
         action: 'Add terms and conditions',
-        actionLink: `/proposals/${proposalId}/edit#terms-conditions`
+        actionLink: `/proposals/${proposalId}/edit#terms-conditions`,
       });
     }
 
     if (proposal.status === 'draft') {
-      errors.push({ 
-        field: 'status', 
+      errors.push({
+        field: 'status',
         message: 'Proposal must be finalized before creating contract',
         action: 'Finalize proposal',
-        actionLink: `/proposals/${proposalId}/finalize`
+        actionLink: `/proposals/${proposalId}/finalize`,
       });
     }
 
     res.json({ valid: errors.length === 0, errors });
-
   } catch (error) {
     console.error('Error validating proposal for contract:', error);
     res.status(500).json({ error: 'Validation check failed' });
@@ -215,7 +219,7 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
   try {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { poId } = req.params;
-    
+
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
@@ -231,7 +235,7 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
         supplierId: purchaseOrders.supplierId,
         expectedDate: purchaseOrders.expectedDate,
         approvedDate: purchaseOrders.approvedDate,
-        totalAmount: purchaseOrders.totalAmount
+        totalAmount: purchaseOrders.totalAmount,
       })
       .from(purchaseOrders)
       .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.tenantId, tenantId)))
@@ -244,33 +248,32 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
 
     // Validate PO is approved
     if (po.status !== 'approved') {
-      errors.push({ 
-        field: 'status', 
+      errors.push({
+        field: 'status',
         message: 'Purchase order must be approved before warehouse release',
         action: 'Approve PO',
-        actionLink: `/admin/purchase-orders/${poId}/approve`
+        actionLink: `/admin/purchase-orders/${poId}/approve`,
       });
     }
 
     if (!po.approvedDate) {
-      errors.push({ 
-        field: 'approval_date', 
+      errors.push({
+        field: 'approval_date',
         message: 'Purchase order approval date is missing',
-        action: 'Complete approval process'
+        action: 'Complete approval process',
       });
     }
 
     if (!po.expectedDate) {
-      errors.push({ 
-        field: 'expected_date', 
+      errors.push({
+        field: 'expected_date',
         message: 'Expected delivery date is required for warehouse planning',
         action: 'Set expected date',
-        actionLink: `/admin/purchase-orders/${poId}/edit`
+        actionLink: `/admin/purchase-orders/${poId}/edit`,
       });
     }
 
     res.json({ valid: errors.length === 0, errors });
-
   } catch (error) {
     console.error('Error validating PO for warehouse:', error);
     res.status(500).json({ error: 'Validation check failed' });
@@ -282,7 +285,7 @@ router.get('/validate/service-completion/:ticketId', async (req, res) => {
   try {
     const tenantId = req.headers['x-tenant-id'] as string;
     const { ticketId } = req.params;
-    
+
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
@@ -300,7 +303,7 @@ router.get('/validate/service-completion/:ticketId', async (req, res) => {
         workPerformed: serviceTickets.workPerformed,
         partsUsed: serviceTickets.partsUsed,
         timeSpent: serviceTickets.timeSpent,
-        customerSignature: serviceTickets.customerSignature
+        customerSignature: serviceTickets.customerSignature,
       })
       .from(serviceTickets)
       .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
@@ -313,43 +316,42 @@ router.get('/validate/service-completion/:ticketId', async (req, res) => {
 
     // Validate completion requirements
     if (!ticket.resolutionNotes?.trim()) {
-      errors.push({ 
-        field: 'resolution_notes', 
+      errors.push({
+        field: 'resolution_notes',
         message: 'Resolution notes are required for ticket completion',
         action: 'Add resolution notes',
-        actionLink: `/service-hub/${ticketId}/complete`
+        actionLink: `/service-hub/${ticketId}/complete`,
       });
     }
 
     if (!ticket.workPerformed?.trim()) {
-      errors.push({ 
-        field: 'work_performed', 
+      errors.push({
+        field: 'work_performed',
         message: 'Work performed description is required',
         action: 'Document work performed',
-        actionLink: `/service-hub/${ticketId}/complete`
+        actionLink: `/service-hub/${ticketId}/complete`,
       });
     }
 
     if (!ticket.timeSpent || ticket.timeSpent <= 0) {
-      errors.push({ 
-        field: 'time_spent', 
+      errors.push({
+        field: 'time_spent',
         message: 'Time spent must be recorded',
         action: 'Record time spent',
-        actionLink: `/service-hub/${ticketId}/time`
+        actionLink: `/service-hub/${ticketId}/time`,
       });
     }
 
     if (!ticket.customerSignature) {
-      errors.push({ 
-        field: 'customer_signature', 
+      errors.push({
+        field: 'customer_signature',
         message: 'Customer signature is required for completion',
         action: 'Obtain customer signature',
-        actionLink: `/service-hub/${ticketId}/signature`
+        actionLink: `/service-hub/${ticketId}/signature`,
       });
     }
 
     res.json({ valid: errors.length === 0, errors });
-
   } catch (error) {
     console.error('Error validating service completion:', error);
     res.status(500).json({ error: 'Validation check failed' });

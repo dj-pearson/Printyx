@@ -7,20 +7,20 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { 
-  Database, 
-  Play, 
-  Pause, 
-  RefreshCw, 
-  Activity, 
-  Clock, 
-  CheckCircle, 
+import {
+  Database,
+  Play,
+  Pause,
+  RefreshCw,
+  Activity,
+  Clock,
+  CheckCircle,
   XCircle,
   AlertTriangle,
   Settings,
   BarChart3,
   Server,
-  Zap
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
@@ -49,7 +49,11 @@ export default function DatabaseUpdaterPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Fetch status with auto-refresh
-  const { data: status, error, isLoading } = useQuery({
+  const {
+    data: status,
+    error,
+    isLoading,
+  } = useQuery({
     queryKey: ['/api/database-updater/status'],
     refetchInterval: autoRefresh ? 5000 : false,
     refetchIntervalInBackground: true,
@@ -73,7 +77,7 @@ export default function DatabaseUpdaterPage() {
 
   // Execute job manually
   const executeJobMutation = useMutation({
-    mutationFn: (jobName: string) => 
+    mutationFn: (jobName: string) =>
       apiRequest(`/api/database-updater/execute/${jobName}`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] });
@@ -82,19 +86,27 @@ export default function DatabaseUpdaterPage() {
 
   const getHealthColor = (health: string) => {
     switch (health) {
-      case 'healthy': return 'text-green-600';
-      case 'warning': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'healthy':
+        return 'text-green-600';
+      case 'warning':
+        return 'text-yellow-600';
+      case 'error':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
   const getHealthIcon = (health: string) => {
     switch (health) {
-      case 'healthy': return CheckCircle;
-      case 'warning': return AlertTriangle;
-      case 'error': return XCircle;
-      default: return Activity;
+      case 'healthy':
+        return CheckCircle;
+      case 'warning':
+        return AlertTriangle;
+      case 'error':
+        return XCircle;
+      default:
+        return Activity;
     }
   };
 
@@ -156,19 +168,17 @@ export default function DatabaseUpdaterPage() {
             <p className="text-gray-600">Root Admin Control Panel</p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Label htmlFor="auto-refresh">Auto Refresh</Label>
-            <Switch
-              id="auto-refresh"
-              checked={autoRefresh}
-              onCheckedChange={setAutoRefresh}
-            />
+            <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
           </div>
-          
+
           <Button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] })}
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] })
+            }
             variant="outline"
             size="sm"
           >
@@ -183,7 +193,9 @@ export default function DatabaseUpdaterPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">System Status</CardTitle>
-            <HealthIcon className={cn("h-4 w-4", getHealthColor(status?.systemHealth || 'error'))} />
+            <HealthIcon
+              className={cn('h-4 w-4', getHealthColor(status?.systemHealth || 'error'))}
+            />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -212,9 +224,7 @@ export default function DatabaseUpdaterPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{status?.totalJobs || 0}</div>
-            <p className="text-xs text-gray-600">
-              {status?.runningJobs || 0} currently running
-            </p>
+            <p className="text-xs text-gray-600">{status?.runningJobs || 0} currently running</p>
           </CardContent>
         </Card>
 
@@ -225,9 +235,7 @@ export default function DatabaseUpdaterPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{status?.runningJobs || 0}</div>
-            <p className="text-xs text-gray-600">
-              Currently executing
-            </p>
+            <p className="text-xs text-gray-600">Currently executing</p>
           </CardContent>
         </Card>
 
@@ -240,9 +248,7 @@ export default function DatabaseUpdaterPage() {
             <div className="text-sm font-medium">
               {status?.lastUpdate ? formatTime(status.lastUpdate) : 'Never'}
             </div>
-            <p className="text-xs text-gray-600">
-              System status
-            </p>
+            <p className="text-xs text-gray-600">System status</p>
           </CardContent>
         </Card>
       </div>
@@ -254,9 +260,7 @@ export default function DatabaseUpdaterPage() {
             <Server className="h-5 w-5" />
             System Control
           </CardTitle>
-          <CardDescription>
-            Start, stop, and manage the Database Updater system
-          </CardDescription>
+          <CardDescription>Start, stop, and manage the Database Updater system</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4">
@@ -268,7 +272,7 @@ export default function DatabaseUpdaterPage() {
               <Play className="h-4 w-4 mr-2" />
               {startMutation.isPending ? 'Starting...' : 'Start System'}
             </Button>
-            
+
             <Button
               onClick={() => stopMutation.mutate()}
               disabled={!status?.isRunning || stopMutation.isPending}
@@ -283,7 +287,9 @@ export default function DatabaseUpdaterPage() {
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
               <AlertDescription>
-                {(startMutation.error as any)?.message || (stopMutation.error as any)?.message || 'Operation failed'}
+                {(startMutation.error as any)?.message ||
+                  (stopMutation.error as any)?.message ||
+                  'Operation failed'}
               </AlertDescription>
             </Alert>
           )}
@@ -318,7 +324,7 @@ export default function DatabaseUpdaterPage() {
                         <Badge variant="outline">Idle</Badge>
                       )}
                     </div>
-                    
+
                     <Button
                       onClick={() => executeJobMutation.mutate(job.name)}
                       disabled={job.isRunning || executeJobMutation.isPending}
@@ -329,7 +335,7 @@ export default function DatabaseUpdaterPage() {
                       Execute Now
                     </Button>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
                       <p className="text-gray-600">Schedule</p>
@@ -345,12 +351,17 @@ export default function DatabaseUpdaterPage() {
                     </div>
                     <div>
                       <p className="text-gray-600">Errors</p>
-                      <p className={cn("font-medium", job.errorCount > 0 ? "text-red-600" : "text-green-600")}>
+                      <p
+                        className={cn(
+                          'font-medium',
+                          job.errorCount > 0 ? 'text-red-600' : 'text-green-600',
+                        )}
+                      >
                         {job.errorCount}
                       </p>
                     </div>
                   </div>
-                  
+
                   {index < status.jobs.length - 1 && <Separator className="mt-4" />}
                 </div>
               ))}

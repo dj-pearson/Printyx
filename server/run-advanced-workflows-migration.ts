@@ -7,19 +7,19 @@ import { fileURLToPath } from 'url';
 
 async function runAdvancedWorkflowsMigration() {
   console.log('🔄 Starting Advanced Workflows Migration...');
-  
+
   try {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
-    
+
     const migrationSql = fs.readFileSync(
       path.join(__dirname, '../migrations/advanced-workflows-migration.sql'),
-      'utf8'
+      'utf8',
     );
-    
+
     // Execute the migration
     await db.execute(sql.raw(migrationSql));
-    
+
     console.log('✅ Advanced Workflows Migration completed successfully.');
     console.log('');
     console.log('📋 Migration Summary:');
@@ -64,7 +64,6 @@ async function runAdvancedWorkflowsMigration() {
     console.log('   3. Create custom workflows using the workflow builder');
     console.log('   4. Monitor performance and optimize workflow efficiency');
     console.log('   5. Train AI agents with your specific business data');
-    
   } catch (error) {
     console.error('❌ Error running Advanced Workflows Migration:', error);
     process.exit(1);

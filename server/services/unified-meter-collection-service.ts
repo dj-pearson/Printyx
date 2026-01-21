@@ -22,7 +22,7 @@ export class UnifiedMeterCollectionService {
    */
   private getAdapter(manufacturer: string, config: any): BaseManufacturerAdapter {
     const key = `${manufacturer}_${config.integrationId}`;
-    
+
     if (this.adapters.has(key)) {
       return this.adapters.get(key)!;
     }
@@ -57,10 +57,10 @@ export class UnifiedMeterCollectionService {
   async runScheduledCollection(): Promise<void> {
     try {
       console.log('Starting scheduled meter collection...');
-      
+
       // Get all integrations due for collection
       const integrationsdue = await this.integrationService.getIntegrationsDueForCollection();
-      
+
       console.log(`Found ${integrationsdue.length} integrations due for collection`);
 
       // Process each integration
@@ -73,7 +73,7 @@ export class UnifiedMeterCollectionService {
             integration.tenantId,
             integration.id,
             'error',
-            error instanceof Error ? error.message : 'Unknown error'
+            error instanceof Error ? error.message : 'Unknown error',
           );
         }
       }
@@ -99,12 +99,15 @@ export class UnifiedMeterCollectionService {
         authType: integration.authType,
         authCredentials: integration.authCredentials,
         settings: integration.settings,
-        fieldMappings: integration.fieldMappings
+        fieldMappings: integration.fieldMappings,
       });
 
       // Get all registered devices for this integration
-      const devices = await this.integrationService.getDevices(integration.tenantId, integration.id);
-      
+      const devices = await this.integrationService.getDevices(
+        integration.tenantId,
+        integration.id,
+      );
+
       console.log(`Found ${devices.length} devices for integration ${integration.id}`);
 
       let successCount = 0;
@@ -114,13 +117,13 @@ export class UnifiedMeterCollectionService {
       for (const device of devices) {
         try {
           const result = await adapter.collectDeviceMetrics(device.deviceId);
-          
+
           if (result.success && result.metrics.length > 0) {
             // Store collected metrics
             await this.integrationService.collectDeviceMetrics(
               integration.tenantId,
               device.id,
-              result.metrics.map(metric => ({
+              result.metrics.map((metric) => ({
                 metricType: metric.metricType,
                 metricName: metric.metricName,
                 metricCategory: metric.metricCategory,
@@ -132,12 +135,12 @@ export class UnifiedMeterCollectionService {
                 measurementTimestamp: metric.measurementTimestamp,
                 collectionMethod: integration.integrationMethod,
                 dataSource: integration.platformName,
-                rawData: metric.rawData
-              }))
+                rawData: metric.rawData,
+              })),
             );
 
             successCount++;
-            
+
             // Log successful collection
             await this.integrationService.logAuditEvent(
               integration.tenantId,
@@ -149,11 +152,11 @@ export class UnifiedMeterCollectionService {
               undefined,
               result.rawResponse,
               200,
-              result.responseTimeMs
+              result.responseTimeMs,
             );
           } else {
             errorCount++;
-            
+
             // Log collection failure
             await this.integrationService.logAuditEvent(
               integration.tenantId,
@@ -165,24 +168,23 @@ export class UnifiedMeterCollectionService {
               undefined,
               result.rawResponse,
               undefined,
-              result.responseTimeMs
+              result.responseTimeMs,
             );
           }
 
           // Add small delay between device collections to avoid rate limiting
           await this.sleep(1000);
-          
         } catch (error) {
           errorCount++;
           console.error(`Failed to collect from device ${device.deviceId}:`, error);
-          
+
           await this.integrationService.logAuditEvent(
             integration.tenantId,
             integration.id,
             'data_collection',
             'error',
             `Exception collecting from device ${device.serialNumber || device.deviceId}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            device.id
+            device.id,
           );
         }
       }
@@ -192,42 +194,43 @@ export class UnifiedMeterCollectionService {
         await this.integrationService.updateIntegrationStatus(
           integration.tenantId,
           integration.id,
-          'active'
+          'active',
         );
       } else if (successCount > 0) {
         await this.integrationService.updateIntegrationStatus(
           integration.tenantId,
           integration.id,
           'active',
-          `Partial success: ${successCount} succeeded, ${errorCount} failed`
+          `Partial success: ${successCount} succeeded, ${errorCount} failed`,
         );
       } else {
         await this.integrationService.updateIntegrationStatus(
           integration.tenantId,
           integration.id,
           'error',
-          `All device collections failed (${errorCount} devices)`
+          `All device collections failed (${errorCount} devices)`,
         );
       }
 
       // Calculate and update next collection time
       const nextCollectionTime = this.integrationService.calculateNextCollectionTime(
         integration.collectionFrequency,
-        new Date()
+        new Date(),
       );
-      
+
       await this.integrationService.updateNextCollectionTime(integration.id, nextCollectionTime);
 
-      console.log(`Integration ${integration.id} collection completed: ${successCount} success, ${errorCount} errors`);
-
+      console.log(
+        `Integration ${integration.id} collection completed: ${successCount} success, ${errorCount} errors`,
+      );
     } catch (error) {
       console.error(`Failed to process integration ${integration.id}:`, error);
-      
+
       await this.integrationService.updateIntegrationStatus(
         integration.tenantId,
         integration.id,
         'error',
-        error instanceof Error ? error.message : 'Unknown error'
+        error instanceof Error ? error.message : 'Unknown error',
       );
 
       await this.integrationService.logAuditEvent(
@@ -235,7 +238,7 @@ export class UnifiedMeterCollectionService {
         integration.id,
         'integration_error',
         'error',
-        `Integration processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Integration processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -257,17 +260,17 @@ export class UnifiedMeterCollectionService {
         authType: integration.authType,
         authCredentials: integration.authCredentials,
         settings: integration.settings,
-        fieldMappings: integration.fieldMappings
+        fieldMappings: integration.fieldMappings,
       });
 
       const success = await adapter.testConnection();
-      
+
       await this.integrationService.logAuditEvent(
         tenantId,
         integrationId,
         'connection_test',
         success ? 'success' : 'error',
-        success ? 'Connection test successful' : 'Connection test failed'
+        success ? 'Connection test successful' : 'Connection test failed',
       );
 
       return success;
@@ -277,7 +280,7 @@ export class UnifiedMeterCollectionService {
         integrationId,
         'connection_test',
         'error',
-        `Connection test error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Connection test error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       return false;
     }
@@ -300,17 +303,17 @@ export class UnifiedMeterCollectionService {
         authType: integration.authType,
         authCredentials: integration.authCredentials,
         settings: integration.settings,
-        fieldMappings: integration.fieldMappings
+        fieldMappings: integration.fieldMappings,
       });
 
       const devices = await adapter.discoverDevices();
-      
+
       await this.integrationService.logAuditEvent(
         tenantId,
         integrationId,
         'device_discovery',
         'success',
-        `Discovered ${devices.length} devices`
+        `Discovered ${devices.length} devices`,
       );
 
       return devices;
@@ -320,7 +323,7 @@ export class UnifiedMeterCollectionService {
         integrationId,
         'device_discovery',
         'error',
-        `Device discovery failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Device discovery failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       return [];
     }
@@ -329,14 +332,20 @@ export class UnifiedMeterCollectionService {
   /**
    * Manually trigger collection for a specific device
    */
-  async collectFromDevice(tenantId: string, deviceRegistrationId: string): Promise<CollectionResult> {
+  async collectFromDevice(
+    tenantId: string,
+    deviceRegistrationId: string,
+  ): Promise<CollectionResult> {
     try {
       const device = await this.integrationService.getDeviceById(tenantId, deviceRegistrationId);
       if (!device) {
         throw new Error('Device not found');
       }
 
-      const integration = await this.integrationService.getIntegrationById(tenantId, device.integrationId);
+      const integration = await this.integrationService.getIntegrationById(
+        tenantId,
+        device.integrationId,
+      );
       if (!integration) {
         throw new Error('Integration not found');
       }
@@ -348,17 +357,17 @@ export class UnifiedMeterCollectionService {
         authType: integration.authType,
         authCredentials: integration.authCredentials,
         settings: integration.settings,
-        fieldMappings: integration.fieldMappings
+        fieldMappings: integration.fieldMappings,
       });
 
       const result = await adapter.collectDeviceMetrics(device.deviceId);
-      
+
       if (result.success && result.metrics.length > 0) {
         // Store collected metrics
         await this.integrationService.collectDeviceMetrics(
           tenantId,
           deviceRegistrationId,
-          result.metrics.map(metric => ({
+          result.metrics.map((metric) => ({
             metricType: metric.metricType,
             metricName: metric.metricName,
             metricCategory: metric.metricCategory,
@@ -370,8 +379,8 @@ export class UnifiedMeterCollectionService {
             measurementTimestamp: metric.measurementTimestamp,
             collectionMethod: integration.integrationMethod,
             dataSource: integration.platformName,
-            rawData: metric.rawData
-          }))
+            rawData: metric.rawData,
+          })),
         );
       }
 
@@ -386,7 +395,7 @@ export class UnifiedMeterCollectionService {
         undefined,
         result.rawResponse,
         undefined,
-        result.responseTimeMs
+        result.responseTimeMs,
       );
 
       return result;
@@ -396,7 +405,7 @@ export class UnifiedMeterCollectionService {
         success: false,
         deviceId: deviceRegistrationId,
         metrics: [],
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -413,12 +422,12 @@ export class UnifiedMeterCollectionService {
       totalDevices: 0,
       successfulCollections: 0,
       failedCollections: 0,
-      lastCollectionTime: new Date()
+      lastCollectionTime: new Date(),
     };
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

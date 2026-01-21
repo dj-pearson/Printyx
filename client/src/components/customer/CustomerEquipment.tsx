@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,15 +26,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
+} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 import {
   Printer,
   Plus,
@@ -52,8 +52,8 @@ import {
   RefreshCw,
   DollarSign,
   Shield,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Equipment {
   id: string;
@@ -97,37 +97,32 @@ interface CustomerEquipmentProps {
 }
 
 const statusColors = {
-  active: "bg-green-100 text-green-800",
-  inactive: "bg-gray-100 text-gray-800",
-  maintenance: "bg-yellow-100 text-yellow-800",
-  retired: "bg-red-100 text-red-800",
+  active: 'bg-green-100 text-green-800',
+  inactive: 'bg-gray-100 text-gray-800',
+  maintenance: 'bg-yellow-100 text-yellow-800',
+  retired: 'bg-red-100 text-red-800',
 };
 
 const meterTypeLabels = {
-  bw_only: "B&W Only",
-  color: "Color",
-  scan: "Scan",
-  fax: "Fax",
+  bw_only: 'B&W Only',
+  color: 'Color',
+  scan: 'Scan',
+  fax: 'Fax',
 };
 
-export function CustomerEquipment({
-  customerId,
-  customerName,
-}: CustomerEquipmentProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(
-    null
-  );
+export function CustomerEquipment({ customerId, customerName }: CustomerEquipmentProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
 
   // Fetch equipment for this customer
   const { data: equipment = [], isLoading } = useQuery<Equipment[]>({
     queryKey: [`/api/customers/${customerId}/equipment`],
     queryFn: async () => {
       const response = await fetch(`/api/customers/${customerId}/equipment`, {
-        credentials: "include",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to fetch equipment");
+      if (!response.ok) throw new Error('Failed to fetch equipment');
       return response.json();
     },
   });
@@ -137,27 +132,24 @@ export function CustomerEquipment({
     queryKey: [`/api/equipment/${selectedEquipment?.id}/meter-readings`],
     queryFn: async () => {
       if (!selectedEquipment?.id) return [];
-      const response = await fetch(
-        `/api/equipment/${selectedEquipment.id}/meter-readings`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch meter readings");
+      const response = await fetch(`/api/equipment/${selectedEquipment.id}/meter-readings`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch meter readings');
       return response.json();
     },
     enabled: !!selectedEquipment?.id,
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   // Filter equipment
@@ -168,8 +160,7 @@ export function CustomerEquipment({
       item.manufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || item.equipmentStatus === statusFilter;
+    const matchesStatus = statusFilter === 'all' || item.equipmentStatus === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -177,43 +168,37 @@ export function CustomerEquipment({
   // Calculate equipment statistics
   const stats = {
     total: equipment.length,
-    active: equipment.filter((e) => e.equipmentStatus === "active").length,
-    maintenance: equipment.filter((e) => e.equipmentStatus === "maintenance")
-      .length,
+    active: equipment.filter((e) => e.equipmentStatus === 'active').length,
+    maintenance: equipment.filter((e) => e.equipmentStatus === 'maintenance').length,
     color: equipment.filter((e) => e.isColorCapable).length,
     underWarranty: equipment.filter(
-      (e) =>
-        e.warrantyExpiresDate && new Date(e.warrantyExpiresDate) > new Date()
+      (e) => e.warrantyExpiresDate && new Date(e.warrantyExpiresDate) > new Date(),
     ).length,
   };
 
   const getWarrantyStatus = (warrantyDate?: string) => {
-    if (!warrantyDate) return { status: "expired", daysLeft: 0 };
+    if (!warrantyDate) return { status: 'expired', daysLeft: 0 };
     const expiry = new Date(warrantyDate);
     const today = new Date();
-    const daysLeft = Math.ceil(
-      (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysLeft > 0) {
-      return { status: "active", daysLeft };
+      return { status: 'active', daysLeft };
     } else {
-      return { status: "expired", daysLeft: 0 };
+      return { status: 'expired', daysLeft: 0 };
     }
   };
 
   const getLeaseStatus = (leaseDate?: string) => {
-    if (!leaseDate) return { status: "owned", daysLeft: 0 };
+    if (!leaseDate) return { status: 'owned', daysLeft: 0 };
     const expiry = new Date(leaseDate);
     const today = new Date();
-    const daysLeft = Math.ceil(
-      (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysLeft > 0) {
-      return { status: "active", daysLeft };
+      return { status: 'active', daysLeft };
     } else {
-      return { status: "expired", daysLeft: 0 };
+      return { status: 'expired', daysLeft: 0 };
     }
   };
 
@@ -318,9 +303,7 @@ export function CustomerEquipment({
                     <DialogTitle>Add New Equipment</DialogTitle>
                   </DialogHeader>
                   <div className="p-4">
-                    <p className="text-gray-600">
-                      Equipment registration form would go here...
-                    </p>
+                    <p className="text-gray-600">Equipment registration form would go here...</p>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -342,39 +325,23 @@ export function CustomerEquipment({
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-b-2">
                     <TableHead className="min-w-[150px]">Equipment</TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Serial Number
-                    </TableHead>
+                    <TableHead className="min-w-[120px]">Serial Number</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
                     <TableHead className="min-w-[100px]">Type</TableHead>
                     <TableHead className="min-w-[120px]">Location</TableHead>
-                    <TableHead className="min-w-[100px]">
-                      Install Date
-                    </TableHead>
+                    <TableHead className="min-w-[100px]">Install Date</TableHead>
                     <TableHead className="min-w-[120px]">Warranty</TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Lease Expires
-                    </TableHead>
-                    <TableHead className="min-w-[100px]">
-                      Monthly Payment
-                    </TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Current Meter
-                    </TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Service Contract
-                    </TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Last Service
-                    </TableHead>
+                    <TableHead className="min-w-[120px]">Lease Expires</TableHead>
+                    <TableHead className="min-w-[100px]">Monthly Payment</TableHead>
+                    <TableHead className="min-w-[120px]">Current Meter</TableHead>
+                    <TableHead className="min-w-[120px]">Service Contract</TableHead>
+                    <TableHead className="min-w-[120px]">Last Service</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEquipment.map((item) => {
-                    const warrantyStatus = getWarrantyStatus(
-                      item.warrantyExpiresDate
-                    );
+                    const warrantyStatus = getWarrantyStatus(item.warrantyExpiresDate);
                     const leaseStatus = getLeaseStatus(item.leaseExpiresDate);
 
                     return (
@@ -384,22 +351,16 @@ export function CustomerEquipment({
                             <div className="font-medium">
                               {item.manufacturer} {item.modelNumber}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {item.description}
-                            </div>
+                            <div className="text-sm text-gray-500">{item.description}</div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-mono text-sm">
-                            {item.serialNumber}
-                          </div>
+                          <div className="font-mono text-sm">{item.serialNumber}</div>
                         </TableCell>
                         <TableCell>
                           <Badge
                             className={
-                              statusColors[
-                                item.equipmentStatus as keyof typeof statusColors
-                              ]
+                              statusColors[item.equipmentStatus as keyof typeof statusColors]
                             }
                           >
                             {item.equipmentStatus}
@@ -408,9 +369,8 @@ export function CustomerEquipment({
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm">
-                              {meterTypeLabels[
-                                item.meterType as keyof typeof meterTypeLabels
-                              ] || item.meterType}
+                              {meterTypeLabels[item.meterType as keyof typeof meterTypeLabels] ||
+                                item.meterType}
                             </span>
                             {item.isColorCapable && (
                               <Badge variant="outline" className="text-xs">
@@ -420,71 +380,56 @@ export function CustomerEquipment({
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">
-                            {item.locationDescription || "-"}
-                          </div>
+                          <div className="text-sm">{item.locationDescription || '-'}</div>
                         </TableCell>
                         <TableCell>
-                          {item.installDate
-                            ? formatDate(item.installDate)
-                            : "-"}
+                          {item.installDate ? formatDate(item.installDate) : '-'}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {warrantyStatus.status === "active" ? (
+                            {warrantyStatus.status === 'active' ? (
                               <Badge className="bg-green-100 text-green-800">
                                 {warrantyStatus.daysLeft} days
                               </Badge>
-                            ) : warrantyStatus.status === "expired" ? (
-                              <Badge className="bg-red-100 text-red-800">
-                                Expired
-                              </Badge>
+                            ) : warrantyStatus.status === 'expired' ? (
+                              <Badge className="bg-red-100 text-red-800">Expired</Badge>
                             ) : (
-                              "-"
+                              '-'
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
                           {item.leaseExpiresDate ? (
                             <div className="text-sm">
-                              {leaseStatus.status === "active" ? (
+                              {leaseStatus.status === 'active' ? (
                                 <Badge className="bg-blue-100 text-blue-800">
                                   {formatDate(item.leaseExpiresDate)}
                                 </Badge>
                               ) : (
-                                <Badge className="bg-red-100 text-red-800">
-                                  Expired
-                                </Badge>
+                                <Badge className="bg-red-100 text-red-800">Expired</Badge>
                               )}
                             </div>
                           ) : (
-                            <Badge className="bg-gray-100 text-gray-800">
-                              Owned
-                            </Badge>
+                            <Badge className="bg-gray-100 text-gray-800">Owned</Badge>
                           )}
                         </TableCell>
                         <TableCell>
-                          {item.monthlyPayment
-                            ? formatCurrency(item.monthlyPayment)
-                            : "-"}
+                          {item.monthlyPayment ? formatCurrency(item.monthlyPayment) : '-'}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {item.currentMeterReading ? 
-                              item.currentMeterReading.toLocaleString() : 
-                              "-"
-                            }
+                            {item.currentMeterReading
+                              ? item.currentMeterReading.toLocaleString()
+                              : '-'}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm font-mono">
-                            {item.serviceContractNumber || "-"}
+                            {item.serviceContractNumber || '-'}
                           </div>
                         </TableCell>
                         <TableCell>
-                          {item.lastServiceDate
-                            ? formatDate(item.lastServiceDate)
-                            : "-"}
+                          {item.lastServiceDate ? formatDate(item.lastServiceDate) : '-'}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -495,9 +440,7 @@ export function CustomerEquipment({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => setSelectedEquipment(item)}
-                              >
+                              <DropdownMenuItem onClick={() => setSelectedEquipment(item)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
@@ -533,15 +476,11 @@ export function CustomerEquipment({
 
       {/* Equipment Details Dialog */}
       {selectedEquipment && (
-        <Dialog
-          open={!!selectedEquipment}
-          onOpenChange={() => setSelectedEquipment(null)}
-        >
+        <Dialog open={!!selectedEquipment} onOpenChange={() => setSelectedEquipment(null)}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>
-                Equipment Details - {selectedEquipment.manufacturer}{" "}
-                {selectedEquipment.modelNumber}
+                Equipment Details - {selectedEquipment.manufacturer} {selectedEquipment.modelNumber}
               </DialogTitle>
             </DialogHeader>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -550,21 +489,17 @@ export function CustomerEquipment({
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">Serial Number:</span>
-                    <p className="font-mono">
-                      {selectedEquipment.serialNumber}
-                    </p>
+                    <p className="font-mono">{selectedEquipment.serialNumber}</p>
                   </div>
                   <div>
                     <span className="text-gray-600">Asset Tag:</span>
-                    <p>{selectedEquipment.assetTag || "-"}</p>
+                    <p>{selectedEquipment.assetTag || '-'}</p>
                   </div>
                   <div>
                     <span className="text-gray-600">Status:</span>
                     <Badge
                       className={
-                        statusColors[
-                          selectedEquipment.equipmentStatus as keyof typeof statusColors
-                        ]
+                        statusColors[selectedEquipment.equipmentStatus as keyof typeof statusColors]
                       }
                     >
                       {selectedEquipment.equipmentStatus}
@@ -572,7 +507,7 @@ export function CustomerEquipment({
                   </div>
                   <div>
                     <span className="text-gray-600">IP Address:</span>
-                    <p>{selectedEquipment.ipAddress || "-"}</p>
+                    <p>{selectedEquipment.ipAddress || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -585,7 +520,7 @@ export function CustomerEquipment({
                     <p>
                       {selectedEquipment.purchasePrice
                         ? formatCurrency(selectedEquipment.purchasePrice)
-                        : "-"}
+                        : '-'}
                     </p>
                   </div>
                   <div>
@@ -593,7 +528,7 @@ export function CustomerEquipment({
                     <p>
                       {selectedEquipment.monthlyPayment
                         ? formatCurrency(selectedEquipment.monthlyPayment)
-                        : "-"}
+                        : '-'}
                     </p>
                   </div>
                   <div>
@@ -601,7 +536,7 @@ export function CustomerEquipment({
                     <p>
                       {selectedEquipment.warrantyExpiresDate
                         ? formatDate(selectedEquipment.warrantyExpiresDate)
-                        : "-"}
+                        : '-'}
                     </p>
                   </div>
                   <div>
@@ -609,7 +544,7 @@ export function CustomerEquipment({
                     <p>
                       {selectedEquipment.leaseExpiresDate
                         ? formatDate(selectedEquipment.leaseExpiresDate)
-                        : "-"}
+                        : '-'}
                     </p>
                   </div>
                 </div>
@@ -633,18 +568,10 @@ export function CustomerEquipment({
                     <TableBody>
                       {meterReadings.slice(0, 5).map((reading) => (
                         <TableRow key={reading.id}>
-                          <TableCell>
-                            {formatDate(reading.readingDate)}
-                          </TableCell>
-                          <TableCell>
-                            {reading.currentMeterCount.toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            {reading.printVolume.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="capitalize">
-                            {reading.readingType}
-                          </TableCell>
+                          <TableCell>{formatDate(reading.readingDate)}</TableCell>
+                          <TableCell>{reading.currentMeterCount.toLocaleString()}</TableCell>
+                          <TableCell>{reading.printVolume.toLocaleString()}</TableCell>
+                          <TableCell className="capitalize">{reading.readingType}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -661,13 +588,11 @@ export function CustomerEquipment({
         <Card>
           <CardContent className="p-12 text-center">
             <Printer className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No equipment found
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No equipment found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm
-                ? "No equipment matches your search criteria."
-                : "No equipment has been registered for this customer yet."}
+                ? 'No equipment matches your search criteria.'
+                : 'No equipment has been registered for this customer yet.'}
             </p>
             <Button>
               <Plus className="w-4 h-4 mr-2" />

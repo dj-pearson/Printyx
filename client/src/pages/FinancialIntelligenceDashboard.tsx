@@ -5,11 +5,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  DollarSign, 
+import {
+  DollarSign,
   TrendingUp,
   TrendingDown,
   AlertTriangle,
@@ -28,16 +34,27 @@ import {
   ArrowUp,
   ArrowDown,
   Users,
-  Building
+  Building,
 } from 'lucide-react';
 import { format, subDays, addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { 
-  type Invoice,
-  type Contract,
-  type BusinessRecord
-} from '@shared/schema';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from 'recharts';
+import { type Invoice, type Contract, type BusinessRecord } from '@shared/schema';
 
 // Financial data types
 interface FinancialSummary {
@@ -119,11 +136,14 @@ export default function FinancialIntelligenceDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'30d' | '90d' | 'ytd' | '12m'>('90d');
   const [selectedTerritory, setSelectedTerritory] = useState<string>('all');
   const [alertFilter, setAlertFilter] = useState<'all' | 'critical' | 'overdue'>('all');
-  
+
   // Fetch financial summary
   const { data: financialSummary } = useQuery<FinancialSummary>({
     queryKey: ['/api/reports/financial-summary', selectedPeriod, selectedTerritory],
-    queryFn: () => apiRequest(`/api/reports/financial-summary?period=${selectedPeriod}&territory=${selectedTerritory}`),
+    queryFn: () =>
+      apiRequest(
+        `/api/reports/financial-summary?period=${selectedPeriod}&territory=${selectedTerritory}`,
+      ),
   });
 
   // Fetch payment alerts
@@ -141,7 +161,10 @@ export default function FinancialIntelligenceDashboard() {
   // Fetch customer profitability
   const { data: customerProfitability = [] } = useQuery<CustomerProfitability[]>({
     queryKey: ['/api/reports/customer-profitability', selectedPeriod, selectedTerritory],
-    queryFn: () => apiRequest(`/api/reports/customer-profitability?period=${selectedPeriod}&territory=${selectedTerritory}`),
+    queryFn: () =>
+      apiRequest(
+        `/api/reports/customer-profitability?period=${selectedPeriod}&territory=${selectedTerritory}`,
+      ),
   });
 
   // Fetch cash flow forecast
@@ -159,27 +182,36 @@ export default function FinancialIntelligenceDashboard() {
   // Get alert severity color
   const getAlertSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'destructive';
-      case 'high': return 'destructive';
-      case 'medium': return 'secondary';
-      default: return 'outline';
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
   // Get alert type icon
   const getAlertTypeIcon = (type: string) => {
     switch (type) {
-      case 'overdue': return AlertTriangle;
-      case 'upcoming': return Clock;
-      case 'failed': return XCircle;
-      case 'dispute': return Bell;
-      default: return AlertTriangle;
+      case 'overdue':
+        return AlertTriangle;
+      case 'upcoming':
+        return Clock;
+      case 'failed':
+        return XCircle;
+      case 'dispute':
+        return Bell;
+      default:
+        return AlertTriangle;
     }
   };
 
   // Get trend color and icon
-  const getTrendColor = (value: number) => value >= 0 ? 'text-green-600' : 'text-red-600';
-  const getTrendIcon = (value: number) => value >= 0 ? ArrowUp : ArrowDown;
+  const getTrendColor = (value: number) => (value >= 0 ? 'text-green-600' : 'text-red-600');
+  const getTrendIcon = (value: number) => (value >= 0 ? ArrowUp : ArrowDown);
 
   return (
     <MainLayout
@@ -192,7 +224,10 @@ export default function FinancialIntelligenceDashboard() {
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="flex flex-col md:flex-row gap-4">
-                <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
+                <Select
+                  value={selectedPeriod}
+                  onValueChange={(value: any) => setSelectedPeriod(value)}
+                >
                   <SelectTrigger className="w-[150px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -233,11 +268,13 @@ export default function FinancialIntelligenceDashboard() {
         </Card>
 
         {/* Critical Alerts */}
-        {paymentAlerts.filter(alert => alert.severity === 'critical').length > 0 && (
+        {paymentAlerts.filter((alert) => alert.severity === 'critical').length > 0 && (
           <Alert className="border-red-200 bg-red-50">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-800">
-              <strong>Critical Payment Issues:</strong> {paymentAlerts.filter(alert => alert.severity === 'critical').length} customers require immediate attention.
+              <strong>Critical Payment Issues:</strong>{' '}
+              {paymentAlerts.filter((alert) => alert.severity === 'critical').length} customers
+              require immediate attention.
             </AlertDescription>
           </Alert>
         )}
@@ -255,9 +292,12 @@ export default function FinancialIntelligenceDashboard() {
                   <div className="flex items-center text-xs mt-1">
                     {financialSummary?.revenueChange !== undefined && (
                       <>
-                        {getTrendIcon(financialSummary.revenueChange)({ className: `h-3 w-3 mr-1 ${getTrendColor(financialSummary.revenueChange)}` })}
+                        {getTrendIcon(financialSummary.revenueChange)({
+                          className: `h-3 w-3 mr-1 ${getTrendColor(financialSummary.revenueChange)}`,
+                        })}
                         <span className={getTrendColor(financialSummary.revenueChange)}>
-                          {financialSummary.revenueChange >= 0 ? '+' : ''}{financialSummary.revenueChange.toFixed(1)}% vs last period
+                          {financialSummary.revenueChange >= 0 ? '+' : ''}
+                          {financialSummary.revenueChange.toFixed(1)}% vs last period
                         </span>
                       </>
                     )}
@@ -307,9 +347,7 @@ export default function FinancialIntelligenceDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Collection Rate</p>
-                  <p className="text-2xl font-bold">
-                    {financialSummary?.collectionRate || 0}%
-                  </p>
+                  <p className="text-2xl font-bold">{financialSummary?.collectionRate || 0}%</p>
                   <Progress value={financialSummary?.collectionRate || 0} className="mt-2" />
                 </div>
                 <Target className="h-8 w-8 text-purple-600" />
@@ -346,26 +384,41 @@ export default function FinancialIntelligenceDashboard() {
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <CardTitle>Active Payment Alerts</CardTitle>
-                  <CardDescription>Automated payment monitoring and recommended actions</CardDescription>
+                  <CardDescription>
+                    Automated payment monitoring and recommended actions
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4 max-h-96 overflow-y-auto">
                     {paymentAlerts.map((alert, index) => {
                       const AlertIcon = getAlertTypeIcon(alert.type);
                       return (
-                        <div key={index} className="flex items-start space-x-4 p-4 border rounded-lg">
-                          <div className={`p-2 rounded-lg ${
-                            alert.severity === 'critical' ? 'bg-red-100' :
-                            alert.severity === 'high' ? 'bg-orange-100' :
-                            alert.severity === 'medium' ? 'bg-yellow-100' :
-                            'bg-blue-100'
-                          }`}>
-                            <AlertIcon className={`h-4 w-4 ${
-                              alert.severity === 'critical' ? 'text-red-600' :
-                              alert.severity === 'high' ? 'text-orange-600' :
-                              alert.severity === 'medium' ? 'text-yellow-600' :
-                              'text-blue-600'
-                            }`} />
+                        <div
+                          key={index}
+                          className="flex items-start space-x-4 p-4 border rounded-lg"
+                        >
+                          <div
+                            className={`p-2 rounded-lg ${
+                              alert.severity === 'critical'
+                                ? 'bg-red-100'
+                                : alert.severity === 'high'
+                                  ? 'bg-orange-100'
+                                  : alert.severity === 'medium'
+                                    ? 'bg-yellow-100'
+                                    : 'bg-blue-100'
+                            }`}
+                          >
+                            <AlertIcon
+                              className={`h-4 w-4 ${
+                                alert.severity === 'critical'
+                                  ? 'text-red-600'
+                                  : alert.severity === 'high'
+                                    ? 'text-orange-600'
+                                    : alert.severity === 'medium'
+                                      ? 'text-yellow-600'
+                                      : 'text-blue-600'
+                              }`}
+                            />
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-1">
@@ -374,10 +427,14 @@ export default function FinancialIntelligenceDashboard() {
                                 {alert.severity}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-2">{alert.description}</p>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {alert.description}
+                            </p>
                             <div className="flex items-center justify-between">
                               <div className="text-sm">
-                                <span className="font-medium">${alert.amount.toLocaleString()}</span>
+                                <span className="font-medium">
+                                  ${alert.amount.toLocaleString()}
+                                </span>
                                 {alert.daysPastDue && (
                                   <span className="text-red-600 ml-2">
                                     {alert.daysPastDue} days overdue
@@ -390,9 +447,7 @@ export default function FinancialIntelligenceDashboard() {
                                     Auto Action
                                   </Button>
                                 )}
-                                <Button size="sm">
-                                  View Details
-                                </Button>
+                                <Button size="sm">View Details</Button>
                               </div>
                             </div>
                             <div className="mt-2 p-2 bg-muted rounded text-xs">
@@ -416,10 +471,22 @@ export default function FinancialIntelligenceDashboard() {
                     <RechartsPieChart>
                       <Pie
                         data={[
-                          { name: 'Critical', value: paymentAlerts.filter(a => a.severity === 'critical').length },
-                          { name: 'High', value: paymentAlerts.filter(a => a.severity === 'high').length },
-                          { name: 'Medium', value: paymentAlerts.filter(a => a.severity === 'medium').length },
-                          { name: 'Low', value: paymentAlerts.filter(a => a.severity === 'low').length },
+                          {
+                            name: 'Critical',
+                            value: paymentAlerts.filter((a) => a.severity === 'critical').length,
+                          },
+                          {
+                            name: 'High',
+                            value: paymentAlerts.filter((a) => a.severity === 'high').length,
+                          },
+                          {
+                            name: 'Medium',
+                            value: paymentAlerts.filter((a) => a.severity === 'medium').length,
+                          },
+                          {
+                            name: 'Low',
+                            value: paymentAlerts.filter((a) => a.severity === 'low').length,
+                          },
                         ]}
                         cx="50%"
                         cy="50%"
@@ -455,7 +522,9 @@ export default function FinancialIntelligenceDashboard() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="bucket" />
                       <YAxis />
-                      <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Amount']} />
+                      <Tooltip
+                        formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Amount']}
+                      />
                       <Bar dataKey="amount" fill="#8884d8" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -502,15 +571,22 @@ export default function FinancialIntelligenceDashboard() {
               <CardContent>
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {customerProfitability.slice(0, 10).map((customer, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium">{customer.customerName}</h4>
-                          <Badge variant={
-                            customer.profitMargin >= 30 ? 'default' :
-                            customer.profitMargin >= 15 ? 'secondary' :
-                            'destructive'
-                          }>
+                          <Badge
+                            variant={
+                              customer.profitMargin >= 30
+                                ? 'default'
+                                : customer.profitMargin >= 15
+                                  ? 'secondary'
+                                  : 'destructive'
+                            }
+                          >
                             {customer.profitMargin.toFixed(1)}% margin
                           </Badge>
                         </div>
@@ -526,23 +602,28 @@ export default function FinancialIntelligenceDashboard() {
                           <div>
                             <p className="text-muted-foreground">Growth</p>
                             <p className={`font-medium ${getTrendColor(customer.revenueGrowth)}`}>
-                              {customer.revenueGrowth >= 0 ? '+' : ''}{customer.revenueGrowth.toFixed(1)}%
+                              {customer.revenueGrowth >= 0 ? '+' : ''}
+                              {customer.revenueGrowth.toFixed(1)}%
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Risk Score</p>
-                            <p className={`font-medium ${
-                              customer.riskScore <= 30 ? 'text-green-600' :
-                              customer.riskScore <= 60 ? 'text-yellow-600' :
-                              'text-red-600'
-                            }`}>
+                            <p
+                              className={`font-medium ${
+                                customer.riskScore <= 30
+                                  ? 'text-green-600'
+                                  : customer.riskScore <= 60
+                                    ? 'text-yellow-600'
+                                    : 'text-red-600'
+                              }`}
+                            >
                               {customer.riskScore}/100
                             </p>
                           </div>
                         </div>
                         <div className="mt-2 text-xs text-muted-foreground">
-                          Avg payment: {customer.paymentHistory.avgDaysToPay} days | 
-                          On-time rate: {customer.paymentHistory.onTimePaymentRate}%
+                          Avg payment: {customer.paymentHistory.avgDaysToPay} days | On-time rate:{' '}
+                          {customer.paymentHistory.onTimePaymentRate}%
                         </div>
                       </div>
                     </div>
@@ -563,15 +644,34 @@ export default function FinancialIntelligenceDashboard() {
                 <ResponsiveContainer width="100%" height={400}>
                   <LineChart data={cashFlowForecast}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={(date) => format(new Date(date), 'MMM dd')} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(date) => format(new Date(date), 'MMM dd')}
+                    />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       labelFormatter={(date) => format(new Date(date), 'MMM dd, yyyy')}
                       formatter={(value) => [`$${Number(value).toLocaleString()}`, '']}
                     />
-                    <Line type="monotone" dataKey="projectedInflow" stroke="#82ca9d" name="Inflow" />
-                    <Line type="monotone" dataKey="projectedOutflow" stroke="#ff7c7c" name="Outflow" />
-                    <Line type="monotone" dataKey="netCashFlow" stroke="#8884d8" name="Net Cash Flow" strokeWidth={3} />
+                    <Line
+                      type="monotone"
+                      dataKey="projectedInflow"
+                      stroke="#82ca9d"
+                      name="Inflow"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="projectedOutflow"
+                      stroke="#ff7c7c"
+                      name="Outflow"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="netCashFlow"
+                      stroke="#8884d8"
+                      name="Net Cash Flow"
+                      strokeWidth={3}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -591,16 +691,17 @@ export default function FinancialIntelligenceDashboard() {
                     <div key={index} className="p-4 border rounded-lg">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-medium">{territory.territory} Territory</h4>
-                        <Badge variant="outline">
-                          {territory.customerCount} customers
-                        </Badge>
+                        <Badge variant="outline">{territory.customerCount} customers</Badge>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <p className="text-muted-foreground">Revenue</p>
-                          <p className="font-medium text-lg">${territory.revenue.toLocaleString()}</p>
+                          <p className="font-medium text-lg">
+                            ${territory.revenue.toLocaleString()}
+                          </p>
                           <p className={`text-xs ${getTrendColor(territory.revenueGrowth)}`}>
-                            {territory.revenueGrowth >= 0 ? '+' : ''}{territory.revenueGrowth.toFixed(1)}%
+                            {territory.revenueGrowth >= 0 ? '+' : ''}
+                            {territory.revenueGrowth.toFixed(1)}%
                           </p>
                         </div>
                         <div>

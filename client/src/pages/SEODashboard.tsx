@@ -387,7 +387,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setImageAnalysisResults(data.images || []);
-      toast({ title: 'Analysis complete', description: `Found ${data.images?.length || 0} images` });
+      toast({
+        title: 'Analysis complete',
+        description: `Found ${data.images?.length || 0} images`,
+      });
     },
   });
 
@@ -423,7 +426,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setBrokenLinksResults(data.brokenLinks || []);
-      toast({ title: 'Check complete', description: `Found ${data.brokenLinks?.length || 0} broken links` });
+      toast({
+        title: 'Check complete',
+        description: `Found ${data.brokenLinks?.length || 0} broken links`,
+      });
     },
   });
 
@@ -441,7 +447,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setRedirectResults(data.chains || []);
-      toast({ title: 'Check complete', description: `Found ${data.chains?.length || 0} redirect chains` });
+      toast({
+        title: 'Check complete',
+        description: `Found ${data.chains?.length || 0} redirect chains`,
+      });
     },
   });
 
@@ -458,7 +467,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setDuplicateContentResults(data.duplicates || []);
-      toast({ title: 'Scan complete', description: `Found ${data.duplicates?.length || 0} duplicate pairs` });
+      toast({
+        title: 'Scan complete',
+        description: `Found ${data.duplicates?.length || 0} duplicate pairs`,
+      });
     },
   });
 
@@ -476,7 +488,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setSecurityResults(data);
-      toast({ title: 'Analysis complete', description: `Security score: ${data.securityScore}/100` });
+      toast({
+        title: 'Analysis complete',
+        description: `Security score: ${data.securityScore}/100`,
+      });
     },
   });
 
@@ -512,7 +527,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setPerformanceResults(data);
-      toast({ title: 'Check complete', description: `Performance score: ${data.performanceScore}/100` });
+      toast({
+        title: 'Check complete',
+        description: `Performance score: ${data.performanceScore}/100`,
+      });
     },
   });
 
@@ -530,7 +548,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setStructuredDataResults(data);
-      toast({ title: 'Validation complete', description: `Found ${data.schemas?.length || 0} schemas` });
+      toast({
+        title: 'Validation complete',
+        description: `Found ${data.schemas?.length || 0} schemas`,
+      });
     },
   });
 
@@ -566,7 +587,10 @@ export default function SEODashboard() {
     },
     onSuccess: (data) => {
       setSemanticResults(data);
-      toast({ title: 'Analysis complete', description: `Found ${data.relatedKeywords?.length || 0} related keywords` });
+      toast({
+        title: 'Analysis complete',
+        description: `Found ${data.relatedKeywords?.length || 0} related keywords`,
+      });
     },
   });
 
@@ -582,7 +606,10 @@ export default function SEODashboard() {
       return response.json();
     },
     onSuccess: (data) => {
-      toast({ title: 'Sitemap generated', description: `Generated sitemap with ${data.pageCount || 0} pages` });
+      toast({
+        title: 'Sitemap generated',
+        description: `Generated sitemap with ${data.pageCount || 0} pages`,
+      });
     },
   });
 
@@ -669,9 +696,7 @@ export default function SEODashboard() {
               <Zap className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {latestAudit?.performanceScore || '-'}/100
-              </div>
+              <div className="text-2xl font-bold">{latestAudit?.performanceScore || '-'}/100</div>
               <p className="text-xs text-muted-foreground">Core Web Vitals</p>
             </CardContent>
           </Card>
@@ -785,9 +810,7 @@ export default function SEODashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Run SEO Audit</CardTitle>
-                    <CardDescription>
-                      Perform a comprehensive SEO audit of any URL
-                    </CardDescription>
+                    <CardDescription>Perform a comprehensive SEO audit of any URL</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-2">
@@ -808,8 +831,7 @@ export default function SEODashboard() {
                         <div>
                           <h3 className="font-semibold mb-2">Latest Audit Results</h3>
                           <p className="text-sm text-muted-foreground mb-4">
-                            {latestAudit.url} -{' '}
-                            {new Date(latestAudit.createdAt).toLocaleString()}
+                            {latestAudit.url} - {new Date(latestAudit.createdAt).toLocaleString()}
                           </p>
                           <div className="grid grid-cols-4 gap-4 mb-4">
                             <div>
@@ -1030,7 +1052,8 @@ export default function SEODashboard() {
                   <CardContent>
                     {competitors.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No competitors added yet. Add competitor domains to track their SEO performance.
+                        No competitors added yet. Add competitor domains to track their SEO
+                        performance.
                       </p>
                     ) : (
                       <div className="space-y-2">
@@ -1150,7 +1173,9 @@ export default function SEODashboard() {
                                     </Badge>
                                     <div className="flex-1">
                                       <p className="text-sm font-medium">{alert.type}</p>
-                                      <p className="text-sm text-muted-foreground">{alert.message}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {alert.message}
+                                      </p>
                                       <p className="text-xs text-muted-foreground mt-1">
                                         {new Date(alert.createdAt).toLocaleString()}
                                       </p>
@@ -1221,8 +1246,12 @@ export default function SEODashboard() {
                     <Button
                       onClick={() => {
                         const titleElem = document.getElementById('metaTitle') as HTMLInputElement;
-                        const descElem = document.getElementById('metaDescription') as HTMLTextAreaElement;
-                        const keywordsElem = document.getElementById('metaKeywords') as HTMLInputElement;
+                        const descElem = document.getElementById(
+                          'metaDescription',
+                        ) as HTMLTextAreaElement;
+                        const keywordsElem = document.getElementById(
+                          'metaKeywords',
+                        ) as HTMLInputElement;
                         saveSettingsMutation.mutate({
                           ...settings,
                           defaultTitle: titleElem?.value,
@@ -1288,20 +1317,24 @@ export default function SEODashboard() {
                       >
                         {generateSitemapMutation.isPending ? 'Generating...' : 'Generate Sitemap'}
                       </Button>
-                      <Button variant="outline" onClick={() => {
-                        toast({
-                          title: 'Coming soon',
-                          description: 'Google Search Console integration will be available soon.',
-                        });
-                      }}>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          toast({
+                            title: 'Coming soon',
+                            description:
+                              'Google Search Console integration will be available soon.',
+                          });
+                        }}
+                      >
                         Submit to Google
                       </Button>
                     </div>
                     <Separator />
                     <div>
                       <p className="text-sm text-muted-foreground">
-                        Sitemap will include all crawled pages. Run a site crawl first to populate the
-                        sitemap with your pages.
+                        Sitemap will include all crawled pages. Run a site crawl first to populate
+                        the sitemap with your pages.
                       </p>
                     </div>
                   </CardContent>
@@ -1337,7 +1370,9 @@ export default function SEODashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Structured Data Validator</CardTitle>
-                    <CardDescription>Validate JSON-LD structured data on your pages</CardDescription>
+                    <CardDescription>
+                      Validate JSON-LD structured data on your pages
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-2">
@@ -1353,42 +1388,50 @@ export default function SEODashboard() {
                         {validateStructuredDataMutation.isPending ? 'Validating...' : 'Validate'}
                       </Button>
                     </div>
-                    {structuredDataResults && structuredDataResults.schemas && structuredDataResults.schemas.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Found {structuredDataResults.schemas.length} schemas</h4>
-                        <ScrollArea className="h-96">
-                          {structuredDataResults.schemas.map((schema: any, idx: number) => (
-                            <Card key={idx} className="mb-2">
-                              <CardContent className="p-3">
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <Badge>{schema['@type'] || 'Schema'}</Badge>
-                                    <Badge variant={schema.valid ? 'default' : 'destructive'}>
-                                      {schema.valid ? 'Valid' : 'Invalid'}
-                                    </Badge>
-                                  </div>
-                                  {schema.errors && schema.errors.length > 0 && (
-                                    <div className="space-y-1">
-                                      {schema.errors.map((err: string, i: number) => (
-                                        <p key={i} className="text-xs text-red-600">• {err}</p>
-                                      ))}
+                    {structuredDataResults &&
+                      structuredDataResults.schemas &&
+                      structuredDataResults.schemas.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="font-medium">
+                            Found {structuredDataResults.schemas.length} schemas
+                          </h4>
+                          <ScrollArea className="h-96">
+                            {structuredDataResults.schemas.map((schema: any, idx: number) => (
+                              <Card key={idx} className="mb-2">
+                                <CardContent className="p-3">
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <Badge>{schema['@type'] || 'Schema'}</Badge>
+                                      <Badge variant={schema.valid ? 'default' : 'destructive'}>
+                                        {schema.valid ? 'Valid' : 'Invalid'}
+                                      </Badge>
                                     </div>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </ScrollArea>
-                      </div>
-                    )}
-                    {(!structuredDataResults || !structuredDataResults.schemas) && !validateStructuredDataMutation.isPending && (
-                      <div className="rounded-md bg-muted p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Enter a URL to validate its structured data markup. The validator will check for
-                          JSON-LD schemas including Organization, Product, Article, and more.
-                        </p>
-                      </div>
-                    )}
+                                    {schema.errors && schema.errors.length > 0 && (
+                                      <div className="space-y-1">
+                                        {schema.errors.map((err: string, i: number) => (
+                                          <p key={i} className="text-xs text-red-600">
+                                            • {err}
+                                          </p>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </ScrollArea>
+                        </div>
+                      )}
+                    {(!structuredDataResults || !structuredDataResults.schemas) &&
+                      !validateStructuredDataMutation.isPending && (
+                        <div className="rounded-md bg-muted p-4">
+                          <p className="text-sm text-muted-foreground">
+                            Enter a URL to validate its structured data markup. The validator will
+                            check for JSON-LD schemas including Organization, Product, Article, and
+                            more.
+                          </p>
+                        </div>
+                      )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1408,8 +1451,14 @@ export default function SEODashboard() {
                             <CardTitle className="text-sm">LCP</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-2xl font-bold">{performanceResults.lcp ? `${(performanceResults.lcp / 1000).toFixed(2)}s` : '-'}</p>
-                            <p className="text-xs text-muted-foreground">Largest Contentful Paint</p>
+                            <p className="text-2xl font-bold">
+                              {performanceResults.lcp
+                                ? `${(performanceResults.lcp / 1000).toFixed(2)}s`
+                                : '-'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Largest Contentful Paint
+                            </p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -1417,7 +1466,11 @@ export default function SEODashboard() {
                             <CardTitle className="text-sm">FID</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-2xl font-bold">{performanceResults.fid ? `${performanceResults.fid.toFixed(0)}ms` : '-'}</p>
+                            <p className="text-2xl font-bold">
+                              {performanceResults.fid
+                                ? `${performanceResults.fid.toFixed(0)}ms`
+                                : '-'}
+                            </p>
                             <p className="text-xs text-muted-foreground">First Input Delay</p>
                           </CardContent>
                         </Card>
@@ -1426,7 +1479,9 @@ export default function SEODashboard() {
                             <CardTitle className="text-sm">CLS</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-2xl font-bold">{performanceResults.cls ? performanceResults.cls.toFixed(3) : '-'}</p>
+                            <p className="text-2xl font-bold">
+                              {performanceResults.cls ? performanceResults.cls.toFixed(3) : '-'}
+                            </p>
                             <p className="text-xs text-muted-foreground">Cumulative Layout Shift</p>
                           </CardContent>
                         </Card>
@@ -1440,7 +1495,9 @@ export default function SEODashboard() {
                           </CardHeader>
                           <CardContent>
                             <p className="text-2xl font-bold">-</p>
-                            <p className="text-xs text-muted-foreground">Largest Contentful Paint</p>
+                            <p className="text-xs text-muted-foreground">
+                              Largest Contentful Paint
+                            </p>
                           </CardContent>
                         </Card>
                         <Card>
@@ -1479,7 +1536,12 @@ export default function SEODashboard() {
                         </SelectContent>
                       </Select>
                       <Button
-                        onClick={() => checkPerformanceMutation.mutate({ url: analyzeUrl, device: performanceDevice })}
+                        onClick={() =>
+                          checkPerformanceMutation.mutate({
+                            url: analyzeUrl,
+                            device: performanceDevice,
+                          })
+                        }
                         disabled={!analyzeUrl || checkPerformanceMutation.isPending}
                       >
                         {checkPerformanceMutation.isPending ? 'Checking...' : 'Check'}
@@ -1488,7 +1550,8 @@ export default function SEODashboard() {
                     {performanceResults && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm">
-                          <strong>Performance Score:</strong> {performanceResults.performanceScore}/100
+                          <strong>Performance Score:</strong> {performanceResults.performanceScore}
+                          /100
                         </p>
                       </div>
                     )}
@@ -1501,7 +1564,9 @@ export default function SEODashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Site Crawler</CardTitle>
-                    <CardDescription>Crawl your website to discover pages and issues</CardDescription>
+                    <CardDescription>
+                      Crawl your website to discover pages and issues
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-3 gap-2">
@@ -1530,7 +1595,9 @@ export default function SEODashboard() {
                     <Separator />
                     {crawlResults.length > 0 && (
                       <div>
-                        <h4 className="font-medium mb-2">Crawl Results ({crawlResults.length} pages)</h4>
+                        <h4 className="font-medium mb-2">
+                          Crawl Results ({crawlResults.length} pages)
+                        </h4>
                         <ScrollArea className="h-64">
                           {crawlResults.map((result) => (
                             <Card key={result.id} className="mb-2">
@@ -1612,8 +1679,8 @@ export default function SEODashboard() {
                     {imageAnalysisResults.length === 0 && !analyzeImagesMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Enter a URL to analyze all images on the page. We'll check for alt text, file
-                          sizes, dimensions, and optimization opportunities.
+                          Enter a URL to analyze all images on the page. We'll check for alt text,
+                          file sizes, dimensions, and optimization opportunities.
                         </p>
                       </div>
                     )}
@@ -1655,12 +1722,18 @@ export default function SEODashboard() {
                                     <p className="text-sm font-medium truncate">{link.url}</p>
                                     <p className="text-xs text-muted-foreground">{link.text}</p>
                                     <div className="flex gap-2 mt-1">
-                                      <Badge variant={link.type === 'internal' ? 'default' : 'secondary'}>
+                                      <Badge
+                                        variant={link.type === 'internal' ? 'default' : 'secondary'}
+                                      >
                                         {link.type}
                                       </Badge>
                                       {link.isNofollow && <Badge variant="outline">nofollow</Badge>}
                                       {link.statusCode && (
-                                        <Badge variant={link.statusCode === 200 ? 'default' : 'destructive'}>
+                                        <Badge
+                                          variant={
+                                            link.statusCode === 200 ? 'default' : 'destructive'
+                                          }
+                                        >
                                           {link.statusCode}
                                         </Badge>
                                       )}
@@ -1676,8 +1749,8 @@ export default function SEODashboard() {
                     {linkAnalysisResults.length === 0 && !analyzeLinksMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Analyze all links on a page to identify internal vs external links, nofollow
-                          attributes, and link health.
+                          Analyze all links on a page to identify internal vs external links,
+                          nofollow attributes, and link health.
                         </p>
                       </div>
                     )}
@@ -1717,7 +1790,9 @@ export default function SEODashboard() {
                               <CardContent className="p-3">
                                 <div className="space-y-2">
                                   <div className="flex items-start justify-between">
-                                    <p className="text-sm font-medium truncate flex-1">{link.url}</p>
+                                    <p className="text-sm font-medium truncate flex-1">
+                                      {link.url}
+                                    </p>
                                     <Badge variant="destructive">{link.statusCode}</Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground">
@@ -1734,8 +1809,8 @@ export default function SEODashboard() {
                     {brokenLinksResults.length === 0 && !checkBrokenLinksMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Check all links on a page for broken or dead links. We'll identify 404s, 500s,
-                          and provide recommendations for fixes.
+                          Check all links on a page for broken or dead links. We'll identify 404s,
+                          500s, and provide recommendations for fixes.
                         </p>
                       </div>
                     )}
@@ -1766,7 +1841,9 @@ export default function SEODashboard() {
                     </div>
                     {redirectResults.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="font-medium">Found {redirectResults.length} redirect chains</h4>
+                        <h4 className="font-medium">
+                          Found {redirectResults.length} redirect chains
+                        </h4>
                         <ScrollArea className="h-96">
                           {redirectResults.map((chain, idx) => (
                             <Card key={idx} className="mb-2">
@@ -1781,7 +1858,9 @@ export default function SEODashboard() {
                                       <div key={i} className="text-xs">
                                         <span className="text-muted-foreground">{r.from}</span>
                                         <span className="mx-2">→</span>
-                                        <Badge variant="outline" className="text-xs">{r.statusCode}</Badge>
+                                        <Badge variant="outline" className="text-xs">
+                                          {r.statusCode}
+                                        </Badge>
                                         <span className="mx-2">→</span>
                                         <span>{r.to}</span>
                                       </div>
@@ -1798,8 +1877,8 @@ export default function SEODashboard() {
                     {redirectResults.length === 0 && !checkRedirectsMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Follow redirect chains to identify unnecessary redirects that slow down page load
-                          times and harm SEO.
+                          Follow redirect chains to identify unnecessary redirects that slow down
+                          page load times and harm SEO.
                         </p>
                       </div>
                     )}
@@ -1823,7 +1902,9 @@ export default function SEODashboard() {
                     </Button>
                     {duplicateContentResults.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="font-medium">Found {duplicateContentResults.length} duplicate pairs</h4>
+                        <h4 className="font-medium">
+                          Found {duplicateContentResults.length} duplicate pairs
+                        </h4>
                         <ScrollArea className="h-96">
                           {duplicateContentResults.map((dup, idx) => (
                             <Card key={idx} className="mb-2">
@@ -1845,8 +1926,8 @@ export default function SEODashboard() {
                     {duplicateContentResults.length === 0 && !scanDuplicatesMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Scan your site to find pages with duplicate or very similar content. Duplicate
-                          content can harm your SEO rankings.
+                          Scan your site to find pages with duplicate or very similar content.
+                          Duplicate content can harm your SEO rankings.
                         </p>
                       </div>
                     )}
@@ -1859,7 +1940,9 @@ export default function SEODashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Security Analysis</CardTitle>
-                    <CardDescription>Check security headers and HTTPS configuration</CardDescription>
+                    <CardDescription>
+                      Check security headers and HTTPS configuration
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-2">
@@ -1879,7 +1962,11 @@ export default function SEODashboard() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Security Score</span>
-                          <Badge variant={securityResults.securityScore >= 80 ? 'default' : 'destructive'}>
+                          <Badge
+                            variant={
+                              securityResults.securityScore >= 80 ? 'default' : 'destructive'
+                            }
+                          >
                             {securityResults.securityScore}/100
                           </Badge>
                         </div>
@@ -1887,7 +1974,9 @@ export default function SEODashboard() {
                           <Card>
                             <CardContent className="p-4">
                               <div className="flex items-center gap-2">
-                                <Shield className={`h-5 w-5 ${securityResults.https ? 'text-green-500' : 'text-red-500'}`} />
+                                <Shield
+                                  className={`h-5 w-5 ${securityResults.https ? 'text-green-500' : 'text-red-500'}`}
+                                />
                                 <span className="text-sm">HTTPS</span>
                               </div>
                             </CardContent>
@@ -1895,7 +1984,9 @@ export default function SEODashboard() {
                           <Card>
                             <CardContent className="p-4">
                               <div className="flex items-center gap-2">
-                                <Shield className={`h-5 w-5 ${securityResults.hsts ? 'text-green-500' : 'text-muted-foreground'}`} />
+                                <Shield
+                                  className={`h-5 w-5 ${securityResults.hsts ? 'text-green-500' : 'text-muted-foreground'}`}
+                                />
                                 <span className="text-sm">HSTS</span>
                               </div>
                             </CardContent>
@@ -1903,7 +1994,9 @@ export default function SEODashboard() {
                           <Card>
                             <CardContent className="p-4">
                               <div className="flex items-center gap-2">
-                                <Shield className={`h-5 w-5 ${securityResults.csp ? 'text-green-500' : 'text-muted-foreground'}`} />
+                                <Shield
+                                  className={`h-5 w-5 ${securityResults.csp ? 'text-green-500' : 'text-muted-foreground'}`}
+                                />
                                 <span className="text-sm">CSP</span>
                               </div>
                             </CardContent>
@@ -1911,7 +2004,9 @@ export default function SEODashboard() {
                           <Card>
                             <CardContent className="p-4">
                               <div className="flex items-center gap-2">
-                                <Shield className={`h-5 w-5 ${securityResults.xFrameOptions ? 'text-green-500' : 'text-muted-foreground'}`} />
+                                <Shield
+                                  className={`h-5 w-5 ${securityResults.xFrameOptions ? 'text-green-500' : 'text-muted-foreground'}`}
+                                />
                                 <span className="text-sm">X-Frame-Options</span>
                               </div>
                             </CardContent>
@@ -1921,7 +2016,9 @@ export default function SEODashboard() {
                           <div className="space-y-2">
                             <h4 className="font-medium">Recommendations</h4>
                             {securityResults.recommendations.map((rec, idx) => (
-                              <p key={idx} className="text-sm text-muted-foreground">• {rec}</p>
+                              <p key={idx} className="text-sm text-muted-foreground">
+                                • {rec}
+                              </p>
                             ))}
                           </div>
                         )}
@@ -1992,7 +2089,9 @@ export default function SEODashboard() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span className="font-medium">Mobile Score</span>
-                          <Badge variant={mobileResults.mobileScore >= 80 ? 'default' : 'destructive'}>
+                          <Badge
+                            variant={mobileResults.mobileScore >= 80 ? 'default' : 'destructive'}
+                          >
                             {mobileResults.mobileScore}/100
                           </Badge>
                         </div>
@@ -2079,7 +2178,8 @@ export default function SEODashboard() {
                             <strong>Reading Time:</strong> {contentResults.readingTime || 'N/A'}
                           </p>
                           <p className="text-sm">
-                            <strong>Keyword Density:</strong> {contentResults.keywordDensity || 'N/A'}
+                            <strong>Keyword Density:</strong>{' '}
+                            {contentResults.keywordDensity || 'N/A'}
                           </p>
                         </div>
                         {contentResults.suggestions && contentResults.suggestions.length > 0 && (
@@ -2087,7 +2187,9 @@ export default function SEODashboard() {
                             <h4 className="font-medium">Optimization Suggestions</h4>
                             <ScrollArea className="h-64">
                               {contentResults.suggestions.map((suggestion: string, idx: number) => (
-                                <p key={idx} className="text-sm text-muted-foreground mb-2">• {suggestion}</p>
+                                <p key={idx} className="text-sm text-muted-foreground mb-2">
+                                  • {suggestion}
+                                </p>
                               ))}
                             </ScrollArea>
                           </div>
@@ -2097,8 +2199,8 @@ export default function SEODashboard() {
                     {!contentResults && !optimizeContentMutation.isPending && (
                       <div className="rounded-md bg-muted p-4">
                         <p className="text-sm text-muted-foreground">
-                          Get AI-powered suggestions for improving your content for SEO, including keyword
-                          usage, readability, structure, and more.
+                          Get AI-powered suggestions for improving your content for SEO, including
+                          keyword usage, readability, structure, and more.
                         </p>
                       </div>
                     )}
@@ -2111,7 +2213,9 @@ export default function SEODashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Semantic Keyword Analysis</CardTitle>
-                    <CardDescription>Discover related keywords and semantic clusters</CardDescription>
+                    <CardDescription>
+                      Discover related keywords and semantic clusters
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-2">
@@ -2127,28 +2231,33 @@ export default function SEODashboard() {
                         {analyzeSemanticMutation.isPending ? 'Analyzing...' : 'Analyze'}
                       </Button>
                     </div>
-                    {semanticResults && semanticResults.relatedKeywords && semanticResults.relatedKeywords.length > 0 && (
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Related Keywords ({semanticResults.relatedKeywords.length})</h4>
-                        <ScrollArea className="h-96">
-                          <div className="flex flex-wrap gap-2">
-                            {semanticResults.relatedKeywords.map((kw: any, idx: number) => (
-                              <Badge key={idx} variant="secondary">
-                                {kw.keyword || kw}
-                              </Badge>
-                            ))}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    )}
-                    {(!semanticResults || !semanticResults.relatedKeywords) && !analyzeSemanticMutation.isPending && (
-                      <div className="rounded-md bg-muted p-4">
-                        <p className="text-sm text-muted-foreground">
-                          Discover semantically related keywords and create keyword clusters to improve your
-                          content strategy and topical authority.
-                        </p>
-                      </div>
-                    )}
+                    {semanticResults &&
+                      semanticResults.relatedKeywords &&
+                      semanticResults.relatedKeywords.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="font-medium">
+                            Related Keywords ({semanticResults.relatedKeywords.length})
+                          </h4>
+                          <ScrollArea className="h-96">
+                            <div className="flex flex-wrap gap-2">
+                              {semanticResults.relatedKeywords.map((kw: any, idx: number) => (
+                                <Badge key={idx} variant="secondary">
+                                  {kw.keyword || kw}
+                                </Badge>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+                      )}
+                    {(!semanticResults || !semanticResults.relatedKeywords) &&
+                      !analyzeSemanticMutation.isPending && (
+                        <div className="rounded-md bg-muted p-4">
+                          <p className="text-sm text-muted-foreground">
+                            Discover semantically related keywords and create keyword clusters to
+                            improve your content strategy and topical authority.
+                          </p>
+                        </div>
+                      )}
                   </CardContent>
                 </Card>
               </TabsContent>

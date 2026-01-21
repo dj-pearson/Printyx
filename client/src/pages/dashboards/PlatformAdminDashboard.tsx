@@ -50,11 +50,10 @@ export default function PlatformAdminDashboard() {
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data?.system?.uptime?.toFixed(2)}%
-            </div>
+            <div className="text-2xl font-bold">{data?.system?.uptime?.toFixed(2)}%</div>
             <p className="text-xs text-muted-foreground">
-              <CheckCircle2 className="inline h-3 w-3 text-green-600" /> {data?.insights?.systemHealth || 'Excellent'}
+              <CheckCircle2 className="inline h-3 w-3 text-green-600" />{' '}
+              {data?.insights?.systemHealth || 'Excellent'}
             </p>
           </CardContent>
         </Card>
@@ -65,9 +64,7 @@ export default function PlatformAdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data?.tenants?.total?.toLocaleString() || 0}
-            </div>
+            <div className="text-2xl font-bold">{data?.tenants?.total?.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground">
               {data?.tenants?.active} active · {data?.tenants?.trial} trial
             </p>
@@ -134,9 +131,7 @@ export default function PlatformAdminDashboard() {
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm font-medium">API Response Time</span>
-                      <span className="text-lg font-bold">
-                        {data?.system?.apiResponseTime}ms
-                      </span>
+                      <span className="text-lg font-bold">{data?.system?.apiResponseTime}ms</span>
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm font-medium">Error Rate</span>
@@ -165,19 +160,31 @@ export default function PlatformAdminDashboard() {
                   <div className="text-center py-8">Loading...</div>
                 ) : (
                   <div className="space-y-4">
-                    <div className={`p-4 border rounded-lg ${
-                      data?.insights?.systemHealth === 'excellent' ? 'bg-green-50 border-green-200' :
-                      data?.insights?.systemHealth === 'good' ? 'bg-blue-50 border-blue-200' :
-                      'bg-red-50 border-red-200'
-                    }`}>
+                    <div
+                      className={`p-4 border rounded-lg ${
+                        data?.insights?.systemHealth === 'excellent'
+                          ? 'bg-green-50 border-green-200'
+                          : data?.insights?.systemHealth === 'good'
+                            ? 'bg-blue-50 border-blue-200'
+                            : 'bg-red-50 border-red-200'
+                      }`}
+                    >
                       <div className="flex items-center gap-2">
-                        {data?.insights?.systemHealth === 'excellent' && <CheckCircle2 className="h-5 w-5 text-green-600" />}
-                        {data?.insights?.systemHealth === 'good' && <Activity className="h-5 w-5 text-blue-600" />}
-                        {data?.insights?.systemHealth === 'needs_attention' && <AlertCircle className="h-5 w-5 text-red-600" />}
+                        {data?.insights?.systemHealth === 'excellent' && (
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        )}
+                        {data?.insights?.systemHealth === 'good' && (
+                          <Activity className="h-5 w-5 text-blue-600" />
+                        )}
+                        {data?.insights?.systemHealth === 'needs_attention' && (
+                          <AlertCircle className="h-5 w-5 text-red-600" />
+                        )}
                         <span className="font-medium">
-                          {data?.insights?.systemHealth === 'excellent' && 'System Running Optimally'}
+                          {data?.insights?.systemHealth === 'excellent' &&
+                            'System Running Optimally'}
                           {data?.insights?.systemHealth === 'good' && 'System Running Well'}
-                          {data?.insights?.systemHealth === 'needs_attention' && 'System Needs Attention'}
+                          {data?.insights?.systemHealth === 'needs_attention' &&
+                            'System Needs Attention'}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-2">
@@ -209,19 +216,27 @@ export default function PlatformAdminDashboard() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Active</span>
-                      <span className="font-bold text-green-600">{data?.tenants?.active?.toLocaleString()}</span>
+                      <span className="font-bold text-green-600">
+                        {data?.tenants?.active?.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Trial</span>
-                      <span className="font-bold text-blue-600">{data?.tenants?.trial?.toLocaleString()}</span>
+                      <span className="font-bold text-blue-600">
+                        {data?.tenants?.trial?.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Paid</span>
-                      <span className="font-bold text-purple-600">{data?.tenants?.paid?.toLocaleString()}</span>
+                      <span className="font-bold text-purple-600">
+                        {data?.tenants?.paid?.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Churned</span>
-                      <span className="font-bold text-red-600">{data?.tenants?.churned?.toLocaleString()}</span>
+                      <span className="font-bold text-red-600">
+                        {data?.tenants?.churned?.toLocaleString()}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -401,20 +416,22 @@ export default function PlatformAdminDashboard() {
                   <div className="text-center py-8">Loading...</div>
                 ) : (
                   <div className="space-y-3">
-                    {Object.entries(data?.usage?.featureAdoption || {}).map(([feature, rate]: [string, any]) => (
-                      <div key={feature} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="capitalize">{feature}</span>
-                          <span className="font-medium">{rate}%</span>
+                    {Object.entries(data?.usage?.featureAdoption || {}).map(
+                      ([feature, rate]: [string, any]) => (
+                        <div key={feature} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="capitalize">{feature}</span>
+                            <span className="font-medium">{rate}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{ width: `${rate}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${rate}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ),
+                    )}
                   </div>
                 )}
               </CardContent>

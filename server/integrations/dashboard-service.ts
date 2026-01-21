@@ -74,10 +74,7 @@ export class DashboardService {
       })
       .from(integrationMetrics)
       .where(
-        and(
-          eq(integrationMetrics.tenantId, tenantId),
-          gte(integrationMetrics.periodStart, today)
-        )
+        and(eq(integrationMetrics.tenantId, tenantId), gte(integrationMetrics.periodStart, today)),
       );
 
     const metrics = todayMetrics[0] || {
@@ -100,10 +97,11 @@ export class DashboardService {
     const errorRate = totalCalls > 0 ? (failedCalls / totalCalls) * 100 : 0;
 
     // Calculate uptime based on success rate (if we have calls)
-    const integrationUptime = totalCalls > 0 ? successRate : (activeIntegrations > 0 ? 100 : 0);
+    const integrationUptime = totalCalls > 0 ? successRate : activeIntegrations > 0 ? 100 : 0;
 
     // Convert bytes to GB for display
-    const dataTransferredGB = Math.round((Number(metrics.dataVolumeBytes) / (1024 * 1024 * 1024)) * 100) / 100;
+    const dataTransferredGB =
+      Math.round((Number(metrics.dataVolumeBytes) / (1024 * 1024 * 1024)) * 100) / 100;
 
     return {
       totalIntegrations,
@@ -138,14 +136,11 @@ export class DashboardService {
       .select()
       .from(integrationMetrics)
       .where(
-        and(
-          eq(integrationMetrics.tenantId, tenantId),
-          gte(integrationMetrics.periodStart, today)
-        )
+        and(eq(integrationMetrics.tenantId, tenantId), gte(integrationMetrics.periodStart, today)),
       );
 
     // Build a map of integration metrics
-    const metricsMap = new Map<string, typeof metricsResults[0]>();
+    const metricsMap = new Map<string, (typeof metricsResults)[0]>();
     for (const metric of metricsResults) {
       if (!metricsMap.has(metric.integrationId)) {
         metricsMap.set(metric.integrationId, metric);
@@ -159,8 +154,8 @@ export class DashboardService {
       .where(
         and(
           eq(integrationApiLogs.tenantId, tenantId),
-          gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000))
-        )
+          gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+        ),
       )
       .orderBy(desc(integrationApiLogs.requestTimestamp))
       .limit(100);
@@ -182,7 +177,12 @@ export class DashboardService {
       const totalCalls = Number(metrics?.totalApiCalls) || 0;
       const successfulCalls = Number(metrics?.successfulCalls) || 0;
       const failedCalls = Number(metrics?.failedCalls) || 0;
-      const successRate = totalCalls > 0 ? (successfulCalls / totalCalls) * 100 : (integration.status === 'connected' ? 100 : 0);
+      const successRate =
+        totalCalls > 0
+          ? (successfulCalls / totalCalls) * 100
+          : integration.status === 'connected'
+            ? 100
+            : 0;
 
       return {
         id: integration.id,
@@ -196,7 +196,8 @@ export class DashboardService {
         apiCallsToday: totalCalls,
         successRate: Math.round(successRate * 10) / 10,
         averageLatency: Number(metrics?.avgLatencyMs) || 0,
-        dataVolume: Math.round((Number(metrics?.dataVolumeBytes) || 0) / (1024 * 1024) * 100) / 100, // MB
+        dataVolume:
+          Math.round(((Number(metrics?.dataVolumeBytes) || 0) / (1024 * 1024)) * 100) / 100, // MB
         errorCount: failedCalls,
         configuration: {
           environment: 'production',
@@ -204,7 +205,7 @@ export class DashboardService {
         },
         dataMapping: this.getDataMappingForProvider(integration.providerId),
         webhooks: this.getWebhooksForProvider(integration.providerId),
-        recentActivity: logs.slice(0, 5).map(log => ({
+        recentActivity: logs.slice(0, 5).map((log) => ({
           timestamp: log.requestTimestamp,
           action: log.endpoint.split('/').pop() || 'api_call',
           records: log.recordsAffected || 0,

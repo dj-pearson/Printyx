@@ -6,7 +6,11 @@
 import express from 'express';
 import { db } from './db';
 import { eq, and, desc } from 'drizzle-orm';
-import { platformIntegrations, integrationSyncLogs, insertPlatformIntegrationSchema } from '@shared/schema-integrations';
+import {
+  platformIntegrations,
+  integrationSyncLogs,
+  insertPlatformIntegrationSchema,
+} from '@shared/schema-integrations';
 import { IntegrationsService } from './services/integrations-service';
 
 const router = express.Router();
@@ -23,10 +27,12 @@ router.get('/api/integrations', async (req: any, res) => {
     });
 
     // Don't return actual credentials
-    return res.json(integrations.map(i => ({
-      ...i,
-      credentials: { status: i.status },
-    })));
+    return res.json(
+      integrations.map((i) => ({
+        ...i,
+        credentials: { status: i.status },
+      })),
+    );
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch integrations' });
   }
@@ -81,12 +87,7 @@ router.put('/api/integrations/:id', async (req: any, res) => {
         syncFrequency,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(platformIntegrations.id, id),
-          eq(platformIntegrations.tenantId, tenantId),
-        ),
-      )
+      .where(and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)))
       .returning();
 
     res.json(integration);
@@ -104,10 +105,7 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
     const { id } = req.params;
 
     const integration = await db.query.platformIntegrations.findFirst({
-      where: and(
-        eq(platformIntegrations.id, id),
-        eq(platformIntegrations.tenantId, tenantId),
-      ),
+      where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)),
     });
 
     if (!integration) return res.status(404).json({ error: 'Integration not found' });
@@ -157,10 +155,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
     const { entityType } = req.body; // leads, customers, invoices, equipment
 
     const integration = await db.query.platformIntegrations.findFirst({
-      where: and(
-        eq(platformIntegrations.id, id),
-        eq(platformIntegrations.tenantId, tenantId),
-      ),
+      where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)),
     });
 
     if (!integration) return res.status(404).json({ error: 'Integration not found' });
@@ -296,12 +291,7 @@ router.post('/api/integrations/:id/disconnect', async (req: any, res) => {
         credentials: {},
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(platformIntegrations.id, id),
-          eq(platformIntegrations.tenantId, tenantId),
-        ),
-      );
+      .where(and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)));
 
     res.json({ success: true, message: 'Integration disconnected' });
   } catch (error) {

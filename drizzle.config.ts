@@ -1,19 +1,19 @@
-import { defineConfig } from "drizzle-kit";
+import { defineConfig } from 'drizzle-kit';
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+  throw new Error('DATABASE_URL, ensure the database is provisioned');
 }
 
 export default defineConfig({
-  out: "./migrations",
+  out: './migrations',
   // Include all schema files that define tables
   schema: [
-    "./shared/schema.ts",
-    "./shared/product-pricing-schema.ts",
-    "./server/sales-forecasting-schema.ts",
-    "./shared/reporting-schema.ts"
+    './shared/schema.ts',
+    './shared/product-pricing-schema.ts',
+    './server/sales-forecasting-schema.ts',
+    './shared/reporting-schema.ts',
   ],
-  dialect: "postgresql",
+  dialect: 'postgresql',
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },

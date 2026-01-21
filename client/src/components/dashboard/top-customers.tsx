@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Users } from 'lucide-react';
 
 export default function TopCustomers() {
   const { data: customers, isLoading } = useQuery({
@@ -11,7 +11,7 @@ export default function TopCustomers() {
   const getInitials = (name: string) => {
     return name
       .split(' ')
-      .map(word => word.charAt(0))
+      .map((word) => word.charAt(0))
       .join('')
       .toUpperCase()
       .slice(0, 2);
@@ -38,7 +38,7 @@ export default function TopCustomers() {
           </Button>
         </div>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {isLoading ? (
           [...Array(4)].map((_, i) => (
@@ -60,15 +60,16 @@ export default function TopCustomers() {
           customers.map((customer: any, index: number) => (
             <div key={customer.id} className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className={`w-10 h-10 ${getInitialsBgColor(index)} rounded-lg flex items-center justify-center`}>
-                  <span className="font-semibold text-sm">
-                    {getInitials(customer.name)}
-                  </span>
+                <div
+                  className={`w-10 h-10 ${getInitialsBgColor(index)} rounded-lg flex items-center justify-center`}
+                >
+                  <span className="font-semibold text-sm">{getInitials(customer.name)}</span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{customer.name}</p>
                   <p className="text-sm text-gray-600">
-                    {customer.contractsCount || customer.contractCount || 0} active contract{(customer.contractsCount || customer.contractCount || 0) !== 1 ? 's' : ''}
+                    {customer.contractsCount || customer.contractCount || 0} active contract
+                    {(customer.contractsCount || customer.contractCount || 0) !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>

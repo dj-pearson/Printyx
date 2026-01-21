@@ -22,12 +22,12 @@ export interface ReportingUserContext {
   regionIds: string[];
   departmentIds: string[];
   isPlatformUser: boolean;
-  
+
   // User details
   firstName: string;
   lastName: string;
   email: string;
-  
+
   // Hierarchical access
   managerId?: string;
   teamId?: string;
@@ -46,44 +46,39 @@ export interface AuthenticatedRequest extends Request {
 // Map role-based permissions to reporting permissions
 const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
   // Sales Department
-  'SALES_REP': [
-    'canViewReports',
-    'canViewSalesReports',
-    'canViewOwnData',
-    'canExportReports'
-  ],
-  'SENIOR_SALES_REP': [
+  SALES_REP: ['canViewReports', 'canViewSalesReports', 'canViewOwnData', 'canExportReports'],
+  SENIOR_SALES_REP: [
     'canViewReports',
     'canViewSalesReports',
     'canViewOwnData',
     'canViewTeamData',
-    'canExportReports'
+    'canExportReports',
   ],
-  'SALES_SUPERVISOR': [
+  SALES_SUPERVISOR: [
     'canViewReports',
     'canViewSalesReports',
     'canViewTeamData',
     'canViewLocationData',
     'canExportReports',
-    'canScheduleReports'
+    'canScheduleReports',
   ],
-  'SALES_MANAGER': [
+  SALES_MANAGER: [
     'canViewReports',
     'canViewSalesReports',
     'canViewLocationData',
     'canExportReports',
     'canScheduleReports',
-    'canCustomizeDashboards'
+    'canCustomizeDashboards',
   ],
-  'REGIONAL_SALES_DIRECTOR': [
+  REGIONAL_SALES_DIRECTOR: [
     'canViewReports',
     'canViewSalesReports',
     'canViewRegionalData',
     'canExportReports',
     'canScheduleReports',
-    'canCustomizeDashboards'
+    'canCustomizeDashboards',
   ],
-  'VP_SALES': [
+  VP_SALES: [
     'canViewReports',
     'canViewSalesReports',
     'canViewExecutiveReports',
@@ -91,42 +86,38 @@ const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
     'canExportReports',
     'canScheduleReports',
     'canCustomizeDashboards',
-    'canManageKPIs'
+    'canManageKPIs',
   ],
 
   // Service Department
-  'FIELD_TECHNICIAN': [
-    'canViewReports',
-    'canViewServiceReports',
-    'canViewOwnData'
-  ],
-  'SENIOR_TECHNICIAN': [
+  FIELD_TECHNICIAN: ['canViewReports', 'canViewServiceReports', 'canViewOwnData'],
+  SENIOR_TECHNICIAN: [
     'canViewReports',
     'canViewServiceReports',
     'canViewOwnData',
-    'canViewTeamData'
+    'canViewTeamData',
   ],
-  'SERVICE_SUPERVISOR': [
+  SERVICE_SUPERVISOR: [
     'canViewReports',
     'canViewServiceReports',
     'canViewTeamData',
-    'canExportReports'
+    'canExportReports',
   ],
-  'SERVICE_MANAGER': [
+  SERVICE_MANAGER: [
     'canViewReports',
     'canViewServiceReports',
     'canViewLocationData',
     'canExportReports',
-    'canScheduleReports'
+    'canScheduleReports',
   ],
-  'REGIONAL_SERVICE_MANAGER': [
+  REGIONAL_SERVICE_MANAGER: [
     'canViewReports',
     'canViewServiceReports',
     'canViewRegionalData',
     'canExportReports',
-    'canScheduleReports'
+    'canScheduleReports',
   ],
-  'VP_SERVICE': [
+  VP_SERVICE: [
     'canViewReports',
     'canViewServiceReports',
     'canViewExecutiveReports',
@@ -134,24 +125,20 @@ const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
     'canExportReports',
     'canScheduleReports',
     'canCustomizeDashboards',
-    'canManageKPIs'
+    'canManageKPIs',
   ],
 
   // Finance Department
-  'ACCOUNTING_CLERK': [
-    'canViewReports',
-    'canViewFinanceReports',
-    'canViewLocationData'
-  ],
-  'FINANCE_MANAGER': [
+  ACCOUNTING_CLERK: ['canViewReports', 'canViewFinanceReports', 'canViewLocationData'],
+  FINANCE_MANAGER: [
     'canViewReports',
     'canViewFinanceReports',
     'canViewLocationData',
     'canViewSensitiveFinancials',
     'canExportReports',
-    'canScheduleReports'
+    'canScheduleReports',
   ],
-  'CFO': [
+  CFO: [
     'canViewReports',
     'canViewFinanceReports',
     'canViewExecutiveReports',
@@ -160,11 +147,11 @@ const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
     'canExportReports',
     'canScheduleReports',
     'canCustomizeDashboards',
-    'canManageKPIs'
+    'canManageKPIs',
   ],
 
   // Executive Level
-  'CEO': [
+  CEO: [
     'canViewReports',
     'canViewExecutiveReports',
     'canViewSalesReports',
@@ -177,9 +164,9 @@ const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
     'canScheduleReports',
     'canCustomizeDashboards',
     'canManageKPIs',
-    'canManageReportDefinitions'
+    'canManageReportDefinitions',
   ],
-  'BRANCH_MANAGER': [
+  BRANCH_MANAGER: [
     'canViewReports',
     'canViewExecutiveReports',
     'canViewSalesReports',
@@ -189,11 +176,11 @@ const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
     'canViewLocationData',
     'canExportReports',
     'canScheduleReports',
-    'canCustomizeDashboards'
+    'canCustomizeDashboards',
   ],
 
   // Platform Level
-  'PLATFORM_ADMIN': [
+  PLATFORM_ADMIN: [
     'canViewReports',
     'canViewExecutiveReports',
     'canViewSalesReports',
@@ -211,20 +198,20 @@ const ROLE_PERMISSION_MAPPING: Record<string, string[]> = {
     'canManageKPIs',
     'canManageReportDefinitions',
     'canViewAuditLogs',
-    'canManageUserAccess'
-  ]
+    'canManageUserAccess',
+  ],
 };
 
 // Department permission mapping
 const DEPARTMENT_PERMISSIONS: Record<string, string[]> = {
-  'sales': ['canViewSalesReports'],
-  'service': ['canViewServiceReports'],
-  'finance': ['canViewFinanceReports'],
-  'operations': ['canViewOperationsReports'],
-  'hr': ['canViewHRReports'],
-  'it': ['canViewITReports'],
-  'compliance': ['canViewComplianceReports'],
-  'admin': ['canViewExecutiveReports']
+  sales: ['canViewSalesReports'],
+  service: ['canViewServiceReports'],
+  finance: ['canViewFinanceReports'],
+  operations: ['canViewOperationsReports'],
+  hr: ['canViewHRReports'],
+  it: ['canViewITReports'],
+  compliance: ['canViewComplianceReports'],
+  admin: ['canViewExecutiveReports'],
 };
 
 // =====================================================================
@@ -235,7 +222,7 @@ const DEPARTMENT_PERMISSIONS: Record<string, string[]> = {
 export const enhanceUserContext = async (
   req: AuthenticatedRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     // Skip if user context already enhanced
@@ -255,7 +242,7 @@ export const enhanceUserContext = async (
         user: users,
         role: roles,
         location: locations,
-        region: regions
+        region: regions,
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
@@ -292,21 +279,20 @@ export const enhanceUserContext = async (
       regionIds,
       departmentIds,
       isPlatformUser: user.isPlatformUser || false,
-      
+
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       email: user.email || '',
-      
+
       managerId: user.managerId || undefined,
       teamId: user.teamId || undefined,
       primaryLocationId: user.primaryLocationId || undefined,
-      regionId: region?.id || undefined
+      regionId: region?.id || undefined,
     };
 
     // Attach enhanced context to request
     req.user = enhancedUser;
     next();
-
   } catch (error) {
     console.error('Error enhancing user context:', error);
     res.status(500).json({ error: 'Failed to authenticate user' });
@@ -321,10 +307,10 @@ export const requireReportPermission = (permission: string) => {
     }
 
     if (!req.user.permissions[permission]) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Insufficient permissions',
         required: permission,
-        userPermissions: Object.keys(req.user.permissions).filter(p => req.user!.permissions[p])
+        userPermissions: Object.keys(req.user.permissions).filter((p) => req.user!.permissions[p]),
       });
     }
 
@@ -339,14 +325,14 @@ export const requireAllPermissions = (permissions: string[]) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const missingPermissions = permissions.filter(perm => !req.user!.permissions[perm]);
-    
+    const missingPermissions = permissions.filter((perm) => !req.user!.permissions[perm]);
+
     if (missingPermissions.length > 0) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Insufficient permissions',
         required: permissions,
         missing: missingPermissions,
-        userPermissions: Object.keys(req.user.permissions).filter(p => req.user!.permissions[p])
+        userPermissions: Object.keys(req.user.permissions).filter((p) => req.user!.permissions[p]),
       });
     }
 
@@ -361,13 +347,13 @@ export const requireAnyPermission = (permissions: string[]) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const hasAnyPermission = permissions.some(perm => req.user!.permissions[perm]);
-    
+    const hasAnyPermission = permissions.some((perm) => req.user!.permissions[perm]);
+
     if (!hasAnyPermission) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Insufficient permissions',
         requiredAny: permissions,
-        userPermissions: Object.keys(req.user.permissions).filter(p => req.user!.permissions[p])
+        userPermissions: Object.keys(req.user.permissions).filter((p) => req.user!.permissions[p]),
       });
     }
 
@@ -386,7 +372,7 @@ async function getAccessibleLocationIds(user: any, role: any): Promise<string[]>
   // Platform users can access all locations across tenants
   if (user.isPlatformUser && role?.canAccessAllTenants) {
     const allLocations = await db.select({ id: locations.id }).from(locations);
-    return allLocations.map(l => l.id);
+    return allLocations.map((l) => l.id);
   }
 
   // Company-wide access (C-level)
@@ -395,7 +381,7 @@ async function getAccessibleLocationIds(user: any, role: any): Promise<string[]>
       .select({ id: locations.id })
       .from(locations)
       .where(eq(locations.tenantId, user.tenantId));
-    return companyLocations.map(l => l.id);
+    return companyLocations.map((l) => l.id);
   }
 
   // Regional access
@@ -403,13 +389,8 @@ async function getAccessibleLocationIds(user: any, role: any): Promise<string[]>
     const regionalLocations = await db
       .select({ id: locations.id })
       .from(locations)
-      .where(
-        and(
-          eq(locations.tenantId, user.tenantId),
-          eq(locations.regionId, user.regionId)
-        )
-      );
-    return regionalLocations.map(l => l.id);
+      .where(and(eq(locations.tenantId, user.tenantId), eq(locations.regionId, user.regionId)));
+    return regionalLocations.map((l) => l.id);
   }
 
   // Location access (default)
@@ -427,7 +408,7 @@ async function getAccessibleRegionIds(user: any, role: any): Promise<string[]> {
   // Platform users can access all regions
   if (user.isPlatformUser && role?.canAccessAllTenants) {
     const allRegions = await db.select({ id: regions.id }).from(regions);
-    return allRegions.map(r => r.id);
+    return allRegions.map((r) => r.id);
   }
 
   // Company-wide access
@@ -436,7 +417,7 @@ async function getAccessibleRegionIds(user: any, role: any): Promise<string[]> {
       .select({ id: regions.id })
       .from(regions)
       .where(eq(regions.tenantId, user.tenantId));
-    return companyRegions.map(r => r.id);
+    return companyRegions.map((r) => r.id);
   }
 
   // Regional access
@@ -489,13 +470,13 @@ function buildUserPermissions(role: any): Record<string, boolean> {
   // Add role-specific permissions
   const roleCode = role.code;
   const rolePermissions = ROLE_PERMISSION_MAPPING[roleCode] || [];
-  rolePermissions.forEach(perm => {
+  rolePermissions.forEach((perm) => {
     permissions[perm] = true;
   });
 
   // Add department permissions
   const deptPermissions = DEPARTMENT_PERMISSIONS[role.department] || [];
-  deptPermissions.forEach(perm => {
+  deptPermissions.forEach((perm) => {
     permissions[perm] = true;
   });
 
@@ -552,27 +533,27 @@ export class HierarchicalQueryBuilder {
 
   applyHierarchicalFilter(baseQuery: any, tableName?: string): any {
     const prefix = tableName ? `${tableName}.` : '';
-    
+
     switch (this.userContext.accessScope) {
       case 'platform':
         // Platform users can access all data
         return baseQuery;
-        
+
       case 'company':
         // Company-wide access
         return baseQuery.where(eq(`${prefix}tenant_id`, this.userContext.tenantId));
-        
+
       case 'regional':
         // Regional access
         return baseQuery.where(
           and(
             eq(`${prefix}tenant_id`, this.userContext.tenantId),
-            this.userContext.regionIds.length > 0 
+            this.userContext.regionIds.length > 0
               ? inArray(`${prefix}region_id`, this.userContext.regionIds)
-              : eq(`${prefix}region_id`, 'none') // Fallback to prevent data access
-          )
+              : eq(`${prefix}region_id`, 'none'), // Fallback to prevent data access
+          ),
         );
-        
+
       case 'location':
         // Location access
         return baseQuery.where(
@@ -580,10 +561,10 @@ export class HierarchicalQueryBuilder {
             eq(`${prefix}tenant_id`, this.userContext.tenantId),
             this.userContext.locationIds.length > 0
               ? inArray(`${prefix}location_id`, this.userContext.locationIds)
-              : eq(`${prefix}location_id`, 'none') // Fallback to prevent data access
-          )
+              : eq(`${prefix}location_id`, 'none'), // Fallback to prevent data access
+          ),
         );
-        
+
       case 'team':
         // Team access (location + team filter)
         return baseQuery.where(
@@ -592,21 +573,21 @@ export class HierarchicalQueryBuilder {
             this.userContext.locationIds.length > 0
               ? inArray(`${prefix}location_id`, this.userContext.locationIds)
               : eq(`${prefix}location_id`, 'none'),
-            this.userContext.teamId 
+            this.userContext.teamId
               ? eq(`${prefix}team_id`, this.userContext.teamId)
-              : eq(`${prefix}team_id`, 'none')
-          )
+              : eq(`${prefix}team_id`, 'none'),
+          ),
         );
-        
+
       case 'individual':
         // Individual access (user's own data)
         return baseQuery.where(
           and(
             eq(`${prefix}tenant_id`, this.userContext.tenantId),
-            eq(`${prefix}user_id`, this.userContext.id)
-          )
+            eq(`${prefix}user_id`, this.userContext.id),
+          ),
         );
-        
+
       default:
         // No access by default
         return baseQuery.where(eq('1', '0'));

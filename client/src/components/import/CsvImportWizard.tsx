@@ -178,6 +178,7 @@ export function CsvImportWizard({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [useAiRefinement, setUseAiRefinement] = useState(false);
   const [duplicateStrategy, setDuplicateStrategy] = useState<string>('prompt');
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, percentage: 0 });
   const [importJobId, setImportJobId] = useState<String | null>(null);
   const [columnMappings, setColumnMappings] = useState<ColumnMapping[]>([]);
   const [expandedErrors, setExpandedErrors] = useState(false);
@@ -289,21 +290,56 @@ export function CsvImportWizard({
     },
   });
 
-  // Execute import mutation
+  // Execute import mutation with batch processing
   const executeMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest(`/api/import/jobs/${importJobId}/execute`, 'POST');
+    mutationFn: async ({ startIndex = 0 }: { startIndex?: number } = {}) => {
+      const response = await fetch(getApiUrl(`/api/import/jobs/${importJobId}/execute`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await getAccessToken()}`,
+        },
+        body: JSON.stringify({ startIndex }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Import failed: ${response.statusText}`);
+      }
+
+      return await response.json();
     },
-    onSuccess: (data) => {
-      refetchJob();
-      setStep('complete');
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
-      if (onImportComplete) {
-        onImportComplete(data);
+    onSuccess: async (data) => {
+      // Update progress
+      const percentage = Math.round((data.processedRows / data.totalRows) * 100);
+      setImportProgress({
+        current: data.processedRows,
+        total: data.totalRows,
+        percentage,
+      });
+
+      // If there are more rows to process, continue with next batch
+      if (data.hasMore && data.nextIndex !== null) {
+        console.log(
+          `[CSV Import] Batch complete: ${data.processedRows}/${data.totalRows} rows (${percentage}%). Continuing...`,
+        );
+        // Continue with next batch
+        await executeMutation.mutateAsync({ startIndex: data.nextIndex });
+      } else {
+        // All done!
+        console.log(
+          `[CSV Import] Import complete: ${data.importedRows} imported, ${data.skippedRows} skipped, ${data.mergedRows} merged`,
+        );
+        setImportProgress({ current: data.totalRows, total: data.totalRows, percentage: 100 });
+        refetchJob();
+        setStep('complete');
+        queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
+        if (onImportComplete) {
+          onImportComplete(data);
+        }
       }
     },
     onError: (error: Error) => {
@@ -829,15 +865,38 @@ export function CsvImportWizard({
         return (
           <div className="space-y-4">
             {executeMutation.isPending || importJob?.status === 'processing' ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-muted-foreground">Importing records...</p>
-                {importJob && (
-                  <Progress
-                    value={((importJob.importedRows || 0) / (importJob.totalRows || 1)) * 100}
-                    className="w-64"
-                  />
-                )}
+              <div className="flex flex-col items-center justify-center py-12 space-y-6">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+
+                <div className="text-center space-y-2">
+                  <p className="text-lg font-medium">Importing records...</p>
+                  {importProgress.total > 0 && (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Processing {importProgress.current.toLocaleString()} of{' '}
+                        {importProgress.total.toLocaleString()} rows
+                      </p>
+                      <p className="text-2xl font-bold text-primary">
+                        {importProgress.percentage}%
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                <div className="w-full max-w-md space-y-2">
+                  <Progress value={importProgress.percentage} className="h-3" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>
+                      {importJob?.importedRows || 0} imported • {importJob?.mergedRows || 0} merged
+                      • {importJob?.skippedRows || 0} skipped
+                    </span>
+                    <span>{Math.ceil(importProgress.total / 100)} batches</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground max-w-md text-center">
+                  This may take several minutes for large imports. Please don't close this window.
+                </p>
               </div>
             ) : (
               <div className="text-center py-8 space-y-4">

@@ -1,28 +1,62 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Package, Edit3, Tag, DollarSign, Trash2, CheckSquare, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProductModelSchema, type ProductModel, type InsertProductModel } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import ManagementToolbar from "@/components/product-management/ManagementToolbar";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Plus,
+  Search,
+  Package,
+  Edit3,
+  Tag,
+  DollarSign,
+  Trash2,
+  CheckSquare,
+  Square,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  insertProductModelSchema,
+  type ProductModel,
+  type InsertProductModel,
+} from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import ManagementToolbar from '@/components/product-management/ManagementToolbar';
 
 export default function ProductModels() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ProductModel | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
@@ -43,15 +77,15 @@ export default function ProductModels() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
       setDialogOpen(false);
       toast({
-        title: "Success",
-        description: "Product model created successfully",
+        title: 'Success',
+        description: 'Product model created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create product model",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create product model',
+        variant: 'destructive',
       });
     },
   });
@@ -65,20 +99,20 @@ export default function ProductModels() {
       // Invalidate and refetch the query cache
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
       queryClient.refetchQueries({ queryKey: ['/api/product-models'] });
-      
+
       // Close the edit dialog and clear selectedModel
       setSelectedModel(null);
-      
+
       toast({
-        title: "Success",
-        description: "Product model updated successfully",
+        title: 'Success',
+        description: 'Product model updated successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update product model",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update product model',
+        variant: 'destructive',
       });
     },
   });
@@ -91,17 +125,18 @@ export default function ProductModels() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
       setSelectedModel(null);
       toast({
-        title: "Success",
-        description: "Product model deleted successfully",
+        title: 'Success',
+        description: 'Product model deleted successfully',
       });
     },
     onError: (error: any) => {
       console.error('Delete error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete product model";
+      const errorMessage =
+        error?.response?.data?.message || error?.message || 'Failed to delete product model';
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -115,17 +150,18 @@ export default function ProductModels() {
       setSelectedIds(new Set());
       setBulkMode(false);
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Successfully deleted ${selectedIds.size} product models`,
       });
     },
     onError: (error: any) => {
       console.error('Bulk delete error:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete product models";
+      const errorMessage =
+        error?.response?.data?.message || error?.message || 'Failed to delete product models';
       toast({
-        title: "Error",
+        title: 'Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -133,11 +169,11 @@ export default function ProductModels() {
   const form = useForm<InsertProductModel>({
     resolver: zodResolver(insertProductModelSchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
-      category: "MFP",
-      manufacturer: "Canon",
+      tenantId: '',
+      productCode: '',
+      productName: '',
+      category: 'MFP',
+      manufacturer: 'Canon',
       description: null,
       msrp: null,
       colorSpeed: null,
@@ -172,7 +208,7 @@ export default function ProductModels() {
     if (selectedIds.size === filteredModels.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredModels.map(model => model.id)));
+      setSelectedIds(new Set(filteredModels.map((model) => model.id)));
     }
   };
 
@@ -193,11 +229,16 @@ export default function ProductModels() {
     }
   };
 
-  const filteredModels = models.filter(model => {
-    const matchesSearch = (model.productName || model.modelName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (model.productCode || model.modelCode || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (model.manufacturer || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || model.category === selectedCategory;
+  const filteredModels = models.filter((model) => {
+    const matchesSearch =
+      (model.productName || model.modelName || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (model.productCode || model.modelCode || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (model.manufacturer || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || model.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
@@ -229,10 +270,10 @@ export default function ProductModels() {
     }
   }, [selectedModel, editForm]);
 
-  const categories = Array.from(new Set(models.map(m => m.category))).filter(Boolean);
+  const categories = Array.from(new Set(models.map((m) => m.category))).filter(Boolean);
 
   const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -255,13 +296,17 @@ export default function ProductModels() {
               <CardTitle className="text-lg">{model.productName || model.modelName}</CardTitle>
               <CardDescription>
                 <span className="font-medium">{model.productCode || model.modelCode}</span>
-                {model.manufacturer && <span className="ml-2 text-muted-foreground">• {model.manufacturer}</span>}
+                {model.manufacturer && (
+                  <span className="ml-2 text-muted-foreground">• {model.manufacturer}</span>
+                )}
               </CardDescription>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {model.isActive ? (
-              <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+              <Badge variant="default" className="bg-green-100 text-green-800">
+                Active
+              </Badge>
             ) : (
               <Badge variant="secondary">Inactive</Badge>
             )}
@@ -276,9 +321,7 @@ export default function ProductModels() {
         </div>
 
         {model.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {model.description}
-          </p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{model.description}</p>
         )}
 
         <div className="grid grid-cols-2 gap-4 pt-2">
@@ -331,8 +374,8 @@ export default function ProductModels() {
 
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => {
                 console.log('Setting selected model:', model);
@@ -342,8 +385,8 @@ export default function ProductModels() {
               <Edit3 className="h-4 w-4 mr-1" />
               View
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               size="sm"
               onClick={() => deleteModelMutation.mutate(model.id)}
             >
@@ -380,7 +423,8 @@ export default function ProductModels() {
             <DialogHeader>
               <DialogTitle>Add New Product Model</DialogTitle>
               <DialogDescription>
-                Create a new product model including copiers, production equipment, MFPs, and other devices with pricing information
+                Create a new product model including copiers, production equipment, MFPs, and other
+                devices with pricing information
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -446,7 +490,7 @@ export default function ProductModels() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Manufacturer</FormLabel>
-                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -472,7 +516,7 @@ export default function ProductModels() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Color Mode</FormLabel>
-                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -497,9 +541,9 @@ export default function ProductModels() {
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="High-performance production printer with advanced finishing options..."
-                          value={field.value || ""}
+                          value={field.value || ''}
                           onChange={field.onChange}
                         />
                       </FormControl>
@@ -515,9 +559,9 @@ export default function ProductModels() {
                     <FormItem>
                       <FormLabel>Required Accessories</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Enter comma-separated accessory codes (e.g., 6611C002AA, 6612C002AA)"
-                          value={field.value || ""}
+                          value={field.value || ''}
                           onChange={field.onChange}
                         />
                       </FormControl>
@@ -534,7 +578,11 @@ export default function ProductModels() {
                       <FormItem>
                         <FormLabel>Color Speed (ppm)</FormLabel>
                         <FormControl>
-                          <Input placeholder="100" value={field.value || ""} onChange={field.onChange} />
+                          <Input
+                            placeholder="100"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -547,7 +595,11 @@ export default function ProductModels() {
                       <FormItem>
                         <FormLabel>B/W Speed (ppm)</FormLabel>
                         <FormControl>
-                          <Input placeholder="120" value={field.value || ""} onChange={field.onChange} />
+                          <Input
+                            placeholder="120"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -559,7 +611,7 @@ export default function ProductModels() {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold">Pricing Information</h3>
-                  
+
                   <FormField
                     control={form.control}
                     name="msrp"
@@ -567,7 +619,13 @@ export default function ProductModels() {
                       <FormItem>
                         <FormLabel>MSRP ($)</FormLabel>
                         <FormControl>
-                          <Input type="number" step="0.01" placeholder="171930.00" value={field.value || ""} onChange={field.onChange} />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="171930.00"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -583,12 +641,11 @@ export default function ProductModels() {
                           render={({ field }) => (
                             <FormItem className="flex items-center space-x-2">
                               <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                               </FormControl>
-                              <FormLabel className="text-sm font-medium">New Pricing Tier</FormLabel>
+                              <FormLabel className="text-sm font-medium">
+                                New Pricing Tier
+                              </FormLabel>
                             </FormItem>
                           )}
                         />
@@ -601,7 +658,13 @@ export default function ProductModels() {
                             <FormItem>
                               <FormLabel>New Rep Price ($)</FormLabel>
                               <FormControl>
-                                <Input type="number" step="0.01" placeholder="0.00" value={field.value || ""} onChange={field.onChange} />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -618,12 +681,11 @@ export default function ProductModels() {
                           render={({ field }) => (
                             <FormItem className="flex items-center space-x-2">
                               <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                               </FormControl>
-                              <FormLabel className="text-sm font-medium">Upgrade Pricing Tier</FormLabel>
+                              <FormLabel className="text-sm font-medium">
+                                Upgrade Pricing Tier
+                              </FormLabel>
                             </FormItem>
                           )}
                         />
@@ -636,7 +698,13 @@ export default function ProductModels() {
                             <FormItem>
                               <FormLabel>Upgrade Rep Price ($)</FormLabel>
                               <FormControl>
-                                <Input type="number" step="0.01" placeholder="0.00" value={field.value || ""} onChange={field.onChange} />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -653,12 +721,11 @@ export default function ProductModels() {
                           render={({ field }) => (
                             <FormItem className="flex items-center space-x-2">
                               <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
+                                <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                               </FormControl>
-                              <FormLabel className="text-sm font-medium">Lexmark Pricing Tier</FormLabel>
+                              <FormLabel className="text-sm font-medium">
+                                Lexmark Pricing Tier
+                              </FormLabel>
                             </FormItem>
                           )}
                         />
@@ -671,7 +738,13 @@ export default function ProductModels() {
                             <FormItem>
                               <FormLabel>Lexmark Rep Price ($)</FormLabel>
                               <FormControl>
-                                <Input type="number" step="0.01" placeholder="0.00" value={field.value || ""} onChange={field.onChange} />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -687,7 +760,7 @@ export default function ProductModels() {
                     Cancel
                   </Button>
                   <Button type="submit" disabled={createModelMutation.isPending}>
-                    {createModelMutation.isPending ? "Creating..." : "Create Model"}
+                    {createModelMutation.isPending ? 'Creating...' : 'Create Model'}
                   </Button>
                 </div>
               </form>
@@ -712,485 +785,515 @@ export default function ProductModels() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Button
-            variant={bulkMode ? "default" : "outline"}
+            variant={bulkMode ? 'default' : 'outline'}
             onClick={() => {
               setBulkMode(!bulkMode);
               setSelectedIds(new Set());
             }}
             data-testid="button-bulk-mode"
           >
-            {bulkMode ? <Square className="h-4 w-4 mr-2" /> : <CheckSquare className="h-4 w-4 mr-2" />}
-            {bulkMode ? "Exit Bulk" : "Bulk Select"}
+            {bulkMode ? (
+              <Square className="h-4 w-4 mr-2" />
+            ) : (
+              <CheckSquare className="h-4 w-4 mr-2" />
+            )}
+            {bulkMode ? 'Exit Bulk' : 'Bulk Select'}
           </Button>
         </div>
 
-      {/* Bulk Operations Toolbar */}
-      {bulkMode && (
-        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
-          <div className="flex items-center gap-4">
-            <Checkbox
-              checked={selectedIds.size === filteredModels.length && filteredModels.length > 0}
-              onCheckedChange={toggleAllSelection}
-              data-testid="checkbox-select-all"
-            />
-            <span className="text-sm text-muted-foreground">
-              {selectedIds.size === 0 
-                ? "Select items to perform bulk operations"
-                : `${selectedIds.size} of ${filteredModels.length} items selected`
-              }
-            </span>
+        {/* Bulk Operations Toolbar */}
+        {bulkMode && (
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+            <div className="flex items-center gap-4">
+              <Checkbox
+                checked={selectedIds.size === filteredModels.length && filteredModels.length > 0}
+                onCheckedChange={toggleAllSelection}
+                data-testid="checkbox-select-all"
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedIds.size === 0
+                  ? 'Select items to perform bulk operations'
+                  : `${selectedIds.size} of ${filteredModels.length} items selected`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
+                onClick={handleBulkDelete}
+                data-testid="button-bulk-delete"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {bulkDeleteMutation.isPending
+                  ? `Deleting ${selectedIds.size}...`
+                  : `Delete ${selectedIds.size} Selected`}
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={selectedIds.size === 0 || bulkDeleteMutation.isPending}
-              onClick={handleBulkDelete}
-              data-testid="button-bulk-delete"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {bulkDeleteMutation.isPending 
-                ? `Deleting ${selectedIds.size}...` 
-                : `Delete ${selectedIds.size} Selected`
-              }
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Models Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader>
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-                <div className="h-3 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-3 bg-muted rounded"></div>
-                  <div className="h-3 bg-muted rounded w-5/6"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : filteredModels.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-8">
-          <Package className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Product Models Found</h3>
-          <p className="text-muted-foreground text-center mb-4">
-            {searchTerm || selectedCategory !== "all" 
-              ? "No models match your current filters. Try adjusting your search criteria."
-              : "Get started by adding your first product model to the catalog."
-            }
-          </p>
-          {!searchTerm && selectedCategory === "all" && (
-            <Button onClick={() => setDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Model
-            </Button>
-          )}
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredModels.map((model) => (
-            <ModelCard key={model.id} model={model} />
-          ))}
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          {filteredModels.length} of {models.length} models
-        </span>
-        <span>
-          {models.filter(m => m.isActive).length} active models
-        </span>
-      </div>
-
-      {/* Edit Model Dialog */}
-      <Dialog open={!!selectedModel} onOpenChange={() => setSelectedModel(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Product Model</DialogTitle>
-            <DialogDescription>
-              Update {selectedModel?.productName} details and pricing information
-            </DialogDescription>
-          </DialogHeader>
-          {selectedModel && (
-            <Form {...editForm}>
-              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="productCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product Code</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="productName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select value={field.value || ""} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="MFP">MFP</SelectItem>
-                            <SelectItem value="Printer">Printer</SelectItem>
-                            <SelectItem value="Production Printer">Production Printer</SelectItem>
-                            <SelectItem value="Production">Production</SelectItem>
-                            <SelectItem value="Wide Format">Wide Format</SelectItem>
-                            <SelectItem value="Desktop">Desktop</SelectItem>
-                            <SelectItem value="Software">Software</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="manufacturer"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Manufacturer</FormLabel>
-                        <Select value={field.value || ""} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Canon">Canon</SelectItem>
-                            <SelectItem value="Ricoh">Ricoh</SelectItem>
-                            <SelectItem value="HP">HP</SelectItem>
-                            <SelectItem value="Xerox">Xerox</SelectItem>
-                            <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
-                            <SelectItem value="Kyocera">Kyocera</SelectItem>
-                            <SelectItem value="Duplo">Duplo</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="colorMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Color Mode</FormLabel>
-                        <Select value={field.value || ""} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Color">Color</SelectItem>
-                            <SelectItem value="Monochrome">Monochrome</SelectItem>
-                            <SelectItem value="B/W">B/W</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={editForm.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={editForm.control}
-                  name="requiredAccessories"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Required Accessories</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter comma-separated accessory codes (e.g., 6611C002AA, 6612C002AA)"
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={editForm.control}
-                    name="colorSpeed"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Color Speed (ppm)</FormLabel>
-                        <FormControl>
-                          <Input value={field.value || ""} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="bwSpeed"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>B/W Speed (ppm)</FormLabel>
-                        <FormControl>
-                          <Input value={field.value || ""} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editForm.control}
-                    name="productFamily"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Product Family</FormLabel>
-                        <FormControl>
-                          <Input value={field.value || ""} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Pricing Information</h3>
-                  
-                  <FormField
-                    control={editForm.control}
-                    name="msrp"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>MSRP ($)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <FormField
-                          control={editForm.control}
-                          name="newActive"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormLabel className="text-sm font-medium">New Pricing Tier</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      {editForm.watch('newActive') && (
-                        <FormField
-                          control={editForm.control}
-                          name="newRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>New Rep Price ($)</FormLabel>
-                              <FormControl>
-                                <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <FormField
-                          control={editForm.control}
-                          name="upgradeActive"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormLabel className="text-sm font-medium">Upgrade Pricing Tier</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      {editForm.watch('upgradeActive') && (
-                        <FormField
-                          control={editForm.control}
-                          name="upgradeRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Upgrade Rep Price ($)</FormLabel>
-                              <FormControl>
-                                <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2">
-                        <FormField
-                          control={editForm.control}
-                          name="lexmarkActive"
-                          render={({ field }) => (
-                            <FormItem className="flex items-center space-x-2">
-                              <FormControl>
-                                <Switch
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                              </FormControl>
-                              <FormLabel className="text-sm font-medium">Lexmark Pricing Tier</FormLabel>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      {editForm.watch('lexmarkActive') && (
-                        <FormField
-                          control={editForm.control}
-                          name="lexmarkRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Lexmark Rep Price ($)</FormLabel>
-                              <FormControl>
-                                <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-                    </div>
+        {/* Models Grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-4 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-1/2"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="h-3 bg-muted rounded"></div>
+                    <div className="h-3 bg-muted rounded w-5/6"></div>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredModels.length === 0 ? (
+          <Card className="flex flex-col items-center justify-center p-8">
+            <Package className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Product Models Found</h3>
+            <p className="text-muted-foreground text-center mb-4">
+              {searchTerm || selectedCategory !== 'all'
+                ? 'No models match your current filters. Try adjusting your search criteria.'
+                : 'Get started by adding your first product model to the catalog.'}
+            </p>
+            {!searchTerm && selectedCategory === 'all' && (
+              <Button onClick={() => setDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Model
+              </Button>
+            )}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredModels.map((model) => (
+              <ModelCard key={model.id} model={model} />
+            ))}
+          </div>
+        )}
 
-                  <div className="flex items-center space-x-2">
+        {/* Stats */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            {filteredModels.length} of {models.length} models
+          </span>
+          <span>{models.filter((m) => m.isActive).length} active models</span>
+        </div>
+
+        {/* Edit Model Dialog */}
+        <Dialog open={!!selectedModel} onOpenChange={() => setSelectedModel(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Product Model</DialogTitle>
+              <DialogDescription>
+                Update {selectedModel?.productName} details and pricing information
+              </DialogDescription>
+            </DialogHeader>
+            {selectedModel && (
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
-                      name="isActive"
+                      name="productCode"
                       render={({ field }) => (
-                        <FormItem className="flex items-center space-x-2">
+                        <FormItem>
+                          <FormLabel>Product Code</FormLabel>
                           <FormControl>
-                            <Switch
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Input {...field} />
                           </FormControl>
-                          <FormLabel className="text-sm font-medium">Active Product</FormLabel>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="productName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                </div>
 
-                <div className="flex justify-between">
-                  <Button 
-                    type="button" 
-                    variant="destructive" 
-                    onClick={() => {
-                      if (selectedModel && confirm('Are you sure you want to delete this product model? This action cannot be undone.')) {
-                        console.log('Deleting model with ID:', selectedModel.id);
-                        deleteModelMutation.mutate(selectedModel.id);
-                      } else {
-                        console.log('Delete cancelled or selectedModel is null:', selectedModel);
-                      }
-                    }}
-                    disabled={deleteModelMutation.isPending}
-                    data-testid="button-delete-model"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {deleteModelMutation.isPending ? "Deleting..." : "Delete"}
-                  </Button>
-                  <div className="flex space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setSelectedModel(null)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={updateModelMutation.isPending}>
-                      {updateModelMutation.isPending ? "Saving..." : "Save Changes"}
-                    </Button>
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="MFP">MFP</SelectItem>
+                              <SelectItem value="Printer">Printer</SelectItem>
+                              <SelectItem value="Production Printer">Production Printer</SelectItem>
+                              <SelectItem value="Production">Production</SelectItem>
+                              <SelectItem value="Wide Format">Wide Format</SelectItem>
+                              <SelectItem value="Desktop">Desktop</SelectItem>
+                              <SelectItem value="Software">Software</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="manufacturer"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Manufacturer</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Canon">Canon</SelectItem>
+                              <SelectItem value="Ricoh">Ricoh</SelectItem>
+                              <SelectItem value="HP">HP</SelectItem>
+                              <SelectItem value="Xerox">Xerox</SelectItem>
+                              <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
+                              <SelectItem value="Kyocera">Kyocera</SelectItem>
+                              <SelectItem value="Duplo">Duplo</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="colorMode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Color Mode</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Color">Color</SelectItem>
+                              <SelectItem value="Monochrome">Monochrome</SelectItem>
+                              <SelectItem value="B/W">B/W</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </div>
-              </form>
-            </Form>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+
+                  <FormField
+                    control={editForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea value={field.value || ''} onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="requiredAccessories"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Required Accessories</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter comma-separated accessory codes (e.g., 6611C002AA, 6612C002AA)"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="colorSpeed"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Color Speed (ppm)</FormLabel>
+                          <FormControl>
+                            <Input value={field.value || ''} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="bwSpeed"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>B/W Speed (ppm)</FormLabel>
+                          <FormControl>
+                            <Input value={field.value || ''} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={editForm.control}
+                      name="productFamily"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Family</FormLabel>
+                          <FormControl>
+                            <Input value={field.value || ''} onChange={field.onChange} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Pricing Information</h3>
+
+                    <FormField
+                      control={editForm.control}
+                      name="msrp"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>MSRP ($)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <FormField
+                            control={editForm.control}
+                            name="newActive"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Switch
+                                    checked={!!field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-medium">
+                                  New Pricing Tier
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        {editForm.watch('newActive') && (
+                          <FormField
+                            control={editForm.control}
+                            name="newRepPrice"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>New Rep Price ($)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <FormField
+                            control={editForm.control}
+                            name="upgradeActive"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Switch
+                                    checked={!!field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-medium">
+                                  Upgrade Pricing Tier
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        {editForm.watch('upgradeActive') && (
+                          <FormField
+                            control={editForm.control}
+                            name="upgradeRepPrice"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Upgrade Rep Price ($)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <FormField
+                            control={editForm.control}
+                            name="lexmarkActive"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Switch
+                                    checked={!!field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormLabel className="text-sm font-medium">
+                                  Lexmark Pricing Tier
+                                </FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        {editForm.watch('lexmarkActive') && (
+                          <FormField
+                            control={editForm.control}
+                            name="lexmarkRepPrice"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Lexmark Rep Price ($)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <FormField
+                        control={editForm.control}
+                        name="isActive"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                            <FormLabel className="text-sm font-medium">Active Product</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        if (
+                          selectedModel &&
+                          confirm(
+                            'Are you sure you want to delete this product model? This action cannot be undone.',
+                          )
+                        ) {
+                          console.log('Deleting model with ID:', selectedModel.id);
+                          deleteModelMutation.mutate(selectedModel.id);
+                        } else {
+                          console.log('Delete cancelled or selectedModel is null:', selectedModel);
+                        }
+                      }}
+                      disabled={deleteModelMutation.isPending}
+                      data-testid="button-delete-model"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {deleteModelMutation.isPending ? 'Deleting...' : 'Delete'}
+                    </Button>
+                    <div className="flex space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setSelectedModel(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={updateModelMutation.isPending}>
+                        {updateModelMutation.isPending ? 'Saving...' : 'Save Changes'}
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </Form>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
     </MainLayout>
   );
 }

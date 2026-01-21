@@ -14,7 +14,9 @@ function isAdminOrManager(user: any): boolean {
   if (!user?.role) return false;
   const role = user.role || '';
   const roleLower = role.toLowerCase();
-  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+  return (
+    roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive')
+  );
 }
 
 // Helper function to check if user can manage scoring rules
@@ -33,7 +35,9 @@ router.post('/rules', async (req: Request, res: Response) => {
 
   // Check for admin/manager role
   if (!canManageScoringRules(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
   }
 
   try {
@@ -116,7 +120,9 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
 
   // Check for admin/manager role
   if (!canManageScoringRules(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
   }
 
   try {
@@ -147,7 +153,9 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
 
   // Check for admin/manager role
   if (!canManageScoringRules(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to manage scoring rules' });
   }
 
   try {
@@ -175,7 +183,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    
+
     // Get the lead to verify access
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
@@ -295,7 +303,8 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
     bantScore = Math.min(bantScore, 25);
 
     // Calculate total score (0-100)
-    const totalScore = demographicScore + firmographicScore + behavioralScore + engagementScore + (bantScore * 0.8);
+    const totalScore =
+      demographicScore + firmographicScore + behavioralScore + engagementScore + bantScore * 0.8;
     const cappedTotalScore = Math.min(Math.round(totalScore), 100);
 
     // Determine lead grade
@@ -373,7 +382,7 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -406,7 +415,7 @@ router.get('/score/:leadId/history', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.params;
     const limit = parseInt(req.query.limit as string) || 50;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -430,21 +439,23 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 100;
     const topLeads = await storage.getTopScoredLeads(user.tenantId, limit);
-    
+
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
       topLeads.map(async (score) => {
         const lead = await storage.getBusinessRecord(score.leadId);
         return {
           ...score,
-          lead: lead ? {
-            id: lead.id,
-            companyName: lead.companyName,
-            status: lead.status,
-            ownerId: lead.ownerId,
-          } : null,
+          lead: lead
+            ? {
+                id: lead.id,
+                companyName: lead.companyName,
+                status: lead.status,
+                ownerId: lead.ownerId,
+              }
+            : null,
         };
-      })
+      }),
     );
 
     res.json(enrichedLeads);
@@ -464,21 +475,23 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
   try {
     const { grade } = req.params;
     const leads = await storage.getLeadsByGrade(user.tenantId, grade);
-    
+
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
       leads.map(async (score) => {
         const lead = await storage.getBusinessRecord(score.leadId);
         return {
           ...score,
-          lead: lead ? {
-            id: lead.id,
-            companyName: lead.companyName,
-            status: lead.status,
-            ownerId: lead.ownerId,
-          } : null,
+          lead: lead
+            ? {
+                id: lead.id,
+                companyName: lead.companyName,
+                status: lead.status,
+                ownerId: lead.ownerId,
+              }
+            : null,
         };
-      })
+      }),
     );
 
     res.json(enrichedLeads);
@@ -499,7 +512,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -510,10 +523,20 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
     // Calculate individual component scores based on the data
     const budgetScore = data.budgetIdentified ? (data.budgetApproved ? 25 : 15) : 0;
     const authorityScore = data.decisionMakerIdentified ? 25 : 0;
-    const needScore = data.needIdentified ? 
-      (data.needUrgency === 'critical' ? 25 : data.needUrgency === 'high' ? 20 : 15) : 0;
-    const timelineScore = data.timelineIdentified ?
-      (data.decisionTimeline === 'immediate' ? 25 : data.decisionTimeline === '30_days' ? 20 : 15) : 0;
+    const needScore = data.needIdentified
+      ? data.needUrgency === 'critical'
+        ? 25
+        : data.needUrgency === 'high'
+          ? 20
+          : 15
+      : 0;
+    const timelineScore = data.timelineIdentified
+      ? data.decisionTimeline === 'immediate'
+        ? 25
+        : data.decisionTimeline === '30_days'
+          ? 20
+          : 15
+      : 0;
 
     const totalBantScore = budgetScore + authorityScore + needScore + timelineScore;
 
@@ -535,9 +558,10 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
       qualificationStatus,
       assessedBy: user.id,
       lastAssessedAt: new Date(),
-      qualifiedDate: qualificationStatus === 'qualified' || qualificationStatus === 'highly_qualified' 
-        ? new Date() 
-        : null,
+      qualifiedDate:
+        qualificationStatus === 'qualified' || qualificationStatus === 'highly_qualified'
+          ? new Date()
+          : null,
     };
 
     // Check if BANT already exists
@@ -584,7 +608,7 @@ router.get('/bant/:leadId', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -612,21 +636,23 @@ router.get('/qualified', async (req: Request, res: Response) => {
   try {
     const minScore = parseInt(req.query.minScore as string) || 50;
     const qualifiedLeads = await storage.getQualifiedLeads(user.tenantId, minScore);
-    
+
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
       qualifiedLeads.map(async (qualification) => {
         const lead = await storage.getBusinessRecord(qualification.leadId);
         return {
           ...qualification,
-          lead: lead ? {
-            id: lead.id,
-            companyName: lead.companyName,
-            status: lead.status,
-            ownerId: lead.ownerId,
-          } : null,
+          lead: lead
+            ? {
+                id: lead.id,
+                companyName: lead.companyName,
+                status: lead.status,
+                ownerId: lead.ownerId,
+              }
+            : null,
         };
-      })
+      }),
     );
 
     res.json(enrichedLeads);
@@ -647,7 +673,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -681,7 +707,7 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.params;
     const limit = parseInt(req.query.limit as string) || 100;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
@@ -706,7 +732,9 @@ router.get('/analytics', async (req: Request, res: Response) => {
 
   // Check for admin/manager role for analytics
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
   }
 
   try {
@@ -727,7 +755,9 @@ router.get('/bant-analytics', async (req: Request, res: Response) => {
 
   // Check for admin/manager role for analytics
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
   }
 
   try {
@@ -748,7 +778,7 @@ router.get('/qualification-history/:leadId', async (req: Request, res: Response)
 
   try {
     const { leadId } = req.params;
-    
+
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });

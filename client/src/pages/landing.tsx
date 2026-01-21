@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function Landing() {
   return (
@@ -10,14 +10,15 @@ export default function Landing() {
             <div className="w-16 h-16 bg-primary-600 rounded-xl flex items-center justify-center mx-auto mb-6">
               <i className="fas fa-print text-white text-2xl"></i>
             </div>
-            
+
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Printyx</h1>
             <p className="text-gray-600 mb-8">
-              The unified copier dealer management platform that consolidates your CRM, billing, service dispatch, and inventory management.
+              The unified copier dealer management platform that consolidates your CRM, billing,
+              service dispatch, and inventory management.
             </p>
-            
+
             <div className="space-y-4">
-              <Button 
+              <Button
                 onClick={() => {
                   localStorage.setItem('demo-authenticated', 'true');
                   window.location.reload();
@@ -27,12 +28,12 @@ export default function Landing() {
               >
                 Access Demo Dashboard
               </Button>
-              
+
               <div className="text-sm text-gray-500">
                 Replace fragmented legacy systems with one modern solution
               </div>
             </div>
-            
+
             <div className="mt-8 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="text-center">

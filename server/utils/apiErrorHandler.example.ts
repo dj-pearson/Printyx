@@ -57,11 +57,14 @@ export const createCustomer = asyncHandler(async (req: Request, res: Response) =
     return ApiErrorHandlers.conflict(res, 'Customer with this email');
   }
 
-  const newCustomer = await db.insert(customers).values({
-    name,
-    email,
-    phone,
-  }).returning();
+  const newCustomer = await db
+    .insert(customers)
+    .values({
+      name,
+      email,
+      phone,
+    })
+    .returning();
 
   return sendSuccess(res, newCustomer[0], 'Customer created successfully', 201);
 });
@@ -75,7 +78,8 @@ export async function updateCustomer(req: Request, res: Response) {
     const { id } = req.params;
     const updates = req.body;
 
-    const result = await db.update(customers)
+    const result = await db
+      .update(customers)
       .set(updates)
       .where(eq(customers.id, parseInt(id)))
       .returning();
@@ -106,7 +110,7 @@ export async function syncWithQuickBooks(req: Request, res: Response) {
       return ApiErrorHandlers.externalService(
         res,
         'QuickBooks',
-        new Error(`QuickBooks API returned ${response.status}`)
+        new Error(`QuickBooks API returned ${response.status}`),
       );
     }
 
@@ -158,8 +162,9 @@ export async function createInvoice(req: Request, res: Response) {
     }
 
     // Calculate actual total
-    const calculatedTotal = items.reduce((sum: number, item: any) =>
-      sum + (item.quantity * item.price), 0
+    const calculatedTotal = items.reduce(
+      (sum: number, item: any) => sum + item.quantity * item.price,
+      0,
     );
 
     if (Math.abs(calculatedTotal - total) > 0.01) {
@@ -168,7 +173,7 @@ export async function createInvoice(req: Request, res: Response) {
         new Error(`Total mismatch: expected ${calculatedTotal}, got ${total}`),
         'validate invoice total',
         400,
-        ErrorCodes.VALIDATION_ERROR
+        ErrorCodes.VALIDATION_ERROR,
       );
     }
 
@@ -195,19 +200,23 @@ router.post('/customers', createCustomer);
 router.put('/customers/:id', asyncHandler(updateCustomer));
 
 // Method 3: Inline with async handler
-router.delete('/customers/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+router.delete(
+  '/customers/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
 
-  const result = await db.delete(customers)
-    .where(eq(customers.id, parseInt(id)))
-    .returning();
+    const result = await db
+      .delete(customers)
+      .where(eq(customers.id, parseInt(id)))
+      .returning();
 
-  if (!result.length) {
-    return ApiErrorHandlers.notFound(res, 'Customer');
-  }
+    if (!result.length) {
+      return ApiErrorHandlers.notFound(res, 'Customer');
+    }
 
-  return sendSuccess(res, { deleted: true }, 'Customer deleted successfully');
-}));
+    return sendSuccess(res, { deleted: true }, 'Customer deleted successfully');
+  }),
+);
 
 export default router;
 

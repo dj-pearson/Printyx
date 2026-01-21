@@ -1,23 +1,17 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -26,37 +20,48 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Plus, Receipt, Calendar, DollarSign, Eye, Download, Send, Search, Filter, X } from "lucide-react";
-import type { Invoice, Contract, Customer } from "@shared/schema";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
+} from '@/components/ui/dialog';
+import {
+  Plus,
+  Receipt,
+  Calendar,
+  DollarSign,
+  Eye,
+  Download,
+  Send,
+  Search,
+  Filter,
+  X,
+} from 'lucide-react';
+import type { Invoice, Contract, Customer } from '@shared/schema';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
 
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedContractId, setSelectedContractId] = useState<string>("");
-  const [billingPeriodStart, setBillingPeriodStart] = useState<string>("");
-  const [billingPeriodEnd, setBillingPeriodEnd] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [selectedContractId, setSelectedContractId] = useState<string>('');
+  const [billingPeriodStart, setBillingPeriodStart] = useState<string>('');
+  const [billingPeriodEnd, setBillingPeriodEnd] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
   const queryClient = useQueryClient();
 
   const { data: invoices, isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
-    queryKey: ["/api/billing/invoices"],
+    queryKey: ['/api/billing/invoices'],
   });
 
   const { data: contracts } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts"],
+    queryKey: ['/api/contracts'],
   });
 
   const { data: customers } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
+    queryKey: ['/api/customers'],
   });
 
   const generateInvoiceMutation = useMutation({
@@ -64,42 +69,47 @@ export default function Invoices() {
       contractId: string;
       billingPeriodStart: string;
       billingPeriodEnd: string;
-    }) => apiRequest("/api/billing/invoices/generate-from-contract", "POST", data),
+    }) => apiRequest('/api/billing/invoices/generate-from-contract', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
       setIsGenerateDialogOpen(false);
-      setSelectedContractId("");
-      setBillingPeriodStart("");
-      setBillingPeriodEnd("");
+      setSelectedContractId('');
+      setBillingPeriodStart('');
+      setBillingPeriodEnd('');
     },
   });
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) =>
-      apiRequest(`/api/billing/invoices/${id}`, "PATCH", { status }),
+      apiRequest(`/api/billing/invoices/${id}`, 'PATCH', { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
     },
   });
 
   const recordPaymentMutation = useMutation({
-    mutationFn: async ({ id, amount, paymentDate, paymentMethod }: {
+    mutationFn: async ({
+      id,
+      amount,
+      paymentDate,
+      paymentMethod,
+    }: {
       id: string;
       amount: string;
       paymentDate: string;
       paymentMethod: string;
     }) =>
-      apiRequest(`/api/billing/invoices/${id}/pay`, "POST", {
+      apiRequest(`/api/billing/invoices/${id}/pay`, 'POST', {
         amount: parseFloat(amount),
         paymentDate,
         paymentMethod,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
       setIsPaymentDialogOpen(false);
-      setPaymentAmount("");
-      setPaymentDate("");
-      setPaymentMethod("");
+      setPaymentAmount('');
+      setPaymentDate('');
+      setPaymentMethod('');
       setSelectedInvoice(null);
     },
   });
@@ -127,21 +137,21 @@ export default function Invoices() {
 
   const getCustomerName = (customerId: string) => {
     const customer = customers?.find((c) => c.id === customerId);
-    return customer?.name || "Unknown Customer";
+    return customer?.name || 'Unknown Customer';
   };
 
   const getContractNumber = (contractId: string) => {
     const contract = contracts?.find((c) => c.id === contractId);
-    return contract?.contractNumber || "Unknown Contract";
+    return contract?.contractNumber || 'Unknown Contract';
   };
 
   const getStatusBadge = (status: string) => {
     const colors = {
-      draft: "bg-gray-100 text-gray-800",
-      sent: "bg-blue-100 text-blue-800",
-      paid: "bg-green-100 text-green-800",
-      overdue: "bg-red-100 text-red-800",
-      pending: "bg-yellow-100 text-yellow-800",
+      draft: 'bg-gray-100 text-gray-800',
+      sent: 'bg-blue-100 text-blue-800',
+      paid: 'bg-green-100 text-green-800',
+      overdue: 'bg-red-100 text-red-800',
+      pending: 'bg-yellow-100 text-yellow-800',
     } as const;
 
     return (
@@ -166,7 +176,7 @@ export default function Invoices() {
       invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       getCustomerName(invoice.customerId).toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || invoice.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -197,10 +207,7 @@ export default function Invoices() {
   }
 
   return (
-    <MainLayout
-      title="Invoices"
-      description="Manage billing and invoice generation"
-    >
+    <MainLayout title="Invoices" description="Manage billing and invoice generation">
       <div className="space-y-4 p-4 sm:p-6">
         {/* Header Section - Mobile Optimized */}
         <div className="space-y-3 sm:space-y-4">
@@ -211,14 +218,9 @@ export default function Invoices() {
                 Generate and manage customer invoices
               </p>
             </div>
-            <Dialog
-              open={isGenerateDialogOpen}
-              onOpenChange={setIsGenerateDialogOpen}
-            >
+            <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
               <DialogTrigger asChild>
-                <Button
-                  className="w-full sm:w-auto touch-manipulation min-h-[44px] active:scale-[0.98] transition-transform"
-                >
+                <Button className="w-full sm:w-auto touch-manipulation min-h-[44px] active:scale-[0.98] transition-transform">
                   <Plus className="w-4 h-4 mr-2" />
                   Generate Invoice
                 </Button>
@@ -233,10 +235,7 @@ export default function Invoices() {
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="contract">Contract</Label>
-                    <Select
-                      value={selectedContractId}
-                      onValueChange={setSelectedContractId}
-                    >
+                    <Select value={selectedContractId} onValueChange={setSelectedContractId}>
                       <SelectTrigger className="min-h-[44px] touch-manipulation">
                         <SelectValue placeholder="Select contract" />
                       </SelectTrigger>
@@ -247,8 +246,7 @@ export default function Invoices() {
                             value={contract.id}
                             className="min-h-[44px] touch-manipulation"
                           >
-                            {contract.contractNumber} -{" "}
-                            {getCustomerName(contract.customerId)}
+                            {contract.contractNumber} - {getCustomerName(contract.customerId)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -297,9 +295,7 @@ export default function Invoices() {
                       generateInvoiceMutation.isPending
                     }
                   >
-                    {generateInvoiceMutation.isPending
-                      ? "Generating..."
-                      : "Generate Invoice"}
+                    {generateInvoiceMutation.isPending ? 'Generating...' : 'Generate Invoice'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -318,7 +314,7 @@ export default function Invoices() {
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => setSearchQuery('')}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 touch-manipulation"
                 >
                   <X className="w-4 h-4" />
@@ -331,11 +327,21 @@ export default function Invoices() {
                 <SelectValue placeholder="Filter status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all" className="min-h-[44px] touch-manipulation">All Status</SelectItem>
-                <SelectItem value="draft" className="min-h-[44px] touch-manipulation">Draft</SelectItem>
-                <SelectItem value="sent" className="min-h-[44px] touch-manipulation">Sent</SelectItem>
-                <SelectItem value="paid" className="min-h-[44px] touch-manipulation">Paid</SelectItem>
-                <SelectItem value="overdue" className="min-h-[44px] touch-manipulation">Overdue</SelectItem>
+                <SelectItem value="all" className="min-h-[44px] touch-manipulation">
+                  All Status
+                </SelectItem>
+                <SelectItem value="draft" className="min-h-[44px] touch-manipulation">
+                  Draft
+                </SelectItem>
+                <SelectItem value="sent" className="min-h-[44px] touch-manipulation">
+                  Sent
+                </SelectItem>
+                <SelectItem value="paid" className="min-h-[44px] touch-manipulation">
+                  Paid
+                </SelectItem>
+                <SelectItem value="overdue" className="min-h-[44px] touch-manipulation">
+                  Overdue
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -385,8 +391,8 @@ export default function Invoices() {
                     <div className="flex-1">
                       <p className="text-xs text-gray-600 mb-1">Billing Period</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {format(new Date(invoice.billingPeriodStart), "MMM dd")} -{" "}
-                        {format(new Date(invoice.billingPeriodEnd), "MMM dd, yyyy")}
+                        {format(new Date(invoice.billingPeriodStart), 'MMM dd')} -{' '}
+                        {format(new Date(invoice.billingPeriodEnd), 'MMM dd, yyyy')}
                       </p>
                     </div>
                   </div>
@@ -423,14 +429,14 @@ export default function Invoices() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600">Due Date:</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
+                      {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
                     </span>
                   </div>
                   {invoice.paidDate && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Paid:</span>
                       <span className="text-sm font-semibold text-green-600">
-                        {format(new Date(invoice.paidDate), "MMM dd, yyyy")}
+                        {format(new Date(invoice.paidDate), 'MMM dd, yyyy')}
                       </span>
                     </div>
                   )}
@@ -453,11 +459,11 @@ export default function Invoices() {
                     Download
                   </Button>
 
-                  {invoice.status === "draft" && (
+                  {invoice.status === 'draft' && (
                     <Button
                       className="w-full sm:flex-1 min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                       onClick={() =>
-                        updateStatusMutation.mutate({ id: invoice.id, status: "sent" })
+                        updateStatusMutation.mutate({ id: invoice.id, status: 'sent' })
                       }
                       disabled={updateStatusMutation.isPending}
                     >
@@ -466,7 +472,7 @@ export default function Invoices() {
                     </Button>
                   )}
 
-                  {(invoice.status === "sent" || invoice.status === "overdue") && (
+                  {(invoice.status === 'sent' || invoice.status === 'overdue') && (
                     <Button
                       className="w-full sm:flex-1 min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform bg-green-600 hover:bg-green-700"
                       onClick={() => openPaymentDialog(invoice)}
@@ -489,16 +495,16 @@ export default function Invoices() {
                   <Receipt className="w-10 h-10 text-gray-400" />
                 </div>
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-                  {searchQuery || statusFilter !== "all"
-                    ? "No invoices found"
-                    : "No invoices generated yet"}
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'No invoices found'
+                    : 'No invoices generated yet'}
                 </h3>
                 <p className="text-sm sm:text-base text-gray-600 mb-6 max-w-md mx-auto">
-                  {searchQuery || statusFilter !== "all"
+                  {searchQuery || statusFilter !== 'all'
                     ? "Try adjusting your search or filters to find what you're looking for."
-                    : "Generate your first invoice from meter readings to start billing customers."}
+                    : 'Generate your first invoice from meter readings to start billing customers.'}
                 </p>
-                {!searchQuery && statusFilter === "all" && (
+                {!searchQuery && statusFilter === 'all' && (
                   <Button
                     onClick={() => setIsGenerateDialogOpen(true)}
                     className="min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
@@ -526,7 +532,7 @@ export default function Invoices() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-blue-900">Invoice Amount:</span>
                   <span className="text-lg font-bold text-blue-900">
-                    ${selectedInvoice ? parseFloat(selectedInvoice.totalAmount).toFixed(2) : "0.00"}
+                    ${selectedInvoice ? parseFloat(selectedInvoice.totalAmount).toFixed(2) : '0.00'}
                   </span>
                 </div>
               </div>
@@ -564,11 +570,21 @@ export default function Invoices() {
                     <SelectValue placeholder="Select payment method" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="check" className="min-h-[44px] touch-manipulation">Check</SelectItem>
-                    <SelectItem value="credit_card" className="min-h-[44px] touch-manipulation">Credit Card</SelectItem>
-                    <SelectItem value="ach" className="min-h-[44px] touch-manipulation">ACH Transfer</SelectItem>
-                    <SelectItem value="wire" className="min-h-[44px] touch-manipulation">Wire Transfer</SelectItem>
-                    <SelectItem value="cash" className="min-h-[44px] touch-manipulation">Cash</SelectItem>
+                    <SelectItem value="check" className="min-h-[44px] touch-manipulation">
+                      Check
+                    </SelectItem>
+                    <SelectItem value="credit_card" className="min-h-[44px] touch-manipulation">
+                      Credit Card
+                    </SelectItem>
+                    <SelectItem value="ach" className="min-h-[44px] touch-manipulation">
+                      ACH Transfer
+                    </SelectItem>
+                    <SelectItem value="wire" className="min-h-[44px] touch-manipulation">
+                      Wire Transfer
+                    </SelectItem>
+                    <SelectItem value="cash" className="min-h-[44px] touch-manipulation">
+                      Cash
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -579,9 +595,9 @@ export default function Invoices() {
                 className="w-full sm:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                 onClick={() => {
                   setIsPaymentDialogOpen(false);
-                  setPaymentAmount("");
-                  setPaymentDate("");
-                  setPaymentMethod("");
+                  setPaymentAmount('');
+                  setPaymentDate('');
+                  setPaymentMethod('');
                   setSelectedInvoice(null);
                 }}
               >
@@ -597,7 +613,7 @@ export default function Invoices() {
                   recordPaymentMutation.isPending
                 }
               >
-                {recordPaymentMutation.isPending ? "Recording..." : "Record Payment"}
+                {recordPaymentMutation.isPending ? 'Recording...' : 'Record Payment'}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp,
   TrendingDown,
@@ -13,23 +13,23 @@ import {
   Activity,
   Heart,
   BarChart3,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
-import { TimelineSkeleton } from "@/components/ui/skeletons";
-import { Link } from "wouter";
-import { formatDistanceToNow } from "date-fns";
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
+import { TimelineSkeleton } from '@/components/ui/skeletons';
+import { Link } from 'wouter';
+import { formatDistanceToNow } from 'date-fns';
 
 interface Customer360Data {
   customer: {
     id: string;
     name: string;
-    status: "active" | "at-risk" | "churned";
+    status: 'active' | 'at-risk' | 'churned';
     segment: string;
     healthScore: number;
     lifetimeValue: number;
@@ -45,12 +45,12 @@ interface Customer360Data {
     openTickets: number;
     lastInteraction: string;
     monthlyUsage: number;
-    usageTrend: "up" | "down" | "stable";
+    usageTrend: 'up' | 'down' | 'stable';
   };
   aiInsights: Array<{
     id: string;
-    type: "opportunity" | "risk" | "optimization" | "recommendation";
-    priority: "high" | "medium" | "low";
+    type: 'opportunity' | 'risk' | 'optimization' | 'recommendation';
+    priority: 'high' | 'medium' | 'low';
     title: string;
     description: string;
     confidence: number;
@@ -65,7 +65,7 @@ interface Customer360Data {
     id: string;
     name: string;
     model: string;
-    status: "healthy" | "warning" | "critical";
+    status: 'healthy' | 'warning' | 'critical';
     healthScore: number;
     nextMaintenance: string;
     currentMeter: number;
@@ -79,7 +79,7 @@ interface Customer360Data {
   }>;
   timeline: Array<{
     id: string;
-    type: "service" | "invoice" | "meter" | "note" | "contract" | "equipment";
+    type: 'service' | 'invoice' | 'meter' | 'note' | 'contract' | 'equipment';
     title: string;
     description?: string;
     timestamp: string;
@@ -89,7 +89,7 @@ interface Customer360Data {
   contracts: Array<{
     id: string;
     type: string;
-    status: "active" | "expiring" | "expired";
+    status: 'active' | 'expiring' | 'expired';
     startDate: string;
     endDate: string;
     value: number;
@@ -116,23 +116,23 @@ export function Customer360View({ customerId }: Customer360ViewProps) {
           customer: {
             id: customer.id,
             name: customer.companyName,
-            status: customer.status || "active",
-            segment: customer.segment || "Mid-Market",
+            status: customer.status || 'active',
+            segment: customer.segment || 'Mid-Market',
             healthScore: 89,
             lifetimeValue: 125000,
             contractValue: 2400,
-            contractEndDate: "2025-12-31",
+            contractEndDate: '2025-12-31',
           },
           metrics: {
             totalRevenue: customer.totalRevenue || 45000,
             revenueChange: 15,
-            avgResponseTime: "1.2 hrs",
+            avgResponseTime: '1.2 hrs',
             firstTimeFixRate: 94,
             equipmentCount: equipment?.length || 8,
             openTickets: customer.openTickets || 2,
             lastInteraction: customer.lastInteraction || new Date().toISOString(),
             monthlyUsage: 125000,
-            usageTrend: "up" as const,
+            usageTrend: 'up' as const,
           },
           aiInsights: generateMockInsights(customer),
           equipment: equipment || [],
@@ -176,11 +176,11 @@ export function Customer360View({ customerId }: Customer360ViewProps) {
             <h1 className="text-3xl font-bold">{customer.name}</h1>
             <Badge
               variant={
-                customer.status === "active"
-                  ? "default"
-                  : customer.status === "at-risk"
-                  ? "destructive"
-                  : "secondary"
+                customer.status === 'active'
+                  ? 'default'
+                  : customer.status === 'at-risk'
+                    ? 'destructive'
+                    : 'secondary'
               }
             >
               {customer.status}
@@ -221,19 +221,19 @@ export function Customer360View({ customerId }: Customer360ViewProps) {
                     strokeDasharray={`${2 * Math.PI * 28}`}
                     strokeDashoffset={`${2 * Math.PI * 28 * (1 - customer.healthScore / 100)}`}
                     className={cn(
-                      customer.healthScore >= 80 && "text-green-500",
-                      customer.healthScore >= 60 && customer.healthScore < 80 && "text-yellow-500",
-                      customer.healthScore < 60 && "text-red-500"
+                      customer.healthScore >= 80 && 'text-green-500',
+                      customer.healthScore >= 60 && customer.healthScore < 80 && 'text-yellow-500',
+                      customer.healthScore < 60 && 'text-red-500',
                     )}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Heart
                     className={cn(
-                      "h-6 w-6",
-                      customer.healthScore >= 80 && "text-green-500",
-                      customer.healthScore >= 60 && customer.healthScore < 80 && "text-yellow-500",
-                      customer.healthScore < 60 && "text-red-500"
+                      'h-6 w-6',
+                      customer.healthScore >= 80 && 'text-green-500',
+                      customer.healthScore >= 60 && customer.healthScore < 80 && 'text-yellow-500',
+                      customer.healthScore < 60 && 'text-red-500',
                     )}
                   />
                 </div>
@@ -261,7 +261,7 @@ export function Customer360View({ customerId }: Customer360ViewProps) {
           title="Open Tickets"
           value={metrics.openTickets}
           icon={<Wrench className="h-5 w-5" />}
-          status={metrics.openTickets > 5 ? "warning" : "ok"}
+          status={metrics.openTickets > 5 ? 'warning' : 'ok'}
           href={`/service-hub?customerId=${customerId}`}
         />
         <MetricCard
@@ -291,13 +291,9 @@ export function Customer360View({ customerId }: Customer360ViewProps) {
       {/* Tabs: Equipment, Timeline, Contracts */}
       <Tabs defaultValue="equipment" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="equipment">
-            Equipment ({equipment.length})
-          </TabsTrigger>
+          <TabsTrigger value="equipment">Equipment ({equipment.length})</TabsTrigger>
           <TabsTrigger value="timeline">Activity Timeline</TabsTrigger>
-          <TabsTrigger value="contracts">
-            Contracts ({contracts.length})
-          </TabsTrigger>
+          <TabsTrigger value="contracts">Contracts ({contracts.length})</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -349,13 +345,13 @@ export function Customer360View({ customerId }: Customer360ViewProps) {
                   </div>
                   <Progress value={75} className="h-2" />
                   <div className="flex items-center gap-1 mt-1">
-                    {metrics.usageTrend === "up" ? (
+                    {metrics.usageTrend === 'up' ? (
                       <TrendingUp className="h-3 w-3 text-green-600" />
                     ) : (
                       <TrendingDown className="h-3 w-3 text-red-600" />
                     )}
                     <span className="text-xs text-muted-foreground">
-                      {metrics.usageTrend === "up" ? "↑" : "↓"} 15% vs last month
+                      {metrics.usageTrend === 'up' ? '↑' : '↓'} 15% vs last month
                     </span>
                   </div>
                 </div>
@@ -392,11 +388,11 @@ function MetricCard({
   value: string | number;
   change?: number;
   icon: React.ReactNode;
-  status?: "ok" | "warning" | "critical";
+  status?: 'ok' | 'warning' | 'critical';
   href?: string;
 }) {
   const content = (
-    <Card className={cn(href && "cursor-pointer hover:shadow-md transition-shadow")}>
+    <Card className={cn(href && 'cursor-pointer hover:shadow-md transition-shadow')}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -409,12 +405,7 @@ function MetricCard({
                 ) : (
                   <TrendingDown className="h-3 w-3 text-red-600" />
                 )}
-                <span
-                  className={cn(
-                    "text-xs",
-                    change > 0 ? "text-green-600" : "text-red-600"
-                  )}
-                >
+                <span className={cn('text-xs', change > 0 ? 'text-green-600' : 'text-red-600')}>
                   {Math.abs(change)}%
                 </span>
               </div>
@@ -433,38 +424,34 @@ function MetricCard({
   return content;
 }
 
-function AIInsightCard({
-  insight,
-}: {
-  insight: Customer360Data["aiInsights"][0];
-}) {
+function AIInsightCard({ insight }: { insight: Customer360Data['aiInsights'][0] }) {
   const getTypeIcon = () => {
     switch (insight.type) {
-      case "opportunity":
+      case 'opportunity':
         return <Target className="h-4 w-4 text-green-600" />;
-      case "risk":
+      case 'risk':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
-      case "optimization":
+      case 'optimization':
         return <BarChart3 className="h-4 w-4 text-blue-600" />;
-      case "recommendation":
+      case 'recommendation':
         return <Lightbulb className="h-4 w-4 text-yellow-600" />;
     }
   };
 
   const getPriorityColor = () => {
     switch (insight.priority) {
-      case "high":
-        return "bg-red-500";
-      case "medium":
-        return "bg-orange-500";
-      case "low":
-        return "bg-blue-500";
+      case 'high':
+        return 'bg-red-500';
+      case 'medium':
+        return 'bg-orange-500';
+      case 'low':
+        return 'bg-blue-500';
     }
   };
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-md bg-muted/50 hover:bg-muted transition-colors">
-      <div className={cn("h-2 w-2 rounded-full mt-2", getPriorityColor())} />
+      <div className={cn('h-2 w-2 rounded-full mt-2', getPriorityColor())} />
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2">
           {getTypeIcon()}
@@ -488,19 +475,15 @@ function AIInsightCard({
   );
 }
 
-function EquipmentCard({
-  equipment,
-}: {
-  equipment: Customer360Data["equipment"][0];
-}) {
+function EquipmentCard({ equipment }: { equipment: Customer360Data['equipment'][0] }) {
   const getStatusColor = () => {
     switch (equipment.status) {
-      case "healthy":
-        return "text-green-600 bg-green-100";
-      case "warning":
-        return "text-yellow-600 bg-yellow-100";
-      case "critical":
-        return "text-red-600 bg-red-100";
+      case 'healthy':
+        return 'text-green-600 bg-green-100';
+      case 'warning':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'critical':
+        return 'text-red-600 bg-red-100';
     }
   };
 
@@ -543,7 +526,7 @@ function EquipmentCard({
   );
 }
 
-function ContractCard({ contract }: { contract: Customer360Data["contracts"][0] }) {
+function ContractCard({ contract }: { contract: Customer360Data['contracts'][0] }) {
   return (
     <Card>
       <CardContent className="p-4">
@@ -551,13 +534,13 @@ function ContractCard({ contract }: { contract: Customer360Data["contracts"][0] 
           <div>
             <h3 className="font-medium">{contract.type}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {new Date(contract.startDate).toLocaleDateString()} -{" "}
+              {new Date(contract.startDate).toLocaleDateString()} -{' '}
               {new Date(contract.endDate).toLocaleDateString()}
             </p>
           </div>
           <div className="text-right">
             <p className="text-xl font-bold">${contract.value.toLocaleString()}</p>
-            <Badge variant={contract.status === "active" ? "default" : "destructive"}>
+            <Badge variant={contract.status === 'active' ? 'default' : 'destructive'}>
               {contract.status}
             </Badge>
           </div>
@@ -568,44 +551,44 @@ function ContractCard({ contract }: { contract: Customer360Data["contracts"][0] 
 }
 
 // Mock AI insights generator
-function generateMockInsights(customer: any): Customer360Data["aiInsights"] {
+function generateMockInsights(customer: any): Customer360Data['aiInsights'] {
   return [
     {
-      id: "1",
-      type: "opportunity",
-      priority: "high",
-      title: "Upsell Opportunity Detected",
+      id: '1',
+      type: 'opportunity',
+      priority: 'high',
+      title: 'Upsell Opportunity Detected',
       description: `Print volume increased 40% over last quarter. Customer may benefit from upgrading to a higher-capacity model to reduce per-page costs.`,
       confidence: 92,
       actionable: true,
       action: {
-        label: "Generate Upgrade Proposal",
+        label: 'Generate Upgrade Proposal',
         href: `/quotes/new?customerId=${customer.id}&type=upgrade`,
       },
     },
     {
-      id: "2",
-      type: "risk",
-      priority: "high",
-      title: "Contract Expiration Alert",
+      id: '2',
+      type: 'risk',
+      priority: 'high',
+      title: 'Contract Expiration Alert',
       description: `Contract expires in 45 days. Historical data shows this customer takes 2-3 weeks to review renewals. Recommend immediate outreach.`,
       confidence: 88,
       actionable: true,
       action: {
-        label: "Schedule Renewal Call",
-        onClick: () => console.log("Schedule call"),
+        label: 'Schedule Renewal Call',
+        onClick: () => console.log('Schedule call'),
       },
     },
     {
-      id: "3",
-      type: "optimization",
-      priority: "medium",
-      title: "Service Efficiency Improvement",
+      id: '3',
+      type: 'optimization',
+      priority: 'medium',
+      title: 'Service Efficiency Improvement',
       description: `3 recent service calls for paper jams on Canon IR-2530i. Equipment may need roller replacement to prevent recurring issues.`,
       confidence: 85,
       actionable: true,
       action: {
-        label: "Schedule Preventive Maintenance",
+        label: 'Schedule Preventive Maintenance',
         href: `/service-hub/new?customerId=${customer.id}`,
       },
     },

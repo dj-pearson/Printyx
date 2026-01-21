@@ -28,7 +28,10 @@ export default function WhiteLabelDashboard() {
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      toast({ title: 'Settings Saved', description: 'White-label configuration updated successfully' });
+      toast({
+        title: 'Settings Saved',
+        description: 'White-label configuration updated successfully',
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/white-label/config'] });
     },
   });
@@ -190,12 +193,16 @@ export default function WhiteLabelDashboard() {
                       <Input
                         type="color"
                         value={formData.colorSecondary}
-                        onChange={(e) => setFormData({ ...formData, colorSecondary: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, colorSecondary: e.target.value })
+                        }
                         className="w-20 h-10 p-1"
                       />
                       <Input
                         value={formData.colorSecondary}
-                        onChange={(e) => setFormData({ ...formData, colorSecondary: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, colorSecondary: e.target.value })
+                        }
                         className="flex-1"
                       />
                     </div>
@@ -278,13 +285,36 @@ export default function WhiteLabelDashboard() {
                 <h3 className="font-semibold mb-3">Portal Features</h3>
                 <div className="space-y-3">
                   {[
-                    { key: 'enableServiceRequests', label: 'Service Requests', desc: 'Allow customers to submit service requests' },
-                    { key: 'enableSupplyOrdering', label: 'Supply Ordering', desc: 'Enable automatic supply ordering' },
-                    { key: 'enableMeterSubmission', label: 'Meter Submission', desc: 'Allow meter reading uploads' },
-                    { key: 'enableInvoicePayments', label: 'Invoice Payments', desc: 'Enable online payment processing' },
-                    { key: 'enableEquipmentMonitoring', label: 'Equipment Monitoring', desc: 'Show real-time device status' },
+                    {
+                      key: 'enableServiceRequests',
+                      label: 'Service Requests',
+                      desc: 'Allow customers to submit service requests',
+                    },
+                    {
+                      key: 'enableSupplyOrdering',
+                      label: 'Supply Ordering',
+                      desc: 'Enable automatic supply ordering',
+                    },
+                    {
+                      key: 'enableMeterSubmission',
+                      label: 'Meter Submission',
+                      desc: 'Allow meter reading uploads',
+                    },
+                    {
+                      key: 'enableInvoicePayments',
+                      label: 'Invoice Payments',
+                      desc: 'Enable online payment processing',
+                    },
+                    {
+                      key: 'enableEquipmentMonitoring',
+                      label: 'Equipment Monitoring',
+                      desc: 'Show real-time device status',
+                    },
                   ].map((feature) => (
-                    <div key={feature.key} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div
+                      key={feature.key}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
                       <div>
                         <div className="font-medium">{feature.label}</div>
                         <div className="text-sm text-muted-foreground">{feature.desc}</div>
@@ -330,7 +360,9 @@ export default function WhiteLabelDashboard() {
                   {formData.logoUrl ? (
                     <img src={formData.logoUrl} alt="Logo" className="h-12 mx-auto" />
                   ) : (
-                    <h2 className="text-2xl font-bold text-white">{formData.companyName || 'Your Company'}</h2>
+                    <h2 className="text-2xl font-bold text-white">
+                      {formData.companyName || 'Your Company'}
+                    </h2>
                   )}
                   {formData.companyTagline && (
                     <p className="text-white/90 text-sm mt-1">{formData.companyTagline}</p>
@@ -351,7 +383,10 @@ export default function WhiteLabelDashboard() {
                     </Button>
                     <Button
                       variant="outline"
-                      style={{ borderColor: formData.colorSecondary, color: formData.colorSecondary }}
+                      style={{
+                        borderColor: formData.colorSecondary,
+                        color: formData.colorSecondary,
+                      }}
                     >
                       View Invoices
                     </Button>

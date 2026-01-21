@@ -189,18 +189,15 @@ Report type registry (examples)
 ### Phased rollout
 
 - Phase 0: Framework & quick wins
-
   - Implement `/api/reports` wrapper with 3 report types: `sales_pipeline`, `service_sla`, `finance_ar_aging`
   - Add schedules/expor t stubs; wire `client/src/pages/reports.tsx` cards to params
 
 - Phase 1: Depth by department
-
   - Sales: quotes/proposals aging, goals vs actuals, forecast accuracy
   - Service: MTTR/FTF, backlog aging, parts usage
   - Finance: DSO, invoice cohort, AP/DPO, commissions
 
 - Phase 2: Product & Customer 360
-
   - Inventory turns/aging/stockouts, PO cycle; LTV and risk signals
 
 - Phase 3: Executive/Manager scorecards and alerts

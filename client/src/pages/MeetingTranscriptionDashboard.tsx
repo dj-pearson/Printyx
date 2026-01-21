@@ -50,7 +50,7 @@ import {
   Zap,
   BookOpen,
   Hash,
-  Tag
+  Tag,
 } from 'lucide-react';
 
 interface Recording {
@@ -186,7 +186,7 @@ const MeetingTranscriptionDashboard: React.FC = () => {
           aiSpeakerCount: 4,
           uploadedBy: 'user-manager-1',
           uploadedAt: new Date('2025-09-27T10:00:00Z'),
-          processingCompletedAt: new Date('2025-09-27T10:05:30Z')
+          processingCompletedAt: new Date('2025-09-27T10:05:30Z'),
         },
         {
           id: 'recording-2',
@@ -203,8 +203,8 @@ const MeetingTranscriptionDashboard: React.FC = () => {
           transcriptionStatus: 'processing',
           aiAnalysisStatus: 'pending',
           uploadedBy: 'user-sales-1',
-          uploadedAt: new Date('2025-09-27T14:00:00Z')
-        }
+          uploadedAt: new Date('2025-09-27T14:00:00Z'),
+        },
       ];
 
       const mockAnalytics = {
@@ -215,23 +215,23 @@ const MeetingTranscriptionDashboard: React.FC = () => {
         mostDiscussedTopics: [
           { topic: 'Q4 Planning', frequency: 34, trend: 'increasing' },
           { topic: 'Client Strategy', frequency: 28, trend: 'stable' },
-          { topic: 'Budget Allocation', frequency: 22, trend: 'increasing' }
+          { topic: 'Budget Allocation', frequency: 22, trend: 'increasing' },
         ],
         contentQualityMetrics: {
           transcriptionAccuracy: 0.91,
           aiConfidenceScore: 0.88,
-          completionRate: 0.94
+          completionRate: 0.94,
         },
         actionItemMetrics: {
           totalGenerated: 156,
           completionRate: 0.78,
-          averageTimeToComplete: 4.2
-        }
+          averageTimeToComplete: 4.2,
+        },
       };
 
       setRecordings(mockRecordings);
       setAnalytics(mockAnalytics);
-      
+
       // Load details for first recording
       if (mockRecordings.length > 0 && mockRecordings[0].processingStatus === 'completed') {
         await loadRecordingDetails(mockRecordings[0].id);
@@ -261,8 +261,8 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
             startTime: 0,
             endTime: 15,
             speakerName: 'John Smith',
-            text: 'Good morning everyone, thank you for joining today\'s Q4 planning session. Let\'s start by reviewing our Q3 performance.',
-            confidence: 0.95
+            text: "Good morning everyone, thank you for joining today's Q4 planning session. Let's start by reviewing our Q3 performance.",
+            confidence: 0.95,
           },
           {
             id: 'seg-2',
@@ -270,45 +270,89 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
             endTime: 32,
             speakerName: 'Sarah Johnson',
             text: 'Thank you, John. Our Q3 results exceeded expectations with a 23% increase in revenue compared to Q2. The new client acquisition strategy has been particularly effective.',
-            confidence: 0.92
-          }
+            confidence: 0.92,
+          },
         ],
         overallConfidence: 0.925,
         wordCount: 486,
         speakerCount: 4,
         speakers: [
           { name: 'John Smith', speakingTimeSeconds: 85, wordCount: 142, averageConfidence: 0.945 },
-          { name: 'Sarah Johnson', speakingTimeSeconds: 78, wordCount: 128, averageConfidence: 0.92 },
+          {
+            name: 'Sarah Johnson',
+            speakingTimeSeconds: 78,
+            wordCount: 128,
+            averageConfidence: 0.92,
+          },
           { name: 'Mike Chen', speakingTimeSeconds: 72, wordCount: 115, averageConfidence: 0.89 },
-          { name: 'Lisa Wang', speakingTimeSeconds: 65, wordCount: 101, averageConfidence: 0.91 }
-        ]
+          { name: 'Lisa Wang', speakingTimeSeconds: 65, wordCount: 101, averageConfidence: 0.91 },
+        ],
       };
 
       // Mock notes
       const mockNotes: MeetingNotes = {
         id: 'notes-1',
         title: 'Q4 Planning Session - Meeting Notes',
-        executiveSummary: 'The Q4 planning session focused on building upon strong Q3 performance with a 23% revenue increase. Key decisions included a 15% marketing budget increase, hiring 3 additional sales representatives, and implementing a dedicated account management program for top-tier clients.',
+        executiveSummary:
+          'The Q4 planning session focused on building upon strong Q3 performance with a 23% revenue increase. Key decisions included a 15% marketing budget increase, hiring 3 additional sales representatives, and implementing a dedicated account management program for top-tier clients.',
         keyPoints: [
-          { point: 'Q3 revenue exceeded expectations with 23% increase over Q2', importance: 0.95, speakers: ['Sarah Johnson'], timestamp: 18 },
-          { point: 'Marketing budget increase of 15% proposed for Q4', importance: 0.92, speakers: ['Mike Chen'], timestamp: 38 }
+          {
+            point: 'Q3 revenue exceeded expectations with 23% increase over Q2',
+            importance: 0.95,
+            speakers: ['Sarah Johnson'],
+            timestamp: 18,
+          },
+          {
+            point: 'Marketing budget increase of 15% proposed for Q4',
+            importance: 0.92,
+            speakers: ['Mike Chen'],
+            timestamp: 38,
+          },
         ],
         decisionsMade: [
-          { decision: 'Approve 15% increase in marketing budget for Q4', context: 'To capitalize on Q3 momentum', decisionMaker: 'John Smith', impact: 'high' }
+          {
+            decision: 'Approve 15% increase in marketing budget for Q4',
+            context: 'To capitalize on Q3 momentum',
+            decisionMaker: 'John Smith',
+            impact: 'high',
+          },
         ],
         actionItems: [
-          { task: 'Prepare detailed budget proposal for 15% marketing increase', assignee: 'Mike Chen', dueDate: new Date('2025-10-05'), priority: 'high', status: 'open' },
-          { task: 'Begin recruitment process for 3 sales representatives', assignee: 'Sarah Johnson', dueDate: new Date('2025-10-10'), priority: 'high', status: 'open' }
+          {
+            task: 'Prepare detailed budget proposal for 15% marketing increase',
+            assignee: 'Mike Chen',
+            dueDate: new Date('2025-10-05'),
+            priority: 'high',
+            status: 'open',
+          },
+          {
+            task: 'Begin recruitment process for 3 sales representatives',
+            assignee: 'Sarah Johnson',
+            dueDate: new Date('2025-10-10'),
+            priority: 'high',
+            status: 'open',
+          },
         ],
         meetingSentiment: 'positive',
         engagementLevel: 'high',
         productivityScore: 0.91,
-        topicsDiscussed: ['Q3 Performance Review', 'Q4 Strategic Planning', 'Budget Allocation', 'Team Expansion'],
-        aiInsights: ['Strong team alignment on growth strategy', 'Q3 performance momentum creates excellent foundation'],
-        aiRecommendations: ['Schedule weekly check-ins during Q4 ramp-up', 'Consider establishing Q4 success metrics'],
+        topicsDiscussed: [
+          'Q3 Performance Review',
+          'Q4 Strategic Planning',
+          'Budget Allocation',
+          'Team Expansion',
+        ],
+        aiInsights: [
+          'Strong team alignment on growth strategy',
+          'Q3 performance momentum creates excellent foundation',
+        ],
+        aiRecommendations: [
+          'Schedule weekly check-ins during Q4 ramp-up',
+          'Consider establishing Q4 success metrics',
+        ],
         aiRiskFlags: ['Aggressive hiring timeline may impact onboarding quality'],
         aiOpportunities: ['Q3 success demonstrates scalable business model'],
-        aiConfidenceScore: 0.91
+        aiConfidenceScore: 0.91,
       };
 
       // Mock highlights
@@ -320,13 +364,14 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
           description: '23% revenue increase over Q2 - exceeded all expectations',
           startTimeSeconds: 18,
           endTimeSeconds: 32,
-          transcriptExcerpt: 'Our Q3 results exceeded expectations with a 23% increase in revenue compared to Q2.',
+          transcriptExcerpt:
+            'Our Q3 results exceeded expectations with a 23% increase in revenue compared to Q2.',
           speakers: ['Sarah Johnson'],
           importanceScore: 0.95,
           sentiment: 'positive',
           tags: ['Q3', 'revenue', 'growth'],
           businessImpact: 'high',
-          requiresAction: false
+          requiresAction: false,
         },
         {
           id: 'highlight-2',
@@ -335,20 +380,21 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
           description: '15% marketing budget increase approved to capitalize on momentum',
           startTimeSeconds: 35,
           endTimeSeconds: 48,
-          transcriptExcerpt: 'We should consider increasing our marketing budget by 15% to capitalize on this momentum.',
+          transcriptExcerpt:
+            'We should consider increasing our marketing budget by 15% to capitalize on this momentum.',
           speakers: ['Mike Chen'],
           importanceScore: 0.92,
           sentiment: 'positive',
           tags: ['marketing', 'budget', 'Q4'],
           businessImpact: 'high',
-          requiresAction: true
-        }
+          requiresAction: true,
+        },
       ];
 
       setTranscription(mockTranscription);
       setNotes(mockNotes);
       setHighlights(mockHighlights);
-      setSelectedRecording(recordings.find(r => r.id === recordingId) || null);
+      setSelectedRecording(recordings.find((r) => r.id === recordingId) || null);
     } catch (error) {
       console.error('Failed to load recording details:', error);
     }
@@ -356,7 +402,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    
+
     try {
       // Mock search results
       const mockResults = [
@@ -364,14 +410,15 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
           meetingId: 'meeting-1',
           meetingTitle: 'Q4 Planning Session',
           contentType: 'transcription',
-          excerpt: 'Our Q3 results exceeded expectations with a 23% increase in revenue compared to Q2.',
+          excerpt:
+            'Our Q3 results exceeded expectations with a 23% increase in revenue compared to Q2.',
           relevanceScore: 0.92,
           timestamp: 15,
           speakers: ['Sarah Johnson'],
-          highlights: ['Q3 results', 'revenue increase']
-        }
+          highlights: ['Q3 results', 'revenue increase'],
+        },
       ];
-      
+
       setSearchResults(mockResults);
     } catch (error) {
       console.error('Search failed:', error);
@@ -392,7 +439,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -403,27 +450,38 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     if (bytes === 0) return '0 Bytes';
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'processing':
+        return 'bg-blue-100 text-blue-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'failed':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getHighlightIcon = (type: string) => {
     switch (type) {
-      case 'decision': return <Target className="h-4 w-4" />;
-      case 'action_item': return <CheckCircle2 className="h-4 w-4" />;
-      case 'key_point': return <Star className="h-4 w-4" />;
-      case 'opportunity': return <Lightbulb className="h-4 w-4" />;
-      case 'concern': return <AlertTriangle className="h-4 w-4" />;
-      default: return <MessageSquare className="h-4 w-4" />;
+      case 'decision':
+        return <Target className="h-4 w-4" />;
+      case 'action_item':
+        return <CheckCircle2 className="h-4 w-4" />;
+      case 'key_point':
+        return <Star className="h-4 w-4" />;
+      case 'opportunity':
+        return <Lightbulb className="h-4 w-4" />;
+      case 'concern':
+        return <AlertTriangle className="h-4 w-4" />;
+      default:
+        return <MessageSquare className="h-4 w-4" />;
     }
   };
 
@@ -465,7 +523,9 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Recordings</p>
-                <p className="text-2xl font-bold text-blue-600">{analytics?.totalMeetingsRecorded}</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {analytics?.totalMeetingsRecorded}
+                </p>
               </div>
               <FileAudio className="h-8 w-8 text-blue-600" />
             </div>
@@ -486,9 +546,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
               </div>
               <Brain className="h-8 w-8 text-green-600" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Transcription confidence
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Transcription confidence</p>
           </CardContent>
         </Card>
 
@@ -503,9 +561,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
               </div>
               <Timer className="h-8 w-8 text-purple-600" />
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Average per recording
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Average per recording</p>
           </CardContent>
         </Card>
 
@@ -549,7 +605,10 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
             <CardContent>
               <div className="space-y-4">
                 {recordings.slice(0, 3).map((recording) => (
-                  <div key={recording.id} className="flex items-center justify-between p-4 rounded-lg border">
+                  <div
+                    key={recording.id}
+                    className="flex items-center justify-between p-4 rounded-lg border"
+                  >
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h4 className="font-medium">{recording.recordingName}</h4>
@@ -560,7 +619,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                           {recording.recordingSource}
                         </Badge>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         <div className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
@@ -584,9 +643,13 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => loadRecordingDetails(recording.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadRecordingDetails(recording.id)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="sm">
@@ -623,7 +686,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                     <p className="text-sm text-gray-600">Completion Rate</p>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm">AI Confidence Score</span>
@@ -631,7 +694,10 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                       {Math.round(analytics?.contentQualityMetrics?.aiConfidenceScore * 100)}%
                     </span>
                   </div>
-                  <Progress value={analytics?.contentQualityMetrics?.aiConfidenceScore * 100} className="h-2" />
+                  <Progress
+                    value={analytics?.contentQualityMetrics?.aiConfidenceScore * 100}
+                    className="h-2"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -684,7 +750,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                           AI: {recording.aiAnalysisStatus}
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                         <div>
                           <p className="text-sm text-gray-500">Duration</p>
@@ -702,10 +768,12 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Source</p>
-                          <p className="font-medium capitalize">{recording.recordingSource.replace('_', ' ')}</p>
+                          <p className="font-medium capitalize">
+                            {recording.recordingSource.replace('_', ' ')}
+                          </p>
                         </div>
                       </div>
-                      
+
                       {recording.aiConfidenceScore && (
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center justify-between">
@@ -717,20 +785,26 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                           <Progress value={recording.aiConfidenceScore * 100} className="h-2" />
                         </div>
                       )}
-                      
+
                       <div className="flex items-center text-sm text-gray-600 space-x-4">
                         <span>Uploaded: {recording.uploadedAt.toLocaleDateString()}</span>
                         {recording.processingCompletedAt && (
-                          <span>Processed: {recording.processingCompletedAt.toLocaleDateString()}</span>
+                          <span>
+                            Processed: {recording.processingCompletedAt.toLocaleDateString()}
+                          </span>
                         )}
                         {recording.aiSpeakerCount && (
                           <span>{recording.aiSpeakerCount} speakers detected</span>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2 ml-4">
-                      <Button variant="outline" size="sm" onClick={() => loadRecordingDetails(recording.id)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadRecordingDetails(recording.id)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="sm">
@@ -780,7 +854,9 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                       <p className="text-sm text-gray-600">Total Words</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">{transcription.speakerCount}</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {transcription.speakerCount}
+                      </p>
                       <p className="text-sm text-gray-600">Speakers</p>
                     </div>
                     <div className="text-center">
@@ -796,13 +872,16 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                       <p className="text-sm text-gray-600">Segments</p>
                     </div>
                   </div>
-                  
+
                   {/* Speaker Analysis */}
                   <div>
                     <h4 className="font-medium mb-3">Speaker Analysis</h4>
                     <div className="space-y-2">
                       {transcription.speakers.map((speaker, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                        >
                           <div className="flex items-center space-x-3">
                             <User className="h-4 w-4 text-gray-500" />
                             <span className="font-medium">{speaker.name}</span>
@@ -835,14 +914,16 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                               size="sm"
                               onClick={() => toggleSegmentExpansion(segment.id)}
                             >
-                              {expandedSegments.has(segment.id) ? 
-                                <ChevronDown className="h-4 w-4" /> : 
+                              {expandedSegments.has(segment.id) ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
                                 <ChevronRight className="h-4 w-4" />
-                              }
+                              )}
                             </Button>
                             <span className="font-medium">{segment.speakerName}</span>
                             <Badge variant="outline" className="text-xs">
-                              {formatDuration(segment.startTime)} - {formatDuration(segment.endTime)}
+                              {formatDuration(segment.startTime)} -{' '}
+                              {formatDuration(segment.endTime)}
                             </Badge>
                             <Badge variant="outline" className="text-xs">
                               {Math.round(segment.confidence * 100)}% confidence
@@ -852,7 +933,7 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                             <Play className="h-4 w-4" />
                           </Button>
                         </div>
-                        
+
                         <div className="pl-8">
                           <p className="text-gray-700">{segment.text}</p>
                         </div>
@@ -866,8 +947,12 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
             <Card>
               <CardContent className="p-12 text-center">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Transcription Available</h3>
-                <p className="text-gray-500">Select a completed recording to view its transcription.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Transcription Available
+                </h3>
+                <p className="text-gray-500">
+                  Select a completed recording to view its transcription.
+                </p>
               </CardContent>
             </Card>
           )}
@@ -905,15 +990,19 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                     <h4 className="font-medium mb-2">Executive Summary</h4>
                     <p className="text-gray-700 leading-relaxed">{notes.executiveSummary}</p>
                   </div>
-                  
+
                   {/* Meeting Metrics */}
                   <div className="grid grid-cols-3 gap-4">
                     <div className="text-center p-3 rounded-lg bg-gray-50">
-                      <p className="text-2xl font-bold text-green-600 capitalize">{notes.meetingSentiment}</p>
+                      <p className="text-2xl font-bold text-green-600 capitalize">
+                        {notes.meetingSentiment}
+                      </p>
                       <p className="text-sm text-gray-600">Sentiment</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-gray-50">
-                      <p className="text-2xl font-bold text-blue-600 capitalize">{notes.engagementLevel}</p>
+                      <p className="text-2xl font-bold text-blue-600 capitalize">
+                        {notes.engagementLevel}
+                      </p>
                       <p className="text-sm text-gray-600">Engagement</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-gray-50">
@@ -976,11 +1065,15 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                         <div key={index} className="p-3 rounded-lg border">
                           <div className="flex items-start justify-between mb-2">
                             <p className="text-sm font-medium flex-1">{item.task}</p>
-                            <Badge className={
-                              item.priority === 'high' ? 'bg-red-100 text-red-800' :
-                              item.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }>
+                            <Badge
+                              className={
+                                item.priority === 'high'
+                                  ? 'bg-red-100 text-red-800'
+                                  : item.priority === 'medium'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-green-100 text-green-800'
+                              }
+                            >
                               {item.priority}
                             </Badge>
                           </div>
@@ -1019,7 +1112,10 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                   <CardContent>
                     <div className="space-y-3">
                       {notes.aiInsights.map((insight, index) => (
-                        <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-blue-50">
+                        <div
+                          key={index}
+                          className="flex items-start space-x-3 p-3 rounded-lg bg-blue-50"
+                        >
                           <Sparkles className="h-4 w-4 text-blue-600 mt-0.5" />
                           <p className="text-sm">{insight}</p>
                         </div>
@@ -1038,7 +1134,10 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                   <CardContent>
                     <div className="space-y-3">
                       {notes.aiRecommendations.map((rec, index) => (
-                        <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-green-50">
+                        <div
+                          key={index}
+                          className="flex items-start space-x-3 p-3 rounded-lg bg-green-50"
+                        >
                           <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5" />
                           <p className="text-sm">{rec}</p>
                         </div>
@@ -1062,7 +1161,10 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                       <CardContent>
                         <div className="space-y-3">
                           {notes.aiRiskFlags.map((risk, index) => (
-                            <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-orange-50">
+                            <div
+                              key={index}
+                              className="flex items-start space-x-3 p-3 rounded-lg bg-orange-50"
+                            >
                               <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
                               <p className="text-sm">{risk}</p>
                             </div>
@@ -1083,7 +1185,10 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
                       <CardContent>
                         <div className="space-y-3">
                           {notes.aiOpportunities.map((opp, index) => (
-                            <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-green-50">
+                            <div
+                              key={index}
+                              className="flex items-start space-x-3 p-3 rounded-lg bg-green-50"
+                            >
                               <Lightbulb className="h-4 w-4 text-green-600 mt-0.5" />
                               <p className="text-sm">{opp}</p>
                             </div>
@@ -1099,8 +1204,12 @@ John Smith: Great point, Mike. Let's also look at our resource allocation. We'll
             <Card>
               <CardContent className="p-12 text-center">
                 <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Meeting Notes Available</h3>
-                <p className="text-gray-500">Select a completed recording to view AI-generated notes.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Meeting Notes Available
+                </h3>
+                <p className="text-gray-500">
+                  Select a completed recording to view AI-generated notes.
+                </p>
               </CardContent>
             </Card>
           )}

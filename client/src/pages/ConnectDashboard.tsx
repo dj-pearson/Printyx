@@ -37,7 +37,7 @@ import {
   Package,
   FileText,
   ThumbsUp,
-  Award
+  Award,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
@@ -57,7 +57,7 @@ export default function ConnectDashboard() {
     portalAdoptionRate: 64,
     activeSessions: 127,
     satisfactionScore: 4.3,
-    nps: 42
+    nps: 42,
   };
 
   const atRiskCustomers = [
@@ -70,7 +70,7 @@ export default function ConnectDashboard() {
       churnProbability: 68,
       mrr: 2400,
       issues: ['Low engagement', 'Payment delays', 'Support tickets'],
-      recommendation: 'Schedule executive review'
+      recommendation: 'Schedule executive review',
     },
     {
       id: 2,
@@ -81,7 +81,7 @@ export default function ConnectDashboard() {
       churnProbability: 82,
       mrr: 5200,
       issues: ['No portal login (30 days)', 'Missed renewals', 'Service complaints'],
-      recommendation: 'Immediate outreach required'
+      recommendation: 'Immediate outreach required',
     },
     {
       id: 3,
@@ -92,43 +92,56 @@ export default function ConnectDashboard() {
       churnProbability: 45,
       mrr: 1800,
       issues: ['Decreasing usage', 'Late payments'],
-      recommendation: 'Offer training program'
-    }
+      recommendation: 'Offer training program',
+    },
   ];
 
   const connectFeatures = [
     {
       id: 'white-label-portal',
       name: 'White-Label Customer Portal',
-      description: 'Give your customers a branded self-service portal with your logo, colors, and domain',
+      description:
+        'Give your customers a branded self-service portal with your logo, colors, and domain',
       icon: Palette,
       category: 'Customer Experience',
       impact: '50% reduction in support calls',
       color: 'bg-pink-500',
       features: ['Custom branding', 'Custom domain', 'Branded emails', 'Mobile app'],
-      status: 'Available'
+      status: 'Available',
     },
     {
       id: 'health-monitoring',
       name: 'Customer Health Scoring',
-      description: 'AI-powered health scores predict which customers are at risk of churning before they leave',
+      description:
+        'AI-powered health scores predict which customers are at risk of churning before they leave',
       icon: Heart,
       category: 'Retention',
       impact: '25-30% churn reduction',
       color: 'bg-red-500',
-      features: ['Real-time scoring', 'Churn prediction', 'Intervention triggers', 'Success tracking'],
-      status: 'Active'
+      features: [
+        'Real-time scoring',
+        'Churn prediction',
+        'Intervention triggers',
+        'Success tracking',
+      ],
+      status: 'Active',
     },
     {
       id: 'equipment-health',
       name: 'Equipment Health Dashboards',
-      description: 'Customers see real-time equipment status, toner levels, and maintenance schedules',
+      description:
+        'Customers see real-time equipment status, toner levels, and maintenance schedules',
       icon: Activity,
       category: 'Proactive Service',
       impact: '40% faster issue resolution',
       color: 'bg-green-500',
-      features: ['Real-time monitoring', 'Proactive alerts', 'Usage analytics', 'Predictive maintenance'],
-      status: 'Active'
+      features: [
+        'Real-time monitoring',
+        'Proactive alerts',
+        'Usage analytics',
+        'Predictive maintenance',
+      ],
+      status: 'Active',
     },
     {
       id: 'self-service',
@@ -139,7 +152,7 @@ export default function ConnectDashboard() {
       impact: '60% faster response times',
       color: 'bg-blue-500',
       features: ['Service requests', 'Supply ordering', 'Meter submissions', 'Payment processing'],
-      status: 'Active'
+      status: 'Active',
     },
     {
       id: 'satisfaction-tracking',
@@ -150,7 +163,7 @@ export default function ConnectDashboard() {
       impact: 'NPS increase of 15-20 points',
       color: 'bg-yellow-500',
       features: ['Auto surveys', 'NPS tracking', 'Sentiment analysis', 'Trend reports'],
-      status: 'Active'
+      status: 'Active',
     },
     {
       id: 'renewal-management',
@@ -161,8 +174,8 @@ export default function ConnectDashboard() {
       impact: '15% higher renewal rates',
       color: 'bg-purple-500',
       features: ['Renewal tracking', 'Auto reminders', 'Proposal generation', 'Win/loss analysis'],
-      status: 'Active'
-    }
+      status: 'Active',
+    },
   ];
 
   const calculateChurnSavings = () => {
@@ -171,7 +184,7 @@ export default function ConnectDashboard() {
     const avgMRR = 500; // Average MRR per customer
     const totalCustomers = customerHealthData.totalCustomers;
 
-    const currentLossPerMonth = (totalCustomers * (currentChurn / 100)) * avgMRR;
+    const currentLossPerMonth = totalCustomers * (currentChurn / 100) * avgMRR;
     const projectedReduction = currentLossPerMonth * (targetReduction / 100);
 
     return Math.round(projectedReduction * 12); // Annual savings
@@ -183,7 +196,6 @@ export default function ConnectDashboard() {
       description="Turn your dealership into a customer success engine"
     >
       <div className="container mx-auto p-6 space-y-8">
-
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-pink-600 to-purple-600 text-white p-8 md:p-12">
           <div className="relative z-10">
@@ -195,7 +207,8 @@ export default function ConnectDashboard() {
               </Badge>
             </div>
             <p className="text-xl mb-6 max-w-2xl text-white/90">
-              The first dealer platform built for B2B2C. While E-Automate helps you manage customers,
+              The first dealer platform built for B2B2C. While E-Automate helps you manage
+              customers,
               <span className="font-bold"> Printyx helps you keep and grow them</span>.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -205,7 +218,12 @@ export default function ConnectDashboard() {
                   View Customer Health
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                asChild
+              >
                 <Link href="/customer-self-service-portal">
                   Customer Portal Demo
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -230,7 +248,8 @@ export default function ConnectDashboard() {
             <CardContent>
               <div className="text-3xl font-bold">{customerHealthData.averageHealthScore}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                {customerHealthData.healthyCustomers} healthy • {customerHealthData.atRiskCustomers} at-risk
+                {customerHealthData.healthyCustomers} healthy • {customerHealthData.atRiskCustomers}{' '}
+                at-risk
               </p>
               <Progress value={customerHealthData.averageHealthScore} className="mt-2" />
             </CardContent>
@@ -246,7 +265,9 @@ export default function ConnectDashboard() {
             <CardContent>
               <div className="text-3xl font-bold">{customerHealthData.churnRate}%</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Target: {customerHealthData.churnRate * (1 - customerHealthData.churnReductionTarget/100)}% (-{customerHealthData.churnReductionTarget}%)
+                Target:{' '}
+                {customerHealthData.churnRate * (1 - customerHealthData.churnReductionTarget / 100)}
+                % (-{customerHealthData.churnReductionTarget}%)
               </p>
               <div className="flex items-center text-xs text-green-600 mt-2">
                 <TrendingDown className="h-3 w-3 mr-1" />
@@ -320,25 +341,35 @@ export default function ConnectDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {atRiskCustomers.map((customer) => (
-                    <div key={customer.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div
+                      key={customer.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-semibold text-lg">{customer.name}</h4>
-                            <Badge variant={
-                              customer.riskLevel === 'critical' ? 'destructive' :
-                              customer.riskLevel === 'high' ? 'default' :
-                              'secondary'
-                            }>
+                            <Badge
+                              variant={
+                                customer.riskLevel === 'critical'
+                                  ? 'destructive'
+                                  : customer.riskLevel === 'high'
+                                    ? 'default'
+                                    : 'secondary'
+                              }
+                            >
                               {customer.riskLevel} risk
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            MRR: ${customer.mrr.toLocaleString()} • {customer.churnProbability}% churn probability
+                            MRR: ${customer.mrr.toLocaleString()} • {customer.churnProbability}%
+                            churn probability
                           </p>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-red-600">{customer.healthScore}</div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {customer.healthScore}
+                          </div>
                           <p className="text-xs text-muted-foreground">Health Score</p>
                           <div className="flex items-center justify-end text-xs text-red-600 mt-1">
                             <TrendingDown className="h-3 w-3 mr-1" />
@@ -363,7 +394,9 @@ export default function ConnectDashboard() {
                           <p className="text-sm font-medium mb-2">AI Recommendation:</p>
                           <div className="flex items-start gap-2">
                             <Target className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                            <p className="text-sm font-semibold text-blue-600">{customer.recommendation}</p>
+                            <p className="text-sm font-semibold text-blue-600">
+                              {customer.recommendation}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -431,27 +464,39 @@ export default function ConnectDashboard() {
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-green-700 mb-3">✅ Printyx Connect (B2B2C Platform)</h4>
+                    <h4 className="font-semibold text-green-700 mb-3">
+                      ✅ Printyx Connect (B2B2C Platform)
+                    </h4>
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">White-label portal for customer self-service 24/7</span>
+                        <span className="font-medium">
+                          White-label portal for customer self-service 24/7
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">AI predicts churn weeks before customers leave</span>
+                        <span className="font-medium">
+                          AI predicts churn weeks before customers leave
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">Real-time equipment dashboards with proactive alerts</span>
+                        <span className="font-medium">
+                          Real-time equipment dashboards with proactive alerts
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">Automated satisfaction surveys with NPS tracking</span>
+                        <span className="font-medium">
+                          Automated satisfaction surveys with NPS tracking
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">Proactive interventions prevent churn (25-30% reduction)</span>
+                        <span className="font-medium">
+                          Proactive interventions prevent churn (25-30% reduction)
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -459,8 +504,9 @@ export default function ConnectDashboard() {
                 <div className="mt-6 p-4 bg-white rounded-lg border border-orange-200">
                   <p className="text-sm font-semibold text-center">
                     <Heart className="inline h-4 w-4 mr-1 text-pink-600" />
-                    Dealers using Connect retain <span className="text-orange-600">25-30% more customers</span> annually
-                    (avg. $300K+ in saved revenue)
+                    Dealers using Connect retain{' '}
+                    <span className="text-orange-600">25-30% more customers</span> annually (avg.
+                    $300K+ in saved revenue)
                   </p>
                 </div>
               </CardContent>
@@ -473,7 +519,8 @@ export default function ConnectDashboard() {
               <CardHeader>
                 <CardTitle>Customer Success Platform Features</CardTitle>
                 <CardDescription>
-                  Transform from a transactional vendor into a strategic partner your customers can't live without
+                  Transform from a transactional vendor into a strategic partner your customers
+                  can't live without
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -489,7 +536,9 @@ export default function ConnectDashboard() {
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <div className={`p-3 rounded-lg ${feature.color} bg-opacity-10`}>
-                              <Icon className={`h-6 w-6 ${feature.color.replace('bg-', 'text-')}`} />
+                              <Icon
+                                className={`h-6 w-6 ${feature.color.replace('bg-', 'text-')}`}
+                              />
                             </div>
                             <Badge variant="secondary">{feature.category}</Badge>
                           </div>
@@ -502,7 +551,9 @@ export default function ConnectDashboard() {
                           <div className="space-y-3">
                             <div className="p-2 bg-green-50 rounded-lg border border-green-200">
                               <p className="text-xs text-muted-foreground">Impact:</p>
-                              <p className="text-sm font-semibold text-green-700">{feature.impact}</p>
+                              <p className="text-sm font-semibold text-green-700">
+                                {feature.impact}
+                              </p>
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground font-medium">Features:</p>
@@ -552,9 +603,7 @@ export default function ConnectDashboard() {
                         <CardTitle className="text-lg">Churn Reduction</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold text-pink-600">
-                          -25%
-                        </div>
+                        <div className="text-3xl font-bold text-pink-600">-25%</div>
                         <p className="text-sm text-muted-foreground mt-1">customer churn</p>
                         <div className="mt-4 text-sm">
                           <p className="text-muted-foreground">Annual revenue saved:</p>
@@ -573,9 +622,7 @@ export default function ConnectDashboard() {
                         <CardTitle className="text-lg">Operational Efficiency</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold text-blue-600">
-                          -50%
-                        </div>
+                        <div className="text-3xl font-bold text-blue-600">-50%</div>
                         <p className="text-sm text-muted-foreground mt-1">support call volume</p>
                         <div className="mt-4 text-sm space-y-2">
                           <div className="flex justify-between">
@@ -599,9 +646,7 @@ export default function ConnectDashboard() {
                         <CardTitle className="text-lg">Revenue Growth</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold text-green-600">
-                          +15%
-                        </div>
+                        <div className="text-3xl font-bold text-green-600">+15%</div>
                         <p className="text-sm text-muted-foreground mt-1">renewal rates</p>
                         <div className="mt-4 text-sm space-y-2">
                           <div className="flex justify-between">
@@ -660,10 +705,10 @@ export default function ConnectDashboard() {
                         <ThumbsUp className="h-8 w-8 text-blue-600 flex-shrink-0" />
                         <div>
                           <p className="text-sm italic mb-2">
-                            "Since implementing Printyx Connect, our customer churn dropped from 8% to 3%.
-                            The AI health scores helped us identify at-risk accounts before they cancelled,
-                            and the customer portal reduced support calls by 60%. Our customers love the
-                            self-service capabilities."
+                            "Since implementing Printyx Connect, our customer churn dropped from 8%
+                            to 3%. The AI health scores helped us identify at-risk accounts before
+                            they cancelled, and the customer portal reduced support calls by 60%.
+                            Our customers love the self-service capabilities."
                           </p>
                           <p className="text-sm font-semibold">— Regional Dealer, 300+ customers</p>
                           <div className="flex items-center gap-1 mt-1">

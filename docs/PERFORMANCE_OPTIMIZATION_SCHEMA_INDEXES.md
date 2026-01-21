@@ -1,11 +1,13 @@
 # Performance Optimization: Database Indexes
 
 ## Overview
+
 This document outlines the database indexes that should be added to improve query performance, particularly for foreign key relationships and frequently queried columns.
 
 ## Required Index Additions
 
 ### Service Tickets Table
+
 The `service_tickets` table is heavily queried with joins on customer_id, technician_id, and filtered by tenant_id and status. Add these indexes:
 
 ```sql
@@ -18,55 +20,81 @@ CREATE INDEX idx_service_tickets_scheduled_date ON service_tickets(scheduled_dat
 ```
 
 ### Drizzle ORM Schema Update
+
 Add these indexes to the `serviceTickets` table definition in `shared/schema.ts`:
 
 ```typescript
-export const serviceTickets = pgTable('service_tickets', {
-  // ... existing columns ...
-}, (table) => ({
-  customerIdIdx: index('service_tickets_customer_id_idx').on(table.customerId),
-  technicianIdIdx: index('service_tickets_technician_id_idx').on(table.assignedTechnicianId),
-  tenantStatusIdx: index('service_tickets_tenant_status_idx').on(table.tenantId, table.status),
-  tenantCreatedIdx: index('service_tickets_tenant_created_idx').on(table.tenantId, table.createdAt),
-  scheduledDateIdx: index('service_tickets_scheduled_date_idx').on(table.scheduledDate),
-}));
+export const serviceTickets = pgTable(
+  'service_tickets',
+  {
+    // ... existing columns ...
+  },
+  (table) => ({
+    customerIdIdx: index('service_tickets_customer_id_idx').on(table.customerId),
+    technicianIdIdx: index('service_tickets_technician_id_idx').on(table.assignedTechnicianId),
+    tenantStatusIdx: index('service_tickets_tenant_status_idx').on(table.tenantId, table.status),
+    tenantCreatedIdx: index('service_tickets_tenant_created_idx').on(
+      table.tenantId,
+      table.createdAt,
+    ),
+    scheduledDateIdx: index('service_tickets_scheduled_date_idx').on(table.scheduledDate),
+  }),
+);
 ```
 
 ### Business Records Table
+
 The `business_records` table needs indexes for common query patterns:
 
 ```typescript
-export const businessRecords = pgTable('business_records', {
-  // ... existing columns ...
-}, (table) => ({
-  // Add these indexes
-  tenantTypeIdx: index('business_records_tenant_type_idx').on(table.tenantId, table.recordType),
-  tenantStatusIdx: index('business_records_tenant_status_idx').on(table.tenantId, table.status),
-  urlSlugIdx: index('business_records_url_slug_idx').on(table.urlSlug),
-  displayIdIdx: index('business_records_display_id_idx').on(table.displayId),
-  createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
-}));
+export const businessRecords = pgTable(
+  'business_records',
+  {
+    // ... existing columns ...
+  },
+  (table) => ({
+    // Add these indexes
+    tenantTypeIdx: index('business_records_tenant_type_idx').on(table.tenantId, table.recordType),
+    tenantStatusIdx: index('business_records_tenant_status_idx').on(table.tenantId, table.status),
+    urlSlugIdx: index('business_records_url_slug_idx').on(table.urlSlug),
+    displayIdIdx: index('business_records_display_id_idx').on(table.displayId),
+    createdAtIdx: index('business_records_created_at_idx').on(table.createdAt),
+  }),
+);
 ```
 
 ### Technicians Table
+
 ```typescript
-export const technicians = pgTable('technicians', {
-  // ... existing columns ...
-}, (table) => ({
-  tenantUserIdx: index('technicians_tenant_user_idx').on(table.tenantId, table.userId),
-  tenantActiveIdx: index('technicians_tenant_active_idx').on(table.tenantId, table.isActive),
-  emailIdx: index('technicians_email_idx').on(table.email),
-}));
+export const technicians = pgTable(
+  'technicians',
+  {
+    // ... existing columns ...
+  },
+  (table) => ({
+    tenantUserIdx: index('technicians_tenant_user_idx').on(table.tenantId, table.userId),
+    tenantActiveIdx: index('technicians_tenant_active_idx').on(table.tenantId, table.isActive),
+    emailIdx: index('technicians_email_idx').on(table.email),
+  }),
+);
 ```
 
 ### Meter Readings Table
+
 ```typescript
-export const meterReadings = pgTable('meter_readings', {
-  // ... existing columns ...
-}, (table) => ({
-  equipmentDateIdx: index('meter_readings_equipment_date_idx').on(table.equipmentId, table.readingDate),
-  tenantDateIdx: index('meter_readings_tenant_date_idx').on(table.tenantId, table.readingDate),
-}));
+export const meterReadings = pgTable(
+  'meter_readings',
+  {
+    // ... existing columns ...
+  },
+  (table) => ({
+    equipmentDateIdx: index('meter_readings_equipment_date_idx').on(
+      table.equipmentId,
+      table.readingDate,
+    ),
+    tenantDateIdx: index('meter_readings_tenant_date_idx').on(table.tenantId, table.readingDate),
+  }),
+);
 ```
 
 ## Migration Steps
@@ -74,6 +102,7 @@ export const meterReadings = pgTable('meter_readings', {
 1. **Update Schema File**: Add index definitions to respective table definitions in `shared/schema.ts`
 
 2. **Generate Migration**: Run the following command to generate a migration:
+
    ```bash
    npm run db:push
    ```
@@ -90,17 +119,20 @@ export const meterReadings = pgTable('meter_readings', {
 ## Performance Impact
 
 ### Expected Improvements:
+
 - **Service ticket queries**: 60-90% faster (especially for technician assignment and customer lookups)
 - **Business record lookups**: 70-85% faster (especially by slug and display ID)
 - **Meter reading queries**: 50-70% faster (equipment-based queries)
 - **Overall N+1 query scenarios**: 80-95% reduction in query time
 
 ### Before Optimization:
+
 - Service ticket list with customer data: ~500-1000ms (50+ queries)
 - Business record lookup by slug: ~200-400ms
 - Technician availability check: ~300-600ms
 
 ### After Optimization:
+
 - Service ticket list with customer data: ~50-150ms (2-5 queries)
 - Business record lookup by slug: ~10-50ms
 - Technician availability check: ~30-100ms

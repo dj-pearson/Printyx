@@ -64,7 +64,7 @@ export class HierarchicalQueryBuilder {
    */
   private getFieldName(
     fieldName: keyof NonNullable<QueryFilterOptions['fieldNames']>,
-    options?: QueryFilterOptions
+    options?: QueryFilterOptions,
   ): string {
     const customFieldName = options?.fieldNames?.[fieldName];
     const actualFieldName = customFieldName || this.getDefaultFieldName(fieldName);
@@ -75,7 +75,9 @@ export class HierarchicalQueryBuilder {
   /**
    * Get default field name for standard fields
    */
-  private getDefaultFieldName(fieldName: keyof NonNullable<QueryFilterOptions['fieldNames']>): string {
+  private getDefaultFieldName(
+    fieldName: keyof NonNullable<QueryFilterOptions['fieldNames']>,
+  ): string {
     const defaults: Record<string, string> = {
       userId: 'user_id',
       tenantId: 'tenant_id',
@@ -190,22 +192,24 @@ export class HierarchicalQueryBuilder {
     switch (scope) {
       case 'platform':
         // Platform users can access ALL locations
-        const allLocations = await db.select({ id: organizationalUnits.id })
+        const allLocations = await db
+          .select({ id: organizationalUnits.id })
           .from(organizationalUnits)
           .where(eq(organizationalUnits.unitType, 'location'));
-        return allLocations.map(loc => loc.id);
+        return allLocations.map((loc) => loc.id);
 
       case 'company':
         // Company-wide - all locations for this tenant
-        const companyLocations = await db.select({ id: organizationalUnits.id })
+        const companyLocations = await db
+          .select({ id: organizationalUnits.id })
           .from(organizationalUnits)
           .where(
             and(
               eq(organizationalUnits.tenantId, this.userContext.tenantId),
-              eq(organizationalUnits.unitType, 'location')
-            )
+              eq(organizationalUnits.unitType, 'location'),
+            ),
           );
-        return companyLocations.map(loc => loc.id);
+        return companyLocations.map((loc) => loc.id);
 
       case 'regional':
         // Regional - all locations in this region
@@ -214,13 +218,14 @@ export class HierarchicalQueryBuilder {
         }
 
         // Get all locations under this region using nested set
-        const regionalUnit = await db.select()
+        const regionalUnit = await db
+          .select()
           .from(organizationalUnits)
           .where(
             and(
               eq(organizationalUnits.id, this.userContext.regionId),
-              eq(organizationalUnits.tenantId, this.userContext.tenantId)
-            )
+              eq(organizationalUnits.tenantId, this.userContext.tenantId),
+            ),
           )
           .limit(1);
 
@@ -228,17 +233,18 @@ export class HierarchicalQueryBuilder {
           return [];
         }
 
-        const regionalLocations = await db.select({ id: organizationalUnits.id })
+        const regionalLocations = await db
+          .select({ id: organizationalUnits.id })
           .from(organizationalUnits)
           .where(
             and(
               eq(organizationalUnits.tenantId, this.userContext.tenantId),
               eq(organizationalUnits.unitType, 'location'),
               gte(organizationalUnits.lft, regionalUnit[0].lft),
-              lte(organizationalUnits.rght, regionalUnit[0].rght)
-            )
+              lte(organizationalUnits.rght, regionalUnit[0].rght),
+            ),
           );
-        return regionalLocations.map(loc => loc.id);
+        return regionalLocations.map((loc) => loc.id);
 
       case 'location':
       case 'team':
@@ -260,22 +266,24 @@ export class HierarchicalQueryBuilder {
     switch (scope) {
       case 'platform':
         // Platform users can access ALL regions
-        const allRegions = await db.select({ id: organizationalUnits.id })
+        const allRegions = await db
+          .select({ id: organizationalUnits.id })
           .from(organizationalUnits)
           .where(eq(organizationalUnits.unitType, 'regional'));
-        return allRegions.map(reg => reg.id);
+        return allRegions.map((reg) => reg.id);
 
       case 'company':
         // Company-wide - all regions for this tenant
-        const companyRegions = await db.select({ id: organizationalUnits.id })
+        const companyRegions = await db
+          .select({ id: organizationalUnits.id })
           .from(organizationalUnits)
           .where(
             and(
               eq(organizationalUnits.tenantId, this.userContext.tenantId),
-              eq(organizationalUnits.unitType, 'regional')
-            )
+              eq(organizationalUnits.unitType, 'regional'),
+            ),
           );
-        return companyRegions.map(reg => reg.id);
+        return companyRegions.map((reg) => reg.id);
 
       case 'regional':
         // Regional - single region
@@ -287,7 +295,12 @@ export class HierarchicalQueryBuilder {
         // Location, team, or individual - get parent region
         if (!this.userContext.locationId) return [];
 
-        const location = await db.select({ id: organizationalUnits.id, lft: organizationalUnits.lft, rght: organizationalUnits.rght })
+        const location = await db
+          .select({
+            id: organizationalUnits.id,
+            lft: organizationalUnits.lft,
+            rght: organizationalUnits.rght,
+          })
           .from(organizationalUnits)
           .where(eq(organizationalUnits.id, this.userContext.locationId))
           .limit(1);
@@ -295,15 +308,16 @@ export class HierarchicalQueryBuilder {
         if (location.length === 0) return [];
 
         // Find parent regional unit using nested set
-        const parentRegion = await db.select({ id: organizationalUnits.id })
+        const parentRegion = await db
+          .select({ id: organizationalUnits.id })
           .from(organizationalUnits)
           .where(
             and(
               eq(organizationalUnits.tenantId, this.userContext.tenantId),
               eq(organizationalUnits.unitType, 'regional'),
               lte(organizationalUnits.lft, location[0].lft),
-              gte(organizationalUnits.rght, location[0].rght)
-            )
+              gte(organizationalUnits.rght, location[0].rght),
+            ),
           )
           .limit(1);
 
@@ -324,10 +338,11 @@ export class HierarchicalQueryBuilder {
       case 'platform':
       case 'company':
         // Can access all users in tenant
-        const allUsers = await db.select({ id: users.id })
+        const allUsers = await db
+          .select({ id: users.id })
           .from(users)
           .where(eq(users.tenantId, this.userContext.tenantId));
-        return allUsers.map(u => u.id);
+        return allUsers.map((u) => u.id);
 
       case 'regional':
       case 'location':
@@ -335,30 +350,29 @@ export class HierarchicalQueryBuilder {
         const locationIds = await this.getAccessibleLocationIds();
         if (locationIds.length === 0) return [this.userContext.id];
 
-        const locationUsers = await db.select({ id: users.id })
+        const locationUsers = await db
+          .select({ id: users.id })
           .from(users)
           .where(
             and(
               eq(users.tenantId, this.userContext.tenantId),
-              inArray(users.primaryLocationId, locationIds)
-            )
+              inArray(users.primaryLocationId, locationIds),
+            ),
           );
-        return locationUsers.map(u => u.id);
+        return locationUsers.map((u) => u.id);
 
       case 'team':
         // Can access direct reports + self
-        const teamMembers = await db.select({ id: users.id })
+        const teamMembers = await db
+          .select({ id: users.id })
           .from(users)
           .where(
             and(
               eq(users.tenantId, this.userContext.tenantId),
-              or(
-                eq(users.managerId, this.userContext.id),
-                eq(users.id, this.userContext.id)
-              )
-            )
+              or(eq(users.managerId, this.userContext.id), eq(users.id, this.userContext.id)),
+            ),
           );
-        return teamMembers.map(u => u.id);
+        return teamMembers.map((u) => u.id);
 
       case 'own':
         // Only self
@@ -413,7 +427,14 @@ export class HierarchicalQueryBuilder {
    * Check if user can access a specific organizational scope
    */
   canAccessScope(targetScope: ScopeLevel): boolean {
-    const scopeHierarchy: ScopeLevel[] = ['own', 'team', 'location', 'regional', 'company', 'platform'];
+    const scopeHierarchy: ScopeLevel[] = [
+      'own',
+      'team',
+      'location',
+      'regional',
+      'company',
+      'platform',
+    ];
     const userScopeIndex = scopeHierarchy.indexOf(this.userContext.territoryScope);
     const targetScopeIndex = scopeHierarchy.indexOf(targetScope);
 
@@ -465,13 +486,17 @@ export class HierarchicalQueryBuilder {
         if (this.userContext.regionId) {
           filters.push(sql`${sql.identifier(`${prefix}region_id`)} = ${this.userContext.regionId}`);
         } else if (this.userContext.locationId) {
-          filters.push(sql`${sql.identifier(`${prefix}location_id`)} = ${this.userContext.locationId}`);
+          filters.push(
+            sql`${sql.identifier(`${prefix}location_id`)} = ${this.userContext.locationId}`,
+          );
         }
         break;
 
       case 'location':
         if (this.userContext.locationId) {
-          filters.push(sql`${sql.identifier(`${prefix}location_id`)} = ${this.userContext.locationId}`);
+          filters.push(
+            sql`${sql.identifier(`${prefix}location_id`)} = ${this.userContext.locationId}`,
+          );
         } else {
           filters.push(sql`1 = 0`); // No access
         }
@@ -518,7 +543,7 @@ export function createQueryBuilder(userContext: EnhancedUserContext): Hierarchic
  */
 export function applyUserScope(
   userContext: EnhancedUserContext,
-  options?: QueryFilterOptions
+  options?: QueryFilterOptions,
 ): SQL | undefined {
   const builder = new HierarchicalQueryBuilder(userContext);
   return builder.applyHierarchicalFilter(options);

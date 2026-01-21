@@ -11,7 +11,13 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
   Brain,
@@ -42,7 +48,7 @@ import {
   UserCheck,
   FileText,
   Tag,
-  Activity
+  Activity,
 } from 'lucide-react';
 
 interface AITask {
@@ -106,7 +112,7 @@ export default function AITaskScheduling() {
       isAIScheduled: true,
       aiSuggestedStart: '2025-01-16 09:00',
       aiSuggestedEnd: '2025-01-16 17:00',
-      completionPercentage: 65
+      completionPercentage: 65,
     },
     {
       id: '2',
@@ -125,7 +131,7 @@ export default function AITaskScheduling() {
       isAIScheduled: true,
       aiSuggestedStart: '2025-01-17 14:00',
       aiSuggestedEnd: '2025-01-17 18:00',
-      completionPercentage: 0
+      completionPercentage: 0,
     },
     {
       id: '3',
@@ -142,7 +148,7 @@ export default function AITaskScheduling() {
       dependencies: [],
       tags: ['Documentation', 'Customer Success'],
       isAIScheduled: false,
-      completionPercentage: 0
+      completionPercentage: 0,
     },
     {
       id: '4',
@@ -161,8 +167,8 @@ export default function AITaskScheduling() {
       isAIScheduled: true,
       aiSuggestedStart: '2025-01-19 09:00',
       aiSuggestedEnd: '2025-01-19 15:00',
-      completionPercentage: 25
-    }
+      completionPercentage: 25,
+    },
   ]);
 
   const [suggestions] = useState<AISchedulingSuggestion[]>([
@@ -173,7 +179,7 @@ export default function AITaskScheduling() {
       suggestedTime: '14:00',
       reason: 'Optimal time based on team availability and dependency completion',
       confidence: 92,
-      benefits: ['No scheduling conflicts', 'All dependencies met', 'Peak productivity time']
+      benefits: ['No scheduling conflicts', 'All dependencies met', 'Peak productivity time'],
     },
     {
       id: '2',
@@ -182,8 +188,8 @@ export default function AITaskScheduling() {
       suggestedTime: '10:00',
       reason: 'Low complexity task scheduled during high-energy morning hours',
       confidence: 78,
-      benefits: ['Morning productivity boost', 'No urgent tasks blocking', 'Balanced workload']
-    }
+      benefits: ['Morning productivity boost', 'No urgent tasks blocking', 'Balanced workload'],
+    },
   ]);
 
   const [stats] = useState({
@@ -194,7 +200,7 @@ export default function AITaskScheduling() {
     timeSaved: 12.5, // hours
     completionRate: 87,
     overdueTasks: 3,
-    workloadBalance: 85
+    workloadBalance: 85,
   });
 
   const getPriorityBadge = (priority: string) => {
@@ -227,30 +233,31 @@ export default function AITaskScheduling() {
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = tasks.filter((task) => {
     const matchesFilter = selectedFilter === 'all' || task.status === selectedFilter;
-    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         task.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
 
   return (
-    <MainLayout 
-      title="AI Task Scheduling" 
+    <MainLayout
+      title="AI Task Scheduling"
       description="Enhanced AI task scheduling and dependency management with intelligent automation"
     >
       {/* Action buttons */}
       <div className="flex justify-end gap-3 mb-6">
-          <Button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
-            <Brain className="h-4 w-4" />
-            AI Optimize Schedule
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Create Task
-          </Button>
-        </div>
+        <Button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700">
+          <Brain className="h-4 w-4" />
+          AI Optimize Schedule
+        </Button>
+        <Button variant="outline" className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          Create Task
+        </Button>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -458,7 +465,9 @@ export default function AITaskScheduling() {
                           <p className="text-sm text-gray-600">Progress</p>
                           <div className="flex items-center gap-2">
                             <Progress value={task.completionPercentage} className="w-20" />
-                            <span className="text-sm font-medium">{task.completionPercentage}%</span>
+                            <span className="text-sm font-medium">
+                              {task.completionPercentage}%
+                            </span>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -474,7 +483,7 @@ export default function AITaskScheduling() {
                         </div>
                       </div>
                     </div>
-                    
+
                     {task.aiSchedulingConfidence > 0 && (
                       <div className="mt-4 p-3 bg-purple-50 rounded-lg">
                         <div className="flex items-center gap-3 mb-2">
@@ -509,7 +518,7 @@ export default function AITaskScheduling() {
             <CardContent>
               <div className="space-y-4">
                 {suggestions.map((suggestion) => {
-                  const task = tasks.find(t => t.id === suggestion.taskId);
+                  const task = tasks.find((t) => t.id === suggestion.taskId);
                   return (
                     <div
                       key={suggestion.id}
@@ -538,7 +547,10 @@ export default function AITaskScheduling() {
                           <div className="space-y-1">
                             <p className="text-sm font-medium text-gray-900">Benefits:</p>
                             {suggestion.benefits.map((benefit, index) => (
-                              <p key={index} className="text-sm text-green-700 flex items-center gap-2">
+                              <p
+                                key={index}
+                                className="text-sm text-green-700 flex items-center gap-2"
+                              >
                                 <CheckCircle className="h-3 w-3" />
                                 {benefit}
                               </p>
@@ -549,9 +561,7 @@ export default function AITaskScheduling() {
                           <Button className="bg-purple-600 hover:bg-purple-700">
                             Accept Suggestion
                           </Button>
-                          <Button variant="outline">
-                            Modify
-                          </Button>
+                          <Button variant="outline">Modify</Button>
                         </div>
                       </div>
                     </div>
@@ -589,9 +599,7 @@ export default function AITaskScheduling() {
             <Card>
               <CardHeader>
                 <CardTitle>Task Completion Trends</CardTitle>
-                <CardDescription>
-                  Track task completion rates over time
-                </CardDescription>
+                <CardDescription>Track task completion rates over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-12 text-gray-500">
@@ -604,9 +612,7 @@ export default function AITaskScheduling() {
             <Card>
               <CardHeader>
                 <CardTitle>AI Performance Metrics</CardTitle>
-                <CardDescription>
-                  Monitor AI scheduling accuracy and efficiency
-                </CardDescription>
+                <CardDescription>Monitor AI scheduling accuracy and efficiency</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-12 text-gray-500">

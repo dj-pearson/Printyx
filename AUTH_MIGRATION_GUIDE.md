@@ -1,4 +1,5 @@
 # Authentication Migration Guide
+
 **Date:** January 7, 2026  
 **Project:** Printyx  
 **Version:** 1.1.0
@@ -20,6 +21,7 @@ This guide documents the authentication improvements implemented for Printyx fol
 **New File:** `client/src/lib/validations.ts`
 
 **Purpose:** Provides comprehensive input validation and sanitization functions to prevent:
+
 - XSS (Cross-Site Scripting)
 - SQL Injection
 - Open Redirect Attacks
@@ -27,6 +29,7 @@ This guide documents the authentication improvements implemented for Printyx fol
 - Directory Traversal
 
 **Key Functions:**
+
 ```typescript
 // HTML sanitization
 sanitizeHTML(input: string): string
@@ -54,6 +57,7 @@ saveRedirectRoute(route: string): void
 ```
 
 **Usage Example:**
+
 ```typescript
 import { sanitizeEmail, sanitizeInput } from '@/lib/validations';
 
@@ -71,16 +75,19 @@ const cleanName = sanitizeInput(userInput.name);
 **Purpose:** Centralized authentication utility functions for secure redirect handling.
 
 **Key Features:**
+
 - Validates redirect URLs against blocked prefixes
 - Decodes URL encoding to prevent bypasses
 - Blocks dangerous protocols (javascript:, data:, etc.)
 - Preserves user's intended destination securely
 
 **Updated Files:**
+
 - `client/src/pages/Login.tsx` - Uses new redirect handling
 - `client/src/pages/AuthCallback.tsx` - Sanitizes redirect parameter
 
 **Before:**
+
 ```typescript
 // Inline redirect validation in Login.tsx (39 lines)
 const getSafeRedirectRoute = (route: string | null): string => {
@@ -89,6 +96,7 @@ const getSafeRedirectRoute = (route: string | null): string => {
 ```
 
 **After:**
+
 ```typescript
 import { getSafeRedirectRoute } from '@/lib/validations';
 
@@ -101,6 +109,7 @@ const redirectTo = getSafeRedirectRoute();
 #### 3. OAuth Redirect Preservation
 
 **Updated Files:**
+
 - `client/src/pages/Login.tsx`
 - `client/src/pages/AuthCallback.tsx`
 
@@ -109,6 +118,7 @@ OAuth login would always redirect to `/` after success, losing the user's intend
 
 **After:**
 OAuth login preserves where the user was trying to go:
+
 ```typescript
 import { getOAuthRedirectURL } from '@/lib/auth-utils';
 
@@ -124,6 +134,7 @@ const { data, error } = await supabase.auth.signInWithOAuth({
 ```
 
 **User Experience:**
+
 1. User tries to access `/reports/analytics` (requires auth)
 2. Redirected to `/login` (route saved in localStorage)
 3. Clicks "Sign in with Google"
@@ -138,11 +149,13 @@ const { data, error } = await supabase.auth.signInWithOAuth({
 **Purpose:** Real-time visual feedback on password strength with requirement checklist.
 
 **Features:**
+
 - Color-coded progress bar (red → yellow → green)
 - Real-time requirement checks
 - Compact variant for space-constrained UIs
 
 **Usage:**
+
 ```tsx
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 
@@ -159,10 +172,11 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
       <FormMessage />
     </FormItem>
   )}
-/>
+/>;
 ```
 
 **Visual Feedback:**
+
 - ✅ Green checkmarks for met requirements
 - ❌ Gray X marks for unmet requirements
 - Progress bar shows overall strength (0-5 scale)
@@ -181,6 +195,7 @@ The following improvements are planned for future implementation:
 **Planned:** Supabase built-in OTP (One-Time Password)
 
 **Benefits:**
+
 - 6-digit code (easier to type than long token)
 - Shorter expiration time (10 minutes vs 24 hours)
 - Resend capability with cooldown
@@ -188,6 +203,7 @@ The following improvements are planned for future implementation:
 - Native Supabase integration
 
 **Implementation Required:**
+
 1. Create `client/src/components/auth/OTPVerification.tsx`
 2. Update `client/src/pages/Signup.tsx` to show OTP input after signup
 3. Update `server/auth-routes.ts` to use Supabase OTP
@@ -202,12 +218,14 @@ The following improvements are planned for future implementation:
 **Planned:** Use `supabase.auth.signUp()` for all user creation
 
 **Benefits:**
+
 - Single source of truth (Supabase Auth)
 - Built-in security features
 - Automatic session management
 - No password hash mismatch issues
 
 **Implementation Required:**
+
 1. Update `client/src/hooks/useSupabaseAuth.ts` signup function
 2. Create database trigger for tenant provisioning on auth.users INSERT
 3. Store tenant metadata in app_metadata
@@ -220,11 +238,13 @@ The following improvements are planned for future implementation:
 ### For Development
 
 1. ✅ **Pull Latest Changes**
+
    ```bash
    git pull origin main
    ```
 
 2. ✅ **Install Dependencies**
+
    ```bash
    npm install
    ```
@@ -249,11 +269,13 @@ The following improvements are planned for future implementation:
    - Test OAuth flows in staging
 
 2. ⏳ **Update Environment Variables** (if needed)
+
    ```bash
    # No new env vars required for Phase 1
    ```
 
 3. ⏳ **Deploy to Staging**
+
    ```bash
    npm run build
    # Deploy to staging environment
@@ -289,6 +311,7 @@ The following improvements are planned for future implementation:
 ### Manual Testing
 
 #### Sign Up Flow
+
 - [ ] Can create new account with email/password
 - [ ] Password strength indicator shows correct feedback
 - [ ] All requirements turn green when met
@@ -297,6 +320,7 @@ The following improvements are planned for future implementation:
 - [ ] Redirected to dashboard after verification
 
 #### Login Flow
+
 - [ ] Can log in with valid credentials
 - [ ] Proper error message for invalid credentials
 - [ ] Redirects to originally intended page
@@ -304,6 +328,7 @@ The following improvements are planned for future implementation:
 - [ ] "Remember me" works as expected
 
 #### OAuth Flow
+
 - [ ] Google sign-in button works
 - [ ] Apple sign-in button works
 - [ ] Redirects to OAuth provider
@@ -312,6 +337,7 @@ The following improvements are planned for future implementation:
 - [ ] Creates user profile on first login
 
 #### Security Testing
+
 - [ ] Cannot inject HTML in name fields
 - [ ] Cannot inject JavaScript in inputs
 - [ ] Cannot redirect to external site
@@ -322,6 +348,7 @@ The following improvements are planned for future implementation:
 ### Automated Testing
 
 Run the test suite:
+
 ```bash
 # Unit tests
 npm run test
@@ -331,6 +358,7 @@ npm run test:e2e
 ```
 
 **Expected Results:**
+
 - All existing tests pass
 - No new console errors
 - No TypeScript errors
@@ -344,10 +372,11 @@ If issues are discovered in production:
 ### Quick Rollback (< 5 minutes)
 
 1. **Revert to Previous Deployment**
+
    ```bash
    # If using Cloudflare Pages
    # Use dashboard to rollback to previous deployment
-   
+
    # If using Docker
    docker pull printyx/web:previous
    docker restart printyx-web
@@ -363,6 +392,7 @@ If issues are discovered in production:
 If only one feature is problematic:
 
 **Disable Password Strength Indicator:**
+
 ```tsx
 // In client/src/pages/Signup.tsx
 // Comment out:
@@ -370,6 +400,7 @@ If only one feature is problematic:
 ```
 
 **Revert to Old Redirect Logic:**
+
 ```typescript
 // In client/src/pages/Login.tsx
 // Replace getSafeRedirectRoute() with inline validation
@@ -402,16 +433,19 @@ None identified as of January 7, 2026.
 ## Performance Impact
 
 ### Bundle Size
+
 - **Added:** ~15 KB (validation utilities + password indicator)
 - **Removed:** ~5 KB (inline validation code)
 - **Net Impact:** +10 KB (~0.5% of total bundle)
 
 ### Runtime Performance
+
 - Password strength calculation: < 1ms
 - Input sanitization: < 1ms per field
 - No noticeable performance impact
 
 ### Load Time
+
 - No measurable impact on initial load
 - Password indicator lazy loads with Signup page
 
@@ -457,6 +491,7 @@ None identified as of January 7, 2026.
 ### Code Style
 
 All new code follows existing project conventions:
+
 - ✅ TypeScript strict mode
 - ✅ Functional components with hooks
 - ✅ Zod for validation
@@ -466,6 +501,7 @@ All new code follows existing project conventions:
 ### File Organization
 
 New files follow project structure:
+
 ```
 client/src/
 ├── lib/
@@ -479,6 +515,7 @@ client/src/
 ### Documentation
 
 All functions include:
+
 - JSDoc comments
 - Parameter descriptions
 - Return type descriptions
@@ -495,6 +532,7 @@ All functions include:
 **Cause:** Missing import in Login.tsx
 
 **Solution:**
+
 ```typescript
 import { getSafeRedirectRoute } from '@/lib/validations';
 ```
@@ -504,6 +542,7 @@ import { getSafeRedirectRoute } from '@/lib/validations';
 **Cause:** Component not imported
 
 **Solution:**
+
 ```typescript
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 ```
@@ -519,11 +558,13 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
 ## Resources
 
 ### Documentation
+
 - [AUTH_IMPROVEMENT_PLAN.md](./AUTH_IMPROVEMENT_PLAN.md) - Overall improvement plan
 - [AUTH_SETUP_DOCUMENTATION.md](./AUTH_SETUP_DOCUMENTATION.md) - EatPal reference implementation
 - [CLAUDE.md](./CLAUDE.md) - Project overview and conventions
 
 ### Code References
+
 - Input Validation: `client/src/lib/validations.ts`
 - Auth Utilities: `client/src/lib/auth-utils.ts`
 - Password Indicator: `client/src/components/auth/PasswordStrengthIndicator.tsx`
@@ -532,6 +573,7 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
 - Auth Callback: `client/src/pages/AuthCallback.tsx`
 
 ### External Resources
+
 - [Supabase Auth Docs](https://supabase.com/docs/guides/auth)
 - [OWASP Authentication](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
 - [OWASP Input Validation](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)
@@ -543,6 +585,7 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
 ### Version 1.1.0 (January 7, 2026)
 
 **Added:**
+
 - Input validation and sanitization utilities
 - Enhanced open redirect prevention
 - OAuth redirect preservation
@@ -551,17 +594,20 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
 - Improved error messages
 
 **Changed:**
+
 - Login page now uses centralized redirect handling
 - Signup page includes password strength feedback
 - OAuth callbacks preserve intended destination
 - Email inputs are sanitized automatically
 
 **Fixed:**
+
 - Open redirect vulnerability in login flow
 - OAuth redirect loss of destination
 - Inconsistent error messages across auth flows
 
 **Security:**
+
 - XSS prevention via input sanitization
 - Open redirect prevention via URL validation
 - Enhanced password requirements visualization

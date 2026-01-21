@@ -22,7 +22,7 @@ class PrintyxApiClient {
 
     console.log('[Printyx API] Initialized:', {
       baseUrl: this.baseUrl,
-      tenantId: this.tenantId
+      tenantId: this.tenantId,
     });
   }
 
@@ -38,7 +38,7 @@ class PrintyxApiClient {
 
     const headers = {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...options.headers,
     };
 
     // Add tenant ID header if available
@@ -52,7 +52,7 @@ class PrintyxApiClient {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: 'include' // Send cookies for session auth
+        credentials: 'include', // Send cookies for session auth
       });
 
       // Handle authentication errors
@@ -94,7 +94,7 @@ class PrintyxApiClient {
   async quickImport(profileData) {
     return this.request('/api/extension/leads/quick-import', {
       method: 'POST',
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
   }
 

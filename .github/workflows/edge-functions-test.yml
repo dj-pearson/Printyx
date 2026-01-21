@@ -16,7 +16,7 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,13 +54,13 @@ jobs:
             -e SUPABASE_ANON_KEY=test \
             -e SUPABASE_SERVICE_ROLE_KEY=test \
             edge-functions-test
-          
+
           # Wait for container to start
           sleep 5
-          
+
           # Test health endpoint
           curl -f http://localhost:8000/health || exit 1
-          
+
           # Cleanup
           docker stop test-functions
           docker rm test-functions
@@ -70,9 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint-and-test
     if: success() && github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Deployment ready
         run: |
           echo "✅ All tests passed! Ready for Coolify deployment."
-

@@ -51,21 +51,13 @@ function MainTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{ tabBarLabel: 'Home' }}
-      />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen
         name="Tickets"
         component={TicketListScreen}
         options={{ tabBarLabel: 'Tickets' }}
       />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ tabBarLabel: 'Profile' }}
-      />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -77,11 +69,7 @@ function MainTabs() {
 export default function AppNavigator() {
   return (
     <Stack.Navigator>
-      <Stack.Screen
-        name="MainTabs"
-        component={MainTabs}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
       <Stack.Screen
         name="TicketDetail"
         component={TicketDetailScreen}

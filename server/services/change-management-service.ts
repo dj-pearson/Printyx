@@ -4,8 +4,8 @@
  * Handles change request lifecycle, approvals, and audit trail
  */
 
-import { db } from "../db";
-import { eq, and, desc, gte, lte, inArray, sql, or } from "drizzle-orm";
+import { db } from '../db';
+import { eq, and, desc, gte, lte, inArray, sql, or } from 'drizzle-orm';
 import {
   changeRequests,
   changeApprovals,
@@ -14,18 +14,18 @@ import {
   type InsertChangeRequest,
   type ChangeApproval,
   type InsertChangeApproval,
-} from "@shared/soc2-compliance-schema";
+} from '@shared/soc2-compliance-schema';
 
 // ============= CONSTANTS =============
 
-const CHANGE_NUMBER_PREFIX = "CHG";
+const CHANGE_NUMBER_PREFIX = 'CHG';
 
 // Risk level to approval requirements mapping
 const APPROVAL_REQUIREMENTS: Record<string, { levels: number; roles: string[] }> = {
-  low: { levels: 1, roles: ["manager", "admin"] },
-  medium: { levels: 1, roles: ["manager", "admin", "platform_admin"] },
-  high: { levels: 2, roles: ["admin", "platform_admin"] },
-  critical: { levels: 3, roles: ["admin", "platform_admin", "executive"] },
+  low: { levels: 1, roles: ['manager', 'admin'] },
+  medium: { levels: 1, roles: ['manager', 'admin', 'platform_admin'] },
+  high: { levels: 2, roles: ['admin', 'platform_admin'] },
+  critical: { levels: 3, roles: ['admin', 'platform_admin', 'executive'] },
 };
 
 // Emergency change auto-approval window (hours)
@@ -38,7 +38,7 @@ const EMERGENCY_AUTO_APPROVAL_WINDOW = 24;
  */
 async function generateChangeNumber(): Promise<string> {
   const year = new Date().getFullYear();
-  const month = String(new Date().getMonth() + 1).padStart(2, "0");
+  const month = String(new Date().getMonth() + 1).padStart(2, '0');
 
   // Get count of changes this month
   const result = await db
@@ -46,10 +46,10 @@ async function generateChangeNumber(): Promise<string> {
     .from(changeRequests)
     .where(
       sql`EXTRACT(YEAR FROM ${changeRequests.createdAt}) = ${year}
-          AND EXTRACT(MONTH FROM ${changeRequests.createdAt}) = ${month + 1}`
+          AND EXTRACT(MONTH FROM ${changeRequests.createdAt}) = ${month + 1}`,
     );
 
-  const sequence = String((result[0]?.count || 0) + 1).padStart(4, "0");
+  const sequence = String((result[0]?.count || 0) + 1).padStart(4, '0');
   return `${CHANGE_NUMBER_PREFIX}-${year}${month}-${sequence}`;
 }
 
@@ -57,9 +57,9 @@ async function generateChangeNumber(): Promise<string> {
  * Create a new change request
  */
 export async function createChangeRequest(
-  data: Omit<InsertChangeRequest, "changeNumber">,
+  data: Omit<InsertChangeRequest, 'changeNumber'>,
   actorId: string,
-  actorName: string
+  actorName: string,
 ): Promise<ChangeRequest> {
   const changeNumber = await generateChangeNumber();
 
@@ -68,16 +68,24 @@ export async function createChangeRequest(
     .values({
       ...data,
       changeNumber,
-      status: "draft",
+      status: 'draft',
     })
     .returning();
 
   // Log creation in history
-  await logChangeHistory(changeRequest.id, actorId, actorName, "created", null, null, JSON.stringify({
-    title: changeRequest.title,
-    type: changeRequest.type,
-    riskLevel: changeRequest.riskLevel,
-  }));
+  await logChangeHistory(
+    changeRequest.id,
+    actorId,
+    actorName,
+    'created',
+    null,
+    null,
+    JSON.stringify({
+      title: changeRequest.title,
+      type: changeRequest.type,
+      riskLevel: changeRequest.riskLevel,
+    }),
+  );
 
   return changeRequest;
 }
@@ -87,17 +95,12 @@ export async function createChangeRequest(
  */
 export async function getChangeRequest(
   changeRequestId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<ChangeRequest | null> {
   const [changeRequest] = await db
     .select()
     .from(changeRequests)
-    .where(
-      and(
-        eq(changeRequests.id, changeRequestId),
-        eq(changeRequests.tenantId, tenantId)
-      )
-    );
+    .where(and(eq(changeRequests.id, changeRequestId), eq(changeRequests.tenantId, tenantId)));
 
   return changeRequest || null;
 }
@@ -117,7 +120,7 @@ export async function listChangeRequests(
     endDate?: Date;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: ChangeRequest[]; total: number }> {
   const conditions = [eq(changeRequests.tenantId, tenantId)];
 
@@ -171,15 +174,15 @@ export async function updateChangeRequest(
   tenantId: string,
   updates: Partial<InsertChangeRequest>,
   actorId: string,
-  actorName: string
+  actorName: string,
 ): Promise<ChangeRequest | null> {
   // Get current state for history
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) return null;
 
   // Cannot update closed changes
-  if (["completed", "cancelled", "rolled_back"].includes(current.status)) {
-    throw new Error("Cannot update a closed change request");
+  if (['completed', 'cancelled', 'rolled_back'].includes(current.status)) {
+    throw new Error('Cannot update a closed change request');
   }
 
   const [updated] = await db
@@ -188,12 +191,7 @@ export async function updateChangeRequest(
       ...updates,
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(changeRequests.id, changeRequestId),
-        eq(changeRequests.tenantId, tenantId)
-      )
-    )
+    .where(and(eq(changeRequests.id, changeRequestId), eq(changeRequests.tenantId, tenantId)))
     .returning();
 
   // Log each changed field
@@ -204,10 +202,10 @@ export async function updateChangeRequest(
         changeRequestId,
         actorId,
         actorName,
-        "updated",
+        'updated',
         key,
         JSON.stringify(oldValue),
-        JSON.stringify(newValue)
+        JSON.stringify(newValue),
       );
     }
   }
@@ -222,23 +220,23 @@ export async function submitForApproval(
   changeRequestId: string,
   tenantId: string,
   actorId: string,
-  actorName: string
+  actorName: string,
 ): Promise<ChangeRequest> {
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
-  if (current.status !== "draft") {
-    throw new Error("Only draft changes can be submitted for approval");
+  if (current.status !== 'draft') {
+    throw new Error('Only draft changes can be submitted for approval');
   }
 
   // Validate required fields
   if (!current.rollbackPlan) {
-    throw new Error("Rollback plan is required before submission");
+    throw new Error('Rollback plan is required before submission');
   }
   if (!current.businessJustification) {
-    throw new Error("Business justification is required");
+    throw new Error('Business justification is required');
   }
 
   // Create approval requests based on risk level
@@ -251,7 +249,7 @@ export async function submitForApproval(
   const [updated] = await db
     .update(changeRequests)
     .set({
-      status: current.type === "standard" ? "approved" : "pending_approval",
+      status: current.type === 'standard' ? 'approved' : 'pending_approval',
       submittedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -262,10 +260,10 @@ export async function submitForApproval(
     changeRequestId,
     actorId,
     actorName,
-    "submitted_for_approval",
-    "status",
-    "draft",
-    updated.status
+    'submitted_for_approval',
+    'status',
+    'draft',
+    updated.status,
   );
 
   return updated;
@@ -276,14 +274,14 @@ export async function submitForApproval(
  */
 async function createApprovalRequest(
   changeRequestId: string,
-  approvalLevel: number
+  approvalLevel: number,
 ): Promise<void> {
   await db.insert(changeApprovals).values({
     changeRequestId,
-    approverId: "00000000-0000-0000-0000-000000000000", // Placeholder, will be assigned
-    approverName: "Pending Assignment",
-    approverRole: "pending",
-    decision: "pending",
+    approverId: '00000000-0000-0000-0000-000000000000', // Placeholder, will be assigned
+    approverName: 'Pending Assignment',
+    approverRole: 'pending',
+    decision: 'pending',
     approvalLevel,
     isRequired: true,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
@@ -297,7 +295,7 @@ async function createApprovalRequest(
  */
 export async function getPendingApprovals(
   approverId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<Array<ChangeApproval & { changeRequest: ChangeRequest }>> {
   const approvals = await db
     .select()
@@ -306,10 +304,10 @@ export async function getPendingApprovals(
     .where(
       and(
         eq(changeApprovals.approverId, approverId),
-        eq(changeApprovals.decision, "pending"),
+        eq(changeApprovals.decision, 'pending'),
         eq(changeRequests.tenantId, tenantId),
-        eq(changeRequests.status, "pending_approval")
-      )
+        eq(changeRequests.status, 'pending_approval'),
+      ),
     );
 
   return approvals.map((row) => ({
@@ -327,7 +325,7 @@ export async function approveChange(
   approverName: string,
   approverRole: string,
   comments?: string,
-  conditions?: string
+  conditions?: string,
 ): Promise<ChangeApproval> {
   const [approval] = await db
     .update(changeApprovals)
@@ -335,7 +333,7 @@ export async function approveChange(
       approverId,
       approverName,
       approverRole,
-      decision: "approved",
+      decision: 'approved',
       comments,
       conditions,
       decidedAt: new Date(),
@@ -344,7 +342,7 @@ export async function approveChange(
     .returning();
 
   if (!approval) {
-    throw new Error("Approval not found");
+    throw new Error('Approval not found');
   }
 
   // Check if all required approvals are complete
@@ -355,10 +353,10 @@ export async function approveChange(
     approval.changeRequestId,
     approverId,
     approverName,
-    "approved",
+    'approved',
     null,
     null,
-    JSON.stringify({ level: approval.approvalLevel, comments, conditions })
+    JSON.stringify({ level: approval.approvalLevel, comments, conditions }),
   );
 
   return approval;
@@ -372,7 +370,7 @@ export async function rejectChange(
   approverId: string,
   approverName: string,
   approverRole: string,
-  reason: string
+  reason: string,
 ): Promise<ChangeApproval> {
   const [approval] = await db
     .update(changeApprovals)
@@ -380,7 +378,7 @@ export async function rejectChange(
       approverId,
       approverName,
       approverRole,
-      decision: "rejected",
+      decision: 'rejected',
       comments: reason,
       decidedAt: new Date(),
     })
@@ -388,14 +386,14 @@ export async function rejectChange(
     .returning();
 
   if (!approval) {
-    throw new Error("Approval not found");
+    throw new Error('Approval not found');
   }
 
   // Update change request status
   await db
     .update(changeRequests)
     .set({
-      status: "draft", // Return to draft for revision
+      status: 'draft', // Return to draft for revision
       rejectedBy: approverId,
       rejectionReason: reason,
       updatedAt: new Date(),
@@ -406,10 +404,10 @@ export async function rejectChange(
     approval.changeRequestId,
     approverId,
     approverName,
-    "rejected",
-    "status",
-    "pending_approval",
-    "draft"
+    'rejected',
+    'status',
+    'pending_approval',
+    'draft',
   );
 
   return approval;
@@ -425,17 +423,17 @@ async function checkAllApprovals(changeRequestId: string): Promise<void> {
     .where(
       and(
         eq(changeApprovals.changeRequestId, changeRequestId),
-        eq(changeApprovals.isRequired, true)
-      )
+        eq(changeApprovals.isRequired, true),
+      ),
     );
 
-  const allApproved = approvals.every((a) => a.decision === "approved");
+  const allApproved = approvals.every((a) => a.decision === 'approved');
 
   if (allApproved && approvals.length > 0) {
     await db
       .update(changeRequests)
       .set({
-        status: "approved",
+        status: 'approved',
         approvedBy: approvals.map((a) => ({
           userId: a.approverId,
           userName: a.approverName,
@@ -458,21 +456,21 @@ export async function startImplementation(
   changeRequestId: string,
   tenantId: string,
   actorId: string,
-  actorName: string
+  actorName: string,
 ): Promise<ChangeRequest> {
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
-  if (current.status !== "approved") {
-    throw new Error("Only approved changes can be implemented");
+  if (current.status !== 'approved') {
+    throw new Error('Only approved changes can be implemented');
   }
 
   const [updated] = await db
     .update(changeRequests)
     .set({
-      status: "in_progress",
+      status: 'in_progress',
       actualStartDate: new Date(),
       assigneeId: actorId,
       updatedAt: new Date(),
@@ -484,10 +482,10 @@ export async function startImplementation(
     changeRequestId,
     actorId,
     actorName,
-    "implementation_started",
-    "status",
-    "approved",
-    "in_progress"
+    'implementation_started',
+    'status',
+    'approved',
+    'in_progress',
   );
 
   return updated;
@@ -502,21 +500,21 @@ export async function completeImplementation(
   actorId: string,
   actorName: string,
   implementationNotes: string,
-  verificationNotes: string
+  verificationNotes: string,
 ): Promise<ChangeRequest> {
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
-  if (current.status !== "in_progress") {
-    throw new Error("Only in-progress changes can be completed");
+  if (current.status !== 'in_progress') {
+    throw new Error('Only in-progress changes can be completed');
   }
 
   const [updated] = await db
     .update(changeRequests)
     .set({
-      status: "completed",
+      status: 'completed',
       actualEndDate: new Date(),
       implementationNotes,
       verificationNotes,
@@ -530,10 +528,10 @@ export async function completeImplementation(
     changeRequestId,
     actorId,
     actorName,
-    "implementation_completed",
-    "status",
-    "in_progress",
-    "completed"
+    'implementation_completed',
+    'status',
+    'in_progress',
+    'completed',
   );
 
   return updated;
@@ -547,21 +545,21 @@ export async function failImplementation(
   tenantId: string,
   actorId: string,
   actorName: string,
-  failureReason: string
+  failureReason: string,
 ): Promise<ChangeRequest> {
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
-  if (current.status !== "in_progress") {
-    throw new Error("Only in-progress changes can be marked as failed");
+  if (current.status !== 'in_progress') {
+    throw new Error('Only in-progress changes can be marked as failed');
   }
 
   const [updated] = await db
     .update(changeRequests)
     .set({
-      status: "failed",
+      status: 'failed',
       failureReason,
       actualEndDate: new Date(),
       closedAt: new Date(),
@@ -574,10 +572,10 @@ export async function failImplementation(
     changeRequestId,
     actorId,
     actorName,
-    "implementation_failed",
-    "status",
-    "in_progress",
-    "failed"
+    'implementation_failed',
+    'status',
+    'in_progress',
+    'failed',
   );
 
   return updated;
@@ -591,21 +589,21 @@ export async function rollbackChange(
   tenantId: string,
   actorId: string,
   actorName: string,
-  rollbackNotes: string
+  rollbackNotes: string,
 ): Promise<ChangeRequest> {
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
-  if (!["in_progress", "completed", "failed"].includes(current.status)) {
-    throw new Error("Change cannot be rolled back from current status");
+  if (!['in_progress', 'completed', 'failed'].includes(current.status)) {
+    throw new Error('Change cannot be rolled back from current status');
   }
 
   const [updated] = await db
     .update(changeRequests)
     .set({
-      status: "rolled_back",
+      status: 'rolled_back',
       rollbackNotes,
       closedAt: new Date(),
       updatedAt: new Date(),
@@ -617,10 +615,10 @@ export async function rollbackChange(
     changeRequestId,
     actorId,
     actorName,
-    "rolled_back",
-    "status",
+    'rolled_back',
+    'status',
     current.status,
-    "rolled_back"
+    'rolled_back',
   );
 
   return updated;
@@ -634,21 +632,21 @@ export async function cancelChange(
   tenantId: string,
   actorId: string,
   actorName: string,
-  reason: string
+  reason: string,
 ): Promise<ChangeRequest> {
   const current = await getChangeRequest(changeRequestId, tenantId);
   if (!current) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
-  if (["completed", "cancelled", "rolled_back"].includes(current.status)) {
-    throw new Error("Change cannot be cancelled from current status");
+  if (['completed', 'cancelled', 'rolled_back'].includes(current.status)) {
+    throw new Error('Change cannot be cancelled from current status');
   }
 
   const [updated] = await db
     .update(changeRequests)
     .set({
-      status: "cancelled",
+      status: 'cancelled',
       rejectionReason: reason,
       closedAt: new Date(),
       updatedAt: new Date(),
@@ -660,10 +658,10 @@ export async function cancelChange(
     changeRequestId,
     actorId,
     actorName,
-    "cancelled",
-    "status",
+    'cancelled',
+    'status',
     current.status,
-    "cancelled"
+    'cancelled',
   );
 
   return updated;
@@ -683,7 +681,7 @@ async function logChangeHistory(
   oldValue: string | null,
   newValue: string | null,
   ipAddress?: string,
-  userAgent?: string
+  userAgent?: string,
 ): Promise<void> {
   await db.insert(changeHistory).values({
     changeRequestId,
@@ -703,11 +701,11 @@ async function logChangeHistory(
  */
 export async function getChangeHistory(
   changeRequestId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<Array<typeof changeHistory.$inferSelect>> {
   const change = await getChangeRequest(changeRequestId, tenantId);
   if (!change) {
-    throw new Error("Change request not found");
+    throw new Error('Change request not found');
   }
 
   return db
@@ -720,9 +718,7 @@ export async function getChangeHistory(
 /**
  * Get change approvals
  */
-export async function getChangeApprovals(
-  changeRequestId: string
-): Promise<ChangeApproval[]> {
+export async function getChangeApprovals(changeRequestId: string): Promise<ChangeApproval[]> {
   return db
     .select()
     .from(changeApprovals)
@@ -738,7 +734,7 @@ export async function getChangeApprovals(
 export async function getChangeMetrics(
   tenantId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<{
   totalChanges: number;
   byStatus: Record<string, number>;
@@ -755,8 +751,8 @@ export async function getChangeMetrics(
       and(
         eq(changeRequests.tenantId, tenantId),
         gte(changeRequests.createdAt, startDate),
-        lte(changeRequests.createdAt, endDate)
-      )
+        lte(changeRequests.createdAt, endDate),
+      ),
     );
 
   const byStatus: Record<string, number> = {};
@@ -774,8 +770,8 @@ export async function getChangeMetrics(
     byType[change.type] = (byType[change.type] || 0) + 1;
     byRiskLevel[change.riskLevel] = (byRiskLevel[change.riskLevel] || 0) + 1;
 
-    if (change.status === "completed") completedCount++;
-    if (change.status === "failed") failedCount++;
+    if (change.status === 'completed') completedCount++;
+    if (change.status === 'failed') failedCount++;
 
     // Calculate approval time
     if (change.submittedAt && change.approvedBy) {
@@ -788,17 +784,14 @@ export async function getChangeMetrics(
 
     // Calculate implementation time
     if (change.actualStartDate && change.actualEndDate) {
-      const implTime =
-        change.actualEndDate.getTime() - change.actualStartDate.getTime();
+      const implTime = change.actualEndDate.getTime() - change.actualStartDate.getTime();
       totalImplementationTime += implTime;
       implementationTimeCount++;
     }
   }
 
   const successRate =
-    completedCount + failedCount > 0
-      ? (completedCount / (completedCount + failedCount)) * 100
-      : 0;
+    completedCount + failedCount > 0 ? (completedCount / (completedCount + failedCount)) * 100 : 0;
 
   return {
     totalChanges: changes.length,
@@ -823,10 +816,10 @@ export async function getChangeMetrics(
  * Create emergency change (bypasses normal approval for urgent fixes)
  */
 export async function createEmergencyChange(
-  data: Omit<InsertChangeRequest, "changeNumber" | "type">,
+  data: Omit<InsertChangeRequest, 'changeNumber' | 'type'>,
   actorId: string,
   actorName: string,
-  justification: string
+  justification: string,
 ): Promise<ChangeRequest> {
   const changeNumber = await generateChangeNumber();
 
@@ -835,16 +828,16 @@ export async function createEmergencyChange(
     .values({
       ...data,
       changeNumber,
-      type: "emergency",
-      status: "approved", // Auto-approved for emergency
+      type: 'emergency',
+      status: 'approved', // Auto-approved for emergency
       businessJustification: `EMERGENCY: ${justification}\n\n${data.businessJustification}`,
       approvedBy: [
         {
           userId: actorId,
           userName: actorName,
-          role: "emergency_approver",
+          role: 'emergency_approver',
           approvedAt: new Date().toISOString(),
-          comments: "Emergency change auto-approved",
+          comments: 'Emergency change auto-approved',
         },
       ],
       submittedAt: new Date(),
@@ -855,10 +848,10 @@ export async function createEmergencyChange(
     changeRequest.id,
     actorId,
     actorName,
-    "emergency_change_created",
+    'emergency_change_created',
     null,
     null,
-    JSON.stringify({ justification, title: changeRequest.title })
+    JSON.stringify({ justification, title: changeRequest.title }),
   );
 
   return changeRequest;

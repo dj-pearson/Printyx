@@ -40,48 +40,48 @@ export interface BusinessRecordData {
 
 export class BusinessRecordUpdater extends BaseUpdater {
   private leadSources = {
-    'website': 0.30,
-    'referral': 0.25,
-    'cold_call': 0.15,
-    'trade_show': 0.10,
-    'social_media': 0.10,
-    'advertisement': 0.05,
-    'partner': 0.05,
+    website: 0.3,
+    referral: 0.25,
+    cold_call: 0.15,
+    trade_show: 0.1,
+    social_media: 0.1,
+    advertisement: 0.05,
+    partner: 0.05,
   };
 
   private industries = {
-    'healthcare': 0.20,
-    'legal': 0.15,
-    'education': 0.15,
-    'manufacturing': 0.12,
-    'retail': 0.10,
-    'professional_services': 0.10,
-    'government': 0.08,
-    'non_profit': 0.05,
-    'real_estate': 0.05,
+    healthcare: 0.2,
+    legal: 0.15,
+    education: 0.15,
+    manufacturing: 0.12,
+    retail: 0.1,
+    professional_services: 0.1,
+    government: 0.08,
+    non_profit: 0.05,
+    real_estate: 0.05,
   };
 
   private companySizes = {
     '1-10': 0.25,
-    '11-50': 0.30,
+    '11-50': 0.3,
     '51-200': 0.25,
     '201-500': 0.15,
     '500+': 0.05,
   };
 
   private interestLevels = {
-    'cold': 0.30,
-    'warm': 0.40,
-    'hot': 0.25,
-    'qualified': 0.05,
+    cold: 0.3,
+    warm: 0.4,
+    hot: 0.25,
+    qualified: 0.05,
   };
 
   private salesStages = {
-    'initial_contact': 0.40,
-    'qualified': 0.25,
-    'needs_analysis': 0.20,
-    'proposal': 0.10,
-    'negotiation': 0.05,
+    initial_contact: 0.4,
+    qualified: 0.25,
+    needs_analysis: 0.2,
+    proposal: 0.1,
+    negotiation: 0.05,
   };
 
   constructor(options: UpdaterOptions) {
@@ -101,10 +101,10 @@ export class BusinessRecordUpdater extends BaseUpdater {
    */
   protected async generateData(): Promise<BusinessRecordData[]> {
     const leads: BusinessRecordData[] = [];
-    
+
     // Generate 1 new lead per execution (daily frequency)
     const leadCount = 1;
-    
+
     for (let i = 0; i < leadCount; i++) {
       const lead = await this.generateSingleLead();
       leads.push(lead);
@@ -176,7 +176,7 @@ export class BusinessRecordUpdater extends BaseUpdater {
     const companySize = this.selectFromDistribution(this.companySizes);
     const interestLevel = this.selectFromDistribution(this.interestLevels);
     const salesStage = this.selectFromDistribution(this.salesStages);
-    
+
     const companyName = this.generateCompanyName(industry);
     const contactInfo = this.generateContactInfo(companyName);
     const address = this.generateAddress();
@@ -235,13 +235,41 @@ export class BusinessRecordUpdater extends BaseUpdater {
     };
 
     const commonSuffixes = ['Inc', 'LLC', 'Corp', 'Co', 'Group', 'Associates', 'Partners'];
-    
+
     const prefixes = industryPrefixes[industry as keyof typeof industryPrefixes] || ['Company'];
     const businessNames = [
-      'Alpha', 'Beta', 'Gamma', 'Delta', 'Omega', 'Prime', 'Apex', 'Elite', 'Summit', 'Pinnacle',
-      'Metro', 'Central', 'Regional', 'National', 'Global', 'United', 'American', 'First',
-      'Advanced', 'Progressive', 'Modern', 'Innovative', 'Creative', 'Dynamic', 'Strategic',
-      'Reliable', 'Quality', 'Premier', 'Professional', 'Excellence', 'Superior', 'Optimal',
+      'Alpha',
+      'Beta',
+      'Gamma',
+      'Delta',
+      'Omega',
+      'Prime',
+      'Apex',
+      'Elite',
+      'Summit',
+      'Pinnacle',
+      'Metro',
+      'Central',
+      'Regional',
+      'National',
+      'Global',
+      'United',
+      'American',
+      'First',
+      'Advanced',
+      'Progressive',
+      'Modern',
+      'Innovative',
+      'Creative',
+      'Dynamic',
+      'Strategic',
+      'Reliable',
+      'Quality',
+      'Premier',
+      'Professional',
+      'Excellence',
+      'Superior',
+      'Optimal',
     ];
 
     const prefix = this.randomFromArray(prefixes);
@@ -264,24 +292,93 @@ export class BusinessRecordUpdater extends BaseUpdater {
    */
   private generateContactInfo(companyName: string) {
     const firstNames = [
-      'James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph',
-      'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica',
-      'Sarah', 'Karen', 'Nancy', 'Lisa', 'Betty', 'Helen', 'Sandra', 'Donna', 'Carol',
-      'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven', 'Paul',
+      'James',
+      'John',
+      'Robert',
+      'Michael',
+      'William',
+      'David',
+      'Richard',
+      'Joseph',
+      'Mary',
+      'Patricia',
+      'Jennifer',
+      'Linda',
+      'Elizabeth',
+      'Barbara',
+      'Susan',
+      'Jessica',
+      'Sarah',
+      'Karen',
+      'Nancy',
+      'Lisa',
+      'Betty',
+      'Helen',
+      'Sandra',
+      'Donna',
+      'Carol',
+      'Christopher',
+      'Daniel',
+      'Matthew',
+      'Anthony',
+      'Mark',
+      'Donald',
+      'Steven',
+      'Paul',
     ];
 
     const lastNames = [
-      'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
-      'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
-      'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson',
-      'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker',
+      'Smith',
+      'Johnson',
+      'Williams',
+      'Brown',
+      'Jones',
+      'Garcia',
+      'Miller',
+      'Davis',
+      'Rodriguez',
+      'Martinez',
+      'Hernandez',
+      'Lopez',
+      'Gonzalez',
+      'Wilson',
+      'Anderson',
+      'Thomas',
+      'Taylor',
+      'Moore',
+      'Jackson',
+      'Martin',
+      'Lee',
+      'Perez',
+      'Thompson',
+      'White',
+      'Harris',
+      'Sanchez',
+      'Clark',
+      'Ramirez',
+      'Lewis',
+      'Robinson',
+      'Walker',
     ];
 
     const titles = [
-      'Office Manager', 'Operations Manager', 'General Manager', 'Executive Assistant',
-      'Facilities Manager', 'IT Manager', 'Administrative Manager', 'Business Manager',
-      'Director of Operations', 'VP Operations', 'CFO', 'CEO', 'President', 'Owner',
-      'Purchasing Manager', 'Facilities Coordinator', 'Office Administrator',
+      'Office Manager',
+      'Operations Manager',
+      'General Manager',
+      'Executive Assistant',
+      'Facilities Manager',
+      'IT Manager',
+      'Administrative Manager',
+      'Business Manager',
+      'Director of Operations',
+      'VP Operations',
+      'CFO',
+      'CEO',
+      'President',
+      'Owner',
+      'Purchasing Manager',
+      'Facilities Coordinator',
+      'Office Administrator',
     ];
 
     const firstName = this.randomFromArray(firstNames);
@@ -338,7 +435,7 @@ export class BusinessRecordUpdater extends BaseUpdater {
     const area = this.randomInRange(200, 999);
     const exchange = this.randomInRange(200, 999);
     const number = this.randomInRange(1000, 9999);
-    
+
     return `(${area}) ${exchange}-${number}`;
   }
 
@@ -348,21 +445,72 @@ export class BusinessRecordUpdater extends BaseUpdater {
   private generateAddress() {
     const streetNumbers = this.randomInRange(100, 9999);
     const streetNames = [
-      'Main St', 'First St', 'Second St', 'Park Ave', 'Oak St', 'Pine St', 'Maple Ave',
-      'Cedar St', 'Elm St', 'Washington St', 'Lincoln Ave', 'Jefferson St', 'Madison Ave',
-      'Jackson St', 'Franklin St', 'Business Pkwy', 'Corporate Blvd', 'Industrial Way',
-      'Technology Dr', 'Commerce St', 'Professional Dr', 'Executive Blvd',
+      'Main St',
+      'First St',
+      'Second St',
+      'Park Ave',
+      'Oak St',
+      'Pine St',
+      'Maple Ave',
+      'Cedar St',
+      'Elm St',
+      'Washington St',
+      'Lincoln Ave',
+      'Jefferson St',
+      'Madison Ave',
+      'Jackson St',
+      'Franklin St',
+      'Business Pkwy',
+      'Corporate Blvd',
+      'Industrial Way',
+      'Technology Dr',
+      'Commerce St',
+      'Professional Dr',
+      'Executive Blvd',
     ];
 
     const cities = [
-      'Springfield', 'Franklin', 'Greenville', 'Bristol', 'Clinton', 'Georgetown',
-      'Arlington', 'Fairview', 'Madison', 'Washington', 'Chester', 'Marion',
-      'Oxford', 'Ashland', 'Burlington', 'Manchester', 'Auburn', 'Salem',
+      'Springfield',
+      'Franklin',
+      'Greenville',
+      'Bristol',
+      'Clinton',
+      'Georgetown',
+      'Arlington',
+      'Fairview',
+      'Madison',
+      'Washington',
+      'Chester',
+      'Marion',
+      'Oxford',
+      'Ashland',
+      'Burlington',
+      'Manchester',
+      'Auburn',
+      'Salem',
     ];
 
     const states = [
-      'NY', 'CA', 'TX', 'FL', 'PA', 'IL', 'OH', 'GA', 'NC', 'MI',
-      'NJ', 'VA', 'WA', 'AZ', 'MA', 'TN', 'IN', 'MO', 'MD', 'WI',
+      'NY',
+      'CA',
+      'TX',
+      'FL',
+      'PA',
+      'IL',
+      'OH',
+      'GA',
+      'NC',
+      'MI',
+      'NJ',
+      'VA',
+      'WA',
+      'AZ',
+      'MA',
+      'TN',
+      'IN',
+      'MO',
+      'MD',
+      'WI',
     ];
 
     return {
@@ -385,7 +533,8 @@ export class BusinessRecordUpdater extends BaseUpdater {
       '500+': { min: 25000000, max: 500000000 },
     };
 
-    const range = revenueRanges[companySize as keyof typeof revenueRanges] || revenueRanges['11-50'];
+    const range =
+      revenueRanges[companySize as keyof typeof revenueRanges] || revenueRanges['11-50'];
     return this.randomInRange(range.min, range.max);
   }
 
@@ -414,7 +563,8 @@ export class BusinessRecordUpdater extends BaseUpdater {
       real_estate: 1.1,
     };
 
-    const baseRange = baseDealValues[companySize as keyof typeof baseDealValues] || baseDealValues['11-50'];
+    const baseRange =
+      baseDealValues[companySize as keyof typeof baseDealValues] || baseDealValues['11-50'];
     const multiplier = industryMultipliers[industry as keyof typeof industryMultipliers] || 1.0;
 
     const minValue = Math.round(baseRange.min * multiplier);
@@ -438,12 +588,12 @@ export class BusinessRecordUpdater extends BaseUpdater {
     const daysBack = this.randomInRange(1, 14);
     const date = new Date();
     date.setDate(date.getDate() - daysBack);
-    
+
     // Set random business hour
     const hour = this.randomInRange(9, 17);
     const minute = this.randomInRange(0, 59);
     date.setHours(hour, minute, 0, 0);
-    
+
     return date;
   }
 }

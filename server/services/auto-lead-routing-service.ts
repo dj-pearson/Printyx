@@ -12,7 +12,7 @@ import {
   users,
   type InsertLeadScoreCalculation,
   type InsertLeadAssignmentHistory,
-  type InsertLeadAssignmentQueue
+  type InsertLeadAssignmentQueue,
 } from '@shared/schema';
 import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
 
@@ -86,19 +86,13 @@ export class AutoLeadRoutingService {
   /**
    * Main entry point: Score a lead and automatically assign it
    */
-  async routeLeadAutomatically(
-    leadId: string,
-    tenantId: string
-  ): Promise<AutoRoutingResult> {
+  async routeLeadAutomatically(leadId: string, tenantId: string): Promise<AutoRoutingResult> {
     const startTime = Date.now();
 
     try {
       // Step 1: Fetch lead data
       const lead = await db.query.businessRecords.findFirst({
-        where: and(
-          eq(businessRecords.id, leadId),
-          eq(businessRecords.tenantId, tenantId)
-        ),
+        where: and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)),
       });
 
       if (!lead) {
@@ -119,20 +113,10 @@ export class AutoLeadRoutingService {
       const bestRep = repScores[0];
 
       // Step 4: Assign the lead
-      await this.assignLeadToRep(
-        leadId,
-        bestRep.userId,
-        tenantId,
-        'auto_ai_routing',
-        leadScore
-      );
+      await this.assignLeadToRep(leadId, bestRep.userId, tenantId, 'auto_ai_routing', leadScore);
 
       // Step 5: Send email notification (async, don't wait)
-      const emailSent = await this.sendAssignmentEmail(
-        lead,
-        bestRep,
-        leadScore
-      ).catch(err => {
+      const emailSent = await this.sendAssignmentEmail(lead, bestRep, leadScore).catch((err) => {
         console.error('Failed to send assignment email:', err);
         return false;
       });
@@ -158,16 +142,10 @@ export class AutoLeadRoutingService {
   /**
    * Score a lead using AI and scoring rules
    */
-  private async scoreLead(
-    lead: any,
-    tenantId: string
-  ): Promise<LeadScoringResult> {
+  private async scoreLead(lead: any, tenantId: string): Promise<LeadScoringResult> {
     // Fetch scoring rules
     const rules = await db.query.leadScoringRules.findMany({
-      where: and(
-        eq(leadScoringRules.tenantId, tenantId),
-        eq(leadScoringRules.isActive, true)
-      ),
+      where: and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)),
       orderBy: [desc(leadScoringRules.priority)],
     });
 
@@ -200,19 +178,22 @@ export class AutoLeadRoutingService {
     const bantData = await db.query.bantQualificationCriteria.findFirst({
       where: and(
         eq(bantQualificationCriteria.leadId, lead.id),
-        eq(bantQualificationCriteria.tenantId, tenantId)
+        eq(bantQualificationCriteria.tenantId, tenantId),
       ),
     });
     const bantScore = bantData?.totalBantScore || 0;
 
     // Calculate total (out of 100)
-    const totalScore = Math.min(100, Math.round(
-      (demographicScore * 0.2) +
-      (firmographicScore * 0.2) +
-      (behavioralScore * 0.15) +
-      (engagementScore * 0.2) +
-      (bantScore * 0.25)
-    ));
+    const totalScore = Math.min(
+      100,
+      Math.round(
+        demographicScore * 0.2 +
+          firmographicScore * 0.2 +
+          behavioralScore * 0.15 +
+          engagementScore * 0.2 +
+          bantScore * 0.25,
+      ),
+    );
 
     // Use AI to generate insights
     const aiAnalysis = await this.getAILeadInsights(lead, totalScore);
@@ -256,7 +237,10 @@ export class AutoLeadRoutingService {
   /**
    * Use Claude AI to analyze the lead and provide insights
    */
-  private async getAILeadInsights(lead: any, totalScore: number): Promise<{
+  private async getAILeadInsights(
+    lead: any,
+    totalScore: number,
+  ): Promise<{
     insights: string;
     recommendations: string[];
     conversionProbability: number;
@@ -295,10 +279,12 @@ Format as JSON:
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1000,
         temperature: 0.3,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
       });
 
       const content = message.content[0];
@@ -317,7 +303,7 @@ Format as JSON:
         recommendations: [
           'Contact within 5 minutes',
           'Research company background',
-          'Prepare custom pitch'
+          'Prepare custom pitch',
         ],
         conversionProbability: totalScore,
       };
@@ -338,14 +324,11 @@ Format as JSON:
   private async scoreRepsForLead(
     lead: any,
     leadScore: LeadScoringResult,
-    tenantId: string
+    tenantId: string,
   ): Promise<RepScoringResult[]> {
     // Get all available reps with capacity
     const reps = await db.query.repCapacity.findMany({
-      where: and(
-        eq(repCapacity.tenantId, tenantId),
-        eq(repCapacity.isAvailable, true)
-      ),
+      where: and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.isAvailable, true)),
     });
 
     if (reps.length === 0) {
@@ -375,7 +358,9 @@ Format as JSON:
       // Check performance metrics
       if (rep.conversionRate && parseFloat(rep.conversionRate.toString()) > 0.3) {
         score += 15;
-        reasons.push(`High conversion rate (${(parseFloat(rep.conversionRate.toString()) * 100).toFixed(0)}%)`);
+        reasons.push(
+          `High conversion rate (${(parseFloat(rep.conversionRate.toString()) * 100).toFixed(0)}%)`,
+        );
       }
 
       if (rep.averageResponseTimeMinutes && rep.averageResponseTimeMinutes < 10) {
@@ -394,7 +379,7 @@ Format as JSON:
         where: and(
           eq(salesTerritories.tenantId, tenantId),
           eq(salesTerritories.ownerId, rep.userId),
-          eq(salesTerritories.isActive, true)
+          eq(salesTerritories.isActive, true),
         ),
       });
 
@@ -407,7 +392,11 @@ Format as JSON:
       }
 
       // Lead score match (high-value leads to top performers)
-      if (leadScore.totalScore >= 70 && rep.conversionRate && parseFloat(rep.conversionRate.toString()) > 0.25) {
+      if (
+        leadScore.totalScore >= 70 &&
+        rep.conversionRate &&
+        parseFloat(rep.conversionRate.toString()) > 0.25
+      ) {
         score += 10;
         reasons.push('Top performer for hot lead');
       }
@@ -445,19 +434,17 @@ Format as JSON:
     repUserId: string,
     tenantId: string,
     reason: string,
-    leadScore: LeadScoringResult
+    leadScore: LeadScoringResult,
   ): Promise<void> {
     // Update lead owner
-    await db.update(businessRecords)
+    await db
+      .update(businessRecords)
       .set({
         ownerId: repUserId,
         status: 'assigned',
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(businessRecords.id, leadId),
-        eq(businessRecords.tenantId, tenantId)
-      ));
+      .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)));
 
     // Record in assignment history
     await db.insert(leadAssignmentHistory).values({
@@ -486,7 +473,7 @@ Format as JSON:
   private async sendAssignmentEmail(
     lead: any,
     rep: RepScoringResult,
-    leadScore: LeadScoringResult
+    leadScore: LeadScoringResult,
   ): Promise<boolean> {
     // TODO: Integrate with email service
     // For now, just log

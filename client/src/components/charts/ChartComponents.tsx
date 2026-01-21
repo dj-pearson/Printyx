@@ -22,22 +22,22 @@ import {
   Cell,
   ReferenceLine,
   Brush,
-  ComposedChart
+  ComposedChart,
 } from 'recharts';
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  BarChart3, 
+import {
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
   PieChart as PieChartIcon,
   LineChart as LineChartIcon,
   AreaChart as AreaChartIcon,
   Download,
   Maximize2,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +67,7 @@ const BRAND_COLORS = {
   success: '#50E3C2',
   neutral: '#9B9B9B',
   light: '#F8F9FA',
-  dark: '#2C3E50'
+  dark: '#2C3E50',
 };
 
 const CHART_COLORS = [
@@ -82,7 +82,7 @@ const CHART_COLORS = [
   '#FFC658',
   '#FF7300',
   '#00C49F',
-  '#FFBB28'
+  '#FFBB28',
 ];
 
 interface BaseChartProps {
@@ -116,16 +116,16 @@ interface MetricData {
 // CHART WRAPPER COMPONENT
 // =====================================================================
 
-export function ChartWrapper({ 
-  children, 
-  title, 
-  subtitle, 
-  loading, 
-  error, 
-  onRefresh, 
-  onExport, 
+export function ChartWrapper({
+  children,
+  title,
+  subtitle,
+  loading,
+  error,
+  onRefresh,
+  onExport,
   onExpand,
-  className 
+  className,
 }: {
   children: React.ReactNode;
   title?: string;
@@ -139,19 +139,19 @@ export function ChartWrapper({
 }) {
   // Detect mobile viewport
   const [isMobile, setIsMobile] = React.useState(false);
-  
+
   React.useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
   if (loading) {
     return (
-      <Card className={cn("animate-pulse", className)}>
+      <Card className={cn('animate-pulse', className)}>
         <CardHeader className="pb-2">
           <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           <div className="h-3 bg-gray-200 rounded w-1/2"></div>
@@ -165,7 +165,7 @@ export function ChartWrapper({
 
   if (error) {
     return (
-      <Card className={cn("border-red-200", className)}>
+      <Card className={cn('border-red-200', className)}>
         <CardHeader>
           <CardTitle className="text-red-600">Chart Error</CardTitle>
         </CardHeader>
@@ -183,72 +183,63 @@ export function ChartWrapper({
   }
 
   return (
-    <Card className={cn("w-full overflow-hidden", className)}>
+    <Card className={cn('w-full overflow-hidden', className)}>
       {(title || subtitle || onRefresh || onExport || onExpand) && (
         <CardHeader className="pb-2">
-          <div className={cn(
-            "flex items-center justify-between",
-            isMobile && "flex-col space-y-2 items-start"
-          )}>
+          <div
+            className={cn(
+              'flex items-center justify-between',
+              isMobile && 'flex-col space-y-2 items-start',
+            )}
+          >
             <div className="min-w-0 flex-1">
               {title && (
-                <CardTitle className={cn(
-                  "truncate",
-                  isMobile ? "text-base" : "text-lg"
-                )}>
+                <CardTitle className={cn('truncate', isMobile ? 'text-base' : 'text-lg')}>
                   {title}
                 </CardTitle>
               )}
               {subtitle && (
-                <p className={cn(
-                  "text-gray-600 mt-1 truncate",
-                  isMobile ? "text-xs" : "text-sm"
-                )}>
+                <p className={cn('text-gray-600 mt-1 truncate', isMobile ? 'text-xs' : 'text-sm')}>
                   {subtitle}
                 </p>
               )}
             </div>
-            <div className={cn(
-              "flex items-center",
-              isMobile ? "space-x-1 self-end" : "space-x-2"
-            )}>
+            <div className={cn('flex items-center', isMobile ? 'space-x-1 self-end' : 'space-x-2')}>
               {onRefresh && (
-                <Button 
-                  variant="ghost" 
-                  size={isMobile ? "sm" : "sm"} 
+                <Button
+                  variant="ghost"
+                  size={isMobile ? 'sm' : 'sm'}
                   onClick={onRefresh}
-                  className={isMobile ? "p-2" : ""}
+                  className={isMobile ? 'p-2' : ''}
                 >
-                  <RefreshCw className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
+                  <RefreshCw className={cn(isMobile ? 'h-3 w-3' : 'h-4 w-4')} />
                 </Button>
               )}
               {onExport && (
-                <Button 
-                  variant="ghost" 
-                  size={isMobile ? "sm" : "sm"} 
+                <Button
+                  variant="ghost"
+                  size={isMobile ? 'sm' : 'sm'}
                   onClick={onExport}
-                  className={isMobile ? "p-2" : ""}
+                  className={isMobile ? 'p-2' : ''}
                 >
-                  <Download className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
+                  <Download className={cn(isMobile ? 'h-3 w-3' : 'h-4 w-4')} />
                 </Button>
               )}
               {onExpand && (
-                <Button 
-                  variant="ghost" 
-                  size={isMobile ? "sm" : "sm"} 
+                <Button
+                  variant="ghost"
+                  size={isMobile ? 'sm' : 'sm'}
                   onClick={onExpand}
-                  className={isMobile ? "p-2" : ""}
+                  className={isMobile ? 'p-2' : ''}
                 >
-                  <Maximize2 className={cn(isMobile ? "h-3 w-3" : "h-4 w-4")} />
+                  <Maximize2 className={cn(isMobile ? 'h-3 w-3' : 'h-4 w-4')} />
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
       )}
-      <CardContent className={cn(isMobile && "px-3 py-2")}>
-        {children}
-      </CardContent>
+      <CardContent className={cn(isMobile && 'px-3 py-2')}>{children}</CardContent>
     </Card>
   );
 }
@@ -264,10 +255,7 @@ export function CustomTooltip({ active, payload, label, formatter }: any) {
         <p className="font-medium text-gray-900 mb-2">{label}</p>
         {payload.map((entry: any, index: number) => (
           <div key={index} className="flex items-center space-x-2 text-sm">
-            <div 
-              className="w-3 h-3 rounded-full" 
-              style={{ backgroundColor: entry.color }}
-            />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
             <span className="text-gray-600">{entry.name}:</span>
             <span className="font-medium text-gray-900">
               {formatter ? formatter(entry.value, entry.name) : entry.value}
@@ -316,11 +304,11 @@ export function LineChartComponent({
   lines,
   formatXAxis,
   formatYAxis,
-  formatTooltip
+  formatTooltip,
 }: LineChartProps) {
   // Mobile responsiveness
   const [isMobile, setIsMobile] = React.useState(false);
-  
+
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     checkMobile();
@@ -331,9 +319,9 @@ export function LineChartComponent({
   const responsiveHeight = getResponsiveHeight(height, isMobile);
   const responsiveFontSize = getResponsiveFontSize(12, isMobile);
   const formattedData = useMemo(() => {
-    return data.map(item => ({
+    return data.map((item) => ({
       ...item,
-      [xDataKey]: formatXAxis ? formatXAxis(item[xDataKey]) : item[xDataKey]
+      [xDataKey]: formatXAxis ? formatXAxis(item[xDataKey]) : item[xDataKey],
     }));
   }, [data, xDataKey, formatXAxis]);
 
@@ -349,18 +337,18 @@ export function LineChartComponent({
       className={className}
     >
       <ResponsiveContainer width="100%" height={responsiveHeight}>
-        <LineChart 
-          data={formattedData} 
-          margin={{ 
-            top: 5, 
-            right: isMobile ? 10 : 30, 
-            left: isMobile ? 10 : 20, 
-            bottom: isMobile ? 20 : 5 
+        <LineChart
+          data={formattedData}
+          margin={{
+            top: 5,
+            right: isMobile ? 10 : 30,
+            left: isMobile ? 10 : 20,
+            bottom: isMobile ? 20 : 5,
           }}
         >
           {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />}
-          <XAxis 
-            dataKey={xDataKey} 
+          <XAxis
+            dataKey={xDataKey}
             tick={{ fontSize: responsiveFontSize }}
             stroke="#666"
             interval={isMobile ? 'preserveStartEnd' : 0}
@@ -368,17 +356,15 @@ export function LineChartComponent({
             textAnchor={isMobile ? 'end' : 'middle'}
             height={isMobile ? 60 : 30}
           />
-          <YAxis 
+          <YAxis
             tick={{ fontSize: responsiveFontSize }}
             stroke="#666"
             tickFormatter={formatYAxis}
             width={isMobile ? 40 : 60}
           />
-          <Tooltip 
-            content={<CustomTooltip formatter={formatTooltip} />}
-          />
+          <Tooltip content={<CustomTooltip formatter={formatTooltip} />} />
           {showLegend && <Legend />}
-          
+
           {lines.map((line, index) => (
             <Line
               key={line.dataKey}
@@ -392,7 +378,7 @@ export function LineChartComponent({
               activeDot={{ r: isMobile ? 4 : 6 }}
             />
           ))}
-          
+
           {showBrush && <Brush dataKey={xDataKey} height={30} stroke={BRAND_COLORS.primary} />}
         </LineChart>
       </ResponsiveContainer>
@@ -435,7 +421,7 @@ export function BarChartComponent({
   orientation = 'vertical',
   formatXAxis,
   formatYAxis,
-  formatTooltip
+  formatTooltip,
 }: BarChartProps) {
   return (
     <ChartWrapper
@@ -449,31 +435,29 @@ export function BarChartComponent({
       className={className}
     >
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart 
-          data={data} 
+        <BarChart
+          data={data}
           margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           layout={orientation === 'horizontal' ? 'horizontal' : 'vertical'}
         >
           {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />}
-          <XAxis 
+          <XAxis
             dataKey={orientation === 'horizontal' ? undefined : xDataKey}
             type={orientation === 'horizontal' ? 'number' : 'category'}
             tick={{ fontSize: 12 }}
             stroke="#666"
             tickFormatter={formatXAxis}
           />
-          <YAxis 
+          <YAxis
             dataKey={orientation === 'horizontal' ? xDataKey : undefined}
             type={orientation === 'horizontal' ? 'category' : 'number'}
             tick={{ fontSize: 12 }}
             stroke="#666"
             tickFormatter={formatYAxis}
           />
-          <Tooltip 
-            content={<CustomTooltip formatter={formatTooltip} />}
-          />
+          <Tooltip content={<CustomTooltip formatter={formatTooltip} />} />
           {showLegend && <Legend />}
-          
+
           {bars.map((bar, index) => (
             <Bar
               key={bar.dataKey}
@@ -519,10 +503,13 @@ export function PieChartComponent({
   showLabels = true,
   innerRadius = 0,
   outerRadius = 100,
-  formatTooltip
+  formatTooltip,
 }: PieChartProps) {
   const renderLabel = (entry: any) => {
-    const percent = ((entry.value / data.reduce((sum, item) => sum + item[dataKey], 0)) * 100).toFixed(1);
+    const percent = (
+      (entry.value / data.reduce((sum, item) => sum + item[dataKey], 0)) *
+      100
+    ).toFixed(1);
     return `${entry[nameKey]}: ${percent}%`;
   };
 
@@ -551,15 +538,10 @@ export function PieChartComponent({
             dataKey={dataKey}
           >
             {data.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={CHART_COLORS[index % CHART_COLORS.length]} 
-              />
+              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip 
-            content={<CustomTooltip formatter={formatTooltip} />}
-          />
+          <Tooltip content={<CustomTooltip formatter={formatTooltip} />} />
           {showLegend && <Legend />}
         </PieChart>
       </ResponsiveContainer>
@@ -604,7 +586,7 @@ export function AreaChartComponent({
   stacked = false,
   formatXAxis,
   formatYAxis,
-  formatTooltip
+  formatTooltip,
 }: AreaChartProps) {
   return (
     <ChartWrapper
@@ -620,35 +602,29 @@ export function AreaChartComponent({
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />}
-          <XAxis 
-            dataKey={xDataKey} 
+          <XAxis
+            dataKey={xDataKey}
             tick={{ fontSize: 12 }}
             stroke="#666"
             tickFormatter={formatXAxis}
           />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            stroke="#666"
-            tickFormatter={formatYAxis}
-          />
-          <Tooltip 
-            content={<CustomTooltip formatter={formatTooltip} />}
-          />
+          <YAxis tick={{ fontSize: 12 }} stroke="#666" tickFormatter={formatYAxis} />
+          <Tooltip content={<CustomTooltip formatter={formatTooltip} />} />
           {showLegend && <Legend />}
-          
+
           {areas.map((area, index) => (
             <Area
               key={area.dataKey}
               type="monotone"
               dataKey={area.dataKey}
               name={area.name}
-              stackId={stacked ? (area.stackId || '1') : undefined}
+              stackId={stacked ? area.stackId || '1' : undefined}
               stroke={area.color || CHART_COLORS[index % CHART_COLORS.length]}
               fill={area.color || CHART_COLORS[index % CHART_COLORS.length]}
               fillOpacity={0.6}
             />
           ))}
-          
+
           {showBrush && <Brush dataKey={xDataKey} height={30} stroke={BRAND_COLORS.primary} />}
         </AreaChart>
       </ResponsiveContainer>
@@ -703,7 +679,7 @@ export function ComposedChartComponent({
   areas = [],
   formatXAxis,
   formatYAxis,
-  formatTooltip
+  formatTooltip,
 }: ComposedChartProps) {
   return (
     <ChartWrapper
@@ -719,22 +695,16 @@ export function ComposedChartComponent({
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           {showGrid && <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />}
-          <XAxis 
-            dataKey={xDataKey} 
+          <XAxis
+            dataKey={xDataKey}
             tick={{ fontSize: 12 }}
             stroke="#666"
             tickFormatter={formatXAxis}
           />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            stroke="#666"
-            tickFormatter={formatYAxis}
-          />
-          <Tooltip 
-            content={<CustomTooltip formatter={formatTooltip} />}
-          />
+          <YAxis tick={{ fontSize: 12 }} stroke="#666" tickFormatter={formatYAxis} />
+          <Tooltip content={<CustomTooltip formatter={formatTooltip} />} />
           {showLegend && <Legend />}
-          
+
           {areas.map((area, index) => (
             <Area
               key={area.dataKey}
@@ -746,7 +716,7 @@ export function ComposedChartComponent({
               yAxisId={area.yAxisId}
             />
           ))}
-          
+
           {bars.map((bar, index) => (
             <Bar
               key={bar.dataKey}
@@ -756,7 +726,7 @@ export function ComposedChartComponent({
               radius={[2, 2, 0, 0]}
             />
           ))}
-          
+
           {lines.map((line, index) => (
             <Line
               key={line.dataKey}
@@ -800,11 +770,11 @@ function MetricCard({
   target,
   format = 'number',
   color = BRAND_COLORS.primary,
-  onClick
+  onClick,
 }: MetricCardProps) {
   const formatValue = (val: string | number) => {
     if (typeof val === 'string') return val;
-    
+
     switch (format) {
       case 'currency':
         return new Intl.NumberFormat('en-US', {
@@ -831,10 +801,10 @@ function MetricCard({
   };
 
   return (
-    <Card 
+    <Card
       className={cn(
-        "transition-all duration-200 hover:shadow-md",
-        onClick && "cursor-pointer hover:scale-[1.02]"
+        'transition-all duration-200 hover:shadow-md',
+        onClick && 'cursor-pointer hover:scale-[1.02]',
       )}
       onClick={onClick}
     >
@@ -843,19 +813,18 @@ function MetricCard({
           <h3 className="text-sm font-medium text-gray-600">{title}</h3>
           {getTrendIcon()}
         </div>
-        
+
         <div className="flex items-baseline space-x-2 mb-2">
-          <span className="text-2xl font-bold text-gray-900">
-            {formatValue(value)}
-          </span>
+          <span className="text-2xl font-bold text-gray-900">{formatValue(value)}</span>
           {change !== undefined && (
-            <span 
+            <span
               className={cn(
-                "text-sm font-medium",
-                change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-gray-500'
+                'text-sm font-medium',
+                change > 0 ? 'text-green-600' : change < 0 ? 'text-red-600' : 'text-gray-500',
               )}
             >
-              {change > 0 ? '+' : ''}{change}%
+              {change > 0 ? '+' : ''}
+              {change}%
             </span>
           )}
         </div>
@@ -884,11 +853,11 @@ function MetricCard({
               <span>{Math.round((value / target) * 100)}% of target</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className="h-2 rounded-full transition-all duration-300"
-                style={{ 
+                style={{
                   width: `${Math.min((value / target) * 100, 100)}%`,
-                  backgroundColor: color
+                  backgroundColor: color,
                 }}
               />
             </div>
@@ -911,5 +880,5 @@ export {
   PieChartComponent as PieChart,
   AreaChartComponent as AreaChart,
   ComposedChartComponent as ComposedChart,
-  MetricCard
+  MetricCard,
 };

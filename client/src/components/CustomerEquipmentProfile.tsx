@@ -1,23 +1,17 @@
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Printer,
   Activity,
@@ -30,7 +24,7 @@ import {
   FileText,
   BarChart3,
   Settings,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface Equipment {
   id: string;
@@ -39,7 +33,7 @@ interface Equipment {
   manufacturer: string;
   installDate: string;
   warranty: {
-    status: "active" | "expired" | "expiring_soon";
+    status: 'active' | 'expired' | 'expiring_soon';
     expiryDate: string;
   };
   serviceHistory: ServiceRecord[];
@@ -56,12 +50,12 @@ interface Equipment {
 interface ServiceRecord {
   id: string;
   date: string;
-  type: "repair" | "maintenance" | "installation";
+  type: 'repair' | 'maintenance' | 'installation';
   description: string;
   technician: string;
   partsUsed: string[];
   cost: number;
-  status: "completed" | "pending" | "cancelled";
+  status: 'completed' | 'pending' | 'cancelled';
 }
 
 interface MaintenanceRecord {
@@ -70,14 +64,14 @@ interface MaintenanceRecord {
   dueDate: string;
   lastCompleted?: string;
   frequency: string;
-  priority: "low" | "medium" | "high";
+  priority: 'low' | 'medium' | 'high';
 }
 
 interface Alert {
   id: string;
-  type: "warning" | "error" | "info";
+  type: 'warning' | 'error' | 'info';
   message: string;
-  severity: "low" | "medium" | "high" | "critical";
+  severity: 'low' | 'medium' | 'high' | 'critical';
   dateCreated: string;
 }
 
@@ -93,57 +87,57 @@ export function CustomerEquipmentProfile({
   onClose,
 }: CustomerEquipmentProfileProps) {
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
-  
+
   // Sample equipment data - in real app this would come from API
   const equipment: Equipment[] = [
     {
-      id: "eq-001",
-      model: "Canon imageRUNNER ADVANCE C5540i",
-      serialNumber: "CAN001234567",
-      manufacturer: "Canon",
-      installDate: "2023-03-15",
+      id: 'eq-001',
+      model: 'Canon imageRUNNER ADVANCE C5540i',
+      serialNumber: 'CAN001234567',
+      manufacturer: 'Canon',
+      installDate: '2023-03-15',
       warranty: {
-        status: "active",
-        expiryDate: "2025-03-15",
+        status: 'active',
+        expiryDate: '2025-03-15',
       },
       serviceHistory: [
         {
-          id: "srv-001",
-          date: "2024-08-01",
-          type: "maintenance",
-          description: "Quarterly maintenance check",
-          technician: "John Smith",
-          partsUsed: ["Toner Cartridge", "Cleaning Kit"],
-          cost: 150.00,
-          status: "completed",
+          id: 'srv-001',
+          date: '2024-08-01',
+          type: 'maintenance',
+          description: 'Quarterly maintenance check',
+          technician: 'John Smith',
+          partsUsed: ['Toner Cartridge', 'Cleaning Kit'],
+          cost: 150.0,
+          status: 'completed',
         },
         {
-          id: "srv-002",
-          date: "2024-05-15",
-          type: "repair",
-          description: "Paper jam mechanism repair",
-          technician: "Sarah Johnson",
-          partsUsed: ["Paper Feed Roller"],
-          cost: 85.00,
-          status: "completed",
+          id: 'srv-002',
+          date: '2024-05-15',
+          type: 'repair',
+          description: 'Paper jam mechanism repair',
+          technician: 'Sarah Johnson',
+          partsUsed: ['Paper Feed Roller'],
+          cost: 85.0,
+          status: 'completed',
         },
       ],
       maintenanceSchedule: [
         {
-          id: "mnt-001",
-          type: "Quarterly Maintenance",
-          dueDate: "2024-11-01",
-          lastCompleted: "2024-08-01",
-          frequency: "Every 3 months",
-          priority: "medium",
+          id: 'mnt-001',
+          type: 'Quarterly Maintenance',
+          dueDate: '2024-11-01',
+          lastCompleted: '2024-08-01',
+          frequency: 'Every 3 months',
+          priority: 'medium',
         },
         {
-          id: "mnt-002",
-          type: "Annual Inspection",
-          dueDate: "2025-03-15",
-          lastCompleted: "2024-03-15",
-          frequency: "Annually",
-          priority: "high",
+          id: 'mnt-002',
+          type: 'Annual Inspection',
+          dueDate: '2025-03-15',
+          lastCompleted: '2024-03-15',
+          frequency: 'Annually',
+          priority: 'high',
         },
       ],
       healthScore: 87,
@@ -154,44 +148,44 @@ export function CustomerEquipmentProfile({
       },
       alerts: [
         {
-          id: "alert-001",
-          type: "warning",
-          message: "Toner level low (15% remaining)",
-          severity: "medium",
-          dateCreated: "2024-08-08",
+          id: 'alert-001',
+          type: 'warning',
+          message: 'Toner level low (15% remaining)',
+          severity: 'medium',
+          dateCreated: '2024-08-08',
         },
       ],
     },
     {
-      id: "eq-002",
-      model: "HP LaserJet Pro M404n",
-      serialNumber: "HP987654321",
-      manufacturer: "HP",
-      installDate: "2023-06-20",
+      id: 'eq-002',
+      model: 'HP LaserJet Pro M404n',
+      serialNumber: 'HP987654321',
+      manufacturer: 'HP',
+      installDate: '2023-06-20',
       warranty: {
-        status: "expiring_soon",
-        expiryDate: "2024-12-20",
+        status: 'expiring_soon',
+        expiryDate: '2024-12-20',
       },
       serviceHistory: [
         {
-          id: "srv-003",
-          date: "2024-07-20",
-          type: "repair",
-          description: "Print quality issues resolved",
-          technician: "Mike Wilson",
-          partsUsed: ["Fuser Unit"],
-          cost: 120.00,
-          status: "completed",
+          id: 'srv-003',
+          date: '2024-07-20',
+          type: 'repair',
+          description: 'Print quality issues resolved',
+          technician: 'Mike Wilson',
+          partsUsed: ['Fuser Unit'],
+          cost: 120.0,
+          status: 'completed',
         },
       ],
       maintenanceSchedule: [
         {
-          id: "mnt-003",
-          type: "Bi-annual Service",
-          dueDate: "2024-12-20",
-          lastCompleted: "2024-06-20",
-          frequency: "Every 6 months",
-          priority: "medium",
+          id: 'mnt-003',
+          type: 'Bi-annual Service',
+          dueDate: '2024-12-20',
+          lastCompleted: '2024-06-20',
+          frequency: 'Every 6 months',
+          priority: 'medium',
         },
       ],
       healthScore: 72,
@@ -202,51 +196,51 @@ export function CustomerEquipmentProfile({
       },
       alerts: [
         {
-          id: "alert-002",
-          type: "warning",
-          message: "Warranty expiring in 4 months",
-          severity: "medium",
-          dateCreated: "2024-08-05",
+          id: 'alert-002',
+          type: 'warning',
+          message: 'Warranty expiring in 4 months',
+          severity: 'medium',
+          dateCreated: '2024-08-05',
         },
         {
-          id: "alert-003",
-          type: "error",
-          message: "Unusual print volume spike detected",
-          severity: "high",
-          dateCreated: "2024-08-07",
+          id: 'alert-003',
+          type: 'error',
+          message: 'Unusual print volume spike detected',
+          severity: 'high',
+          dateCreated: '2024-08-07',
         },
       ],
     },
   ];
 
-  const selectedEquipmentData = equipment.find(eq => eq.id === selectedEquipment);
+  const selectedEquipmentData = equipment.find((eq) => eq.id === selectedEquipment);
 
   const getHealthScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600";
-    if (score >= 60) return "text-yellow-600";
-    return "text-red-600";
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   const getWarrantyBadgeVariant = (status: string) => {
     switch (status) {
-      case "active":
-        return "default";
-      case "expiring_soon":
-        return "outline";
-      case "expired":
-        return "destructive";
+      case 'active':
+        return 'default';
+      case 'expiring_soon':
+        return 'outline';
+      case 'expired':
+        return 'destructive';
       default:
-        return "secondary";
+        return 'secondary';
     }
   };
 
   const getAlertIcon = (type: string) => {
     switch (type) {
-      case "error":
+      case 'error':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case "warning":
+      case 'warning':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      case "info":
+      case 'info':
         return <CheckCircle className="h-4 w-4 text-blue-500" />;
       default:
         return <CheckCircle className="h-4 w-4 text-gray-500" />;
@@ -265,7 +259,7 @@ export function CustomerEquipmentProfile({
             Comprehensive equipment management and service history
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex-1 overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
             {/* Equipment List */}
@@ -278,8 +272,8 @@ export function CustomerEquipmentProfile({
                       key={eq.id}
                       className={`cursor-pointer transition-all ${
                         selectedEquipment === eq.id
-                          ? "ring-2 ring-blue-500 bg-blue-50"
-                          : "hover:bg-gray-50"
+                          ? 'ring-2 ring-blue-500 bg-blue-50'
+                          : 'hover:bg-gray-50'
                       }`}
                       onClick={() => setSelectedEquipment(eq.id)}
                     >
@@ -290,14 +284,14 @@ export function CustomerEquipmentProfile({
                               <Printer className="h-4 w-4 text-gray-600" />
                               <span className="font-medium text-sm">{eq.manufacturer}</span>
                             </div>
-                            <p className="text-sm font-medium text-gray-900 mb-2">
-                              {eq.model}
-                            </p>
+                            <p className="text-sm font-medium text-gray-900 mb-2">{eq.model}</p>
                             <div className="flex items-center gap-2 mb-2">
                               <Badge variant={getWarrantyBadgeVariant(eq.warranty.status)}>
-                                {eq.warranty.status.replace("_", " ")}
+                                {eq.warranty.status.replace('_', ' ')}
                               </Badge>
-                              <span className={`text-sm font-medium ${getHealthScoreColor(eq.healthScore)}`}>
+                              <span
+                                className={`text-sm font-medium ${getHealthScoreColor(eq.healthScore)}`}
+                              >
                                 {eq.healthScore}% Health
                               </span>
                             </div>
@@ -305,7 +299,7 @@ export function CustomerEquipmentProfile({
                               <div className="flex items-center gap-1">
                                 <AlertTriangle className="h-3 w-3 text-red-500" />
                                 <span className="text-xs text-red-600">
-                                  {eq.alerts.length} alert{eq.alerts.length !== 1 ? "s" : ""}
+                                  {eq.alerts.length} alert{eq.alerts.length !== 1 ? 's' : ''}
                                 </span>
                               </div>
                             )}
@@ -350,16 +344,22 @@ export function CustomerEquipmentProfile({
                               </div>
                               <div>
                                 <p className="text-sm text-gray-600">Warranty Status</p>
-                                <Badge variant={getWarrantyBadgeVariant(selectedEquipmentData.warranty.status)}>
-                                  {selectedEquipmentData.warranty.status.replace("_", " ")}
+                                <Badge
+                                  variant={getWarrantyBadgeVariant(
+                                    selectedEquipmentData.warranty.status,
+                                  )}
+                                >
+                                  {selectedEquipmentData.warranty.status.replace('_', ' ')}
                                 </Badge>
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <p className="text-sm text-gray-600">Health Score</p>
-                                <p className={`text-2xl font-bold ${getHealthScoreColor(selectedEquipmentData.healthScore)}`}>
+                                <p
+                                  className={`text-2xl font-bold ${getHealthScoreColor(selectedEquipmentData.healthScore)}`}
+                                >
                                   {selectedEquipmentData.healthScore}%
                                 </p>
                               </div>
@@ -385,7 +385,10 @@ export function CustomerEquipmentProfile({
                             <CardContent>
                               <div className="space-y-3">
                                 {selectedEquipmentData.alerts.map((alert) => (
-                                  <div key={alert.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                                  <div
+                                    key={alert.id}
+                                    className="flex items-start gap-3 p-3 border rounded-lg"
+                                  >
                                     {getAlertIcon(alert.type)}
                                     <div className="flex-1">
                                       <p className="font-medium text-sm">{alert.message}</p>
@@ -393,7 +396,11 @@ export function CustomerEquipmentProfile({
                                         {new Date(alert.dateCreated).toLocaleDateString()}
                                       </p>
                                     </div>
-                                    <Badge variant={alert.severity === "high" ? "destructive" : "outline"}>
+                                    <Badge
+                                      variant={
+                                        alert.severity === 'high' ? 'destructive' : 'outline'
+                                      }
+                                    >
                                       {alert.severity}
                                     </Badge>
                                   </div>
@@ -416,7 +423,9 @@ export function CustomerEquipmentProfile({
                                 <div>
                                   <div className="flex items-center gap-2 mb-2">
                                     <Wrench className="h-4 w-4 text-gray-600" />
-                                    <Badge variant={record.type === "repair" ? "destructive" : "default"}>
+                                    <Badge
+                                      variant={record.type === 'repair' ? 'destructive' : 'default'}
+                                    >
                                       {record.type}
                                     </Badge>
                                     <span className="text-sm text-gray-500">
@@ -424,10 +433,14 @@ export function CustomerEquipmentProfile({
                                     </span>
                                   </div>
                                   <p className="font-medium">{record.description}</p>
-                                  <p className="text-sm text-gray-600">Technician: {record.technician}</p>
+                                  <p className="text-sm text-gray-600">
+                                    Technician: {record.technician}
+                                  </p>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold text-green-600">${record.cost.toFixed(2)}</p>
+                                  <p className="font-bold text-green-600">
+                                    ${record.cost.toFixed(2)}
+                                  </p>
                                   <Badge variant="outline">{record.status}</Badge>
                                 </div>
                               </div>
@@ -461,7 +474,11 @@ export function CustomerEquipmentProfile({
                                   <div className="flex items-center gap-2 mb-2">
                                     <Calendar className="h-4 w-4 text-gray-600" />
                                     <span className="font-medium">{maintenance.type}</span>
-                                    <Badge variant={maintenance.priority === "high" ? "destructive" : "default"}>
+                                    <Badge
+                                      variant={
+                                        maintenance.priority === 'high' ? 'destructive' : 'default'
+                                      }
+                                    >
                                       {maintenance.priority}
                                     </Badge>
                                   </div>
@@ -480,7 +497,8 @@ export function CustomerEquipmentProfile({
                                   {maintenance.lastCompleted && (
                                     <div className="mt-2">
                                       <p className="text-xs text-gray-500">
-                                        Last completed: {new Date(maintenance.lastCompleted).toLocaleDateString()}
+                                        Last completed:{' '}
+                                        {new Date(maintenance.lastCompleted).toLocaleDateString()}
                                       </p>
                                     </div>
                                   )}
@@ -542,7 +560,13 @@ export function CustomerEquipmentProfile({
                               <div>
                                 <p className="text-sm text-gray-600">Avg Service Cost</p>
                                 <p className="text-lg font-semibold text-green-600">
-                                  ${(selectedEquipmentData.serviceHistory.reduce((sum, record) => sum + record.cost, 0) / selectedEquipmentData.serviceHistory.length).toFixed(2)}
+                                  $
+                                  {(
+                                    selectedEquipmentData.serviceHistory.reduce(
+                                      (sum, record) => sum + record.cost,
+                                      0,
+                                    ) / selectedEquipmentData.serviceHistory.length
+                                  ).toFixed(2)}
                                 </p>
                               </div>
                             </div>

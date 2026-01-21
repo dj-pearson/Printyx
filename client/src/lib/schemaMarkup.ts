@@ -807,9 +807,7 @@ export function generateVideoObjectSchema(params: {
     description: params.description,
     thumbnailUrl: params.thumbnailUrl,
     uploadDate:
-      typeof params.uploadDate === 'string'
-        ? params.uploadDate
-        : params.uploadDate.toISOString(),
+      typeof params.uploadDate === 'string' ? params.uploadDate : params.uploadDate.toISOString(),
   };
 
   if (params.duration) {

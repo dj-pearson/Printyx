@@ -382,12 +382,9 @@ export const CACHE_TTL = {
  */
 export function withCache<T>(
   keyGenerator: (...args: any[]) => string,
-  ttlSeconds: number = CACHE_TTL.MEDIUM
+  ttlSeconds: number = CACHE_TTL.MEDIUM,
 ) {
-  return async (
-    fn: (...args: any[]) => Promise<T>,
-    ...args: any[]
-  ): Promise<T> => {
+  return async (fn: (...args: any[]) => Promise<T>, ...args: any[]): Promise<T> => {
     const cache = await getCache();
     const key = keyGenerator(...args);
 

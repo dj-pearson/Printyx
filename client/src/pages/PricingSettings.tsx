@@ -1,19 +1,19 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Save, Info, DollarSign, Shield, Bell, Eye, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { usePricingSettings } from "@/hooks/usePricingVisibility";
-import MainLayout from "@/components/layout/main-layout";
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Save, Info, DollarSign, Shield, Bell, Eye, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { usePricingSettings } from '@/hooks/usePricingVisibility';
+import MainLayout from '@/components/layout/main-layout';
 
 export default function PricingSettings() {
   const { data: settings, isLoading } = usePricingSettings();
@@ -21,14 +21,14 @@ export default function PricingSettings() {
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
-    defaultMarkupPercentage: settings?.defaultMarkupPercentage || "13.00",
+    defaultMarkupPercentage: settings?.defaultMarkupPercentage || '13.00',
     categoryMarkupOverrides: settings?.categoryMarkupOverrides || {},
     allowRepPriceEdit: settings?.allowRepPriceEdit ?? true,
     requireApprovalForPriceEdit: settings?.requireApprovalForPriceEdit ?? false,
     requireApprovalAboveThreshold: settings?.requireApprovalAboveThreshold ?? true,
-    maxDiscountPercentage: settings?.maxDiscountPercentage || "20.00",
-    minMarginPercentage: settings?.minMarginPercentage || "5.00",
-    autoApprovalThreshold: settings?.autoApprovalThreshold || "10.00",
+    maxDiscountPercentage: settings?.maxDiscountPercentage || '20.00',
+    minMarginPercentage: settings?.minMarginPercentage || '5.00',
+    autoApprovalThreshold: settings?.autoApprovalThreshold || '10.00',
     showDealerCostToReps: settings?.showDealerCostToReps ?? false,
     showMarginToReps: settings?.showMarginToReps ?? true,
     notifyOnPriceChange: settings?.notifyOnPriceChange ?? true,
@@ -38,7 +38,7 @@ export default function PricingSettings() {
   const [categoryOverrides, setCategoryOverrides] = useState<string>(
     settings?.categoryMarkupOverrides
       ? JSON.stringify(settings.categoryMarkupOverrides, null, 2)
-      : '{\n  "MFP": 13.0,\n  "Production": 15.0,\n  "Software": 20.0\n}'
+      : '{\n  "MFP": 13.0,\n  "Production": 15.0,\n  "Software": 20.0\n}',
   );
 
   const updateMutation = useMutation({
@@ -49,7 +49,7 @@ export default function PricingSettings() {
           parsedOverrides = JSON.parse(categoryOverrides);
         }
       } catch (e) {
-        throw new Error("Invalid JSON in category markup overrides");
+        throw new Error('Invalid JSON in category markup overrides');
       }
 
       return await apiRequest('/api/pricing/settings', 'PUT', {
@@ -60,15 +60,15 @@ export default function PricingSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pricing/settings'] });
       toast({
-        title: "Settings Saved",
-        description: "Pricing settings have been updated successfully.",
+        title: 'Settings Saved',
+        description: 'Pricing settings have been updated successfully.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update pricing settings",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to update pricing settings',
+        variant: 'destructive',
       });
     },
   });
@@ -97,8 +97,8 @@ export default function PricingSettings() {
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Configure how product pricing works across your organization. These settings apply to all products
-            and users in your company.
+            Configure how product pricing works across your organization. These settings apply to
+            all products and users in your company.
           </AlertDescription>
         </Alert>
 
@@ -116,9 +116,7 @@ export default function PricingSettings() {
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="defaultMarkup">
-                  Default Markup Percentage
-                </Label>
+                <Label htmlFor="defaultMarkup">Default Markup Percentage</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="defaultMarkup"
@@ -127,7 +125,9 @@ export default function PricingSettings() {
                     min="0"
                     max="100"
                     value={formData.defaultMarkupPercentage}
-                    onChange={(e) => setFormData({ ...formData, defaultMarkupPercentage: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, defaultMarkupPercentage: e.target.value })
+                    }
                   />
                   <span className="text-sm text-muted-foreground">%</span>
                 </div>
@@ -147,7 +147,8 @@ export default function PricingSettings() {
                   </p>
                   <Separator className="my-2" />
                   <p className="text-sm font-bold">
-                    Rep Cost: ${(10000 * (1 + parseFloat(formData.defaultMarkupPercentage) / 100)).toFixed(2)}
+                    Rep Cost: $
+                    {(10000 * (1 + parseFloat(formData.defaultMarkupPercentage) / 100)).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -156,9 +157,7 @@ export default function PricingSettings() {
             <Separator />
 
             <div className="space-y-2">
-              <Label htmlFor="categoryOverrides">
-                Category-Specific Markup Overrides (JSON)
-              </Label>
+              <Label htmlFor="categoryOverrides">Category-Specific Markup Overrides (JSON)</Label>
               <Textarea
                 id="categoryOverrides"
                 value={categoryOverrides}
@@ -168,7 +167,8 @@ export default function PricingSettings() {
                 placeholder='{\n  "MFP": 13.0,\n  "Production": 15.0\n}'
               />
               <p className="text-xs text-muted-foreground">
-                Override default markup for specific product categories. Leave empty to use default for all categories.
+                Override default markup for specific product categories. Leave empty to use default
+                for all categories.
               </p>
             </div>
           </CardContent>
@@ -196,7 +196,9 @@ export default function PricingSettings() {
               <Switch
                 id="allowRepPriceEdit"
                 checked={formData.allowRepPriceEdit}
-                onCheckedChange={(checked) => setFormData({ ...formData, allowRepPriceEdit: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, allowRepPriceEdit: checked })
+                }
               />
             </div>
 
@@ -210,14 +212,18 @@ export default function PricingSettings() {
               <Switch
                 id="requireApproval"
                 checked={formData.requireApprovalForPriceEdit}
-                onCheckedChange={(checked) => setFormData({ ...formData, requireApprovalForPriceEdit: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, requireApprovalForPriceEdit: checked })
+                }
               />
             </div>
 
             {!formData.requireApprovalForPriceEdit && (
               <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
                 <div className="space-y-1">
-                  <Label htmlFor="thresholdApproval">Require Approval Above Discount Threshold</Label>
+                  <Label htmlFor="thresholdApproval">
+                    Require Approval Above Discount Threshold
+                  </Label>
                   <p className="text-sm text-muted-foreground">
                     Only require approval when discount exceeds threshold
                   </p>
@@ -225,7 +231,9 @@ export default function PricingSettings() {
                 <Switch
                   id="thresholdApproval"
                   checked={formData.requireApprovalAboveThreshold}
-                  onCheckedChange={(checked) => setFormData({ ...formData, requireApprovalAboveThreshold: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, requireApprovalAboveThreshold: checked })
+                  }
                 />
               </div>
             )}
@@ -239,16 +247,12 @@ export default function PricingSettings() {
               <AlertTriangle className="h-5 w-5" />
               <CardTitle>Pricing Thresholds & Limits</CardTitle>
             </div>
-            <CardDescription>
-              Set minimum margins and maximum discounts
-            </CardDescription>
+            <CardDescription>Set minimum margins and maximum discounts</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="autoApprovalThreshold">
-                  Auto-Approval Threshold
-                </Label>
+                <Label htmlFor="autoApprovalThreshold">Auto-Approval Threshold</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="autoApprovalThreshold"
@@ -257,7 +261,9 @@ export default function PricingSettings() {
                     min="0"
                     max="100"
                     value={formData.autoApprovalThreshold}
-                    onChange={(e) => setFormData({ ...formData, autoApprovalThreshold: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, autoApprovalThreshold: e.target.value })
+                    }
                   />
                   <span className="text-sm">%</span>
                 </div>
@@ -267,9 +273,7 @@ export default function PricingSettings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="minMargin">
-                  Minimum Margin Percentage
-                </Label>
+                <Label htmlFor="minMargin">Minimum Margin Percentage</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="minMargin"
@@ -278,7 +282,9 @@ export default function PricingSettings() {
                     min="0"
                     max="100"
                     value={formData.minMarginPercentage}
-                    onChange={(e) => setFormData({ ...formData, minMarginPercentage: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, minMarginPercentage: e.target.value })
+                    }
                   />
                   <span className="text-sm">%</span>
                 </div>
@@ -288,9 +294,7 @@ export default function PricingSettings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxDiscount">
-                  Maximum Discount Percentage
-                </Label>
+                <Label htmlFor="maxDiscount">Maximum Discount Percentage</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="maxDiscount"
@@ -299,7 +303,9 @@ export default function PricingSettings() {
                     min="0"
                     max="100"
                     value={formData.maxDiscountPercentage}
-                    onChange={(e) => setFormData({ ...formData, maxDiscountPercentage: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, maxDiscountPercentage: e.target.value })
+                    }
                   />
                   <span className="text-sm">%</span>
                 </div>
@@ -312,10 +318,11 @@ export default function PricingSettings() {
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <strong>How it works:</strong> If a sales rep discounts more than{" "}
+                <strong>How it works:</strong> If a sales rep discounts more than{' '}
                 <Badge variant="outline">{formData.autoApprovalThreshold}%</Badge> from rep cost,
-                manager approval is required. Prices must maintain at least{" "}
-                <Badge variant="outline">{formData.minMarginPercentage}%</Badge> margin from dealer cost.
+                manager approval is required. Prices must maintain at least{' '}
+                <Badge variant="outline">{formData.minMarginPercentage}%</Badge> margin from dealer
+                cost.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -328,9 +335,7 @@ export default function PricingSettings() {
               <Eye className="h-5 w-5" />
               <CardTitle>Visibility Settings</CardTitle>
             </div>
-            <CardDescription>
-              Control what pricing information sales reps can see
-            </CardDescription>
+            <CardDescription>Control what pricing information sales reps can see</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -343,7 +348,9 @@ export default function PricingSettings() {
               <Switch
                 id="showDealerCost"
                 checked={formData.showDealerCostToReps}
-                onCheckedChange={(checked) => setFormData({ ...formData, showDealerCostToReps: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, showDealerCostToReps: checked })
+                }
               />
             </div>
 
@@ -357,14 +364,17 @@ export default function PricingSettings() {
               <Switch
                 id="showMargin"
                 checked={formData.showMarginToReps}
-                onCheckedChange={(checked) => setFormData({ ...formData, showMarginToReps: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, showMarginToReps: checked })
+                }
               />
             </div>
 
             <Alert variant="default">
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <strong>Note:</strong> Managers and admins always see all pricing tiers regardless of these settings.
+                <strong>Note:</strong> Managers and admins always see all pricing tiers regardless
+                of these settings.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -377,9 +387,7 @@ export default function PricingSettings() {
               <Bell className="h-5 w-5" />
               <CardTitle>Notification Settings</CardTitle>
             </div>
-            <CardDescription>
-              Configure when to send pricing-related notifications
-            </CardDescription>
+            <CardDescription>Configure when to send pricing-related notifications</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -392,7 +400,9 @@ export default function PricingSettings() {
               <Switch
                 id="notifyPriceChange"
                 checked={formData.notifyOnPriceChange}
-                onCheckedChange={(checked) => setFormData({ ...formData, notifyOnPriceChange: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, notifyOnPriceChange: checked })
+                }
               />
             </div>
 
@@ -406,7 +416,9 @@ export default function PricingSettings() {
               <Switch
                 id="notifyApproval"
                 checked={formData.notifyManagersOnApproval}
-                onCheckedChange={(checked) => setFormData({ ...formData, notifyManagersOnApproval: checked })}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, notifyManagersOnApproval: checked })
+                }
               />
             </div>
           </CardContent>
@@ -418,14 +430,14 @@ export default function PricingSettings() {
             variant="outline"
             onClick={() => {
               setFormData({
-                defaultMarkupPercentage: settings?.defaultMarkupPercentage || "13.00",
+                defaultMarkupPercentage: settings?.defaultMarkupPercentage || '13.00',
                 categoryMarkupOverrides: settings?.categoryMarkupOverrides || {},
                 allowRepPriceEdit: settings?.allowRepPriceEdit ?? true,
                 requireApprovalForPriceEdit: settings?.requireApprovalForPriceEdit ?? false,
                 requireApprovalAboveThreshold: settings?.requireApprovalAboveThreshold ?? true,
-                maxDiscountPercentage: settings?.maxDiscountPercentage || "20.00",
-                minMarginPercentage: settings?.minMarginPercentage || "5.00",
-                autoApprovalThreshold: settings?.autoApprovalThreshold || "10.00",
+                maxDiscountPercentage: settings?.maxDiscountPercentage || '20.00',
+                minMarginPercentage: settings?.minMarginPercentage || '5.00',
+                autoApprovalThreshold: settings?.autoApprovalThreshold || '10.00',
                 showDealerCostToReps: settings?.showDealerCostToReps ?? false,
                 showMarginToReps: settings?.showMarginToReps ?? true,
                 notifyOnPriceChange: settings?.notifyOnPriceChange ?? true,
@@ -434,7 +446,7 @@ export default function PricingSettings() {
               setCategoryOverrides(
                 settings?.categoryMarkupOverrides
                   ? JSON.stringify(settings.categoryMarkupOverrides, null, 2)
-                  : '{\n  "MFP": 13.0,\n  "Production": 15.0\n}'
+                  : '{\n  "MFP": 13.0,\n  "Production": 15.0\n}',
               );
             }}
           >
@@ -442,7 +454,7 @@ export default function PricingSettings() {
           </Button>
           <Button onClick={handleSave} disabled={updateMutation.isPending}>
             <Save className="h-4 w-4 mr-2" />
-            {updateMutation.isPending ? "Saving..." : "Save Settings"}
+            {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
           </Button>
         </div>
       </div>

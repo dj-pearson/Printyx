@@ -15,6 +15,7 @@ A beautiful, customer-facing desktop application for monitoring network-connecte
 ## Architecture
 
 ### Main Process (`src/main/`)
+
 - **main.ts**: Electron app entry point and IPC handlers
 - **services/**:
   - `printer-discovery.ts`: SNMP-based network printer discovery
@@ -23,6 +24,7 @@ A beautiful, customer-facing desktop application for monitoring network-connecte
   - `windows-service.ts`: Windows service installation/management
 
 ### Renderer Process (`src/renderer/`)
+
 - **React UI** with TypeScript
 - **Pages**:
   - `SettingsPage`: Configure API key and server settings
@@ -31,6 +33,7 @@ A beautiful, customer-facing desktop application for monitoring network-connecte
   - `MonitoringPage`: Control monitoring service and view status
 
 ### Preload Script (`src/preload/`)
+
 - **preload.ts**: Secure IPC bridge between main and renderer processes
 
 ## Prerequisites
@@ -55,6 +58,7 @@ npm run dev
 ```
 
 This starts:
+
 - Vite dev server for the renderer process (port 3001)
 - Main process with hot reload
 
@@ -65,27 +69,32 @@ npm run build
 ```
 
 This compiles:
+
 - Main process → `dist/main/`
 - Renderer process → `dist/renderer/`
 
 ### Package the Application
 
 **Windows Installer:**
+
 ```bash
 npm run package:win
 ```
 
 **macOS DMG:**
+
 ```bash
 npm run package:mac
 ```
 
 **Linux AppImage:**
+
 ```bash
 npm run package:linux
 ```
 
 **All Platforms:**
+
 ```bash
 npm run package
 ```
@@ -130,6 +139,7 @@ The app can run as a Windows service that starts automatically on system boot:
 4. The service will start automatically
 
 To uninstall:
+
 1. Go to the **Monitoring** page
 2. Click **Uninstall Service**
 3. Grant administrator permissions when prompted
@@ -231,6 +241,7 @@ MIT
 ## Support
 
 For issues and questions:
+
 - GitHub Issues: https://github.com/printyx/printyx-desktop/issues
 - Email: support@printyx.net
 - Documentation: https://docs.printyx.net

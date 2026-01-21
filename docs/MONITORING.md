@@ -69,16 +69,16 @@ Printyx uses [Pino](https://getpino.io/) for structured JSON logging. Pino is on
 
 ### Log Levels
 
-| Level | Value | Description |
-|-------|-------|-------------|
-| `trace` | 10 | Most detailed debugging information |
-| `debug` | 20 | Debugging information |
-| `metric` | 25 | Custom level for metrics (between debug and info) |
-| `info` | 30 | General information (default) |
-| `audit` | 35 | Custom level for audit events (between info and warn) |
-| `warn` | 40 | Warning messages |
-| `error` | 50 | Error messages |
-| `fatal` | 60 | Critical errors that may cause application shutdown |
+| Level    | Value | Description                                           |
+| -------- | ----- | ----------------------------------------------------- |
+| `trace`  | 10    | Most detailed debugging information                   |
+| `debug`  | 20    | Debugging information                                 |
+| `metric` | 25    | Custom level for metrics (between debug and info)     |
+| `info`   | 30    | General information (default)                         |
+| `audit`  | 35    | Custom level for audit events (between info and warn) |
+| `warn`   | 40    | Warning messages                                      |
+| `error`  | 50    | Error messages                                        |
+| `fatal`  | 60    | Critical errors that may cause application shutdown   |
 
 ### Basic Usage
 
@@ -100,6 +100,7 @@ dbLog.debug({ query: 'SELECT...', duration: 50 }, 'Query executed');
 ### Log Output Format
 
 **Development (pretty printed):**
+
 ```
 [2025-01-15 10:30:45.123] INFO (server): Server listening on port 5000
 [2025-01-15 10:30:45.456] DEBUG (database): Query executed
@@ -108,6 +109,7 @@ dbLog.debug({ query: 'SELECT...', duration: 50 }, 'Query executed');
 ```
 
 **Production (JSON):**
+
 ```json
 {
   "level": "info",
@@ -151,6 +153,7 @@ The following fields are automatically redacted:
 Sentry provides error tracking and performance monitoring.
 
 **Configuration:**
+
 ```env
 APM_PROVIDER=sentry
 SENTRY_DSN=https://your_key@sentry.io/project_id
@@ -174,7 +177,7 @@ import { getAPM, withSpan, traceDBOperation } from './lib/monitoring';
 // Manual error capture
 getAPM().captureException(error, {
   requestId: '123',
-  userId: 'user-456'
+  userId: 'user-456',
 });
 
 // Manual span tracing
@@ -327,6 +330,7 @@ Sensitive endpoints are audited with additional details:
 - `/api/seo/*`
 
 Audited requests include:
+
 - Request body hash (SHA-256)
 - Full request/response logging (if enabled)
 - Written to both structured logs and `server/audit.log`
@@ -357,27 +361,27 @@ app.get('/api/example', (req, res) => {
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOG_LEVEL` | `info` | Minimum log level |
-| `APP_NAME` | `printyx` | Application name in logs |
-| `APP_VERSION` | `1.0.0` | Application version |
-| `APM_PROVIDER` | `none` | APM provider (sentry/datadog/newrelic) |
-| `SENTRY_DSN` | - | Sentry DSN |
-| `APM_TRACES_SAMPLE_RATE` | `0.1` | APM trace sampling rate |
-| `APM_PROFILES_SAMPLE_RATE` | `0.1` | APM profile sampling rate |
-| `APM_ENABLE_TRACING` | `true` | Enable performance tracing |
-| `LOG_TRANSPORT` | `console` | Log transport provider |
-| `LOG_BATCH_SIZE` | `100` | Log batch size |
-| `LOG_FLUSH_INTERVAL_MS` | `5000` | Log flush interval |
-| `DB_LOG_QUERIES` | `true` | Enable query logging |
-| `DB_SLOW_QUERY_THRESHOLD_MS` | `1000` | Slow query threshold |
+| Variable                     | Default   | Description                            |
+| ---------------------------- | --------- | -------------------------------------- |
+| `LOG_LEVEL`                  | `info`    | Minimum log level                      |
+| `APP_NAME`                   | `printyx` | Application name in logs               |
+| `APP_VERSION`                | `1.0.0`   | Application version                    |
+| `APM_PROVIDER`               | `none`    | APM provider (sentry/datadog/newrelic) |
+| `SENTRY_DSN`                 | -         | Sentry DSN                             |
+| `APM_TRACES_SAMPLE_RATE`     | `0.1`     | APM trace sampling rate                |
+| `APM_PROFILES_SAMPLE_RATE`   | `0.1`     | APM profile sampling rate              |
+| `APM_ENABLE_TRACING`         | `true`    | Enable performance tracing             |
+| `LOG_TRANSPORT`              | `console` | Log transport provider                 |
+| `LOG_BATCH_SIZE`             | `100`     | Log batch size                         |
+| `LOG_FLUSH_INTERVAL_MS`      | `5000`    | Log flush interval                     |
+| `DB_LOG_QUERIES`             | `true`    | Enable query logging                   |
+| `DB_SLOW_QUERY_THRESHOLD_MS` | `1000`    | Slow query threshold                   |
 
 ### Monitoring Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/monitoring/health` | Monitoring system health |
+| Endpoint                       | Description               |
+| ------------------------------ | ------------------------- |
+| `GET /api/monitoring/health`   | Monitoring system health  |
 | `GET /api/monitoring/db-stats` | Database query statistics |
 
 ---
@@ -445,9 +449,12 @@ app.post('/api/orders', async (req, res) => {
   // Context is automatically available
   const context = getRequestContext();
 
-  log.info({
-    orderItems: req.body.items.length
-  }, 'Processing new order');
+  log.info(
+    {
+      orderItems: req.body.items.length,
+    },
+    'Processing new order',
+  );
 
   // All logs in this request will include:
   // - requestId
@@ -483,11 +490,14 @@ Always include context that helps with debugging:
 
 ```typescript
 // Good
-log.info({
-  orderId: order.id,
-  customerId: order.customerId,
-  amount: order.total
-}, 'Order processed');
+log.info(
+  {
+    orderId: order.id,
+    customerId: order.customerId,
+    amount: order.total,
+  },
+  'Order processed',
+);
 
 // Avoid
 log.info('Order processed');
@@ -504,6 +514,7 @@ log.info('Order processed');
 ### 4. Don't Log Sensitive Data
 
 Even with redaction, avoid logging:
+
 - Full credit card numbers
 - Passwords or tokens
 - Personal identification numbers

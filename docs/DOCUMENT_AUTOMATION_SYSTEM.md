@@ -19,6 +19,7 @@ Located in: `shared/document-automation-schema.ts`
 #### Core Tables
 
 **`document_templates`**
+
 - Stores reusable document templates
 - Supports versioning and field mapping
 - Multiple output formats (PDF, DOCX, HTML, Markdown)
@@ -30,6 +31,7 @@ Located in: `shared/document-automation-schema.ts`
   - Usage tracking
 
 **`generated_documents`**
+
 - Stores documents generated from templates
 - Links to source template and version
 - References related entities (quotes, deals, customers, etc.)
@@ -37,6 +39,7 @@ Located in: `shared/document-automation-schema.ts`
 - Stores both rendered content and generated files
 
 **`document_uploads`**
+
 - Manages uploaded documents for OCR processing
 - Tracks OCR and AI processing status
 - Stores extracted text and fields
@@ -44,18 +47,21 @@ Located in: `shared/document-automation-schema.ts`
 - Links to target entities for data population
 
 **`document_field_mappings`**
+
 - Defines how document fields map to database entities
 - Supports custom transformation and validation rules
 - Enables AI-powered field extraction with custom prompts
 - Reusable across multiple documents
 
 **`document_workflow_actions`**
+
 - Defines document-related actions in workflows
 - Action types: generate, send, upload, extract
 - Configures recipients and delivery methods
 - Conditional execution based on workflow state
 
 **`document_notifications`**
+
 - Tracks document-related notifications
 - Supports email and in-app delivery
 - Engagement tracking (viewed, downloaded)
@@ -64,6 +70,7 @@ Located in: `shared/document-automation-schema.ts`
 ### Services
 
 #### 1. Document Generation Service
+
 **Location**: `server/services/document-generation-service.ts`
 
 **Key Classes**:
@@ -95,35 +102,36 @@ Templates use Handlebars with custom helpers:
 ```handlebars
 <h1>Purchase Order #{{quote.quoteNumber}}</h1>
 
-<p>Date: {{formatDate currentDate "long"}}</p>
+<p>Date: {{formatDate currentDate 'long'}}</p>
 <p>Customer: {{customer.name}}</p>
 <p>Total: {{formatCurrency quote.total}}</p>
 
 {{#if quote.lineItems}}
-<table>
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th>Quantity</th>
-      <th>Price</th>
-      <th>Total</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#each quote.lineItems}}
-    <tr>
-      <td>{{this.description}}</td>
-      <td>{{this.quantity}}</td>
-      <td>{{formatCurrency this.unitPrice}}</td>
-      <td>{{formatCurrency this.total}}</td>
-    </tr>
-    {{/each}}
-  </tbody>
-</table>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each quote.lineItems}}
+        <tr>
+          <td>{{this.description}}</td>
+          <td>{{this.quantity}}</td>
+          <td>{{formatCurrency this.unitPrice}}</td>
+          <td>{{formatCurrency this.total}}</td>
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
 {{/if}}
 ```
 
 **Available Helpers**:
+
 - `{{formatDate date "short|long|iso"}}` - Format dates
 - `{{formatCurrency amount}}` - Format as currency
 - `{{formatNumber num decimals}}` - Format numbers
@@ -136,6 +144,7 @@ Templates use Handlebars with custom helpers:
 - `{{default value defaultValue}}` - Default value
 
 #### 2. OCR and AI Field Extraction Service
+
 **Location**: `server/services/document-ocr-ai-service.ts`
 
 **Key Classes**:
@@ -175,6 +184,7 @@ Templates use Handlebars with custom helpers:
 5. Results are stored for review
 
 **Example AI Response**:
+
 ```json
 {
   "fields": {
@@ -191,7 +201,7 @@ Templates use Handlebars with custom helpers:
       "reasoning": "Listed under 'Vendor Information'"
     },
     "total_amount": {
-      "value": 15250.00,
+      "value": 15250.0,
       "confidence": "medium",
       "source": "line 45, totals section",
       "reasoning": "Labeled as 'Total' but formatting unclear"
@@ -202,9 +212,7 @@ Templates use Handlebars with custom helpers:
     "vendor_name": "businessRecord.name",
     "total_amount": "purchaseOrder.totalAmount"
   },
-  "issues": [
-    "Date format is ambiguous (MM/DD/YYYY vs DD/MM/YYYY)"
-  ],
+  "issues": ["Date format is ambiguous (MM/DD/YYYY vs DD/MM/YYYY)"],
   "requiresReview": true
 }
 ```
@@ -225,6 +233,7 @@ Templates use Handlebars with custom helpers:
 #### Document Generation
 
 - `POST /api/documents/generate` - Generate document from template
+
   ```json
   {
     "templateId": 123,
@@ -239,6 +248,7 @@ Templates use Handlebars with custom helpers:
   ```
 
 - `POST /api/documents/batch-generate` - Batch generate documents
+
   ```json
   {
     "templateId": 123,
@@ -325,6 +335,7 @@ Templates use Handlebars with custom helpers:
 Document tasks can be added to workflows using the `document_workflow_actions` table:
 
 **Generate Document Action**:
+
 ```json
 {
   "workflowId": 456,
@@ -336,6 +347,7 @@ Document tasks can be added to workflows using the `document_workflow_actions` t
 ```
 
 **Send Document Action**:
+
 ```json
 {
   "workflowId": 456,
@@ -353,6 +365,7 @@ Document tasks can be added to workflows using the `document_workflow_actions` t
 ```
 
 **Upload & Extract Action**:
+
 ```json
 {
   "workflowId": 456,
@@ -384,6 +397,7 @@ Document tasks can be added to workflows using the `document_workflow_actions` t
 ### 1. Automatic Quote to Purchase Order
 
 When a quote is accepted:
+
 1. Generate PO from "Purchase Order" template
 2. Populate with quote line items and customer info
 3. Email to purchasing department
@@ -393,6 +407,7 @@ When a quote is accepted:
 ### 2. Contract Document Processing
 
 When a signed contract is uploaded:
+
 1. OCR extracts text from scanned contract
 2. AI identifies key terms: start date, end date, value, parties
 3. System validates extracted data
@@ -403,6 +418,7 @@ When a signed contract is uploaded:
 ### 3. Invoice Generation and Delivery
 
 At end of billing period:
+
 1. Batch generate invoices for all customers
 2. Apply template with company branding
 3. Calculate totals from meter readings
@@ -414,6 +430,7 @@ At end of billing period:
 ### 4. Service Report Automation
 
 After service call completion:
+
 1. Generate service report from template
 2. Include technician notes, photos, parts used
 3. Generate PDF with customer signature
@@ -449,11 +466,13 @@ New dependencies added in `package.json`:
 ### File Storage
 
 Generated documents are stored in:
+
 ```
 attached_assets/generated-documents/
 ```
 
 Uploaded documents are stored in:
+
 ```
 attached_assets/document-uploads/
 ```
@@ -587,10 +606,10 @@ const template = await fetch('/api/document-templates', {
       <p><strong>Total: {{formatCurrency quote.total}}</strong></p>
     `,
     fieldMapping: {
-      'quote': 'quote',
-      'customer': 'businessRecord'
-    }
-  })
+      quote: 'quote',
+      customer: 'businessRecord',
+    },
+  }),
 });
 
 // 2. When quote is accepted, generate PO
@@ -602,8 +621,8 @@ const document = await fetch('/api/documents/generate', {
     quoteId: 789,
     businessRecordId: 456,
     format: 'pdf',
-    name: `PO for Quote #${quoteNumber}`
-  })
+    name: `PO for Quote #${quoteNumber}`,
+  }),
 });
 
 // 3. Download or send the generated PO
@@ -613,6 +632,7 @@ const fileUrl = `/api/documents/generated/${document.id}/download`;
 ## Support
 
 For questions or issues:
+
 - Check this documentation first
 - Review error logs in console
 - Test with sample data

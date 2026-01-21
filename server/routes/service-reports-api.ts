@@ -45,7 +45,7 @@ router.get(
       const result = await ServiceReportingService.getPersonalServiceCalls(
         req.user!,
         dateRange,
-        status as string | undefined
+        status as string | undefined,
       );
 
       // Enrich response with performance indicators
@@ -64,7 +64,7 @@ router.get(
       console.error('Error fetching personal service calls:', error);
       res.status(500).json({ message: 'Failed to fetch service calls' });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -91,20 +91,18 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const result = await ServiceReportingService.getPersonalPartsUsage(
-        req.user!,
-        dateRange
-      );
+      const result = await ServiceReportingService.getPersonalPartsUsage(req.user!, dateRange);
 
       // Calculate additional metrics
       const metrics = {
-        costPerCall: result.summary.totalParts > 0 ? result.summary.totalCost / result.parts.length : 0,
-        billablePercentage: result.summary.totalCost > 0
-          ? (result.summary.billableCost / result.summary.totalCost) * 100
-          : 0,
-        averagePartCost: result.summary.totalParts > 0
-          ? result.summary.totalCost / result.summary.totalParts
-          : 0,
+        costPerCall:
+          result.summary.totalParts > 0 ? result.summary.totalCost / result.parts.length : 0,
+        billablePercentage:
+          result.summary.totalCost > 0
+            ? (result.summary.billableCost / result.summary.totalCost) * 100
+            : 0,
+        averagePartCost:
+          result.summary.totalParts > 0 ? result.summary.totalCost / result.summary.totalParts : 0,
       };
 
       res.json({
@@ -115,7 +113,7 @@ router.get(
       console.error('Error fetching personal parts usage:', error);
       res.status(500).json({ message: 'Failed to fetch parts usage' });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -142,22 +140,22 @@ router.get(
         dateTo: dateTo ? new Date(dateTo as string) : undefined,
       };
 
-      const result = await ServiceReportingService.getPersonalTimeTracking(
-        req.user!,
-        dateRange
-      );
+      const result = await ServiceReportingService.getPersonalTimeTracking(req.user!, dateRange);
 
       // Calculate additional metrics
       const metrics = {
-        productivityRate: result.summary.totalHours > 0
-          ? (result.summary.productiveHours / result.summary.totalHours) * 100
-          : 0,
-        travelPercentage: result.summary.totalHours > 0
-          ? (result.summary.travelHours / result.summary.totalHours) * 100
-          : 0,
-        averageHoursPerDay: result.summary.hoursByDay.length > 0
-          ? result.summary.totalHours / result.summary.hoursByDay.length
-          : 0,
+        productivityRate:
+          result.summary.totalHours > 0
+            ? (result.summary.productiveHours / result.summary.totalHours) * 100
+            : 0,
+        travelPercentage:
+          result.summary.totalHours > 0
+            ? (result.summary.travelHours / result.summary.totalHours) * 100
+            : 0,
+        averageHoursPerDay:
+          result.summary.hoursByDay.length > 0
+            ? result.summary.totalHours / result.summary.hoursByDay.length
+            : 0,
         billableRate: result.summary.utilizationRate,
       };
 
@@ -169,7 +167,7 @@ router.get(
       console.error('Error fetching personal time tracking:', error);
       res.status(500).json({ message: 'Failed to fetch time tracking' });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -198,28 +196,30 @@ router.get(
         assignedTo: assignedTo as string | undefined,
       };
 
-      const result = await ServiceReportingService.getTeamDispatchQueue(
-        req.user!,
-        filterBy
-      );
+      const result = await ServiceReportingService.getTeamDispatchQueue(req.user!, filterBy);
 
       // Calculate workload distribution
       const workloadMetrics = {
-        averageTicketsPerTech: Object.keys(result.summary.byTechnician).length > 0
-          ? result.summary.totalTickets / Object.keys(result.summary.byTechnician).length
-          : 0,
-        unassignedPercentage: result.summary.totalTickets > 0
-          ? (result.summary.unassigned / result.summary.totalTickets) * 100
-          : 0,
-        overduePercentage: result.summary.totalTickets > 0
-          ? (result.summary.overdue / result.summary.totalTickets) * 100
-          : 0,
-        atRiskPercentage: result.summary.totalTickets > 0
-          ? (result.summary.atRisk / result.summary.totalTickets) * 100
-          : 0,
-        scheduledPercentage: result.summary.totalTickets > 0
-          ? (result.summary.scheduled / result.summary.totalTickets) * 100
-          : 0,
+        averageTicketsPerTech:
+          Object.keys(result.summary.byTechnician).length > 0
+            ? result.summary.totalTickets / Object.keys(result.summary.byTechnician).length
+            : 0,
+        unassignedPercentage:
+          result.summary.totalTickets > 0
+            ? (result.summary.unassigned / result.summary.totalTickets) * 100
+            : 0,
+        overduePercentage:
+          result.summary.totalTickets > 0
+            ? (result.summary.overdue / result.summary.totalTickets) * 100
+            : 0,
+        atRiskPercentage:
+          result.summary.totalTickets > 0
+            ? (result.summary.atRisk / result.summary.totalTickets) * 100
+            : 0,
+        scheduledPercentage:
+          result.summary.totalTickets > 0
+            ? (result.summary.scheduled / result.summary.totalTickets) * 100
+            : 0,
       };
 
       res.json({
@@ -230,7 +230,7 @@ router.get(
       console.error('Error fetching team dispatch queue:', error);
       res.status(500).json({ message: 'Failed to fetch dispatch queue' });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -264,7 +264,7 @@ router.get(
       console.error('Error fetching service call details:', error);
       res.status(500).json({ message: 'Failed to fetch service call details' });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -292,7 +292,7 @@ router.post(
       console.error('Error invalidating cache:', error);
       res.status(500).json({ message: 'Failed to invalidate cache' });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -317,9 +317,7 @@ router.get(
   ]),
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const stats = await ServiceSupervisorReportingService.getTeamQuickStats(
-        req.user!
-      );
+      const stats = await ServiceSupervisorReportingService.getTeamQuickStats(req.user!);
 
       res.json(stats);
     } catch (error) {
@@ -329,7 +327,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================

@@ -16,11 +16,11 @@ class PermissionChecker {
   }
 
   static hasAnyPermission(user: any, permissions: string[]): boolean {
-    return permissions.some(p => this.hasPermission(user, p));
+    return permissions.some((p) => this.hasPermission(user, p));
   }
 
   static hasAllPermissions(user: any, permissions: string[]): boolean {
-    return permissions.every(p => this.hasPermission(user, p));
+    return permissions.every((p) => this.hasPermission(user, p));
   }
 
   static hasMinimumLevel(user: any, requiredLevel: number): boolean {
@@ -167,10 +167,12 @@ describe('RBAC Middleware', () => {
 
       it('should deny sales rep access to team reports', () => {
         const user = mockUsers.salesRep;
-        expect(PermissionChecker.hasAnyPermission(user, [
-          'sales.lead.view_team',
-          'sales.lead.view_location',
-        ])).toBe(false);
+        expect(
+          PermissionChecker.hasAnyPermission(user, [
+            'sales.lead.view_team',
+            'sales.lead.view_location',
+          ]),
+        ).toBe(false);
       });
 
       it('should allow sales manager to view location reports', () => {
@@ -214,14 +216,9 @@ describe('RBAC Middleware', () => {
       });
 
       it('should deny regular users platform admin access', () => {
-        const users = [
-          mockUsers.salesRep,
-          mockUsers.salesManager,
-          mockUsers.vp,
-          mockUsers.ceo,
-        ];
+        const users = [mockUsers.salesRep, mockUsers.salesManager, mockUsers.vp, mockUsers.ceo];
 
-        users.forEach(user => {
+        users.forEach((user) => {
           expect(PermissionChecker.hasPermission(user, 'platform.admin.full_access')).toBe(false);
         });
       });
@@ -373,7 +370,7 @@ describe('RBAC Middleware', () => {
 
       const start = Date.now();
       for (let i = 0; i < 1000; i++) {
-        permissions.forEach(p => PermissionChecker.hasPermission(user, p));
+        permissions.forEach((p) => PermissionChecker.hasPermission(user, p));
       }
       const duration = Date.now() - start;
 

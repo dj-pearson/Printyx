@@ -4,8 +4,8 @@
  * Supports GDPR, SOC2, and other compliance requirements
  */
 
-import { db } from "../db";
-import { eq, and, desc, gte, lte, lt, sql, inArray } from "drizzle-orm";
+import { db } from '../db';
+import { eq, and, desc, gte, lte, lt, sql, inArray } from 'drizzle-orm';
 import {
   dataRetentionPolicies,
   dataPurgeJobs,
@@ -13,24 +13,24 @@ import {
   type InsertDataRetentionPolicy,
   type DataPurgeJob,
   type InsertDataPurgeJob,
-} from "@shared/soc2-compliance-schema";
-import { auditLogs } from "@shared/security-schema";
+} from '@shared/soc2-compliance-schema';
+import { auditLogs } from '@shared/security-schema';
 
 // ============= CONSTANTS =============
 
 // Default retention periods in days
 const DEFAULT_RETENTION_PERIODS: Record<string, number> = {
-  audit_logs: 2555,           // 7 years (compliance requirement)
-  data_access_logs: 2555,     // 7 years
-  payment_audit_trail: 2555,  // 7 years (PCI requirement)
-  security_sessions: 365,     // 1 year
-  gdpr_requests: 2555,        // 7 years
-  incidents: 2555,            // 7 years
-  change_requests: 2555,      // 7 years
-  service_tickets: 1095,      // 3 years
-  emails: 730,                // 2 years
-  notifications: 90,          // 90 days
-  temp_files: 7,              // 7 days
+  audit_logs: 2555, // 7 years (compliance requirement)
+  data_access_logs: 2555, // 7 years
+  payment_audit_trail: 2555, // 7 years (PCI requirement)
+  security_sessions: 365, // 1 year
+  gdpr_requests: 2555, // 7 years
+  incidents: 2555, // 7 years
+  change_requests: 2555, // 7 years
+  service_tickets: 1095, // 3 years
+  emails: 730, // 2 years
+  notifications: 90, // 90 days
+  temp_files: 7, // 7 days
 };
 
 // Tables that support archival before purge
@@ -49,7 +49,7 @@ const ARCHIVABLE_TABLES = [
  * Create a new data retention policy
  */
 export async function createRetentionPolicy(
-  data: InsertDataRetentionPolicy
+  data: InsertDataRetentionPolicy,
 ): Promise<DataRetentionPolicy> {
   // Validate table name exists
   const validTables = Object.keys(DEFAULT_RETENTION_PERIODS);
@@ -57,10 +57,7 @@ export async function createRetentionPolicy(
     console.warn(`Warning: Table ${data.tableName} is not in the standard list`);
   }
 
-  const [policy] = await db
-    .insert(dataRetentionPolicies)
-    .values(data)
-    .returning();
+  const [policy] = await db.insert(dataRetentionPolicies).values(data).returning();
 
   return policy;
 }
@@ -70,16 +67,13 @@ export async function createRetentionPolicy(
  */
 export async function getRetentionPolicy(
   policyId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<DataRetentionPolicy | null> {
   const [policy] = await db
     .select()
     .from(dataRetentionPolicies)
     .where(
-      and(
-        eq(dataRetentionPolicies.id, policyId),
-        eq(dataRetentionPolicies.tenantId, tenantId)
-      )
+      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenantId, tenantId)),
     );
 
   return policy || null;
@@ -95,7 +89,7 @@ export async function listRetentionPolicies(
     tableName?: string;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: DataRetentionPolicy[]; total: number }> {
   const conditions = [eq(dataRetentionPolicies.tenantId, tenantId)];
 
@@ -132,7 +126,7 @@ export async function listRetentionPolicies(
 export async function updateRetentionPolicy(
   policyId: string,
   tenantId: string,
-  updates: Partial<InsertDataRetentionPolicy>
+  updates: Partial<InsertDataRetentionPolicy>,
 ): Promise<DataRetentionPolicy | null> {
   const [updated] = await db
     .update(dataRetentionPolicies)
@@ -141,10 +135,7 @@ export async function updateRetentionPolicy(
       updatedAt: new Date(),
     })
     .where(
-      and(
-        eq(dataRetentionPolicies.id, policyId),
-        eq(dataRetentionPolicies.tenantId, tenantId)
-      )
+      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenantId, tenantId)),
     )
     .returning();
 
@@ -154,17 +145,11 @@ export async function updateRetentionPolicy(
 /**
  * Delete retention policy
  */
-export async function deleteRetentionPolicy(
-  policyId: string,
-  tenantId: string
-): Promise<boolean> {
+export async function deleteRetentionPolicy(policyId: string, tenantId: string): Promise<boolean> {
   const result = await db
     .delete(dataRetentionPolicies)
     .where(
-      and(
-        eq(dataRetentionPolicies.id, policyId),
-        eq(dataRetentionPolicies.tenantId, tenantId)
-      )
+      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenantId, tenantId)),
     );
 
   return true;
@@ -177,7 +162,7 @@ export async function setLegalHold(
   policyId: string,
   tenantId: string,
   reason: string,
-  holdUntil?: Date
+  holdUntil?: Date,
 ): Promise<DataRetentionPolicy | null> {
   return updateRetentionPolicy(policyId, tenantId, {
     legalHold: true,
@@ -191,7 +176,7 @@ export async function setLegalHold(
  */
 export async function removeLegalHold(
   policyId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<DataRetentionPolicy | null> {
   return updateRetentionPolicy(policyId, tenantId, {
     legalHold: false,
@@ -205,13 +190,8 @@ export async function removeLegalHold(
 /**
  * Create a purge job
  */
-export async function createPurgeJob(
-  data: InsertDataPurgeJob
-): Promise<DataPurgeJob> {
-  const [job] = await db
-    .insert(dataPurgeJobs)
-    .values(data)
-    .returning();
+export async function createPurgeJob(data: InsertDataPurgeJob): Promise<DataPurgeJob> {
+  const [job] = await db.insert(dataPurgeJobs).values(data).returning();
 
   return job;
 }
@@ -219,19 +199,11 @@ export async function createPurgeJob(
 /**
  * Get purge job by ID
  */
-export async function getPurgeJob(
-  jobId: string,
-  tenantId: string
-): Promise<DataPurgeJob | null> {
+export async function getPurgeJob(jobId: string, tenantId: string): Promise<DataPurgeJob | null> {
   const [job] = await db
     .select()
     .from(dataPurgeJobs)
-    .where(
-      and(
-        eq(dataPurgeJobs.id, jobId),
-        eq(dataPurgeJobs.tenantId, tenantId)
-      )
-    );
+    .where(and(eq(dataPurgeJobs.id, jobId), eq(dataPurgeJobs.tenantId, tenantId)));
 
   return job || null;
 }
@@ -248,7 +220,7 @@ export async function listPurgeJobs(
     endDate?: Date;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: DataPurgeJob[]; total: number }> {
   const conditions = [eq(dataPurgeJobs.tenantId, tenantId)];
 
@@ -298,7 +270,7 @@ export async function updatePurgeJobStatus(
     recordsFailed?: number;
     archiveLocation?: string;
     errorLog?: Array<{ recordId: string; error: string; timestamp: string }>;
-  }
+  },
 ): Promise<DataPurgeJob | null> {
   const updates: any = {
     status,
@@ -313,7 +285,7 @@ export async function updatePurgeJobStatus(
     updates.completedAt = new Date();
     if (updates.startedAt) {
       updates.durationSeconds = Math.round(
-        (updates.completedAt.getTime() - updates.startedAt.getTime()) / 1000
+        (updates.completedAt.getTime() - updates.startedAt.getTime()) / 1000,
       );
     }
   }
@@ -341,11 +313,11 @@ export async function executePurge(
   tenantId: string,
   triggeredBy?: string,
   triggerType: 'scheduled' | 'manual' | 'gdpr_request' = 'manual',
-  dryRun: boolean = false
+  dryRun: boolean = false,
 ): Promise<DataPurgeJob> {
   const policy = await getRetentionPolicy(policyId, tenantId);
   if (!policy) {
-    throw new Error("Retention policy not found");
+    throw new Error('Retention policy not found');
   }
 
   // Check for legal hold
@@ -381,7 +353,7 @@ export async function executePurge(
       tenantId,
       policy.dateField,
       cutoffDate,
-      policy.additionalConditions as Record<string, any>
+      policy.additionalConditions as Record<string, any>,
     );
 
     await updatePurgeJobStatus(job.id, 'completed', {
@@ -406,7 +378,7 @@ async function executePurgeAsync(
   jobId: string,
   policy: DataRetentionPolicy,
   tenantId: string,
-  cutoffDate: Date
+  cutoffDate: Date,
 ): Promise<void> {
   try {
     await updatePurgeJobStatus(jobId, 'in_progress');
@@ -417,7 +389,7 @@ async function executePurgeAsync(
       tenantId,
       policy.dateField,
       cutoffDate,
-      policy.additionalConditions as Record<string, any>
+      policy.additionalConditions as Record<string, any>,
     );
 
     await updatePurgeJobStatus(jobId, 'in_progress', {
@@ -438,7 +410,7 @@ async function executePurgeAsync(
           tenantId,
           policy.dateField,
           cutoffDate,
-          policy.archiveDestination || undefined
+          policy.archiveDestination || undefined,
         );
         recordsArchived = archiveResult.count;
         archiveLocation = archiveResult.location;
@@ -464,7 +436,7 @@ async function executePurgeAsync(
           policy.dateField,
           cutoffDate,
           batchSize,
-          policy.additionalConditions as Record<string, any>
+          policy.additionalConditions as Record<string, any>,
         );
         recordsPurged += purgedInBatch;
 
@@ -525,7 +497,7 @@ async function countRecordsForPurge(
   tenantId: string,
   dateField: string,
   cutoffDate: Date,
-  additionalConditions?: Record<string, any>
+  additionalConditions?: Record<string, any>,
 ): Promise<number> {
   // Use raw SQL to handle dynamic table names safely
   const query = sql`
@@ -548,7 +520,7 @@ async function purgeRecordsBatch(
   dateField: string,
   cutoffDate: Date,
   batchSize: number,
-  additionalConditions?: Record<string, any>
+  additionalConditions?: Record<string, any>,
 ): Promise<number> {
   const query = sql`
     DELETE FROM ${sql.identifier(tableName)}
@@ -572,7 +544,7 @@ async function archiveRecords(
   tenantId: string,
   dateField: string,
   cutoffDate: Date,
-  destination?: string
+  destination?: string,
 ): Promise<{ count: number; location: string }> {
   // In a production environment, this would export to S3, GCS, or similar
   // For now, we'll create a summary record
@@ -626,7 +598,7 @@ export async function getPoliciesDueForExecution(): Promise<DataRetentionPolicy[
 
     // Simple weekly check (schedule parsing would be more sophisticated in production)
     const daysSinceLastRun = Math.floor(
-      (now.getTime() - policy.lastExecutedAt.getTime()) / (1000 * 60 * 60 * 24)
+      (now.getTime() - policy.lastExecutedAt.getTime()) / (1000 * 60 * 60 * 24),
     );
 
     // Run at least once a week
@@ -667,9 +639,7 @@ export async function runScheduledRetention(): Promise<{
 /**
  * Get retention metrics
  */
-export async function getRetentionMetrics(
-  tenantId: string
-): Promise<{
+export async function getRetentionMetrics(tenantId: string): Promise<{
   totalPolicies: number;
   activePolicies: number;
   pausedPolicies: number;
@@ -721,7 +691,7 @@ export async function getRetentionMetrics(
           policy.tableName,
           tenantId,
           policy.dateField,
-          cutoffDate
+          cutoffDate,
         );
 
         const nextRun = policy.lastExecutedAt
@@ -735,7 +705,7 @@ export async function getRetentionMetrics(
           estimatedRecords,
           nextRun,
         };
-      })
+      }),
   );
 
   return {
@@ -754,7 +724,7 @@ export async function getRetentionMetrics(
  */
 export async function initializeDefaultPolicies(
   tenantId: string,
-  createdBy: string
+  createdBy: string,
 ): Promise<DataRetentionPolicy[]> {
   const policies: DataRetentionPolicy[] = [];
 

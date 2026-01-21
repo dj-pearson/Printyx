@@ -10,7 +10,9 @@ export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
   const [subdomain, setSubdomain] = useState('');
-  const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [subdomainStatus, setSubdomainStatus] = useState<
+    'idle' | 'checking' | 'available' | 'taken'
+  >('idle');
   const [subdomainMessage, setSubdomainMessage] = useState('');
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -109,7 +111,9 @@ export default function OnboardingPage() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-gray-700">Setup Progress</span>
-            <span className="text-sm font-bold text-blue-600">{Math.round(completionPercentage)}%</span>
+            <span className="text-sm font-bold text-blue-600">
+              {Math.round(completionPercentage)}%
+            </span>
           </div>
           <Progress value={completionPercentage} className="h-2" />
         </div>
@@ -122,7 +126,7 @@ export default function OnboardingPage() {
               className={`cursor-pointer transition-all ${
                 index === step ? 'ring-2 ring-blue-500 shadow-lg' : ''
               } ${completedSteps.has(index) ? 'bg-green-50' : ''}`}
-              onClick={() => index < step ? setStep(index) : null}
+              onClick={() => (index < step ? setStep(index) : null)}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -132,8 +136,8 @@ export default function OnboardingPage() {
                         completedSteps.has(index)
                           ? 'bg-green-500 text-white'
                           : index === step
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-200 text-gray-600'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 text-gray-600'
                       }`}
                     >
                       {completedSteps.has(index) ? <Check className="w-5 h-5" /> : index + 1}
@@ -214,7 +218,9 @@ export default function OnboardingPage() {
 
             {step === 2 && (
               <div className="space-y-4">
-                <p className="text-gray-600 mb-4">You'll be able to add your payment method securely</p>
+                <p className="text-gray-600 mb-4">
+                  You'll be able to add your payment method securely
+                </p>
                 <Button onClick={() => completeStep(2)} className="w-full">
                   I'll Setup Payment Later
                 </Button>

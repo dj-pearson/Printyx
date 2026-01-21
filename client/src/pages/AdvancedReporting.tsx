@@ -1,34 +1,54 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Users, 
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import {
+  TrendingUp,
+  DollarSign,
+  Users,
   Calendar,
   FileText,
   BarChart3,
   PieChartIcon,
   Download,
   Filter,
-  Activity
-} from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
-import type { Customer, Contract, ServiceTicket, Invoice, MeterReading } from "@shared/schema";
+  Activity,
+} from 'lucide-react';
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import type { Customer, Contract, ServiceTicket, Invoice, MeterReading } from '@shared/schema';
 
 export default function AdvancedReporting() {
   const [dateRange, setDateRange] = useState({
     from: startOfMonth(new Date()),
-    to: endOfMonth(new Date())
+    to: endOfMonth(new Date()),
   });
-  const [selectedCustomer, setSelectedCustomer] = useState<string>("all");
-  const [selectedReport, setSelectedReport] = useState<string>("revenue");
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
+  const [selectedReport, setSelectedReport] = useState<string>('revenue');
 
   const handleDateRangeChange = (range: { from: Date; to: Date }) => {
     setDateRange(range);
@@ -36,44 +56,47 @@ export default function AdvancedReporting() {
 
   // Data fetching
   const { data: customers } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
+    queryKey: ['/api/customers'],
   });
 
   const { data: contracts } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts"],
+    queryKey: ['/api/contracts'],
   });
 
   const { data: serviceTickets } = useQuery<ServiceTicket[]>({
-    queryKey: ["/api/service-tickets"],
+    queryKey: ['/api/service-tickets'],
   });
 
   const { data: invoices } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices"],
+    queryKey: ['/api/invoices'],
   });
 
   const { data: meterReadings } = useQuery<MeterReading[]>({
-    queryKey: ["/api/meter-readings"],
+    queryKey: ['/api/meter-readings'],
   });
 
   // Revenue Analytics
   const getRevenueData = () => {
     if (!invoices) return [];
-    
+
     const monthlyRevenue = invoices
-      .filter(inv => {
+      .filter((inv) => {
         const invDate = new Date(inv.issueDate);
         return invDate >= dateRange.from && invDate <= dateRange.to;
       })
-      .reduce((acc, inv) => {
-        const month = format(new Date(inv.issueDate), 'MMM yyyy');
-        acc[month] = (acc[month] || 0) + parseFloat(inv.totalAmount.toString());
-        return acc;
-      }, {} as Record<string, number>);
+      .reduce(
+        (acc, inv) => {
+          const month = format(new Date(inv.issueDate), 'MMM yyyy');
+          acc[month] = (acc[month] || 0) + parseFloat(inv.totalAmount.toString());
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
     return Object.entries(monthlyRevenue).map(([month, amount]) => ({
       month,
       revenue: amount,
-      target: amount * 1.1 // 10% growth target
+      target: amount * 1.1, // 10% growth target
     }));
   };
 
@@ -81,71 +104,81 @@ export default function AdvancedReporting() {
   const getCustomerProfitabilityData = () => {
     if (!customers || !contracts || !invoices) return [];
 
-    return customers.slice(0, 10).map(customer => {
-      const customerContracts = contracts.filter(c => c.customerId === customer.id);
-      const customerInvoices = invoices.filter(inv => 
-        customerContracts.some(contract => contract.id === inv.contractId)
-      );
-      
-      const revenue = customerInvoices.reduce((sum, inv) => 
-        sum + parseFloat(inv.totalAmount.toString()), 0
-      );
-      
-      const serviceCost = serviceTickets
-        ?.filter(ticket => ticket.customerId === customer.id)
-        .reduce((sum, ticket) => sum + (parseFloat(ticket.laborHours?.toString() || '0') * 75), 0) || 0;
-      
-      const profit = revenue - serviceCost;
-      const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    return customers
+      .slice(0, 10)
+      .map((customer) => {
+        const customerContracts = contracts.filter((c) => c.customerId === customer.id);
+        const customerInvoices = invoices.filter((inv) =>
+          customerContracts.some((contract) => contract.id === inv.contractId),
+        );
 
-      return {
-        customer: customer.name,
-        revenue,
-        serviceCost,
-        profit,
-        margin: Math.round(margin * 100) / 100
-      };
-    }).sort((a, b) => b.profit - a.profit);
+        const revenue = customerInvoices.reduce(
+          (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
+          0,
+        );
+
+        const serviceCost =
+          serviceTickets
+            ?.filter((ticket) => ticket.customerId === customer.id)
+            .reduce(
+              (sum, ticket) => sum + parseFloat(ticket.laborHours?.toString() || '0') * 75,
+              0,
+            ) || 0;
+
+        const profit = revenue - serviceCost;
+        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+
+        return {
+          customer: customer.name,
+          revenue,
+          serviceCost,
+          profit,
+          margin: Math.round(margin * 100) / 100,
+        };
+      })
+      .sort((a, b) => b.profit - a.profit);
   };
 
   // Service Performance Metrics
   const getServiceMetrics = () => {
-    if (!serviceTickets) return {
-      totalTickets: 0,
-      completedTickets: 0,
-      averageResolutionTime: 0,
-      ticketsByPriority: []
-    };
+    if (!serviceTickets)
+      return {
+        totalTickets: 0,
+        completedTickets: 0,
+        averageResolutionTime: 0,
+        ticketsByPriority: [],
+      };
 
-    const filteredTickets = serviceTickets.filter(ticket => {
+    const filteredTickets = serviceTickets.filter((ticket) => {
       const ticketDate = new Date(ticket.createdAt);
       return ticketDate >= dateRange.from && ticketDate <= dateRange.to;
     });
 
-    const completedTickets = filteredTickets.filter(t => t.status === 'completed');
-    
+    const completedTickets = filteredTickets.filter((t) => t.status === 'completed');
+
     const resolutionTimes = completedTickets
-      .filter(t => t.resolvedAt)
-      .map(t => {
+      .filter((t) => t.resolvedAt)
+      .map((t) => {
         const created = new Date(t.createdAt);
         const resolved = new Date(t.resolvedAt!);
         return (resolved.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
       });
 
-    const averageResolutionTime = resolutionTimes.length > 0 
-      ? resolutionTimes.reduce((sum, time) => sum + time, 0) / resolutionTimes.length 
-      : 0;
+    const averageResolutionTime =
+      resolutionTimes.length > 0
+        ? resolutionTimes.reduce((sum, time) => sum + time, 0) / resolutionTimes.length
+        : 0;
 
-    const ticketsByPriority = ['low', 'medium', 'high', 'urgent'].map(priority => ({
+    const ticketsByPriority = ['low', 'medium', 'high', 'urgent'].map((priority) => ({
       priority: priority.charAt(0).toUpperCase() + priority.slice(1),
-      count: filteredTickets.filter(t => t.priority === priority).length
+      count: filteredTickets.filter((t) => t.priority === priority).length,
     }));
 
     return {
       totalTickets: filteredTickets.length,
       completedTickets: completedTickets.length,
       averageResolutionTime: Math.round(averageResolutionTime * 100) / 100,
-      ticketsByPriority
+      ticketsByPriority,
     };
   };
 
@@ -153,22 +186,23 @@ export default function AdvancedReporting() {
   const getContractPerformance = () => {
     if (!contracts || !meterReadings) return [];
 
-    return contracts.slice(0, 8).map(contract => {
-      const contractReadings = meterReadings.filter(r => r.contractId === contract.id);
-      const totalCopies = contractReadings.reduce((sum, r) => 
-        sum + (r.blackCopies || 0) + (r.colorCopies || 0), 0
+    return contracts.slice(0, 8).map((contract) => {
+      const contractReadings = meterReadings.filter((r) => r.contractId === contract.id);
+      const totalCopies = contractReadings.reduce(
+        (sum, r) => sum + (r.blackCopies || 0) + (r.colorCopies || 0),
+        0,
       );
-      
+
       const monthlyAverage = totalCopies / Math.max(contractReadings.length, 1);
       const contractValue = parseFloat(contract.monthlyValue?.toString() || '0');
 
       return {
         contract: contract.contractNumber,
-        customer: customers?.find(c => c.id === contract.customerId)?.name || 'Unknown',
+        customer: customers?.find((c) => c.id === contract.customerId)?.name || 'Unknown',
         monthlyValue: contractValue,
         totalCopies,
         monthlyAverage: Math.round(monthlyAverage),
-        cpc: totalCopies > 0 ? contractValue / totalCopies : 0
+        cpc: totalCopies > 0 ? contractValue / totalCopies : 0,
       };
     });
   };
@@ -181,8 +215,8 @@ export default function AdvancedReporting() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   return (
-    <MainLayout 
-      title="Advanced Reporting & Analytics" 
+    <MainLayout
+      title="Advanced Reporting & Analytics"
       description="Comprehensive business intelligence and performance metrics"
     >
       <div className="space-y-6">
@@ -195,9 +229,7 @@ export default function AdvancedReporting() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Date Range</label>
-                <DateRangePicker
-                  onDateRangeChange={handleDateRangeChange}
-                />
+                <DateRangePicker onDateRangeChange={handleDateRangeChange} />
               </div>
               <div className="w-full sm:w-48">
                 <label className="text-sm font-medium mb-2 block">Customer</label>
@@ -253,7 +285,7 @@ export default function AdvancedReporting() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Active Contracts</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {contracts?.filter(c => c.status === 'active').length || 0}
+                    {contracts?.filter((c) => c.status === 'active').length || 0}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -299,10 +331,18 @@ export default function AdvancedReporting() {
         {/* Report Tabs */}
         <Tabs defaultValue="revenue" className="space-y-4">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 h-auto sm:h-10">
-            <TabsTrigger value="revenue" className="text-xs sm:text-sm">Revenue Analytics</TabsTrigger>
-            <TabsTrigger value="profitability" className="text-xs sm:text-sm">Customer Profitability</TabsTrigger>
-            <TabsTrigger value="service" className="text-xs sm:text-sm">Service Performance</TabsTrigger>
-            <TabsTrigger value="contracts" className="text-xs sm:text-sm">Contract Analysis</TabsTrigger>
+            <TabsTrigger value="revenue" className="text-xs sm:text-sm">
+              Revenue Analytics
+            </TabsTrigger>
+            <TabsTrigger value="profitability" className="text-xs sm:text-sm">
+              Customer Profitability
+            </TabsTrigger>
+            <TabsTrigger value="service" className="text-xs sm:text-sm">
+              Service Performance
+            </TabsTrigger>
+            <TabsTrigger value="contracts" className="text-xs sm:text-sm">
+              Contract Analysis
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="revenue" className="space-y-6">
@@ -319,8 +359,21 @@ export default function AdvancedReporting() {
                     <YAxis />
                     <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, '']} />
                     <Legend />
-                    <Line type="monotone" dataKey="revenue" stroke="#8884d8" strokeWidth={2} name="Actual Revenue" />
-                    <Line type="monotone" dataKey="target" stroke="#82ca9d" strokeWidth={2} strokeDasharray="5 5" name="Target Revenue" />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      name="Actual Revenue"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="target"
+                      stroke="#82ca9d"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Target Revenue"
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -389,9 +442,12 @@ export default function AdvancedReporting() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Completion Rate</span>
                     <span className="text-lg font-bold">
-                      {serviceMetrics.totalTickets > 0 
-                        ? Math.round((serviceMetrics.completedTickets / serviceMetrics.totalTickets) * 100)
-                        : 0}%
+                      {serviceMetrics.totalTickets > 0
+                        ? Math.round(
+                            (serviceMetrics.completedTickets / serviceMetrics.totalTickets) * 100,
+                          )
+                        : 0}
+                      %
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -404,7 +460,9 @@ export default function AdvancedReporting() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Avg Resolution</span>
-                    <span className="text-lg font-bold">{serviceMetrics.averageResolutionTime.toFixed(1)}h</span>
+                    <span className="text-lg font-bold">
+                      {serviceMetrics.averageResolutionTime.toFixed(1)}h
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -435,9 +493,15 @@ export default function AdvancedReporting() {
                         <tr key={contract.contract} className="border-b">
                           <td className="p-2 font-medium">{contract.contract}</td>
                           <td className="p-2">{contract.customer}</td>
-                          <td className="p-2 text-right">${contract.monthlyValue.toLocaleString()}</td>
-                          <td className="p-2 text-right">{contract.totalCopies.toLocaleString()}</td>
-                          <td className="p-2 text-right">{contract.monthlyAverage.toLocaleString()}</td>
+                          <td className="p-2 text-right">
+                            ${contract.monthlyValue.toLocaleString()}
+                          </td>
+                          <td className="p-2 text-right">
+                            {contract.totalCopies.toLocaleString()}
+                          </td>
+                          <td className="p-2 text-right">
+                            {contract.monthlyAverage.toLocaleString()}
+                          </td>
                           <td className="p-2 text-right">${contract.cpc.toFixed(4)}</td>
                         </tr>
                       ))}

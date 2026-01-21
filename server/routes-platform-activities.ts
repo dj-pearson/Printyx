@@ -92,7 +92,9 @@ router.get('/', async (req: Request, res: Response) => {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Build ORDER BY
-    const orderByColumn = platformActivities[sortBy as keyof typeof platformActivities] || platformActivities.activityDate;
+    const orderByColumn =
+      platformActivities[sortBy as keyof typeof platformActivities] ||
+      platformActivities.activityDate;
     const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
     // Fetch activities
@@ -126,7 +128,7 @@ router.get('/', async (req: Request, res: Response) => {
     console.error('Error fetching activities:', error);
     res.status(500).json({
       error: 'Failed to fetch activities',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -178,12 +180,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         answeredCalls: sql<number>`count(*) filter (where ${platformActivities.callOutcome} = 'answered')`,
       })
       .from(platformActivities)
-      .where(
-        and(
-          whereClause || sql`true`,
-          eq(platformActivities.activityType, 'call')
-        )!
-      );
+      .where(and(whereClause || sql`true`, eq(platformActivities.activityType, 'call'))!);
 
     // Email metrics
     const emailMetrics = await db
@@ -194,12 +191,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         repliedEmails: sql<number>`count(*) filter (where ${platformActivities.emailReplied} = true)`,
       })
       .from(platformActivities)
-      .where(
-        and(
-          whereClause || sql`true`,
-          eq(platformActivities.activityType, 'email')
-        )!
-      );
+      .where(and(whereClause || sql`true`, eq(platformActivities.activityType, 'email'))!);
 
     // Meeting metrics
     const meetingMetrics = await db
@@ -208,12 +200,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         avgDuration: sql<number>`avg(${platformActivities.meetingDuration})`,
       })
       .from(platformActivities)
-      .where(
-        and(
-          whereClause || sql`true`,
-          eq(platformActivities.activityType, 'meeting')
-        )!
-      );
+      .where(and(whereClause || sql`true`, eq(platformActivities.activityType, 'meeting'))!);
 
     res.json({
       activityCounts,
@@ -225,7 +212,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     console.error('Error fetching activity stats:', error);
     res.status(500).json({
       error: 'Failed to fetch activity statistics',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -273,7 +260,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     console.error('Error fetching activity:', error);
     res.status(500).json({
       error: 'Failed to fetch activity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -310,10 +297,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Create activity
-    const [newActivity] = await db
-      .insert(platformActivities)
-      .values(data)
-      .returning();
+    const [newActivity] = await db.insert(platformActivities).values(data).returning();
 
     // Update business record's last contact date and activity counts
     await db
@@ -321,15 +305,18 @@ router.post('/', async (req: Request, res: Response) => {
       .set({
         lastContactDate: newActivity.activityDate,
         totalActivities: sql`${platformBusinessRecords.totalActivities} + 1`,
-        totalCalls: data.activityType === 'call'
-          ? sql`${platformBusinessRecords.totalCalls} + 1`
-          : platformBusinessRecords.totalCalls,
-        totalEmails: data.activityType === 'email'
-          ? sql`${platformBusinessRecords.totalEmails} + 1`
-          : platformBusinessRecords.totalEmails,
-        totalMeetings: data.activityType === 'meeting'
-          ? sql`${platformBusinessRecords.totalMeetings} + 1`
-          : platformBusinessRecords.totalMeetings,
+        totalCalls:
+          data.activityType === 'call'
+            ? sql`${platformBusinessRecords.totalCalls} + 1`
+            : platformBusinessRecords.totalCalls,
+        totalEmails:
+          data.activityType === 'email'
+            ? sql`${platformBusinessRecords.totalEmails} + 1`
+            : platformBusinessRecords.totalEmails,
+        totalMeetings:
+          data.activityType === 'meeting'
+            ? sql`${platformBusinessRecords.totalMeetings} + 1`
+            : platformBusinessRecords.totalMeetings,
         updatedAt: new Date(),
       })
       .where(eq(platformBusinessRecords.id, data.businessRecordId));
@@ -339,7 +326,7 @@ router.post('/', async (req: Request, res: Response) => {
     console.error('Error creating activity:', error);
     res.status(500).json({
       error: 'Failed to create activity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -400,7 +387,7 @@ router.post('/log-call', async (req: Request, res: Response) => {
     console.error('Error logging call:', error);
     res.status(500).json({
       error: 'Failed to log call',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -470,7 +457,7 @@ router.post('/log-email', async (req: Request, res: Response) => {
     console.error('Error logging email:', error);
     res.status(500).json({
       error: 'Failed to log email',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -535,7 +522,7 @@ router.post('/log-meeting', async (req: Request, res: Response) => {
     console.error('Error logging meeting:', error);
     res.status(500).json({
       error: 'Failed to log meeting',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -594,7 +581,7 @@ router.post('/log-demo', async (req: Request, res: Response) => {
     console.error('Error logging demo:', error);
     res.status(500).json({
       error: 'Failed to log demo',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -630,7 +617,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     console.error('Error updating activity:', error);
     res.status(500).json({
       error: 'Failed to update activity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -650,12 +637,7 @@ router.patch('/:id/complete-task', async (req: Request, res: Response) => {
         taskCompletedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(platformActivities.id, id),
-          eq(platformActivities.activityType, 'task')
-        )!
-      )
+      .where(and(eq(platformActivities.id, id), eq(platformActivities.activityType, 'task'))!)
       .returning();
 
     if (!completedTask) {
@@ -667,7 +649,7 @@ router.patch('/:id/complete-task', async (req: Request, res: Response) => {
     console.error('Error completing task:', error);
     res.status(500).json({
       error: 'Failed to complete task',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -698,7 +680,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     console.error('Error deleting activity:', error);
     res.status(500).json({
       error: 'Failed to delete activity',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

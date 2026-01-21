@@ -5,7 +5,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, RefreshCw, TrendingUp, TrendingDown, DollarSign, Target, Award } from 'lucide-react';
+import {
+  CalendarIcon,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Target,
+  Award,
+} from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
 import PipelineFunnel from '@/components/reports/sales/PipelineFunnel';
@@ -25,7 +33,11 @@ export default function SalesRepDashboard() {
   });
 
   // Fetch pipeline data
-  const { data: pipelineData, isLoading: pipelineLoading, refetch: refetchPipeline } = useQuery({
+  const {
+    data: pipelineData,
+    isLoading: pipelineLoading,
+    refetch: refetchPipeline,
+  } = useQuery({
     queryKey: ['sales-reports', 'personal', 'pipeline', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -101,9 +113,7 @@ export default function SalesRepDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Sales Dashboard</h1>
-          <p className="text-muted-foreground">
-            Track your performance, pipeline, and goals
-          </p>
+          <p className="text-muted-foreground">Track your performance, pipeline, and goals</p>
         </div>
         <div className="flex items-center gap-2">
           <Popover>
@@ -112,7 +122,8 @@ export default function SalesRepDashboard() {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange.from && dateRange.to ? (
                   <>
-                    {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                    {format(dateRange.from, 'MMM dd, yyyy')} -{' '}
+                    {format(dateRange.to, 'MMM dd, yyyy')}
                   </>
                 ) : (
                   <span>Pick a date range</span>
@@ -125,7 +136,9 @@ export default function SalesRepDashboard() {
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}
+                  onClick={() =>
+                    setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })
+                  }
                 >
                   This Month
                 </Button>
@@ -163,9 +176,7 @@ export default function SalesRepDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {pipelineData?.totalValue
-                ? `$${(pipelineData.totalValue / 1000).toFixed(0)}K`
-                : '$0'}
+              {pipelineData?.totalValue ? `$${(pipelineData.totalValue / 1000).toFixed(0)}K` : '$0'}
             </div>
             <p className="text-xs text-muted-foreground">
               {pipelineData?.totalDeals || 0} deals in pipeline
@@ -212,9 +223,7 @@ export default function SalesRepDashboard() {
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              #{leaderboardData?.myPosition?.rank || '-'}
-            </div>
+            <div className="text-2xl font-bold">#{leaderboardData?.myPosition?.rank || '-'}</div>
             <p className="text-xs text-muted-foreground">
               Top {leaderboardData?.percentile || 0}% in location
             </p>

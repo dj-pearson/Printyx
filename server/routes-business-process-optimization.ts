@@ -6,7 +6,7 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 // Using inline auth middleware since requireAuth is not available
@@ -28,9 +28,9 @@ router.use(enhanceUserContext);
 router.get('/api/business-process/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const processOptimizationData = {
@@ -42,8 +42,8 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
         automationRate: 68.1,
         avgProcessTime: 4.7, // hours
         processEfficiency: 84.3, // percentage
-        costSavings: 127890.50, // dollars saved through optimization
-        timeReduction: 32.4 // percentage time saved
+        costSavings: 127890.5, // dollars saved through optimization
+        timeReduction: 32.4, // percentage time saved
       },
 
       // Key Process Metrics
@@ -54,7 +54,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           optimizedTime: 3.1,
           improvement: 40.4,
           status: 'optimized',
-          automationLevel: 85
+          automationLevel: 85,
         },
         {
           metric: 'Service Ticket Resolution',
@@ -62,7 +62,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           optimizedTime: 4.2,
           improvement: 38.2,
           status: 'optimized',
-          automationLevel: 72
+          automationLevel: 72,
         },
         {
           metric: 'Invoice Processing',
@@ -70,7 +70,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           optimizedTime: 2.8,
           improvement: 77.6,
           status: 'optimized',
-          automationLevel: 94
+          automationLevel: 94,
         },
         {
           metric: 'Equipment Installation',
@@ -78,7 +78,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           optimizedTime: 18.5,
           improvement: 22.9,
           status: 'in_progress',
-          automationLevel: 45
+          automationLevel: 45,
         },
         {
           metric: 'Contract Renewal',
@@ -86,8 +86,8 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           optimizedTime: 8.7,
           improvement: 43.1,
           status: 'optimized',
-          automationLevel: 78
-        }
+          automationLevel: 78,
+        },
       ],
 
       // Workflow Templates
@@ -95,7 +95,8 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
         {
           id: 'wf-001',
           name: 'New Customer Onboarding',
-          description: 'Standardized process for onboarding new customers from lead to active account',
+          description:
+            'Standardized process for onboarding new customers from lead to active account',
           steps: 12,
           avgDuration: 3.5, // days
           automationLevel: 85,
@@ -108,11 +109,11 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             'Schedule equipment delivery',
             'Assign account manager',
             'Setup billing preferences',
-            'Send onboarding checklist'
+            'Send onboarding checklist',
           ],
           status: 'active',
           lastUpdated: new Date('2025-01-15T00:00:00Z'),
-          usageCount: 156
+          usageCount: 156,
         },
         {
           id: 'wf-002',
@@ -130,11 +131,11 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             'Assign technician based on skills/location',
             'Order required parts',
             'Send customer notification',
-            'Generate work order'
+            'Generate work order',
           ],
           status: 'active',
           lastUpdated: new Date('2025-01-20T00:00:00Z'),
-          usageCount: 423
+          usageCount: 423,
         },
         {
           id: 'wf-003',
@@ -152,16 +153,17 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             'Generate renewal proposal',
             'Schedule customer meeting',
             'Send renewal documentation',
-            'Process contract updates'
+            'Process contract updates',
           ],
           status: 'active',
           lastUpdated: new Date('2025-01-18T00:00:00Z'),
-          usageCount: 89
+          usageCount: 89,
         },
         {
           id: 'wf-004',
           name: 'Equipment Maintenance Scheduling',
-          description: 'Preventive maintenance workflow with automated scheduling and notifications',
+          description:
+            'Preventive maintenance workflow with automated scheduling and notifications',
           steps: 9,
           avgDuration: 1.8, // days
           automationLevel: 91,
@@ -174,11 +176,11 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             'Schedule technician visit',
             'Notify customer',
             'Create maintenance record',
-            'Update equipment status'
+            'Update equipment status',
           ],
           status: 'active',
           lastUpdated: new Date('2025-01-22T00:00:00Z'),
-          usageCount: 298
+          usageCount: 298,
         },
         {
           id: 'wf-005',
@@ -196,12 +198,12 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             'Send to customer',
             'Process payment',
             'Update account status',
-            'Handle collections if needed'
+            'Handle collections if needed',
           ],
           status: 'active',
           lastUpdated: new Date('2025-01-25T00:00:00Z'),
-          usageCount: 567
-        }
+          usageCount: 567,
+        },
       ],
 
       // Process Analytics
@@ -213,7 +215,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             avgDelay: 3.2, // days
             impact: 'high',
             frequency: 78, // occurrences per month
-            recommendation: 'Implement automated scheduling with customer self-service portal'
+            recommendation: 'Implement automated scheduling with customer self-service portal',
           },
           {
             process: 'Contract Approval',
@@ -221,7 +223,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             avgDelay: 2.1,
             impact: 'medium',
             frequency: 45,
-            recommendation: 'Create pre-approved contract templates for standard terms'
+            recommendation: 'Create pre-approved contract templates for standard terms',
           },
           {
             process: 'Parts Ordering',
@@ -229,8 +231,8 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             avgDelay: 1.8,
             impact: 'medium',
             frequency: 123,
-            recommendation: 'Establish preferred vendor agreements with SLA requirements'
-          }
+            recommendation: 'Establish preferred vendor agreements with SLA requirements',
+          },
         ],
 
         efficiency: [
@@ -240,24 +242,32 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             targetEfficiency: 90.0,
             gap: 11.5,
             improvementAreas: ['Lead qualification', 'Proposal generation', 'Follow-up automation'],
-            estimatedROI: 156780.25
+            estimatedROI: 156780.25,
           },
           {
             department: 'Service',
             currentEfficiency: 84.2,
             targetEfficiency: 95.0,
             gap: 10.8,
-            improvementAreas: ['Dispatch optimization', 'Parts inventory', 'Customer communication'],
-            estimatedROI: 234567.50
+            improvementAreas: [
+              'Dispatch optimization',
+              'Parts inventory',
+              'Customer communication',
+            ],
+            estimatedROI: 234567.5,
           },
           {
             department: 'Finance',
             currentEfficiency: 91.3,
             targetEfficiency: 98.0,
             gap: 6.7,
-            improvementAreas: ['Invoice processing', 'Payment reconciliation', 'Reporting automation'],
-            estimatedROI: 89456.75
-          }
+            improvementAreas: [
+              'Invoice processing',
+              'Payment reconciliation',
+              'Reporting automation',
+            ],
+            estimatedROI: 89456.75,
+          },
         ],
 
         trends: [
@@ -267,8 +277,8 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           { month: '2024-10', efficiency: 81.5, automation: 65.8, processes: 45 },
           { month: '2024-11', efficiency: 82.9, automation: 66.9, processes: 46 },
           { month: '2024-12', efficiency: 83.7, automation: 67.4, processes: 47 },
-          { month: '2025-01', efficiency: 84.3, automation: 68.1, processes: 47 }
-        ]
+          { month: '2025-01', efficiency: 84.3, automation: 68.1, processes: 47 },
+        ],
       },
 
       // Automation Opportunities
@@ -279,13 +289,13 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           description: 'Automate generation of welcome packets and setup documentation',
           currentEffort: 2.5, // hours per customer
           estimatedReduction: 80, // percentage
-          potentialSavings: 45600.00, // annual savings
+          potentialSavings: 45600.0, // annual savings
           complexity: 'low',
           priority: 'high',
           implementationTime: 2, // weeks
           requiredResources: ['Developer', 'Template Designer'],
           roi: 456.7, // percentage ROI
-          status: 'ready_to_implement'
+          status: 'ready_to_implement',
         },
         {
           id: 'auto-002',
@@ -293,13 +303,13 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           description: 'Implement automated meter reading via IoT sensors and mobile apps',
           currentEffort: 4.0,
           estimatedReduction: 90,
-          potentialSavings: 89700.00,
+          potentialSavings: 89700.0,
           complexity: 'medium',
           priority: 'high',
           implementationTime: 6,
           requiredResources: ['IoT Specialist', 'Mobile Developer', 'Hardware'],
           roi: 298.5,
-          status: 'planning'
+          status: 'planning',
         },
         {
           id: 'auto-003',
@@ -307,13 +317,13 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           description: 'Automated parts ordering based on usage patterns and thresholds',
           currentEffort: 3.2,
           estimatedReduction: 75,
-          potentialSavings: 67890.00,
+          potentialSavings: 67890.0,
           complexity: 'medium',
           priority: 'medium',
           implementationTime: 4,
           requiredResources: ['Systems Analyst', 'Vendor Integration'],
           roi: 234.8,
-          status: 'evaluation'
+          status: 'evaluation',
         },
         {
           id: 'auto-004',
@@ -321,14 +331,14 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           description: 'Automated survey deployment and response collection after service calls',
           currentEfffort: 1.5,
           estimatedReduction: 95,
-          potentialSavings: 23400.00,
+          potentialSavings: 23400.0,
           complexity: 'low',
           priority: 'medium',
           implementationTime: 1,
           requiredResources: ['Survey Platform Integration'],
           roi: 178.3,
-          status: 'ready_to_implement'
-        }
+          status: 'ready_to_implement',
+        },
       ],
 
       // Compliance & Quality
@@ -341,7 +351,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             nextAudit: new Date('2025-11-15T00:00:00Z'),
             score: 96.7,
             nonConformities: 2,
-            improvementActions: 3
+            improvementActions: 3,
           },
           {
             standard: 'SOC 2 Type II',
@@ -350,8 +360,8 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             nextAudit: new Date('2025-09-30T00:00:00Z'),
             score: 94.2,
             nonConformities: 1,
-            improvementActions: 2
-          }
+            improvementActions: 2,
+          },
         ],
 
         qualityMetrics: {
@@ -359,7 +369,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
           standardAdherence: 91.3, // percentage adherence to standards
           employeeTraining: 88.9, // percentage of employees trained on processes
           auditReadiness: 96.1, // overall audit readiness score
-          continuousImprovement: 14 // number of improvement initiatives this quarter
+          continuousImprovement: 14, // number of improvement initiatives this quarter
         },
 
         riskAssessment: [
@@ -370,7 +380,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             impact: 'high',
             mitigation: 'Accelerate automation initiatives for critical processes',
             owner: 'Process Excellence Team',
-            dueDate: new Date('2025-03-31T00:00:00Z')
+            dueDate: new Date('2025-03-31T00:00:00Z'),
           },
           {
             risk: 'Knowledge Concentration',
@@ -379,9 +389,9 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             impact: 'high',
             mitigation: 'Implement knowledge management system and cross-training',
             owner: 'HR Department',
-            dueDate: new Date('2025-04-15T00:00:00Z')
-          }
-        ]
+            dueDate: new Date('2025-04-15T00:00:00Z'),
+          },
+        ],
       },
 
       // Performance Benchmarks
@@ -392,22 +402,22 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             ourValue: 68.1,
             industryAverage: 52.3,
             topQuartile: 78.9,
-            position: 'above_average'
+            position: 'above_average',
           },
           {
             metric: 'Process Efficiency Score',
             ourValue: 84.3,
             industryAverage: 71.8,
             topQuartile: 89.4,
-            position: 'above_average'
+            position: 'above_average',
           },
           {
             metric: 'Time to Process Improvement',
             ourValue: 3.2, // months
             industryAverage: 5.8,
             topQuartile: 2.1,
-            position: 'above_average'
-          }
+            position: 'above_average',
+          },
         ],
 
         competitorAnalysis: [
@@ -416,21 +426,20 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
             automationRate: 58.4,
             efficiency: 79.2,
             customerSatisfaction: 4.1,
-            marketShare: 18.7
+            marketShare: 18.7,
           },
           {
             competitor: 'Competitor B',
             automationRate: 63.1,
             efficiency: 81.6,
             customerSatisfaction: 4.3,
-            marketShare: 15.2
-          }
-        ]
-      }
+            marketShare: 15.2,
+          },
+        ],
+      },
     };
 
     res.json(processOptimizationData);
-    
   } catch (error) {
     console.error('Error fetching business process optimization data:', error);
     res.status(500).json({ message: 'Failed to fetch business process optimization data' });
@@ -442,21 +451,22 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
   try {
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock detailed workflow data - would come from database
     const workflowDetails = {
       id: workflowId,
       name: 'New Customer Onboarding',
-      description: 'Comprehensive workflow for onboarding new customers from lead qualification to active service',
+      description:
+        'Comprehensive workflow for onboarding new customers from lead qualification to active service',
       version: '2.1',
       createdDate: new Date('2024-08-15T00:00:00Z'),
       lastModified: new Date('2025-01-15T00:00:00Z'),
       status: 'active',
-      
+
       steps: [
         {
           id: 'step-001',
@@ -472,8 +482,8 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
             'Review lead details',
             'Validate contact information',
             'Assess business requirements',
-            'Determine fit score'
-          ]
+            'Determine fit score',
+          ],
         },
         {
           id: 'step-002',
@@ -489,8 +499,8 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
             'Select contract template',
             'Populate customer data',
             'Calculate pricing',
-            'Generate PDF document'
-          ]
+            'Generate PDF document',
+          ],
         },
         {
           id: 'step-003',
@@ -506,8 +516,8 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
             'Check approval requirements',
             'Route for approval if needed',
             'Notify approver',
-            'Track approval status'
-          ]
+            'Track approval status',
+          ],
         },
         {
           id: 'step-004',
@@ -523,9 +533,9 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
             'Create customer profile',
             'Set up billing preferences',
             'Configure service settings',
-            'Assign account manager'
-          ]
-        }
+            'Assign account manager',
+          ],
+        },
       ],
 
       metrics: {
@@ -535,7 +545,7 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
         avgExecutionTime: 3.5, // days
         costPerExecution: 45.67,
         timeSaved: 2.8, // hours per execution
-        customerSatisfactionScore: 4.6
+        customerSatisfactionScore: 4.6,
       },
 
       triggers: [
@@ -543,26 +553,25 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
           type: 'manual',
           name: 'Sales Rep Initiation',
           description: 'Manually triggered by sales representative',
-          frequency: 65 // percentage of total triggers
+          frequency: 65, // percentage of total triggers
         },
         {
           type: 'automatic',
           name: 'Lead Score Threshold',
           description: 'Automatically triggered when lead score exceeds 80',
-          frequency: 35
-        }
+          frequency: 35,
+        },
       ],
 
       integrations: [
         { system: 'CRM System', status: 'active', lastSync: new Date() },
         { system: 'Contract Management', status: 'active', lastSync: new Date() },
         { system: 'Billing System', status: 'active', lastSync: new Date() },
-        { system: 'Email Marketing', status: 'active', lastSync: new Date() }
-      ]
+        { system: 'Email Marketing', status: 'active', lastSync: new Date() },
+      ],
     };
 
     res.json(workflowDetails);
-    
   } catch (error) {
     console.error('Error fetching workflow details:', error);
     res.status(500).json({ message: 'Failed to fetch workflow details' });
@@ -574,9 +583,9 @@ router.post('/api/business-process/workflows', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const workflowData = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock workflow creation - would save to database
@@ -588,11 +597,10 @@ router.post('/api/business-process/workflows', async (req: any, res) => {
       lastModified: new Date(),
       status: 'draft',
       version: '1.0',
-      usageCount: 0
+      usageCount: 0,
     };
 
     res.status(201).json(newWorkflow);
-    
   } catch (error) {
     console.error('Error creating workflow:', error);
     res.status(500).json({ message: 'Failed to create workflow' });
@@ -605,9 +613,9 @@ router.put('/api/business-process/workflows/:workflowId', async (req: any, res) 
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
     const updateData = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock workflow update - would update in database
@@ -615,11 +623,10 @@ router.put('/api/business-process/workflows/:workflowId', async (req: any, res) 
       id: workflowId,
       ...updateData,
       lastModified: new Date(),
-      version: '2.1' // Increment version
+      version: '2.1', // Increment version
     };
 
     res.json(updatedWorkflow);
-    
   } catch (error) {
     console.error('Error updating workflow:', error);
     res.status(500).json({ message: 'Failed to update workflow' });
@@ -632,9 +639,9 @@ router.post('/api/business-process/workflows/:workflowId/execute', async (req: a
     const tenantId = req.user?.tenantId;
     const { workflowId } = req.params;
     const { inputData, triggeredBy } = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock workflow execution
@@ -648,11 +655,10 @@ router.post('/api/business-process/workflows/:workflowId/execute', async (req: a
       currentStep: 1,
       totalSteps: 4,
       estimatedCompletion: new Date(Date.now() + 3.5 * 24 * 60 * 60 * 1000), // 3.5 days
-      progress: 0
+      progress: 0,
     };
 
     res.status(202).json(execution);
-    
   } catch (error) {
     console.error('Error executing workflow:', error);
     res.status(500).json({ message: 'Failed to execute workflow' });
@@ -663,21 +669,22 @@ router.post('/api/business-process/workflows/:workflowId/execute', async (req: a
 router.get('/api/business-process/recommendations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const recommendations = [
       {
         id: 'rec-001',
         title: 'Automate Customer Onboarding Documentation',
-        description: 'Implement automated generation of welcome packets and setup documentation to reduce manual effort by 80%',
+        description:
+          'Implement automated generation of welcome packets and setup documentation to reduce manual effort by 80%',
         category: 'Automation',
         priority: 'high',
         impact: 'high',
         effort: 'low',
-        estimatedSavings: 45600.00,
+        estimatedSavings: 45600.0,
         estimatedROI: 456.7,
         implementationTime: 2, // weeks
         affectedProcesses: ['Customer Onboarding', 'Documentation Management'],
@@ -685,19 +692,20 @@ router.get('/api/business-process/recommendations', async (req: any, res) => {
         successMetrics: [
           'Onboarding time reduced by 2 hours per customer',
           'Documentation accuracy increased to 99%',
-          'Customer satisfaction improved by 15%'
+          'Customer satisfaction improved by 15%',
         ],
-        status: 'pending_approval'
+        status: 'pending_approval',
       },
       {
         id: 'rec-002',
         title: 'Implement IoT-Based Meter Reading',
-        description: 'Deploy IoT sensors for automated meter reading collection, eliminating manual visits',
+        description:
+          'Deploy IoT sensors for automated meter reading collection, eliminating manual visits',
         category: 'Technology',
         priority: 'high',
         impact: 'high',
         effort: 'medium',
-        estimatedSavings: 89700.00,
+        estimatedSavings: 89700.0,
         estimatedROI: 298.5,
         implementationTime: 6,
         affectedProcesses: ['Meter Reading', 'Billing Process', 'Service Scheduling'],
@@ -705,19 +713,20 @@ router.get('/api/business-process/recommendations', async (req: any, res) => {
         successMetrics: [
           'Manual meter reading eliminated',
           'Reading accuracy increased to 99.5%',
-          'Service calls reduced by 40%'
+          'Service calls reduced by 40%',
         ],
-        status: 'in_planning'
+        status: 'in_planning',
       },
       {
         id: 'rec-003',
         title: 'Optimize Service Dispatch Algorithm',
-        description: 'Enhance technician assignment algorithm to consider skills, location, and workload for optimal efficiency',
+        description:
+          'Enhance technician assignment algorithm to consider skills, location, and workload for optimal efficiency',
         category: 'Process Improvement',
         priority: 'medium',
         impact: 'medium',
         effort: 'medium',
-        estimatedSavings: 34500.00,
+        estimatedSavings: 34500.0,
         estimatedROI: 198.7,
         implementationTime: 4,
         affectedProcesses: ['Service Dispatch', 'Resource Planning'],
@@ -725,14 +734,13 @@ router.get('/api/business-process/recommendations', async (req: any, res) => {
         successMetrics: [
           'Dispatch efficiency increased by 25%',
           'Travel time reduced by 20%',
-          'Customer satisfaction improved by 10%'
+          'Customer satisfaction improved by 10%',
         ],
-        status: 'under_review'
-      }
+        status: 'under_review',
+      },
     ];
 
     res.json(recommendations);
-    
   } catch (error) {
     console.error('Error fetching recommendations:', error);
     res.status(500).json({ message: 'Failed to fetch recommendations' });

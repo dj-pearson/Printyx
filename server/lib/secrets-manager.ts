@@ -81,7 +81,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
       await this.authenticateAppRole();
     } else {
       throw new Error(
-        'Vault authentication not configured. Provide VAULT_TOKEN or VAULT_ROLE_ID + VAULT_SECRET_ID'
+        'Vault authentication not configured. Provide VAULT_TOKEN or VAULT_ROLE_ID + VAULT_SECRET_ID',
       );
     }
 
@@ -147,7 +147,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
   private async makeRequest(
     path: string,
     method: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
   ): Promise<any> {
     const url = `${this.address}${path}`;
     const headers: Record<string, string> = {
@@ -177,15 +177,13 @@ class HashiCorpVaultProvider implements SecretsProvider {
 
   async getSecret(config: SecretConfig): Promise<SecretValue | null> {
     try {
-      const path = config.namespace
-        ? `${config.namespace}/${config.key}`
-        : config.key;
+      const path = config.namespace ? `${config.namespace}/${config.key}` : config.key;
 
       // Use KV v2 API
       const versionParam = config.version ? `?version=${config.version}` : '';
       const response = await this.makeRequest(
         `/v1/${this.mountPath}/data/${path}${versionParam}`,
-        'GET'
+        'GET',
       );
 
       if (!response.data?.data) {
@@ -208,11 +206,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
     }
   }
 
-  async setSecret(
-    key: string,
-    value: string,
-    metadata?: Record<string, string>
-  ): Promise<void> {
+  async setSecret(key: string, value: string, metadata?: Record<string, string>): Promise<void> {
     const data: Record<string, unknown> = { value };
 
     // If value is valid JSON, spread it
@@ -240,7 +234,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
       const path = prefix || '';
       const response = await this.makeRequest(
         `/v1/${this.mountPath}/metadata/${path}?list=true`,
-        'GET'
+        'GET',
       );
       return response.data?.keys || [];
     } catch {
@@ -322,7 +316,7 @@ class AWSSecretsManagerProvider implements SecretsProvider {
     } catch (error: any) {
       if (error.code === 'ERR_MODULE_NOT_FOUND') {
         throw new Error(
-          'AWS SDK not installed. Install @aws-sdk/client-secrets-manager to use AWS Secrets Manager.'
+          'AWS SDK not installed. Install @aws-sdk/client-secrets-manager to use AWS Secrets Manager.',
         );
       }
       throw error;
@@ -365,11 +359,7 @@ class AWSSecretsManagerProvider implements SecretsProvider {
     }
   }
 
-  async setSecret(
-    key: string,
-    value: string,
-    metadata?: Record<string, string>
-  ): Promise<void> {
+  async setSecret(key: string, value: string, metadata?: Record<string, string>): Promise<void> {
     const secretName = this.getFullSecretName(key);
 
     try {
@@ -415,24 +405,18 @@ class AWSSecretsManagerProvider implements SecretsProvider {
 
     const secrets: string[] = [];
     let nextToken: string | undefined;
-    const filterPrefix = prefix
-      ? this.getFullSecretName(prefix)
-      : this.prefix || undefined;
+    const filterPrefix = prefix ? this.getFullSecretName(prefix) : this.prefix || undefined;
 
     do {
       const command = new ListSecretsCommand({
         NextToken: nextToken,
-        Filters: filterPrefix
-          ? [{ Key: 'name', Values: [filterPrefix] }]
-          : undefined,
+        Filters: filterPrefix ? [{ Key: 'name', Values: [filterPrefix] }] : undefined,
       });
 
       const response = await this.client.send(command);
 
       if (response.SecretList) {
-        secrets.push(
-          ...response.SecretList.map((s: any) => s.Name).filter(Boolean) as string[]
-        );
+        secrets.push(...(response.SecretList.map((s: any) => s.Name).filter(Boolean) as string[]));
       }
 
       nextToken = response.NextToken;
@@ -453,7 +437,7 @@ class AWSSecretsManagerProvider implements SecretsProvider {
     await this.client.send(command);
 
     // Wait a moment for rotation to complete
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Fetch the new value
     const newValue = await this.getSecret({ key });
@@ -495,9 +479,7 @@ class EnvironmentProvider implements SecretsProvider {
   }
 
   private getEnvKey(key: string): string {
-    const normalizedKey = key
-      .replace(/[^a-zA-Z0-9_]/g, '_')
-      .toUpperCase();
+    const normalizedKey = key.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
     return this.prefix ? `${this.prefix}_${normalizedKey}` : normalizedKey;
   }
 
@@ -519,7 +501,7 @@ class EnvironmentProvider implements SecretsProvider {
     const envKey = this.getEnvKey(key);
     process.env[envKey] = value;
     console.warn(
-      `[SecretsManager] Warning: Setting ${envKey} in process.env. This is temporary and will not persist.`
+      `[SecretsManager] Warning: Setting ${envKey} in process.env. This is temporary and will not persist.`,
     );
   }
 
@@ -529,12 +511,9 @@ class EnvironmentProvider implements SecretsProvider {
   }
 
   async listSecrets(prefix?: string): Promise<string[]> {
-    const searchPrefix = prefix
-      ? this.getEnvKey(prefix)
-      : this.prefix;
+    const searchPrefix = prefix ? this.getEnvKey(prefix) : this.prefix;
 
-    return Object.keys(process.env)
-      .filter(key => !searchPrefix || key.startsWith(searchPrefix));
+    return Object.keys(process.env).filter((key) => !searchPrefix || key.startsWith(searchPrefix));
   }
 
   async healthCheck(): Promise<boolean> {
@@ -609,7 +588,7 @@ class SecretsManager extends EventEmitter {
    */
   async getSecret(
     key: string,
-    options: { namespace?: string; version?: string; bypassCache?: boolean } = {}
+    options: { namespace?: string; version?: string; bypassCache?: boolean } = {},
   ): Promise<string | null> {
     if (!this.initialized) {
       await this.initialize();
@@ -653,7 +632,7 @@ class SecretsManager extends EventEmitter {
    */
   async getSecretWithMetadata(
     key: string,
-    options: { namespace?: string; version?: string } = {}
+    options: { namespace?: string; version?: string } = {},
   ): Promise<SecretValue | null> {
     if (!this.initialized) {
       await this.initialize();
@@ -669,11 +648,7 @@ class SecretsManager extends EventEmitter {
   /**
    * Set a secret value
    */
-  async setSecret(
-    key: string,
-    value: string,
-    metadata?: Record<string, string>
-  ): Promise<void> {
+  async setSecret(key: string, value: string, metadata?: Record<string, string>): Promise<void> {
     if (!this.initialized) {
       await this.initialize();
     }
@@ -782,7 +757,7 @@ class SecretsManager extends EventEmitter {
       keys.map(async (key) => {
         const value = await this.getSecret(key);
         results.set(key, value);
-      })
+      }),
     );
 
     return results;
@@ -835,11 +810,13 @@ export async function getStripeSecretKey(): Promise<string> {
 }
 
 export async function getApiCredentials(
-  provider: 'salesforce' | 'quickbooks' | 'google' | 'microsoft'
+  provider: 'salesforce' | 'quickbooks' | 'google' | 'microsoft',
 ): Promise<{ clientId: string; clientSecret: string }> {
   const [clientId, clientSecret] = await Promise.all([
-    secretsManager.getSecret(`${provider}/client_id`) || process.env[`${provider.toUpperCase()}_CLIENT_ID`],
-    secretsManager.getSecret(`${provider}/client_secret`) || process.env[`${provider.toUpperCase()}_CLIENT_SECRET`],
+    secretsManager.getSecret(`${provider}/client_id`) ||
+      process.env[`${provider.toUpperCase()}_CLIENT_ID`],
+    secretsManager.getSecret(`${provider}/client_secret`) ||
+      process.env[`${provider.toUpperCase()}_CLIENT_SECRET`],
   ]);
 
   if (!clientId || !clientSecret) {

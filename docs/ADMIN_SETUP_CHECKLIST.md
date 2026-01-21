@@ -9,6 +9,7 @@
 ## Pre-Installation Requirements
 
 ### Infrastructure
+
 - [ ] **Server/Hosting** provisioned
   - Min: 2 vCPU, 4GB RAM for small deployments
   - Recommended: 4 vCPU, 8GB RAM for production
@@ -20,6 +21,7 @@
 - [ ] **Cloud storage** account (optional, for file uploads)
 
 ### Accounts to Create
+
 - [ ] Stripe account (for payment processing)
 - [ ] Google Cloud Console account (for Calendar integration - optional)
 - [ ] Microsoft Azure account (for Calendar integration - optional)
@@ -32,6 +34,7 @@
 ## Database Setup
 
 ### Main Database
+
 - [ ] Create database: `printyx`
 - [ ] Create user with full privileges
 - [ ] Note connection string (for DATABASE_URL)
@@ -39,11 +42,13 @@
 - [ ] Enable pgvector extension (for AI search): `CREATE EXTENSION vector;`
 
 ### Forecasting Database
+
 - [ ] Create database: `printyx_forecasting`
 - [ ] Use same user as main database
 - [ ] Note connection string (for DATABASE_FORECASTING_URL)
 
 ### Database Configuration Checklist
+
 - [ ] `shared_buffers` = 25% of RAM (PostgreSQL tuning)
 - [ ] `max_connections` = 200
 - [ ] `work_mem` = 50MB
@@ -60,6 +65,7 @@
 Copy `.env.example` to `.env` and configure:
 
 #### Core Application
+
 ```bash
 # Database (REQUIRED)
 DATABASE_URL=postgresql://username:password@localhost:5432/printyx
@@ -76,6 +82,7 @@ SESSION_SECRET=<generate-with-openssl-rand-base64-32>
 ```
 
 **Verification Steps:**
+
 - [ ] DATABASE_URL connects successfully (test with: `psql $DATABASE_URL`)
 - [ ] SESSION_SECRET is random and secure (32+ characters)
 - [ ] BASE_URL and CLIENT_URL match your domains
@@ -86,18 +93,22 @@ SESSION_SECRET=<generate-with-openssl-rand-base64-32>
 ### 🔐 Authentication & OAuth
 
 #### Option 1: Replit Auth (if hosted on Replit)
+
 ```bash
 REPL_ID=your-repl-id
 REPL_OWNER=your-replit-username
 ```
+
 - [ ] Replit Auth configured in Replit Dashboard
 - [ ] OAuth redirect URLs whitelisted
 
 #### Option 2: Custom Auth
+
 - [ ] Implement custom auth strategy (see server/auth-routes.ts)
 - [ ] Configure email verification flow
 
 **Verification:**
+
 - [ ] Can create new user account
 - [ ] Can log in successfully
 - [ ] Session persists across requests
@@ -115,6 +126,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 **Setup Steps:**
+
 1. [ ] Create Stripe account at https://dashboard.stripe.com
 2. [ ] Get API keys from Dashboard → Developers → API Keys
 3. [ ] Create webhook endpoint in Stripe:
@@ -125,6 +137,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 6. [ ] Switch to live keys for production
 
 **Verification:**
+
 - [ ] Can add payment method
 - [ ] Can process test payment
 - [ ] Webhooks received and processed
@@ -146,21 +159,25 @@ SMTP_FROM=noreply@printyx.com           # Sender email
 **Common Providers:**
 
 **Gmail:**
+
 - [ ] Enable 2FA on Google account
 - [ ] Create App Password at myaccount.google.com/apppasswords
 - [ ] Use App Password for SMTP_PASS
 
 **SendGrid:**
+
 - [ ] Create SendGrid account
 - [ ] Generate API key
 - [ ] Use: SMTP_HOST=smtp.sendgrid.net, SMTP_USER=apikey, SMTP_PASS=<your-key>
 
 **AWS SES:**
+
 - [ ] Verify domain in SES
 - [ ] Create SMTP credentials
 - [ ] Move out of sandbox mode
 
 **Verification:**
+
 - [ ] Send test email: `POST /api/test/email`
 - [ ] Verify delivery (check spam folder)
 - [ ] Test password reset email
@@ -171,26 +188,31 @@ SMTP_FROM=noreply@printyx.com           # Sender email
 ### 🗄️ File Storage (Optional)
 
 #### Option 1: Local Storage (Development)
+
 ```bash
 STORAGE_PROVIDER=local
 STORAGE_PATH=./uploads
 ```
+
 - [ ] Create uploads directory: `mkdir -p uploads`
 - [ ] Set permissions: `chmod 755 uploads`
 
 #### Option 2: Google Cloud Storage (Production)
+
 ```bash
 STORAGE_PROVIDER=gcs
 GCS_PROJECT_ID=your-project-id
 GCS_BUCKET=printyx-uploads
 GCS_KEYFILE=/path/to/service-account.json
 ```
+
 - [ ] Create GCS bucket
 - [ ] Create service account with Storage Admin role
 - [ ] Download JSON key file
 - [ ] Configure CORS on bucket
 
 #### Option 3: AWS S3
+
 ```bash
 STORAGE_PROVIDER=s3
 AWS_ACCESS_KEY_ID=your-access-key
@@ -198,11 +220,13 @@ AWS_SECRET_ACCESS_KEY=your-secret
 AWS_REGION=us-east-1
 AWS_BUCKET=printyx-uploads
 ```
+
 - [ ] Create S3 bucket
 - [ ] Create IAM user with S3 permissions
 - [ ] Configure bucket policy
 
 **Verification:**
+
 - [ ] Upload test file
 - [ ] Retrieve file via URL
 - [ ] Delete file
@@ -212,6 +236,7 @@ AWS_BUCKET=printyx-uploads
 ### 📅 Calendar Integration (Optional)
 
 #### Google Calendar
+
 ```bash
 GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-client-secret
@@ -219,6 +244,7 @@ GOOGLE_REDIRECT_URI=https://api.printyx.com/api/integrations/google-calendar/cal
 ```
 
 **Setup:**
+
 1. [ ] Create project in Google Cloud Console
 2. [ ] Enable Google Calendar API
 3. [ ] Create OAuth 2.0 credentials (Web application)
@@ -226,6 +252,7 @@ GOOGLE_REDIRECT_URI=https://api.printyx.com/api/integrations/google-calendar/cal
 5. [ ] Copy client ID and secret
 
 #### Microsoft Calendar
+
 ```bash
 MICROSOFT_CLIENT_ID=your-client-id
 MICROSOFT_CLIENT_SECRET=your-client-secret
@@ -233,6 +260,7 @@ MICROSOFT_REDIRECT_URI=https://api.printyx.com/api/integrations/microsoft-calend
 ```
 
 **Setup:**
+
 1. [ ] Register app in Azure Portal
 2. [ ] Add Microsoft Graph permissions (Calendars.ReadWrite)
 3. [ ] Add redirect URI
@@ -240,6 +268,7 @@ MICROSOFT_REDIRECT_URI=https://api.printyx.com/api/integrations/microsoft-calend
 5. [ ] Copy application ID and secret
 
 **Verification:**
+
 - [ ] Connect calendar account
 - [ ] Create test event
 - [ ] Sync events
@@ -250,27 +279,32 @@ MICROSOFT_REDIRECT_URI=https://api.printyx.com/api/integrations/microsoft-calend
 ### 🔌 Third-Party Integrations (Optional)
 
 #### Salesforce
+
 ```bash
 SALESFORCE_CLIENT_ID=your-connected-app-id
 SALESFORCE_CLIENT_SECRET=your-connected-app-secret
 SALESFORCE_REDIRECT_URI=https://api.printyx.com/api/integrations/salesforce/callback
 ```
+
 - [ ] Create Salesforce Connected App
 - [ ] Configure OAuth scopes
 - [ ] Enable API access
 
 #### QuickBooks
+
 ```bash
 QUICKBOOKS_CLIENT_ID=your-app-id
 QUICKBOOKS_CLIENT_SECRET=your-app-secret
 QUICKBOOKS_REDIRECT_URI=https://api.printyx.com/api/integrations/quickbooks/callback
 QUICKBOOKS_ENVIRONMENT=sandbox or production
 ```
+
 - [ ] Create app in QuickBooks Developer Portal
 - [ ] Set redirect URI
 - [ ] Test in sandbox first
 
 #### Note: Apollo.io and ZoomInfo
+
 These are configured **per-tenant** via the Integration Hub UI, not via environment variables.
 
 ---
@@ -312,6 +346,7 @@ OPENAI_API_KEY=sk-...
 ```
 
 **Setup:**
+
 - [ ] Create Anthropic account at console.anthropic.com
 - [ ] Generate API key
 - [ ] Set usage limits/alerts
@@ -352,6 +387,7 @@ npm run check
 ```
 
 **Checklist:**
+
 - [ ] All npm packages installed successfully
 - [ ] Frontend build completed without errors
 - [ ] Main database schema created
@@ -374,6 +410,7 @@ pm2 startup
 ```
 
 **Verification:**
+
 - [ ] Server starts without errors
 - [ ] Health check responds: `curl https://api.printyx.com/api/health`
 - [ ] Frontend loads successfully
@@ -401,6 +438,7 @@ VALUES (
 Or use the signup flow and manually promote to platform_admin.
 
 **Checklist:**
+
 - [ ] Root admin account created
 - [ ] Can log in as root admin
 - [ ] Can access /admin routes
@@ -424,6 +462,7 @@ POST /api/tenants
 ```
 
 **Checklist:**
+
 - [ ] First tenant created
 - [ ] Tenant admin user created
 - [ ] Can log in as tenant user
@@ -638,6 +677,7 @@ POST /api/tenants
 ## Ongoing Maintenance
 
 ### Weekly Tasks
+
 - [ ] Review error logs
 - [ ] Check database backup status
 - [ ] Monitor disk usage
@@ -645,6 +685,7 @@ POST /api/tenants
 - [ ] Check for stuck background jobs
 
 ### Monthly Tasks
+
 - [ ] Security updates (npm audit fix)
 - [ ] Review API usage and quotas
 - [ ] Database performance review
@@ -652,6 +693,7 @@ POST /api/tenants
 - [ ] Review and rotate old logs
 
 ### Quarterly Tasks
+
 - [ ] Database vacuum and analyze
 - [ ] Review and optimize slow queries
 - [ ] Audit user access (remove inactive)
@@ -660,6 +702,7 @@ POST /api/tenants
 - [ ] Review integration health
 
 ### Annual Tasks
+
 - [ ] Rotate all API keys and secrets
 - [ ] SSL certificate renewal
 - [ ] Major version upgrades (Node.js, PostgreSQL)
@@ -672,6 +715,7 @@ POST /api/tenants
 ## Troubleshooting
 
 ### Server Won't Start
+
 1. Check DATABASE_URL is correct
 2. Check SESSION_SECRET is set
 3. Check port not already in use
@@ -679,6 +723,7 @@ POST /api/tenants
 5. Verify all required env vars present
 
 ### Database Connection Errors
+
 1. Verify PostgreSQL is running
 2. Check connection string format
 3. Verify user has privileges
@@ -686,6 +731,7 @@ POST /api/tenants
 5. Test connection with psql
 
 ### Email Not Sending
+
 1. Verify SMTP credentials
 2. Check SMTP port (587 for TLS)
 3. Check firewall/security groups
@@ -693,6 +739,7 @@ POST /api/tenants
 5. Review email service logs
 
 ### Payment Processing Fails
+
 1. Verify Stripe keys are correct
 2. Check webhook secret matches
 3. Test in Stripe test mode first
@@ -700,6 +747,7 @@ POST /api/tenants
 5. Check webhook URL is accessible
 
 ### Integration Issues
+
 1. Verify OAuth credentials
 2. Check redirect URIs match exactly
 3. Test OAuth flow manually
@@ -711,24 +759,28 @@ POST /api/tenants
 ## Support Resources
 
 ### Documentation
+
 - Main docs: `/docs` directory
 - API docs: `docs/API_DOCUMENTATION.md` (to be created)
 - Architecture: `CLAUDE.md`
 - Schema docs: `shared/` directory
 
 ### Logs Location
+
 - Application logs: `logs/` directory
 - Audit logs: `server/audit.log`
 - Database logs: PostgreSQL data directory
 - Web server logs: nginx/Apache logs
 
 ### Monitoring Dashboards
+
 - Application: [Your monitoring URL]
 - Database: [Your DB monitoring URL]
 - Uptime: [Your uptime monitor URL]
 - Error tracking: [Your error tracker URL]
 
 ### Emergency Contacts
+
 - Platform admin: [Email/Phone]
 - Database admin: [Email/Phone]
 - DevOps on-call: [Email/Phone]
@@ -745,15 +797,18 @@ POST /api/tenants
 
 ### Sign-off
 
-- [ ] DevOps Lead: ________________ Date: ________
-- [ ] Security Lead: ________________ Date: ________
-- [ ] Platform Admin: ________________ Date: ________
+- [ ] DevOps Lead: ******\_\_\_\_****** Date: **\_\_\_\_**
+- [ ] Security Lead: ******\_\_\_\_****** Date: **\_\_\_\_**
+- [ ] Platform Admin: ******\_\_\_\_****** Date: **\_\_\_\_**
 
 ---
 
-**Next Review Date:** _____________
+**Next Review Date:** ******\_******
 
 **Notes:**
-_____________________________________________________________________________
-_____________________________________________________________________________
-_____________________________________________________________________________
+
+---
+
+---
+
+---

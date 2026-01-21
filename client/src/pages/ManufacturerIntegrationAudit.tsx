@@ -3,8 +3,21 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import {
   ClipboardList,
@@ -18,7 +31,7 @@ import {
   Database,
   Printer,
   Settings,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 
 interface AuditLog {
@@ -52,59 +65,87 @@ export default function ManufacturerIntegrationAudit() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [daysFilter, setDaysFilter] = useState('7');
 
-  const { data: auditLogs = [], isLoading, refetch } = useQuery<AuditLog[]>({
-    queryKey: ['/api/manufacturer-integrations/audit-logs', { action: actionFilter, status: statusFilter, days: daysFilter }],
+  const {
+    data: auditLogs = [],
+    isLoading,
+    refetch,
+  } = useQuery<AuditLog[]>({
+    queryKey: [
+      '/api/manufacturer-integrations/audit-logs',
+      { action: actionFilter, status: statusFilter, days: daysFilter },
+    ],
     refetchInterval: 30000,
   });
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      default: return <Clock className="h-4 w-4 text-gray-600" />;
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'success': return 'bg-green-100 text-green-800';
-      case 'error': return 'bg-red-100 text-red-800';
-      case 'warning': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'success':
+        return 'bg-green-100 text-green-800';
+      case 'error':
+        return 'bg-red-100 text-red-800';
+      case 'warning':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getActionIcon = (action: string) => {
     switch (action) {
-      case 'metrics_collected': case 'sync': return <Activity className="h-4 w-4" />;
-      case 'device_registered': return <Printer className="h-4 w-4" />;
-      case 'integration_created': case 'config_change': return <Settings className="h-4 w-4" />;
-      default: return <Database className="h-4 w-4" />;
+      case 'metrics_collected':
+      case 'sync':
+        return <Activity className="h-4 w-4" />;
+      case 'device_registered':
+        return <Printer className="h-4 w-4" />;
+      case 'integration_created':
+      case 'config_change':
+        return <Settings className="h-4 w-4" />;
+      default:
+        return <Database className="h-4 w-4" />;
     }
   };
 
-  const filteredLogs = auditLogs.filter(log => {
-    const matchesSearch = log.log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          log.integration?.manufacturer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          log.device?.deviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          log.log.action?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+  const filteredLogs = auditLogs.filter((log) => {
+    const matchesSearch =
+      log.log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.integration?.manufacturer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.device?.deviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.log.action?.toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesAction = actionFilter === 'all' || log.log.action === actionFilter;
     const matchesStatus = statusFilter === 'all' || log.log.status === statusFilter;
-    
+
     return matchesSearch && matchesAction && matchesStatus;
   });
 
-  const statusCounts = auditLogs.reduce((acc, log) => {
-    acc[log.log.status] = (acc[log.log.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const statusCounts = auditLogs.reduce(
+    (acc, log) => {
+      acc[log.log.status] = (acc[log.log.status] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
-  const actionCounts = auditLogs.reduce((acc, log) => {
-    acc[log.log.action] = (acc[log.log.action] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const actionCounts = auditLogs.reduce(
+    (acc, log) => {
+      acc[log.log.action] = (acc[log.log.action] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   if (isLoading) {
     return (
@@ -273,8 +314,12 @@ export default function ManufacturerIntegrationAudit() {
                   <TableCell>
                     {auditLog.integration ? (
                       <div>
-                        <div className="font-medium capitalize">{auditLog.integration.manufacturer}</div>
-                        <div className="text-sm text-muted-foreground">{auditLog.integration.integrationName}</div>
+                        <div className="font-medium capitalize">
+                          {auditLog.integration.manufacturer}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {auditLog.integration.integrationName}
+                        </div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground">-</span>
@@ -291,9 +336,7 @@ export default function ManufacturerIntegrationAudit() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="max-w-xs truncate">
-                      {auditLog.log.message}
-                    </div>
+                    <div className="max-w-xs truncate">{auditLog.log.message}</div>
                     {auditLog.log.errorCode && (
                       <div className="text-xs text-red-600 mt-1">
                         Error: {auditLog.log.errorCode}
@@ -317,10 +360,9 @@ export default function ManufacturerIntegrationAudit() {
               <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No audit logs found</h3>
               <p className="text-muted-foreground">
-                {auditLogs.length === 0 
-                  ? "No integration activities have been logged yet"
-                  : "No logs match your current filters"
-                }
+                {auditLogs.length === 0
+                  ? 'No integration activities have been logged yet'
+                  : 'No logs match your current filters'}
               </p>
             </div>
           )}

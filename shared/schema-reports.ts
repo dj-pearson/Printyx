@@ -1,5 +1,16 @@
 import { sql, relations } from 'drizzle-orm';
-import { pgTable, varchar, text, jsonb, timestamp, boolean, index, uuid, decimal, integer } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  varchar,
+  text,
+  jsonb,
+  timestamp,
+  boolean,
+  index,
+  uuid,
+  decimal,
+  integer,
+} from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -7,7 +18,9 @@ import { z } from 'zod';
 export const reportConfigurations = pgTable(
   'report_configurations',
   {
-    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     tenantId: varchar('tenant_id').notNull(),
     reportKey: varchar('report_key').notNull(), // e.g., 'sla-compliance', 'sales-pipeline'
     reportName: varchar('report_name').notNull(),
@@ -35,7 +48,9 @@ export const reportConfigurations = pgTable(
 export const reportSnapshots = pgTable(
   'report_snapshots',
   {
-    id: varchar('id').primaryKey().default(sql`gen_random_uuid()`),
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
     tenantId: varchar('tenant_id').notNull(),
     configurationId: varchar('configuration_id').notNull(),
     reportKey: varchar('report_key').notNull(),

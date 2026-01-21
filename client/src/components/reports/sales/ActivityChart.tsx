@@ -1,5 +1,16 @@
 import { useMemo } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { Phone, Mail, Calendar, Presentation, FileText } from 'lucide-react';
 
@@ -20,7 +31,7 @@ interface ActivityChartProps {
 export default function ActivityChart({ activities, chartType = 'bar' }: ActivityChartProps) {
   // Transform data for Recharts
   const chartData = useMemo(() => {
-    return activities.map(activity => ({
+    return activities.map((activity) => ({
       date: format(parseISO(activity.date), 'MMM dd'),
       Calls: activity.calls,
       Emails: activity.emails,
@@ -40,7 +51,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
         demos: acc.demos + activity.demos,
         proposals: acc.proposals + activity.proposals,
       }),
-      { calls: 0, emails: 0, meetings: 0, demos: 0, proposals: 0 }
+      { calls: 0, emails: 0, meetings: 0, demos: 0, proposals: 0 },
     );
   }, [activities]);
 
@@ -55,10 +66,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
           {payload.map((entry: any) => (
             <div key={entry.name} className="flex items-center justify-between gap-4 text-xs">
               <span className="flex items-center gap-1">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: entry.color }}
-                />
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
                 {entry.name}
               </span>
               <span className="font-semibold">{entry.value}</span>
@@ -94,10 +102,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
               />
               <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: '12px' }}
-                iconType="circle"
-              />
+              <Legend wrapperStyle={{ fontSize: '12px' }} iconType="circle" />
               <Line
                 type="monotone"
                 dataKey="Calls"
@@ -149,10 +154,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
               />
               <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: '12px' }}
-                iconType="circle"
-              />
+              <Legend wrapperStyle={{ fontSize: '12px' }} iconType="circle" />
               <Bar dataKey="Calls" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Emails" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Meetings" fill="#22c55e" radius={[4, 4, 0, 0]} />
@@ -167,12 +169,8 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
       <div className="grid grid-cols-5 gap-4">
         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-3 text-center border border-blue-200 dark:border-blue-800">
           <Phone className="h-5 w-5 mx-auto mb-2 text-blue-600" />
-          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-            {totals.calls}
-          </div>
-          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-            Calls
-          </div>
+          <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{totals.calls}</div>
+          <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Calls</div>
         </div>
 
         <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 text-center border border-purple-200 dark:border-purple-800">
@@ -180,9 +178,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
           <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
             {totals.emails}
           </div>
-          <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-            Emails
-          </div>
+          <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Emails</div>
         </div>
 
         <div className="bg-green-50 dark:bg-green-950 rounded-lg p-3 text-center border border-green-200 dark:border-green-800">
@@ -190,9 +186,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
           <div className="text-2xl font-bold text-green-700 dark:text-green-300">
             {totals.meetings}
           </div>
-          <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-            Meetings
-          </div>
+          <div className="text-xs text-green-600 dark:text-green-400 font-medium">Meetings</div>
         </div>
 
         <div className="bg-orange-50 dark:bg-orange-950 rounded-lg p-3 text-center border border-orange-200 dark:border-orange-800">
@@ -200,9 +194,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
           <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
             {totals.demos}
           </div>
-          <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-            Demos
-          </div>
+          <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">Demos</div>
         </div>
 
         <div className="bg-pink-50 dark:bg-pink-950 rounded-lg p-3 text-center border border-pink-200 dark:border-pink-800">
@@ -210,9 +202,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
           <div className="text-2xl font-bold text-pink-700 dark:text-pink-300">
             {totals.proposals}
           </div>
-          <div className="text-xs text-pink-600 dark:text-pink-400 font-medium">
-            Proposals
-          </div>
+          <div className="text-xs text-pink-600 dark:text-pink-400 font-medium">Proposals</div>
         </div>
       </div>
 
@@ -224,15 +214,11 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
         <div className="grid grid-cols-5 gap-4 text-center text-xs">
           <div>
             <span className="text-muted-foreground">Calls:</span>{' '}
-            <span className="font-semibold">
-              {(totals.calls / activities.length).toFixed(1)}
-            </span>
+            <span className="font-semibold">{(totals.calls / activities.length).toFixed(1)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Emails:</span>{' '}
-            <span className="font-semibold">
-              {(totals.emails / activities.length).toFixed(1)}
-            </span>
+            <span className="font-semibold">{(totals.emails / activities.length).toFixed(1)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Meetings:</span>{' '}
@@ -242,9 +228,7 @@ export default function ActivityChart({ activities, chartType = 'bar' }: Activit
           </div>
           <div>
             <span className="text-muted-foreground">Demos:</span>{' '}
-            <span className="font-semibold">
-              {(totals.demos / activities.length).toFixed(1)}
-            </span>
+            <span className="font-semibold">{(totals.demos / activities.length).toFixed(1)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Proposals:</span>{' '}

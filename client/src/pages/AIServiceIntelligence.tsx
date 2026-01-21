@@ -1,76 +1,85 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle, Clock, TrendingUp, Wrench, Zap, Brain, MapPin } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  Wrench,
+  Zap,
+  Brain,
+  MapPin,
+} from 'lucide-react';
 
 // Mock data - in production, this would come from API
 const predictions = [
   {
-    id: "P-001",
-    equipment: "Canon imageRUNNER ADVANCE DX C5870i",
-    customer: "Acme Corporation",
-    location: "Building A, Floor 3",
-    prediction: "Fuser unit failure predicted",
+    id: 'P-001',
+    equipment: 'Canon imageRUNNER ADVANCE DX C5870i',
+    customer: 'Acme Corporation',
+    location: 'Building A, Floor 3',
+    prediction: 'Fuser unit failure predicted',
     probability: 87,
-    timeframe: "15-20 days",
-    severity: "high",
+    timeframe: '15-20 days',
+    severity: 'high',
     estimatedCost: 450,
     preventiveCost: 280,
     savings: 170,
-    action: "Schedule preventive maintenance",
-    partNumber: "FM4-8400-000",
-    lastService: "45 days ago",
+    action: 'Schedule preventive maintenance',
+    partNumber: 'FM4-8400-000',
+    lastService: '45 days ago',
     meterCount: 847500,
   },
   {
-    id: "P-002",
-    equipment: "Ricoh IM C6000",
-    customer: "TechStart Industries",
-    location: "Main Office",
-    prediction: "Drum unit replacement needed",
+    id: 'P-002',
+    equipment: 'Ricoh IM C6000',
+    customer: 'TechStart Industries',
+    location: 'Main Office',
+    prediction: 'Drum unit replacement needed',
     probability: 92,
-    timeframe: "7-10 days",
-    severity: "high",
+    timeframe: '7-10 days',
+    severity: 'high',
     estimatedCost: 320,
     preventiveCost: 180,
     savings: 140,
-    action: "Order parts and schedule service",
-    partNumber: "D2426400",
-    lastService: "62 days ago",
+    action: 'Order parts and schedule service',
+    partNumber: 'D2426400',
+    lastService: '62 days ago',
     meterCount: 456200,
   },
   {
-    id: "P-003",
-    equipment: "Konica Minolta bizhub C459",
-    customer: "Global Logistics LLC",
-    location: "Warehouse Office",
-    prediction: "Developer unit degradation",
+    id: 'P-003',
+    equipment: 'Konica Minolta bizhub C459',
+    customer: 'Global Logistics LLC',
+    location: 'Warehouse Office',
+    prediction: 'Developer unit degradation',
     probability: 73,
-    timeframe: "25-30 days",
-    severity: "medium",
+    timeframe: '25-30 days',
+    severity: 'medium',
     estimatedCost: 380,
     preventiveCost: 200,
     savings: 180,
-    action: "Monitor and plan replacement",
-    partNumber: "A0WG03F",
-    lastService: "28 days ago",
+    action: 'Monitor and plan replacement',
+    partNumber: 'A0WG03F',
+    lastService: '28 days ago',
     meterCount: 623800,
   },
   {
-    id: "P-004",
-    equipment: "HP LaserJet Managed E82550",
-    customer: "Healthcare Partners",
-    location: "Reception Area",
-    prediction: "Transfer belt wear detected",
+    id: 'P-004',
+    equipment: 'HP LaserJet Managed E82550',
+    customer: 'Healthcare Partners',
+    location: 'Reception Area',
+    prediction: 'Transfer belt wear detected',
     probability: 68,
-    timeframe: "30-35 days",
-    severity: "low",
+    timeframe: '30-35 days',
+    severity: 'low',
     estimatedCost: 210,
     preventiveCost: 120,
     savings: 90,
-    action: "Add to next scheduled visit",
-    partNumber: "D7H14A",
-    lastService: "15 days ago",
+    action: 'Add to next scheduled visit',
+    partNumber: 'D7H14A',
+    lastService: '15 days ago',
     meterCount: 298400,
   },
 ];
@@ -87,17 +96,21 @@ const serviceMetrics = {
 const AIServiceIntelligence = () => {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case "high": return "bg-red-100 text-red-700 border-red-300";
-      case "medium": return "bg-yellow-100 text-yellow-700 border-yellow-300";
-      case "low": return "bg-green-100 text-green-700 border-green-300";
-      default: return "bg-gray-100 text-gray-700 border-gray-300";
+      case 'high':
+        return 'bg-red-100 text-red-700 border-red-300';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+      case 'low':
+        return 'bg-green-100 text-green-700 border-green-300';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-300';
     }
   };
 
   const getProbabilityColor = (probability: number) => {
-    if (probability >= 85) return "text-red-600";
-    if (probability >= 70) return "text-yellow-600";
-    return "text-blue-600";
+    if (probability >= 85) return 'text-red-600';
+    if (probability >= 70) return 'text-yellow-600';
+    return 'text-blue-600';
   };
 
   return (
@@ -106,12 +119,8 @@ const AIServiceIntelligence = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              AI Service Intelligence
-            </h1>
-            <p className="text-gray-600">
-              Predictive maintenance powered by machine learning
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Service Intelligence</h1>
+            <p className="text-gray-600">Predictive maintenance powered by machine learning</p>
           </div>
           <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-base px-4 py-2">
             <Brain className="h-4 w-4 mr-2" />
@@ -124,7 +133,9 @@ const AIServiceIntelligence = () => {
           <Card>
             <CardContent className="p-4">
               <div className="text-sm text-gray-600 mb-1">Active Predictions</div>
-              <div className="text-3xl font-bold text-blue-600">{serviceMetrics.totalPredictions}</div>
+              <div className="text-3xl font-bold text-blue-600">
+                {serviceMetrics.totalPredictions}
+              </div>
             </CardContent>
           </Card>
 
@@ -138,21 +149,27 @@ const AIServiceIntelligence = () => {
           <Card>
             <CardContent className="p-4">
               <div className="text-sm text-gray-600 mb-1">Scheduled</div>
-              <div className="text-3xl font-bold text-green-600">{serviceMetrics.scheduledActions}</div>
+              <div className="text-3xl font-bold text-green-600">
+                {serviceMetrics.scheduledActions}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-4">
               <div className="text-sm text-gray-600 mb-1">Potential Savings</div>
-              <div className="text-2xl font-bold text-green-600">${serviceMetrics.potentialSavings.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">
+                ${serviceMetrics.potentialSavings.toLocaleString()}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardContent className="p-4">
               <div className="text-sm text-gray-600 mb-1">Prevented Calls</div>
-              <div className="text-3xl font-bold text-purple-600">{serviceMetrics.emergencyPrevented}</div>
+              <div className="text-3xl font-bold text-purple-600">
+                {serviceMetrics.emergencyPrevented}
+              </div>
             </CardContent>
           </Card>
 
@@ -167,7 +184,10 @@ const AIServiceIntelligence = () => {
         {/* Predictions List */}
         <div className="space-y-4">
           {predictions.map((prediction) => (
-            <Card key={prediction.id} className={`border-2 ${getSeverityColor(prediction.severity).includes('red') ? 'border-red-300' : getSeverityColor(prediction.severity).includes('yellow') ? 'border-yellow-300' : 'border-green-300'}`}>
+            <Card
+              key={prediction.id}
+              className={`border-2 ${getSeverityColor(prediction.severity).includes('red') ? 'border-red-300' : getSeverityColor(prediction.severity).includes('yellow') ? 'border-yellow-300' : 'border-green-300'}`}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -206,7 +226,9 @@ const AIServiceIntelligence = () => {
                       <div className="grid md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Probability: </span>
-                          <span className={`font-bold ${getProbabilityColor(prediction.probability)}`}>
+                          <span
+                            className={`font-bold ${getProbabilityColor(prediction.probability)}`}
+                          >
                             {prediction.probability}%
                           </span>
                         </div>
@@ -216,7 +238,9 @@ const AIServiceIntelligence = () => {
                         </div>
                         <div>
                           <span className="text-gray-600">Part: </span>
-                          <span className="font-mono text-xs font-bold text-gray-900">{prediction.partNumber}</span>
+                          <span className="font-mono text-xs font-bold text-gray-900">
+                            {prediction.partNumber}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -237,7 +261,9 @@ const AIServiceIntelligence = () => {
                     <TrendingUp className="h-5 w-5 text-purple-600" />
                     <div>
                       <div className="text-xs text-gray-600">Meter Count</div>
-                      <div className="font-bold text-gray-900">{prediction.meterCount.toLocaleString()}</div>
+                      <div className="font-bold text-gray-900">
+                        {prediction.meterCount.toLocaleString()}
+                      </div>
                     </div>
                   </div>
 
@@ -268,7 +294,8 @@ const AIServiceIntelligence = () => {
                       <div className="text-sm text-gray-600">Potential Savings</div>
                       <div className="text-2xl font-bold text-green-600">${prediction.savings}</div>
                       <div className="text-xs text-gray-600">
-                        {((prediction.savings / prediction.estimatedCost) * 100).toFixed(0)}% cost reduction vs emergency repair
+                        {((prediction.savings / prediction.estimatedCost) * 100).toFixed(0)}% cost
+                        reduction vs emergency repair
                       </div>
                     </div>
                   </div>
@@ -298,7 +325,8 @@ const AIServiceIntelligence = () => {
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">Data Collection</h4>
                 <p className="text-sm text-gray-700">
-                  Continuously gather service history, meter readings, error codes, and part replacements across your fleet.
+                  Continuously gather service history, meter readings, error codes, and part
+                  replacements across your fleet.
                 </p>
               </div>
 
@@ -308,7 +336,8 @@ const AIServiceIntelligence = () => {
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">Pattern Recognition</h4>
                 <p className="text-sm text-gray-700">
-                  ML algorithms identify failure patterns across thousands of similar devices, finding signals humans miss.
+                  ML algorithms identify failure patterns across thousands of similar devices,
+                  finding signals humans miss.
                 </p>
               </div>
 
@@ -318,7 +347,8 @@ const AIServiceIntelligence = () => {
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">Predictive Scoring</h4>
                 <p className="text-sm text-gray-700">
-                  Each device receives a failure probability score with specific timeframe and component predictions.
+                  Each device receives a failure probability score with specific timeframe and
+                  component predictions.
                 </p>
               </div>
 
@@ -328,7 +358,8 @@ const AIServiceIntelligence = () => {
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">Automated Actions</h4>
                 <p className="text-sm text-gray-700">
-                  System creates service requests, orders parts, and schedules maintenance automatically before failures occur.
+                  System creates service requests, orders parts, and schedules maintenance
+                  automatically before failures occur.
                 </p>
               </div>
             </div>

@@ -6,13 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -200,10 +194,10 @@ export default function WarehouseTeamStatsWidget({
     ];
 
     const columns = [
-      createExportColumn<typeof exportData[0]>('category', 'Category'),
-      createExportColumn<typeof exportData[0]>('metric', 'Metric'),
-      createExportColumn<typeof exportData[0]>('value', 'Value'),
-      createExportColumn<typeof exportData[0]>('trend', 'Trend'),
+      createExportColumn<(typeof exportData)[0]>('category', 'Category'),
+      createExportColumn<(typeof exportData)[0]>('metric', 'Metric'),
+      createExportColumn<(typeof exportData)[0]>('value', 'Value'),
+      createExportColumn<(typeof exportData)[0]>('trend', 'Trend'),
     ];
 
     const timestamp = new Date().toISOString().split('T')[0];
@@ -260,17 +254,24 @@ export default function WarehouseTeamStatsWidget({
     );
   }
 
-  const getPerformanceColor = (value: number, thresholds: { excellent: number; good: number; fair: number }) => {
+  const getPerformanceColor = (
+    value: number,
+    thresholds: { excellent: number; good: number; fair: number },
+  ) => {
     if (value >= thresholds.excellent) return 'text-green-600';
     if (value >= thresholds.good) return 'text-blue-600';
     if (value >= thresholds.fair) return 'text-yellow-600';
     return 'text-red-600';
   };
 
-  const getFPYColor = (fpy: number) => getPerformanceColor(fpy, { excellent: 85, good: 75, fair: 65 });
-  const getAccuracyColor = (accuracy: number) => getPerformanceColor(accuracy, { excellent: 95, good: 90, fair: 85 });
-  const getProductivityColor = (productivity: number) => getPerformanceColor(productivity * 10, { excellent: 50, good: 35, fair: 25 });
-  const getQualityScoreColor = (score: number) => getPerformanceColor(score * 20, { excellent: 90, good: 80, fair: 70 });
+  const getFPYColor = (fpy: number) =>
+    getPerformanceColor(fpy, { excellent: 85, good: 75, fair: 65 });
+  const getAccuracyColor = (accuracy: number) =>
+    getPerformanceColor(accuracy, { excellent: 95, good: 90, fair: 85 });
+  const getProductivityColor = (productivity: number) =>
+    getPerformanceColor(productivity * 10, { excellent: 50, good: 35, fair: 25 });
+  const getQualityScoreColor = (score: number) =>
+    getPerformanceColor(score * 20, { excellent: 90, good: 80, fair: 70 });
 
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <TrendingUp className="h-3 w-3 text-green-600" />;
@@ -300,12 +301,7 @@ export default function WarehouseTeamStatsWidget({
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    title="Export data"
-                  >
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Export data">
                     <Download className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -332,7 +328,9 @@ export default function WarehouseTeamStatsWidget({
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Accuracy</span>
-            <span className={cn('font-bold', getAccuracyColor(stats?.performance.accuracyRate || 0))}>
+            <span
+              className={cn('font-bold', getAccuracyColor(stats?.performance.accuracyRate || 0))}
+            >
               {stats?.performance.accuracyRate.toFixed(0)}%
             </span>
           </div>
@@ -345,7 +343,9 @@ export default function WarehouseTeamStatsWidget({
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Technicians</span>
-            <span className="font-medium">{stats?.team.activeTechnicians}/{stats?.team.totalTechnicians}</span>
+            <span className="font-medium">
+              {stats?.team.activeTechnicians}/{stats?.team.totalTechnicians}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -364,11 +364,7 @@ export default function WarehouseTeamStatsWidget({
         <div className="flex items-center gap-3">
           {showAutoRefresh && (
             <div className="flex items-center gap-2">
-              <Switch
-                id="auto-refresh"
-                checked={autoRefresh}
-                onCheckedChange={setAutoRefresh}
-              />
+              <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
               <Label htmlFor="auto-refresh" className="text-sm cursor-pointer">
                 Auto-refresh
               </Label>
@@ -413,19 +409,25 @@ export default function WarehouseTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getFPYColor(stats?.performance.firstPassYield || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getFPYColor(stats?.performance.firstPassYield || 0),
+                )}
+              >
                 {stats?.performance.firstPassYield.toFixed(1)}%
               </div>
               <TrendIcon trend={stats?.trends.fpyTrend || 'stable'} />
             </div>
-            <Progress
-              value={stats?.performance.firstPassYield || 0}
-              className="mt-2 h-2"
-            />
+            <Progress value={stats?.performance.firstPassYield || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {stats?.performance.firstPassYield >= 85 ? 'Excellent' :
-               stats?.performance.firstPassYield >= 75 ? 'Good' :
-               stats?.performance.firstPassYield >= 65 ? 'Fair' : 'Needs Improvement'}
+              {stats?.performance.firstPassYield >= 85
+                ? 'Excellent'
+                : stats?.performance.firstPassYield >= 75
+                  ? 'Good'
+                  : stats?.performance.firstPassYield >= 65
+                    ? 'Fair'
+                    : 'Needs Improvement'}
             </p>
           </CardContent>
         </Card>
@@ -442,15 +444,17 @@ export default function WarehouseTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getAccuracyColor(stats?.performance.accuracyRate || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getAccuracyColor(stats?.performance.accuracyRate || 0),
+                )}
+              >
                 {stats?.performance.accuracyRate.toFixed(1)}%
               </div>
               <TrendIcon trend={stats?.trends.accuracyTrend || 'stable'} />
             </div>
-            <Progress
-              value={stats?.performance.accuracyRate || 0}
-              className="mt-2 h-2"
-            />
+            <Progress value={stats?.performance.accuracyRate || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
               {stats?.activity.reworkRequired || 0} kits require rework
             </p>
@@ -469,7 +473,12 @@ export default function WarehouseTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getQualityScoreColor(stats?.performance.qualityScore || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getQualityScoreColor(stats?.performance.qualityScore || 0),
+                )}
+              >
                 {stats?.performance.qualityScore.toFixed(2)}
               </div>
               <span className="text-sm text-muted-foreground">/ 5.0</span>
@@ -482,7 +491,7 @@ export default function WarehouseTeamStatsWidget({
                     'h-4 w-4',
                     star <= Math.round(stats?.performance.qualityScore || 0)
                       ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
+                      : 'text-gray-300',
                   )}
                 />
               ))}
@@ -505,14 +514,20 @@ export default function WarehouseTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getProductivityColor(stats?.performance.productivity || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getProductivityColor(stats?.performance.productivity || 0),
+                )}
+              >
                 {stats?.performance.productivity.toFixed(1)}
               </div>
               <span className="text-sm text-muted-foreground">kits/hr</span>
               <TrendIcon trend={stats?.trends.productivityTrend || 'stable'} />
             </div>
             <p className="text-xs text-muted-foreground mt-4">
-              {stats?.team.activeTechnicians || 0} / {stats?.team.totalTechnicians || 0} technicians active
+              {stats?.team.activeTechnicians || 0} / {stats?.team.totalTechnicians || 0} technicians
+              active
             </p>
           </CardContent>
         </Card>
@@ -534,11 +549,15 @@ export default function WarehouseTeamStatsWidget({
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold text-green-600">{stats?.activity.completedKits || 0}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats?.activity.completedKits || 0}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">In Progress</p>
-              <p className="text-2xl font-bold text-blue-600">{stats?.activity.inProgressKits || 0}</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {stats?.activity.inProgressKits || 0}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Top Technician</p>
@@ -552,7 +571,8 @@ export default function WarehouseTeamStatsWidget({
               <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-yellow-900">
-                  {stats?.team.techsNeedingSupport} technician{stats?.team.techsNeedingSupport !== 1 ? 's' : ''} need support
+                  {stats?.team.techsNeedingSupport} technician
+                  {stats?.team.techsNeedingSupport !== 1 ? 's' : ''} need support
                 </p>
                 <p className="text-xs text-yellow-700 mt-1">
                   Low FPY rate detected. Consider coaching or additional training.

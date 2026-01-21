@@ -6,6 +6,7 @@
 ## Executive Summary
 
 The Printyx codebase has been audited for proper routing to the self-hosted Supabase infrastructure:
+
 - **Edge Functions:** Route to `functions.printyx.net`
 - **Kong/API:** Route to `api.printyx.net`
 - **Database:** Connect to `209.145.59.219:5433` (Supavisor pooler)
@@ -15,29 +16,32 @@ The Printyx codebase has been audited for proper routing to the self-hosted Supa
 ## 1. Edge Functions Inventory
 
 ### Supabase Edge Functions (Deno-based)
+
 **Location:** `supabase/functions/`
 
-| Function | Path | JWT Required | Purpose |
-|----------|------|--------------|---------|
-| `hello` | `/functions/hello` | No | Sample/test function |
-| `signup` | `/functions/signup` | No | User registration & tenant creation |
-| `me` | `/functions/me` | Yes | Current user profile with role/permissions |
+| Function | Path                | JWT Required | Purpose                                    |
+| -------- | ------------------- | ------------ | ------------------------------------------ |
+| `hello`  | `/functions/hello`  | No           | Sample/test function                       |
+| `signup` | `/functions/signup` | No           | User registration & tenant creation        |
+| `me`     | `/functions/me`     | Yes          | Current user profile with role/permissions |
 
 **Shared Utilities:**
+
 - `_shared/cors.ts` - CORS handling with allowed origins: `printyx.net`, `www.printyx.net`, `localhost:5173`, `localhost:5000`
 - `_shared/supabase.ts` - Supabase client factory
 
 **Configuration:** `supabase/functions/config.toml`
 
 ### Cloudflare Pages Functions (Proxy Layer)
+
 **Location:** `functions/`
 
-| Function | Path | Proxies To |
-|----------|------|------------|
-| `[[path]].ts` | `/functions/*` | `${SUPABASE_URL}/functions/*` |
-| `rest/[[path]].ts` | `/rest/*` | `${SUPABASE_URL}/rest/*` |
-| `storage/[[path]].ts` | `/storage/*` | `${SUPABASE_URL}/storage/*` |
-| `auth/[[path]].ts` | `/auth/*` | `${SUPABASE_URL}/auth/*` |
+| Function              | Path           | Proxies To                    |
+| --------------------- | -------------- | ----------------------------- |
+| `[[path]].ts`         | `/functions/*` | `${SUPABASE_URL}/functions/*` |
+| `rest/[[path]].ts`    | `/rest/*`      | `${SUPABASE_URL}/rest/*`      |
+| `storage/[[path]].ts` | `/storage/*`   | `${SUPABASE_URL}/storage/*`   |
+| `auth/[[path]].ts`    | `/auth/*`      | `${SUPABASE_URL}/auth/*`      |
 
 ---
 
@@ -45,20 +49,20 @@ The Printyx codebase has been audited for proper routing to the self-hosted Supa
 
 ### High Priority - Active Code Files
 
-| File | Issue | Fix Required |
-|------|-------|--------------|
-| `create-test-user.ts:10` | `import { Pool } from '@neondatabase/serverless'` | Change to `import pg from 'pg'; const { Pool } = pg;` |
-| `test-auth-connection.ts:10-11` | Neon Pool and Drizzle imports | Change to standard `pg` module |
-| `export-database.js:3,7` | `import { neon }` from Neon SDK | Change to standard `pg` Pool |
-| `export-csv.js:3,6` | `import { neon }` from Neon SDK | Change to standard `pg` Pool |
-| `export-simple.js:3,6` | `import { neon }` from Neon SDK | Change to standard `pg` Pool |
+| File                            | Issue                                             | Fix Required                                          |
+| ------------------------------- | ------------------------------------------------- | ----------------------------------------------------- |
+| `create-test-user.ts:10`        | `import { Pool } from '@neondatabase/serverless'` | Change to `import pg from 'pg'; const { Pool } = pg;` |
+| `test-auth-connection.ts:10-11` | Neon Pool and Drizzle imports                     | Change to standard `pg` module                        |
+| `export-database.js:3,7`        | `import { neon }` from Neon SDK                   | Change to standard `pg` Pool                          |
+| `export-csv.js:3,6`             | `import { neon }` from Neon SDK                   | Change to standard `pg` Pool                          |
+| `export-simple.js:3,6`          | `import { neon }` from Neon SDK                   | Change to standard `pg` Pool                          |
 
 ### Low Priority - Documentation Only
 
-| File | Line | Context |
-|------|------|---------|
-| `server/lib/connection-resilience.ts:118` | Comment mentioning Neon errors | Cosmetic update |
-| `scripts/migrate-users-to-supabase.ts` | Comments about legacy Neon | Historical documentation (accurate) |
+| File                                      | Line                           | Context                             |
+| ----------------------------------------- | ------------------------------ | ----------------------------------- |
+| `server/lib/connection-resilience.ts:118` | Comment mentioning Neon errors | Cosmetic update                     |
+| `scripts/migrate-users-to-supabase.ts`    | Comments about legacy Neon     | Historical documentation (accurate) |
 
 ---
 
@@ -210,6 +214,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 ```
 
 **Features:**
+
 - Connection pooling (2-20 connections)
 - SSL support with self-signed certificate handling
 - Circuit breaker for failure protection
@@ -219,12 +224,14 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 ### SSL Configuration
 
 For self-hosted Supabase with self-signed certificates:
+
 ```env
 DB_SSL=true
 DB_SSL_REJECT_UNAUTHORIZED=false
 ```
 
 For production with proper SSL:
+
 ```env
 DB_SSL=true
 DB_SSL_REJECT_UNAUTHORIZED=true
@@ -238,23 +245,23 @@ DB_SSL_REJECT_UNAUTHORIZED=true
 
 All Express routes are served through Kong at `api.printyx.net`:
 
-| Category | Base Path | Description |
-|----------|-----------|-------------|
-| Auth | `/api/auth/*` | Authentication endpoints |
-| Business Records | `/api/business-records/*` | CRM data |
-| Service | `/api/service/*` | Service dispatch |
-| Billing | `/api/billing/*` | Invoice/billing |
-| Integrations | `/api/integrations/*` | Third-party integrations |
+| Category         | Base Path                 | Description              |
+| ---------------- | ------------------------- | ------------------------ |
+| Auth             | `/api/auth/*`             | Authentication endpoints |
+| Business Records | `/api/business-records/*` | CRM data                 |
+| Service          | `/api/service/*`          | Service dispatch         |
+| Billing          | `/api/billing/*`          | Invoice/billing          |
+| Integrations     | `/api/integrations/*`     | Third-party integrations |
 
 ### Edge Functions → `functions.printyx.net`
 
 Supabase Edge Functions are served at `functions.printyx.net`:
 
-| Function | URL |
-|----------|-----|
-| Signup | `https://functions.printyx.net/signup` |
-| Me | `https://functions.printyx.net/me` |
-| Hello | `https://functions.printyx.net/hello` |
+| Function | URL                                    |
+| -------- | -------------------------------------- |
+| Signup   | `https://functions.printyx.net/signup` |
+| Me       | `https://functions.printyx.net/me`     |
+| Hello    | `https://functions.printyx.net/hello`  |
 
 ### Client Configuration
 
@@ -286,6 +293,7 @@ EXPOSE 3001
 ```
 
 **Environment Variables for Edge Functions Container:**
+
 ```env
 SUPABASE_URL=https://api.printyx.net
 SUPABASE_ANON_KEY=your_anon_key
@@ -298,6 +306,7 @@ PORT=3001
 For Cloudflare Pages deployment, the proxy functions in `functions/` route requests to the self-hosted Supabase:
 
 **Environment Variables for Cloudflare:**
+
 ```env
 SUPABASE_URL=https://api.printyx.net
 SUPABASE_ANON_KEY=your_anon_key
@@ -339,26 +348,31 @@ SUPABASE_FUNCTIONS_URL=https://functions.printyx.net
 ### Connection Issues
 
 **`ECONNREFUSED`:**
+
 - Check port: Use `5433` for Supavisor pooler, `5432` for direct
 - Verify host: `209.145.59.219`
 - Check firewall rules
 
 **`Connection terminated unexpectedly`:**
+
 - Enable SSL: Set `DB_SSL=true`
 - For self-signed certs: Set `DB_SSL_REJECT_UNAUTHORIZED=false`
 
 **`Authentication failed`:**
+
 - Verify `DB_PASSWORD` is correct
 - Check user permissions in PostgreSQL
 
 ### JWT Issues
 
 **`401 Unauthorized`:**
+
 - Verify `SUPABASE_JWT_SECRET` matches Supabase configuration
 - Check token is being sent in `Authorization: Bearer <token>` header
 - Verify token hasn't expired
 
 **`Tenant not found`:**
+
 - Ensure `x-tenant-id` header is set OR
 - User's `app_metadata.tenantId` is set in Supabase
 
@@ -382,6 +396,7 @@ SUPABASE_FUNCTIONS_URL=https://functions.printyx.net
 ### RLS Enforcement
 
 Row-Level Security is enforced at the database level:
+
 - All tables with `tenant_id` column have RLS policies
 - Helper functions in `auth` schema extract tenant from JWT
 - Service role bypasses RLS (use only server-side)
@@ -391,22 +406,26 @@ Row-Level Security is enforced at the database level:
 ## 10. Files Reference
 
 ### Core Database
+
 - `server/db.ts` - Main database connection (correctly configured)
 - `shared/schema.ts` - Drizzle ORM schema (293KB)
 
 ### Supabase Auth
+
 - `server/middleware/supabase-auth.ts` - JWT validation middleware
 - `server/utils/auth-helpers.ts` - Unified auth utilities
 - `client/src/lib/supabase.ts` - Client-side Supabase client
 - `client/src/hooks/useSupabaseAuth.ts` - Auth state hook
 
 ### Edge Functions
+
 - `supabase/functions/signup/index.ts` - User registration
 - `supabase/functions/me/index.ts` - Current user profile
 - `supabase/functions/_shared/supabase.ts` - Client factory
 - `supabase/functions/_shared/cors.ts` - CORS handling
 
 ### Configuration
+
 - `.env.example` - Environment variable reference
 - `drizzle.config.ts` - Drizzle migration config
 - `client/src/lib/config.ts` - Frontend configuration

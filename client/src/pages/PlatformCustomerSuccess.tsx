@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -11,15 +11,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
+} from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Heart,
   TrendingUp,
@@ -33,8 +33,8 @@ import {
   BarChart3,
   ArrowRight,
   Zap,
-} from "lucide-react";
-import { Link } from "wouter";
+} from 'lucide-react';
+import { Link } from 'wouter';
 
 interface TenantHealth {
   id: string;
@@ -88,11 +88,21 @@ interface HealthMetrics {
 }
 
 const HEALTH_GRADE_CONFIG = {
-  excellent: { label: 'Excellent', color: 'text-green-600', bgColor: 'bg-green-100', icon: CheckCircle },
+  excellent: {
+    label: 'Excellent',
+    color: 'text-green-600',
+    bgColor: 'bg-green-100',
+    icon: CheckCircle,
+  },
   good: { label: 'Good', color: 'text-blue-600', bgColor: 'bg-blue-100', icon: TrendingUp },
   fair: { label: 'Fair', color: 'text-yellow-600', bgColor: 'bg-yellow-100', icon: AlertTriangle },
   poor: { label: 'Poor', color: 'text-orange-600', bgColor: 'bg-orange-100', icon: TrendingDown },
-  critical: { label: 'Critical', color: 'text-red-600', bgColor: 'bg-red-100', icon: AlertTriangle },
+  critical: {
+    label: 'Critical',
+    color: 'text-red-600',
+    bgColor: 'bg-red-100',
+    icon: AlertTriangle,
+  },
 };
 
 const CHURN_RISK_CONFIG = {
@@ -103,8 +113,8 @@ const CHURN_RISK_CONFIG = {
 };
 
 export default function PlatformCustomerSuccess() {
-  const [selectedFilter, setSelectedFilter] = useState("all");
-  const [selectedCSM, setSelectedCSM] = useState<string>("");
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedCSM, setSelectedCSM] = useState<string>('');
 
   // Fetch tenant health data
   const { data: tenants = [], isLoading } = useQuery<TenantHealth[]>({
@@ -123,9 +133,12 @@ export default function PlatformCustomerSuccess() {
 
   // Filter tenants
   const filteredTenants = tenants.filter((tenant) => {
-    const matchesFilter = selectedFilter === 'all' ||
-      (selectedFilter === 'at_risk' && (tenant.churnRisk === 'high' || tenant.churnRisk === 'critical')) ||
-      (selectedFilter === 'healthy' && tenant.healthGrade === 'excellent' || tenant.healthGrade === 'good') ||
+    const matchesFilter =
+      selectedFilter === 'all' ||
+      (selectedFilter === 'at_risk' &&
+        (tenant.churnRisk === 'high' || tenant.churnRisk === 'critical')) ||
+      (selectedFilter === 'healthy' && tenant.healthGrade === 'excellent') ||
+      tenant.healthGrade === 'good' ||
       (selectedFilter === 'onboarding' && tenant.onboardingStatus !== 'completed') ||
       (selectedFilter === 'renewal' && tenant.daysUntilRenewal && tenant.daysUntilRenewal <= 60);
 
@@ -137,10 +150,11 @@ export default function PlatformCustomerSuccess() {
   // Calculate filter counts
   const filterCounts = {
     all: tenants.length,
-    healthy: tenants.filter(t => t.healthGrade === 'excellent' || t.healthGrade === 'good').length,
-    at_risk: tenants.filter(t => t.churnRisk === 'high' || t.churnRisk === 'critical').length,
-    onboarding: tenants.filter(t => t.onboardingStatus !== 'completed').length,
-    renewal: tenants.filter(t => t.daysUntilRenewal && t.daysUntilRenewal <= 60).length,
+    healthy: tenants.filter((t) => t.healthGrade === 'excellent' || t.healthGrade === 'good')
+      .length,
+    at_risk: tenants.filter((t) => t.churnRisk === 'high' || t.churnRisk === 'critical').length,
+    onboarding: tenants.filter((t) => t.onboardingStatus !== 'completed').length,
+    renewal: tenants.filter((t) => t.daysUntilRenewal && t.daysUntilRenewal <= 60).length,
   };
 
   if (isLoading) {
@@ -225,18 +239,16 @@ export default function PlatformCustomerSuccess() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total MRR
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total MRR</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <span className="text-3xl font-bold">${parseFloat(metrics.totalMRR).toLocaleString()}</span>
+                <span className="text-3xl font-bold">
+                  ${parseFloat(metrics.totalMRR).toLocaleString()}
+                </span>
                 <DollarSign className="h-8 w-8 text-muted-foreground opacity-50" />
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Monthly recurring revenue
-              </p>
+              <p className="text-sm text-muted-foreground mt-2">Monthly recurring revenue</p>
             </CardContent>
           </Card>
 
@@ -268,9 +280,7 @@ export default function PlatformCustomerSuccess() {
                   <p className="font-semibold text-red-900">
                     {filterCounts.at_risk} tenant(s) at high churn risk
                   </p>
-                  <p className="text-sm text-red-700">
-                    Immediate action required to prevent churn
-                  </p>
+                  <p className="text-sm text-red-700">Immediate action required to prevent churn</p>
                 </div>
               </div>
               <Button variant="destructive" onClick={() => setSelectedFilter('at_risk')}>
@@ -368,7 +378,9 @@ export default function PlatformCustomerSuccess() {
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 text-sm">
                                 <Users className="h-3 w-3" />
-                                <span>{tenant.activeUsers}/{tenant.totalUsers} users</span>
+                                <span>
+                                  {tenant.activeUsers}/{tenant.totalUsers} users
+                                </span>
                               </div>
                               <div className="flex items-center gap-2 text-sm">
                                 <Zap className="h-3 w-3" />
@@ -384,7 +396,9 @@ export default function PlatformCustomerSuccess() {
                           </TableCell>
                           <TableCell>
                             <div>
-                              <div className="font-medium">${parseFloat(tenant.mrr).toLocaleString()}</div>
+                              <div className="font-medium">
+                                ${parseFloat(tenant.mrr).toLocaleString()}
+                              </div>
                               {tenant.daysUntilRenewal !== undefined && (
                                 <div className="text-xs text-muted-foreground">
                                   Renewal in {tenant.daysUntilRenewal} days
@@ -438,7 +452,7 @@ export default function PlatformCustomerSuccess() {
           <CardContent>
             <div className="space-y-4">
               {Object.entries(HEALTH_GRADE_CONFIG).map(([grade, config]) => {
-                const count = tenants.filter(t => t.healthGrade === grade).length;
+                const count = tenants.filter((t) => t.healthGrade === grade).length;
                 const percentage = tenants.length > 0 ? (count / tenants.length) * 100 : 0;
 
                 return (
@@ -470,7 +484,7 @@ export default function PlatformCustomerSuccess() {
           <CardContent>
             <div className="space-y-4">
               {Object.entries(CHURN_RISK_CONFIG).map(([risk, config]) => {
-                const count = tenants.filter(t => t.churnRisk === risk).length;
+                const count = tenants.filter((t) => t.churnRisk === risk).length;
                 const percentage = tenants.length > 0 ? (count / tenants.length) * 100 : 0;
 
                 return (

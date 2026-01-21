@@ -1,32 +1,32 @@
-import { useRef, useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import ContextualHelp from "@/components/contextual/ContextualHelp";
-import PageAlerts from "@/components/contextual/PageAlerts";
-import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
-import { MobileFAB } from "@/components/ui/mobile-fab";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useRef, useState, useMemo, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import ContextualHelp from '@/components/contextual/ContextualHelp';
+import PageAlerts from '@/components/contextual/PageAlerts';
+import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
+import { MobileFAB } from '@/components/ui/mobile-fab';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -34,10 +34,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+} from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Plus,
   DollarSign,
@@ -56,21 +56,17 @@ import {
   GripVertical,
   MoreHorizontal,
   X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table,
   TableBody,
@@ -78,8 +74,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,7 +83,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   DndContext,
   DragEndEvent,
@@ -99,76 +95,68 @@ import {
   useSensors,
   closestCorners,
   useDroppable,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Enhanced Zod schema with complete deal database fields including BANT tracking
 const dealFormSchema = z.object({
   // Basic Deal Information
-  title: z.string().min(1, "Title is required"),
-  dealName: z.string().min(1, "Deal name is required"),
+  title: z.string().min(1, 'Title is required'),
+  dealName: z.string().min(1, 'Deal name is required'),
   description: z.string().optional(),
   amount: z.string().optional(),
-  dealValue: z.string().min(1, "Deal value is required"),
-  
+  dealValue: z.string().min(1, 'Deal value is required'),
+
   // Company and Contact Information
-  companyId: z.string().min(1, "Company is required"),
-  companyName: z.string().min(1, "Company name is required"),
+  companyId: z.string().min(1, 'Company is required'),
+  companyName: z.string().min(1, 'Company name is required'),
   businessRecordId: z.string().optional(),
   contactId: z.string().optional(),
   contactName: z.string().optional(),
   primaryContactName: z.string().optional(),
-  primaryContactEmail: z
-    .string()
-    .email("Invalid email")
-    .optional()
-    .or(z.literal("")),
+  primaryContactEmail: z.string().email('Invalid email').optional().or(z.literal('')),
   primaryContactPhone: z.string().optional(),
-  
+
   // Deal Stage and Pipeline
-  dealStage: z.string().default("prospecting"),
-  probability: z.string().default("10"),
+  dealStage: z.string().default('prospecting'),
+  probability: z.string().default('10'),
   closeDate: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   actualCloseDate: z.string().optional(),
-  
+
   // Lead Source and Assignment
   leadSource: z.string().optional(),
   source: z.string().optional(),
   assignedTo: z.string().optional(),
-  
+
   // Product and Competition Information
   productInterest: z.string().optional(),
   productsInterested: z.string().optional(),
   competitorInfo: z.string().optional(),
-  
+
   // BANT Qualification Framework
   budgetConfirmed: z.boolean().default(false),
   authorityConfirmed: z.boolean().default(false),
   needConfirmed: z.boolean().default(false),
   timelineConfirmed: z.boolean().default(false),
   decisionMaker: z.string().optional(),
-  
+
   // Sales Process Tracking
   proposalSent: z.boolean().default(false),
   contractSent: z.boolean().default(false),
-  
+
   // Deal Management
   dealType: z.string().optional(),
-  priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   estimatedMonthlyValue: z.string().optional(),
   commissionAmount: z.string().optional(),
-  forecastCategory: z.enum(["pipeline", "best_case", "commit", "omitted"]).default("pipeline"),
-  
+  forecastCategory: z.enum(['pipeline', 'best_case', 'commit', 'omitted']).default('pipeline'),
+
   // Outcome Tracking
   lostReason: z.string().optional(),
   winReason: z.string().optional(),
-  
+
   // Notes and Tags
   notes: z.string().optional(),
   tags: z.string().optional(),
@@ -198,64 +186,64 @@ interface Deal {
   id: string;
   tenantId?: string;
   businessRecordId?: string;
-  
+
   // Basic Deal Information
   title: string;
   dealName?: string;
   description?: string;
   amount?: number;
   dealValue?: number;
-  
+
   // Company and Contact Information
   companyName?: string;
   contactName?: string;
   primaryContactName?: string;
   primaryContactEmail?: string;
   primaryContactPhone?: string;
-  
+
   // Deal Stage and Pipeline
   dealStage: string;
   probability: number;
   closeDate?: string;
   expectedCloseDate?: string;
   actualCloseDate?: string;
-  
+
   // Lead Source and Assignment
   leadSource?: string;
   source?: string;
   assignedTo?: string;
-  
+
   // Product and Competition Information
   productInterest?: string;
   productsInterested?: string;
   competitorInfo?: string;
-  
+
   // BANT Qualification Framework
   budgetConfirmed?: boolean;
   authorityConfirmed?: boolean;
   needConfirmed?: boolean;
   timelineConfirmed?: boolean;
   decisionMaker?: string;
-  
+
   // Sales Process Tracking
   proposalSent?: boolean;
   contractSent?: boolean;
-  
+
   // Deal Management
   dealType?: string;
   priority: string;
   estimatedMonthlyValue?: number;
   commissionAmount?: number;
   forecastCategory?: string;
-  
+
   // Outcome Tracking
   lostReason?: string;
   winReason?: string;
-  
+
   // Notes and Tags
   notes?: string;
   tags?: string | string[];
-  
+
   // System Fields
   status: string;
   stageId: string;
@@ -280,13 +268,7 @@ interface DealStage {
 }
 
 // Droppable Stage Area Component
-function DroppableStageArea({
-  stageId,
-  children,
-}: {
-  stageId: string;
-  children: React.ReactNode;
-}) {
+function DroppableStageArea({ stageId, children }: { stageId: string; children: React.ReactNode }) {
   const { setNodeRef } = useDroppable({
     id: stageId,
   });
@@ -308,14 +290,9 @@ function MobileDealCard({
   stageColor: string;
   onDelete: (dealId: string) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: deal.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: deal.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -333,9 +310,7 @@ function MobileDealCard({
       {/* Mobile Deal Header with Drag Handle */}
       <div className="flex items-center justify-between p-4 sm:p-5 pb-3">
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-gray-900 text-base line-clamp-2 mb-1">
-            {deal.title}
-          </h4>
+          <h4 className="font-semibold text-gray-900 text-base line-clamp-2 mb-1">{deal.title}</h4>
           {deal.companyName && (
             <div className="flex items-center gap-2 text-gray-600 text-sm">
               <Building2 className="h-4 w-4 flex-shrink-0" />
@@ -343,7 +318,7 @@ function MobileDealCard({
             </div>
           )}
         </div>
-        
+
         {/* Mobile-friendly drag handle */}
         <div className="flex items-center gap-3 ml-3">
           <div
@@ -355,9 +330,9 @@ function MobileDealCard({
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="h-10 w-10 p-0 touch-manipulation"
                 style={{ minWidth: '44px', minHeight: '44px' }}
               >
@@ -374,11 +349,7 @@ function MobileDealCard({
               <DropdownMenuItem
                 className="text-red-600 py-3"
                 onClick={() => {
-                  if (
-                    confirm(
-                      `Delete deal "${deal.title}"? This cannot be undone.`
-                    )
-                  ) {
+                  if (confirm(`Delete deal "${deal.title}"? This cannot be undone.`)) {
                     onDelete(deal.id);
                   }
                 }}
@@ -411,9 +382,7 @@ function MobileDealCard({
           {deal.expectedCloseDate && (
             <div className="flex items-center gap-2 text-gray-600">
               <Calendar className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">
-                {format(new Date(deal.expectedCloseDate), "MMM d")}
-              </span>
+              <span className="truncate">{format(new Date(deal.expectedCloseDate), 'MMM d')}</span>
             </div>
           )}
         </div>
@@ -425,10 +394,10 @@ function MobileDealCard({
           <Badge
             variant="secondary"
             className={cn(
-              "text-sm px-3 py-1",
-              deal.priority === "high" && "bg-red-100 text-red-800",
-              deal.priority === "medium" && "bg-yellow-100 text-yellow-800", 
-              deal.priority === "low" && "bg-green-100 text-green-800"
+              'text-sm px-3 py-1',
+              deal.priority === 'high' && 'bg-red-100 text-red-800',
+              deal.priority === 'medium' && 'bg-yellow-100 text-yellow-800',
+              deal.priority === 'low' && 'bg-green-100 text-green-800',
             )}
           >
             {deal.priority}
@@ -439,14 +408,11 @@ function MobileDealCard({
             </span>
           )}
         </div>
-        
+
         {deal.probability && (
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{deal.probability}%</span>
-            <div 
-              className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: stageColor }}
-            />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stageColor }} />
           </div>
         )}
       </div>
@@ -455,21 +421,10 @@ function MobileDealCard({
 }
 
 // Draggable Deal Card Component
-function DraggableDealCard({
-  deal,
-  onDelete,
-}: {
-  deal: Deal;
-  onDelete: (dealId: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: deal.id });
+function DraggableDealCard({ deal, onDelete }: { deal: Deal; onDelete: (dealId: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: deal.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -485,9 +440,7 @@ function DraggableDealCard({
       className="bg-white border rounded-md p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
     >
       <div className="flex items-start justify-between mb-1.5">
-        <h4 className="font-medium text-[13px] text-gray-900 line-clamp-2">
-          {deal.title}
-        </h4>
+        <h4 className="font-medium text-[13px] text-gray-900 line-clamp-2">{deal.title}</h4>
         <div className="flex items-center gap-1">
           <div
             {...listeners}
@@ -507,11 +460,7 @@ function DraggableDealCard({
               <DropdownMenuItem
                 className="text-red-600"
                 onClick={() => {
-                  if (
-                    confirm(
-                      `Delete deal "${deal.title}"? This cannot be undone.`
-                    )
-                  ) {
+                  if (confirm(`Delete deal "${deal.title}"? This cannot be undone.`)) {
                     onDelete(deal.id);
                   }
                 }}
@@ -547,17 +496,13 @@ function DraggableDealCard({
         {deal.expectedCloseDate && (
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            <span>
-              {format(new Date(deal.expectedCloseDate), "MMM d, yyyy")}
-            </span>
+            <span>{format(new Date(deal.expectedCloseDate), 'MMM d, yyyy')}</span>
           </div>
         )}
 
         {deal.source && (
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500 capitalize">
-              {deal.source}
-            </span>
+            <span className="text-xs text-gray-500 capitalize">{deal.source}</span>
           </div>
         )}
       </div>
@@ -566,18 +511,16 @@ function DraggableDealCard({
         <Badge
           variant="secondary"
           className={cn(
-            "text-[10px]",
-            deal.priority === "high" && "bg-red-100 text-red-800",
-            deal.priority === "medium" && "bg-yellow-100 text-yellow-800",
-            deal.priority === "low" && "bg-green-100 text-green-800"
+            'text-[10px]',
+            deal.priority === 'high' && 'bg-red-100 text-red-800',
+            deal.priority === 'medium' && 'bg-yellow-100 text-yellow-800',
+            deal.priority === 'low' && 'bg-green-100 text-green-800',
           )}
         >
           {deal.priority}
         </Badge>
 
-        {deal.probability && (
-          <span className="text-[10px] text-gray-500">{deal.probability}%</span>
-        )}
+        {deal.probability && <span className="text-[10px] text-gray-500">{deal.probability}%</span>}
       </div>
     </div>
   );
@@ -588,74 +531,67 @@ export default function DealsManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedStageId, setSelectedStageId] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-  const [companySearchTerm, setCompanySearchTerm] = useState("");
+  const [selectedStageId, setSelectedStageId] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [companySearchTerm, setCompanySearchTerm] = useState('');
   const [isCompanySelectOpen, setIsCompanySelectOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
+  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    owner: "",
-    source: "all",
-    dealType: "all",
-    priority: "all",
-    amountMin: "",
-    amountMax: "",
-    closeDateFrom: "",
-    closeDateTo: "",
+    owner: '',
+    source: 'all',
+    dealType: 'all',
+    priority: 'all',
+    amountMin: '',
+    amountMax: '',
+    closeDateFrom: '',
+    closeDateTo: '',
   });
   const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
   const [editingCloseDate, setEditingCloseDate] = useState<string | null>(null);
-  const [collapsedStages, setCollapsedStages] = useState<
-    Record<string, boolean>
-  >({});
+  const [collapsedStages, setCollapsedStages] = useState<Record<string, boolean>>({});
   const boardRef = useRef<HTMLDivElement | null>(null);
   const stageRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Table column chooser
   const ALL_COLUMNS = [
-    "name",
-    "stage",
-    "amount",
-    "probability",
-    "company",
-    "owner",
-    "close",
-    "source",
-    "priority",
-    "created",
-    "actions",
+    'name',
+    'stage',
+    'amount',
+    'probability',
+    'company',
+    'owner',
+    'close',
+    'source',
+    'priority',
+    'created',
+    'actions',
   ] as const;
   type ColumnKey = (typeof ALL_COLUMNS)[number];
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(() => {
     const saved =
-      typeof window !== "undefined"
-        ? localStorage.getItem("deals.visibleColumns")
-        : null;
+      typeof window !== 'undefined' ? localStorage.getItem('deals.visibleColumns') : null;
     return saved
       ? (JSON.parse(saved) as ColumnKey[])
       : [
-          "name",
-          "stage",
-          "amount",
-          "probability",
-          "company",
-          "owner",
-          "close",
-          "priority",
-          "actions",
+          'name',
+          'stage',
+          'amount',
+          'probability',
+          'company',
+          'owner',
+          'close',
+          'priority',
+          'actions',
         ];
   });
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        "deals.visibleColumns",
-        JSON.stringify(visibleColumns)
-      );
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('deals.visibleColumns', JSON.stringify(visibleColumns));
     }
   }, [visibleColumns]);
 
@@ -671,34 +607,28 @@ export default function DealsManagement() {
         delay: 200,
         tolerance: 8,
       },
-    })
+    }),
   );
 
   // Fetch deal stages
-  const { data: stages = [], isLoading: stagesLoading } = useQuery<DealStage[]>(
-    {
-      queryKey: ["/api/deal-stages"],
-    }
-  );
+  const { data: stages = [], isLoading: stagesLoading } = useQuery<DealStage[]>({
+    queryKey: ['/api/deal-stages'],
+  });
 
   // Fetch companies for dropdown search
-  const { data: companies = [], isLoading: companiesLoading } = useQuery<
-    Company[]
-  >({
-    queryKey: ["/api/companies", companySearchTerm],
+  const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
+    queryKey: ['/api/companies', companySearchTerm],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (companySearchTerm) params.append("search", companySearchTerm);
+      if (companySearchTerm) params.append('search', companySearchTerm);
 
-      return await apiRequest("/api/companies?" + params.toString());
+      return await apiRequest('/api/companies?' + params.toString());
     },
   });
 
   // Fetch contacts for selected company
-  const { data: companyContacts = [], isLoading: contactsLoading } = useQuery<
-    Contact[]
-  >({
-    queryKey: ["/api/companies", selectedCompanyId, "contacts"],
+  const { data: companyContacts = [], isLoading: contactsLoading } = useQuery<Contact[]>({
+    queryKey: ['/api/companies', selectedCompanyId, 'contacts'],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
       return await apiRequest(`/api/companies/${selectedCompanyId}/contacts`);
@@ -712,17 +642,16 @@ export default function DealsManagement() {
     isLoading: dealsLoading,
     refetch: refetchDeals,
   } = useQuery<Deal[]>({
-    queryKey: ["/api/deals", selectedStageId, searchTerm],
+    queryKey: ['/api/deals', selectedStageId, searchTerm],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedStageId && selectedStageId !== "all")
-        params.append("stageId", selectedStageId);
-      if (searchTerm) params.append("search", searchTerm);
+      if (selectedStageId && selectedStageId !== 'all') params.append('stageId', selectedStageId);
+      if (searchTerm) params.append('search', searchTerm);
 
       const response = await fetch(`/api/deals?${params}`, {
-        credentials: "include",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to fetch deals");
+      if (!response.ok) throw new Error('Failed to fetch deals');
       return response.json();
     },
   });
@@ -731,64 +660,64 @@ export default function DealsManagement() {
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
       // Basic Deal Information
-      title: "",
-      dealName: "",
-      description: "",
-      amount: "",
-      dealValue: "",
-      
+      title: '',
+      dealName: '',
+      description: '',
+      amount: '',
+      dealValue: '',
+
       // Company and Contact Information
-      companyId: "",
-      companyName: "",
-      businessRecordId: "",
-      contactId: "",
-      contactName: "",
-      primaryContactName: "",
-      primaryContactEmail: "",
-      primaryContactPhone: "",
-      
+      companyId: '',
+      companyName: '',
+      businessRecordId: '',
+      contactId: '',
+      contactName: '',
+      primaryContactName: '',
+      primaryContactEmail: '',
+      primaryContactPhone: '',
+
       // Deal Stage and Pipeline
-      dealStage: "prospecting",
-      probability: "10",
-      closeDate: "",
-      expectedCloseDate: "",
-      actualCloseDate: "",
-      
+      dealStage: 'prospecting',
+      probability: '10',
+      closeDate: '',
+      expectedCloseDate: '',
+      actualCloseDate: '',
+
       // Lead Source and Assignment
-      leadSource: "",
-      source: "",
-      assignedTo: "",
-      
+      leadSource: '',
+      source: '',
+      assignedTo: '',
+
       // Product and Competition Information
-      productInterest: "",
-      productsInterested: "",
-      competitorInfo: "",
-      
+      productInterest: '',
+      productsInterested: '',
+      competitorInfo: '',
+
       // BANT Qualification Framework
       budgetConfirmed: false,
       authorityConfirmed: false,
       needConfirmed: false,
       timelineConfirmed: false,
-      decisionMaker: "",
-      
+      decisionMaker: '',
+
       // Sales Process Tracking
       proposalSent: false,
       contractSent: false,
-      
+
       // Deal Management
-      dealType: "",
-      priority: "medium",
-      estimatedMonthlyValue: "",
-      commissionAmount: "",
-      forecastCategory: "pipeline",
-      
+      dealType: '',
+      priority: 'medium',
+      estimatedMonthlyValue: '',
+      commissionAmount: '',
+      forecastCategory: 'pipeline',
+
       // Outcome Tracking
-      lostReason: "",
-      winReason: "",
-      
+      lostReason: '',
+      winReason: '',
+
       // Notes and Tags
-      notes: "",
-      tags: "",
+      notes: '',
+      tags: '',
     },
   });
 
@@ -803,64 +732,61 @@ export default function DealsManagement() {
         estimatedMonthlyValue: data.estimatedMonthlyValue
           ? parseFloat(data.estimatedMonthlyValue)
           : undefined,
-        commissionAmount: data.commissionAmount
-          ? parseFloat(data.commissionAmount)
-          : undefined,
+        commissionAmount: data.commissionAmount ? parseFloat(data.commissionAmount) : undefined,
         // Convert string probability to number
         probability: data.probability ? parseFloat(data.probability) : undefined,
         // Convert string tags to array if needed
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        tags: data.tags
+          ? data.tags
+              .split(',')
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          : [],
         // Ensure proper date formatting
         closeDate: data.closeDate || undefined,
         expectedCloseDate: data.expectedCloseDate || undefined,
         actualCloseDate: data.actualCloseDate || undefined,
       };
 
-      return await apiRequest("/api/deals", "POST", dealData);
+      return await apiRequest('/api/deals', 'POST', dealData);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       setIsCreateDialogOpen(false);
       form.reset();
-      setSelectedCompanyId("");
+      setSelectedCompanyId('');
       setSelectedContact(null);
       toast({
-        title: "Success",
-        description: "Deal created successfully",
+        title: 'Success',
+        description: 'Deal created successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create deal",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create deal',
+        variant: 'destructive',
       });
     },
   });
 
   // Update deal stage mutation (for drag and drop)
   const updateDealStageMutation = useMutation({
-    mutationFn: async ({
-      dealId,
-      stageId,
-    }: {
-      dealId: string;
-      stageId: string;
-    }) => {
-      return await apiRequest(`/api/deals/${dealId}/stage`, "PUT", { stageId });
+    mutationFn: async ({ dealId, stageId }: { dealId: string; stageId: string }) => {
+      return await apiRequest(`/api/deals/${dealId}/stage`, 'PUT', { stageId });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       toast({
-        title: "Success",
-        description: "Deal moved successfully",
+        title: 'Success',
+        description: 'Deal moved successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to move deal",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to move deal',
+        variant: 'destructive',
       });
     },
   });
@@ -874,23 +800,23 @@ export default function DealsManagement() {
       dealId: string;
       expectedCloseDate: string;
     }) => {
-      return await apiRequest(`/api/deals/${dealId}`, "PUT", {
+      return await apiRequest(`/api/deals/${dealId}`, 'PUT', {
         expectedCloseDate,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       setEditingCloseDate(null);
       toast({
-        title: "Success",
-        description: "Close date updated successfully",
+        title: 'Success',
+        description: 'Close date updated successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update close date",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to update close date',
+        variant: 'destructive',
       });
       setEditingCloseDate(null);
     },
@@ -898,17 +824,16 @@ export default function DealsManagement() {
 
   // Delete deal mutation
   const deleteDealMutation = useMutation({
-    mutationFn: async (dealId: string) =>
-      apiRequest(`/api/deals/${dealId}`, "DELETE"),
+    mutationFn: async (dealId: string) => apiRequest(`/api/deals/${dealId}`, 'DELETE'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
-      toast({ title: "Success", description: "Deal deleted" });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      toast({ title: 'Success', description: 'Deal deleted' });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to delete deal",
-        variant: "destructive",
+        title: 'Error',
+        description: error?.message || 'Failed to delete deal',
+        variant: 'destructive',
       });
     },
   });
@@ -940,27 +865,25 @@ export default function DealsManagement() {
     // Verify it's a valid stage
     const validStage = stages.find((s) => s.id === newStageId);
     if (!validStage) {
-      console.log("Invalid stage ID:", newStageId);
+      console.log('Invalid stage ID:', newStageId);
       return;
     }
 
-    console.log("Drag end:", { dealId, newStageId, overId: over.id, isDeal });
+    console.log('Drag end:', { dealId, newStageId, overId: over.id, isDeal });
 
     // Find the deal and check if it's actually moving to a different stage
     const deal = deals.find((d) => d.id === dealId);
 
     if (deal && deal.stageId !== newStageId) {
-      console.log("Moving deal from", deal.stageId, "to", newStageId);
+      console.log('Moving deal from', deal.stageId, 'to', newStageId);
 
       // Optimistically update the UI first
       queryClient.setQueryData(
-        ["/api/deals", selectedStageId, searchTerm],
+        ['/api/deals', selectedStageId, searchTerm],
         (oldDeals: Deal[] | undefined) => {
           if (!oldDeals) return oldDeals;
-          return oldDeals.map((d) =>
-            d.id === dealId ? { ...d, stageId: newStageId } : d
-          );
-        }
+          return oldDeals.map((d) => (d.id === dealId ? { ...d, stageId: newStageId } : d));
+        },
       );
 
       updateDealStageMutation.mutate({ dealId, stageId: newStageId });
@@ -981,35 +904,23 @@ export default function DealsManagement() {
       return false;
     if (
       filters.source &&
-      filters.source !== "all" &&
+      filters.source !== 'all' &&
       deal.source &&
       !deal.source.toLowerCase().includes(filters.source.toLowerCase())
     )
       return false;
     if (
       filters.dealType &&
-      filters.dealType !== "all" &&
+      filters.dealType !== 'all' &&
       deal.dealType &&
       !deal.dealType.toLowerCase().includes(filters.dealType.toLowerCase())
     )
       return false;
-    if (
-      filters.priority &&
-      filters.priority !== "all" &&
-      deal.priority !== filters.priority
-    )
+    if (filters.priority && filters.priority !== 'all' && deal.priority !== filters.priority)
       return false;
-    if (
-      filters.amountMin &&
-      deal.amount &&
-      deal.amount < parseFloat(filters.amountMin)
-    )
+    if (filters.amountMin && deal.amount && deal.amount < parseFloat(filters.amountMin))
       return false;
-    if (
-      filters.amountMax &&
-      deal.amount &&
-      deal.amount > parseFloat(filters.amountMax)
-    )
+    if (filters.amountMax && deal.amount && deal.amount > parseFloat(filters.amountMax))
       return false;
     if (
       filters.closeDateFrom &&
@@ -1027,66 +938,59 @@ export default function DealsManagement() {
   });
 
   // Group deals by stage for kanban view
-  const dealsByStage = stages.reduce((acc, stage) => {
-    acc[stage.id] = filteredDeals.filter((deal) => deal.stageId === stage.id);
-    return acc;
-  }, {} as Record<string, Deal[]>);
+  const dealsByStage = stages.reduce(
+    (acc, stage) => {
+      acc[stage.id] = filteredDeals.filter((deal) => deal.stageId === stage.id);
+      return acc;
+    },
+    {} as Record<string, Deal[]>,
+  );
 
   // Stage aggregates (count, sum amount, avg probability)
-  const stageAggregates: Record<
-    string,
-    { count: number; totalAmount: number; avgProb: number }
-  > = useMemo(() => {
-    const map: Record<
-      string,
-      { count: number; totalAmount: number; avgProb: number }
-    > = {};
-    stages.forEach((s) => {
-      const list = dealsByStage[s.id] || [];
-      const count = list.length;
-      // Guard against strings or undefined amounts
-      const totalAmount = list.reduce((sum, d: any) => {
-        const n =
-          typeof d.amount === "number"
-            ? d.amount
-            : parseFloat(String(d.amount || "0"));
-        return sum + (isFinite(n) && !isNaN(n) ? n : 0);
-      }, 0);
-      const avgProb = count
-        ? Math.round(
-            list.reduce((sum, d: any) => {
-              const p =
-                typeof d.probability === "number"
-                  ? d.probability
-                  : parseFloat(String(d.probability || "0"));
-              return sum + (isFinite(p) && !isNaN(p) ? p : 0);
-            }, 0) / count
-          )
-        : 0;
-      map[s.id] = { count, totalAmount, avgProb };
-    });
-    return map;
-  }, [stages, dealsByStage]);
+  const stageAggregates: Record<string, { count: number; totalAmount: number; avgProb: number }> =
+    useMemo(() => {
+      const map: Record<string, { count: number; totalAmount: number; avgProb: number }> = {};
+      stages.forEach((s) => {
+        const list = dealsByStage[s.id] || [];
+        const count = list.length;
+        // Guard against strings or undefined amounts
+        const totalAmount = list.reduce((sum, d: any) => {
+          const n = typeof d.amount === 'number' ? d.amount : parseFloat(String(d.amount || '0'));
+          return sum + (isFinite(n) && !isNaN(n) ? n : 0);
+        }, 0);
+        const avgProb = count
+          ? Math.round(
+              list.reduce((sum, d: any) => {
+                const p =
+                  typeof d.probability === 'number'
+                    ? d.probability
+                    : parseFloat(String(d.probability || '0'));
+                return sum + (isFinite(p) && !isNaN(p) ? p : 0);
+              }, 0) / count,
+            )
+          : 0;
+        map[s.id] = { count, totalAmount, avgProb };
+      });
+      return map;
+    }, [stages, dealsByStage]);
 
   const scrollToStage = (stageId: string) => {
     const el = stageRefs.current[stageId];
     if (el) {
       el.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
       });
     }
   };
 
-  const activeDeal = activeId
-    ? deals.find((deal) => deal.id === activeId)
-    : null;
+  const activeDeal = activeId ? deals.find((deal) => deal.id === activeId) : null;
 
   const formatAmount = (value: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       maximumFractionDigits: 0,
     }).format(value || 0);
 
@@ -1096,7 +1000,11 @@ export default function DealsManagement() {
         <div className="mb-4">
           <ContextualHelp page="deals-management" />
           <KpiSummaryBar className="mt-2 mb-4" />
-          <PageAlerts categories={["business"]} severities={["medium","high","critical"]} className="-mt-2" />
+          <PageAlerts
+            categories={['business']}
+            severities={['medium', 'high', 'critical']}
+            className="-mt-2"
+          />
         </div>
         {/* Mobile-First Search and Filters Bar */}
         <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
@@ -1114,7 +1022,7 @@ export default function DealsManagement() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setSearchTerm("")}
+                onClick={() => setSearchTerm('')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0 touch-manipulation"
               >
                 <X className="h-4 w-4" />
@@ -1132,9 +1040,9 @@ export default function DealsManagement() {
               {/* View Mode Toggle */}
               <div className="flex items-center border rounded-lg p-1 bg-white">
                 <Button
-                  variant={viewMode === "kanban" ? "default" : "ghost"}
+                  variant={viewMode === 'kanban' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode("kanban")}
+                  onClick={() => setViewMode('kanban')}
                   className="h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform"
                   style={{ minWidth: '44px', minHeight: '44px' }}
                 >
@@ -1142,9 +1050,9 @@ export default function DealsManagement() {
                   <span className="hidden sm:inline">Board</span>
                 </Button>
                 <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode("table")}
+                  onClick={() => setViewMode('table')}
                   className="h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform"
                   style={{ minWidth: '44px', minHeight: '44px' }}
                 >
@@ -1159,15 +1067,22 @@ export default function DealsManagement() {
                 size="sm"
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "gap-2 h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform",
-                  showFilters && "bg-blue-50 border-blue-300"
+                  'gap-2 h-10 px-3 sm:h-8 touch-manipulation active:scale-95 transition-transform',
+                  showFilters && 'bg-blue-50 border-blue-300',
                 )}
                 style={{ minWidth: '44px', minHeight: '44px' }}
               >
                 <SlidersHorizontal className="h-4 w-4" />
                 <span>Filters</span>
-                {(filters.owner || filters.source !== "all" || filters.priority !== "all" || filters.amountMin || filters.amountMax) && (
-                  <Badge variant="default" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                {(filters.owner ||
+                  filters.source !== 'all' ||
+                  filters.priority !== 'all' ||
+                  filters.amountMin ||
+                  filters.amountMax) && (
+                  <Badge
+                    variant="default"
+                    className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full"
+                  >
                     !
                   </Badge>
                 )}
@@ -1188,10 +1103,7 @@ export default function DealsManagement() {
                   <DropdownMenuLabel>Visible Columns</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {ALL_COLUMNS.map((key) => (
-                    <DropdownMenuItem
-                      key={key}
-                      onSelect={(e) => e.preventDefault()}
-                    >
+                    <DropdownMenuItem key={key} onSelect={(e) => e.preventDefault()}>
                       <div className="flex items-center gap-2">
                         <Checkbox
                           checked={visibleColumns.includes(key)}
@@ -1212,14 +1124,14 @@ export default function DealsManagement() {
                   <DropdownMenuItem
                     onSelect={() =>
                       setVisibleColumns([
-                        "name",
-                        "stage",
-                        "amount",
-                        "probability",
-                        "company",
-                        "close",
-                        "priority",
-                        "actions",
+                        'name',
+                        'stage',
+                        'amount',
+                        'probability',
+                        'company',
+                        'close',
+                        'priority',
+                        'actions',
                       ])
                     }
                   >
@@ -1228,16 +1140,16 @@ export default function DealsManagement() {
                   <DropdownMenuItem
                     onSelect={() =>
                       setVisibleColumns([
-                        "name",
-                        "stage",
-                        "amount",
-                        "probability",
-                        "company",
-                        "owner",
-                        "close",
-                        "source",
-                        "priority",
-                        "actions",
+                        'name',
+                        'stage',
+                        'amount',
+                        'probability',
+                        'company',
+                        'owner',
+                        'close',
+                        'source',
+                        'priority',
+                        'actions',
                       ])
                     }
                   >
@@ -1246,13 +1158,13 @@ export default function DealsManagement() {
                   <DropdownMenuItem
                     onSelect={() =>
                       setVisibleColumns([
-                        "name",
-                        "amount",
-                        "probability",
-                        "close",
-                        "owner",
-                        "created",
-                        "actions",
+                        'name',
+                        'amount',
+                        'probability',
+                        'close',
+                        'owner',
+                        'created',
+                        'actions',
                       ])
                     }
                   >
@@ -1262,14 +1174,9 @@ export default function DealsManagement() {
               </DropdownMenu>
 
               {/* Create Opportunity Button - Desktop Only */}
-              <Dialog
-                open={isCreateDialogOpen}
-                onOpenChange={setIsCreateDialogOpen}
-              >
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    className="gap-2 hidden md:flex h-10 px-4 sm:h-8 touch-manipulation active:scale-95 transition-transform"
-                  >
+                  <Button className="gap-2 hidden md:flex h-10 px-4 sm:h-8 touch-manipulation active:scale-95 transition-transform">
                     <Plus className="h-4 w-4" />
                     <span>+ Opportunity</span>
                   </Button>
@@ -1284,10 +1191,7 @@ export default function DealsManagement() {
                   </div>
 
                   <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-4 p-4 sm:p-6"
-                    >
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-4 sm:p-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
                         <FormField
                           control={form.control}
@@ -1332,20 +1236,25 @@ export default function DealsManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-base">Priority</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="h-11 touch-manipulation">
                                     <SelectValue placeholder="Select priority" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="low" className="py-3 text-base">Low</SelectItem>
-                                  <SelectItem value="medium" className="py-3 text-base">Medium</SelectItem>
-                                  <SelectItem value="high" className="py-3 text-base">High</SelectItem>
-                                  <SelectItem value="urgent" className="py-3 text-base">Urgent</SelectItem>
+                                  <SelectItem value="low" className="py-3 text-base">
+                                    Low
+                                  </SelectItem>
+                                  <SelectItem value="medium" className="py-3 text-base">
+                                    Medium
+                                  </SelectItem>
+                                  <SelectItem value="high" className="py-3 text-base">
+                                    High
+                                  </SelectItem>
+                                  <SelectItem value="urgent" className="py-3 text-base">
+                                    Urgent
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -1370,11 +1279,11 @@ export default function DealsManagement() {
                                       variant="outline"
                                       role="combobox"
                                       className={cn(
-                                        "w-full justify-between h-11 touch-manipulation text-base",
-                                        !field.value && "text-muted-foreground"
+                                        'w-full justify-between h-11 touch-manipulation text-base',
+                                        !field.value && 'text-muted-foreground',
                                       )}
                                     >
-                                      {field.value || "Select company"}
+                                      {field.value || 'Select company'}
                                       <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                   </FormControl>
@@ -1386,23 +1295,15 @@ export default function DealsManagement() {
                                       value={companySearchTerm}
                                       onValueChange={setCompanySearchTerm}
                                     />
-                                    <CommandEmpty>
-                                      No companies found.
-                                    </CommandEmpty>
+                                    <CommandEmpty>No companies found.</CommandEmpty>
                                     <CommandGroup>
                                       {companies.map((company) => (
                                         <CommandItem
                                           key={company.id}
                                           value={company.businessName}
                                           onSelect={() => {
-                                            form.setValue(
-                                              "companyName",
-                                              company.businessName
-                                            );
-                                            form.setValue(
-                                              "companyId",
-                                              company.id
-                                            );
+                                            form.setValue('companyName', company.businessName);
+                                            form.setValue('companyId', company.id);
                                             setSelectedCompanyId(company.id);
                                             setIsCompanySelectOpen(false);
                                           }}
@@ -1411,13 +1312,11 @@ export default function DealsManagement() {
                                             <span className="font-medium">
                                               {company.businessName}
                                             </span>
-                                            {company.billingCity &&
-                                              company.billingState && (
-                                                <span className="text-sm text-gray-500">
-                                                  {company.billingCity},{" "}
-                                                  {company.billingState}
-                                                </span>
-                                              )}
+                                            {company.billingCity && company.billingState && (
+                                              <span className="text-sm text-gray-500">
+                                                {company.billingCity}, {company.billingState}
+                                              </span>
+                                            )}
                                           </div>
                                         </CommandItem>
                                       ))}
@@ -1437,28 +1336,17 @@ export default function DealsManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Lead Source</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select source" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="website">
-                                    Website
-                                  </SelectItem>
-                                  <SelectItem value="referral">
-                                    Referral
-                                  </SelectItem>
-                                  <SelectItem value="cold_call">
-                                    Cold Call
-                                  </SelectItem>
-                                  <SelectItem value="email">
-                                    Email Campaign
-                                  </SelectItem>
+                                  <SelectItem value="website">Website</SelectItem>
+                                  <SelectItem value="referral">Referral</SelectItem>
+                                  <SelectItem value="cold_call">Cold Call</SelectItem>
+                                  <SelectItem value="email">Email Campaign</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
@@ -1473,10 +1361,7 @@ export default function DealsManagement() {
                             <FormItem>
                               <FormLabel>Deal Name *</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="Q1 2025 Office Equipment"
-                                  {...field}
-                                />
+                                <Input placeholder="Q1 2025 Office Equipment" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1490,11 +1375,7 @@ export default function DealsManagement() {
                             <FormItem>
                               <FormLabel>Deal Value *</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="25000"
-                                  {...field}
-                                />
+                                <Input type="number" placeholder="25000" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1507,10 +1388,7 @@ export default function DealsManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Opportunity Stage</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select stage" />
@@ -1571,10 +1449,7 @@ export default function DealsManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Lead Source</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select source" />
@@ -1601,10 +1476,7 @@ export default function DealsManagement() {
                             <FormItem>
                               <FormLabel>Assigned To</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="Sales rep ID or name"
-                                  {...field}
-                                />
+                                <Input placeholder="Sales rep ID or name" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1618,10 +1490,7 @@ export default function DealsManagement() {
                             <FormItem>
                               <FormLabel>Product Interest</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="Canon imageRUNNER, HP LaserJet"
-                                  {...field}
-                                />
+                                <Input placeholder="Canon imageRUNNER, HP LaserJet" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1652,10 +1521,7 @@ export default function DealsManagement() {
                             <FormItem>
                               <FormLabel>Decision Maker</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="John Smith, IT Director"
-                                  {...field}
-                                />
+                                <Input placeholder="John Smith, IT Director" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1668,10 +1534,7 @@ export default function DealsManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Forecast Category</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select category" />
@@ -1694,7 +1557,7 @@ export default function DealsManagement() {
                           <h4 className="text-sm font-medium text-gray-900 border-b pb-2">
                             BANT Qualification
                           </h4>
-                          
+
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
                               control={form.control}
@@ -1775,7 +1638,7 @@ export default function DealsManagement() {
                           <h4 className="text-sm font-medium text-gray-900 border-b pb-2">
                             Sales Process Tracking
                           </h4>
-                          
+
                           <div className="grid grid-cols-2 gap-4">
                             <FormField
                               control={form.control}
@@ -1839,10 +1702,7 @@ export default function DealsManagement() {
                             <FormItem className="sm:col-span-2">
                               <FormLabel>Description</FormLabel>
                               <FormControl>
-                                <Textarea
-                                  placeholder="Opportunity description..."
-                                  {...field}
-                                />
+                                <Textarea placeholder="Opportunity description..." {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1864,9 +1724,7 @@ export default function DealsManagement() {
                           disabled={createDealMutation.isPending}
                           className="order-1 sm:order-2 h-11 text-base touch-manipulation active:scale-95 transition-transform"
                         >
-                          {createDealMutation.isPending
-                            ? "Creating..."
-                            : "Create Opportunity"}
+                          {createDealMutation.isPending ? 'Creating...' : 'Create Opportunity'}
                         </Button>
                       </div>
                     </form>
@@ -1887,14 +1745,14 @@ export default function DealsManagement() {
                     size="sm"
                     onClick={() => {
                       setFilters({
-                        owner: "",
-                        source: "all",
-                        dealType: "all",
-                        priority: "all",
-                        amountMin: "",
-                        amountMax: "",
-                        closeDateFrom: "",
-                        closeDateTo: "",
+                        owner: '',
+                        source: 'all',
+                        dealType: 'all',
+                        priority: 'all',
+                        amountMin: '',
+                        amountMax: '',
+                        closeDateFrom: '',
+                        closeDateTo: '',
                       });
                     }}
                     className="text-sm text-blue-600 hover:text-blue-700 h-auto p-0 touch-manipulation"
@@ -1910,9 +1768,7 @@ export default function DealsManagement() {
                     <Input
                       placeholder="Filter by owner..."
                       value={filters.owner}
-                      onChange={(e) =>
-                        setFilters((prev) => ({ ...prev, owner: e.target.value }))
-                      }
+                      onChange={(e) => setFilters((prev) => ({ ...prev, owner: e.target.value }))}
                       className="h-11 touch-manipulation"
                     />
                   </div>
@@ -1922,9 +1778,7 @@ export default function DealsManagement() {
                     <label className="text-sm font-medium text-gray-700">Source</label>
                     <Select
                       value={filters.source}
-                      onValueChange={(value) =>
-                        setFilters((prev) => ({ ...prev, source: value }))
-                      }
+                      onValueChange={(value) => setFilters((prev) => ({ ...prev, source: value }))}
                     >
                       <SelectTrigger className="h-11 touch-manipulation">
                         <SelectValue placeholder="All sources" />
@@ -2039,7 +1893,14 @@ export default function DealsManagement() {
                 </div>
 
                 {/* Active Filters Summary */}
-                {(filters.owner || filters.source !== "all" || filters.priority !== "all" || filters.dealType !== "all" || filters.amountMin || filters.amountMax || filters.closeDateFrom || filters.closeDateTo) && (
+                {(filters.owner ||
+                  filters.source !== 'all' ||
+                  filters.priority !== 'all' ||
+                  filters.dealType !== 'all' ||
+                  filters.amountMin ||
+                  filters.amountMax ||
+                  filters.closeDateFrom ||
+                  filters.closeDateTo) && (
                   <div className="mt-4 pt-4 border-t border-blue-200">
                     <div className="flex flex-wrap gap-2">
                       {filters.owner && (
@@ -2048,46 +1909,46 @@ export default function DealsManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters((prev) => ({ ...prev, owner: "" }))}
+                            onClick={() => setFilters((prev) => ({ ...prev, owner: '' }))}
                             className="h-4 w-4 p-0 hover:bg-transparent"
                           >
                             <X className="h-3 w-3" />
                           </Button>
                         </Badge>
                       )}
-                      {filters.source !== "all" && (
+                      {filters.source !== 'all' && (
                         <Badge variant="secondary" className="gap-2 pr-1">
                           Source: {filters.source}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters((prev) => ({ ...prev, source: "all" }))}
+                            onClick={() => setFilters((prev) => ({ ...prev, source: 'all' }))}
                             className="h-4 w-4 p-0 hover:bg-transparent"
                           >
                             <X className="h-3 w-3" />
                           </Button>
                         </Badge>
                       )}
-                      {filters.priority !== "all" && (
+                      {filters.priority !== 'all' && (
                         <Badge variant="secondary" className="gap-2 pr-1">
                           Priority: {filters.priority}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters((prev) => ({ ...prev, priority: "all" }))}
+                            onClick={() => setFilters((prev) => ({ ...prev, priority: 'all' }))}
                             className="h-4 w-4 p-0 hover:bg-transparent"
                           >
                             <X className="h-3 w-3" />
                           </Button>
                         </Badge>
                       )}
-                      {filters.dealType !== "all" && (
+                      {filters.dealType !== 'all' && (
                         <Badge variant="secondary" className="gap-2 pr-1">
                           Type: {filters.dealType}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters((prev) => ({ ...prev, dealType: "all" }))}
+                            onClick={() => setFilters((prev) => ({ ...prev, dealType: 'all' }))}
                             className="h-4 w-4 p-0 hover:bg-transparent"
                           >
                             <X className="h-3 w-3" />
@@ -2096,11 +1957,13 @@ export default function DealsManagement() {
                       )}
                       {(filters.amountMin || filters.amountMax) && (
                         <Badge variant="secondary" className="gap-2 pr-1">
-                          Amount: ${filters.amountMin || "0"} - ${filters.amountMax || "∞"}
+                          Amount: ${filters.amountMin || '0'} - ${filters.amountMax || '∞'}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters((prev) => ({ ...prev, amountMin: "", amountMax: "" }))}
+                            onClick={() =>
+                              setFilters((prev) => ({ ...prev, amountMin: '', amountMax: '' }))
+                            }
                             className="h-4 w-4 p-0 hover:bg-transparent"
                           >
                             <X className="h-3 w-3" />
@@ -2109,11 +1972,18 @@ export default function DealsManagement() {
                       )}
                       {(filters.closeDateFrom || filters.closeDateTo) && (
                         <Badge variant="secondary" className="gap-2 pr-1">
-                          Close Date: {filters.closeDateFrom || "any"} to {filters.closeDateTo || "any"}
+                          Close Date: {filters.closeDateFrom || 'any'} to{' '}
+                          {filters.closeDateTo || 'any'}
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setFilters((prev) => ({ ...prev, closeDateFrom: "", closeDateTo: "" }))}
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                closeDateFrom: '',
+                                closeDateTo: '',
+                              }))
+                            }
                             className="h-4 w-4 p-0 hover:bg-transparent"
                           >
                             <X className="h-3 w-3" />
@@ -2130,7 +2000,7 @@ export default function DealsManagement() {
 
         {/* Main Content */}
         <div className="flex-1 overflow-hidden">
-          {viewMode === "kanban" ? (
+          {viewMode === 'kanban' ? (
             /* Kanban View */
             <DndContext
               sensors={sensors}
@@ -2161,7 +2031,8 @@ export default function DealsManagement() {
                                   {stage.name}
                                 </h3>
                                 <div className="text-sm text-gray-600">
-                                  {stageAggregates[stage.id]?.count || 0} deals • {formatAmount(stageAggregates[stage.id]?.totalAmount || 0)}
+                                  {stageAggregates[stage.id]?.count || 0} deals •{' '}
+                                  {formatAmount(stageAggregates[stage.id]?.totalAmount || 0)}
                                 </div>
                               </div>
                             </div>
@@ -2177,7 +2048,7 @@ export default function DealsManagement() {
                                 }))
                               }
                             >
-                              {collapsedStages[stage.id] ? "▶" : "▾"}
+                              {collapsedStages[stage.id] ? '▶' : '▾'}
                             </Button>
                           </div>
                         </div>
@@ -2185,9 +2056,7 @@ export default function DealsManagement() {
                         {/* Mobile Deals List */}
                         {!collapsedStages[stage.id] && (
                           <SortableContext
-                            items={(dealsByStage[stage.id] || []).map(
-                              (deal) => deal.id
-                            )}
+                            items={(dealsByStage[stage.id] || []).map((deal) => deal.id)}
                             strategy={verticalListSortingStrategy}
                           >
                             <DroppableStageArea stageId={stage.id}>
@@ -2225,9 +2094,7 @@ export default function DealsManagement() {
                   ref={boardRef}
                   className="grid gap-4 h-full pb-4"
                   style={{
-                    gridTemplateColumns: `repeat(${
-                      stages.length || 1
-                    }, minmax(220px, 1fr))`,
+                    gridTemplateColumns: `repeat(${stages.length || 1}, minmax(220px, 1fr))`,
                   }}
                 >
                   {stages.map((stage) => (
@@ -2259,27 +2126,19 @@ export default function DealsManagement() {
                                     [stage.id]: !prev[stage.id],
                                   }))
                                 }
-                                title={
-                                  collapsedStages[stage.id]
-                                    ? "Expand"
-                                    : "Collapse"
-                                }
+                                title={collapsedStages[stage.id] ? 'Expand' : 'Collapse'}
                               >
-                                {collapsedStages[stage.id] ? "▶" : "▾"}
+                                {collapsedStages[stage.id] ? '▶' : '▾'}
                               </Button>
                             </div>
                           </div>
                           <div className="mt-1 text-[12px] font-semibold text-gray-700">
-                            {formatAmount(
-                              stageAggregates[stage.id]?.totalAmount || 0
-                            )}
+                            {formatAmount(stageAggregates[stage.id]?.totalAmount || 0)}
                           </div>
                         </div>
 
                         <SortableContext
-                          items={(dealsByStage[stage.id] || []).map(
-                            (deal) => deal.id
-                          )}
+                          items={(dealsByStage[stage.id] || []).map((deal) => deal.id)}
                           strategy={verticalListSortingStrategy}
                         >
                           <DroppableStageArea stageId={stage.id}>
@@ -2289,9 +2148,7 @@ export default function DealsManagement() {
                                   <DraggableDealCard
                                     key={deal.id}
                                     deal={deal}
-                                    onDelete={(id) =>
-                                      deleteDealMutation.mutate(id)
-                                    }
+                                    onDelete={(id) => deleteDealMutation.mutate(id)}
                                   />
                                 ))}
                                 {(!dealsByStage[stage.id] ||
@@ -2343,54 +2200,34 @@ export default function DealsManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {visibleColumns.includes("name") && (
-                          <TableHead className="sticky left-0 bg-white z-10">
-                            Deal Name
-                          </TableHead>
+                        {visibleColumns.includes('name') && (
+                          <TableHead className="sticky left-0 bg-white z-10">Deal Name</TableHead>
                         )}
-                        {visibleColumns.includes("stage") && (
-                          <TableHead>Stage</TableHead>
-                        )}
-                        {visibleColumns.includes("amount") && (
-                          <TableHead>Amount</TableHead>
-                        )}
-                        {visibleColumns.includes("probability") && (
+                        {visibleColumns.includes('stage') && <TableHead>Stage</TableHead>}
+                        {visibleColumns.includes('amount') && <TableHead>Amount</TableHead>}
+                        {visibleColumns.includes('probability') && (
                           <TableHead>Probability</TableHead>
                         )}
-                        {visibleColumns.includes("company") && (
-                          <TableHead>Company</TableHead>
-                        )}
-                        {visibleColumns.includes("owner") && (
-                          <TableHead>Owner</TableHead>
-                        )}
-                        {visibleColumns.includes("close") && (
-                          <TableHead>Expected Close</TableHead>
-                        )}
-                        {visibleColumns.includes("source") && (
-                          <TableHead>Source</TableHead>
-                        )}
-                        {visibleColumns.includes("priority") && (
-                          <TableHead>Priority</TableHead>
-                        )}
-                        {visibleColumns.includes("created") && (
-                          <TableHead>Created</TableHead>
-                        )}
-                        {visibleColumns.includes("actions") && (
-                          <TableHead className="sticky right-0 bg-white z-10">
-                            Actions
-                          </TableHead>
+                        {visibleColumns.includes('company') && <TableHead>Company</TableHead>}
+                        {visibleColumns.includes('owner') && <TableHead>Owner</TableHead>}
+                        {visibleColumns.includes('close') && <TableHead>Expected Close</TableHead>}
+                        {visibleColumns.includes('source') && <TableHead>Source</TableHead>}
+                        {visibleColumns.includes('priority') && <TableHead>Priority</TableHead>}
+                        {visibleColumns.includes('created') && <TableHead>Created</TableHead>}
+                        {visibleColumns.includes('actions') && (
+                          <TableHead className="sticky right-0 bg-white z-10">Actions</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredDeals.map((deal) => (
                         <TableRow key={deal.id}>
-                          {visibleColumns.includes("name") && (
+                          {visibleColumns.includes('name') && (
                             <TableCell className="font-medium sticky left-0 bg-white z-10">
                               {deal.title}
                             </TableCell>
                           )}
-                          {visibleColumns.includes("stage") && (
+                          {visibleColumns.includes('stage') && (
                             <TableCell>
                               <Select
                                 value={deal.stageId}
@@ -2422,27 +2259,25 @@ export default function DealsManagement() {
                               </Select>
                             </TableCell>
                           )}
-                          {visibleColumns.includes("amount") && (
+                          {visibleColumns.includes('amount') && (
                             <TableCell>
                               {deal.amount
-                                ? `$${parseFloat(
-                                    deal.amount.toString()
-                                  ).toLocaleString()}`
-                                : "-"}
+                                ? `$${parseFloat(deal.amount.toString()).toLocaleString()}`
+                                : '-'}
                             </TableCell>
                           )}
-                          {visibleColumns.includes("probability") && (
+                          {visibleColumns.includes('probability') && (
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Badge
                                   variant={
                                     deal.probability >= 80
-                                      ? "default"
+                                      ? 'default'
                                       : deal.probability >= 60
-                                      ? "secondary"
-                                      : deal.probability >= 40
-                                      ? "outline"
-                                      : "destructive"
+                                        ? 'secondary'
+                                        : deal.probability >= 40
+                                          ? 'outline'
+                                          : 'destructive'
                                   }
                                 >
                                   {deal.probability}%
@@ -2450,25 +2285,23 @@ export default function DealsManagement() {
                               </div>
                             </TableCell>
                           )}
-                          {visibleColumns.includes("company") && (
-                            <TableCell>{deal.companyName || "-"}</TableCell>
+                          {visibleColumns.includes('company') && (
+                            <TableCell>{deal.companyName || '-'}</TableCell>
                           )}
-                          {visibleColumns.includes("owner") && (
+                          {visibleColumns.includes('owner') && (
                             <TableCell>
-                              <span className="text-sm">
-                                {deal.ownerName || "Unassigned"}
-                              </span>
+                              <span className="text-sm">{deal.ownerName || 'Unassigned'}</span>
                             </TableCell>
                           )}
-                          {visibleColumns.includes("close") && (
+                          {visibleColumns.includes('close') && (
                             <TableCell>
                               {editingCloseDate === deal.id ? (
                                 <Input
                                   type="date"
                                   defaultValue={
                                     deal.expectedCloseDate
-                                      ? deal.expectedCloseDate.split("T")[0]
-                                      : ""
+                                      ? deal.expectedCloseDate.split('T')[0]
+                                      : ''
                                   }
                                   className="w-36 h-8 text-sm"
                                   autoFocus
@@ -2476,8 +2309,7 @@ export default function DealsManagement() {
                                     const newDate = e.target.value;
                                     if (
                                       newDate &&
-                                      newDate !==
-                                        deal.expectedCloseDate?.split("T")[0]
+                                      newDate !== deal.expectedCloseDate?.split('T')[0]
                                     ) {
                                       updateDealCloseDateMutation.mutate({
                                         dealId: deal.id,
@@ -2488,14 +2320,11 @@ export default function DealsManagement() {
                                     }
                                   }}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      const newDate = (
-                                        e.target as HTMLInputElement
-                                      ).value;
+                                    if (e.key === 'Enter') {
+                                      const newDate = (e.target as HTMLInputElement).value;
                                       if (
                                         newDate &&
-                                        newDate !==
-                                          deal.expectedCloseDate?.split("T")[0]
+                                        newDate !== deal.expectedCloseDate?.split('T')[0]
                                       ) {
                                         updateDealCloseDateMutation.mutate({
                                           dealId: deal.id,
@@ -2504,7 +2333,7 @@ export default function DealsManagement() {
                                       } else {
                                         setEditingCloseDate(null);
                                       }
-                                    } else if (e.key === "Escape") {
+                                    } else if (e.key === 'Escape') {
                                       setEditingCloseDate(null);
                                     }
                                   }}
@@ -2516,50 +2345,39 @@ export default function DealsManagement() {
                                   title="Click to edit close date"
                                 >
                                   {deal.expectedCloseDate
-                                    ? format(
-                                        new Date(deal.expectedCloseDate),
-                                        "MMM d, yyyy"
-                                      )
-                                    : "Set date"}
+                                    ? format(new Date(deal.expectedCloseDate), 'MMM d, yyyy')
+                                    : 'Set date'}
                                 </span>
                               )}
                             </TableCell>
                           )}
-                          {visibleColumns.includes("source") && (
+                          {visibleColumns.includes('source') && (
                             <TableCell>
-                              <span className="text-sm capitalize">
-                                {deal.source || "-"}
-                              </span>
+                              <span className="text-sm capitalize">{deal.source || '-'}</span>
                             </TableCell>
                           )}
-                          {visibleColumns.includes("priority") && (
+                          {visibleColumns.includes('priority') && (
                             <TableCell>
                               <Badge
                                 variant="secondary"
                                 className={cn(
-                                  deal.priority === "high" &&
-                                    "bg-red-100 text-red-800",
-                                  deal.priority === "medium" &&
-                                    "bg-yellow-100 text-yellow-800",
-                                  deal.priority === "low" &&
-                                    "bg-green-100 text-green-800"
+                                  deal.priority === 'high' && 'bg-red-100 text-red-800',
+                                  deal.priority === 'medium' && 'bg-yellow-100 text-yellow-800',
+                                  deal.priority === 'low' && 'bg-green-100 text-green-800',
                                 )}
                               >
                                 {deal.priority}
                               </Badge>
                             </TableCell>
                           )}
-                          {visibleColumns.includes("created") && (
+                          {visibleColumns.includes('created') && (
                             <TableCell>
                               <span className="text-sm">
-                                {format(
-                                  new Date(deal.createdAt),
-                                  "MMM d, yyyy"
-                                )}
+                                {format(new Date(deal.createdAt), 'MMM d, yyyy')}
                               </span>
                             </TableCell>
                           )}
-                          {visibleColumns.includes("actions") && (
+                          {visibleColumns.includes('actions') && (
                             <TableCell className="sticky right-0 bg-white z-10">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -2569,15 +2387,13 @@ export default function DealsManagement() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem>Edit Deal</DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    View Details
-                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>View Details</DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="text-red-600"
                                     onClick={() => {
                                       if (
                                         confirm(
-                                          `Delete deal "${deal.title}"? This cannot be undone.`
+                                          `Delete deal "${deal.title}"? This cannot be undone.`,
                                         )
                                       ) {
                                         deleteDealMutation.mutate(deal.id);
@@ -2649,7 +2465,7 @@ export default function DealsManagement() {
                                     onClick={() => {
                                       if (
                                         confirm(
-                                          `Delete deal "${deal.title}"? This cannot be undone.`
+                                          `Delete deal "${deal.title}"? This cannot be undone.`,
                                         )
                                       ) {
                                         deleteDealMutation.mutate(deal.id);
@@ -2706,16 +2522,18 @@ export default function DealsManagement() {
                             {/* Key Metrics Grid */}
                             <div className="grid grid-cols-2 gap-4 pt-2">
                               <div className="space-y-1">
-                                <div className="text-xs text-gray-500 uppercase tracking-wide">Probability</div>
+                                <div className="text-xs text-gray-500 uppercase tracking-wide">
+                                  Probability
+                                </div>
                                 <Badge
                                   variant={
                                     deal.probability >= 80
-                                      ? "default"
+                                      ? 'default'
                                       : deal.probability >= 60
-                                      ? "secondary"
-                                      : deal.probability >= 40
-                                      ? "outline"
-                                      : "destructive"
+                                        ? 'secondary'
+                                        : deal.probability >= 40
+                                          ? 'outline'
+                                          : 'destructive'
                                   }
                                   className="text-sm px-3 py-1"
                                 >
@@ -2724,15 +2542,17 @@ export default function DealsManagement() {
                               </div>
 
                               <div className="space-y-1">
-                                <div className="text-xs text-gray-500 uppercase tracking-wide">Priority</div>
+                                <div className="text-xs text-gray-500 uppercase tracking-wide">
+                                  Priority
+                                </div>
                                 <Badge
                                   variant="secondary"
                                   className={cn(
-                                    "text-sm px-3 py-1",
-                                    deal.priority === "high" && "bg-red-100 text-red-800",
-                                    deal.priority === "medium" && "bg-yellow-100 text-yellow-800",
-                                    deal.priority === "low" && "bg-green-100 text-green-800",
-                                    deal.priority === "urgent" && "bg-red-200 text-red-900"
+                                    'text-sm px-3 py-1',
+                                    deal.priority === 'high' && 'bg-red-100 text-red-800',
+                                    deal.priority === 'medium' && 'bg-yellow-100 text-yellow-800',
+                                    deal.priority === 'low' && 'bg-green-100 text-green-800',
+                                    deal.priority === 'urgent' && 'bg-red-200 text-red-900',
                                   )}
                                 >
                                   {deal.priority}
@@ -2757,7 +2577,7 @@ export default function DealsManagement() {
                                   <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
                                   <span className="text-gray-600">Close Date:</span>
                                   <span className="font-medium text-gray-900">
-                                    {format(new Date(deal.expectedCloseDate), "MMM d, yyyy")}
+                                    {format(new Date(deal.expectedCloseDate), 'MMM d, yyyy')}
                                   </span>
                                 </div>
                               )}
@@ -2795,7 +2615,7 @@ export default function DealsManagement() {
 
         {/* Mobile FAB for Creating Deals */}
         <div className="md:hidden">
-          <MobileFAB 
+          <MobileFAB
             onClick={() => setIsCreateDialogOpen(true)}
             icon={Plus}
             label="New Deal"

@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -11,10 +11,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { Package, AlertCircle, TrendingUp, Clock, CheckCircle, RefreshCw } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+} from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
+import { Package, AlertCircle, TrendingUp, Clock, CheckCircle, RefreshCw } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Auto-Supply Replenishment Dashboard
@@ -29,45 +29,45 @@ export default function AutoSupplyReplenishmentDashboard() {
 
   // Fetch dashboard metrics
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ["/api/auto-supply-replenishment/dashboard"],
+    queryKey: ['/api/auto-supply-replenishment/dashboard'],
     refetchInterval: 60000, // Refresh every 60 seconds
   });
 
   // Fetch low supplies
   const { data: lowSupplies, isLoading: lowSuppliesLoading } = useQuery({
-    queryKey: ["/api/auto-supply-replenishment/low-supplies"],
+    queryKey: ['/api/auto-supply-replenishment/low-supplies'],
   });
 
   // Fetch recent orders
   const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["/api/auto-supply-replenishment/orders"],
+    queryKey: ['/api/auto-supply-replenishment/orders'],
   });
 
   // Analyze all supplies mutation
   const analyzeAllMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/auto-supply-replenishment/analyze-all", {
-        method: "POST",
-        credentials: "include",
+      const response = await fetch('/api/auto-supply-replenishment/analyze-all', {
+        method: 'POST',
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Analysis failed");
+      if (!response.ok) throw new Error('Analysis failed');
       return response.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Analysis Complete",
+        title: 'Analysis Complete',
         description: `Analyzed ${data.analyzed} supplies. Created ${data.ordersCreated} automatic orders.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/auto-supply-replenishment/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auto-supply-replenishment/low-supplies"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/auto-supply-replenishment/orders"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-supply-replenishment/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-supply-replenishment/low-supplies'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auto-supply-replenishment/orders'] });
       setIsAnalyzing(false);
     },
     onError: (error: Error) => {
       toast({
-        title: "Analysis Failed",
+        title: 'Analysis Failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
       setIsAnalyzing(false);
     },
@@ -80,24 +80,24 @@ export default function AutoSupplyReplenishmentDashboard() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "critical":
-        return "destructive";
-      case "urgent":
-        return "destructive";
-      case "high":
-        return "default";
-      case "medium":
-        return "secondary";
+      case 'critical':
+        return 'destructive';
+      case 'urgent':
+        return 'destructive';
+      case 'high':
+        return 'default';
+      case 'medium':
+        return 'secondary';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
   const getSupplyLevelColor = (level: number) => {
-    if (level <= 10) return "text-red-600";
-    if (level <= 20) return "text-orange-600";
-    if (level <= 50) return "text-yellow-600";
-    return "text-green-600";
+    if (level <= 10) return 'text-red-600';
+    if (level <= 20) return 'text-orange-600';
+    if (level <= 50) return 'text-yellow-600';
+    return 'text-green-600';
   };
 
   return (
@@ -109,13 +109,9 @@ export default function AutoSupplyReplenishmentDashboard() {
             AI-powered supply monitoring and automated ordering
           </p>
         </div>
-        <Button
-          onClick={handleAnalyzeAll}
-          disabled={isAnalyzing}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isAnalyzing ? "animate-spin" : ""}`} />
-          {isAnalyzing ? "Analyzing..." : "Analyze All Supplies"}
+        <Button onClick={handleAnalyzeAll} disabled={isAnalyzing} className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+          {isAnalyzing ? 'Analyzing...' : 'Analyze All Supplies'}
         </Button>
       </div>
 
@@ -140,9 +136,7 @@ export default function AutoSupplyReplenishmentDashboard() {
             <AlertCircle className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {metrics?.lowSupplies || 0}
-            </div>
+            <div className="text-2xl font-bold text-orange-600">{metrics?.lowSupplies || 0}</div>
             <p className="text-xs text-muted-foreground">
               {metrics?.urgentOrders || 0} urgent orders pending
             </p>
@@ -156,7 +150,7 @@ export default function AutoSupplyReplenishmentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${metrics?.projectedSavings?.toFixed(2) || "0.00"}
+              ${metrics?.projectedSavings?.toFixed(2) || '0.00'}
             </div>
             <p className="text-xs text-muted-foreground">
               {metrics?.emergenciesPrevented || 0} emergencies prevented
@@ -171,7 +165,7 @@ export default function AutoSupplyReplenishmentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metrics?.averageLeadTime?.toFixed(1) || "0"} days
+              {metrics?.averageLeadTime?.toFixed(1) || '0'} days
             </div>
             <p className="text-xs text-muted-foreground">
               {metrics?.ordersThisMonth || 0} orders this month
@@ -231,14 +225,14 @@ export default function AutoSupplyReplenishmentDashboard() {
                         <TableCell>
                           <div>
                             <div className="font-medium">{supply.supplyName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {supply.supplyType}
-                            </div>
+                            <div className="text-sm text-muted-foreground">{supply.supplyType}</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className={`font-bold ${getSupplyLevelColor(supply.currentLevel)}`}>
+                            <div
+                              className={`font-bold ${getSupplyLevelColor(supply.currentLevel)}`}
+                            >
                               {supply.currentLevel}%
                             </div>
                             <Progress value={supply.currentLevel} className="w-20" />
@@ -247,7 +241,7 @@ export default function AutoSupplyReplenishmentDashboard() {
                         <TableCell>
                           {supply.daysUntilDepletion !== null
                             ? `${supply.daysUntilDepletion} days`
-                            : "Unknown"}
+                            : 'Unknown'}
                         </TableCell>
                         <TableCell>
                           <Badge variant={getPriorityColor(supply.priority)}>
@@ -271,17 +265,13 @@ export default function AutoSupplyReplenishmentDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>
-                Automatically generated supply orders
-              </CardDescription>
+              <CardDescription>Automatically generated supply orders</CardDescription>
             </CardHeader>
             <CardContent>
               {ordersLoading ? (
                 <div className="text-center py-8">Loading...</div>
               ) : !orders || orders.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No orders yet
-                </div>
+                <div className="text-center py-8 text-muted-foreground">No orders yet</div>
               ) : (
                 <Table>
                   <TableHeader>
@@ -298,9 +288,7 @@ export default function AutoSupplyReplenishmentDashboard() {
                   <TableBody>
                     {orders.map((order: any) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-mono text-sm">
-                          {order.orderNumber}
-                        </TableCell>
+                        <TableCell className="font-mono text-sm">{order.orderNumber}</TableCell>
                         <TableCell>
                           <div>
                             <div className="text-sm text-muted-foreground">
@@ -319,13 +307,11 @@ export default function AutoSupplyReplenishmentDashboard() {
                           </div>
                         </TableCell>
                         <TableCell>{order.quantity}</TableCell>
-                        <TableCell>
-                          {new Date(order.orderDate).toLocaleDateString()}
-                        </TableCell>
+                        <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {order.estimatedDeliveryDate
                             ? new Date(order.estimatedDeliveryDate).toLocaleDateString()
-                            : "TBD"}
+                            : 'TBD'}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{order.status}</Badge>
@@ -344,9 +330,7 @@ export default function AutoSupplyReplenishmentDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>All Monitored Supplies</CardTitle>
-              <CardDescription>
-                Complete overview of all supplies being tracked
-              </CardDescription>
+              <CardDescription>Complete overview of all supplies being tracked</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">

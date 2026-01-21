@@ -1,18 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Tabs, 
-  TabsContent, 
-  TabsList, 
-  TabsTrigger 
-} from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -37,7 +26,7 @@ import {
   Plus,
   Database,
   Cpu,
-  Globe
+  Globe,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -119,41 +108,47 @@ export default function PredictiveAnalytics() {
   const [selectedTab, setSelectedTab] = useState('dashboard');
 
   // Fetch predictive analytics data
-  const { data: analyticsData, isLoading, refetch } = useQuery({
+  const {
+    data: analyticsData,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['/api/predictive-analytics/dashboard'],
     select: (data: any) => {
       if (!data) return null;
       return {
         ...data,
-        predictiveInsights: data.predictiveInsights?.map((insight: any) => ({
-          ...insight,
-          lastUpdated: insight.lastUpdated ? new Date(insight.lastUpdated) : new Date()
-        })) || [],
-        modelPerformance: data.modelPerformance?.map((model: any) => ({
-          ...model,
-          lastTrained: model.lastTrained ? new Date(model.lastTrained) : new Date()
-        })) || []
+        predictiveInsights:
+          data.predictiveInsights?.map((insight: any) => ({
+            ...insight,
+            lastUpdated: insight.lastUpdated ? new Date(insight.lastUpdated) : new Date(),
+          })) || [],
+        modelPerformance:
+          data.modelPerformance?.map((model: any) => ({
+            ...model,
+            lastTrained: model.lastTrained ? new Date(model.lastTrained) : new Date(),
+          })) || [],
       };
     },
-    refetchInterval: 60000 // Refresh every minute
+    refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch ML models data
   const { data: modelsData } = useQuery({
     queryKey: ['/api/predictive-analytics/models'],
-    refetchInterval: 30000
+    refetchInterval: 30000,
   });
 
   // Fetch data sources
   const { data: dataSourcesData } = useQuery({
     queryKey: ['/api/predictive-analytics/data-sources'],
-    refetchInterval: 30000
+    refetchInterval: 30000,
   });
 
   if (isLoading) {
     return (
-      <MainLayout 
-        title="Predictive Analytics" 
+      <MainLayout
+        title="Predictive Analytics"
         description="AI-powered forecasting and predictive insights for your business"
       >
         <div className="flex items-center justify-center h-64">
@@ -168,8 +163,8 @@ export default function PredictiveAnalytics() {
 
   if (!analyticsData) {
     return (
-      <MainLayout 
-        title="Predictive Analytics" 
+      <MainLayout
+        title="Predictive Analytics"
         description="AI-powered forecasting and predictive insights for your business"
       >
         <div className="text-center">
@@ -180,8 +175,8 @@ export default function PredictiveAnalytics() {
   }
 
   return (
-    <MainLayout 
-      title="Predictive Analytics" 
+    <MainLayout
+      title="Predictive Analytics"
       description="AI-powered forecasting and predictive insights for your business"
     >
       <div className="flex justify-between items-center mb-6">
@@ -190,20 +185,22 @@ export default function PredictiveAnalytics() {
             <Brain className="h-6 w-6 text-blue-600" />
             Predictive Analytics & AI Platform
           </h1>
-          <p className="text-gray-600 mt-1">Advanced machine learning insights and business intelligence powered by AI</p>
+          <p className="text-gray-600 mt-1">
+            Advanced machine learning insights and business intelligence powered by AI
+          </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <Button onClick={() => refetch()} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          
+
           <Button variant="outline">
             <Settings className="h-4 w-4 mr-2" />
             Configure
           </Button>
-          
+
           <Button className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
             New Model
@@ -251,7 +248,8 @@ export default function PredictiveAnalytics() {
             <div className="flex items-center mt-2 text-sm">
               <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
               <span className="text-green-600">
-                {formatPercentage(analyticsData.mlModelsOverview?.successfulPredictions)} success rate
+                {formatPercentage(analyticsData.mlModelsOverview?.successfulPredictions)} success
+                rate
               </span>
             </div>
           </CardContent>
@@ -302,12 +300,24 @@ export default function PredictiveAnalytics() {
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
-          <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">Insights</TabsTrigger>
-          <TabsTrigger value="models" className="text-xs sm:text-sm px-2 py-2">Models</TabsTrigger>
-          <TabsTrigger value="customer" className="text-xs sm:text-sm px-2 py-2">Customer</TabsTrigger>
-          <TabsTrigger value="business" className="text-xs sm:text-sm px-2 py-2">Business</TabsTrigger>
-          <TabsTrigger value="data" className="text-xs sm:text-sm px-2 py-2">Data</TabsTrigger>
-          <TabsTrigger value="recommendations" className="text-xs sm:text-sm px-2 py-2">AI Recs</TabsTrigger>
+          <TabsTrigger value="dashboard" className="text-xs sm:text-sm px-2 py-2">
+            Insights
+          </TabsTrigger>
+          <TabsTrigger value="models" className="text-xs sm:text-sm px-2 py-2">
+            Models
+          </TabsTrigger>
+          <TabsTrigger value="customer" className="text-xs sm:text-sm px-2 py-2">
+            Customer
+          </TabsTrigger>
+          <TabsTrigger value="business" className="text-xs sm:text-sm px-2 py-2">
+            Business
+          </TabsTrigger>
+          <TabsTrigger value="data" className="text-xs sm:text-sm px-2 py-2">
+            Data
+          </TabsTrigger>
+          <TabsTrigger value="recommendations" className="text-xs sm:text-sm px-2 py-2">
+            AI Recs
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -318,12 +328,17 @@ export default function PredictiveAnalytics() {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
                 Real-time Predictive Insights
               </CardTitle>
-              <CardDescription>AI-powered predictions requiring immediate attention</CardDescription>
+              <CardDescription>
+                AI-powered predictions requiring immediate attention
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {(analyticsData.predictiveInsights || []).map((insight: any, idx: number) => (
-                  <div key={idx} className="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                  <div
+                    key={idx}
+                    className="p-4 border rounded-lg hover:shadow-lg transition-shadow"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -334,7 +349,9 @@ export default function PredictiveAnalytics() {
                           </Badge>
                         </div>
                         <p className="text-gray-700 mb-2">{insight.description}</p>
-                        <p className="text-sm text-blue-600 font-medium">{insight.actionRequired}</p>
+                        <p className="text-sm text-blue-600 font-medium">
+                          {insight.actionRequired}
+                        </p>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-green-600">
@@ -343,7 +360,7 @@ export default function PredictiveAnalytics() {
                         <div className="text-xs text-gray-500">confidence</div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                       <div>
                         <span className="text-sm text-gray-600">Timeframe:</span>
@@ -358,7 +375,7 @@ export default function PredictiveAnalytics() {
                         <span className="ml-2 font-medium text-xs">{insight.modelUsed}</span>
                       </div>
                     </div>
-                    
+
                     <div className="mb-3">
                       <div className="text-sm text-gray-600 mb-1">Key Factors:</div>
                       <div className="flex flex-wrap gap-1">
@@ -369,7 +386,7 @@ export default function PredictiveAnalytics() {
                         ))}
                       </div>
                     </div>
-                    
+
                     <div className="flex justify-between items-center pt-3 border-t">
                       <div className="text-xs text-gray-500">
                         Updated: {format(insight.lastUpdated, 'MMM dd, yyyy HH:mm')}
@@ -379,9 +396,7 @@ export default function PredictiveAnalytics() {
                           <Eye className="h-4 w-4 mr-2" />
                           Details
                         </Button>
-                        <Button size="sm">
-                          Take Action
-                        </Button>
+                        <Button size="sm">Take Action</Button>
                       </div>
                     </div>
                   </div>
@@ -409,27 +424,33 @@ export default function PredictiveAnalytics() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="font-semibold text-lg">{model.name}</h3>
-                          <Badge className={getStatusColor(model.status)}>
-                            {model.status}
-                          </Badge>
+                          <Badge className={getStatusColor(model.status)}>{model.status}</Badge>
                           <span className="text-sm text-gray-500">{model.version}</span>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
                             <span className="text-gray-600">Accuracy:</span>
-                            <span className="ml-2 font-bold text-green-600">{formatPercentage(model.accuracy)}</span>
+                            <span className="ml-2 font-bold text-green-600">
+                              {formatPercentage(model.accuracy)}
+                            </span>
                           </div>
                           <div>
                             <span className="text-gray-600">Precision:</span>
-                            <span className="ml-2 font-medium">{formatPercentage(model.precision)}</span>
+                            <span className="ml-2 font-medium">
+                              {formatPercentage(model.precision)}
+                            </span>
                           </div>
                           <div>
                             <span className="text-gray-600">Recall:</span>
-                            <span className="ml-2 font-medium">{formatPercentage(model.recall)}</span>
+                            <span className="ml-2 font-medium">
+                              {formatPercentage(model.recall)}
+                            </span>
                           </div>
                           <div>
                             <span className="text-gray-600">F1 Score:</span>
-                            <span className="ml-2 font-medium">{formatPercentage(model.f1Score)}</span>
+                            <span className="ml-2 font-medium">
+                              {formatPercentage(model.f1Score)}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -440,7 +461,7 @@ export default function PredictiveAnalytics() {
                         <div className="text-xs text-gray-500">predictions today</div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div>
                         <span className="text-sm text-gray-600">Data Points:</span>
@@ -452,10 +473,12 @@ export default function PredictiveAnalytics() {
                       </div>
                       <div>
                         <span className="text-sm text-gray-600">Success Rate:</span>
-                        <span className="ml-2 font-medium">{formatPercentage(model.successRate)}</span>
+                        <span className="ml-2 font-medium">
+                          {formatPercentage(model.successRate)}
+                        </span>
                       </div>
                     </div>
-                    
+
                     <div className="flex justify-between items-center pt-3 border-t">
                       <div className="text-xs text-gray-500">
                         Last trained: {format(model.lastTrained, 'MMM dd, yyyy')}
@@ -498,9 +521,7 @@ export default function PredictiveAnalytics() {
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <h3 className="font-semibold">{job.modelName}</h3>
-                          <Badge className={getStatusColor(job.status)}>
-                            {job.status}
-                          </Badge>
+                          <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
                         </div>
                         <div className="text-right">
                           <div className="text-sm font-medium">
@@ -508,9 +529,9 @@ export default function PredictiveAnalytics() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <Progress value={job.progress * 100} className="mb-3" />
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                         <div>
                           <span className="text-gray-600">Data Points:</span>
@@ -524,7 +545,9 @@ export default function PredictiveAnalytics() {
                         </div>
                         <div>
                           <span className="text-gray-600">Target:</span>
-                          <span className="ml-2 font-medium">{formatPercentage(job.targetAccuracy)}</span>
+                          <span className="ml-2 font-medium">
+                            {formatPercentage(job.targetAccuracy)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -548,45 +571,55 @@ export default function PredictiveAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(analyticsData.customerAnalytics?.customerSegments || []).map((segment: any, idx: number) => (
-                    <div key={idx} className="p-4 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold" style={{ color: segment.color }}>
-                          {segment.name}
-                        </h3>
-                        <div className="text-right">
-                          <div className="font-bold">{formatNumber(segment.count)}</div>
-                          <div className="text-xs text-gray-500">{formatPercentage(segment.percentage)}</div>
+                  {(analyticsData.customerAnalytics?.customerSegments || []).map(
+                    (segment: any, idx: number) => (
+                      <div key={idx} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold" style={{ color: segment.color }}>
+                            {segment.name}
+                          </h3>
+                          <div className="text-right">
+                            <div className="font-bold">{formatNumber(segment.count)}</div>
+                            <div className="text-xs text-gray-500">
+                              {formatPercentage(segment.percentage)}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-sm mb-3">
+                          <div>
+                            <span className="text-gray-600">Avg Revenue:</span>
+                            <span className="ml-2 font-medium">
+                              {formatCurrency(segment.avgRevenue)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Churn Risk:</span>
+                            <span className="ml-2 font-medium">
+                              {formatPercentage(segment.churnRisk)}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Satisfaction:</span>
+                            <span className="ml-2 font-medium">{segment.satisfactionScore}/5</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-xs text-gray-600 mb-1">Characteristics:</div>
+                          <div className="flex flex-wrap gap-1">
+                            {(segment.characteristics || []).map(
+                              (char: string, charIdx: number) => (
+                                <Badge key={charIdx} variant="secondary" className="text-xs">
+                                  {char}
+                                </Badge>
+                              ),
+                            )}
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
-                        <div>
-                          <span className="text-gray-600">Avg Revenue:</span>
-                          <span className="ml-2 font-medium">{formatCurrency(segment.avgRevenue)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Churn Risk:</span>
-                          <span className="ml-2 font-medium">{formatPercentage(segment.churnRisk)}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Satisfaction:</span>
-                          <span className="ml-2 font-medium">{segment.satisfactionScore}/5</span>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="text-xs text-gray-600 mb-1">Characteristics:</div>
-                        <div className="flex flex-wrap gap-1">
-                          {(segment.characteristics || []).map((char: string, charIdx: number) => (
-                            <Badge key={charIdx} variant="secondary" className="text-xs">
-                              {char}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -606,35 +639,42 @@ export default function PredictiveAnalytics() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 bg-red-50 border border-red-200 rounded">
                         <div className="text-2xl font-bold text-red-900">
-                          {analyticsData.customerAnalytics?.churnPrediction?.next30Days?.highRisk || 0}
+                          {analyticsData.customerAnalytics?.churnPrediction?.next30Days?.highRisk ||
+                            0}
                         </div>
                         <div className="text-sm text-red-600">High Risk</div>
                       </div>
                       <div className="text-center p-3 bg-yellow-50 border border-yellow-200 rounded">
                         <div className="text-2xl font-bold text-yellow-900">
-                          {analyticsData.customerAnalytics?.churnPrediction?.next30Days?.mediumRisk || 0}
+                          {analyticsData.customerAnalytics?.churnPrediction?.next30Days
+                            ?.mediumRisk || 0}
                         </div>
                         <div className="text-sm text-yellow-600">Medium Risk</div>
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-medium mb-3">Revenue at Risk</h3>
                     <div className="text-center p-4 bg-gray-50 border rounded">
                       <div className="text-3xl font-bold text-gray-900">
-                        {formatCurrency(analyticsData.customerAnalytics?.churnPrediction?.next30Days?.totalRevenuAtRisk)}
+                        {formatCurrency(
+                          analyticsData.customerAnalytics?.churnPrediction?.next30Days
+                            ?.totalRevenuAtRisk,
+                        )}
                       </div>
                       <div className="text-sm text-gray-600">Next 30 days</div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-medium mb-3">Retention Performance</h3>
                     <div className="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded">
                       <span className="text-sm text-green-700">Success Rate:</span>
                       <span className="font-bold text-green-900">
-                        {formatPercentage(analyticsData.customerAnalytics?.churnPrediction?.retentionSuccessRate)}
+                        {formatPercentage(
+                          analyticsData.customerAnalytics?.churnPrediction?.retentionSuccessRate,
+                        )}
                       </span>
                     </div>
                   </div>
@@ -658,24 +698,33 @@ export default function PredictiveAnalytics() {
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="text-center p-4 border rounded-lg">
                       <div className="text-2xl font-bold text-blue-900">
-                        {formatCurrency(analyticsData.customerAnalytics?.customerLifetimeValue?.averageCLV)}
+                        {formatCurrency(
+                          analyticsData.customerAnalytics?.customerLifetimeValue?.averageCLV,
+                        )}
                       </div>
                       <div className="text-sm text-gray-600">Average CLV</div>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
                       <div className="text-2xl font-bold text-green-900">
-                        {formatCurrency(analyticsData.customerAnalytics?.customerLifetimeValue?.predictedCLV)}
+                        {formatCurrency(
+                          analyticsData.customerAnalytics?.customerLifetimeValue?.predictedCLV,
+                        )}
                       </div>
                       <div className="text-sm text-gray-600">Predicted CLV</div>
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-medium mb-3">Top Performers by CLV</h3>
                   <div className="space-y-2">
-                    {(analyticsData.customerAnalytics?.customerLifetimeValue?.topPerformers || []).map((customer: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-3 border rounded">
+                    {(
+                      analyticsData.customerAnalytics?.customerLifetimeValue?.topPerformers || []
+                    ).map((customer: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center p-3 border rounded"
+                      >
                         <div>
                           <div className="font-medium">{customer.name}</div>
                           <div className="text-xs text-gray-500">
@@ -709,33 +758,47 @@ export default function PredictiveAnalytics() {
                 <div className="space-y-4">
                   <div className="text-center p-4 bg-green-50 border border-green-200 rounded">
                     <div className="text-3xl font-bold text-green-900">
-                      {formatCurrency(analyticsData.businessIntelligence?.revenueForecasting?.currentMonthForecast)}
+                      {formatCurrency(
+                        analyticsData.businessIntelligence?.revenueForecasting
+                          ?.currentMonthForecast,
+                      )}
                     </div>
                     <div className="text-sm text-green-600">Current Month Forecast</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {formatPercentage(analyticsData.businessIntelligence?.revenueForecasting?.forecastAccuracy)} accuracy
+                      {formatPercentage(
+                        analyticsData.businessIntelligence?.revenueForecasting?.forecastAccuracy,
+                      )}{' '}
+                      accuracy
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-3 border rounded">
                       <div className="font-bold text-gray-900">
-                        {formatCurrency(analyticsData.businessIntelligence?.revenueForecasting?.confidenceInterval?.lower)}
+                        {formatCurrency(
+                          analyticsData.businessIntelligence?.revenueForecasting?.confidenceInterval
+                            ?.lower,
+                        )}
                       </div>
                       <div className="text-xs text-gray-600">Lower bound</div>
                     </div>
                     <div className="text-center p-3 border rounded">
                       <div className="font-bold text-gray-900">
-                        {formatCurrency(analyticsData.businessIntelligence?.revenueForecasting?.confidenceInterval?.upper)}
+                        {formatCurrency(
+                          analyticsData.businessIntelligence?.revenueForecasting?.confidenceInterval
+                            ?.upper,
+                        )}
                       </div>
                       <div className="text-xs text-gray-600">Upper bound</div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <h4 className="font-medium mb-2">Key Growth Drivers</h4>
                     <div className="space-y-2">
-                      {(analyticsData.businessIntelligence?.revenueForecasting?.keyDrivers || []).map((driver: any, idx: number) => (
+                      {(
+                        analyticsData.businessIntelligence?.revenueForecasting?.keyDrivers || []
+                      ).map((driver: any, idx: number) => (
                         <div key={idx} className="flex justify-between items-center text-sm">
                           <span>{driver.factor}</span>
                           <span className="font-medium">{formatPercentage(driver.impact)}</span>
@@ -759,16 +822,23 @@ export default function PredictiveAnalytics() {
                 <div className="space-y-4">
                   <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded">
                     <div className="text-2xl font-bold text-blue-900">
-                      {formatPercentage(analyticsData.businessIntelligence?.marketAnalysis?.marketShare)}
+                      {formatPercentage(
+                        analyticsData.businessIntelligence?.marketAnalysis?.marketShare,
+                      )}
                     </div>
                     <div className="text-sm text-blue-600">Market Share</div>
                   </div>
-                  
+
                   <div>
                     <h4 className="font-medium mb-2">Competitor Analysis</h4>
                     <div className="space-y-2">
-                      {(analyticsData.businessIntelligence?.marketAnalysis?.competitorAnalysis || []).map((comp: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-center p-2 border rounded text-sm">
+                      {(
+                        analyticsData.businessIntelligence?.marketAnalysis?.competitorAnalysis || []
+                      ).map((comp: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex justify-between items-center p-2 border rounded text-sm"
+                        >
                           <span className="font-medium">{comp.name}</span>
                           <div className="flex items-center gap-2">
                             <span>{formatPercentage(comp.marketShare)}</span>
@@ -784,7 +854,7 @@ export default function PredictiveAnalytics() {
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
                     <div className="font-medium text-yellow-800">Opportunity Score</div>
                     <div className="text-2xl font-bold text-yellow-900">
@@ -809,25 +879,35 @@ export default function PredictiveAnalytics() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-blue-900">
-                    {formatPercentage(analyticsData.businessIntelligence?.operationalEfficiency?.technicianUtilization)}
+                    {formatPercentage(
+                      analyticsData.businessIntelligence?.operationalEfficiency
+                        ?.technicianUtilization,
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">Technician Utilization</div>
                 </div>
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-green-900">
-                    {analyticsData.businessIntelligence?.operationalEfficiency?.averageResponseTime || 0}h
+                    {analyticsData.businessIntelligence?.operationalEfficiency
+                      ?.averageResponseTime || 0}
+                    h
                   </div>
                   <div className="text-sm text-gray-600">Avg Response Time</div>
                 </div>
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-purple-900">
-                    {formatPercentage(analyticsData.businessIntelligence?.operationalEfficiency?.firstCallResolution)}
+                    {formatPercentage(
+                      analyticsData.businessIntelligence?.operationalEfficiency
+                        ?.firstCallResolution,
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">First Call Resolution</div>
                 </div>
                 <div className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold text-orange-900">
-                    {formatCurrency(analyticsData.businessIntelligence?.operationalEfficiency?.costPerServiceCall)}
+                    {formatCurrency(
+                      analyticsData.businessIntelligence?.operationalEfficiency?.costPerServiceCall,
+                    )}
                   </div>
                   <div className="text-sm text-gray-600">Cost per Service Call</div>
                 </div>
@@ -846,7 +926,9 @@ export default function PredictiveAnalytics() {
                     <Database className="h-5 w-5 text-blue-600" />
                     Connected Data Sources
                   </CardTitle>
-                  <CardDescription>Real-time data integration and quality monitoring</CardDescription>
+                  <CardDescription>
+                    Real-time data integration and quality monitoring
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -855,9 +937,7 @@ export default function PredictiveAnalytics() {
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <h3 className="font-semibold">{source.name}</h3>
-                            <Badge className={getStatusColor(source.status)}>
-                              {source.status}
-                            </Badge>
+                            <Badge className={getStatusColor(source.status)}>{source.status}</Badge>
                           </div>
                           <div className="text-right">
                             <div className="font-bold text-blue-600">
@@ -866,7 +946,7 @@ export default function PredictiveAnalytics() {
                             <div className="text-xs text-gray-500">records</div>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-4 text-sm mb-3">
                           <div>
                             <span className="text-gray-600">Type:</span>
@@ -874,10 +954,12 @@ export default function PredictiveAnalytics() {
                           </div>
                           <div>
                             <span className="text-gray-600">Uptime:</span>
-                            <span className="ml-2 font-medium">{formatPercentage(source.uptime)}</span>
+                            <span className="ml-2 font-medium">
+                              {formatPercentage(source.uptime)}
+                            </span>
                           </div>
                         </div>
-                        
+
                         <div className="mb-3">
                           <div className="text-xs text-gray-600 mb-1">Data Types:</div>
                           <div className="flex flex-wrap gap-1">
@@ -888,7 +970,7 @@ export default function PredictiveAnalytics() {
                             ))}
                           </div>
                         </div>
-                        
+
                         <div className="flex justify-between items-center pt-2 border-t">
                           <div className="text-xs text-gray-500">
                             Last sync: {format(new Date(source.lastSync), 'MMM dd, HH:mm')}
@@ -952,21 +1034,29 @@ export default function PredictiveAnalytics() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h3 className="font-medium mb-4">Quality Issues</h3>
                       <div className="space-y-2">
-                        {(dataSourcesData.dataQuality?.issues || []).map((issue: any, idx: number) => (
-                          <div key={idx} className="flex justify-between items-center p-2 border rounded">
-                            <div>
-                              <div className="font-medium text-sm">{issue.type}</div>
-                              <Badge className={getPriorityColor(issue.severity)} variant="outline">
-                                {issue.severity}
-                              </Badge>
+                        {(dataSourcesData.dataQuality?.issues || []).map(
+                          (issue: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center p-2 border rounded"
+                            >
+                              <div>
+                                <div className="font-medium text-sm">{issue.type}</div>
+                                <Badge
+                                  className={getPriorityColor(issue.severity)}
+                                  variant="outline"
+                                >
+                                  {issue.severity}
+                                </Badge>
+                              </div>
+                              <div className="font-bold">{issue.count}</div>
                             </div>
-                            <div className="font-bold">{issue.count}</div>
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                     </div>
                   </div>
@@ -989,7 +1079,10 @@ export default function PredictiveAnalytics() {
             <CardContent>
               <div className="space-y-4">
                 {(analyticsData.aiRecommendations || []).map((rec: any, idx: number) => (
-                  <div key={idx} className="p-4 border rounded-lg hover:shadow-lg transition-shadow">
+                  <div
+                    key={idx}
+                    className="p-4 border rounded-lg hover:shadow-lg transition-shadow"
+                  >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -997,23 +1090,23 @@ export default function PredictiveAnalytics() {
                           <Badge className={getPriorityColor(rec.impact)}>
                             {rec.impact} Impact
                           </Badge>
-                          <Badge variant="outline">
-                            Priority {rec.priority}
-                          </Badge>
+                          <Badge variant="outline">Priority {rec.priority}</Badge>
                         </div>
                         <p className="text-gray-700 mb-2">{rec.description}</p>
                         <p className="text-sm text-blue-600 font-medium">Action: {rec.action}</p>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-green-600">
-                          {rec.estimatedRevenue ? formatCurrency(rec.estimatedRevenue) : formatCurrency(rec.estimatedSavings)}
+                          {rec.estimatedRevenue
+                            ? formatCurrency(rec.estimatedRevenue)
+                            : formatCurrency(rec.estimatedSavings)}
                         </div>
                         <div className="text-xs text-gray-500">
                           {rec.estimatedRevenue ? 'revenue' : 'savings'}
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                       <div>
                         <span className="text-sm text-gray-600">Category:</span>
@@ -1028,19 +1121,15 @@ export default function PredictiveAnalytics() {
                         <span className="ml-2 font-medium">{formatPercentage(rec.confidence)}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex justify-between items-center pt-3 border-t">
-                      <div className="text-xs text-gray-500">
-                        AI-generated recommendation
-                      </div>
+                      <div className="text-xs text-gray-500">AI-generated recommendation</div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline">
                           <Eye className="h-4 w-4 mr-2" />
                           Details
                         </Button>
-                        <Button size="sm">
-                          Implement
-                        </Button>
+                        <Button size="sm">Implement</Button>
                       </div>
                     </div>
                   </div>

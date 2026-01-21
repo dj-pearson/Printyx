@@ -6,7 +6,14 @@
 
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/main-layout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +37,7 @@ import {
   Calendar,
   Users,
   ArrowRight,
-  Plus
+  Plus,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -58,12 +65,12 @@ const mockPipelines: ProposalPipeline[] = [
       'Network scanning to email',
       'Mobile printing support',
       '$25,000 budget',
-      'Immediate installation'
+      'Immediate installation',
     ],
     proposedSolution: 'Canon imageRUNNER ADVANCE DX C5760i (x5)',
     pricing: 24500,
     status: 'review',
-    createdAt: new Date('2025-11-20T14:30:00')
+    createdAt: new Date('2025-11-20T14:30:00'),
   },
   {
     id: '2',
@@ -75,13 +82,13 @@ const mockPipelines: ProposalPipeline[] = [
       'Managed print services',
       '15 employees (hybrid)',
       'Low upfront cost',
-      'Include supplies and service'
+      'Include supplies and service',
     ],
     proposedSolution: 'MPS Package - 3 Devices + Supplies + Service',
     pricing: 495,
     status: 'sent',
-    createdAt: new Date('2025-11-19T10:15:00')
-  }
+    createdAt: new Date('2025-11-19T10:15:00'),
+  },
 ];
 
 export default function MeetingToProposalDashboard() {
@@ -92,10 +99,10 @@ export default function MeetingToProposalDashboard() {
 
   const stats = {
     total: pipelines.length,
-    draft: pipelines.filter(p => p.status === 'draft').length,
-    sent: pipelines.filter(p => p.status === 'sent').length,
-    accepted: pipelines.filter(p => p.status === 'accepted').length,
-    totalValue: pipelines.reduce((sum, p) => sum + p.pricing, 0)
+    draft: pipelines.filter((p) => p.status === 'draft').length,
+    sent: pipelines.filter((p) => p.status === 'sent').length,
+    accepted: pipelines.filter((p) => p.status === 'accepted').length,
+    totalValue: pipelines.reduce((sum, p) => sum + p.pricing, 0),
   };
 
   const processNotes = () => {
@@ -113,16 +120,13 @@ export default function MeetingToProposalDashboard() {
       description="Turn meeting notes into professional proposals instantly"
     >
       <div className="container mx-auto p-6 space-y-6">
-
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto mb-8">
           <Badge variant="secondary" className="mb-4">
             <Sparkles className="h-3 w-3 mr-1" />
             AI-Powered
           </Badge>
-          <h1 className="text-4xl font-bold mb-4">
-            Meeting Notes → Professional Proposal
-          </h1>
+          <h1 className="text-4xl font-bold mb-4">Meeting Notes → Professional Proposal</h1>
           <p className="text-xl text-muted-foreground">
             Upload meeting notes or transcripts, and our AI automatically generates a complete,
             professional proposal ready to send.
@@ -169,7 +173,9 @@ export default function MeetingToProposalDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Value</p>
-                  <p className="text-3xl font-bold text-purple-600">${(stats.totalValue / 1000).toFixed(0)}k</p>
+                  <p className="text-3xl font-bold text-purple-600">
+                    ${(stats.totalValue / 1000).toFixed(0)}k
+                  </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-purple-600" />
               </div>
@@ -196,8 +202,8 @@ export default function MeetingToProposalDashboard() {
               <CardHeader>
                 <CardTitle>Upload Meeting Notes</CardTitle>
                 <CardDescription>
-                  Paste your meeting notes or upload a transcript file. Our AI will extract customer requirements
-                  and generate a proposal automatically.
+                  Paste your meeting notes or upload a transcript file. Our AI will extract customer
+                  requirements and generate a proposal automatically.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -266,7 +272,9 @@ Example:
                     </div>
                     <Mic className="h-8 w-8 mx-auto mb-2 text-purple-600" />
                     <h3 className="font-semibold mb-1">Upload Notes</h3>
-                    <p className="text-sm text-muted-foreground">Paste or upload meeting transcript</p>
+                    <p className="text-sm text-muted-foreground">
+                      Paste or upload meeting transcript
+                    </p>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
@@ -274,7 +282,9 @@ Example:
                     </div>
                     <Brain className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                     <h3 className="font-semibold mb-1">AI Analysis</h3>
-                    <p className="text-sm text-muted-foreground">Extract requirements & pain points</p>
+                    <p className="text-sm text-muted-foreground">
+                      Extract requirements & pain points
+                    </p>
                   </div>
                   <div className="text-center">
                     <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
@@ -306,11 +316,15 @@ Example:
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <CardTitle>{pipeline.customerName}</CardTitle>
-                        <Badge variant={
-                          pipeline.status === 'accepted' ? 'default' :
-                          pipeline.status === 'sent' ? 'secondary' :
-                          'outline'
-                        }>
+                        <Badge
+                          variant={
+                            pipeline.status === 'accepted'
+                              ? 'default'
+                              : pipeline.status === 'sent'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                        >
                           {pipeline.status.charAt(0).toUpperCase() + pipeline.status.slice(1)}
                         </Badge>
                       </div>
@@ -402,23 +416,17 @@ Example:
               <div className="text-center">
                 <Zap className="h-12 w-12 mx-auto mb-3" />
                 <h3 className="font-bold mb-2">10x Faster</h3>
-                <p className="text-sm text-white/90">
-                  Generate proposals in minutes, not hours
-                </p>
+                <p className="text-sm text-white/90">Generate proposals in minutes, not hours</p>
               </div>
               <div className="text-center">
                 <Target className="h-12 w-12 mx-auto mb-3" />
                 <h3 className="font-bold mb-2">100% Accurate</h3>
-                <p className="text-sm text-white/90">
-                  Never miss a customer requirement
-                </p>
+                <p className="text-sm text-white/90">Never miss a customer requirement</p>
               </div>
               <div className="text-center">
                 <DollarSign className="h-12 w-12 mx-auto mb-3" />
                 <h3 className="font-bold mb-2">Higher Win Rate</h3>
-                <p className="text-sm text-white/90">
-                  Professional proposals win more deals
-                </p>
+                <p className="text-sm text-white/90">Professional proposals win more deals</p>
               </div>
             </div>
           </CardContent>

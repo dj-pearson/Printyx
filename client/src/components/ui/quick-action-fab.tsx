@@ -1,39 +1,34 @@
-import { useState } from "react";
-import { Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { useState } from 'react';
+import { Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 export interface QuickAction {
   label: string;
   icon: React.ReactNode;
   onClick: () => void;
-  variant?: "default" | "destructive" | "secondary";
+  variant?: 'default' | 'destructive' | 'secondary';
 }
 
 interface QuickActionFABProps {
   actions: QuickAction[];
   primaryAction?: QuickAction;
-  position?: "bottom-right" | "bottom-left";
+  position?: 'bottom-right' | 'bottom-left';
   className?: string;
 }
 
 export function QuickActionFAB({
   actions,
   primaryAction,
-  position = "bottom-right",
+  position = 'bottom-right',
   className,
 }: QuickActionFABProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const positionClasses = {
-    "bottom-right": "bottom-20 right-4 md:bottom-6 md:right-6",
-    "bottom-left": "bottom-20 left-4 md:bottom-6 md:left-6",
+    'bottom-right': 'bottom-20 right-4 md:bottom-6 md:right-6',
+    'bottom-left': 'bottom-20 left-4 md:bottom-6 md:left-6',
   };
 
   // If there's a primary action and no other actions, just show the button
@@ -46,11 +41,11 @@ export function QuickActionFAB({
               size="lg"
               onClick={primaryAction.onClick}
               className={cn(
-                "fixed z-40 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all",
+                'fixed z-40 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all',
                 positionClasses[position],
-                className
+                className,
               )}
-              variant={primaryAction.variant || "default"}
+              variant={primaryAction.variant || 'default'}
             >
               {primaryAction.icon}
             </Button>
@@ -64,7 +59,7 @@ export function QuickActionFAB({
   }
 
   return (
-    <div className={cn("fixed z-40", positionClasses[position], className)}>
+    <div className={cn('fixed z-40', positionClasses[position], className)}>
       <TooltipProvider>
         {/* Secondary Actions - Appear when expanded */}
         {isExpanded && (
@@ -79,10 +74,10 @@ export function QuickActionFAB({
                       setIsExpanded(false);
                     }}
                     className={cn(
-                      "h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all animate-in fade-in slide-in-from-bottom-2",
-                      `animation-delay-${index * 50}`
+                      'h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-all animate-in fade-in slide-in-from-bottom-2',
+                      `animation-delay-${index * 50}`,
                     )}
-                    variant={action.variant || "secondary"}
+                    variant={action.variant || 'secondary'}
                     style={{
                       animationDelay: `${index * 50}ms`,
                     }}
@@ -111,16 +106,20 @@ export function QuickActionFAB({
                 }
               }}
               className={cn(
-                "h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all",
-                isExpanded && "rotate-45"
+                'h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all',
+                isExpanded && 'rotate-45',
               )}
-              variant={primaryAction?.variant || "default"}
+              variant={primaryAction?.variant || 'default'}
             >
-              {isExpanded ? <X className="h-6 w-6" /> : (primaryAction?.icon || <Plus className="h-6 w-6" />)}
+              {isExpanded ? (
+                <X className="h-6 w-6" />
+              ) : (
+                primaryAction?.icon || <Plus className="h-6 w-6" />
+              )}
             </Button>
           </TooltipTrigger>
           <TooltipContent side="left">
-            <p>{isExpanded ? "Close" : primaryAction?.label || "Quick Actions"}</p>
+            <p>{isExpanded ? 'Close' : primaryAction?.label || 'Quick Actions'}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

@@ -10,16 +10,16 @@ import express from 'express';
 const createTestApp = () => {
   const app = express();
   app.use(express.json());
-  
+
   // Import routes
   const aiRoutes = require('../routes/ai-routes-simple').default;
   const calendarRoutes = require('../routes/calendar-routes').default;
   const taskRoutes = require('../routes/task-routes').default;
-  
+
   app.use('/api/ai', aiRoutes);
   app.use('/api/calendar', calendarRoutes);
   app.use('/api/tasks', taskRoutes);
-  
+
   return app;
 };
 
@@ -33,9 +33,7 @@ describe('Motion AI API Endpoints', () => {
   describe('AI Routes', () => {
     describe('GET /api/ai/health', () => {
       test('should return health status', async () => {
-        const response = await request(app)
-          .get('/api/ai/health')
-          .expect(200);
+        const response = await request(app).get('/api/ai/health').expect(200);
 
         expect(response.body).toHaveProperty('status');
         expect(response.body).toHaveProperty('ai');
@@ -59,17 +57,14 @@ describe('Motion AI API Endpoints', () => {
         expect(response.body).toHaveProperty('conversionProbability');
         expect(response.body).toHaveProperty('insights');
         expect(response.body).toHaveProperty('recommendedActions');
-        
+
         expect(typeof response.body.score).toBe('number');
         expect(response.body.score).toBeGreaterThanOrEqual(0);
         expect(response.body.score).toBeLessThanOrEqual(100);
       });
 
       test('should handle missing lead data', async () => {
-        const response = await request(app)
-          .post('/api/ai/leads/analyze')
-          .send({})
-          .expect(200);
+        const response = await request(app).post('/api/ai/leads/analyze').send({}).expect(200);
 
         // Should still return analysis with default/mock data
         expect(response.body).toHaveProperty('score');
@@ -80,9 +75,7 @@ describe('Motion AI API Endpoints', () => {
   describe('Calendar Routes', () => {
     describe('GET /api/calendar/connections', () => {
       test('should return calendar connections', async () => {
-        const response = await request(app)
-          .get('/api/calendar/connections')
-          .expect(200);
+        const response = await request(app).get('/api/calendar/connections').expect(200);
 
         expect(Array.isArray(response.body)).toBe(true);
       });
@@ -107,10 +100,7 @@ describe('Motion AI API Endpoints', () => {
       });
 
       test('should validate required fields', async () => {
-        const response = await request(app)
-          .post('/api/calendar/connections')
-          .send({})
-          .expect(400);
+        const response = await request(app).post('/api/calendar/connections').send({}).expect(400);
 
         expect(response.body).toHaveProperty('error');
       });
@@ -127,7 +117,7 @@ describe('Motion AI API Endpoints', () => {
           .expect(200);
 
         expect(Array.isArray(response.body)).toBe(true);
-        
+
         if (response.body.length > 0) {
           const event = response.body[0];
           expect(event).toHaveProperty('id');
@@ -138,9 +128,7 @@ describe('Motion AI API Endpoints', () => {
       });
 
       test('should validate date parameters', async () => {
-        const response = await request(app)
-          .get('/api/calendar/events')
-          .expect(400);
+        const response = await request(app).get('/api/calendar/events').expect(400);
 
         expect(response.body).toHaveProperty('error');
       });
@@ -167,10 +155,7 @@ describe('Motion AI API Endpoints', () => {
       });
 
       test('should validate required event fields', async () => {
-        const response = await request(app)
-          .post('/api/calendar/events')
-          .send({})
-          .expect(400);
+        const response = await request(app).post('/api/calendar/events').send({}).expect(400);
 
         expect(response.body).toHaveProperty('error');
       });
@@ -191,9 +176,7 @@ describe('Motion AI API Endpoints', () => {
       });
 
       test('should validate time parameters', async () => {
-        const response = await request(app)
-          .get('/api/calendar/availability/test-user')
-          .expect(400);
+        const response = await request(app).get('/api/calendar/availability/test-user').expect(400);
 
         expect(response.body).toHaveProperty('error');
       });
@@ -203,9 +186,7 @@ describe('Motion AI API Endpoints', () => {
   describe('Task Routes', () => {
     describe('GET /api/tasks', () => {
       test('should return tasks list', async () => {
-        const response = await request(app)
-          .get('/api/tasks')
-          .expect(200);
+        const response = await request(app).get('/api/tasks').expect(200);
 
         expect(response.body).toHaveProperty('tasks');
         expect(response.body).toHaveProperty('total');
@@ -253,10 +234,7 @@ describe('Motion AI API Endpoints', () => {
           estimatedDuration: 60,
         };
 
-        const response = await request(app)
-          .post('/api/tasks')
-          .send(taskData)
-          .expect(200);
+        const response = await request(app).post('/api/tasks').send(taskData).expect(200);
 
         expect(response.body).toHaveProperty('id');
         expect(response.body).toHaveProperty('title', 'Test Task');
@@ -267,10 +245,7 @@ describe('Motion AI API Endpoints', () => {
       });
 
       test('should validate required fields', async () => {
-        const response = await request(app)
-          .post('/api/tasks')
-          .send({})
-          .expect(400);
+        const response = await request(app).post('/api/tasks').send({}).expect(400);
 
         expect(response.body).toHaveProperty('error');
       });
@@ -280,10 +255,7 @@ describe('Motion AI API Endpoints', () => {
           title: 'Minimal Task',
         };
 
-        const response = await request(app)
-          .post('/api/tasks')
-          .send(taskData)
-          .expect(200);
+        const response = await request(app).post('/api/tasks').send(taskData).expect(200);
 
         expect(response.body).toHaveProperty('status', 'pending');
         expect(response.body).toHaveProperty('priority', 'medium');
@@ -320,10 +292,7 @@ describe('Motion AI API Endpoints', () => {
       });
 
       test('should validate required scheduling parameters', async () => {
-        const response = await request(app)
-          .post('/api/tasks/schedule')
-          .send({})
-          .expect(400);
+        const response = await request(app).post('/api/tasks/schedule').send({}).expect(400);
 
         expect(response.body).toHaveProperty('error');
       });
@@ -347,12 +316,10 @@ describe('Motion AI API Endpoints', () => {
 
     describe('GET /api/tasks/categories', () => {
       test('should return task categories', async () => {
-        const response = await request(app)
-          .get('/api/tasks/categories')
-          .expect(200);
+        const response = await request(app).get('/api/tasks/categories').expect(200);
 
         expect(Array.isArray(response.body)).toBe(true);
-        
+
         if (response.body.length > 0) {
           const category = response.body[0];
           expect(category).toHaveProperty('id');
@@ -365,12 +332,10 @@ describe('Motion AI API Endpoints', () => {
 
     describe('GET /api/tasks/suggestions', () => {
       test('should return AI task suggestions', async () => {
-        const response = await request(app)
-          .get('/api/tasks/suggestions')
-          .expect(200);
+        const response = await request(app).get('/api/tasks/suggestions').expect(200);
 
         expect(Array.isArray(response.body)).toBe(true);
-        
+
         if (response.body.length > 0) {
           const suggestion = response.body[0];
           expect(suggestion).toHaveProperty('id');
@@ -430,16 +395,11 @@ describe('Motion AI API Endpoints', () => {
 
   describe('Error Handling', () => {
     test('should handle 404 for non-existent endpoints', async () => {
-      const response = await request(app)
-        .get('/api/non-existent')
-        .expect(404);
+      const response = await request(app).get('/api/non-existent').expect(404);
     });
 
     test('should handle malformed JSON', async () => {
-      const response = await request(app)
-        .post('/api/tasks')
-        .send('invalid json')
-        .expect(400);
+      const response = await request(app).post('/api/tasks').send('invalid json').expect(400);
     });
 
     test('should handle large request payloads gracefully', async () => {
@@ -448,9 +408,7 @@ describe('Motion AI API Endpoints', () => {
         description: 'B'.repeat(50000), // Very long description
       };
 
-      const response = await request(app)
-        .post('/api/tasks')
-        .send(largeData);
+      const response = await request(app).post('/api/tasks').send(largeData);
 
       // Should either accept or reject gracefully, not crash
       expect([200, 400, 413]).toContain(response.status);
@@ -459,24 +417,20 @@ describe('Motion AI API Endpoints', () => {
 
   describe('Performance Tests', () => {
     test('should handle concurrent requests', async () => {
-      const requests = Array.from({ length: 10 }, () =>
-        request(app).get('/api/tasks')
-      );
+      const requests = Array.from({ length: 10 }, () => request(app).get('/api/tasks'));
 
       const responses = await Promise.all(requests);
-      
-      responses.forEach(response => {
+
+      responses.forEach((response) => {
         expect(response.status).toBe(200);
       });
     });
 
     test('should respond within acceptable time limits', async () => {
       const startTime = Date.now();
-      
-      await request(app)
-        .get('/api/tasks')
-        .expect(200);
-        
+
+      await request(app).get('/api/tasks').expect(200);
+
       const responseTime = Date.now() - startTime;
       expect(responseTime).toBeLessThan(1000); // Should respond within 1 second
     });

@@ -30,6 +30,7 @@ Financial Reporting
 ```
 
 **What this means:**
+
 - Sales teams can track leads through the entire lifecycle
 - Service operations flow seamlessly from customer setup to billing
 - Equipment lifecycle is fully tracked from purchase to disposal
@@ -46,17 +47,20 @@ Financial Reporting
 **The Biggest Opportunity: Customer Portal** ⭐
 
 **Current State:**
+
 - Standalone feature with minimal integration
 - Customers can't see their service tickets, invoices, or equipment status
 - Self-service capabilities are limited
 
 **The Fix (High ROI, Medium Effort):**
+
 - Connect portal to service ticket system
 - Show invoice history and payment options
 - Display equipment status and meter readings
 - Integrate knowledge base for self-help
 
 **Impact:**
+
 - Reduces support calls by 30-40%
 - Improves customer satisfaction scores
 - Enables true self-service experience
@@ -68,14 +72,14 @@ Financial Reporting
 
 ### 6 User Needs Not Being Served
 
-| Gap | Current State | Impact | Fix Complexity |
-|-----|---------------|--------|----------------|
-| **1. Customer Self-Service** | Portal is standalone | High - All customers affected | Medium |
-| **2. Commission Automation** | Manual tracking | Medium - Sales team friction | Low |
-| **3. Contextual Help** | Knowledge Base isolated | Low - Training burden | Low |
-| **4. Onboarding Success** | No CSM link | Medium - Retention risk | Medium |
-| **5. Predictive Maintenance** | Reactive, not proactive | High - Service efficiency | High |
-| **6. Real-Time Pricing** | Quote builder out of sync | Medium - Pricing errors | Low |
+| Gap                           | Current State             | Impact                        | Fix Complexity |
+| ----------------------------- | ------------------------- | ----------------------------- | -------------- |
+| **1. Customer Self-Service**  | Portal is standalone      | High - All customers affected | Medium         |
+| **2. Commission Automation**  | Manual tracking           | Medium - Sales team friction  | Low            |
+| **3. Contextual Help**        | Knowledge Base isolated   | Low - Training burden         | Low            |
+| **4. Onboarding Success**     | No CSM link               | Medium - Retention risk       | Medium         |
+| **5. Predictive Maintenance** | Reactive, not proactive   | High - Service efficiency     | High           |
+| **6. Real-Time Pricing**      | Quote builder out of sync | Medium - Pricing errors       | Low            |
 
 ---
 
@@ -86,18 +90,21 @@ Financial Reporting
 **Effort: Low | Impact: High**
 
 #### 1. Commission Auto-Calculation (1-2 weeks)
+
 **Problem:** Sales reps manually track commissions
 **Solution:** Auto-trigger commission calculation when deal marked "Won"
 **Technical:** Add webhook on deal closure → Create commission record
 **ROI:** Eliminates manual tracking, improves sales team satisfaction
 
 #### 2. Demo → Opportunity Automation (1-2 weeks)
+
 **Problem:** Demo outcomes don't automatically update CRM
 **Solution:** Auto-create opportunity + follow-up task after demo
 **Technical:** Demo completion hook → Create opportunity + task
 **ROI:** Reduces data entry, improves lead conversion tracking
 
 #### 3. Pricing Sync to Quote Builder (2 weeks)
+
 **Problem:** Quote builder shows stale pricing
 **Solution:** Real-time pricing sync + margin analysis
 **Technical:** Add pricing API endpoint → Subscribe quote builder
@@ -113,15 +120,18 @@ Financial Reporting
 **Effort: Medium | Impact: Very High**
 
 #### 4. Customer Portal Integration (4-6 weeks)
+
 **Problem:** Customers can't self-service
 **Solution:** Integrate portal with tickets, billing, equipment
 **Components:**
+
 - Service ticket list view (customer-filtered)
 - Invoice history + payment methods
 - Equipment dashboard with meter readings
 - Knowledge base contextual search
 
 **Technical Approach:**
+
 ```
 Customer Portal
 ├── /api/service-tickets?customerId=X (filter by customer)
@@ -131,12 +141,14 @@ Customer Portal
 ```
 
 **ROI:**
+
 - Reduces support tickets by 30-40%
 - Improves CSAT scores
 - Enables competitive differentiation
 - Scales customer support without headcount
 
 #### 5. Onboarding → Customer Success Tracking (3-4 weeks)
+
 **Problem:** Onboarding completion doesn't trigger CSM workflows
 **Solution:** Link onboarding milestones to customer health scores
 **Technical:** Onboarding checklist completion → Update CSM health score
@@ -152,21 +164,25 @@ Customer Portal
 **Effort: High | Impact: High (Long-term)**
 
 #### 6. Manufacturer → Predictive Maintenance (6-8 weeks)
+
 **Problem:** Reactive service, not proactive
 **Solution:** Device alerts auto-schedule preventive maintenance
 **Components:**
+
 - Manufacturer API webhook listeners
 - Device health scoring
 - Auto-create maintenance tickets
 - Parts inventory optimization
 
 **ROI:**
+
 - Reduces equipment downtime
 - Increases service contract value
 - Differentiates from competitors
 - Predictable service revenue
 
 **Additional Phase 3 Opportunities:**
+
 - Fleet monitoring → Dispatch route optimization
 - Knowledge Base → Contextual help in workflows
 - AI-powered feature recommendations
@@ -177,6 +193,7 @@ Customer Portal
 ## Financial Impact Estimates
 
 ### Phase 1 Quick Wins
+
 - **Cost:** 4-6 weeks development (~$15-20K)
 - **Benefit:**
   - Sales team efficiency: +10-15% (reduced manual work)
@@ -185,6 +202,7 @@ Customer Portal
 - **ROI:** 3-6 months
 
 ### Phase 2 Strategic Improvements
+
 - **Cost:** 7-10 weeks development (~$30-40K)
 - **Benefit:**
   - Support ticket reduction: -30-40% ($100K+ annual savings)
@@ -194,6 +212,7 @@ Customer Portal
 - **ROI:** 6-12 months
 
 ### Phase 3 Advanced Intelligence
+
 - **Cost:** 6-8 weeks development (~$25-35K)
 - **Benefit:**
   - Service contract upsell: +15-20% (predictive maintenance value)
@@ -209,6 +228,7 @@ Customer Portal
 ## Risk Assessment
 
 ### Low-Risk Integrations ✅
+
 - Commission automation (isolated change)
 - Demo → Opportunity automation (additive)
 - Pricing sync (read-only integration)
@@ -216,23 +236,27 @@ Customer Portal
 **Why Low Risk:** No impact on existing workflows, purely additive features
 
 ### Medium-Risk Integrations ⚠️
+
 - Customer Portal integration (new customer-facing features)
 - Onboarding → CSM tracking (workflow changes)
 
 **Why Medium Risk:** Customer-facing changes require testing, training, communication
 
 **Mitigation:**
+
 - Beta test with friendly customers
 - Phased rollout
 - Comprehensive user documentation
 - Customer communication plan
 
 ### High-Risk Integrations 🔴
+
 - Manufacturer → PM automation (external dependencies)
 
 **Why High Risk:** Depends on third-party APIs, complex business logic
 
 **Mitigation:**
+
 - Start with single manufacturer pilot
 - Extensive testing and monitoring
 - Manual override capabilities
@@ -245,6 +269,7 @@ Customer Portal
 ### Existing Architecture Supports All Recommendations ✅
 
 **Strong Foundation:**
+
 - Multi-tenant architecture with RLS (ready for portal isolation)
 - RESTful API design (easy to add new endpoints)
 - Event-driven hooks (workflow automation ready)
@@ -252,18 +277,21 @@ Customer Portal
 - React + TanStack Query (component reuse)
 
 **No Breaking Changes Required:**
+
 - All integrations are additive
 - No schema migrations needed (only new tables)
 - Existing features unaffected
 - Backward compatible
 
 **Development Patterns Established:**
+
 - Route file organization well-defined
 - Component patterns consistent
 - API middleware stack proven
 - Testing infrastructure in place
 
 **Complexity Levels:**
+
 - **Phase 1:** Low complexity (standard CRUD + webhooks)
 - **Phase 2:** Medium complexity (UI components + API integration)
 - **Phase 3:** High complexity (external APIs + ML logic)
@@ -276,16 +304,17 @@ Customer Portal
 
 Use this framework to decide:
 
-| Integration | Business Value | Technical Effort | Risk | Priority |
-|-------------|----------------|------------------|------|----------|
-| Commission Automation | Medium | Low | Low | ⭐⭐⭐⭐ High |
-| Demo → Opportunity | Medium | Low | Low | ⭐⭐⭐⭐ High |
-| Pricing Sync | High | Low | Low | ⭐⭐⭐⭐⭐ Highest |
-| **Customer Portal** | **Very High** | **Medium** | **Medium** | **⭐⭐⭐⭐⭐ Highest** |
-| Onboarding → CSM | High | Medium | Medium | ⭐⭐⭐ Medium |
-| Manufacturer → PM | Very High | High | High | ⭐⭐ Low (Long-term) |
+| Integration           | Business Value | Technical Effort | Risk       | Priority               |
+| --------------------- | -------------- | ---------------- | ---------- | ---------------------- |
+| Commission Automation | Medium         | Low              | Low        | ⭐⭐⭐⭐ High          |
+| Demo → Opportunity    | Medium         | Low              | Low        | ⭐⭐⭐⭐ High          |
+| Pricing Sync          | High           | Low              | Low        | ⭐⭐⭐⭐⭐ Highest     |
+| **Customer Portal**   | **Very High**  | **Medium**       | **Medium** | **⭐⭐⭐⭐⭐ Highest** |
+| Onboarding → CSM      | High           | Medium           | Medium     | ⭐⭐⭐ Medium          |
+| Manufacturer → PM     | Very High      | High             | High       | ⭐⭐ Low (Long-term)   |
 
 **Recommended Prioritization:**
+
 1. **Pricing Sync** (highest ROI, lowest effort)
 2. **Customer Portal** (highest business value)
 3. **Commission + Demo Automation** (quick wins for sales team)
@@ -299,10 +328,12 @@ Use this framework to decide:
 ### How Do These Integrations Position Printyx?
 
 **Current State:**
+
 - Strong core platform (on par with competitors)
 - Some features feel disconnected (below market expectations)
 
 **With Phase 1 + 2 Integrations:**
+
 - **Customer Portal:** Matches/exceeds ServiceNow, Salesforce Field Service
 - **Automated Workflows:** On par with enterprise platforms
 - **Real-time Pricing:** Better than most MFP management platforms
@@ -310,13 +341,13 @@ Use this framework to decide:
 
 **Competitive Positioning After Improvements:**
 
-| Feature | Before | After | Competitive Advantage |
-|---------|--------|-------|----------------------|
-| Customer Self-Service | ⚠️ Basic | ✅ Advanced | Match enterprise leaders |
-| Sales Automation | ⚠️ Manual | ✅ Automated | Industry standard |
-| Pricing Intelligence | ⚠️ Static | ✅ Dynamic | Better than most |
-| Customer Success | ❌ Missing | ✅ Integrated | Differentiator |
-| Predictive Maintenance | ❌ Missing | ⭐ AI-powered | Industry leader |
+| Feature                | Before     | After         | Competitive Advantage    |
+| ---------------------- | ---------- | ------------- | ------------------------ |
+| Customer Self-Service  | ⚠️ Basic   | ✅ Advanced   | Match enterprise leaders |
+| Sales Automation       | ⚠️ Manual  | ✅ Automated  | Industry standard        |
+| Pricing Intelligence   | ⚠️ Static  | ✅ Dynamic    | Better than most         |
+| Customer Success       | ❌ Missing | ✅ Integrated | Differentiator           |
+| Predictive Maintenance | ❌ Missing | ⭐ AI-powered | Industry leader          |
 
 ---
 
@@ -325,18 +356,21 @@ Use this framework to decide:
 ### How to Measure Impact
 
 **Phase 1 (Quick Wins):**
+
 - Commission dispute resolution time: Target -80%
 - Demo → Quote conversion rate: Target +15%
 - Quote pricing accuracy: Target 99%+
 - Sales team satisfaction: Survey improvement +20 points
 
 **Phase 2 (Strategic):**
+
 - Customer support tickets: Target -35%
 - Customer portal adoption: Target 60%+ active users
 - CSAT scores: Target +25 points
 - Customer health score visibility: Target 90%+ customers scored
 
 **Phase 3 (Advanced):**
+
 - Equipment uptime: Target +12%
 - Preventive maintenance completion: Target 90%+
 - Service contract renewal rate: Target +10%
@@ -375,18 +409,21 @@ Use this framework to decide:
 ## Resources & Documentation
 
 ### Analysis Documents
+
 - **FEATURE_MAP.md** - Complete feature inventory (160+ features)
 - **QUICK_REFERENCE.md** - Visual maps and metrics
 - **FEATURE_RELATIONSHIP_DIAGRAM.md** - Integration diagrams and architecture
 - **FEATURE_EXPLORATION_INDEX.md** - Documentation navigation guide
 
 ### Technical Resources
+
 - Current codebase: 75+ route files, 26 schema files, 137 tables
 - Architecture: Multi-tenant, RBAC, PostgreSQL + Drizzle ORM
 - Frontend: React 18 + TypeScript + Tailwind + shadcn/ui
 - Backend: Express.js + TypeScript + RESTful API
 
 ### Stakeholders
+
 - **Product Team**: Prioritization and roadmap planning
 - **Engineering Team**: Technical implementation
 - **Sales Team**: Commission, Demo, Pricing features
@@ -399,28 +436,33 @@ Use this framework to decide:
 ## Questions? Discussion Points
 
 ### For Product Team
+
 1. Which Phase 1 integrations align with Q1 2026 goals?
 2. Should Customer Portal be prioritized over Phase 1 quick wins?
 3. What's the customer feedback on current portal capabilities?
 4. Are there other integrations not identified in this analysis?
 
 ### For Engineering Team
+
 1. What's the estimated effort for Customer Portal integration?
 2. Are there technical dependencies we need to address first?
 3. Should we build Commission automation as a workflow engine feature?
 4. What's the best approach for Manufacturer API integration (webhooks vs polling)?
 
 ### For Sales Team
+
 1. What's the biggest pain point: Commission tracking, Demo follow-up, or Pricing accuracy?
 2. Would automated Demo → Opportunity creation improve close rates?
 3. What pricing intelligence would help most (margin analysis, competitive data, historical trends)?
 
 ### For Service Team
+
 1. How many support tickets are related to customer self-service requests?
 2. Would customer-facing equipment status reduce "where's my technician?" calls?
 3. What manufacturer integrations would deliver the most value?
 
 ### For Customer Success Team
+
 1. How are you currently tracking customer health without onboarding integration?
 2. What onboarding milestones would be most valuable to track?
 3. Would automated health scores enable proactive outreach?

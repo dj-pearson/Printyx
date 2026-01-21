@@ -8,6 +8,7 @@
 ## ✅ Pre-Deployment Checklist
 
 Before deploying, ensure you have:
+
 - [ ] PostgreSQL database access
 - [ ] SMTP email account (Gmail, Outlook, or other)
 - [ ] Claude API key (already configured in your env)
@@ -45,6 +46,7 @@ npm run db:push
 ```
 
 **Verify tables were created:**
+
 ```sql
 -- Connect to your database and check:
 SELECT table_name FROM information_schema.tables
@@ -61,11 +63,13 @@ You need a dedicated email address for service requests (e.g., `service@yourcomp
 ### For Gmail:
 
 **1. Enable IMAP:**
+
 - Go to Gmail Settings > Forwarding and POP/IMAP
 - Enable IMAP access
 - Save changes
 
 **2. Create App Password:**
+
 - Go to Google Account > Security > 2-Step Verification
 - Scroll to bottom: "App passwords"
 - Select app: "Mail"
@@ -74,6 +78,7 @@ You need a dedicated email address for service requests (e.g., `service@yourcomp
 - **Copy the 16-character password** (you'll need this)
 
 **IMAP Settings for Gmail:**
+
 - Host: `imap.gmail.com`
 - Port: `993`
 - TLS: Yes
@@ -83,17 +88,20 @@ You need a dedicated email address for service requests (e.g., `service@yourcomp
 ### For Microsoft 365 / Outlook:
 
 **1. Enable IMAP:**
+
 - Go to Outlook Settings > View all Outlook settings
 - Mail > Sync email > POP and IMAP
 - Enable IMAP access
 
 **2. Create App Password:**
+
 - Go to Microsoft Account > Security > Security info
 - Add sign-in method > App password
 - Generate password for "Printyx"
 - **Copy the password**
 
 **IMAP Settings for Microsoft:**
+
 - Host: `outlook.office365.com`
 - Port: `993`
 - TLS: Yes
@@ -103,6 +111,7 @@ You need a dedicated email address for service requests (e.g., `service@yourcomp
 ### For Other Providers:
 
 Most email providers support IMAP. Check their documentation for:
+
 - IMAP server address
 - Port (usually 993 for TLS)
 - Whether they require app passwords
@@ -114,6 +123,7 @@ Most email providers support IMAP. Check their documentation for:
 ### Access the Settings Page
 
 1. Start your development server:
+
    ```bash
    npm run dev
    ```
@@ -126,18 +136,18 @@ Most email providers support IMAP. Check their documentation for:
 
 **Fill in the form:**
 
-| Field | Value | Example |
-|-------|-------|---------|
-| Email Address | Service email | `service@company.com` |
-| Protocol | IMAP | IMAP (pre-selected) |
-| IMAP Host | Your provider's host | `imap.gmail.com` |
-| Port | Usually 993 | `993` |
-| Username | Full email address | `service@company.com` |
-| Password | App password | `xxxx xxxx xxxx xxxx` |
-| Use TLS/SSL | Enable | ✅ (recommended) |
-| Poll Interval | Seconds | `60` (default) |
-| Auto-assign Technician | Enable | ✅ |
-| Send Confirmation Email | Enable | ✅ |
+| Field                   | Value                | Example               |
+| ----------------------- | -------------------- | --------------------- |
+| Email Address           | Service email        | `service@company.com` |
+| Protocol                | IMAP                 | IMAP (pre-selected)   |
+| IMAP Host               | Your provider's host | `imap.gmail.com`      |
+| Port                    | Usually 993          | `993`                 |
+| Username                | Full email address   | `service@company.com` |
+| Password                | App password         | `xxxx xxxx xxxx xxxx` |
+| Use TLS/SSL             | Enable               | ✅ (recommended)      |
+| Poll Interval           | Seconds              | `60` (default)        |
+| Auto-assign Technician  | Enable               | ✅                    |
+| Send Confirmation Email | Enable               | ✅                    |
 
 ### Test Connection
 
@@ -146,6 +156,7 @@ Most email providers support IMAP. Check their documentation for:
 3. Look for green toast notification: "Connection successful"
 
 **If connection fails:**
+
 - ❌ Check username/password
 - ❌ Verify IMAP is enabled
 - ❌ Confirm you're using app password (not regular password)
@@ -174,6 +185,7 @@ Now let's test if the parser works correctly!
 Send these 5 test emails to your configured service email address:
 
 **Test 1: Paper Jam**
+
 ```
 From: test-customer@example.com
 To: service@yourcompany.com
@@ -189,6 +201,7 @@ ABC Corporation
 ```
 
 **Test 2: Toner Request**
+
 ```
 From: office-manager@company.com
 To: service@yourcompany.com
@@ -204,6 +217,7 @@ Mary Johnson
 ```
 
 **Test 3: Print Quality Issue**
+
 ```
 From: support@business.com
 To: service@yourcompany.com
@@ -217,6 +231,7 @@ Contact: Bob Wilson, (555) 123-4567
 ```
 
 **Test 4: Network Issue**
+
 ```
 From: it@client.com
 To: service@yourcompany.com
@@ -229,6 +244,7 @@ Need help ASAP.
 ```
 
 **Test 5: General Service**
+
 ```
 From: facilities@org.com
 To: service@yourcompany.com
@@ -249,6 +265,7 @@ Sarah Lee
 3. You should see 5 emails with green "Success" badges
 
 **Check each email:**
+
 - ✅ Green badge = Successfully processed
 - ✅ Ticket ID shown (e.g., "Ticket: TKT-123")
 - ✅ Timestamp when processed
@@ -267,13 +284,13 @@ Sarah Lee
 
 ### Expected Results
 
-| Test Email | Expected Category | Expected Priority | Notes |
-|------------|------------------|------------------|-------|
-| Paper Jam | paper_jam | high | Error code E202-0001 extracted |
-| Toner | supply_order | medium | Serial XYZ123456 identified |
-| Print Quality | print_quality | urgent | "urgent" keyword detected |
-| Network | network_issue | urgent | "ASAP" keyword detected |
-| Maintenance | general_service | low | Future request, not urgent |
+| Test Email    | Expected Category | Expected Priority | Notes                          |
+| ------------- | ----------------- | ----------------- | ------------------------------ |
+| Paper Jam     | paper_jam         | high              | Error code E202-0001 extracted |
+| Toner         | supply_order      | medium            | Serial XYZ123456 identified    |
+| Print Quality | print_quality     | urgent            | "urgent" keyword detected      |
+| Network       | network_issue     | urgent            | "ASAP" keyword detected        |
+| Maintenance   | general_service   | low               | Future request, not urgent     |
 
 ---
 
@@ -284,21 +301,25 @@ Sarah Lee
 For each ticket created, verify:
 
 **Customer Matching:**
+
 - [ ] Did it find existing customer?
 - [ ] Or create new lead correctly?
 - [ ] Email address captured?
 
 **Equipment Matching:**
+
 - [ ] Serial numbers extracted?
 - [ ] Equipment matched in database?
 - [ ] Location details captured?
 
 **Categorization:**
+
 - [ ] Category makes sense?
 - [ ] Priority appropriate?
 - [ ] Error codes extracted?
 
 **Issue Description:**
+
 - [ ] Clear summary of issue?
 - [ ] Important details included?
 - [ ] Contact info captured?
@@ -310,12 +331,14 @@ If parsing accuracy is < 90%, you may need to refine prompts:
 **Edit:** `server/services/ai-email-parser-service.ts`
 
 **Common adjustments:**
+
 1. **Add more context** about your equipment types
 2. **Add examples** of typical customer emails
 3. **Adjust priority logic** for your business
 4. **Add custom categories** if needed
 
 **Example refinement:**
+
 ```typescript
 // In buildPrompt method, add your specific context:
 const customContext = `
@@ -336,6 +359,7 @@ Once testing looks good, you're ready for production!
 ### Production Deployment
 
 **1. Update Environment Variables:**
+
 ```bash
 # In .env or production environment
 EMAIL_MONITOR_ENABLED=true
@@ -343,6 +367,7 @@ ANTHROPIC_API_KEY=sk-ant-... (already set)
 ```
 
 **2. Deploy to Production:**
+
 ```bash
 # Commit your .env changes (without secrets!)
 git add .
@@ -357,11 +382,13 @@ git push
 
 **3. Verify Server Started:**
 Check server logs for:
+
 ```
 [EmailMonitor] Started monitoring for tenant TENANT_ID (polling every 60s)
 ```
 
 **4. Send Real Test:**
+
 - Send a real email from your phone/personal email
 - Verify ticket created within 1-2 minutes
 - Check confirmation email received
@@ -369,12 +396,14 @@ Check server logs for:
 ### Monitor Production
 
 **Daily Checks:**
+
 1. Go to Statistics tab
 2. Check success rate (target: >95%)
 3. Review failed emails (if any)
 4. Monitor processing time (target: <30s)
 
 **Weekly Review:**
+
 1. Review 10-20 created tickets
 2. Check for parsing errors
 3. Collect feedback from team
@@ -387,16 +416,19 @@ Check server logs for:
 ### Email Not Processing
 
 **Check Status:**
+
 1. Go to Configuration tab
 2. Look at "Last Check" timestamp
 3. Should update every 60 seconds
 
 **If not updating:**
+
 - Server might not be running
 - Monitor might be disabled
 - IMAP connection failed
 
 **Fix:**
+
 1. Check server logs for errors
 2. Test IMAP connection again
 3. Restart server if needed
@@ -404,15 +436,18 @@ Check server logs for:
 ### Parsing Failures
 
 **Symptoms:**
+
 - Emails showing red "Failed" badge
 - Error messages in Processed Emails tab
 
 **Common Causes:**
+
 1. **Invalid email format:** HTML-only emails without text
 2. **Claude API error:** Rate limit or API key issue
 3. **Database error:** Ticket creation failed
 
 **Fix:**
+
 1. Check error message in Processed Emails tab
 2. Review server logs for details
 3. Manually create ticket from failed email
@@ -428,6 +463,7 @@ Check server logs for:
 4. Edit AI prompt to be more specific
 
 **Example:**
+
 ```typescript
 // Make priority logic more explicit
 4. Determine priority level:
@@ -442,6 +478,7 @@ Check server logs for:
 **Should not happen** - emails are tracked by Message-ID for idempotency.
 
 **If it happens:**
+
 - Check `processed_emails` table
 - Verify email has unique Message-ID header
 - May need to add additional duplicate detection
@@ -451,6 +488,7 @@ Check server logs for:
 ## 📊 Success Metrics
 
 ### Week 1 Targets
+
 - [ ] 90%+ processing success rate
 - [ ] < 30 seconds average processing time
 - [ ] Zero emails lost/missed
@@ -458,12 +496,14 @@ Check server logs for:
 - [ ] Team understands how it works
 
 ### Week 2 Targets
+
 - [ ] 95%+ processing success rate
 - [ ] < 5% corrections needed
 - [ ] Customers receiving confirmation emails
 - [ ] Technicians happy with auto-created tickets
 
 ### Month 1 Targets
+
 - [ ] 95%+ processing success rate
 - [ ] < 2% corrections needed
 - [ ] 50+ emails processed
@@ -477,6 +517,7 @@ Check server logs for:
 ### For Admins
 
 **Show them:**
+
 1. How to check Statistics tab
 2. How to review Processed Emails
 3. How to spot parsing errors
@@ -484,6 +525,7 @@ Check server logs for:
 5. When to call for help
 
 **Give them access to:**
+
 - Settings > Email Parser page
 - This deployment guide
 - Troubleshooting section
@@ -491,6 +533,7 @@ Check server logs for:
 ### For Technicians
 
 **Explain:**
+
 1. Some tickets now come from email automatically
 2. They're just like regular tickets
 3. Customer already got confirmation email
@@ -500,6 +543,7 @@ Check server logs for:
 ### For Customers (Optional)
 
 **Send announcement:**
+
 ```
 Subject: New Way to Request Service - Just Email Us!
 
@@ -524,6 +568,7 @@ Thanks!
 ## 💡 Tips for Success
 
 ### Do's ✅
+
 - ✅ Monitor daily for first week
 - ✅ Review failed emails immediately
 - ✅ Refine prompts based on real data
@@ -531,6 +576,7 @@ Thanks!
 - ✅ Get team feedback regularly
 
 ### Don'ts ❌
+
 - ❌ Don't ignore failed emails
 - ❌ Don't skip testing phase
 - ❌ Don't use regular password (use app password)
@@ -542,6 +588,7 @@ Thanks!
 ## 🎉 You're Live!
 
 Congratulations! You now have an AI-powered email-to-ticket system that:
+
 - ⚡ Processes emails in <30 seconds
 - 🤖 Uses Claude AI for intelligent parsing
 - 🎯 Creates tickets 24/7 automatically
@@ -555,6 +602,7 @@ Congratulations! You now have an AI-powered email-to-ticket system that:
 ## 📞 Support
 
 If you run into issues:
+
 1. Check server logs first
 2. Review Troubleshooting section
 3. Check Statistics tab for clues
@@ -564,4 +612,3 @@ If you run into issues:
 ---
 
 **Next:** Once email parser is stable, move on to Mobile App frontend! 📱
-

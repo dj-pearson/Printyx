@@ -30,10 +30,7 @@ import { knowledgeArticles, knowledgeCategories, articleFeedback } from '@shared
 
 const program = new Command();
 
-program
-  .name('kb')
-  .description('Knowledge Base CLI Tool')
-  .version('1.0.0');
+program.name('kb').description('Knowledge Base CLI Tool').version('1.0.0');
 
 /**
  * List articles
@@ -47,15 +44,11 @@ program
   .option('-l, --limit <number>', 'Limit results', '20')
   .action(async (options) => {
     try {
-      const result = await KnowledgeBaseService.searchArticles(
-        options.tenant,
-        '',
-        {
-          categoryId: options.category,
-          status: options.status,
-          limit: parseInt(options.limit),
-        }
-      );
+      const result = await KnowledgeBaseService.searchArticles(options.tenant, '', {
+        categoryId: options.category,
+        status: options.status,
+        limit: parseInt(options.limit),
+      });
 
       console.log('\n📚 Knowledge Base Articles\n');
       console.log(`Found ${result.total} articles:\n`);
@@ -113,19 +106,15 @@ program
         process.exit(1);
       }
 
-      const article = await KnowledgeBaseService.createArticle(
-        options.tenant,
-        options.user,
-        {
-          title: options.title,
-          content,
-          categoryId: options.category,
-          excerpt: options.excerpt,
-          tags: options.tags ? options.tags.split(',') : [],
-          contentType: options.type,
-          difficultyLevel: options.difficulty,
-        }
-      );
+      const article = await KnowledgeBaseService.createArticle(options.tenant, options.user, {
+        title: options.title,
+        content,
+        categoryId: options.category,
+        excerpt: options.excerpt,
+        tags: options.tags ? options.tags.split(',') : [],
+        contentType: options.type,
+        difficultyLevel: options.difficulty,
+      });
 
       console.log('\n✅ Article created successfully!');
       console.log(`   ID: ${article.id}`);
@@ -172,7 +161,7 @@ program
         options.id,
         options.tenant,
         options.user,
-        updates
+        updates,
       );
 
       console.log('\n✅ Article updated successfully!');
@@ -205,7 +194,10 @@ program
         });
 
         const answer = await new Promise<string>((resolve) => {
-          readline.question('⚠️  Are you sure you want to delete this article? (yes/no): ', resolve);
+          readline.question(
+            '⚠️  Are you sure you want to delete this article? (yes/no): ',
+            resolve,
+          );
         });
 
         readline.close();
@@ -219,10 +211,7 @@ program
       await db
         .delete(knowledgeArticles)
         .where(
-          and(
-            eq(knowledgeArticles.id, options.id),
-            eq(knowledgeArticles.tenantId, options.tenant)
-          )
+          and(eq(knowledgeArticles.id, options.id), eq(knowledgeArticles.tenantId, options.tenant)),
         );
 
       console.log('\n✅ Article deleted successfully!');
@@ -254,18 +243,18 @@ program
           where: and(
             eq(knowledgeArticles.tenantId, options.tenant),
             eq(knowledgeArticles.categoryId, options.category),
-            eq(knowledgeArticles.status, 'draft')
+            eq(knowledgeArticles.status, 'draft'),
           ),
         });
-        articleIds = drafts.map(a => a.id);
+        articleIds = drafts.map((a) => a.id);
       } else if (options.all) {
         const drafts = await db.query.knowledgeArticles.findMany({
           where: and(
             eq(knowledgeArticles.tenantId, options.tenant),
-            eq(knowledgeArticles.status, 'draft')
+            eq(knowledgeArticles.status, 'draft'),
           ),
         });
-        articleIds = drafts.map(a => a.id);
+        articleIds = drafts.map((a) => a.id);
       } else {
         console.error('❌ Error: Specify --id, --category, or --all');
         process.exit(1);
@@ -274,12 +263,9 @@ program
       console.log(`\nPublishing ${articleIds.length} article(s)...`);
 
       for (const id of articleIds) {
-        await KnowledgeBaseService.updateArticle(
-          id,
-          options.tenant,
-          options.user,
-          { status: 'published' }
-        );
+        await KnowledgeBaseService.updateArticle(id, options.tenant, options.user, {
+          status: 'published',
+        });
       }
 
       console.log(`✅ Published ${articleIds.length} article(s) successfully!`);
@@ -319,7 +305,7 @@ program
           difficultyLevel: options.difficulty,
           includeExamples: options.examples,
           tone: options.tone,
-        }
+        },
       );
 
       console.log('✅ Article generation queued!');
@@ -370,14 +356,10 @@ program
 
       for (const articleData of articles) {
         try {
-          await KnowledgeBaseService.createArticle(
-            options.tenant,
-            options.user,
-            {
-              ...articleData,
-              categoryId: articleData.categoryId || options.category,
-            }
-          );
+          await KnowledgeBaseService.createArticle(options.tenant, options.user, {
+            ...articleData,
+            categoryId: articleData.categoryId || options.category,
+          });
           imported++;
           console.log(`✅ Imported: ${articleData.title}`);
         } catch (error: any) {
@@ -411,15 +393,11 @@ program
     try {
       console.log('\n📤 Exporting articles...\n');
 
-      const result = await KnowledgeBaseService.searchArticles(
-        options.tenant,
-        '',
-        {
-          categoryId: options.category,
-          status: options.status,
-          limit: 10000,
-        }
-      );
+      const result = await KnowledgeBaseService.searchArticles(options.tenant, '', {
+        categoryId: options.category,
+        status: options.status,
+        limit: 10000,
+      });
 
       const outputPath = path.resolve(options.output);
 
@@ -428,7 +406,7 @@ program
       } else if (options.format === 'csv') {
         // Simple CSV export
         const headers = ['ID', 'Title', 'Status', 'Category', 'Created', 'Views'];
-        const rows = result.articles.map(a => [
+        const rows = result.articles.map((a) => [
           a.id,
           `"${a.title.replace(/"/g, '""')}"`,
           a.status,
@@ -437,10 +415,7 @@ program
           a.viewCount,
         ]);
 
-        const csv = [
-          headers.join(','),
-          ...rows.map(row => row.join(',')),
-        ].join('\n');
+        const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
         fs.writeFileSync(outputPath, csv, 'utf-8');
       }
@@ -466,10 +441,10 @@ program
       const start = new Date();
       start.setDate(start.getDate() - parseInt(options.days));
 
-      const analytics = await KnowledgeBaseService.getAnalytics(
-        options.tenant,
-        { start, end: new Date() }
-      );
+      const analytics = await KnowledgeBaseService.getAnalytics(options.tenant, {
+        start,
+        end: new Date(),
+      });
 
       console.log('\n📊 Knowledge Base Statistics\n');
       console.log(`Total Articles: ${analytics.totalArticles}`);
@@ -519,7 +494,7 @@ program
         const feedback = await db.query.articleFeedback.findMany({
           where: and(
             eq(articleFeedback.tenantId, options.tenant),
-            eq(articleFeedback.resolved, false)
+            eq(articleFeedback.resolved, false),
           ),
           limit: 50,
         });
@@ -555,8 +530,8 @@ program
           .where(
             and(
               eq(articleFeedback.id, options.resolve),
-              eq(articleFeedback.tenantId, options.tenant)
-            )
+              eq(articleFeedback.tenantId, options.tenant),
+            ),
           );
 
         console.log('\n✅ Feedback resolved successfully!');
@@ -580,15 +555,11 @@ program
   .option('-l, --limit <number>', 'Limit results', '10')
   .action(async (options) => {
     try {
-      const result = await KnowledgeBaseService.searchArticles(
-        options.tenant,
-        options.query,
-        {
-          categoryId: options.category,
-          status: options.status,
-          limit: parseInt(options.limit),
-        }
-      );
+      const result = await KnowledgeBaseService.searchArticles(options.tenant, options.query, {
+        categoryId: options.category,
+        status: options.status,
+        limit: parseInt(options.limit),
+      });
 
       console.log(`\n🔍 Search Results for "${options.query}"\n`);
       console.log(`Found ${result.total} articles in ${result.searchTime}ms:\n`);

@@ -7,7 +7,7 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 const router = express.Router();
@@ -22,9 +22,9 @@ router.get('/api/document-management/library', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { category, status, dateRange } = req.query;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Document library with categorization and metadata
@@ -37,9 +37,9 @@ router.get('/api/document-management/library', async (req: any, res) => {
         storageUsed: '4.2 GB',
         storageLimit: '50 GB',
         lastBackup: new Date('2025-02-03T02:00:00Z'),
-        complianceScore: 96.5
+        complianceScore: 96.5,
       },
-      
+
       categories: [
         {
           id: 'contracts',
@@ -49,12 +49,12 @@ router.get('/api/document-management/library', async (req: any, res) => {
             { name: 'Service Contracts', count: 234, icon: 'FileText' },
             { name: 'Lease Agreements', count: 156, icon: 'FileSignature' },
             { name: 'Master Service Agreements', count: 45, icon: 'FileContract' },
-            { name: 'Non-Disclosure Agreements', count: 21, icon: 'FileKey' }
+            { name: 'Non-Disclosure Agreements', count: 21, icon: 'FileKey' },
           ],
           recentActivity: 12,
           complianceStatus: 'compliant',
           retentionPolicy: '7 years',
-          accessLevel: 'restricted'
+          accessLevel: 'restricted',
         },
         {
           id: 'service-docs',
@@ -64,12 +64,12 @@ router.get('/api/document-management/library', async (req: any, res) => {
             { name: 'Service Reports', count: 789, icon: 'FileText' },
             { name: 'Installation Docs', count: 234, icon: 'Settings' },
             { name: 'Maintenance Records', count: 198, icon: 'Wrench' },
-            { name: 'Warranty Documentation', count: 121, icon: 'Shield' }
+            { name: 'Warranty Documentation', count: 121, icon: 'Shield' },
           ],
           recentActivity: 45,
           complianceStatus: 'compliant',
           retentionPolicy: '5 years',
-          accessLevel: 'department'
+          accessLevel: 'department',
         },
         {
           id: 'financial',
@@ -79,12 +79,12 @@ router.get('/api/document-management/library', async (req: any, res) => {
             { name: 'Invoices', count: 345, icon: 'Receipt' },
             { name: 'Purchase Orders', count: 156, icon: 'ShoppingCart' },
             { name: 'Payment Records', count: 98, icon: 'CreditCard' },
-            { name: 'Tax Documents', count: 79, icon: 'Calculator' }
+            { name: 'Tax Documents', count: 79, icon: 'Calculator' },
           ],
           recentActivity: 28,
           complianceStatus: 'compliant',
           retentionPolicy: '10 years',
-          accessLevel: 'restricted'
+          accessLevel: 'restricted',
         },
         {
           id: 'compliance',
@@ -94,12 +94,12 @@ router.get('/api/document-management/library', async (req: any, res) => {
             { name: 'Regulatory Filings', count: 89, icon: 'FileCheck' },
             { name: 'Safety Documentation', count: 67, icon: 'Shield' },
             { name: 'Audit Reports', count: 45, icon: 'Search' },
-            { name: 'Legal Correspondence', count: 33, icon: 'Mail' }
+            { name: 'Legal Correspondence', count: 33, icon: 'Mail' },
           ],
           recentActivity: 8,
           complianceStatus: 'review_required',
           retentionPolicy: 'permanent',
-          accessLevel: 'restricted'
+          accessLevel: 'restricted',
         },
         {
           id: 'training',
@@ -108,15 +108,15 @@ router.get('/api/document-management/library', async (req: any, res) => {
           subcategories: [
             { name: 'Training Materials', count: 67, icon: 'BookOpen' },
             { name: 'Standard Operating Procedures', count: 45, icon: 'ClipboardList' },
-            { name: 'Safety Procedures', count: 25, icon: 'AlertTriangle' }
+            { name: 'Safety Procedures', count: 25, icon: 'AlertTriangle' },
           ],
           recentActivity: 5,
           complianceStatus: 'compliant',
           retentionPolicy: '3 years',
-          accessLevel: 'public'
-        }
+          accessLevel: 'public',
+        },
       ],
-      
+
       // Recently accessed documents
       recentDocuments: [
         {
@@ -134,16 +134,16 @@ router.get('/api/document-management/library', async (req: any, res) => {
           permissions: {
             view: ['sales', 'service', 'management'],
             edit: ['sales', 'management'],
-            approve: ['management']
+            approve: ['management'],
           },
           workflow: {
             currentStage: 'customer_review',
             nextAction: 'awaiting_signature',
             dueDate: new Date('2025-02-10T17:00:00Z'),
-            assignedTo: 'John Smith'
+            assignedTo: 'John Smith',
           },
           ocrText: 'Service Contract for printing equipment maintenance and support...',
-          checksumMD5: '5d41402abc4b2a76b9719d911017c592'
+          checksumMD5: '5d41402abc4b2a76b9719d911017c592',
         },
         {
           id: 'doc-002',
@@ -160,16 +160,16 @@ router.get('/api/document-management/library', async (req: any, res) => {
           permissions: {
             view: ['management', 'compliance'],
             edit: ['compliance'],
-            approve: ['management']
+            approve: ['management'],
           },
           workflow: {
             currentStage: 'completed',
             nextAction: 'archive',
             dueDate: new Date('2025-02-15T00:00:00Z'),
-            assignedTo: 'Compliance Team'
+            assignedTo: 'Compliance Team',
           },
           ocrText: 'Annual compliance audit results and recommendations...',
-          checksumMD5: '098f6bcd4621d373cade4e832627b4f6'
+          checksumMD5: '098f6bcd4621d373cade4e832627b4f6',
         },
         {
           id: 'doc-003',
@@ -186,19 +186,19 @@ router.get('/api/document-management/library', async (req: any, res) => {
           permissions: {
             view: ['service', 'management'],
             edit: ['service'],
-            approve: ['management']
+            approve: ['management'],
           },
           workflow: {
             currentStage: 'customer_approval',
             nextAction: 'final_signature',
             dueDate: new Date('2025-02-08T17:00:00Z'),
-            assignedTo: 'Service Team'
+            assignedTo: 'Service Team',
           },
           ocrText: 'Installation completed successfully for Xerox WorkCentre 5855...',
-          checksumMD5: 'e4d909c290d0fb1ca068ffaddf22cbd0'
-        }
+          checksumMD5: 'e4d909c290d0fb1ca068ffaddf22cbd0',
+        },
       ],
-      
+
       // Documents requiring attention
       pendingActions: [
         {
@@ -209,8 +209,9 @@ router.get('/api/document-management/library', async (req: any, res) => {
           priority: 'high',
           assignedTo: 'John Smith',
           dueDate: new Date('2025-02-05T17:00:00Z'),
-          description: 'Contract renewal requires final management approval before customer presentation',
-          estimatedTime: 15 // minutes
+          description:
+            'Contract renewal requires final management approval before customer presentation',
+          estimatedTime: 15, // minutes
         },
         {
           id: 'action-002',
@@ -221,7 +222,7 @@ router.get('/api/document-management/library', async (req: any, res) => {
           assignedTo: 'Legal Team',
           dueDate: new Date('2025-02-04T12:00:00Z'),
           description: 'MSA requires legal review and executive signature',
-          estimatedTime: 45
+          estimatedTime: 45,
         },
         {
           id: 'action-003',
@@ -232,19 +233,18 @@ router.get('/api/document-management/library', async (req: any, res) => {
           assignedTo: 'Safety Team',
           dueDate: new Date('2025-02-12T17:00:00Z'),
           description: 'Annual safety procedure review and update required',
-          estimatedTime: 120
-        }
-      ]
+          estimatedTime: 120,
+        },
+      ],
     };
 
     // Apply filters if provided
     let filteredData = documentLibrary;
     if (category) {
-      filteredData.categories = documentLibrary.categories.filter(cat => cat.id === category);
+      filteredData.categories = documentLibrary.categories.filter((cat) => cat.id === category);
     }
 
     res.json(filteredData);
-    
   } catch (error) {
     console.error('Error fetching document library:', error);
     res.status(500).json({ message: 'Failed to fetch document library' });
@@ -256,7 +256,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const workflowTemplates = {
@@ -268,7 +268,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
           category: 'contracts',
           isActive: true,
           usage: 156, // times used
-          
+
           stages: [
             {
               id: 'stage-1',
@@ -281,9 +281,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'document_uploaded',
                   action: 'assign_to_sales_manager',
-                  condition: 'contract_value > 10000'
-                }
-              ]
+                  condition: 'contract_value > 10000',
+                },
+              ],
             },
             {
               id: 'stage-2',
@@ -296,9 +296,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'sales_approved',
                   action: 'assign_to_legal_team',
-                  condition: 'always'
-                }
-              ]
+                  condition: 'always',
+                },
+              ],
             },
             {
               id: 'stage-3',
@@ -311,9 +311,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'legal_approved',
                   action: 'assign_to_manager',
-                  condition: 'contract_value > 5000'
-                }
-              ]
+                  condition: 'contract_value > 5000',
+                },
+              ],
             },
             {
               id: 'stage-4',
@@ -326,37 +326,37 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'management_approved',
                   action: 'send_notification_to_sales',
-                  condition: 'always'
-                }
-              ]
-            }
+                  condition: 'always',
+                },
+              ],
+            },
           ],
-          
+
           notifications: [
             {
               event: 'stage_completed',
               recipients: ['assignee', 'manager'],
-              template: 'stage_completion_notification'
+              template: 'stage_completion_notification',
             },
             {
               event: 'sla_warning',
               recipients: ['assignee', 'escalation_manager'],
               template: 'sla_warning_notification',
-              timing: '4_hours_before_due'
+              timing: '4_hours_before_due',
             },
             {
               event: 'approval_required',
               recipients: ['approver'],
-              template: 'approval_request_notification'
-            }
+              template: 'approval_request_notification',
+            },
           ],
-          
+
           metrics: {
             averageCompletionTime: 4.2, // days
             approvalRate: 89.5, // percentage
             slaComplianceRate: 92.1,
-            bottleneckStage: 'legal_review'
-          }
+            bottleneckStage: 'legal_review',
+          },
         },
         {
           id: 'service-documentation',
@@ -365,7 +365,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
           category: 'service-docs',
           isActive: true,
           usage: 342,
-          
+
           stages: [
             {
               id: 'stage-1',
@@ -378,9 +378,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'service_ticket_closed',
                   action: 'create_documentation_task',
-                  condition: 'always'
-                }
-              ]
+                  condition: 'always',
+                },
+              ],
             },
             {
               id: 'stage-2',
@@ -393,9 +393,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'documentation_submitted',
                   action: 'assign_to_service_manager',
-                  condition: 'always'
-                }
-              ]
+                  condition: 'always',
+                },
+              ],
             },
             {
               id: 'stage-3',
@@ -408,18 +408,18 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'documentation_approved',
                   action: 'send_customer_notification',
-                  condition: 'always'
-                }
-              ]
-            }
+                  condition: 'always',
+                },
+              ],
+            },
           ],
-          
+
           metrics: {
             averageCompletionTime: 0.8, // days
             approvalRate: 94.7,
             slaComplianceRate: 96.3,
-            bottleneckStage: 'quality_review'
-          }
+            bottleneckStage: 'quality_review',
+          },
         },
         {
           id: 'compliance-review',
@@ -428,7 +428,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
           category: 'compliance',
           isActive: true,
           usage: 89,
-          
+
           stages: [
             {
               id: 'stage-1',
@@ -441,9 +441,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'scheduled_review',
                   action: 'create_assessment_task',
-                  condition: 'document_age > review_interval'
-                }
-              ]
+                  condition: 'document_age > review_interval',
+                },
+              ],
             },
             {
               id: 'stage-2',
@@ -456,9 +456,9 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'issues_identified',
                   action: 'assign_to_document_owner',
-                  condition: 'compliance_issues_found'
-                }
-              ]
+                  condition: 'compliance_issues_found',
+                },
+              ],
             },
             {
               id: 'stage-3',
@@ -471,21 +471,21 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
                 {
                   trigger: 'remediation_completed',
                   action: 'request_final_certification',
-                  condition: 'always'
-                }
-              ]
-            }
+                  condition: 'always',
+                },
+              ],
+            },
           ],
-          
+
           metrics: {
             averageCompletionTime: 8.5, // days
             approvalRate: 85.2,
             slaComplianceRate: 78.9,
-            bottleneckStage: 'remediation'
-          }
-        }
+            bottleneckStage: 'remediation',
+          },
+        },
       ],
-      
+
       // Active workflow instances
       activeWorkflows: [
         {
@@ -499,7 +499,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
           dueAt: new Date('2025-02-05T17:00:00Z'),
           assignedTo: 'John Smith',
           priority: 'high',
-          slaStatus: 'on_track'
+          slaStatus: 'on_track',
         },
         {
           id: 'wf-002',
@@ -512,7 +512,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
           dueAt: new Date('2025-02-02T16:30:00Z'),
           assignedTo: 'System',
           priority: 'medium',
-          slaStatus: 'completed'
+          slaStatus: 'completed',
         },
         {
           id: 'wf-003',
@@ -525,10 +525,10 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
           dueAt: new Date('2025-02-08T17:00:00Z'),
           assignedTo: 'Maria Rodriguez',
           priority: 'high',
-          slaStatus: 'at_risk'
-        }
+          slaStatus: 'at_risk',
+        },
       ],
-      
+
       // Automation statistics
       automationStats: {
         totalRulesActive: 24,
@@ -536,12 +536,11 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
         automationSuccessRate: 96.8,
         timesSaved: 145, // hours per month
         documentsProcessed: 2847,
-        averageProcessingTime: 2.3 // days
-      }
+        averageProcessingTime: 2.3, // days
+      },
     };
 
     res.json(workflowTemplates);
-    
   } catch (error) {
     console.error('Error fetching workflow templates:', error);
     res.status(500).json({ message: 'Failed to fetch workflow templates' });
@@ -553,9 +552,9 @@ router.get('/api/document-management/search', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { query, category, dateRange, fileType } = req.query;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Simulated search results with OCR and metadata matching
@@ -566,9 +565,9 @@ router.get('/api/document-management/search', async (req: any, res) => {
       filters: {
         category: category || 'all',
         dateRange: dateRange || 'all_time',
-        fileType: fileType || 'all'
+        fileType: fileType || 'all',
       },
-      
+
       results: [
         {
           id: 'doc-001',
@@ -577,13 +576,13 @@ router.get('/api/document-management/search', async (req: any, res) => {
           subcategory: 'Service Contracts',
           relevanceScore: 98.5,
           matchType: 'title_and_content',
-          
+
           highlights: [
             'Metro Office Solutions service <mark>contract</mark> for equipment maintenance',
             'Annual <mark>renewal</mark> terms and pricing structure',
-            'Service level agreements and response times'
+            'Service level agreements and response times',
           ],
-          
+
           metadata: {
             fileType: 'pdf',
             fileSize: '2.4 MB',
@@ -592,18 +591,19 @@ router.get('/api/document-management/search', async (req: any, res) => {
             modifiedBy: 'Sarah Chen',
             version: '2.1',
             tags: ['renewal', 'service', 'metro-office'],
-            language: 'en'
+            language: 'en',
           },
-          
+
           ocrConfidence: 94.7,
-          textPreview: 'This Service Contract (Contract) is entered into between Metro Office Solutions and Printyx Service Division for the provision of comprehensive equipment maintenance...',
-          
+          textPreview:
+            'This Service Contract (Contract) is entered into between Metro Office Solutions and Printyx Service Division for the provision of comprehensive equipment maintenance...',
+
           permissions: {
             canView: true,
             canEdit: true,
             canDownload: true,
-            canShare: false
-          }
+            canShare: false,
+          },
         },
         {
           id: 'doc-006',
@@ -612,13 +612,13 @@ router.get('/api/document-management/search', async (req: any, res) => {
           subcategory: 'Service Contracts',
           relevanceScore: 87.2,
           matchType: 'content_only',
-          
+
           highlights: [
             'Standard <mark>service</mark> level agreement template',
             'Response time requirements and <mark>contract</mark> terms',
-            'Equipment maintenance and support provisions'
+            'Equipment maintenance and support provisions',
           ],
-          
+
           metadata: {
             fileType: 'docx',
             fileSize: '845 KB',
@@ -627,18 +627,19 @@ router.get('/api/document-management/search', async (req: any, res) => {
             modifiedBy: 'Legal Team',
             version: '3.4',
             tags: ['template', 'sla', 'standard'],
-            language: 'en'
+            language: 'en',
           },
-          
+
           ocrConfidence: 96.1,
-          textPreview: 'This Service Level Agreement template defines standard terms for equipment maintenance contracts including response times, coverage areas...',
-          
+          textPreview:
+            'This Service Level Agreement template defines standard terms for equipment maintenance contracts including response times, coverage areas...',
+
           permissions: {
             canView: true,
             canEdit: false,
             canDownload: true,
-            canShare: true
-          }
+            canShare: true,
+          },
         },
         {
           id: 'doc-007',
@@ -647,13 +648,13 @@ router.get('/api/document-management/search', async (req: any, res) => {
           subcategory: 'Installation Docs',
           relevanceScore: 75.8,
           matchType: 'metadata_and_content',
-          
+
           highlights: [
             'Canon ImageRunner installation procedures and checklist',
             'Equipment setup and configuration requirements',
-            'Post-installation testing and verification'
+            'Post-installation testing and verification',
           ],
-          
+
           metadata: {
             fileType: 'pdf',
             fileSize: '1.2 MB',
@@ -662,54 +663,54 @@ router.get('/api/document-management/search', async (req: any, res) => {
             modifiedBy: 'Installation Team',
             version: '1.8',
             tags: ['canon', 'installation', 'checklist'],
-            language: 'en'
+            language: 'en',
           },
-          
+
           ocrConfidence: 91.3,
-          textPreview: 'Canon ImageRunner Installation Checklist: Pre-installation site survey, electrical requirements, network configuration...',
-          
+          textPreview:
+            'Canon ImageRunner Installation Checklist: Pre-installation site survey, electrical requirements, network configuration...',
+
           permissions: {
             canView: true,
             canEdit: true,
             canDownload: true,
-            canShare: true
-          }
-        }
+            canShare: true,
+          },
+        },
       ],
-      
+
       // Search suggestions and filters
       suggestions: [
         'service contract renewal',
         'maintenance agreement',
         'installation documentation',
         'compliance audit report',
-        'training materials'
+        'training materials',
       ],
-      
+
       availableFilters: {
         categories: [
           { id: 'contracts', name: 'Contracts & Agreements', count: 18 },
           { id: 'service-docs', name: 'Service Documentation', count: 15 },
           { id: 'financial', name: 'Financial Records', count: 6 },
-          { id: 'compliance', name: 'Compliance & Legal', count: 3 }
+          { id: 'compliance', name: 'Compliance & Legal', count: 3 },
         ],
         fileTypes: [
           { type: 'pdf', count: 28 },
           { type: 'docx', count: 8 },
           { type: 'xlsx', count: 4 },
-          { type: 'jpg', count: 2 }
+          { type: 'jpg', count: 2 },
         ],
         dateRanges: [
           { range: 'last_week', count: 12 },
           { range: 'last_month', count: 25 },
           { range: 'last_quarter', count: 38 },
-          { range: 'last_year', count: 42 }
-        ]
-      }
+          { range: 'last_year', count: 42 },
+        ],
+      },
     };
 
     res.json(searchResults);
-    
   } catch (error) {
     console.error('Error performing document search:', error);
     res.status(500).json({ message: 'Failed to perform document search' });
@@ -721,9 +722,9 @@ router.post('/api/document-management/automation-rules', async (req: any, res) =
   try {
     const tenantId = req.user?.tenantId;
     const { ruleName, trigger, condition, action, targetRole, templateId } = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Simulate rule creation
@@ -739,15 +740,14 @@ router.post('/api/document-management/automation-rules', async (req: any, res) =
       createdAt: new Date(),
       createdBy: req.user.name,
       triggeredCount: 0,
-      successRate: 100
+      successRate: 100,
     };
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       rule: newRule,
-      message: 'Automation rule created successfully'
+      message: 'Automation rule created successfully',
     });
-    
   } catch (error) {
     console.error('Error creating automation rule:', error);
     res.status(500).json({ message: 'Failed to create automation rule' });
@@ -759,9 +759,9 @@ router.post('/api/document-management/upload', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { fileName, fileSize, fileType, category, tags } = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Simulate document upload and OCR processing
@@ -773,23 +773,24 @@ router.post('/api/document-management/upload', async (req: any, res) => {
       category,
       uploadedAt: new Date(),
       uploadedBy: req.user.name,
-      
+
       // OCR processing results
       ocrProcessing: {
         status: 'completed',
         confidence: 94.2,
         pagesProcessed: 8,
         processingTime: 12.5, // seconds
-        extractedText: 'Service Agreement for comprehensive equipment maintenance and support services...',
+        extractedText:
+          'Service Agreement for comprehensive equipment maintenance and support services...',
         detectedLanguage: 'en',
         metadata: {
           documentType: 'contract',
           signaturesDetected: 2,
           tablesDetected: 3,
-          formsDetected: 1
-        }
+          formsDetected: 1,
+        },
       },
-      
+
       // Auto-generated metadata
       generatedMetadata: {
         suggestedTags: ['service', 'contract', 'maintenance'],
@@ -798,23 +799,22 @@ router.post('/api/document-management/upload', async (req: any, res) => {
         detectedEntities: [
           { type: 'company', value: 'Metro Office Solutions', confidence: 95.2 },
           { type: 'date', value: '2025-02-01', confidence: 98.1 },
-          { type: 'amount', value: '$15,600', confidence: 91.7 }
-        ]
+          { type: 'amount', value: '$15,600', confidence: 91.7 },
+        ],
       },
-      
+
       // Workflow automation
       triggeredWorkflows: [
         {
           workflowId: 'contract-approval',
           status: 'initiated',
           currentStage: 'initial_review',
-          assignedTo: 'Sales Team'
-        }
-      ]
+          assignedTo: 'Sales Team',
+        },
+      ],
     };
 
     res.json(uploadResult);
-    
   } catch (error) {
     console.error('Error uploading document:', error);
     res.status(500).json({ message: 'Failed to upload document' });

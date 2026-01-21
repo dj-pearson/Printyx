@@ -1,9 +1,9 @@
-import express from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { db } from "./db";
-import { 
-  phoneInTickets, 
-  technicianTicketSessions, 
+import express from 'express';
+import { eq, and, desc, sql } from 'drizzle-orm';
+import { db } from './db';
+import {
+  phoneInTickets,
+  technicianTicketSessions,
   ticketPartsRequests,
   workflowSteps,
   insertPhoneInTicketSchema,
@@ -13,12 +13,18 @@ import {
   type PhoneInTicket,
   type TechnicianTicketSession,
   type TicketPartsRequest,
-} from "@shared/enhanced-service-schema";
-import { serviceTickets, customers, businessRecords, autoInvoiceGeneration, insertAutoInvoiceGenerationSchema } from "@shared/schema";
-import { requireServiceAccess } from "./rbac-middleware";
-import { CustomerPortalService } from "./services/customer-portal-service";
-import { billingEngine } from "./services/billing-engine-service";
-import { updateServiceRequestStatusSchema } from "@shared/customer-portal-schema";
+} from '@shared/enhanced-service-schema';
+import {
+  serviceTickets,
+  customers,
+  businessRecords,
+  autoInvoiceGeneration,
+  insertAutoInvoiceGenerationSchema,
+} from '@shared/schema';
+import { requireServiceAccess } from './rbac-middleware';
+import { CustomerPortalService } from './services/customer-portal-service';
+import { billingEngine } from './services/billing-engine-service';
+import { updateServiceRequestStatusSchema } from '@shared/customer-portal-schema';
 
 const router = express.Router();
 const customerPortalService = new CustomerPortalService();
@@ -26,82 +32,86 @@ const customerPortalService = new CustomerPortalService();
 // ============= SERVICE REQUEST ADMIN MANAGEMENT =============
 
 // Update service request status (ADMIN/DEALER ONLY) - SECURE VERSION
-router.put('/service-requests/:requestId/status', requireServiceAccess(2), async (req: any, res) => {
-  try {
-    const tenantId = req.user?.tenantId;
-    const { requestId } = req.params;
-    const userId = req.user?.claims?.sub;
+router.put(
+  '/service-requests/:requestId/status',
+  requireServiceAccess(2),
+  async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const { requestId } = req.params;
+      const userId = req.user?.claims?.sub;
 
-    if (!tenantId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing tenant context' 
+      if (!tenantId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Missing tenant context',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Missing user authentication',
+        });
+      }
+
+      // Validate request body using shared schema
+      const validationResult = updateServiceRequestStatusSchema.safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid request parameters',
+          errors: validationResult.error.errors,
+        });
+      }
+
+      // Validate required fields for admin updates
+      const statusData = validationResult.data;
+      if (!statusData.changedByName) {
+        return res.status(400).json({
+          success: false,
+          message: 'changedByName is required for status updates',
+        });
+      }
+
+      // Determine user type from RBAC context
+      let changedByType: 'dealer_user' | 'system' | 'technician' = 'dealer_user';
+      if (req.user.department === 'service' && req.user.roleLevel <= 2) {
+        changedByType = 'technician';
+      }
+
+      const result = await customerPortalService.updateServiceRequestStatus(
+        tenantId,
+        requestId,
+        statusData,
+        changedByType,
+        userId,
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: 'Service request status updated successfully',
       });
-    }
+    } catch (error) {
+      console.error('Error updating service request status:', error);
 
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Missing user authentication' 
-      });
-    }
+      if (error.message === 'Service request not found') {
+        return res.status(404).json({
+          success: false,
+          message: 'Service request not found',
+        });
+      }
 
-    // Validate request body using shared schema
-    const validationResult = updateServiceRequestStatusSchema.safeParse(req.body);
-
-    if (!validationResult.success) {
-      return res.status(400).json({
+      res.status(500).json({
         success: false,
-        message: 'Invalid request parameters',
-        errors: validationResult.error.errors
+        message: 'Failed to update service request status',
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-
-    // Validate required fields for admin updates
-    const statusData = validationResult.data;
-    if (!statusData.changedByName) {
-      return res.status(400).json({
-        success: false,
-        message: 'changedByName is required for status updates'
-      });
-    }
-
-    // Determine user type from RBAC context
-    let changedByType: 'dealer_user' | 'system' | 'technician' = 'dealer_user';
-    if (req.user.department === 'service' && req.user.roleLevel <= 2) {
-      changedByType = 'technician';
-    }
-
-    const result = await customerPortalService.updateServiceRequestStatus(
-      tenantId,
-      requestId,
-      statusData,
-      changedByType,
-      userId
-    );
-
-    res.json({ 
-      success: true, 
-      data: result,
-      message: 'Service request status updated successfully'
-    });
-  } catch (error) {
-    console.error('Error updating service request status:', error);
-    
-    if (error.message === 'Service request not found') {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Service request not found' 
-      });
-    }
-    
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to update service request status',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
+  },
+);
 
 // Get all service requests for admin management (ADMIN/DEALER ONLY)
 router.get('/service-requests', requireServiceAccess(2), async (req: any, res) => {
@@ -110,38 +120,38 @@ router.get('/service-requests', requireServiceAccess(2), async (req: any, res) =
     const { status, limit = 50, offset = 0 } = req.query;
 
     if (!tenantId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing tenant context' 
+      return res.status(400).json({
+        success: false,
+        message: 'Missing tenant context',
       });
     }
 
     const requests = await customerPortalService.getAllServiceRequests(tenantId, {
       status,
       limit: parseInt(limit as string),
-      offset: parseInt(offset as string)
+      offset: parseInt(offset as string),
     });
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: requests,
-      count: requests.length
+      count: requests.length,
     });
   } catch (error) {
     console.error('Error fetching service requests:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: 'Failed to fetch service requests',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
 
 // Create phone-in ticket
-router.post("/phone-in-tickets", async (req, res) => {
+router.post('/phone-in-tickets', async (req, res) => {
   try {
     const validatedData = insertPhoneInTicketSchema.parse(req.body);
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // If customerId is provided, fetch customer info from business_records
     let customerInfo = {};
@@ -161,19 +171,24 @@ router.post("/phone-in-tickets", async (req, res) => {
           postalCode: businessRecords.postalCode,
         })
         .from(businessRecords)
-        .where(and(
-          eq(businessRecords.id, validatedData.customerId),
-          eq(businessRecords.tenantId, tenantId)
-        ))
+        .where(
+          and(
+            eq(businessRecords.id, validatedData.customerId),
+            eq(businessRecords.tenantId, tenantId),
+          ),
+        )
         .limit(1);
 
       if (customer) {
         const fullAddress = [
-          customer.address || [customer.addressLine1, customer.addressLine2].filter(Boolean).join(', '),
+          customer.address ||
+            [customer.addressLine1, customer.addressLine2].filter(Boolean).join(', '),
           customer.city,
           customer.state,
-          customer.postalCode
-        ].filter(Boolean).join(', ');
+          customer.postalCode,
+        ]
+          .filter(Boolean)
+          .join(', ');
 
         customerInfo = {
           customerName: customer.companyName || customer.primaryContactName || 'Unknown Customer',
@@ -197,7 +212,7 @@ router.post("/phone-in-tickets", async (req, res) => {
     // If createServiceTicket is true, convert to service ticket
     if (req.body.createServiceTicket) {
       const ticketNumber = `TK-${Date.now()}`;
-      
+
       const [serviceTicket] = await db
         .insert(serviceTickets)
         .values({
@@ -239,17 +254,17 @@ Phone-in ticket details:
       res.json({ phoneTicket });
     }
   } catch (error) {
-    console.error("Error creating phone-in ticket:", error);
-    res.status(500).json({ error: "Failed to create phone-in ticket" });
+    console.error('Error creating phone-in ticket:', error);
+    res.status(500).json({ error: 'Failed to create phone-in ticket' });
   }
 });
 
 // Get customers for phone-in ticket form
-router.get("/customers", async (req, res) => {
+router.get('/customers', async (req, res) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const { search } = req.query;
-    
+
     let query = db
       .select({
         id: businessRecords.id,
@@ -264,39 +279,36 @@ router.get("/customers", async (req, res) => {
         type: businessRecords.type,
       })
       .from(businessRecords)
-      .where(and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.type, 'customer')
-      ));
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.type, 'customer')));
 
     if (search) {
       query = query.where(
         sql`(${businessRecords.companyName} ILIKE ${'%' + search + '%'} OR 
              ${businessRecords.primaryContactName} ILIKE ${'%' + search + '%'} OR
-             ${businessRecords.primaryContactPhone} ILIKE ${'%' + search + '%'})`
+             ${businessRecords.primaryContactPhone} ILIKE ${'%' + search + '%'})`,
       );
     }
 
     const customers = await query.limit(50);
     res.json(customers);
   } catch (error) {
-    console.error("Error fetching customers for phone-in tickets:", error);
-    res.status(500).json({ error: "Failed to fetch customers" });
+    console.error('Error fetching customers for phone-in tickets:', error);
+    res.status(500).json({ error: 'Failed to fetch customers' });
   }
 });
 
 // Get phone-in tickets
-router.get("/phone-in-tickets", async (req, res) => {
+router.get('/phone-in-tickets', async (req, res) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
-    const { limit = "50", offset = "0", converted } = req.query as Record<string, string>;
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const { limit = '50', offset = '0', converted } = req.query as Record<string, string>;
 
     if (!tenantId) {
-      return res.status(400).json({ error: "Missing x-tenant-id header" });
+      return res.status(400).json({ error: 'Missing x-tenant-id header' });
     }
 
-    const limitNum = Math.min(200, Math.max(1, parseInt(limit || "50", 10)));
-    const offsetNum = Math.max(0, parseInt(offset || "0", 10));
+    const limitNum = Math.min(200, Math.max(1, parseInt(limit || '50', 10)));
+    const offsetNum = Math.max(0, parseInt(offset || '0', 10));
 
     let where = and(eq(phoneInTickets.tenantId, tenantId));
     if (converted === 'true') {
@@ -340,18 +352,18 @@ router.get("/phone-in-tickets", async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    console.error("Error fetching phone-in tickets:", error);
-    res.status(500).json({ error: "Failed to fetch phone-in tickets" });
+    console.error('Error fetching phone-in tickets:', error);
+    res.status(500).json({ error: 'Failed to fetch phone-in tickets' });
   }
 });
 
 // Technician check-in to service ticket
-router.post("/service-tickets/:ticketId/check-in", async (req, res) => {
+router.post('/service-tickets/:ticketId/check-in', async (req, res) => {
   try {
     const { ticketId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
-    const technicianId = req.headers["x-user-id"] as string; // Assuming technician ID from auth
-    
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const technicianId = req.headers['x-user-id'] as string; // Assuming technician ID from auth
+
     const sessionData = insertTechnicianTicketSessionSchema.parse({
       ...req.body,
       tenantId,
@@ -367,8 +379,8 @@ router.post("/service-tickets/:ticketId/check-in", async (req, res) => {
         and(
           eq(technicianTicketSessions.serviceTicketId, ticketId),
           eq(technicianTicketSessions.technicianId, technicianId),
-          sql`${technicianTicketSessions.checkOutTimestamp} IS NULL`
-        )
+          sql`${technicianTicketSessions.checkOutTimestamp} IS NULL`,
+        ),
       )
       .limit(1);
 
@@ -377,42 +389,37 @@ router.post("/service-tickets/:ticketId/check-in", async (req, res) => {
     }
 
     // Create new session
-    const [session] = await db
-      .insert(technicianTicketSessions)
-      .values(sessionData)
-      .returning();
+    const [session] = await db.insert(technicianTicketSessions).values(sessionData).returning();
 
     // Update service ticket status
     await db
       .update(serviceTickets)
-      .set({ 
+      .set({
         status: 'on_site',
         updatedAt: new Date(),
       })
       .where(eq(serviceTickets.id, ticketId));
 
     // Create initial workflow step
-    await db
-      .insert(workflowSteps)
-      .values({
-        tenantId,
-        sessionId: session.id,
-        stepName: 'initial_assessment',
-        stepData: {},
-      });
+    await db.insert(workflowSteps).values({
+      tenantId,
+      sessionId: session.id,
+      stepName: 'initial_assessment',
+      stepData: {},
+    });
 
     res.json(session);
   } catch (error) {
-    console.error("Error checking in technician:", error);
-    res.status(500).json({ error: "Failed to check in technician" });
+    console.error('Error checking in technician:', error);
+    res.status(500).json({ error: 'Failed to check in technician' });
   }
 });
 
 // Get technician session for ticket
-router.get("/service-tickets/:ticketId/session", async (req, res) => {
+router.get('/service-tickets/:ticketId/session', async (req, res) => {
   try {
     const { ticketId } = req.params;
-    const technicianId = req.headers["x-user-id"] as string;
+    const technicianId = req.headers['x-user-id'] as string;
 
     const session = await db
       .select()
@@ -421,28 +428,28 @@ router.get("/service-tickets/:ticketId/session", async (req, res) => {
         and(
           eq(technicianTicketSessions.serviceTicketId, ticketId),
           eq(technicianTicketSessions.technicianId, technicianId),
-          sql`${technicianTicketSessions.checkOutTimestamp} IS NULL`
-        )
+          sql`${technicianTicketSessions.checkOutTimestamp} IS NULL`,
+        ),
       )
       .limit(1);
 
     if (session.length === 0) {
-      return res.status(404).json({ error: "No active session found" });
+      return res.status(404).json({ error: 'No active session found' });
     }
 
     res.json(session[0]);
   } catch (error) {
-    console.error("Error fetching session:", error);
-    res.status(500).json({ error: "Failed to fetch session" });
+    console.error('Error fetching session:', error);
+    res.status(500).json({ error: 'Failed to fetch session' });
   }
 });
 
 // Update workflow step
-router.post("/technician-sessions/:sessionId/update-step", async (req, res) => {
+router.post('/technician-sessions/:sessionId/update-step', async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { stepName, stepData, notes } = req.body;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Update session workflow step
     await db
@@ -465,46 +472,39 @@ router.post("/technician-sessions/:sessionId/update-step", async (req, res) => {
         and(
           eq(workflowSteps.sessionId, sessionId),
           eq(workflowSteps.stepName, stepName),
-          sql`${workflowSteps.stepCompleted} IS NULL`
-        )
+          sql`${workflowSteps.stepCompleted} IS NULL`,
+        ),
       );
 
     // Create new step if moving to next step
     const existingStep = await db
       .select()
       .from(workflowSteps)
-      .where(
-        and(
-          eq(workflowSteps.sessionId, sessionId),
-          eq(workflowSteps.stepName, stepName)
-        )
-      )
+      .where(and(eq(workflowSteps.sessionId, sessionId), eq(workflowSteps.stepName, stepName)))
       .limit(1);
 
     if (existingStep.length === 0) {
-      await db
-        .insert(workflowSteps)
-        .values({
-          tenantId,
-          sessionId,
-          stepName,
-          stepData,
-          notes,
-        });
+      await db.insert(workflowSteps).values({
+        tenantId,
+        sessionId,
+        stepName,
+        stepData,
+        notes,
+      });
     }
 
     // Update service ticket status based on workflow step
     const statusMapping: { [key: string]: string } = {
-      'initial_assessment': 'in-progress',
-      'diagnosis': 'in-progress',
-      'customer_approval': 'customer_approval',
-      'work_execution': 'in-progress',
-      'testing': 'testing',
-      'completion': 'completed',
+      initial_assessment: 'in-progress',
+      diagnosis: 'in-progress',
+      customer_approval: 'customer_approval',
+      work_execution: 'in-progress',
+      testing: 'testing',
+      completion: 'completed',
     };
 
     const newStatus = statusMapping[stepName] || 'in-progress';
-    
+
     const session = await db
       .select()
       .from(technicianTicketSessions)
@@ -523,42 +523,39 @@ router.post("/technician-sessions/:sessionId/update-step", async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error("Error updating workflow step:", error);
-    res.status(500).json({ error: "Failed to update workflow step" });
+    console.error('Error updating workflow step:', error);
+    res.status(500).json({ error: 'Failed to update workflow step' });
   }
 });
 
 // Request parts for ticket
-router.post("/service-tickets/:ticketId/request-parts", async (req, res) => {
+router.post('/service-tickets/:ticketId/request-parts', async (req, res) => {
   try {
     const { ticketId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
-    
+    const tenantId = req.headers['x-tenant-id'] as string;
+
     const partsData = insertTicketPartsRequestSchema.parse({
       ...req.body,
       tenantId,
       serviceTicketId: ticketId,
     });
 
-    const [partsRequest] = await db
-      .insert(ticketPartsRequests)
-      .values(partsData)
-      .returning();
+    const [partsRequest] = await db.insert(ticketPartsRequests).values(partsData).returning();
 
     // You might want to send notifications or trigger approval workflows here
 
     res.json(partsRequest);
   } catch (error) {
-    console.error("Error requesting parts:", error);
-    res.status(500).json({ error: "Failed to request parts" });
+    console.error('Error requesting parts:', error);
+    res.status(500).json({ error: 'Failed to request parts' });
   }
 });
 
 // Get parts requests for ticket
-router.get("/service-tickets/:ticketId/parts-requests", async (req, res) => {
+router.get('/service-tickets/:ticketId/parts-requests', async (req, res) => {
   try {
     const { ticketId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const partsRequests = await db
       .select()
@@ -566,20 +563,20 @@ router.get("/service-tickets/:ticketId/parts-requests", async (req, res) => {
       .where(
         and(
           eq(ticketPartsRequests.tenantId, tenantId),
-          eq(ticketPartsRequests.serviceTicketId, ticketId)
-        )
+          eq(ticketPartsRequests.serviceTicketId, ticketId),
+        ),
       )
       .orderBy(desc(ticketPartsRequests.createdAt));
 
     res.json(partsRequests);
   } catch (error) {
-    console.error("Error fetching parts requests:", error);
-    res.status(500).json({ error: "Failed to fetch parts requests" });
+    console.error('Error fetching parts requests:', error);
+    res.status(500).json({ error: 'Failed to fetch parts requests' });
   }
 });
 
 // Complete service ticket
-router.post("/service-tickets/:ticketId/complete", async (req, res) => {
+router.post('/service-tickets/:ticketId/complete', async (req, res) => {
   try {
     const { ticketId } = req.params;
     const { sessionId, ...completionData } = req.body;
@@ -608,16 +605,11 @@ router.post("/service-tickets/:ticketId/complete", async (req, res) => {
         stepData: completionData,
         notes: completionData.notes,
       })
-      .where(
-        and(
-          eq(workflowSteps.sessionId, sessionId),
-          eq(workflowSteps.stepName, 'completion')
-        )
-      );
+      .where(and(eq(workflowSteps.sessionId, sessionId), eq(workflowSteps.stepName, 'completion')));
 
     // Update service ticket
     const ticketStatus = completionData.followUpRequired ? 'follow_up_required' : 'completed';
-    
+
     await db
       .update(serviceTickets)
       .set({
@@ -652,40 +644,35 @@ router.post("/service-tickets/:ticketId/complete", async (req, res) => {
 
     res.json({ success: true, status: ticketStatus });
   } catch (error) {
-    console.error("Error completing service ticket:", error);
-    res.status(500).json({ error: "Failed to complete service ticket" });
+    console.error('Error completing service ticket:', error);
+    res.status(500).json({ error: 'Failed to complete service ticket' });
   }
 });
 
 // Get workflow steps for session
-router.get("/technician-sessions/:sessionId/workflow-steps", async (req, res) => {
+router.get('/technician-sessions/:sessionId/workflow-steps', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const steps = await db
       .select()
       .from(workflowSteps)
-      .where(
-        and(
-          eq(workflowSteps.tenantId, tenantId),
-          eq(workflowSteps.sessionId, sessionId)
-        )
-      )
+      .where(and(eq(workflowSteps.tenantId, tenantId), eq(workflowSteps.sessionId, sessionId)))
       .orderBy(workflowSteps.stepStarted);
 
     res.json(steps);
   } catch (error) {
-    console.error("Error fetching workflow steps:", error);
-    res.status(500).json({ error: "Failed to fetch workflow steps" });
+    console.error('Error fetching workflow steps:', error);
+    res.status(500).json({ error: 'Failed to fetch workflow steps' });
   }
 });
 
 // Customer search endpoint
-router.get("/customers/search", async (req, res) => {
+router.get('/customers/search', async (req, res) => {
   try {
     const { q: searchTerm } = req.query;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     if (!searchTerm || (searchTerm as string).length < 2) {
       return res.json([]);
@@ -707,24 +694,24 @@ router.get("/customers/search", async (req, res) => {
             LOWER(${customers.name}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
             LOWER(${customers.phone}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
             LOWER(${customers.email}) LIKE LOWER(${'%' + searchTerm + '%'})
-          )`
-        )
+          )`,
+        ),
       )
       .limit(10);
 
     res.json(searchResults);
   } catch (error) {
-    console.error("Error searching customers:", error);
-    res.status(500).json({ error: "Failed to search customers" });
+    console.error('Error searching customers:', error);
+    res.status(500).json({ error: 'Failed to search customers' });
   }
 });
 
 // Approve parts request
-router.post("/parts-requests/:requestId/approve", async (req, res) => {
+router.post('/parts-requests/:requestId/approve', async (req, res) => {
   try {
     const { requestId } = req.params;
     const { approvedBy, estimatedCost, vendorId, expectedDeliveryDate } = req.body;
-    
+
     await db
       .update(ticketPartsRequests)
       .set({
@@ -740,17 +727,17 @@ router.post("/parts-requests/:requestId/approve", async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error("Error approving parts request:", error);
-    res.status(500).json({ error: "Failed to approve parts request" });
+    console.error('Error approving parts request:', error);
+    res.status(500).json({ error: 'Failed to approve parts request' });
   }
 });
 
 // Reject parts request
-router.post("/parts-requests/:requestId/reject", async (req, res) => {
+router.post('/parts-requests/:requestId/reject', async (req, res) => {
   try {
     const { requestId } = req.params;
     const { rejectedReason } = req.body;
-    
+
     await db
       .update(ticketPartsRequests)
       .set({
@@ -762,18 +749,18 @@ router.post("/parts-requests/:requestId/reject", async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error("Error rejecting parts request:", error);
-    res.status(500).json({ error: "Failed to reject parts request" });
+    console.error('Error rejecting parts request:', error);
+    res.status(500).json({ error: 'Failed to reject parts request' });
   }
 });
 
 // Convert an existing phone-in ticket to a service ticket
-router.post("/phone-in-tickets/:id/convert", async (req, res) => {
+router.post('/phone-in-tickets/:id/convert', async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     if (!tenantId) {
-      return res.status(400).json({ error: "Missing x-tenant-id header" });
+      return res.status(400).json({ error: 'Missing x-tenant-id header' });
     }
 
     const [phoneTicket] = await db
@@ -783,11 +770,11 @@ router.post("/phone-in-tickets/:id/convert", async (req, res) => {
       .limit(1);
 
     if (!phoneTicket) {
-      return res.status(404).json({ error: "Phone-in ticket not found" });
+      return res.status(404).json({ error: 'Phone-in ticket not found' });
     }
 
     if (phoneTicket.convertedToTicketId) {
-      return res.status(400).json({ error: "Already converted" });
+      return res.status(400).json({ error: 'Already converted' });
     }
 
     const ticketNumber = `TK-${Date.now()}`;
@@ -813,18 +800,21 @@ router.post("/phone-in-tickets/:id/convert", async (req, res) => {
       .set({ convertedToTicketId: serviceTicket.id, convertedAt: new Date() })
       .where(eq(phoneInTickets.id, id));
 
-    res.json({ phoneTicket: { ...phoneTicket, convertedToTicketId: serviceTicket.id }, serviceTicket });
+    res.json({
+      phoneTicket: { ...phoneTicket, convertedToTicketId: serviceTicket.id },
+      serviceTicket,
+    });
   } catch (error) {
-    console.error("Error converting phone-in ticket:", error);
-    res.status(500).json({ error: "Failed to convert phone-in ticket" });
+    console.error('Error converting phone-in ticket:', error);
+    res.status(500).json({ error: 'Failed to convert phone-in ticket' });
   }
 });
 
 // Equipment search by company endpoint
-router.get("/phone-tickets/equipment/:companyId", async (req, res) => {
+router.get('/phone-tickets/equipment/:companyId', async (req, res) => {
   try {
     const { companyId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Search equipment for the company - using service tickets as proxy for equipment
     const equipment = await db
@@ -832,29 +822,27 @@ router.get("/phone-tickets/equipment/:companyId", async (req, res) => {
         id: serviceTickets.id,
         brand: sql`'Canon'`.as('brand'),
         model: sql`'imageRUNNER ADVANCE'`.as('model'),
-        serial: sql`CONCAT('SN', LPAD(CAST(EXTRACT(epoch FROM ${serviceTickets.createdAt}) AS TEXT), 8, '0'))`.as('serial'),
+        serial:
+          sql`CONCAT('SN', LPAD(CAST(EXTRACT(epoch FROM ${serviceTickets.createdAt}) AS TEXT), 8, '0'))`.as(
+            'serial',
+          ),
       })
       .from(serviceTickets)
-      .where(
-        and(
-          eq(serviceTickets.tenantId, tenantId),
-          eq(serviceTickets.customerId, companyId)
-        )
-      )
+      .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.customerId, companyId)))
       .limit(10);
 
     res.json(equipment);
   } catch (error) {
-    console.error("Error fetching equipment for company:", error);
-    res.status(500).json({ error: "Failed to fetch equipment" });
+    console.error('Error fetching equipment for company:', error);
+    res.status(500).json({ error: 'Failed to fetch equipment' });
   }
 });
 
 // Search contacts by company endpoint
-router.get("/phone-tickets/search-contacts/:companyId", async (req, res) => {
+router.get('/phone-tickets/search-contacts/:companyId', async (req, res) => {
   try {
     const { companyId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Get contacts for the company
     const contacts = await db
@@ -866,18 +854,13 @@ router.get("/phone-tickets/search-contacts/:companyId", async (req, res) => {
         role: businessRecords.jobTitle,
       })
       .from(businessRecords)
-      .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.id, companyId)
-        )
-      )
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, companyId)))
       .limit(20);
 
     res.json(contacts);
   } catch (error) {
-    console.error("Error searching contacts:", error);
-    res.status(500).json({ error: "Failed to search contacts" });  
+    console.error('Error searching contacts:', error);
+    res.status(500).json({ error: 'Failed to search contacts' });
   }
 });
 

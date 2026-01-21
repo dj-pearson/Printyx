@@ -98,6 +98,7 @@ psql $DATABASE_URL -c "SELECT * FROM report_definitions LIMIT 1;"
 ```
 
 Expected new tables:
+
 - `report_definitions` (75 rows)
 - `report_schedules`
 - `report_executions`
@@ -257,17 +258,20 @@ curl -I https://cdn.printyx.com/assets/main.js
 #### 4.1. Monitor Key Metrics
 
 **Application Metrics**:
+
 - [ ] Response time < 500ms (p95)
 - [ ] Error rate < 0.1%
 - [ ] Report execution success rate > 99%
 - [ ] Cache hit rate > 70%
 
 **Database Metrics**:
+
 - [ ] Query time < 200ms (p95)
 - [ ] Connection pool utilization < 80%
 - [ ] No slow query alerts
 
 **Infrastructure Metrics**:
+
 - [ ] CPU utilization < 70%
 - [ ] Memory usage < 80%
 - [ ] No disk space warnings
@@ -386,16 +390,16 @@ artillery run tests/load/report-execution.yml
 
 ### Expected Performance
 
-| Metric | Target | Acceptable | Action Required If |
-|--------|--------|------------|-------------------|
-| Report Execution (Simple) | < 500ms | < 1s | > 2s |
-| Report Execution (Complex) | < 2s | < 5s | > 10s |
-| Report Export (CSV) | < 3s | < 10s | > 30s |
-| Report Export (Excel) | < 5s | < 15s | > 60s |
-| Report Export (PDF) | < 10s | < 30s | > 120s |
-| Cache Hit Rate | > 80% | > 60% | < 50% |
-| Database Query Time (p95) | < 100ms | < 300ms | > 500ms |
-| API Response Time (p95) | < 300ms | < 800ms | > 1.5s |
+| Metric                     | Target  | Acceptable | Action Required If |
+| -------------------------- | ------- | ---------- | ------------------ |
+| Report Execution (Simple)  | < 500ms | < 1s       | > 2s               |
+| Report Execution (Complex) | < 2s    | < 5s       | > 10s              |
+| Report Export (CSV)        | < 3s    | < 10s      | > 30s              |
+| Report Export (Excel)      | < 5s    | < 15s      | > 60s              |
+| Report Export (PDF)        | < 10s   | < 30s      | > 120s             |
+| Cache Hit Rate             | > 80%   | > 60%      | < 50%              |
+| Database Query Time (p95)  | < 100ms | < 300ms    | > 500ms            |
+| API Response Time (p95)    | < 300ms | < 800ms    | > 1.5s             |
 
 ### Load Testing Results
 
@@ -446,6 +450,7 @@ Summary report:
 ### When to Rollback
 
 Rollback immediately if:
+
 - ❌ Error rate > 5% for 5 minutes
 - ❌ Response time p95 > 5s for 10 minutes
 - ❌ Critical bug affecting data integrity
@@ -453,6 +458,7 @@ Rollback immediately if:
 - ❌ Database corruption detected
 
 Consider rollback if:
+
 - ⚠️ Error rate 1-5% for 15 minutes
 - ⚠️ User complaints about performance
 - ⚠️ Unexpected behavior in production
@@ -546,10 +552,12 @@ node server/scripts/send-rollback-notification.js
 #### Issue: Reports Not Loading
 
 **Symptoms**:
+
 - Report execution fails with timeout
 - `504 Gateway Timeout` errors
 
 **Diagnosis**:
+
 ```bash
 # Check database connectivity
 psql $DATABASE_URL -c "SELECT 1;"
@@ -567,6 +575,7 @@ tail -f /var/log/printyx/application.log | grep "Report execution"
 ```
 
 **Solution**:
+
 1. Restart database connection pool: `pm2 restart all`
 2. Scale database resources (if cloud-based)
 3. Add missing indexes (see Phase 1.4)
@@ -577,10 +586,12 @@ tail -f /var/log/printyx/application.log | grep "Report execution"
 #### Issue: Permission Denied Errors
 
 **Symptoms**:
+
 - Users cannot access reports they should have access to
 - `403 Forbidden` errors for valid requests
 
 **Diagnosis**:
+
 ```bash
 # Check user permissions
 psql $DATABASE_URL -c "
@@ -600,6 +611,7 @@ psql $DATABASE_URL -c "
 ```
 
 **Solution**:
+
 1. Re-seed RBAC permissions: `npm run seed:rbac`
 2. Clear permission cache: `redis-cli DEL permission_cache:*`
 3. Verify user role assignment
@@ -610,11 +622,13 @@ psql $DATABASE_URL -c "
 #### Issue: High Database Load
 
 **Symptoms**:
+
 - Slow report execution
 - High CPU on database server
 - Connection pool exhaustion
 
 **Diagnosis**:
+
 ```bash
 # Check active connections
 psql $DATABASE_URL -c "
@@ -633,6 +647,7 @@ psql $DATABASE_URL -c "
 ```
 
 **Solution**:
+
 1. Add missing indexes (see Phase 1.4)
 2. Increase connection pool size: `MAX_POOL_SIZE=50`
 3. Enable query result caching
@@ -646,24 +661,28 @@ psql $DATABASE_URL -c "
 ### Key Metrics to Watch (First 24 Hours)
 
 **Application Health**:
+
 - API Response Time (p50, p95, p99)
 - Error Rate (4xx, 5xx)
 - Request Volume (requests/min)
 - Report Execution Success Rate
 
 **Business Metrics**:
+
 - Report Executions by Role Level
 - Most Popular Reports
 - Export Count by Format
 - Scheduled Report Deliveries
 
 **Database Health**:
+
 - Query Latency (p95, p99)
 - Connection Pool Utilization
 - Slow Queries (> 1s)
 - Deadlocks
 
 **User Engagement**:
+
 - Daily Active Users (DAU)
 - Reports per User
 - Average Session Duration
@@ -672,12 +691,14 @@ psql $DATABASE_URL -c "
 ### Alerts to Configure
 
 **Critical Alerts** (PagerDuty/OpsGenie):
+
 - Error rate > 5% for 5 minutes
 - API response time p95 > 5s for 10 minutes
 - Database connection pool exhausted
 - Application server down
 
 **Warning Alerts** (Slack/Email):
+
 - Error rate > 1% for 15 minutes
 - API response time p95 > 2s for 20 minutes
 - Cache hit rate < 50%
@@ -690,6 +711,7 @@ psql $DATABASE_URL -c "
 Deployment considered successful if:
 
 ✅ **Technical Criteria**:
+
 - [ ] Error rate < 0.5% after 24 hours
 - [ ] API response time p95 < 800ms
 - [ ] All 75 reports executing successfully
@@ -699,12 +721,14 @@ Deployment considered successful if:
 - [ ] Zero security vulnerabilities
 
 ✅ **Business Criteria**:
+
 - [ ] > 80% of users access at least 1 report in first week
 - [ ] < 10 support tickets related to reporting
 - [ ] Positive feedback from pilot users
 - [ ] No escalations to engineering leadership
 
 ✅ **Performance Criteria**:
+
 - [ ] Report execution < 1s (p95)
 - [ ] Database query time < 300ms (p95)
 - [ ] Cache hit rate > 70%

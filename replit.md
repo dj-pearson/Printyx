@@ -1,14 +1,17 @@
 # Printyx - Unified Copier Dealer Management Platform
 
 ## Overview
+
 Printyx is a unified SaaS platform designed for small-to-medium copier dealers, integrating CRM, billing, service dispatch, and inventory into a single solution. Its primary goal is to eliminate data silos, reduce manual processes, and provide comprehensive management capabilities. Key features include AI-powered analytics (customer churn, CLV, predictive maintenance), an Advanced Integration Hub, Advanced Workflow Automation, customer success management, remote monitoring with IoT, advanced document management, and a mobile service application. The platform supports essential dealer operations such as meter billing, service dispatch, CRM, and unified business records, with existing integrations for E-Automate, Salesforce, QuickBooks Online, ZoomInfo, and Apollo.io. The platform also includes a robust Lease Management System and comprehensive AI enhancements.
 
 ## User Preferences
+
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Frontend
+
 - **Framework**: React 18 with TypeScript and Vite.
 - **UI**: Shadcn/ui components built on Radix UI.
 - **Styling**: Tailwind CSS with CSS variables.
@@ -18,6 +21,7 @@ Preferred communication style: Simple, everyday language.
 - **UI/UX Decisions**: Consistent navigation, card-based interfaces, mobile-first design, accessibility, and responsive layouts.
 
 ### Backend
+
 - **Runtime**: Node.js with Express.js.
 - **Type System**: TypeScript.
 - **API Design**: RESTful API architecture with tenant-aware endpoints.
@@ -25,12 +29,14 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: PostgreSQL-backed sessions.
 
 ### Database
+
 - **Database**: PostgreSQL with Neon serverless hosting.
 - **ORM**: Drizzle ORM.
 - **Schema Design**: Multi-tenant architecture with tenant isolation and comprehensive role-based access control (RBAC).
 - **Key Entities**: Users, Roles, Tenants, Business Records, Equipment, Contracts, Service Tickets, Inventory, Technicians, Meter Readings, Invoices, Tasks, Projects, Lease Management, E-Signature Integration, Field Service Photo & Signature Capture, GPS Tracking (Technician Locations, Location History, Route Assignments, Route Deviations, ETA Calculations, Geofences, Geofence Events).
 
 ### Multi-Tenancy & Role-Based Access Control
+
 - **Tenant Isolation**: Row-level security using `tenantId`.
 - **Organizational Structure**: 4-tier structure (Platform, Company, Regional, Location).
 - **Role Hierarchy**: 8-level role hierarchy with specific access scopes.
@@ -38,6 +44,7 @@ Preferred communication style: Simple, everyday language.
 - **Permission System**: Granular module permissions with location-aware access controls.
 
 ### Technical Implementations
+
 - **Unified Business Records System**: Lead-to-customer conversion with zero data loss.
 - **Triple-Platform Integration System**: Isolated field mapping for E-Automate, Salesforce, and QuickBooks Online.
 - **Unified Data Enrichment System**: Lead prospecting integration with ZoomInfo and Apollo.io.
@@ -70,6 +77,7 @@ Preferred communication style: Simple, everyday language.
 ## Subscription Pricing & Features
 
 ### Pricing Tiers (Per User/Month)
+
 - **Starter Plan**: $79/month ($758/year with 20% discount)
   - Target: 5-20 employees
   - Contracts: Up to 50
@@ -92,6 +100,7 @@ Preferred communication style: Simple, everyday language.
   - Additional Features: All Professional features + White label options, custom integrations, advanced forecasting, SLA guarantee (99.9% uptime), SSO integration, IP whitelisting, dedicated account manager, onboarding assistance, barcode scanning, predictive maintenance, webhook support
 
 ### Feature Categories
+
 1. **CRM**: Lead management, customer management, deal pipeline, contact management, activity tracking
 2. **Service**: Service tickets, technician dispatch, equipment tracking, service history, preventive maintenance, predictive maintenance, mobile service app, GPS tracking, mobile photo capture, digital signatures
 3. **Inventory**: Parts inventory, stock levels, purchase orders, multi-warehouse, barcode scanning
@@ -103,13 +112,16 @@ Preferred communication style: Simple, everyday language.
 9. **Support**: Email support, priority support, phone support, dedicated account manager, onboarding assistance, SLA guarantee
 
 ### Add-Ons
+
 **One-Time Add-Ons:**
+
 - Professional Implementation: $3,000 (4-6 weeks, includes project manager, custom configuration, data migration, training)
 - Data Migration Service: $2,000 (2-4 weeks, includes data extraction, cleansing, validation, mapping)
 - Advanced Training Package: $1,500 (1-2 weeks, includes admin and end-user training for up to 25 participants)
 - Custom Integration Development: $5,000 (6-8 weeks, includes custom API integration and 90-day support)
 
 **Recurring Add-Ons:**
+
 - Additional API Calls: $0.001/call (billed monthly, minimum 1,000 calls)
 - Additional Storage (100GB): $50/month
 - Premium Support Package: $500/month (24/7 support, 1-hour response time, priority bug fixes)
@@ -117,6 +129,7 @@ Preferred communication style: Simple, everyday language.
 - Additional Users (10-pack): $200/month
 
 ### Trial Management
+
 - All plans: 30-day free trial
 - Starter & Professional: No payment method required
 - Enterprise: Payment method required upfront
@@ -125,14 +138,17 @@ Preferred communication style: Simple, everyday language.
 ## External Dependencies
 
 ### Database Services
+
 - **Neon PostgreSQL**: Serverless PostgreSQL hosting.
 - **@neondatabase/serverless**: WebSocket database connections.
 
 ### Authentication Services
+
 - **Replit Auth**: OpenID Connect authentication provider.
 - **Passport.js**: Authentication middleware.
 
 ### Frontend Libraries
+
 - **Radix UI**: Unstyled, accessible UI components.
 - **TanStack Query**: Server state management.
 - **React Hook Form**: Form library.
@@ -140,12 +156,14 @@ Preferred communication style: Simple, everyday language.
 - **Date-fns**: Date manipulation utilities.
 
 ### Development Tools
+
 - **TypeScript**: Type safety.
 - **Tailwind CSS**: Utility-first CSS framework.
 - **Zod**: Runtime type validation.
 - **Drizzle Kit**: Database migration and schema management.
 
 ### Integrations (Business)
+
 - **E-Automate**: Automated syncing.
 - **Salesforce**: Real-time lead and opportunity sync.
 - **QuickBooks Online**: Enhanced financial data sync.

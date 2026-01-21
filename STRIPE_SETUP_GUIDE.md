@@ -5,6 +5,7 @@ This guide will help you set up Stripe payment processing for Printyx.
 ## 🎯 What's Included
 
 The Stripe integration provides:
+
 - ✅ Secure credit/debit card collection via Stripe Elements
 - ✅ Payment method management (add, view, delete)
 - ✅ Customer creation and management
@@ -70,12 +71,12 @@ That's it! Stripe is now configured. 🎉
 
 Stripe provides test card numbers that simulate different scenarios:
 
-| Card Number | Brand | Scenario |
-|-------------|-------|----------|
-| `4242 4242 4242 4242` | Visa | Success |
-| `4000 0000 0000 9995` | Visa | Decline (insufficient funds) |
-| `4000 0025 0000 3155` | Visa | Requires authentication (3D Secure) |
-| `5555 5555 5555 4444` | Mastercard | Success |
+| Card Number           | Brand      | Scenario                            |
+| --------------------- | ---------- | ----------------------------------- |
+| `4242 4242 4242 4242` | Visa       | Success                             |
+| `4000 0000 0000 9995` | Visa       | Decline (insufficient funds)        |
+| `4000 0025 0000 3155` | Visa       | Requires authentication (3D Secure) |
+| `5555 5555 5555 4444` | Mastercard | Success                             |
 
 - **Expiry Date**: Any future date (e.g., 12/34)
 - **CVC**: Any 3 digits (e.g., 123)
@@ -109,17 +110,20 @@ Webhooks allow Stripe to notify your app about payment events (successful paymen
 #### Development (Local Testing)
 
 1. **Install Stripe CLI**:
+
    ```bash
    brew install stripe/stripe-cli/stripe
    # or download from: https://stripe.com/docs/stripe-cli
    ```
 
 2. **Login**:
+
    ```bash
    stripe login
    ```
 
 3. **Forward webhooks to local server**:
+
    ```bash
    stripe listen --forward-to localhost:5000/api/billing/stripe/webhooks
    ```
@@ -250,6 +254,7 @@ Return success
 ### Database Schema
 
 **subscriptionPaymentMethods** table stores:
+
 - `stripePaymentMethodId` - Stripe PM ID (pm_xxx)
 - `cardBrand` - "visa", "mastercard", etc.
 - `cardLast4` - Last 4 digits
@@ -281,6 +286,7 @@ Return success
    - Secret: `sk_live_...`
 
 2. **Update production `.env`**:
+
    ```bash
    STRIPE_SECRET_KEY=sk_live_ABC...
    STRIPE_PUBLISHABLE_KEY=pk_live_ABC...
@@ -298,6 +304,7 @@ Return success
 ## 📈 Next Steps
 
 ### Implemented Features
+
 ✅ Payment method collection (Stripe Elements)
 ✅ Customer creation
 ✅ Setup intents for card storage
@@ -306,6 +313,7 @@ Return success
 ✅ Billing address storage
 
 ### Future Enhancements
+
 ⏳ Subscription creation and management
 ⏳ Trial-to-paid conversion automation
 ⏳ Invoice PDF generation
@@ -329,12 +337,14 @@ Return success
 ## 📝 Summary
 
 You've successfully integrated Stripe payment processing! Users can now:
+
 1. Add credit/debit cards securely
 2. Manage multiple payment methods
 3. Update billing addresses
 4. View billing history (when invoices exist)
 
 **What's Working**:
+
 - ✅ Frontend: Stripe Elements for card collection
 - ✅ Backend: Stripe API integration
 - ✅ Database: Payment method storage
@@ -344,6 +354,7 @@ You've successfully integrated Stripe payment processing! Users can now:
 **Ready for**: Trial-to-paid conversion, subscription billing, invoice generation
 
 Need help? Check the Stripe logs or review the code in:
+
 - `server/services/stripe-service.ts` - Core Stripe logic
 - `server/routes-billing.ts` - API endpoints
 - `client/src/pages/Billing.tsx` - UI components

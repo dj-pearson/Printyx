@@ -1,32 +1,26 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { MainLayout } from "@/components/layout/main-layout";
-import { useLocation } from "wouter";
-import { 
-  type Equipment, 
-  type CustomerEquipment, 
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { MainLayout } from '@/components/layout/main-layout';
+import { useLocation } from 'wouter';
+import {
+  type Equipment,
+  type CustomerEquipment,
   type WarehouseOperation,
   type Technician,
-  type BusinessRecord
+  type BusinessRecord,
 } from '@shared/schema';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -34,14 +28,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -49,13 +43,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/form';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Package,
   QrCode,
@@ -81,23 +75,15 @@ import {
   Wrench,
   Shield,
   Users,
-} from "lucide-react";
-import { format } from "date-fns";
-import WarehouseTeamStatsWidget from "@/components/stats/WarehouseTeamStatsWidget";
+} from 'lucide-react';
+import { format } from 'date-fns';
+import WarehouseTeamStatsWidget from '@/components/stats/WarehouseTeamStatsWidget';
 
 // Warehouse operation schema
 const warehouseOperationSchema = z.object({
-  equipmentId: z.string().min(1, "Equipment is required"),
-  operationType: z.enum([
-    "receiving",
-    "quality_control",
-    "staging",
-    "shipping",
-    "build",
-  ]),
-  status: z
-    .enum(["pending", "in_progress", "completed", "failed"])
-    .default("pending"),
+  equipmentId: z.string().min(1, 'Equipment is required'),
+  operationType: z.enum(['receiving', 'quality_control', 'staging', 'shipping', 'build']),
+  status: z.enum(['pending', 'in_progress', 'completed', 'failed']).default('pending'),
   assignedTo: z.string().optional(),
   scheduledDate: z.date().optional(),
   notes: z.string().optional(),
@@ -107,35 +93,35 @@ const warehouseOperationSchema = z.object({
 
 // Serial number management schema
 const serialNumberSchema = z.object({
-  serialNumber: z.string().min(1, "Serial number is required"),
-  equipmentId: z.string().min(1, "Equipment is required"),
+  serialNumber: z.string().min(1, 'Serial number is required'),
+  equipmentId: z.string().min(1, 'Equipment is required'),
   status: z
-    .enum(["received", "staged", "built", "tested", "shipped", "delivered"])
-    .default("received"),
+    .enum(['received', 'staged', 'built', 'tested', 'shipped', 'delivered'])
+    .default('received'),
   location: z.string().optional(),
   accessories: z
     .array(
       z.object({
         accessoryId: z.string(),
         serialNumber: z.string().optional(),
-        status: z.enum(["pending", "matched", "installed"]).default("pending"),
-      })
+        status: z.enum(['pending', 'matched', 'installed']).default('pending'),
+      }),
     )
     .optional(),
 });
 
 // Build process schema
 const buildProcessSchema = z.object({
-  equipmentId: z.string().min(1, "Equipment is required"),
-  modelId: z.string().min(1, "Model is required"),
-  assignedTechnician: z.string().min(1, "Technician is required"),
+  equipmentId: z.string().min(1, 'Equipment is required'),
+  modelId: z.string().min(1, 'Model is required'),
+  assignedTechnician: z.string().min(1, 'Technician is required'),
   scheduledDate: z.date(),
   accessories: z.array(
     z.object({
       accessoryId: z.string(),
       quantity: z.number().min(1),
       isRequired: z.boolean().default(false),
-    })
+    }),
   ),
   buildSteps: z.array(
     z.object({
@@ -146,17 +132,17 @@ const buildProcessSchema = z.object({
       completedBy: z.string().optional(),
       completedAt: z.date().optional(),
       notes: z.string().optional(),
-    })
+    }),
   ),
 });
 
 // Delivery schedule schema
 const deliveryScheduleSchema = z.object({
-  customerId: z.string().min(1, "Customer is required"),
-  equipmentId: z.string().min(1, "Equipment is required"),
+  customerId: z.string().min(1, 'Customer is required'),
+  equipmentId: z.string().min(1, 'Equipment is required'),
   deliveryDate: z.date(),
   deliveryWindow: z.string(), // "morning", "afternoon", "all_day"
-  deliveryAddress: z.string().min(1, "Delivery address is required"),
+  deliveryAddress: z.string().min(1, 'Delivery address is required'),
   specialInstructions: z.string().optional(),
   requiredAccessories: z.array(z.string()).optional(),
   deliveryTeam: z.array(z.string()).optional(),
@@ -171,16 +157,16 @@ type DeliveryScheduleFormData = z.infer<typeof deliveryScheduleSchema>;
 
 // Status colors and icons
 const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-  failed: "bg-red-100 text-red-800",
-  received: "bg-blue-100 text-blue-800",
-  staged: "bg-purple-100 text-purple-800",
-  built: "bg-indigo-100 text-indigo-800",
-  tested: "bg-green-100 text-green-800",
-  shipped: "bg-orange-100 text-orange-800",
-  delivered: "bg-emerald-100 text-emerald-800",
+  pending: 'bg-yellow-100 text-yellow-800',
+  in_progress: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+  failed: 'bg-red-100 text-red-800',
+  received: 'bg-blue-100 text-blue-800',
+  staged: 'bg-purple-100 text-purple-800',
+  built: 'bg-indigo-100 text-indigo-800',
+  tested: 'bg-green-100 text-green-800',
+  shipped: 'bg-orange-100 text-orange-800',
+  delivered: 'bg-emerald-100 text-emerald-800',
 };
 
 const statusIcons = {
@@ -198,9 +184,9 @@ const statusIcons = {
 export default function WarehouseOperations() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("overview");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOperation, setSelectedOperation] = useState(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -210,22 +196,22 @@ export default function WarehouseOperations() {
 
   // Fetch warehouse operations
   const { data: operations = [], isLoading } = useQuery<WarehouseOperation[]>({
-    queryKey: ["/api/warehouse-operations"],
+    queryKey: ['/api/warehouse-operations'],
   });
 
   // Fetch equipment for dropdowns
   const { data: equipment = [] } = useQuery<Equipment[]>({
-    queryKey: ["/api/equipment"],
+    queryKey: ['/api/equipment'],
   });
 
   // Fetch technicians
   const { data: technicians = [] } = useQuery<Technician[]>({
-    queryKey: ["/api/technicians"],
+    queryKey: ['/api/technicians'],
   });
 
   // Fetch customers
   const { data: customers = [] } = useQuery<BusinessRecord[]>({
-    queryKey: ["/api/customers"],
+    queryKey: ['/api/customers'],
   });
 
   // Fetch statistics
@@ -235,54 +221,61 @@ export default function WarehouseOperations() {
     inProgressOperations?: number;
     completedOperations?: number;
   }>({
-    queryKey: ["/api/warehouse-operations/stats"],
+    queryKey: ['/api/warehouse-operations/stats'],
   });
 
   // If navigated with orderId in query, jump to Delivery tab and show cues
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const orderIdFromUrl = params.get("orderId");
+    const orderIdFromUrl = params.get('orderId');
     if (orderIdFromUrl) {
-      setActiveTab("delivery");
+      setActiveTab('delivery');
     }
   }, []);
 
   // Create operation mutation
   const createOperationMutation = useMutation({
     mutationFn: async (data: WarehouseOperationFormData) =>
-      apiRequest("/api/warehouse-operations", "POST", data),
+      apiRequest('/api/warehouse-operations', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/warehouse-operations"],
+        queryKey: ['/api/warehouse-operations'],
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/warehouse-operations/stats"],
+        queryKey: ['/api/warehouse-operations/stats'],
       });
       setShowCreateDialog(false);
-      toast({ title: "Operation created successfully" });
+      toast({ title: 'Operation created successfully' });
     },
   });
 
   // Update operation status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status, operationType }: { id: string; status: string; operationType?: string }) =>
-      apiRequest(`/api/warehouse-operations/${id}/status`, "PATCH", { status }),
+    mutationFn: async ({
+      id,
+      status,
+      operationType,
+    }: {
+      id: string;
+      status: string;
+      operationType?: string;
+    }) => apiRequest(`/api/warehouse-operations/${id}/status`, 'PATCH', { status }),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/warehouse-operations"],
+        queryKey: ['/api/warehouse-operations'],
       });
-      
+
       // If build operation is completed, guide to installation scheduling
-      if (variables.status === "completed" && variables.operationType === "build") {
-        toast({ 
-          title: "Build completed successfully!",
-          description: "Ready to schedule delivery and installation",
+      if (variables.status === 'completed' && variables.operationType === 'build') {
+        toast({
+          title: 'Build completed successfully!',
+          description: 'Ready to schedule delivery and installation',
         });
         // Automatically switch to delivery tab for next step
-        setActiveTab("delivery");
+        setActiveTab('delivery');
       } else {
-        toast({ title: "Status updated successfully" });
+        toast({ title: 'Status updated successfully' });
       }
     },
   });
@@ -291,15 +284,15 @@ export default function WarehouseOperations() {
   const form = useForm<WarehouseOperationFormData>({
     resolver: zodResolver(warehouseOperationSchema),
     defaultValues: {
-      operationType: "receiving",
-      status: "pending",
+      operationType: 'receiving',
+      status: 'pending',
     },
   });
 
   const serialForm = useForm<SerialNumberFormData>({
     resolver: zodResolver(serialNumberSchema),
     defaultValues: {
-      status: "received",
+      status: 'received',
     },
   });
 
@@ -314,18 +307,15 @@ export default function WarehouseOperations() {
   const deliveryForm = useForm<DeliveryScheduleFormData>({
     resolver: zodResolver(deliveryScheduleSchema),
     defaultValues: {
-      deliveryWindow: "all_day",
+      deliveryWindow: 'all_day',
       installationRequired: false,
     },
   });
 
   // Filter operations
   const filteredOperations = operations.filter((op: WarehouseOperation) => {
-    if (statusFilter !== "all" && op.status !== statusFilter) return false;
-    if (
-      searchTerm &&
-      !op.equipmentId?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    if (statusFilter !== 'all' && op.status !== statusFilter) return false;
+    if (searchTerm && !op.equipmentId?.toLowerCase().includes(searchTerm.toLowerCase()))
       return false;
     return true;
   });
@@ -345,40 +335,22 @@ export default function WarehouseOperations() {
           <div className="md:hidden overflow-x-auto">
             <TabsList className="inline-flex h-9 items-center justify-start rounded-lg bg-muted p-1 text-muted-foreground">
               <div className="flex space-x-1 min-w-max">
-                <TabsTrigger
-                  value="overview"
-                  className="whitespace-nowrap text-xs px-3"
-                >
+                <TabsTrigger value="overview" className="whitespace-nowrap text-xs px-3">
                   Overview
                 </TabsTrigger>
-                <TabsTrigger
-                  value="receiving"
-                  className="whitespace-nowrap text-xs px-3"
-                >
+                <TabsTrigger value="receiving" className="whitespace-nowrap text-xs px-3">
                   Receiving
                 </TabsTrigger>
-                <TabsTrigger
-                  value="inventory"
-                  className="whitespace-nowrap text-xs px-3"
-                >
+                <TabsTrigger value="inventory" className="whitespace-nowrap text-xs px-3">
                   Inventory
                 </TabsTrigger>
-                <TabsTrigger
-                  value="build"
-                  className="whitespace-nowrap text-xs px-3"
-                >
+                <TabsTrigger value="build" className="whitespace-nowrap text-xs px-3">
                   Build
                 </TabsTrigger>
-                <TabsTrigger
-                  value="delivery"
-                  className="whitespace-nowrap text-xs px-3"
-                >
+                <TabsTrigger value="delivery" className="whitespace-nowrap text-xs px-3">
                   Delivery
                 </TabsTrigger>
-                <TabsTrigger
-                  value="analytics"
-                  className="whitespace-nowrap text-xs px-3"
-                >
+                <TabsTrigger value="analytics" className="whitespace-nowrap text-xs px-3">
                   Analytics
                 </TabsTrigger>
               </div>
@@ -422,9 +394,7 @@ export default function WarehouseOperations() {
                         <p className="text-lg md:text-2xl font-bold">
                           {stats.totalOperations || 0}
                         </p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Total Operations
-                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Total Operations</p>
                       </div>
                     </div>
                   </CardContent>
@@ -438,9 +408,7 @@ export default function WarehouseOperations() {
                         <p className="text-lg md:text-2xl font-bold">
                           {stats.pendingOperations || 0}
                         </p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Pending
-                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Pending</p>
                       </div>
                     </div>
                   </CardContent>
@@ -454,9 +422,7 @@ export default function WarehouseOperations() {
                         <p className="text-lg md:text-2xl font-bold">
                           {stats.inProgressOperations || 0}
                         </p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          In Progress
-                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">In Progress</p>
                       </div>
                     </div>
                   </CardContent>
@@ -470,9 +436,7 @@ export default function WarehouseOperations() {
                         <p className="text-lg md:text-2xl font-bold">
                           {stats.completedOperations || 0}
                         </p>
-                        <p className="text-xs md:text-sm text-muted-foreground">
-                          Completed
-                        </p>
+                        <p className="text-xs md:text-sm text-muted-foreground">Completed</p>
                       </div>
                     </div>
                   </CardContent>
@@ -484,17 +448,13 @@ export default function WarehouseOperations() {
             <Card>
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Recent Operations</CardTitle>
-                <CardDescription>
-                  Latest warehouse activities and their status
-                </CardDescription>
+                <CardDescription>Latest warehouse activities and their status</CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
                 <div className="space-y-3 sm:space-y-4">
                   {filteredOperations.slice(0, 5).map((operation: WarehouseOperation) => {
                     const StatusIcon =
-                      statusIcons[
-                        operation.operationType as keyof typeof statusIcons
-                      ] || Package;
+                      statusIcons[operation.operationType as keyof typeof statusIcons] || Package;
                     return (
                       <div
                         key={operation.id}
@@ -504,9 +464,7 @@ export default function WarehouseOperations() {
                           <StatusIcon className="h-5 w-5 text-muted-foreground" />
                           <div>
                             <p className="font-medium">
-                              {operation.operationType
-                                .replace("_", " ")
-                                .toUpperCase()}
+                              {operation.operationType.replace('_', ' ').toUpperCase()}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               Equipment ID: {operation.equipmentId}
@@ -514,13 +472,9 @@ export default function WarehouseOperations() {
                           </div>
                         </div>
                         <Badge
-                          className={
-                            statusColors[
-                              operation.status as keyof typeof statusColors
-                            ]
-                          }
+                          className={statusColors[operation.status as keyof typeof statusColors]}
                         >
-                          {operation.status.replace("_", " ")}
+                          {operation.status.replace('_', ' ')}
                         </Badge>
                       </div>
                     );
@@ -533,9 +487,7 @@ export default function WarehouseOperations() {
           <TabsContent value="receiving" className="space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">
-                  Receiving Operations
-                </h2>
+                <h2 className="text-xl md:text-2xl font-bold">Receiving Operations</h2>
                 <p className="text-sm md:text-base text-muted-foreground">
                   Process incoming shipments and manage inventory
                 </p>
@@ -566,10 +518,7 @@ export default function WarehouseOperations() {
                   </div>
                   <div className="flex items-center space-x-2 w-full md:w-auto">
                     <Filter className="h-4 w-4 text-gray-400" />
-                    <Select
-                      value={statusFilter}
-                      onValueChange={setStatusFilter}
-                    >
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
                       <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="Filter by status" />
                       </SelectTrigger>
@@ -611,39 +560,28 @@ export default function WarehouseOperations() {
                         <TableBody>
                           {filteredOperations.map((operation: WarehouseOperation) => {
                             const StatusIcon =
-                              statusIcons[
-                                operation.status as keyof typeof statusIcons
-                              ] || Clock;
+                              statusIcons[operation.status as keyof typeof statusIcons] || Clock;
 
                             return (
                               <TableRow key={operation.id}>
                                 <TableCell className="font-medium">
-                                  {operation.operationType
-                                    .replace("_", " ")
-                                    .toUpperCase()}
+                                  {operation.operationType.replace('_', ' ').toUpperCase()}
                                 </TableCell>
                                 <TableCell>{operation.equipmentId}</TableCell>
-                                <TableCell>
-                                  {operation.assignedTo || "Unassigned"}
-                                </TableCell>
+                                <TableCell>{operation.assignedTo || 'Unassigned'}</TableCell>
                                 <TableCell>
                                   {operation.scheduledDate
-                                    ? format(
-                                        new Date(operation.scheduledDate),
-                                        "MMM dd, yyyy"
-                                      )
-                                    : "Not scheduled"}
+                                    ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy')
+                                    : 'Not scheduled'}
                                 </TableCell>
                                 <TableCell>
                                   <Badge
                                     className={
-                                      statusColors[
-                                        operation.status as keyof typeof statusColors
-                                      ]
+                                      statusColors[operation.status as keyof typeof statusColors]
                                     }
                                   >
                                     <StatusIcon className="h-3 w-3 mr-1" />
-                                    {operation.status.replace("_", " ")}
+                                    {operation.status.replace('_', ' ')}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
@@ -659,14 +597,14 @@ export default function WarehouseOperations() {
                                       <Eye className="h-4 w-4" />
                                     </Button>
 
-                                    {operation.status === "pending" && (
+                                    {operation.status === 'pending' && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() =>
                                           updateStatusMutation.mutate({
                                             id: operation.id,
-                                            status: "in_progress",
+                                            status: 'in_progress',
                                             operationType: operation.operationType,
                                           })
                                         }
@@ -675,14 +613,14 @@ export default function WarehouseOperations() {
                                       </Button>
                                     )}
 
-                                    {operation.status === "in_progress" && (
+                                    {operation.status === 'in_progress' && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() =>
                                           updateStatusMutation.mutate({
                                             id: operation.id,
-                                            status: "completed",
+                                            status: 'completed',
                                             operationType: operation.operationType,
                                           })
                                         }
@@ -703,13 +641,10 @@ export default function WarehouseOperations() {
                     <div className="md:hidden space-y-3 sm:space-y-4">
                       {filteredOperations.map((operation: WarehouseOperation) => {
                         const StatusIcon =
-                          statusIcons[
-                            operation.status as keyof typeof statusIcons
-                          ] || Clock;
+                          statusIcons[operation.status as keyof typeof statusIcons] || Clock;
                         const OperationTypeIcon =
-                          statusIcons[
-                            operation.operationType as keyof typeof statusIcons
-                          ] || Package;
+                          statusIcons[operation.operationType as keyof typeof statusIcons] ||
+                          Package;
 
                         return (
                           <Card key={operation.id} className="border">
@@ -719,9 +654,7 @@ export default function WarehouseOperations() {
                                   <OperationTypeIcon className="h-5 w-5 text-blue-600" />
                                   <div>
                                     <p className="font-semibold text-sm">
-                                      {operation.operationType
-                                        .replace("_", " ")
-                                        .toUpperCase()}
+                                      {operation.operationType.replace('_', ' ').toUpperCase()}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                       ID: {operation.equipmentId}
@@ -730,36 +663,25 @@ export default function WarehouseOperations() {
                                 </div>
                                 <Badge
                                   className={
-                                    statusColors[
-                                      operation.status as keyof typeof statusColors
-                                    ]
+                                    statusColors[operation.status as keyof typeof statusColors]
                                   }
                                 >
                                   <StatusIcon className="h-3 w-3 mr-1" />
-                                  {operation.status.replace("_", " ")}
+                                  {operation.status.replace('_', ' ')}
                                 </Badge>
                               </div>
 
                               <div className="space-y-2 mb-4">
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">
-                                    Assigned To:
-                                  </span>
-                                  <span>
-                                    {operation.assignedTo || "Unassigned"}
-                                  </span>
+                                  <span className="text-muted-foreground">Assigned To:</span>
+                                  <span>{operation.assignedTo || 'Unassigned'}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-muted-foreground">
-                                    Scheduled:
-                                  </span>
+                                  <span className="text-muted-foreground">Scheduled:</span>
                                   <span>
                                     {operation.scheduledDate
-                                      ? format(
-                                          new Date(operation.scheduledDate),
-                                          "MMM dd, yyyy"
-                                        )
-                                      : "Not scheduled"}
+                                      ? format(new Date(operation.scheduledDate), 'MMM dd, yyyy')
+                                      : 'Not scheduled'}
                                   </span>
                                 </div>
                               </div>
@@ -778,14 +700,14 @@ export default function WarehouseOperations() {
                                   View Details
                                 </Button>
 
-                                {operation.status === "pending" && (
+                                {operation.status === 'pending' && (
                                   <Button
                                     variant="default"
                                     size="sm"
                                     onClick={() =>
                                       updateStatusMutation.mutate({
                                         id: operation.id,
-                                        status: "in_progress",
+                                        status: 'in_progress',
                                         operationType: operation.operationType,
                                       })
                                     }
@@ -796,14 +718,14 @@ export default function WarehouseOperations() {
                                   </Button>
                                 )}
 
-                                {operation.status === "in_progress" && (
+                                {operation.status === 'in_progress' && (
                                   <Button
                                     variant="default"
                                     size="sm"
                                     onClick={() =>
                                       updateStatusMutation.mutate({
                                         id: operation.id,
-                                        status: "completed",
+                                        status: 'completed',
                                         operationType: operation.operationType,
                                       })
                                     }
@@ -828,9 +750,7 @@ export default function WarehouseOperations() {
           <TabsContent value="inventory" className="space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">
-                  Serial Number Management
-                </h2>
+                <h2 className="text-xl md:text-2xl font-bold">Serial Number Management</h2>
                 <p className="text-sm md:text-base text-muted-foreground">
                   Track equipment serial numbers and accessories
                 </p>
@@ -849,8 +769,7 @@ export default function WarehouseOperations() {
               <CardHeader className="p-4 sm:p-6">
                 <CardTitle>Equipment Serial Numbers</CardTitle>
                 <CardDescription>
-                  Track and manage equipment serial numbers through their
-                  lifecycle
+                  Track and manage equipment serial numbers through their lifecycle
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 sm:p-6">
@@ -864,9 +783,7 @@ export default function WarehouseOperations() {
           <TabsContent value="build" className="space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">
-                  Build Process Management
-                </h2>
+                <h2 className="text-xl md:text-2xl font-bold">Build Process Management</h2>
                 <p className="text-sm md:text-base text-muted-foreground">
                   Manage equipment assembly and accessory matching
                 </p>
@@ -899,9 +816,7 @@ export default function WarehouseOperations() {
           <TabsContent value="delivery" className="space-y-4 md:space-y-6">
             <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
               <div>
-                <h2 className="text-xl md:text-2xl font-bold">
-                  Delivery Scheduling
-                </h2>
+                <h2 className="text-xl md:text-2xl font-bold">Delivery Scheduling</h2>
                 <p className="text-sm md:text-base text-muted-foreground">
                   Schedule and track equipment deliveries to customers
                 </p>
@@ -914,40 +829,47 @@ export default function WarehouseOperations() {
                   <Truck className="h-4 w-4 mr-2" />
                   Schedule Delivery
                 </Button>
-                {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('orderId') && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
-                        setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
-                      }}
-                      className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Schedule Installation
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const orderIdFromUrl = new URLSearchParams(window.location.search).get('orderId');
-                        setLocation(`/onboarding-dashboard?orderId=${orderIdFromUrl}`);
-                      }}
-                      className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Installation Checklist
-                    </Button>
-                  </>
-                )}
+                {typeof window !== 'undefined' &&
+                  new URLSearchParams(window.location.search).get('orderId') && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const orderIdFromUrl = new URLSearchParams(window.location.search).get(
+                            'orderId',
+                          );
+                          setLocation(`/enhanced-onboarding-form?orderId=${orderIdFromUrl}`);
+                        }}
+                        className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Schedule Installation
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const orderIdFromUrl = new URLSearchParams(window.location.search).get(
+                            'orderId',
+                          );
+                          setLocation(`/onboarding-dashboard?orderId=${orderIdFromUrl}`);
+                        }}
+                        className="flex-1 min-w-[200px] md:flex-initial md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Installation Checklist
+                      </Button>
+                    </>
+                  )}
               </div>
             </div>
 
-            {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('orderId') && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                Preparing delivery for Order ID: {new URLSearchParams(window.location.search).get('orderId')}
-              </div>
-            )}
+            {typeof window !== 'undefined' &&
+              new URLSearchParams(window.location.search).get('orderId') && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                  Preparing delivery for Order ID:{' '}
+                  {new URLSearchParams(window.location.search).get('orderId')}
+                </div>
+              )}
 
             {/* Delivery scheduling would go here */}
             <Card>
@@ -967,9 +889,7 @@ export default function WarehouseOperations() {
 
           <TabsContent value="analytics" className="space-y-4 md:space-y-6">
             <div>
-              <h2 className="text-xl md:text-2xl font-bold">
-                Warehouse Analytics
-              </h2>
+              <h2 className="text-xl md:text-2xl font-bold">Warehouse Analytics</h2>
               <p className="text-sm md:text-base text-muted-foreground">
                 Performance metrics and operational insights
               </p>
@@ -1013,10 +933,7 @@ export default function WarehouseOperations() {
             </DialogHeader>
 
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -1024,10 +941,7 @@ export default function WarehouseOperations() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Equipment</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select equipment" />
@@ -1052,10 +966,7 @@ export default function WarehouseOperations() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Operation Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -1063,9 +974,7 @@ export default function WarehouseOperations() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="receiving">Receiving</SelectItem>
-                            <SelectItem value="quality_control">
-                              Quality Control
-                            </SelectItem>
+                            <SelectItem value="quality_control">Quality Control</SelectItem>
                             <SelectItem value="staging">Staging</SelectItem>
                             <SelectItem value="build">Build Process</SelectItem>
                             <SelectItem value="shipping">Shipping</SelectItem>
@@ -1083,10 +992,7 @@ export default function WarehouseOperations() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assigned To</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select technician" />
@@ -1111,10 +1017,7 @@ export default function WarehouseOperations() {
                     <FormItem>
                       <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <Textarea
-                          {...field}
-                          placeholder="Additional notes or instructions"
-                        />
+                        <Textarea {...field} placeholder="Additional notes or instructions" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -1134,9 +1037,7 @@ export default function WarehouseOperations() {
                     disabled={createOperationMutation.isPending}
                     className="w-full md:w-auto min-h-[44px] touch-manipulation active:scale-[0.98] transition-transform"
                   >
-                    {createOperationMutation.isPending
-                      ? "Creating..."
-                      : "Create Operation"}
+                    {createOperationMutation.isPending ? 'Creating...' : 'Create Operation'}
                   </Button>
                 </div>
               </form>
@@ -1154,12 +1055,10 @@ export default function WarehouseOperations() {
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium">
-                      Operation Type
-                    </label>
+                    <label className="text-sm font-medium">Operation Type</label>
                     <p className="text-sm text-muted-foreground">
                       {(selectedOperation as WarehouseOperation).operationType
-                        ?.replace("_", " ")
+                        ?.replace('_', ' ')
                         .toUpperCase()}
                     </p>
                   </div>
@@ -1173,7 +1072,7 @@ export default function WarehouseOperations() {
                         ]
                       }
                     >
-                      {(selectedOperation as WarehouseOperation).status?.replace("_", " ")}
+                      {(selectedOperation as WarehouseOperation).status?.replace('_', ' ')}
                     </Badge>
                   </div>
                 </div>

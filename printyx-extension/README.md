@@ -16,6 +16,7 @@ Import LinkedIn profiles directly to your Printyx CRM with one click. Automatica
 ### Development Mode (Local Testing)
 
 1. **Build the Backend API** (if not already running):
+
    ```bash
    cd /home/user/Printyx
    npm run dev
@@ -42,12 +43,14 @@ Import LinkedIn profiles directly to your Printyx CRM with one click. Automatica
 ### Production Deployment (Chrome Web Store)
 
 1. **Create Icon Assets**:
+
    ```bash
    # Create icons in assets/icons/
    # Required sizes: 16x16, 32x32, 48x48, 128x128
    ```
 
 2. **Package Extension**:
+
    ```bash
    cd printyx-extension
    zip -r printyx-extension.zip .
@@ -175,6 +178,7 @@ This extension is designed to comply with LinkedIn's ToS:
 ### Local Development
 
 1. **Start Printyx Backend**:
+
    ```bash
    cd /home/user/Printyx
    npm run dev

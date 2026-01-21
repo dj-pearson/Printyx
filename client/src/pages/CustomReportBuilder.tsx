@@ -10,9 +10,9 @@
  * - Chart visualization options
  */
 
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import {
   DndContext,
   closestCenter,
@@ -21,15 +21,15 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from "@dnd-kit/core";
+} from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Plus,
   GripVertical,
@@ -51,26 +51,20 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
-} from "lucide-react";
+} from 'lucide-react';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -78,7 +72,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet";
+} from '@/components/ui/sheet';
 import {
   Dialog,
   DialogContent,
@@ -86,17 +80,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table as DataTable,
   TableBody,
@@ -104,185 +93,203 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/table';
+import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
 
 // Available data sources for reporting
 const DATA_SOURCES = [
-  { id: "business_records", name: "Customers & Leads", icon: Database, description: "Customer and lead records" },
-  { id: "opportunities", name: "Opportunities", icon: BarChart3, description: "Sales opportunities and deals" },
-  { id: "service_tickets", name: "Service Tickets", icon: FileText, description: "Service requests and tickets" },
-  { id: "equipment", name: "Equipment", icon: Settings, description: "Equipment and assets" },
-  { id: "invoices", name: "Invoices", icon: FileText, description: "Invoice records" },
-  { id: "inventory", name: "Inventory", icon: LayoutGrid, description: "Inventory items" },
-  { id: "products", name: "Products", icon: LayoutGrid, description: "Product catalog" },
-  { id: "contacts", name: "Contacts", icon: Table, description: "Contact records" },
+  {
+    id: 'business_records',
+    name: 'Customers & Leads',
+    icon: Database,
+    description: 'Customer and lead records',
+  },
+  {
+    id: 'opportunities',
+    name: 'Opportunities',
+    icon: BarChart3,
+    description: 'Sales opportunities and deals',
+  },
+  {
+    id: 'service_tickets',
+    name: 'Service Tickets',
+    icon: FileText,
+    description: 'Service requests and tickets',
+  },
+  { id: 'equipment', name: 'Equipment', icon: Settings, description: 'Equipment and assets' },
+  { id: 'invoices', name: 'Invoices', icon: FileText, description: 'Invoice records' },
+  { id: 'inventory', name: 'Inventory', icon: LayoutGrid, description: 'Inventory items' },
+  { id: 'products', name: 'Products', icon: LayoutGrid, description: 'Product catalog' },
+  { id: 'contacts', name: 'Contacts', icon: Table, description: 'Contact records' },
 ];
 
 // Available columns per data source
-const SOURCE_COLUMNS: Record<string, Array<{ id: string; name: string; type: string; aggregatable: boolean }>> = {
+const SOURCE_COLUMNS: Record<
+  string,
+  Array<{ id: string; name: string; type: string; aggregatable: boolean }>
+> = {
   business_records: [
-    { id: "companyName", name: "Company Name", type: "string", aggregatable: false },
-    { id: "recordType", name: "Record Type", type: "string", aggregatable: false },
-    { id: "status", name: "Status", type: "string", aggregatable: false },
-    { id: "industry", name: "Industry", type: "string", aggregatable: false },
-    { id: "city", name: "City", type: "string", aggregatable: false },
-    { id: "state", name: "State", type: "string", aggregatable: false },
-    { id: "leadSource", name: "Lead Source", type: "string", aggregatable: false },
-    { id: "annualRevenue", name: "Annual Revenue", type: "currency", aggregatable: true },
-    { id: "employeeCount", name: "Employee Count", type: "number", aggregatable: true },
-    { id: "createdAt", name: "Created Date", type: "date", aggregatable: false },
-    { id: "updatedAt", name: "Updated Date", type: "date", aggregatable: false },
+    { id: 'companyName', name: 'Company Name', type: 'string', aggregatable: false },
+    { id: 'recordType', name: 'Record Type', type: 'string', aggregatable: false },
+    { id: 'status', name: 'Status', type: 'string', aggregatable: false },
+    { id: 'industry', name: 'Industry', type: 'string', aggregatable: false },
+    { id: 'city', name: 'City', type: 'string', aggregatable: false },
+    { id: 'state', name: 'State', type: 'string', aggregatable: false },
+    { id: 'leadSource', name: 'Lead Source', type: 'string', aggregatable: false },
+    { id: 'annualRevenue', name: 'Annual Revenue', type: 'currency', aggregatable: true },
+    { id: 'employeeCount', name: 'Employee Count', type: 'number', aggregatable: true },
+    { id: 'createdAt', name: 'Created Date', type: 'date', aggregatable: false },
+    { id: 'updatedAt', name: 'Updated Date', type: 'date', aggregatable: false },
   ],
   opportunities: [
-    { id: "name", name: "Opportunity Name", type: "string", aggregatable: false },
-    { id: "stage", name: "Stage", type: "string", aggregatable: false },
-    { id: "amount", name: "Amount", type: "currency", aggregatable: true },
-    { id: "probability", name: "Probability", type: "number", aggregatable: true },
-    { id: "expectedCloseDate", name: "Expected Close Date", type: "date", aggregatable: false },
-    { id: "createdAt", name: "Created Date", type: "date", aggregatable: false },
-    { id: "closedAt", name: "Closed Date", type: "date", aggregatable: false },
-    { id: "assignedTo", name: "Assigned To", type: "string", aggregatable: false },
-    { id: "product", name: "Product", type: "string", aggregatable: false },
-    { id: "quantity", name: "Quantity", type: "number", aggregatable: true },
+    { id: 'name', name: 'Opportunity Name', type: 'string', aggregatable: false },
+    { id: 'stage', name: 'Stage', type: 'string', aggregatable: false },
+    { id: 'amount', name: 'Amount', type: 'currency', aggregatable: true },
+    { id: 'probability', name: 'Probability', type: 'number', aggregatable: true },
+    { id: 'expectedCloseDate', name: 'Expected Close Date', type: 'date', aggregatable: false },
+    { id: 'createdAt', name: 'Created Date', type: 'date', aggregatable: false },
+    { id: 'closedAt', name: 'Closed Date', type: 'date', aggregatable: false },
+    { id: 'assignedTo', name: 'Assigned To', type: 'string', aggregatable: false },
+    { id: 'product', name: 'Product', type: 'string', aggregatable: false },
+    { id: 'quantity', name: 'Quantity', type: 'number', aggregatable: true },
   ],
   service_tickets: [
-    { id: "ticketNumber", name: "Ticket Number", type: "string", aggregatable: false },
-    { id: "subject", name: "Subject", type: "string", aggregatable: false },
-    { id: "status", name: "Status", type: "string", aggregatable: false },
-    { id: "priority", name: "Priority", type: "string", aggregatable: false },
-    { id: "category", name: "Category", type: "string", aggregatable: false },
-    { id: "assignedTo", name: "Assigned To", type: "string", aggregatable: false },
-    { id: "createdAt", name: "Created Date", type: "date", aggregatable: false },
-    { id: "resolvedAt", name: "Resolved Date", type: "date", aggregatable: false },
-    { id: "responseTime", name: "Response Time (hrs)", type: "number", aggregatable: true },
-    { id: "resolutionTime", name: "Resolution Time (hrs)", type: "number", aggregatable: true },
+    { id: 'ticketNumber', name: 'Ticket Number', type: 'string', aggregatable: false },
+    { id: 'subject', name: 'Subject', type: 'string', aggregatable: false },
+    { id: 'status', name: 'Status', type: 'string', aggregatable: false },
+    { id: 'priority', name: 'Priority', type: 'string', aggregatable: false },
+    { id: 'category', name: 'Category', type: 'string', aggregatable: false },
+    { id: 'assignedTo', name: 'Assigned To', type: 'string', aggregatable: false },
+    { id: 'createdAt', name: 'Created Date', type: 'date', aggregatable: false },
+    { id: 'resolvedAt', name: 'Resolved Date', type: 'date', aggregatable: false },
+    { id: 'responseTime', name: 'Response Time (hrs)', type: 'number', aggregatable: true },
+    { id: 'resolutionTime', name: 'Resolution Time (hrs)', type: 'number', aggregatable: true },
   ],
   equipment: [
-    { id: "serialNumber", name: "Serial Number", type: "string", aggregatable: false },
-    { id: "model", name: "Model", type: "string", aggregatable: false },
-    { id: "manufacturer", name: "Manufacturer", type: "string", aggregatable: false },
-    { id: "status", name: "Status", type: "string", aggregatable: false },
-    { id: "location", name: "Location", type: "string", aggregatable: false },
-    { id: "installDate", name: "Install Date", type: "date", aggregatable: false },
-    { id: "lastServiceDate", name: "Last Service Date", type: "date", aggregatable: false },
-    { id: "meterReading", name: "Meter Reading", type: "number", aggregatable: true },
-    { id: "contractEndDate", name: "Contract End Date", type: "date", aggregatable: false },
+    { id: 'serialNumber', name: 'Serial Number', type: 'string', aggregatable: false },
+    { id: 'model', name: 'Model', type: 'string', aggregatable: false },
+    { id: 'manufacturer', name: 'Manufacturer', type: 'string', aggregatable: false },
+    { id: 'status', name: 'Status', type: 'string', aggregatable: false },
+    { id: 'location', name: 'Location', type: 'string', aggregatable: false },
+    { id: 'installDate', name: 'Install Date', type: 'date', aggregatable: false },
+    { id: 'lastServiceDate', name: 'Last Service Date', type: 'date', aggregatable: false },
+    { id: 'meterReading', name: 'Meter Reading', type: 'number', aggregatable: true },
+    { id: 'contractEndDate', name: 'Contract End Date', type: 'date', aggregatable: false },
   ],
   invoices: [
-    { id: "invoiceNumber", name: "Invoice Number", type: "string", aggregatable: false },
-    { id: "status", name: "Status", type: "string", aggregatable: false },
-    { id: "amount", name: "Amount", type: "currency", aggregatable: true },
-    { id: "balance", name: "Balance Due", type: "currency", aggregatable: true },
-    { id: "invoiceDate", name: "Invoice Date", type: "date", aggregatable: false },
-    { id: "dueDate", name: "Due Date", type: "date", aggregatable: false },
-    { id: "paidDate", name: "Paid Date", type: "date", aggregatable: false },
-    { id: "daysOverdue", name: "Days Overdue", type: "number", aggregatable: true },
+    { id: 'invoiceNumber', name: 'Invoice Number', type: 'string', aggregatable: false },
+    { id: 'status', name: 'Status', type: 'string', aggregatable: false },
+    { id: 'amount', name: 'Amount', type: 'currency', aggregatable: true },
+    { id: 'balance', name: 'Balance Due', type: 'currency', aggregatable: true },
+    { id: 'invoiceDate', name: 'Invoice Date', type: 'date', aggregatable: false },
+    { id: 'dueDate', name: 'Due Date', type: 'date', aggregatable: false },
+    { id: 'paidDate', name: 'Paid Date', type: 'date', aggregatable: false },
+    { id: 'daysOverdue', name: 'Days Overdue', type: 'number', aggregatable: true },
   ],
   inventory: [
-    { id: "partNumber", name: "Part Number", type: "string", aggregatable: false },
-    { id: "name", name: "Item Name", type: "string", aggregatable: false },
-    { id: "category", name: "Category", type: "string", aggregatable: false },
-    { id: "manufacturer", name: "Manufacturer", type: "string", aggregatable: false },
-    { id: "quantityOnHand", name: "Quantity On Hand", type: "number", aggregatable: true },
-    { id: "reorderPoint", name: "Reorder Point", type: "number", aggregatable: true },
-    { id: "unitCost", name: "Unit Cost", type: "currency", aggregatable: true },
-    { id: "unitPrice", name: "Unit Price", type: "currency", aggregatable: true },
-    { id: "location", name: "Location", type: "string", aggregatable: false },
+    { id: 'partNumber', name: 'Part Number', type: 'string', aggregatable: false },
+    { id: 'name', name: 'Item Name', type: 'string', aggregatable: false },
+    { id: 'category', name: 'Category', type: 'string', aggregatable: false },
+    { id: 'manufacturer', name: 'Manufacturer', type: 'string', aggregatable: false },
+    { id: 'quantityOnHand', name: 'Quantity On Hand', type: 'number', aggregatable: true },
+    { id: 'reorderPoint', name: 'Reorder Point', type: 'number', aggregatable: true },
+    { id: 'unitCost', name: 'Unit Cost', type: 'currency', aggregatable: true },
+    { id: 'unitPrice', name: 'Unit Price', type: 'currency', aggregatable: true },
+    { id: 'location', name: 'Location', type: 'string', aggregatable: false },
   ],
   products: [
-    { id: "productName", name: "Product Name", type: "string", aggregatable: false },
-    { id: "sku", name: "SKU", type: "string", aggregatable: false },
-    { id: "category", name: "Category", type: "string", aggregatable: false },
-    { id: "manufacturer", name: "Manufacturer", type: "string", aggregatable: false },
-    { id: "listPrice", name: "List Price", type: "currency", aggregatable: true },
-    { id: "cost", name: "Cost", type: "currency", aggregatable: true },
-    { id: "isActive", name: "Is Active", type: "boolean", aggregatable: false },
+    { id: 'productName', name: 'Product Name', type: 'string', aggregatable: false },
+    { id: 'sku', name: 'SKU', type: 'string', aggregatable: false },
+    { id: 'category', name: 'Category', type: 'string', aggregatable: false },
+    { id: 'manufacturer', name: 'Manufacturer', type: 'string', aggregatable: false },
+    { id: 'listPrice', name: 'List Price', type: 'currency', aggregatable: true },
+    { id: 'cost', name: 'Cost', type: 'currency', aggregatable: true },
+    { id: 'isActive', name: 'Is Active', type: 'boolean', aggregatable: false },
   ],
   contacts: [
-    { id: "firstName", name: "First Name", type: "string", aggregatable: false },
-    { id: "lastName", name: "Last Name", type: "string", aggregatable: false },
-    { id: "email", name: "Email", type: "string", aggregatable: false },
-    { id: "phone", name: "Phone", type: "string", aggregatable: false },
-    { id: "title", name: "Title", type: "string", aggregatable: false },
-    { id: "department", name: "Department", type: "string", aggregatable: false },
-    { id: "isPrimary", name: "Is Primary", type: "boolean", aggregatable: false },
-    { id: "createdAt", name: "Created Date", type: "date", aggregatable: false },
+    { id: 'firstName', name: 'First Name', type: 'string', aggregatable: false },
+    { id: 'lastName', name: 'Last Name', type: 'string', aggregatable: false },
+    { id: 'email', name: 'Email', type: 'string', aggregatable: false },
+    { id: 'phone', name: 'Phone', type: 'string', aggregatable: false },
+    { id: 'title', name: 'Title', type: 'string', aggregatable: false },
+    { id: 'department', name: 'Department', type: 'string', aggregatable: false },
+    { id: 'isPrimary', name: 'Is Primary', type: 'boolean', aggregatable: false },
+    { id: 'createdAt', name: 'Created Date', type: 'date', aggregatable: false },
   ],
 };
 
 // Filter operators by type
 const FILTER_OPERATORS: Record<string, Array<{ id: string; name: string }>> = {
   string: [
-    { id: "equals", name: "Equals" },
-    { id: "not_equals", name: "Does not equal" },
-    { id: "contains", name: "Contains" },
-    { id: "not_contains", name: "Does not contain" },
-    { id: "starts_with", name: "Starts with" },
-    { id: "ends_with", name: "Ends with" },
-    { id: "is_empty", name: "Is empty" },
-    { id: "is_not_empty", name: "Is not empty" },
+    { id: 'equals', name: 'Equals' },
+    { id: 'not_equals', name: 'Does not equal' },
+    { id: 'contains', name: 'Contains' },
+    { id: 'not_contains', name: 'Does not contain' },
+    { id: 'starts_with', name: 'Starts with' },
+    { id: 'ends_with', name: 'Ends with' },
+    { id: 'is_empty', name: 'Is empty' },
+    { id: 'is_not_empty', name: 'Is not empty' },
   ],
   number: [
-    { id: "equals", name: "Equals" },
-    { id: "not_equals", name: "Does not equal" },
-    { id: "greater_than", name: "Greater than" },
-    { id: "less_than", name: "Less than" },
-    { id: "greater_equal", name: "Greater than or equal" },
-    { id: "less_equal", name: "Less than or equal" },
-    { id: "between", name: "Between" },
-    { id: "is_empty", name: "Is empty" },
+    { id: 'equals', name: 'Equals' },
+    { id: 'not_equals', name: 'Does not equal' },
+    { id: 'greater_than', name: 'Greater than' },
+    { id: 'less_than', name: 'Less than' },
+    { id: 'greater_equal', name: 'Greater than or equal' },
+    { id: 'less_equal', name: 'Less than or equal' },
+    { id: 'between', name: 'Between' },
+    { id: 'is_empty', name: 'Is empty' },
   ],
   currency: [
-    { id: "equals", name: "Equals" },
-    { id: "greater_than", name: "Greater than" },
-    { id: "less_than", name: "Less than" },
-    { id: "between", name: "Between" },
+    { id: 'equals', name: 'Equals' },
+    { id: 'greater_than', name: 'Greater than' },
+    { id: 'less_than', name: 'Less than' },
+    { id: 'between', name: 'Between' },
   ],
   date: [
-    { id: "equals", name: "Equals" },
-    { id: "before", name: "Before" },
-    { id: "after", name: "After" },
-    { id: "between", name: "Between" },
-    { id: "last_n_days", name: "Last N days" },
-    { id: "this_week", name: "This week" },
-    { id: "this_month", name: "This month" },
-    { id: "this_quarter", name: "This quarter" },
-    { id: "this_year", name: "This year" },
+    { id: 'equals', name: 'Equals' },
+    { id: 'before', name: 'Before' },
+    { id: 'after', name: 'After' },
+    { id: 'between', name: 'Between' },
+    { id: 'last_n_days', name: 'Last N days' },
+    { id: 'this_week', name: 'This week' },
+    { id: 'this_month', name: 'This month' },
+    { id: 'this_quarter', name: 'This quarter' },
+    { id: 'this_year', name: 'This year' },
   ],
   boolean: [
-    { id: "is_true", name: "Is true" },
-    { id: "is_false", name: "Is false" },
+    { id: 'is_true', name: 'Is true' },
+    { id: 'is_false', name: 'Is false' },
   ],
 };
 
 // Aggregation functions
 const AGGREGATIONS = [
-  { id: "count", name: "Count" },
-  { id: "sum", name: "Sum" },
-  { id: "avg", name: "Average" },
-  { id: "min", name: "Minimum" },
-  { id: "max", name: "Maximum" },
+  { id: 'count', name: 'Count' },
+  { id: 'sum', name: 'Sum' },
+  { id: 'avg', name: 'Average' },
+  { id: 'min', name: 'Minimum' },
+  { id: 'max', name: 'Maximum' },
 ];
 
 // Visualization types
 const VISUALIZATIONS = [
-  { id: "table", name: "Table", icon: Table },
-  { id: "bar_chart", name: "Bar Chart", icon: BarChart3 },
-  { id: "line_chart", name: "Line Chart", icon: LineChart },
-  { id: "pie_chart", name: "Pie Chart", icon: PieChart },
+  { id: 'table', name: 'Table', icon: Table },
+  { id: 'bar_chart', name: 'Bar Chart', icon: BarChart3 },
+  { id: 'line_chart', name: 'Line Chart', icon: LineChart },
+  { id: 'pie_chart', name: 'Pie Chart', icon: PieChart },
 ];
 
 // Report categories
 const REPORT_CATEGORIES = [
-  { id: "sales", name: "Sales" },
-  { id: "service", name: "Service" },
-  { id: "finance", name: "Finance" },
-  { id: "operations", name: "Operations" },
-  { id: "executive", name: "Executive" },
-  { id: "custom", name: "Custom" },
+  { id: 'sales', name: 'Sales' },
+  { id: 'service', name: 'Service' },
+  { id: 'finance', name: 'Finance' },
+  { id: 'operations', name: 'Operations' },
+  { id: 'executive', name: 'Executive' },
+  { id: 'custom', name: 'Custom' },
 ];
 
 interface ReportColumn {
@@ -291,7 +298,7 @@ interface ReportColumn {
   columnName: string;
   aggregation?: string;
   alias?: string;
-  sortDirection?: "asc" | "desc";
+  sortDirection?: 'asc' | 'desc';
   sortOrder?: number;
 }
 
@@ -302,7 +309,7 @@ interface ReportFilter {
   operator: string;
   value: string;
   value2?: string; // For "between" operator
-  conjunction: "and" | "or";
+  conjunction: 'and' | 'or';
 }
 
 interface ReportGrouping {
@@ -341,8 +348,9 @@ function SortableColumn({
   onUpdate: (updates: Partial<ReportColumn>) => void;
   availableColumns: Array<{ id: string; name: string; type: string; aggregatable: boolean }>;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: column.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: column.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -357,8 +365,8 @@ function SortableColumn({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-2 p-3 bg-card border rounded-md",
-        isDragging && "opacity-50"
+        'flex items-center gap-2 p-3 bg-card border rounded-md',
+        isDragging && 'opacity-50',
       )}
     >
       <div {...attributes} {...listeners} className="cursor-grab">
@@ -368,14 +376,16 @@ function SortableColumn({
         <div className="text-sm font-medium">{column.columnName}</div>
         <Input
           placeholder="Alias (optional)"
-          value={column.alias || ""}
+          value={column.alias || ''}
           onChange={(e) => onUpdate({ alias: e.target.value })}
           className="h-8"
         />
         {canAggregate && (
           <Select
-            value={column.aggregation || "none"}
-            onValueChange={(value) => onUpdate({ aggregation: value === "none" ? undefined : value })}
+            value={column.aggregation || 'none'}
+            onValueChange={(value) =>
+              onUpdate({ aggregation: value === 'none' ? undefined : value })
+            }
           >
             <SelectTrigger className="h-8">
               <SelectValue placeholder="Aggregation" />
@@ -404,21 +414,21 @@ export default function CustomReportBuilder() {
 
   // Report configuration state
   const [config, setConfig] = useState<ReportConfig>({
-    name: "",
-    description: "",
-    category: "custom",
-    dataSource: "",
+    name: '',
+    description: '',
+    category: 'custom',
+    dataSource: '',
     columns: [],
     filters: [],
     groupings: [],
-    visualization: "table",
+    visualization: 'table',
     chartConfig: {},
     isPublic: false,
     cacheDuration: 300,
   });
 
   // UI state
-  const [activeTab, setActiveTab] = useState("source");
+  const [activeTab, setActiveTab] = useState('source');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -433,7 +443,7 @@ export default function CustomReportBuilder() {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // Get available columns for selected data source
@@ -448,7 +458,7 @@ export default function CustomReportBuilder() {
       filters: [],
       groupings: [],
     });
-    setActiveTab("columns");
+    setActiveTab('columns');
   };
 
   const handleAddColumn = (columnId: string) => {
@@ -500,15 +510,15 @@ export default function CustomReportBuilder() {
 
     const firstColumn = availableColumns[0];
     const columnType = firstColumn.type;
-    const defaultOperator = FILTER_OPERATORS[columnType]?.[0]?.id || "equals";
+    const defaultOperator = FILTER_OPERATORS[columnType]?.[0]?.id || 'equals';
 
     const newFilter: ReportFilter = {
       id: `filter-${Date.now()}`,
       columnId: firstColumn.id,
       columnName: firstColumn.name,
       operator: defaultOperator,
-      value: "",
-      conjunction: "and",
+      value: '',
+      conjunction: 'and',
     };
 
     setConfig({
@@ -561,16 +571,16 @@ export default function CustomReportBuilder() {
   const handlePreview = async () => {
     if (!config.dataSource || config.columns.length === 0) {
       toast({
-        title: "Cannot preview",
-        description: "Please select a data source and at least one column",
-        variant: "destructive",
+        title: 'Cannot preview',
+        description: 'Please select a data source and at least one column',
+        variant: 'destructive',
       });
       return;
     }
 
     setIsRunning(true);
     try {
-      const response = await apiRequest("/api/reports/custom/preview", "POST", {
+      const response = await apiRequest('/api/reports/custom/preview', 'POST', {
         dataSource: config.dataSource,
         columns: config.columns,
         filters: config.filters,
@@ -581,9 +591,9 @@ export default function CustomReportBuilder() {
       setIsPreviewOpen(true);
     } catch (error: any) {
       toast({
-        title: "Preview failed",
-        description: error.message || "Failed to generate preview",
-        variant: "destructive",
+        title: 'Preview failed',
+        description: error.message || 'Failed to generate preview',
+        variant: 'destructive',
       });
     } finally {
       setIsRunning(false);
@@ -593,21 +603,21 @@ export default function CustomReportBuilder() {
   // Save report
   const saveReportMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/reports/custom", "POST", config);
+      return await apiRequest('/api/reports/custom', 'POST', config);
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Report saved",
+        title: 'Report saved',
         description: `"${config.name}" has been saved successfully`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       navigate(`/reports/${data.code}`);
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to save",
-        description: error.message || "Could not save report",
-        variant: "destructive",
+        title: 'Failed to save',
+        description: error.message || 'Could not save report',
+        variant: 'destructive',
       });
     },
   });
@@ -615,9 +625,9 @@ export default function CustomReportBuilder() {
   const handleSave = () => {
     if (!config.name.trim()) {
       toast({
-        title: "Name required",
-        description: "Please enter a name for the report",
-        variant: "destructive",
+        title: 'Name required',
+        description: 'Please enter a name for the report',
+        variant: 'destructive',
       });
       return;
     }
@@ -637,7 +647,7 @@ export default function CustomReportBuilder() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/reports")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/reports')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -660,7 +670,10 @@ export default function CustomReportBuilder() {
             )}
             Preview
           </Button>
-          <Button onClick={() => setIsSaveDialogOpen(true)} disabled={!config.dataSource || config.columns.length === 0}>
+          <Button
+            onClick={() => setIsSaveDialogOpen(true)}
+            disabled={!config.dataSource || config.columns.length === 0}
+          >
             <Save className="h-4 w-4 mr-2" />
             Save Report
           </Button>
@@ -721,13 +734,11 @@ export default function CustomReportBuilder() {
                             key={source.id}
                             onClick={() => handleDataSourceSelect(source.id)}
                             className={cn(
-                              "flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors",
-                              isSelected
-                                ? "border-primary bg-primary/5"
-                                : "hover:bg-accent"
+                              'flex items-center gap-3 p-3 rounded-md border cursor-pointer transition-colors',
+                              isSelected ? 'border-primary bg-primary/5' : 'hover:bg-accent',
                             )}
                           >
-                            <Icon className={cn("h-5 w-5", isSelected && "text-primary")} />
+                            <Icon className={cn('h-5 w-5', isSelected && 'text-primary')} />
                             <div className="flex-1">
                               <div className="font-medium">{source.name}</div>
                               <div className="text-xs text-muted-foreground">
@@ -772,16 +783,14 @@ export default function CustomReportBuilder() {
                   <div>
                     <div
                       className="flex items-center gap-2 cursor-pointer mb-3"
-                      onClick={() => toggleSection("columns")}
+                      onClick={() => toggleSection('columns')}
                     >
                       {expandedSections.columns ? (
                         <ChevronDown className="h-4 w-4" />
                       ) : (
                         <ChevronRight className="h-4 w-4" />
                       )}
-                      <h3 className="font-medium">
-                        Selected Columns ({config.columns.length})
-                      </h3>
+                      <h3 className="font-medium">Selected Columns ({config.columns.length})</h3>
                     </div>
                     {expandedSections.columns && (
                       <DndContext
@@ -819,16 +828,14 @@ export default function CustomReportBuilder() {
                   <div>
                     <div
                       className="flex items-center gap-2 cursor-pointer mb-3"
-                      onClick={() => toggleSection("groupings")}
+                      onClick={() => toggleSection('groupings')}
                     >
                       {expandedSections.groupings ? (
                         <ChevronDown className="h-4 w-4" />
                       ) : (
                         <ChevronRight className="h-4 w-4" />
                       )}
-                      <h3 className="font-medium">
-                        Group By ({config.groupings.length})
-                      </h3>
+                      <h3 className="font-medium">Group By ({config.groupings.length})</h3>
                     </div>
                     {expandedSections.groupings && (
                       <div className="space-y-2">
@@ -839,7 +846,7 @@ export default function CustomReportBuilder() {
                           <SelectContent>
                             {availableColumns
                               .filter((col) => !config.groupings.some((g) => g.columnId === col.id))
-                              .filter((col) => col.type === "string" || col.type === "date")
+                              .filter((col) => col.type === 'string' || col.type === 'date')
                               .map((col) => (
                                 <SelectItem key={col.id} value={col.id}>
                                   {col.name}
@@ -885,10 +892,8 @@ export default function CustomReportBuilder() {
                   ) : (
                     <div className="space-y-3">
                       {config.filters.map((filter, idx) => {
-                        const columnInfo = availableColumns.find(
-                          (c) => c.id === filter.columnId
-                        );
-                        const columnType = columnInfo?.type || "string";
+                        const columnInfo = availableColumns.find((c) => c.id === filter.columnId);
+                        const columnType = columnInfo?.type || 'string';
                         const operators = FILTER_OPERATORS[columnType] || FILTER_OPERATORS.string;
 
                         return (
@@ -897,7 +902,7 @@ export default function CustomReportBuilder() {
                               {idx > 0 && (
                                 <Select
                                   value={filter.conjunction}
-                                  onValueChange={(value: "and" | "or") =>
+                                  onValueChange={(value: 'and' | 'or') =>
                                     handleUpdateFilter(filter.id, { conjunction: value })
                                   }
                                 >
@@ -920,7 +925,7 @@ export default function CustomReportBuilder() {
                                         columnId: value,
                                         columnName: newCol.name,
                                         operator:
-                                          FILTER_OPERATORS[newCol.type]?.[0]?.id || "equals",
+                                          FILTER_OPERATORS[newCol.type]?.[0]?.id || 'equals',
                                       });
                                     }
                                   }}
@@ -963,7 +968,16 @@ export default function CustomReportBuilder() {
                                     ))}
                                   </SelectContent>
                                 </Select>
-                                {!["is_empty", "is_not_empty", "is_true", "is_false", "this_week", "this_month", "this_quarter", "this_year"].includes(filter.operator) && (
+                                {![
+                                  'is_empty',
+                                  'is_not_empty',
+                                  'is_true',
+                                  'is_false',
+                                  'this_week',
+                                  'this_month',
+                                  'this_quarter',
+                                  'this_year',
+                                ].includes(filter.operator) && (
                                   <Input
                                     placeholder="Value"
                                     value={filter.value}
@@ -973,12 +987,12 @@ export default function CustomReportBuilder() {
                                     className="flex-1"
                                   />
                                 )}
-                                {filter.operator === "between" && (
+                                {filter.operator === 'between' && (
                                   <>
                                     <span className="text-sm text-muted-foreground">and</span>
                                     <Input
                                       placeholder="Value 2"
-                                      value={filter.value2 || ""}
+                                      value={filter.value2 || ''}
                                       onChange={(e) =>
                                         handleUpdateFilter(filter.id, { value2: e.target.value })
                                       }
@@ -1008,13 +1022,11 @@ export default function CustomReportBuilder() {
                             key={vis.id}
                             onClick={() => setConfig({ ...config, visualization: vis.id })}
                             className={cn(
-                              "flex flex-col items-center gap-2 p-4 rounded-md border cursor-pointer transition-colors",
-                              isSelected
-                                ? "border-primary bg-primary/5"
-                                : "hover:bg-accent"
+                              'flex flex-col items-center gap-2 p-4 rounded-md border cursor-pointer transition-colors',
+                              isSelected ? 'border-primary bg-primary/5' : 'hover:bg-accent',
                             )}
                           >
-                            <Icon className={cn("h-8 w-8", isSelected && "text-primary")} />
+                            <Icon className={cn('h-8 w-8', isSelected && 'text-primary')} />
                             <span className="text-sm font-medium">{vis.name}</span>
                           </div>
                         );
@@ -1023,15 +1035,16 @@ export default function CustomReportBuilder() {
                   </div>
 
                   {/* Chart Configuration */}
-                  {config.visualization !== "table" && (
+                  {config.visualization !== 'table' && (
                     <div className="space-y-3">
                       <h3 className="font-medium">Chart Configuration</h3>
-                      {(config.visualization === "bar_chart" || config.visualization === "line_chart") && (
+                      {(config.visualization === 'bar_chart' ||
+                        config.visualization === 'line_chart') && (
                         <>
                           <div>
                             <Label>X-Axis</Label>
                             <Select
-                              value={config.chartConfig.xAxis || ""}
+                              value={config.chartConfig.xAxis || ''}
                               onValueChange={(value) =>
                                 setConfig({
                                   ...config,
@@ -1054,7 +1067,7 @@ export default function CustomReportBuilder() {
                           <div>
                             <Label>Y-Axis</Label>
                             <Select
-                              value={config.chartConfig.yAxis || ""}
+                              value={config.chartConfig.yAxis || ''}
                               onValueChange={(value) =>
                                 setConfig({
                                   ...config,
@@ -1068,7 +1081,9 @@ export default function CustomReportBuilder() {
                               <SelectContent>
                                 {config.columns
                                   .filter((col) => {
-                                    const info = availableColumns.find((c) => c.id === col.columnId);
+                                    const info = availableColumns.find(
+                                      (c) => c.id === col.columnId,
+                                    );
                                     return info?.aggregatable || col.aggregation;
                                   })
                                   .map((col) => (
@@ -1081,12 +1096,12 @@ export default function CustomReportBuilder() {
                           </div>
                         </>
                       )}
-                      {config.visualization === "pie_chart" && (
+                      {config.visualization === 'pie_chart' && (
                         <>
                           <div>
                             <Label>Category Field</Label>
                             <Select
-                              value={config.chartConfig.xAxis || ""}
+                              value={config.chartConfig.xAxis || ''}
                               onValueChange={(value) =>
                                 setConfig({
                                   ...config,
@@ -1109,7 +1124,7 @@ export default function CustomReportBuilder() {
                           <div>
                             <Label>Value Field</Label>
                             <Select
-                              value={config.chartConfig.yAxis || ""}
+                              value={config.chartConfig.yAxis || ''}
                               onValueChange={(value) =>
                                 setConfig({
                                   ...config,
@@ -1151,7 +1166,7 @@ export default function CustomReportBuilder() {
                 <CardDescription>
                   {config.dataSource
                     ? `Data from: ${DATA_SOURCES.find((s) => s.id === config.dataSource)?.name}`
-                    : "Select a data source to begin"}
+                    : 'Select a data source to begin'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1180,12 +1195,13 @@ export default function CustomReportBuilder() {
                     {/* Filters Summary */}
                     {config.filters.length > 0 && (
                       <div className="text-sm text-muted-foreground">
-                        <span className="font-medium">Filters:</span>{" "}
+                        <span className="font-medium">Filters:</span>{' '}
                         {config.filters
-                          .map((f, i) =>
-                            `${i > 0 ? f.conjunction.toUpperCase() + " " : ""}${f.columnName} ${f.operator} ${f.value}`
+                          .map(
+                            (f, i) =>
+                              `${i > 0 ? f.conjunction.toUpperCase() + ' ' : ''}${f.columnName} ${f.operator} ${f.value}`,
                           )
-                          .join(" ")}
+                          .join(' ')}
                       </div>
                     )}
 
@@ -1221,9 +1237,7 @@ export default function CustomReportBuilder() {
         <SheetContent side="right" className="w-[800px] sm:max-w-[800px]">
           <SheetHeader>
             <SheetTitle>Report Preview</SheetTitle>
-            <SheetDescription>
-              Showing first 100 rows of results
-            </SheetDescription>
+            <SheetDescription>Showing first 100 rows of results</SheetDescription>
           </SheetHeader>
           <div className="mt-4">
             {previewData.length === 0 ? (
@@ -1236,9 +1250,7 @@ export default function CustomReportBuilder() {
                   <TableHeader>
                     <TableRow>
                       {config.columns.map((col) => (
-                        <TableHead key={col.id}>
-                          {col.alias || col.columnName}
-                        </TableHead>
+                        <TableHead key={col.id}>{col.alias || col.columnName}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -1247,7 +1259,10 @@ export default function CustomReportBuilder() {
                       <TableRow key={idx}>
                         {config.columns.map((col) => (
                           <TableCell key={col.id}>
-                            {formatCellValue(row[col.columnId], availableColumns.find((c) => c.id === col.columnId)?.type)}
+                            {formatCellValue(
+                              row[col.columnId],
+                              availableColumns.find((c) => c.id === col.columnId)?.type,
+                            )}
                           </TableCell>
                         ))}
                       </TableRow>
@@ -1346,19 +1361,19 @@ export default function CustomReportBuilder() {
 
 // Helper function to format cell values
 function formatCellValue(value: any, type?: string): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return '—';
 
   switch (type) {
-    case "currency":
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
+    case 'currency':
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
       }).format(Number(value));
-    case "date":
+    case 'date':
       return new Date(value).toLocaleDateString();
-    case "boolean":
-      return value ? "Yes" : "No";
-    case "number":
+    case 'boolean':
+      return value ? 'Yes' : 'No';
+    case 'number':
       return new Intl.NumberFormat().format(Number(value));
     default:
       return String(value);

@@ -14,13 +14,13 @@ const MobileFAB = forwardRef<HTMLButtonElement, MobileFABProps>(
       <button
         ref={ref}
         className={cn(
-          "mobile-fab",
-          "flex items-center gap-3 px-4 py-3 rounded-full shadow-lg",
-          "font-medium text-sm transition-all duration-300",
-          "hover:shadow-xl active:scale-95",
-          "touch-manipulation",
-          "min-h-[56px] min-w-[56px]",
-          className
+          'mobile-fab',
+          'flex items-center gap-3 px-4 py-3 rounded-full shadow-lg',
+          'font-medium text-sm transition-all duration-300',
+          'hover:shadow-xl active:scale-95',
+          'touch-manipulation',
+          'min-h-[56px] min-w-[56px]',
+          className,
         )}
         data-testid="mobile-fab-button"
         aria-label={label}
@@ -30,7 +30,7 @@ const MobileFAB = forwardRef<HTMLButtonElement, MobileFABProps>(
         <span className="hidden sm:inline">{label}</span>
       </button>
     );
-  }
+  },
 );
 
 MobileFAB.displayName = 'MobileFAB';

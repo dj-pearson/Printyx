@@ -63,7 +63,7 @@ class TaskSchedulingService {
     preferences: SchedulingPreferences,
     existingEvents: any[] = [],
     startDate: Date = new Date(),
-    endDate: Date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    endDate: Date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   ): Promise<SchedulingResult> {
     console.log(`🧠 Starting AI task scheduling for ${tasks.length} tasks...`);
 
@@ -79,25 +79,17 @@ class TaskSchedulingService {
         startDate,
         endDate,
         preferences,
-        existingEvents
+        existingEvents,
       );
 
       // Step 4: Greedy scheduling algorithm
-      const schedulingResult = this.greedyScheduling(
-        prioritizedTasks,
-        availableSlots,
-        preferences
-      );
+      const schedulingResult = this.greedyScheduling(prioritizedTasks, availableSlots, preferences);
 
       // Step 5: AI optimization and insights
-      const optimizedResult = await this.optimizeScheduleWithAI(
-        schedulingResult,
-        preferences
-      );
+      const optimizedResult = await this.optimizeScheduleWithAI(schedulingResult, preferences);
 
       console.log(`✅ Scheduled ${optimizedResult.scheduledTasks.length}/${tasks.length} tasks`);
       return optimizedResult;
-
     } catch (error) {
       console.error('Task scheduling error:', error);
       // Fallback to basic scheduling
@@ -114,9 +106,10 @@ class TaskSchedulingService {
     for (const task of tasks) {
       try {
         const analysis = await ClaudeAIService.generateCompletion({
-          messages: [{
-            role: 'user',
-            content: `Analyze this task for scheduling optimization:
+          messages: [
+            {
+              role: 'user',
+              content: `Analyze this task for scheduling optimization:
 
 Title: ${task.title}
 Description: ${task.description || 'No description'}
@@ -134,10 +127,11 @@ Consider factors like:
 - Due date urgency
 - Business impact (sales tasks = higher priority)
 - Task complexity and mental effort required
-- Dependencies and blocking factors`
-          }],
+- Dependencies and blocking factors`,
+            },
+          ],
           temperature: 0.3,
-          max_tokens: 200
+          max_tokens: 200,
         });
 
         const aiAnalysis = JSON.parse(analysis);
@@ -145,9 +139,8 @@ Consider factors like:
           ...task,
           aiPriorityScore: Math.min(100, Math.max(0, aiAnalysis.priorityScore || 50)),
           aiComplexityScore: Math.min(100, Math.max(0, aiAnalysis.complexityScore || 50)),
-          aiReasoning: aiAnalysis.reasoning || 'AI analysis completed'
+          aiReasoning: aiAnalysis.reasoning || 'AI analysis completed',
         });
-
       } catch (error) {
         console.error(`AI analysis failed for task ${task.id}:`, error);
         // Fallback scoring
@@ -155,7 +148,7 @@ Consider factors like:
           ...task,
           aiPriorityScore: this.calculateFallbackPriority(task),
           aiComplexityScore: this.calculateFallbackComplexity(task),
-          aiReasoning: 'Fallback scoring used due to AI unavailability'
+          aiReasoning: 'Fallback scoring used due to AI unavailability',
         });
       }
     }
@@ -195,14 +188,14 @@ Consider factors like:
     startDate: Date,
     endDate: Date,
     preferences: SchedulingPreferences,
-    existingEvents: any[]
+    existingEvents: any[],
   ): Array<{ start: Date; end: Date; energyLevel: string }> {
     const slots = [];
     const current = new Date(startDate);
 
     while (current <= endDate) {
       const dayOfWeek = current.getDay(); // 0=Sunday, 1=Monday, etc.
-      
+
       if (preferences.workDays.includes(dayOfWeek)) {
         // Generate slots for this work day
         const workStart = new Date(current);
@@ -217,19 +210,19 @@ Consider factors like:
         const slotCurrent = new Date(workStart);
         while (slotCurrent < workEnd) {
           const slotEnd = new Date(slotCurrent.getTime() + 30 * 60 * 1000);
-          
+
           // Check if slot conflicts with existing events
-          const hasConflict = existingEvents.some(event => {
+          const hasConflict = existingEvents.some((event) => {
             const eventStart = new Date(event.startTime);
             const eventEnd = new Date(event.endTime);
-            return (slotCurrent < eventEnd && slotEnd > eventStart);
+            return slotCurrent < eventEnd && slotEnd > eventStart;
           });
 
           if (!hasConflict) {
             slots.push({
               start: new Date(slotCurrent),
               end: new Date(slotEnd),
-              energyLevel: this.getEnergyLevel(slotCurrent, preferences)
+              energyLevel: this.getEnergyLevel(slotCurrent, preferences),
             });
           }
 
@@ -249,7 +242,7 @@ Consider factors like:
   private greedyScheduling(
     tasks: any[],
     availableSlots: any[],
-    preferences: SchedulingPreferences
+    preferences: SchedulingPreferences,
   ): SchedulingResult {
     const scheduledTasks: ScheduledTask[] = [];
     const unscheduledTasks: Task[] = [];
@@ -264,7 +257,7 @@ Consider factors like:
       // Find best consecutive slots for this task
       for (let i = 0; i <= availableSlots.length - requiredSlots; i++) {
         const consecutiveSlots = availableSlots.slice(i, i + requiredSlots);
-        
+
         // Check if slots are consecutive (within same day or reasonable time)
         if (this.areSlotsContinuous(consecutiveSlots)) {
           const score = this.calculateSlotScore(consecutiveSlots, task, preferences);
@@ -286,7 +279,7 @@ Consider factors like:
           aiSuggestedStart: startTime,
           aiSuggestedEnd: endTime,
           aiSchedulingConfidence: bestScore / 100,
-          aiSchedulingReasoning: `Scheduled during ${usedSlots[0].energyLevel} energy time with score ${bestScore.toFixed(1)}`
+          aiSchedulingReasoning: `Scheduled during ${usedSlots[0].energyLevel} energy time with score ${bestScore.toFixed(1)}`,
         });
 
         totalDuration += task.estimatedDuration;
@@ -296,7 +289,8 @@ Consider factors like:
     }
 
     const totalAvailableTime = availableSlots.length * 30;
-    const utilizationPercentage = totalAvailableTime > 0 ? (totalDuration / totalAvailableTime) * 100 : 0;
+    const utilizationPercentage =
+      totalAvailableTime > 0 ? (totalDuration / totalAvailableTime) * 100 : 0;
 
     return {
       scheduledTasks,
@@ -304,7 +298,7 @@ Consider factors like:
       conflictingTasks,
       optimizationInsights: this.generateOptimizationInsights(scheduledTasks, unscheduledTasks),
       totalScheduledDuration: totalDuration,
-      utilizationPercentage
+      utilizationPercentage,
     };
   }
 
@@ -313,7 +307,7 @@ Consider factors like:
    */
   private async optimizeScheduleWithAI(
     result: SchedulingResult,
-    preferences: SchedulingPreferences
+    preferences: SchedulingPreferences,
   ): Promise<SchedulingResult> {
     try {
       const optimizationPrompt = `Analyze this task schedule and provide optimization insights:
@@ -331,12 +325,13 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
       const response = await ClaudeAIService.generateCompletion({
         messages: [{ role: 'user', content: optimizationPrompt }],
         temperature: 0.4,
-        max_tokens: 300
+        max_tokens: 300,
       });
 
       const insights = JSON.parse(response);
-      result.optimizationInsights = Array.isArray(insights) ? insights : result.optimizationInsights;
-
+      result.optimizationInsights = Array.isArray(insights)
+        ? insights
+        : result.optimizationInsights;
     } catch (error) {
       console.error('AI optimization failed:', error);
     }
@@ -347,13 +342,21 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
   // Helper methods
   private calculateFallbackPriority(task: Task): number {
     let score = 50; // Base score
-    
+
     // Priority boost
     switch (task.priority) {
-      case 'asap': score += 40; break;
-      case 'high': score += 25; break;
-      case 'medium': score += 0; break;
-      case 'low': score -= 15; break;
+      case 'asap':
+        score += 40;
+        break;
+      case 'high':
+        score += 25;
+        break;
+      case 'medium':
+        score += 0;
+        break;
+      case 'low':
+        score -= 15;
+        break;
     }
 
     // Due date urgency
@@ -374,16 +377,18 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
 
   private calculateFallbackComplexity(task: Task): number {
     let score = 30; // Base complexity
-    
+
     // Duration-based complexity
-    if (task.estimatedDuration > 120) score += 30; // 2+ hours
-    else if (task.estimatedDuration > 60) score += 20; // 1+ hour
+    if (task.estimatedDuration > 120)
+      score += 30; // 2+ hours
+    else if (task.estimatedDuration > 60)
+      score += 20; // 1+ hour
     else if (task.estimatedDuration > 30) score += 10; // 30+ minutes
 
     // Title/description complexity indicators
     const complexKeywords = ['proposal', 'analysis', 'strategy', 'planning', 'research'];
     const text = (task.title + ' ' + (task.description || '')).toLowerCase();
-    if (complexKeywords.some(keyword => text.includes(keyword))) {
+    if (complexKeywords.some((keyword) => text.includes(keyword))) {
       score += 20;
     }
 
@@ -417,7 +422,8 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
     for (let i = 1; i < slots.length; i++) {
       const prevEnd = slots[i - 1].end.getTime();
       const currentStart = slots[i].start.getTime();
-      if (currentStart - prevEnd > 5 * 60 * 1000) { // 5 minute gap tolerance
+      if (currentStart - prevEnd > 5 * 60 * 1000) {
+        // 5 minute gap tolerance
         return false;
       }
     }
@@ -448,18 +454,27 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
     const insights = [];
 
     if (unscheduled.length > 0) {
-      insights.push(`${unscheduled.length} tasks couldn't be scheduled. Consider extending work hours or reducing task scope.`);
+      insights.push(
+        `${unscheduled.length} tasks couldn't be scheduled. Consider extending work hours or reducing task scope.`,
+      );
     }
 
-    const highPriorityUnscheduled = unscheduled.filter(t => t.priority === 'asap' || t.priority === 'high');
+    const highPriorityUnscheduled = unscheduled.filter(
+      (t) => t.priority === 'asap' || t.priority === 'high',
+    );
     if (highPriorityUnscheduled.length > 0) {
-      insights.push(`${highPriorityUnscheduled.length} high-priority tasks are unscheduled. Consider rescheduling lower-priority items.`);
+      insights.push(
+        `${highPriorityUnscheduled.length} high-priority tasks are unscheduled. Consider rescheduling lower-priority items.`,
+      );
     }
 
     if (scheduled.length > 0) {
-      const avgConfidence = scheduled.reduce((sum, t) => sum + t.aiSchedulingConfidence, 0) / scheduled.length;
+      const avgConfidence =
+        scheduled.reduce((sum, t) => sum + t.aiSchedulingConfidence, 0) / scheduled.length;
       if (avgConfidence < 0.7) {
-        insights.push('Schedule has low confidence scores. Consider adjusting task durations or work hours.');
+        insights.push(
+          'Schedule has low confidence scores. Consider adjusting task durations or work hours.',
+        );
       }
     }
 
@@ -471,7 +486,7 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
     preferences: SchedulingPreferences,
     existingEvents: any[],
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): SchedulingResult {
     // Simple fallback: just return basic structure
     return {
@@ -480,7 +495,7 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
       conflictingTasks: [],
       optimizationInsights: ['AI scheduling temporarily unavailable. Using fallback mode.'],
       totalScheduledDuration: 0,
-      utilizationPercentage: 0
+      utilizationPercentage: 0,
     };
   }
 }

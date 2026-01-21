@@ -35,11 +35,11 @@ router.get('/health', async (req, res) => {
 router.get('/metrics', async (req, res) => {
   try {
     const { timeRange = 'hour' } = req.query;
-    
+
     const report = PerformanceMonitor.generatePerformanceReport(
-      timeRange as 'hour' | 'day' | 'week'
+      timeRange as 'hour' | 'day' | 'week',
     );
-    
+
     res.json(report);
   } catch (error) {
     console.error('Error fetching performance metrics:', error);
@@ -68,19 +68,19 @@ router.get('/insights', async (req, res) => {
 router.post('/record-metric', async (req, res) => {
   try {
     const { name, value, unit, metadata } = req.body;
-    
+
     if (!name || value === undefined || !unit) {
-      return res.status(400).json({ 
-        error: 'Name, value, and unit are required' 
+      return res.status(400).json({
+        error: 'Name, value, and unit are required',
       });
     }
-    
+
     PerformanceMonitor.recordMetric(name, value, unit, metadata);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Metric recorded successfully',
-      metric: { name, value, unit, timestamp: new Date() }
+      metric: { name, value, unit, timestamp: new Date() },
     });
   } catch (error) {
     console.error('Error recording metric:', error);
@@ -137,7 +137,7 @@ router.get('/cache', async (req, res) => {
 router.post('/run-tests', async (req, res) => {
   try {
     const { testSuite = 'all' } = req.body;
-    
+
     // Mock test execution
     const testResults = {
       testSuite,
@@ -175,15 +175,13 @@ router.post('/run-tests', async (req, res) => {
         },
       },
     };
-    
+
     // Record test performance metrics
-    PerformanceMonitor.recordMetric(
-      'test_execution_time',
-      testResults.duration,
-      'ms',
-      { testSuite, totalTests: 100 }
-    );
-    
+    PerformanceMonitor.recordMetric('test_execution_time', testResults.duration, 'ms', {
+      testSuite,
+      totalTests: 100,
+    });
+
     res.json(testResults);
   } catch (error) {
     console.error('Error running tests:', error);
@@ -198,7 +196,7 @@ router.post('/run-tests', async (req, res) => {
 router.post('/optimize', async (req, res) => {
   try {
     const { optimizationType = 'all' } = req.body;
-    
+
     // Mock optimization process
     const optimizationResults = {
       type: optimizationType,
@@ -212,7 +210,7 @@ router.post('/optimize', async (req, res) => {
         improvement: {},
       },
     };
-    
+
     switch (optimizationType) {
       case 'database':
         optimizationResults.improvements = [
@@ -226,7 +224,7 @@ router.post('/optimize', async (req, res) => {
           improvement: { queryTimeReduction: '40.8%', slowQueriesReduced: '75%' },
         };
         break;
-        
+
       case 'cache':
         optimizationResults.improvements = [
           'Cleared expired cache entries',
@@ -239,7 +237,7 @@ router.post('/optimize', async (req, res) => {
           improvement: { hitRateIncrease: '8.3%', memoryReduction: '17.9%' },
         };
         break;
-        
+
       case 'ai':
         optimizationResults.improvements = [
           'Optimized Claude API request batching',
@@ -247,12 +245,12 @@ router.post('/optimize', async (req, res) => {
           'Reduced token usage',
         ];
         optimizationResults.metrics = {
-          before: { latency: 1200, tokensPerDay: 52000, costPerDay: 15.60 },
-          after: { latency: 850, tokensPerDay: 45000, costPerDay: 13.50 },
+          before: { latency: 1200, tokensPerDay: 52000, costPerDay: 15.6 },
+          after: { latency: 850, tokensPerDay: 45000, costPerDay: 13.5 },
           improvement: { latencyReduction: '29.2%', costSavings: '13.5%' },
         };
         break;
-        
+
       default:
         optimizationResults.improvements = [
           'Database query optimization',
@@ -266,15 +264,15 @@ router.post('/optimize', async (req, res) => {
           improvement: { scoreIncrease: '16.7%' },
         };
     }
-    
+
     // Record optimization metrics
     PerformanceMonitor.recordMetric(
       'optimization_execution_time',
       optimizationResults.duration,
       'ms',
-      { optimizationType }
+      { optimizationType },
     );
-    
+
     res.json(optimizationResults);
   } catch (error) {
     console.error('Error running optimization:', error);
@@ -320,7 +318,7 @@ router.get('/alerts', async (req, res) => {
         resolved: false,
       },
     ];
-    
+
     res.json(alerts);
   } catch (error) {
     console.error('Error fetching alerts:', error);
@@ -336,7 +334,7 @@ router.post('/alerts/:alertId/resolve', async (req, res) => {
   try {
     const { alertId } = req.params;
     const { resolution } = req.body;
-    
+
     // Mock alert resolution
     const resolvedAlert = {
       id: alertId,
@@ -345,7 +343,7 @@ router.post('/alerts/:alertId/resolve', async (req, res) => {
       resolvedBy: req.user.id,
       resolution: resolution || 'Manually resolved',
     };
-    
+
     res.json(resolvedAlert);
   } catch (error) {
     console.error('Error resolving alert:', error);
@@ -360,7 +358,7 @@ router.post('/alerts/:alertId/resolve', async (req, res) => {
 router.get('/reports/generate', async (req, res) => {
   try {
     const { format = 'json', timeRange = 'week' } = req.query;
-    
+
     const report = {
       generatedAt: new Date(),
       timeRange,
@@ -404,7 +402,7 @@ router.get('/reports/generate', async (req, res) => {
         'Implement automated performance monitoring alerts',
       ],
     };
-    
+
     res.json(report);
   } catch (error) {
     console.error('Error generating report:', error);

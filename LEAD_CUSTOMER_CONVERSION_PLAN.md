@@ -12,6 +12,7 @@ The existing system has duplicate data structures that create data integrity ris
 ## Proposed Solution: Unified Business Records
 
 ### 1. Single Table Architecture with Complete Lifecycle Management
+
 ```sql
 -- Replace both leads and customers tables with:
 business_records {
@@ -19,36 +20,36 @@ business_records {
   tenant_id: foreign key
   company_id: foreign key (to companies table)
   contact_id: foreign key (to company_contacts table)
-  
+
   -- Status Management - Complete Business Relationship Lifecycle
   record_type: varchar -- 'lead', 'customer', 'former_customer'
-  status: varchar 
+  status: varchar
     -- Lead statuses: new, contacted, qualified, proposal, negotiation, closed_won, closed_lost
     -- Customer statuses: active, inactive, on_hold, churned, competitor_switch, non_payment, expired
-  
+
   -- Common Fields (used throughout entire lifecycle)
   lead_source: varchar
   estimated_amount: decimal
   priority: varchar
   owner_id: foreign key
   notes: text
-  
+
   -- Customer-Only Fields (populated when recordType = 'customer')
   customer_number: varchar -- Generated on conversion
   customer_since: timestamp -- Date of conversion
   customer_until: timestamp -- Date when customer relationship ended
   churn_reason: varchar -- competitor_switch, pricing, service_issues, business_closure, non_payment
-  
+
   -- Service & Support Information
   preferred_technician: varchar
   last_service_date: timestamp
   current_balance: decimal
   last_meter_reading_date: timestamp
-  
+
   -- Tracking & Audit
   converted_by: varchar -- Who converted from lead to customer
   deactivated_by: varchar -- Who deactivated the customer
-  
+
   created_at: timestamp
   updated_at: timestamp
 }
@@ -57,11 +58,12 @@ business_records {
 ### 2. Complete Business Lifecycle Workflows
 
 #### Lead to Customer Conversion
+
 ```javascript
 // Convert lead to customer - NO data duplication
 async convertLeadToCustomer(leadId, tenantId, userId) {
   const customerNumber = await generateCustomerNumber(tenantId);
-  
+
   await db.update(businessRecords)
     .set({
       recordType: 'customer',
@@ -72,13 +74,14 @@ async convertLeadToCustomer(leadId, tenantId, userId) {
       probability: 100
     })
     .where(eq(businessRecords.id, leadId));
-    
+
   // All activities, relationships, and history automatically preserved!
   return await getBusinessRecord(leadId, tenantId);
 }
 ```
 
 #### Customer Deactivation Workflows
+
 ```javascript
 // Customer goes to competitor
 async deactivateCustomer(customerId, tenantId, userId, reason) {
@@ -91,7 +94,7 @@ async deactivateCustomer(customerId, tenantId, userId, reason) {
       deactivatedBy: userId
     })
     .where(eq(businessRecords.id, customerId));
-  
+
   // Create activity record for audit trail
   await db.insert(businessRecordActivities).values({
     businessRecordId: customerId,
@@ -157,7 +160,7 @@ async markCustomerExpired(customerId, tenantId, userId) {
 ```sql
 -- All customer-specific tables reference the same ID
 meter_readings.business_record_id -> business_records.id
-contracts.business_record_id -> business_records.id  
+contracts.business_record_id -> business_records.id
 service_tickets.business_record_id -> business_records.id
 invoices.business_record_id -> business_records.id
 
