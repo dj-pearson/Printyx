@@ -42,7 +42,10 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const customerId = pathParts[1]; // /customers/:id
+    // Handle both path formats:
+    // - If pathname includes function name: /customers/:id → pathParts[1]
+    // - If pathname is just the ID (Supabase strips function name): /:id → pathParts[0]
+    const customerId = pathParts[0] === 'customers' ? pathParts[1] : pathParts[0];
 
     // GET /customers - List all customers with company information
     if (req.method === 'GET' && !customerId) {
