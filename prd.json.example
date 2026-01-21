@@ -1,0 +1,144 @@
+{
+  "title": "Example Feature Implementation",
+  "branchName": "feature/example-feature",
+  "description": "Brief description of what this PRD implements",
+  "userStories": [
+    {
+      "id": "story-001",
+      "title": "Add database schema for feature",
+      "description": "Create the necessary database tables and columns",
+      "acceptanceCriteria": [
+        "Schema file created/updated in shared/",
+        "Migration runs successfully with npm run db:push",
+        "All required columns have proper types and indexes",
+        "tenantId column added with index"
+      ],
+      "passes": false,
+      "priority": 1
+    },
+    {
+      "id": "story-002",
+      "title": "Create backend API endpoints",
+      "description": "Implement CRUD operations for the feature",
+      "acceptanceCriteria": [
+        "Route file created in server/routes-*.ts",
+        "All endpoints use requireAuth and requireTenant middleware",
+        "All queries filter by tenantId",
+        "RBAC permissions enforced with requirePermission",
+        "Input validation using Zod schemas",
+        "Error handling returns proper status codes",
+        "TypeScript type checking passes"
+      ],
+      "passes": false,
+      "priority": 2,
+      "dependsOn": ["story-001"]
+    },
+    {
+      "id": "story-003",
+      "title": "Create frontend components",
+      "description": "Build the UI components for the feature",
+      "acceptanceCriteria": [
+        "Components created in client/src/components/",
+        "Uses shadcn/ui components",
+        "TanStack Query for data fetching",
+        "React Hook Form + Zod for form validation",
+        "Mobile-responsive design (tested at 375px, 768px, 1024px)",
+        "Touch targets minimum 48px",
+        "Loading and error states handled",
+        "TypeScript types are correct"
+      ],
+      "passes": false,
+      "priority": 3,
+      "dependsOn": ["story-002"]
+    },
+    {
+      "id": "story-004",
+      "title": "Add page and routing",
+      "description": "Create the page component and add to routing",
+      "acceptanceCriteria": [
+        "Page created in client/src/pages/",
+        "Route added to client/src/App.tsx with lazy loading",
+        "Navigation item added if needed",
+        "Page has proper meta/title",
+        "Verify in browser - navigate to page and test functionality"
+      ],
+      "passes": false,
+      "priority": 4,
+      "dependsOn": ["story-003"]
+    },
+    {
+      "id": "story-005",
+      "title": "Add RBAC permissions",
+      "description": "Define and seed the necessary permissions",
+      "acceptanceCriteria": [
+        "Permissions defined in server/middleware/enhanced-rbac-middleware.ts or similar",
+        "Seed script updated to include new permissions",
+        "npm run seed:rbac completes successfully",
+        "Permissions tested with different role levels"
+      ],
+      "passes": false,
+      "priority": 5,
+      "dependsOn": ["story-002"]
+    },
+    {
+      "id": "story-006",
+      "title": "Add unit tests",
+      "description": "Write unit tests for the new functionality",
+      "acceptanceCriteria": [
+        "Test file created in server/tests/unit/ or tests/",
+        "Tests cover main business logic",
+        "npm run test passes",
+        "Coverage for new code is >80%"
+      ],
+      "passes": false,
+      "priority": 6,
+      "dependsOn": ["story-002"]
+    },
+    {
+      "id": "story-007",
+      "title": "Add E2E tests",
+      "description": "Write end-to-end tests for the feature",
+      "acceptanceCriteria": [
+        "Test file created in tests/ using Playwright",
+        "Tests cover happy path user flow",
+        "Tests include authentication",
+        "npm run test:e2e passes"
+      ],
+      "passes": false,
+      "priority": 7,
+      "dependsOn": ["story-004"]
+    },
+    {
+      "id": "story-008",
+      "title": "Update documentation",
+      "description": "Document the new feature and any patterns discovered",
+      "acceptanceCriteria": [
+        "CLAUDE.md updated with any new patterns or conventions",
+        "README or relevant docs updated if needed",
+        "API endpoints documented if creating new patterns",
+        "Any gotchas or important notes captured"
+      ],
+      "passes": false,
+      "priority": 8,
+      "dependsOn": ["story-001", "story-002", "story-003", "story-004"]
+    }
+  ],
+  "technicalNotes": {
+    "stack": "React + Node.js + Express + PostgreSQL (Supabase) + Drizzle ORM",
+    "patterns": [
+      "Multi-tenant architecture - all queries must filter by tenantId",
+      "RBAC with permission scopes (own/team/location/regional/company/platform)",
+      "TanStack Query for server state management",
+      "React Hook Form + Zod for forms",
+      "shadcn/ui components",
+      "Mobile-first responsive design"
+    ],
+    "criticalRules": [
+      "Never query database without tenantId filter",
+      "Always use requireAuth and requireTenant middleware",
+      "All new tables must have tenantId column",
+      "TypeScript must pass (npm run check)",
+      "Tests must pass before marking story complete"
+    ]
+  }
+}

@@ -8,7 +8,12 @@
       "Bash(grep:*)",
       "Bash(npx tsx:*)",
       "Bash(set NODE_ENV=development)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npm run check:*)",
+      "Bash(set NODE_OPTIONS=--max-old-space-size=8192)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
