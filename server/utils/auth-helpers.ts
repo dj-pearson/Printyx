@@ -130,7 +130,16 @@ export function getAccessScope(req: Request): string {
 
 /**
  * Check if the user is a platform admin.
- * Checks multiple sources: isPlatformUser flag, role level, and role string.
+ *
+ * SECURITY: Uses explicit checks only to prevent false positives.
+ * Pattern matching (e.g., 'admin' substring) is avoided because it could
+ * match non-admin roles like 'administrator_assistant' or 'system_monitor'.
+ *
+ * Detection priority:
+ * 1. isPlatformUser flag from JWT/user object (most reliable)
+ * 2. roleLevel >= 8 (explicit level check from RBAC system)
+ * 3. hasAllPermissions flag (from enhanced RBAC middleware)
+ * 4. Exact role code match (not substring) for known admin roles
  *
  * @param req Express Request object
  * @returns boolean
@@ -138,35 +147,76 @@ export function getAccessScope(req: Request): string {
 export function isPlatformAdmin(req: Request): boolean {
   const reqAny = req as any;
 
-  // Check explicit isPlatformUser flag
-  if (reqAny.supabaseUser?.isPlatformUser) {
+  // Priority 1: Check explicit isPlatformUser flag from JWT
+  if (reqAny.supabaseUser?.isPlatformUser === true) {
     return true;
   }
 
-  if (reqAny.user?.isPlatformUser) {
+  // Priority 2: Check isPlatformUser flag from user object (set by middleware)
+  if (reqAny.user?.isPlatformUser === true) {
     return true;
   }
 
-  // Check role level (level 8 = platform admin)
-  if (reqAny.user?.roleLevel >= 8) {
+  // Priority 3: Check role level (level 8 = platform admin in RBAC hierarchy)
+  const roleLevel = reqAny.user?.roleLevel;
+  if (typeof roleLevel === 'number' && roleLevel >= 8) {
     return true;
   }
 
-  // Check hasAllPermissions flag (from enhanced RBAC)
-  if (reqAny.user?.hasAllPermissions) {
+  // Priority 4: Check hasAllPermissions flag (from enhanced RBAC middleware)
+  if (reqAny.user?.hasAllPermissions === true) {
     return true;
   }
 
-  // Check role code/name for admin patterns
-  const roleCode = reqAny.user?.roleCode?.toLowerCase() || '';
-  const roleName = reqAny.user?.role?.name?.toLowerCase() || '';
+  // Priority 5: Check for exact role code matches (not substring matching)
+  // This prevents false positives like 'administrator_assistant' matching 'admin'
+  const roleCode = (reqAny.user?.roleCode || '').toLowerCase();
+  const roleName = (reqAny.user?.role?.name || '').toLowerCase();
+  // Handle role as either string or object with name property
+  const role = reqAny.user?.role;
+  const roleString = (typeof role === 'string' ? role : '').toLowerCase();
 
-  const adminPatterns = ['admin', 'root', 'platform', 'system'];
-  const isAdminRole = adminPatterns.some(
-    (pattern) => roleCode.includes(pattern) || roleName.includes(pattern),
-  );
+  // Only exact matches for known platform admin role codes
+  const exactAdminRoles = [
+    'admin',
+    'root_admin',
+    'platform_admin',
+    'system_admin',
+    'super_admin',
+    'company_admin', // Company-level admin
+  ];
 
-  return isAdminRole;
+  if (
+    exactAdminRoles.includes(roleCode) ||
+    exactAdminRoles.includes(roleName) ||
+    exactAdminRoles.includes(roleString)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Get the user's role level from the request.
+ * Role levels follow the 8-level hierarchy:
+ * 8 = Platform Admin, 7 = Company Admin, 6 = Director, etc.
+ *
+ * @param req Express Request object
+ * @returns Role level number or undefined
+ */
+export function getRoleLevel(req: Request): number | undefined {
+  const reqAny = req as any;
+
+  if (typeof reqAny.user?.roleLevel === 'number') {
+    return reqAny.user.roleLevel;
+  }
+
+  if (typeof reqAny.supabaseUser?.roleLevel === 'number') {
+    return reqAny.supabaseUser.roleLevel;
+  }
+
+  return undefined;
 }
 
 /**

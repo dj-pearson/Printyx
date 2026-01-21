@@ -289,21 +289,47 @@ export function CsvImportWizard({
     },
   });
 
-  // Execute import mutation
+  // Execute import mutation with batch processing
   const executeMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest(`/api/import/jobs/${importJobId}/execute`, 'POST');
+    mutationFn: async ({ startIndex = 0 }: { startIndex?: number } = {}) => {
+      const response = await fetch(getApiUrl(`/api/import/jobs/${importJobId}/execute`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${await getAccessToken()}`,
+        },
+        body: JSON.stringify({ startIndex }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Import failed: ${response.statusText}`);
+      }
+
+      return await response.json();
     },
-    onSuccess: (data) => {
-      refetchJob();
-      setStep('complete');
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
-      if (onImportComplete) {
-        onImportComplete(data);
+    onSuccess: async (data) => {
+      // If there are more rows to process, continue with next batch
+      if (data.hasMore && data.nextIndex !== null) {
+        console.log(
+          `[CSV Import] Batch complete: ${data.processedRows}/${data.totalRows} rows. Continuing...`,
+        );
+        // Continue with next batch
+        await executeMutation.mutateAsync({ startIndex: data.nextIndex });
+      } else {
+        // All done!
+        console.log(
+          `[CSV Import] Import complete: ${data.importedRows} imported, ${data.skippedRows} skipped, ${data.mergedRows} merged`,
+        );
+        refetchJob();
+        setStep('complete');
+        queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
+        if (onImportComplete) {
+          onImportComplete(data);
+        }
       }
     },
     onError: (error: Error) => {

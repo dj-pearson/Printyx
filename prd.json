@@ -275,10 +275,15 @@
         "Document admin role requirements",
         "Audit all isPlatformAdmin() usages"
       ],
-      "files": ["server/utils/auth-helpers.ts", "server/middleware/enhanced-rbac-middleware.ts"],
-      "passes": false,
+      "files": [
+        "server/utils/auth-helpers.ts",
+        "server/middleware/enhanced-rbac-middleware.ts",
+        "server/tests/unit/auth-helpers.test.ts"
+      ],
+      "passes": true,
       "priority": 3,
-      "severity": "medium"
+      "severity": "medium",
+      "notes": "Implemented exact role matching (not substring). Added 5-priority detection: isPlatformUser flag, roleLevel >= 8, hasAllPermissions, exact role code match. 37 unit tests cover all scenarios including false positive prevention."
     },
     {
       "id": "AUTH-006",
