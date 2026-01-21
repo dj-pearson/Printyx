@@ -34,6 +34,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format, formatDistance } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -72,6 +90,19 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
   const queryClient = useQueryClient();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    subject: '',
+    description: '',
+    activityType: '',
+    direction: '',
+    callDuration: '',
+    callOutcome: '',
+    outcome: '',
+    nextAction: '',
+    priority: '',
+  });
 
   const {
     data: activities,
@@ -125,6 +156,34 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     },
   });
 
+  // Edit mutation
+  const editMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest(`/api/activities/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Activity updated',
+        description: 'The activity has been successfully updated.',
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/companies/${businessRecordId}/activities`],
+      });
+      setEditDialogOpen(false);
+      setActivityToEdit(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update activity',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleDeleteClick = (activityId: string) => {
     setActivityToDelete(activityId);
     setDeleteDialogOpen(true);
@@ -138,12 +197,39 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     }
   };
 
-  const handleEditClick = (activityId: string) => {
-    // TODO: Open edit dialog
-    toast({
-      title: 'Edit Activity',
-      description: 'Edit dialog coming soon!',
+  const handleEditClick = (activity: Activity) => {
+    setActivityToEdit(activity);
+    setEditFormData({
+      subject: activity.subject || '',
+      description: activity.description || '',
+      activityType: activity.activityType || '',
+      direction: activity.direction || '',
+      callDuration: activity.callDuration?.toString() || '',
+      callOutcome: activity.callOutcome || '',
+      outcome: activity.outcome || '',
+      nextAction: activity.nextAction || '',
+      priority: 'medium',
     });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSave = () => {
+    if (!activityToEdit) return;
+
+    const updateData: any = {
+      subject: editFormData.subject,
+      notes: editFormData.description,
+      activityType: editFormData.activityType,
+    };
+
+    // Add optional fields if they have values
+    if (editFormData.direction) updateData.direction = editFormData.direction;
+    if (editFormData.callDuration) updateData.durationMinutes = parseInt(editFormData.callDuration);
+    if (editFormData.callOutcome) updateData.outcome = editFormData.callOutcome;
+    if (editFormData.outcome) updateData.outcome = editFormData.outcome;
+    if (editFormData.nextAction) updateData.nextAction = editFormData.nextAction;
+
+    editMutation.mutate({ id: activityToEdit.id, data: updateData });
   };
 
   const getActivityIcon = (type: string) => {
@@ -329,7 +415,7 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditClick(activity.id)}>
+                            <DropdownMenuItem onClick={() => handleEditClick(activity)}>
                               <Edit2 className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
@@ -455,6 +541,163 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Activity Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Activity</DialogTitle>
+            <DialogDescription>Update the activity details below.</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Activity Type */}
+            <div className="space-y-2">
+              <Label htmlFor="activityType">Activity Type *</Label>
+              <Select
+                value={editFormData.activityType}
+                onValueChange={(value) => setEditFormData({ ...editFormData, activityType: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="call">Call</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="meeting">Meeting</SelectItem>
+                  <SelectItem value="note">Note</SelectItem>
+                  <SelectItem value="task">Task</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject *</Label>
+              <Input
+                id="subject"
+                value={editFormData.subject}
+                onChange={(e) => setEditFormData({ ...editFormData, subject: e.target.value })}
+                placeholder="e.g., Follow-up call with customer"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                placeholder="Add details about this activity..."
+                rows={4}
+              />
+            </div>
+
+            {/* Call-specific fields */}
+            {editFormData.activityType === 'call' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="direction">Direction</Label>
+                    <Select
+                      value={editFormData.direction}
+                      onValueChange={(value) =>
+                        setEditFormData({ ...editFormData, direction: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select direction" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inbound">Inbound</SelectItem>
+                        <SelectItem value="outbound">Outbound</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="callDuration">Duration (minutes)</Label>
+                    <Input
+                      id="callDuration"
+                      type="number"
+                      value={editFormData.callDuration}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, callDuration: e.target.value })
+                      }
+                      placeholder="e.g., 15"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="callOutcome">Call Outcome</Label>
+                  <Select
+                    value={editFormData.callOutcome}
+                    onValueChange={(value) =>
+                      setEditFormData({ ...editFormData, callOutcome: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select outcome" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="no_response">No Response</SelectItem>
+                      <SelectItem value="voicemail">Voicemail</SelectItem>
+                      <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
+            {/* Outcome */}
+            <div className="space-y-2">
+              <Label htmlFor="outcome">Outcome</Label>
+              <Select
+                value={editFormData.outcome}
+                onValueChange={(value) => setEditFormData({ ...editFormData, outcome: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select outcome" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Next Action */}
+            <div className="space-y-2">
+              <Label htmlFor="nextAction">Next Action</Label>
+              <Input
+                id="nextAction"
+                value={editFormData.nextAction}
+                onChange={(e) => setEditFormData({ ...editFormData, nextAction: e.target.value })}
+                placeholder="e.g., Send quote, Schedule demo"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditDialogOpen(false);
+                setActivityToEdit(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editMutation.isPending}>
+              {editMutation.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
