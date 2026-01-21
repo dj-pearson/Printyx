@@ -1,11 +1,28 @@
 // CORS helper for Edge Functions
-// Allowed origins for Printyx
-const ALLOWED_ORIGINS = [
+// Allowed origins for Printyx - configurable via environment variable
+
+// Default origins used when ALLOWED_ORIGINS env var is not set
+const DEFAULT_ORIGINS = [
   'https://printyx.net',
   'https://www.printyx.net',
   'http://localhost:5173', // Vite dev server
   'http://localhost:5000', // Local development
 ];
+
+// Parse ALLOWED_ORIGINS from environment variable (comma-separated)
+// Falls back to defaults if not set
+function getAllowedOrigins(): string[] {
+  const envOrigins = Deno.env.get('ALLOWED_ORIGINS');
+  if (envOrigins) {
+    return envOrigins
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+  }
+  return DEFAULT_ORIGINS;
+}
+
+const ALLOWED_ORIGINS = getAllowedOrigins();
 
 export function getCorsHeaders(origin: string | null): Record<string, string> {
   // Check if origin is allowed
