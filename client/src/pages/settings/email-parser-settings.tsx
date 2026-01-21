@@ -272,7 +272,9 @@ export default function EmailParserSettings() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Monitoring Status</CardTitle>
-                  <CardDescription>Email monitoring is currently {config?.enabled ? 'enabled' : 'disabled'}</CardDescription>
+                  <CardDescription>
+                    Email monitoring is currently {config?.enabled ? 'enabled' : 'disabled'}
+                  </CardDescription>
                 </div>
                 <Switch
                   checked={config?.enabled || false}
@@ -286,9 +288,7 @@ export default function EmailParserSettings() {
                 <div>
                   <Label className="text-sm text-muted-foreground">Last Check</Label>
                   <p className="text-sm font-medium">
-                    {config?.lastCheckAt
-                      ? new Date(config.lastCheckAt).toLocaleString()
-                      : 'Never'}
+                    {config?.lastCheckAt ? new Date(config.lastCheckAt).toLocaleString() : 'Never'}
                   </p>
                 </div>
                 <div>
@@ -324,20 +324,13 @@ export default function EmailParserSettings() {
                     type="email"
                     placeholder="service@company.com"
                     value={formData.emailAddress || ''}
-                    onChange={(e) =>
-                      setFormData({ ...formData, emailAddress: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, emailAddress: e.target.value })}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="protocol">Protocol</Label>
-                  <Input
-                    id="protocol"
-                    value="IMAP"
-                    disabled
-                    className="bg-muted"
-                  />
+                  <Input id="protocol" value="IMAP" disabled className="bg-muted" />
                 </div>
               </div>
 
@@ -362,9 +355,7 @@ export default function EmailParserSettings() {
                     type="number"
                     placeholder="993"
                     value={formData.port || 993}
-                    onChange={(e) =>
-                      setFormData({ ...formData, port: parseInt(e.target.value) })
-                    }
+                    onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) })}
                   />
                 </div>
               </div>
@@ -386,9 +377,7 @@ export default function EmailParserSettings() {
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value } as any)
-                    }
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value } as any)}
                   />
                   <p className="text-xs text-muted-foreground">
                     Gmail requires an App Password (not your regular password)
@@ -417,10 +406,7 @@ export default function EmailParserSettings() {
                   Test Connection
                 </Button>
 
-                <Button
-                  onClick={handleSave}
-                  disabled={saveConfigMutation.isPending}
-                >
+                <Button onClick={handleSave} disabled={saveConfigMutation.isPending}>
                   {saveConfigMutation.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
@@ -535,9 +521,7 @@ export default function EmailParserSettings() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Last Check</span>
                   <span className="text-sm font-medium">
-                    {stats?.lastCheckAt
-                      ? new Date(stats.lastCheckAt).toLocaleString()
-                      : 'Never'}
+                    {stats?.lastCheckAt ? new Date(stats.lastCheckAt).toLocaleString() : 'Never'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -561,7 +545,9 @@ export default function EmailParserSettings() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ['email-parser-emails'] })}
+                  onClick={() =>
+                    queryClient.invalidateQueries({ queryKey: ['email-parser-emails'] })
+                  }
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh

@@ -5,10 +5,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { SalesManagerReportingService } from '../services/sales-manager-reporting-service';
-import {
-  enhanceUserContext,
-  requirePermission,
-} from '../middleware/enhanced-rbac-middleware';
+import { enhanceUserContext, requirePermission } from '../middleware/enhanced-rbac-middleware';
 
 const router = Router();
 
@@ -37,25 +34,32 @@ router.get(
 
       const data = await SalesManagerReportingService.getRegionalPipelineOverview(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Enrich response with insights
-      const stageBreakdown = data.aggregated.reduce((acc, agg) => {
-        acc[agg.stage.toLowerCase().replace(' ', '_')] = {
-          totalDeals: agg.totalDeals,
-          totalValue: agg.totalValue,
-          avgValuePerRegion: agg.avgValuePerRegion,
-        };
-        return acc;
-      }, {} as Record<string, any>);
+      const stageBreakdown = data.aggregated.reduce(
+        (acc, agg) => {
+          acc[agg.stage.toLowerCase().replace(' ', '_')] = {
+            totalDeals: agg.totalDeals,
+            totalValue: agg.totalValue,
+            avgValuePerRegion: agg.avgValuePerRegion,
+          };
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
 
       res.json({
         ...data,
         insights: {
           stageBreakdown,
-          healthStatus: data.summary.healthScore >= 30 ? 'healthy' :
-                       data.summary.healthScore >= 20 ? 'fair' : 'needs_attention',
+          healthStatus:
+            data.summary.healthScore >= 30
+              ? 'healthy'
+              : data.summary.healthScore >= 20
+                ? 'fair'
+                : 'needs_attention',
         },
       });
     } catch (error) {
@@ -65,7 +69,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -90,21 +94,23 @@ router.get(
 
       const data = await SalesManagerReportingService.getRegionalPerformanceMetrics(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Calculate performance distribution
       const attainmentRanges = {
-        exceeding: data.regions.filter(r => r.quotaAttainment >= 100).length,
-        onTrack: data.regions.filter(r => r.quotaAttainment >= 90 && r.quotaAttainment < 100).length,
-        nearTarget: data.regions.filter(r => r.quotaAttainment >= 75 && r.quotaAttainment < 90).length,
-        atRisk: data.regions.filter(r => r.quotaAttainment < 75).length,
+        exceeding: data.regions.filter((r) => r.quotaAttainment >= 100).length,
+        onTrack: data.regions.filter((r) => r.quotaAttainment >= 90 && r.quotaAttainment < 100)
+          .length,
+        nearTarget: data.regions.filter((r) => r.quotaAttainment >= 75 && r.quotaAttainment < 90)
+          .length,
+        atRisk: data.regions.filter((r) => r.quotaAttainment < 75).length,
       };
 
       const winRateRanges = {
-        high: data.regions.filter(r => r.winRate >= 40).length,
-        medium: data.regions.filter(r => r.winRate >= 25 && r.winRate < 40).length,
-        low: data.regions.filter(r => r.winRate < 25).length,
+        high: data.regions.filter((r) => r.winRate >= 40).length,
+        medium: data.regions.filter((r) => r.winRate >= 25 && r.winRate < 40).length,
+        low: data.regions.filter((r) => r.winRate < 25).length,
       };
 
       res.json({
@@ -113,7 +119,7 @@ router.get(
           attainmentRanges,
           winRateRanges,
           topPerformers: data.regions.slice(0, 3),
-          needsAttention: data.regions.filter(r => r.quotaAttainment < 75 || r.winRate < 25),
+          needsAttention: data.regions.filter((r) => r.quotaAttainment < 75 || r.winRate < 25),
         },
       });
     } catch (error) {
@@ -123,7 +129,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -148,15 +154,17 @@ router.get(
 
       const data = await SalesManagerReportingService.getRegionalQuotaTracking(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Attainment distribution breakdown
       const attainmentDistribution = {
-        exceeding: data.quotas.filter(q => q.attainmentPercent >= 100).length,
-        onTrack: data.quotas.filter(q => q.attainmentPercent >= 90 && q.attainmentPercent < 100).length,
-        nearTarget: data.quotas.filter(q => q.attainmentPercent >= 75 && q.attainmentPercent < 90).length,
-        atRisk: data.quotas.filter(q => q.attainmentPercent < 75).length,
+        exceeding: data.quotas.filter((q) => q.attainmentPercent >= 100).length,
+        onTrack: data.quotas.filter((q) => q.attainmentPercent >= 90 && q.attainmentPercent < 100)
+          .length,
+        nearTarget: data.quotas.filter((q) => q.attainmentPercent >= 75 && q.attainmentPercent < 90)
+          .length,
+        atRisk: data.quotas.filter((q) => q.attainmentPercent < 75).length,
       };
 
       // Calculate gap analysis
@@ -171,7 +179,7 @@ router.get(
             totalGap,
             avgGapPerRegion: Math.round(avgGap * 100) / 100,
           },
-          criticalRegions: data.quotas.filter(q => q.attainmentPercent < 70),
+          criticalRegions: data.quotas.filter((q) => q.attainmentPercent < 70),
         },
       });
     } catch (error) {
@@ -181,7 +189,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -206,7 +214,7 @@ router.get(
 
       const data = await SalesManagerReportingService.getRegionalActivitySummary(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Activity type breakdown
@@ -220,9 +228,10 @@ router.get(
 
       // Calculate activity distribution
       const activityDistribution = {
-        high: data.activities.filter(a => a.activitiesPerRep >= 50).length,
-        medium: data.activities.filter(a => a.activitiesPerRep >= 30 && a.activitiesPerRep < 50).length,
-        low: data.activities.filter(a => a.activitiesPerRep < 30).length,
+        high: data.activities.filter((a) => a.activitiesPerRep >= 50).length,
+        medium: data.activities.filter((a) => a.activitiesPerRep >= 30 && a.activitiesPerRep < 50)
+          .length,
+        low: data.activities.filter((a) => a.activitiesPerRep < 30).length,
       };
 
       res.json({
@@ -230,9 +239,14 @@ router.get(
         insights: {
           activityBreakdown,
           activityDistribution,
-          avgActivitiesPerRep: data.activities.length > 0
-            ? Math.round((data.activities.reduce((sum, a) => sum + a.activitiesPerRep, 0) / data.activities.length) * 100) / 100
-            : 0,
+          avgActivitiesPerRep:
+            data.activities.length > 0
+              ? Math.round(
+                  (data.activities.reduce((sum, a) => sum + a.activitiesPerRep, 0) /
+                    data.activities.length) *
+                    100,
+                ) / 100
+              : 0,
         },
       });
     } catch (error) {
@@ -242,7 +256,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -268,7 +282,7 @@ router.post(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 export default router;

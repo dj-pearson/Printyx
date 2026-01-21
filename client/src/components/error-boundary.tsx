@@ -1,14 +1,14 @@
-import React, { Component, ReactNode } from "react";
-import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, { Component, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
-  level?: "page" | "component" | "critical";
+  level?: 'page' | 'component' | 'critical';
 }
 
 interface ErrorBoundaryState {
@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log error to console
-    console.error("Error Boundary caught error:", error, errorInfo);
+    console.error('Error Boundary caught error:', error, errorInfo);
 
     // Store error details
     this.setState({
@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
 
     // Log to error reporting service (e.g., Sentry)
-    if (typeof window !== "undefined" && (window as any).Sentry) {
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
       (window as any).Sentry.captureException(error, {
         contexts: {
           react: {
@@ -75,7 +75,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   };
 
   handleGoHome = () => {
-    window.location.href = "/dashboard";
+    window.location.href = '/dashboard';
   };
 
   handleReportBug = () => {
@@ -89,7 +89,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       timestamp: new Date().toISOString(),
     };
 
-    console.log("Bug Report:", bugReport);
+    console.log('Bug Report:', bugReport);
     // In production, send to bug tracking system
     // await apiRequest("/api/bug-reports", "POST", bugReport);
   };
@@ -102,14 +102,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       const { error, errorInfo } = this.state;
-      const { level = "component" } = this.props;
+      const { level = 'component' } = this.props;
 
       // Different UI based on error level
-      if (level === "critical") {
+      if (level === 'critical') {
         return <CriticalErrorFallback error={error} onReload={this.handleReload} />;
       }
 
-      if (level === "page") {
+      if (level === 'page') {
         return (
           <PageErrorFallback
             error={error}
@@ -123,12 +123,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
 
       // Component level error (default)
-      return (
-        <ComponentErrorFallback
-          error={error}
-          onReset={this.handleReset}
-        />
-      );
+      return <ComponentErrorFallback error={error} onReset={this.handleReset} />;
     }
 
     return this.props.children;
@@ -138,13 +133,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 /**
  * Critical Error Fallback - Full screen takeover
  */
-function CriticalErrorFallback({
-  error,
-  onReload,
-}: {
-  error: Error | null;
-  onReload: () => void;
-}) {
+function CriticalErrorFallback({ error, onReload }: { error: Error | null; onReload: () => void }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100 p-4">
       <Card className="max-w-md w-full border-red-200">
@@ -152,9 +141,7 @@ function CriticalErrorFallback({
           <div className="mx-auto h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
             <AlertTriangle className="h-8 w-8 text-red-600" />
           </div>
-          <CardTitle className="text-2xl text-red-900">
-            Critical Error
-          </CardTitle>
+          <CardTitle className="text-2xl text-red-900">Critical Error</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
           <p className="text-red-800">
@@ -162,15 +149,10 @@ function CriticalErrorFallback({
           </p>
           {error && (
             <div className="bg-red-50 p-3 rounded-md text-left">
-              <code className="text-xs text-red-900 break-all">
-                {error.message}
-              </code>
+              <code className="text-xs text-red-900 break-all">{error.message}</code>
             </div>
           )}
-          <Button
-            onClick={onReload}
-            className="w-full bg-red-600 hover:bg-red-700"
-          >
+          <Button onClick={onReload} className="w-full bg-red-600 hover:bg-red-700">
             <RefreshCw className="h-4 w-4 mr-2" />
             Reload Application
           </Button>
@@ -224,9 +206,7 @@ function PageErrorFallback({
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <p className="text-sm font-medium text-red-900 mb-1">Error Message:</p>
-              <code className="text-xs text-red-800 break-all">
-                {error.message}
-              </code>
+              <code className="text-xs text-red-800 break-all">{error.message}</code>
             </div>
           )}
 
@@ -259,27 +239,21 @@ function PageErrorFallback({
                 onClick={() => setShowDetails(!showDetails)}
                 className="text-xs text-muted-foreground"
               >
-                {showDetails ? "Hide" : "Show"} Technical Details
+                {showDetails ? 'Hide' : 'Show'} Technical Details
               </Button>
 
               {showDetails && (
                 <div className="mt-3 space-y-3">
                   {error?.stack && (
                     <div className="bg-gray-100 rounded-md p-3 overflow-auto max-h-48">
-                      <p className="text-xs font-medium text-gray-900 mb-2">
-                        Stack Trace:
-                      </p>
-                      <pre className="text-xs text-gray-700 whitespace-pre-wrap">
-                        {error.stack}
-                      </pre>
+                      <p className="text-xs font-medium text-gray-900 mb-2">Stack Trace:</p>
+                      <pre className="text-xs text-gray-700 whitespace-pre-wrap">{error.stack}</pre>
                     </div>
                   )}
 
                   {errorInfo?.componentStack && (
                     <div className="bg-gray-100 rounded-md p-3 overflow-auto max-h-48">
-                      <p className="text-xs font-medium text-gray-900 mb-2">
-                        Component Stack:
-                      </p>
+                      <p className="text-xs font-medium text-gray-900 mb-2">Component Stack:</p>
                       <pre className="text-xs text-gray-700 whitespace-pre-wrap">
                         {errorInfo.componentStack}
                       </pre>
@@ -298,27 +272,15 @@ function PageErrorFallback({
 /**
  * Component Error Fallback - Inline error for component failures
  */
-function ComponentErrorFallback({
-  error,
-  onReset,
-}: {
-  error: Error | null;
-  onReset: () => void;
-}) {
+function ComponentErrorFallback({ error, onReset }: { error: Error | null; onReset: () => void }) {
   return (
     <Card className="border-orange-200 bg-orange-50">
       <CardContent className="py-6">
         <div className="flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 space-y-2">
-            <p className="text-sm font-medium text-orange-900">
-              This component failed to load
-            </p>
-            {error && (
-              <p className="text-xs text-orange-800">
-                {error.message}
-              </p>
-            )}
+            <p className="text-sm font-medium text-orange-900">This component failed to load</p>
+            {error && <p className="text-xs text-orange-800">{error.message}</p>}
             <Button
               onClick={onReset}
               variant="outline"
@@ -368,7 +330,7 @@ export function AsyncErrorBoundary({
     <ErrorBoundary
       fallback={fallback}
       onError={(error, errorInfo) => {
-        console.error("Async Error:", error, errorInfo);
+        console.error('Async Error:', error, errorInfo);
       }}
     >
       {children}

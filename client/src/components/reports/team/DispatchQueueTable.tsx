@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Clock } from 'lucide-react';
@@ -29,37 +36,50 @@ interface DispatchQueueTableProps {
   workloadMetrics?: any;
 }
 
-export default function DispatchQueueTable({ queue, summary, workloadMetrics }: DispatchQueueTableProps) {
+export default function DispatchQueueTable({
+  queue,
+  summary,
+  workloadMetrics,
+}: DispatchQueueTableProps) {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [filterSLA, setFilterSLA] = useState<string>('all');
 
   const filteredQueue = useMemo(() => {
     let filtered = queue;
     if (filterPriority !== 'all') {
-      filtered = filtered.filter(item => item.priority === filterPriority);
+      filtered = filtered.filter((item) => item.priority === filterPriority);
     }
     if (filterSLA !== 'all') {
-      filtered = filtered.filter(item => item.slaStatus === filterSLA);
+      filtered = filtered.filter((item) => item.slaStatus === filterSLA);
     }
     return filtered;
   }, [queue, filterPriority, filterSLA]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
-      case 'critical': return 'destructive';
-      case 'high': return 'orange';
-      case 'medium': return 'yellow';
-      case 'low': return 'secondary';
-      default: return 'default';
+      case 'critical':
+        return 'destructive';
+      case 'high':
+        return 'orange';
+      case 'medium':
+        return 'yellow';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'default';
     }
   };
 
   const getSLAColor = (slaStatus: string) => {
     switch (slaStatus) {
-      case 'overdue': return 'destructive';
-      case 'at_risk': return 'yellow';
-      case 'on_time': return 'success';
-      default: return 'default';
+      case 'overdue':
+        return 'destructive';
+      case 'at_risk':
+        return 'yellow';
+      case 'on_time':
+        return 'success';
+      default:
+        return 'default';
     }
   };
 
@@ -73,25 +93,49 @@ export default function DispatchQueueTable({ queue, summary, workloadMetrics }: 
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Priority:</span>
-          <Button variant={filterPriority === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterPriority('all')}>
+          <Button
+            variant={filterPriority === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterPriority('all')}
+          >
             All
           </Button>
-          <Button variant={filterPriority === 'critical' ? 'default' : 'outline'} size="sm" onClick={() => setFilterPriority('critical')}>
+          <Button
+            variant={filterPriority === 'critical' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterPriority('critical')}
+          >
             Critical
           </Button>
-          <Button variant={filterPriority === 'high' ? 'default' : 'outline'} size="sm" onClick={() => setFilterPriority('high')}>
+          <Button
+            variant={filterPriority === 'high' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterPriority('high')}
+          >
             High
           </Button>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">SLA:</span>
-          <Button variant={filterSLA === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setFilterSLA('all')}>
+          <Button
+            variant={filterSLA === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterSLA('all')}
+          >
             All
           </Button>
-          <Button variant={filterSLA === 'overdue' ? 'default' : 'outline'} size="sm" onClick={() => setFilterSLA('overdue')}>
+          <Button
+            variant={filterSLA === 'overdue' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterSLA('overdue')}
+          >
             Overdue
           </Button>
-          <Button variant={filterSLA === 'at_risk' ? 'default' : 'outline'} size="sm" onClick={() => setFilterSLA('at_risk')}>
+          <Button
+            variant={filterSLA === 'at_risk' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterSLA('at_risk')}
+          >
             At Risk
           </Button>
         </div>
@@ -127,7 +171,9 @@ export default function DispatchQueueTable({ queue, summary, workloadMetrics }: 
                   <Badge variant={getPriorityColor(item.priority) as any}>{item.priority}</Badge>
                 </TableCell>
                 <TableCell>
-                  {item.assignedTechnicianName || <span className="text-muted-foreground text-xs">Unassigned</span>}
+                  {item.assignedTechnicianName || (
+                    <span className="text-muted-foreground text-xs">Unassigned</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {item.scheduledDate ? (

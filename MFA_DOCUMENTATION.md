@@ -125,12 +125,14 @@ CREATE INDEX idx_mfa_audit_logs_user_event ON mfa_audit_logs(user_id, event_type
 Initialize MFA enrollment by generating a TOTP secret and QR code URL.
 
 **Request:**
+
 ```http
 POST /api/mfa/enroll/init
 Authorization: Bearer <session_token>
 ```
 
 **Response:**
+
 ```json
 {
   "secret": "OVJOFDZPCVML7LHU6HB4KF4YVQSDY6SD",
@@ -145,6 +147,7 @@ Authorization: Bearer <session_token>
 Complete MFA enrollment by verifying the TOTP code. The secret is validated against the server-stored value from the enrollment initialization.
 
 **Request:**
+
 ```http
 POST /api/mfa/enroll/verify
 Content-Type: application/json
@@ -157,6 +160,7 @@ Content-Type: application/json
 **Security Note:** The server validates the token against the secret stored in the session during `/enroll/init`. The secret is never accepted from the client during verification, preventing attackers from enrolling with their own secrets.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -177,6 +181,7 @@ Content-Type: application/json
 Verify TOTP code or backup code during login.
 
 **Request:**
+
 ```http
 POST /api/mfa/verify
 Content-Type: application/json
@@ -189,6 +194,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -203,6 +209,7 @@ Content-Type: application/json
 Get current user's MFA status.
 
 **Response:**
+
 ```json
 {
   "enabled": true,
@@ -215,6 +222,7 @@ Get current user's MFA status.
 Disable MFA for current user (requires TOTP verification).
 
 **Request:**
+
 ```json
 {
   "token": "123456"
@@ -222,6 +230,7 @@ Disable MFA for current user (requires TOTP verification).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -236,6 +245,7 @@ Disable MFA for current user (requires TOTP verification).
 Regenerate backup codes (requires TOTP verification).
 
 **Request:**
+
 ```json
 {
   "token": "123456"
@@ -243,6 +253,7 @@ Regenerate backup codes (requires TOTP verification).
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -256,6 +267,7 @@ Regenerate backup codes (requires TOTP verification).
 Get count of unused backup codes.
 
 **Response:**
+
 ```json
 {
   "count": 9
@@ -269,6 +281,7 @@ Get count of unused backup codes.
 Admin reset MFA for a user.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -281,6 +294,7 @@ Admin reset MFA for a user.
 Get MFA compliance report for tenant.
 
 **Response:**
+
 ```json
 {
   "totalUsers": 100,
@@ -297,6 +311,7 @@ Get MFA compliance report for tenant.
 Get list of users without MFA enabled.
 
 **Response:**
+
 ```json
 [
   {
@@ -316,10 +331,12 @@ Get list of users without MFA enabled.
 Get MFA audit logs for current user.
 
 **Query Parameters:**
+
 - `eventType` (optional): Filter by event type
 - `success` (optional): Filter by success status (true/false)
 
 **Response:**
+
 ```json
 [
   {
@@ -340,6 +357,7 @@ Get MFA audit logs for current user.
 Get MFA audit logs for entire tenant (admin only).
 
 **Query Parameters:**
+
 - `eventType` (optional): Filter by event type
 - `success` (optional): Filter by success status (true/false)
 
@@ -466,12 +484,12 @@ async function initiateMfaEnrollment() {
     method: 'POST',
     credentials: 'include',
   });
-  
+
   const data = await response.json();
-  
+
   // Display QR code using data.qrCodeData
   // Show secret for manual entry: data.secret
-  
+
   return data;
 }
 ```
@@ -486,13 +504,13 @@ async function completeMfaEnrollment(token: string) {
     body: JSON.stringify({ token }), // Only send token, server validates against stored secret
     credentials: 'include',
   });
-  
+
   const data = await response.json();
-  
+
   // Display backup codes to user
   // IMPORTANT: User must save these codes
   console.log('Backup Codes:', data.backupCodes);
-  
+
   return data;
 }
 ```
@@ -510,9 +528,9 @@ async function verifyMfaCode(userId: string, code: string, isBackupCode = false)
       useBackupCode: isBackupCode,
     }),
   });
-  
+
   const data = await response.json();
-  
+
   if (data.success) {
     // Proceed with login
     if (data.usedBackupCode) {
@@ -520,7 +538,7 @@ async function verifyMfaCode(userId: string, code: string, isBackupCode = false)
       alert('Backup code used. You have fewer backup codes remaining.');
     }
   }
-  
+
   return data;
 }
 ```
@@ -535,25 +553,25 @@ async function handleLogin(email: string, password: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  
+
   const authData = await authResponse.json();
-  
+
   // Step 2: Check if MFA is enabled
   if (authData.mfaRequired) {
     const userId = authData.userId;
-    
+
     // Prompt user for TOTP code
     const code = prompt('Enter your 6-digit verification code:');
-    
+
     // Step 3: Verify MFA code
     const mfaResponse = await fetch('/api/mfa/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, code, useBackupCode: false }),
     });
-    
+
     const mfaData = await mfaResponse.json();
-    
+
     if (mfaData.success) {
       // Complete login
       return { success: true, user: authData.user };
@@ -561,7 +579,7 @@ async function handleLogin(email: string, password: string) {
       return { success: false, error: 'Invalid MFA code' };
     }
   }
-  
+
   // No MFA required
   return { success: true, user: authData.user };
 }
@@ -579,12 +597,12 @@ async function adminResetUserMfa(userId: string) {
     method: 'POST',
     credentials: 'include',
   });
-  
+
   const data = await response.json();
-  
+
   // Notify user that MFA has been reset
   // User will need to re-enroll
-  
+
   return data;
 }
 ```
@@ -596,14 +614,14 @@ async function getComplianceReport() {
   const response = await fetch('/api/mfa/admin/compliance-report', {
     credentials: 'include',
   });
-  
+
   const report = await response.json();
-  
+
   console.log(`MFA Compliance: ${report.compliancePercentage}%`);
   console.log(`Users with MFA: ${report.mfaEnabledUsers}/${report.totalUsers}`);
   console.log(`Recent enrollments: ${report.recentEnrollments}`);
   console.log(`Recent failures: ${report.recentFailures}`);
-  
+
   return report;
 }
 ```
@@ -622,6 +640,7 @@ async function getComplianceReport() {
 ### Audit Log Fields
 
 All audit log entries include:
+
 - **userId**: User who performed the action
 - **tenantId**: Tenant context
 - **eventType**: Type of MFA event
@@ -636,6 +655,7 @@ All audit log entries include:
 ### Compliance Metrics
 
 The system tracks:
+
 1. **Total Users**: Number of users in the tenant
 2. **MFA Enabled**: Users with MFA active
 3. **MFA Disabled**: Users without MFA
@@ -654,6 +674,7 @@ npx tsx server/seed-mfa-data.ts
 ```
 
 This will:
+
 - Enable MFA for a test user
 - Generate 10 backup codes
 - Create sample audit log entries
@@ -668,6 +689,7 @@ This will:
 ### Testing Backup Codes
 
 The seed script outputs plaintext backup codes. Use these to test:
+
 - Backup code verification
 - One-time use enforcement
 - Used code tracking
@@ -687,6 +709,7 @@ Potential improvements for the MFA system:
 ## Support
 
 For questions or issues with the MFA system:
+
 - Review audit logs for authentication failures
 - Check compliance reports for tenant-wide issues
 - Use admin reset for users locked out of their accounts

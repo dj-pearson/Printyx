@@ -31,12 +31,7 @@ export function InternalLink({ to, children, className, title }: InternalLinkPro
   const linkTitle = title || config?.title?.split(' | ')[0];
 
   return (
-    <Link
-      href={to}
-      className={className}
-      title={linkTitle}
-      aria-label={linkTitle}
-    >
+    <Link href={to} className={className} title={linkTitle} aria-label={linkTitle}>
       {children}
     </Link>
   );
@@ -104,10 +99,7 @@ export function Breadcrumbs({
               </span>
             )}
             {item.path && index < items.length - 1 ? (
-              <InternalLink
-                to={item.path}
-                className="hover:text-blue-600 hover:underline"
-              >
+              <InternalLink to={item.path} className="hover:text-blue-600 hover:underline">
                 {item.label}
               </InternalLink>
             ) : (
@@ -207,17 +199,17 @@ export function FooterSitemapLinks() {
   ];
 
   return (
-    <nav aria-label="Footer navigation" className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+    <nav
+      aria-label="Footer navigation"
+      className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+    >
       {sections.map((section) => (
         <div key={section.title}>
           <h3 className="font-semibold text-gray-900 mb-3">{section.title}</h3>
           <ul className="space-y-2">
             {section.links.map((link) => (
               <li key={link.path}>
-                <InternalLink
-                  to={link.path}
-                  className="text-gray-600 hover:text-blue-600 text-sm"
-                >
+                <InternalLink to={link.path} className="text-gray-600 hover:text-blue-600 text-sm">
                   {link.label}
                 </InternalLink>
               </li>

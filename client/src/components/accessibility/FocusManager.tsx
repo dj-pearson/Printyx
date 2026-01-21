@@ -6,18 +6,8 @@
  * dropdown menus, and other interactive components.
  */
 
-import {
-  useEffect,
-  useRef,
-  useCallback,
-  type ReactNode,
-  type RefObject,
-} from 'react';
-import {
-  getFocusableElements,
-  createFocusTrap,
-  focusFirst,
-} from '@/lib/accessibility/utils';
+import { useEffect, useRef, useCallback, type ReactNode, type RefObject } from 'react';
+import { getFocusableElements, createFocusTrap, focusFirst } from '@/lib/accessibility/utils';
 
 interface FocusTrapProps {
   children: ReactNode;
@@ -143,11 +133,7 @@ interface FocusScopeProps {
  * Focus Scope Component
  * Manages focus within a scope, useful for complex UI components
  */
-export function FocusScope({
-  children,
-  contain = false,
-  restoreFocus = false,
-}: FocusScopeProps) {
+export function FocusScope({ children, contain = false, restoreFocus = false }: FocusScopeProps) {
   const scopeRef = useRef<HTMLDivElement>(null);
   const lastFocused = useRef<HTMLElement | null>(null);
 
@@ -214,13 +200,16 @@ export function useFocusManager(containerRef: RefObject<HTMLElement>) {
     }
   }, [containerRef]);
 
-  const focusByIndex = useCallback((index: number) => {
-    if (!containerRef.current) return;
-    const focusable = Array.from(getFocusableElements(containerRef.current)) as HTMLElement[];
-    if (index >= 0 && index < focusable.length) {
-      focusable[index].focus();
-    }
-  }, [containerRef]);
+  const focusByIndex = useCallback(
+    (index: number) => {
+      if (!containerRef.current) return;
+      const focusable = Array.from(getFocusableElements(containerRef.current)) as HTMLElement[];
+      if (index >= 0 && index < focusable.length) {
+        focusable[index].focus();
+      }
+    },
+    [containerRef],
+  );
 
   const getFocusableCount = useCallback(() => {
     if (!containerRef.current) return 0;
@@ -253,7 +242,7 @@ export function useRovingFocus(
     selector?: string;
     orientation?: 'horizontal' | 'vertical' | 'both';
     loop?: boolean;
-  } = {}
+  } = {},
 ) {
   const {
     selector = '[role="menuitem"], [role="option"], [role="tab"], button, a',

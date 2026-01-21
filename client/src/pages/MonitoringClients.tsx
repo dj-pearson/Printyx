@@ -3,7 +3,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -92,7 +100,9 @@ export default function MonitoringClients() {
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientLocation, setNewClientLocation] = useState('');
-  const [registeredClient, setRegisteredClient] = useState<NewClientResponse['client'] | null>(null);
+  const [registeredClient, setRegisteredClient] = useState<NewClientResponse['client'] | null>(
+    null,
+  );
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
   // Fetch all clients
@@ -238,9 +248,7 @@ export default function MonitoringClients() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Monitoring Clients</h1>
-          <p className="text-gray-500 mt-1">
-            Manage on-premises printer monitoring clients
-          </p>
+          <p className="text-gray-500 mt-1">Manage on-premises printer monitoring clients</p>
         </div>
         <Dialog open={isRegisterDialogOpen} onOpenChange={setIsRegisterDialogOpen}>
           <DialogTrigger asChild>
@@ -308,7 +316,8 @@ export default function MonitoringClients() {
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Important:</strong> Copy the API key now. It cannot be retrieved later.
+                      <strong>Important:</strong> Copy the API key now. It cannot be retrieved
+                      later.
                     </AlertDescription>
                   </Alert>
 
@@ -340,7 +349,9 @@ export default function MonitoringClients() {
                       <Button
                         size="icon"
                         variant="outline"
-                        onClick={() => copyToClipboard(registeredClient.tenantId.toString(), 'Tenant ID')}
+                        onClick={() =>
+                          copyToClipboard(registeredClient.tenantId.toString(), 'Tenant ID')
+                        }
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -350,7 +361,11 @@ export default function MonitoringClients() {
                   <div className="space-y-2">
                     <Label>API Key</Label>
                     <div className="flex items-center gap-2">
-                      <Input value={registeredClient.apiKey} readOnly className="font-mono text-xs" />
+                      <Input
+                        value={registeredClient.apiKey}
+                        readOnly
+                        className="font-mono text-xs"
+                      />
                       <Button
                         size="icon"
                         variant="outline"
@@ -395,7 +410,7 @@ export default function MonitoringClients() {
           <CardContent>
             <div className="text-2xl font-bold">{clients.length}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {clients.filter(c => c.status === 'active').length} active
+              {clients.filter((c) => c.status === 'active').length} active
             </p>
           </CardContent>
         </Card>
@@ -431,9 +446,7 @@ export default function MonitoringClients() {
       <Card>
         <CardHeader>
           <CardTitle>Registered Clients</CardTitle>
-          <CardDescription>
-            Manage your on-premises monitoring client installations
-          </CardDescription>
+          <CardDescription>Manage your on-premises monitoring client installations</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -473,7 +486,9 @@ export default function MonitoringClients() {
                       <TableCell>{client.location || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                          <span className={`h-2 w-2 rounded-full ${getStatusColor(client.status)}`} />
+                          <span
+                            className={`h-2 w-2 rounded-full ${getStatusColor(client.status)}`}
+                          />
                           {client.status}
                         </Badge>
                       </TableCell>
@@ -539,9 +554,7 @@ export default function MonitoringClients() {
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{clientDetails.clientName}</DialogTitle>
-              <DialogDescription>
-                Client ID: {clientDetails.clientId}
-              </DialogDescription>
+              <DialogDescription>Client ID: {clientDetails.clientId}</DialogDescription>
             </DialogHeader>
 
             <Tabs defaultValue="activity" className="mt-4">
@@ -556,10 +569,7 @@ export default function MonitoringClients() {
                 {clientDetails.activity && clientDetails.activity.length > 0 ? (
                   <div className="space-y-2">
                     {clientDetails.activity.map((log) => (
-                      <div
-                        key={log.id}
-                        className="border rounded-lg p-3 text-sm"
-                      >
+                      <div key={log.id} className="border rounded-lg p-3 text-sm">
                         <div className="flex justify-between items-start">
                           <div>
                             <Badge variant={log.severity === 'error' ? 'destructive' : 'outline'}>
@@ -592,7 +602,8 @@ export default function MonitoringClients() {
                             <div className="flex items-center gap-2">
                               <AlertCircle className="h-4 w-4 text-red-600" />
                               <span className="font-medium text-red-900">
-                                {alert.supplyType.toUpperCase()} - {alert.alertType.replace('_', ' ')}
+                                {alert.supplyType.toUpperCase()} -{' '}
+                                {alert.alertType.replace('_', ' ')}
                               </span>
                             </div>
                             <p className="text-red-800 mt-1">

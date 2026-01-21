@@ -1,20 +1,16 @@
-import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Dialog,
   DialogContent,
@@ -23,28 +19,19 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
-import {
-  Filter,
-  X,
-  ChevronDown,
-  Save,
-  Star,
-  Share2,
-  Trash2,
-  Search,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
+import { Filter, X, ChevronDown, Save, Star, Share2, Trash2, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
 export interface FilterOption {
   label: string;
@@ -55,7 +42,7 @@ export interface FilterOption {
 export interface FilterConfig {
   field: string;
   label: string;
-  type: "select" | "multiselect" | "range" | "date" | "text";
+  type: 'select' | 'multiselect' | 'range' | 'date' | 'text';
   options?: FilterOption[];
   min?: number;
   max?: number;
@@ -99,27 +86,24 @@ export function SmartFilterBar({
 }: SmartFilterBarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [viewName, setViewName] = useState("");
+  const [viewName, setViewName] = useState('');
 
   // Count active filters
   const activeFilterCount = useMemo(() => {
     return Object.values(activeFilters).filter((v) => {
       if (Array.isArray(v)) return v.length > 0;
-      if (typeof v === "string") return v !== "" && v !== "all";
+      if (typeof v === 'string') return v !== '' && v !== 'all';
       return v !== null && v !== undefined;
     }).length;
   }, [activeFilters]);
 
   // Pinned views
-  const pinnedViews = useMemo(
-    () => savedViews.filter((v) => v.isPinned),
-    [savedViews]
-  );
+  const pinnedViews = useMemo(() => savedViews.filter((v) => v.isPinned), [savedViews]);
 
   const handleSaveView = () => {
     if (viewName.trim() && onSaveView) {
       onSaveView(viewName.trim(), activeFilters);
-      setViewName("");
+      setViewName('');
       setSaveDialogOpen(false);
     }
   };
@@ -128,14 +112,14 @@ export function SmartFilterBar({
     const value = activeFilters[config.field];
 
     switch (config.type) {
-      case "select":
+      case 'select':
         return (
           <Select
-            value={value || "all"}
-            onValueChange={(v) => onFilterChange(config.field, v === "all" ? "" : v)}
+            value={value || 'all'}
+            onValueChange={(v) => onFilterChange(config.field, v === 'all' ? '' : v)}
           >
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder={config.placeholder || "Select..."} />
+              <SelectValue placeholder={config.placeholder || 'Select...'} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All {config.label}</SelectItem>
@@ -151,7 +135,7 @@ export function SmartFilterBar({
           </Select>
         );
 
-      case "multiselect":
+      case 'multiselect':
         return (
           <Popover>
             <PopoverTrigger asChild>
@@ -196,7 +180,7 @@ export function SmartFilterBar({
           </Popover>
         );
 
-      case "range":
+      case 'range':
         const rangeValue = value || [config.min || 0, config.max || 100];
         return (
           <div className="w-[200px]">
@@ -217,22 +201,22 @@ export function SmartFilterBar({
           </div>
         );
 
-      case "text":
+      case 'text':
         return (
           <Input
             type="text"
             placeholder={config.placeholder || `Search ${config.label.toLowerCase()}...`}
-            value={value || ""}
+            value={value || ''}
             onChange={(e) => onFilterChange(config.field, e.target.value)}
             className="w-[200px]"
           />
         );
 
-      case "date":
+      case 'date':
         return (
           <Select
-            value={value || "all"}
-            onValueChange={(v) => onFilterChange(config.field, v === "all" ? "" : v)}
+            value={value || 'all'}
+            onValueChange={(v) => onFilterChange(config.field, v === 'all' ? '' : v)}
           >
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select date range..." />
@@ -261,7 +245,7 @@ export function SmartFilterBar({
       const value = activeFilters[config.field];
       if (!value) return;
 
-      if (config.type === "multiselect" && Array.isArray(value)) {
+      if (config.type === 'multiselect' && Array.isArray(value)) {
         value.forEach((v) => {
           const option = config.options?.find((o) => o.value === v);
           if (option) {
@@ -271,7 +255,9 @@ export function SmartFilterBar({
                 variant="secondary"
                 className="cursor-pointer hover:bg-secondary/80"
               >
-                <span className="text-xs">{config.label}: {option.label}</span>
+                <span className="text-xs">
+                  {config.label}: {option.label}
+                </span>
                 <X
                   className="ml-1 h-3 w-3"
                   onClick={() => {
@@ -279,11 +265,11 @@ export function SmartFilterBar({
                     onFilterChange(config.field, newValue);
                   }}
                 />
-              </Badge>
+              </Badge>,
             );
           }
         });
-      } else if (config.type === "select" && value !== "all" && value !== "") {
+      } else if (config.type === 'select' && value !== 'all' && value !== '') {
         const option = config.options?.find((o) => String(o.value) === String(value));
         if (option) {
           chips.push(
@@ -292,41 +278,38 @@ export function SmartFilterBar({
               variant="secondary"
               className="cursor-pointer hover:bg-secondary/80"
             >
-              <span className="text-xs">{config.label}: {option.label}</span>
-              <X
-                className="ml-1 h-3 w-3"
-                onClick={() => onFilterChange(config.field, "")}
-              />
-            </Badge>
+              <span className="text-xs">
+                {config.label}: {option.label}
+              </span>
+              <X className="ml-1 h-3 w-3" onClick={() => onFilterChange(config.field, '')} />
+            </Badge>,
           );
         }
-      } else if (config.type === "text" && value !== "") {
+      } else if (config.type === 'text' && value !== '') {
         chips.push(
           <Badge
             key={config.field}
             variant="secondary"
             className="cursor-pointer hover:bg-secondary/80"
           >
-            <span className="text-xs">{config.label}: "{value}"</span>
-            <X
-              className="ml-1 h-3 w-3"
-              onClick={() => onFilterChange(config.field, "")}
-            />
-          </Badge>
+            <span className="text-xs">
+              {config.label}: "{value}"
+            </span>
+            <X className="ml-1 h-3 w-3" onClick={() => onFilterChange(config.field, '')} />
+          </Badge>,
         );
-      } else if (config.type === "date" && value !== "all" && value !== "") {
+      } else if (config.type === 'date' && value !== 'all' && value !== '') {
         chips.push(
           <Badge
             key={config.field}
             variant="secondary"
             className="cursor-pointer hover:bg-secondary/80"
           >
-            <span className="text-xs">{config.label}: {value}</span>
-            <X
-              className="ml-1 h-3 w-3"
-              onClick={() => onFilterChange(config.field, "")}
-            />
-          </Badge>
+            <span className="text-xs">
+              {config.label}: {value}
+            </span>
+            <X className="ml-1 h-3 w-3" onClick={() => onFilterChange(config.field, '')} />
+          </Badge>,
         );
       }
     });
@@ -335,7 +318,7 @@ export function SmartFilterBar({
   };
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn('space-y-3', className)}>
       {/* Top Row: Filter Button, Saved Views, Save Button */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Filter Button */}
@@ -364,9 +347,7 @@ export function SmartFilterBar({
               <div className="space-y-3">
                 {filters.map((config) => (
                   <div key={config.field} className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">
-                      {config.label}
-                    </Label>
+                    <Label className="text-sm text-muted-foreground">{config.label}</Label>
                     {renderFilter(config)}
                   </div>
                 ))}
@@ -380,12 +361,7 @@ export function SmartFilterBar({
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Quick:</span>
             {pinnedViews.map((view) => (
-              <Button
-                key={view.id}
-                variant="outline"
-                size="sm"
-                onClick={() => onLoadView?.(view)}
-              >
+              <Button key={view.id} variant="outline" size="sm" onClick={() => onLoadView?.(view)}>
                 <Star className="h-3 w-3 mr-1 fill-yellow-400 text-yellow-400" />
                 {view.name}
               </Button>
@@ -428,7 +404,12 @@ export function SmartFilterBar({
                         className="h-6 w-6 p-0"
                         onClick={() => onPinView?.(view.id)}
                       >
-                        <Star className={cn("h-3 w-3", view.isPinned && "fill-yellow-400 text-yellow-400")} />
+                        <Star
+                          className={cn(
+                            'h-3 w-3',
+                            view.isPinned && 'fill-yellow-400 text-yellow-400',
+                          )}
+                        />
                       </Button>
                       <Button
                         variant="ghost"
@@ -474,9 +455,7 @@ export function SmartFilterBar({
                 </div>
                 <div className="text-sm text-muted-foreground">
                   <p className="font-medium mb-2">Active Filters:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {renderActiveFilterChips()}
-                  </div>
+                  <div className="flex flex-wrap gap-1">{renderActiveFilterChips()}</div>
                 </div>
               </div>
               <DialogFooter>

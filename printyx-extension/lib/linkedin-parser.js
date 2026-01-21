@@ -16,32 +16,32 @@ class LinkedInParser {
         'h1.text-heading-xlarge',
         'h1.inline.t-24.v-align-middle.break-words',
         '.pv-text-details__left-panel h1',
-        '.ph5.pb5 h1'
+        '.ph5.pb5 h1',
       ],
 
       // Job title
       title: [
         '.text-body-medium.break-words',
         '.pv-text-details__left-panel .text-body-medium',
-        'div.text-body-medium.break-words'
+        'div.text-body-medium.break-words',
       ],
 
       // Company name
       company: [
         '.pv-text-details__right-panel .text-body-small.inline',
         'div.inline-show-more-text--is-collapsed button span[aria-hidden="true"]',
-        '.pv-top-card--list.pv-top-card--list-bullet li'
+        '.pv-top-card--list.pv-top-card--list-bullet li',
       ],
 
       // Location
       location: [
         '.text-body-small.inline.t-black--light.break-words',
         'span.text-body-small.inline.t-black--light.break-words',
-        '.pv-top-card--list-bullet li:first-child'
+        '.pv-top-card--list-bullet li:first-child',
       ],
 
       // Profile URL (from current page)
-      profileUrl: window.location.href
+      profileUrl: window.location.href,
     };
   }
 
@@ -135,7 +135,7 @@ class LinkedInParser {
       if (nameElement && nameElement.textContent.trim()) {
         return true;
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     return false;
@@ -197,7 +197,7 @@ class LinkedInParser {
       jobTitle: jobTitle || '',
       company: company || 'Unknown Company',
       location: location || '',
-      linkedinUrl: linkedinUrl || ''
+      linkedinUrl: linkedinUrl || '',
     };
 
     console.log('[Printyx Extension] Parsed profile:', profileData);
@@ -218,11 +218,7 @@ class LinkedInParser {
    */
   isViewable() {
     // Check for "out of network" or "sign in to view" messages
-    const restrictedMessages = [
-      'Sign in to view',
-      'out of your network',
-      'LinkedIn Member'
-    ];
+    const restrictedMessages = ['Sign in to view', 'out of your network', 'LinkedIn Member'];
 
     const bodyText = document.body.textContent;
     for (const message of restrictedMessages) {

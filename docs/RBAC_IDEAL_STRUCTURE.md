@@ -19,13 +19,13 @@ This document defines the **ideal role-based reporting structure** for Printyx, 
 
 ### Business Size Categories:
 
-| Category | Locations | Employees | Annual Revenue | Structure |
-|----------|-----------|-----------|----------------|-----------|
-| **Micro Dealer** | 1 | 1-10 | $0-$2M | Flat |
-| **Small Dealer** | 1-2 | 11-25 | $2M-$10M | Simple hierarchy |
-| **Mid-Size Dealer** | 3-5 | 26-75 | $10M-$50M | Department heads |
-| **Large Dealer** | 6-15 | 76-200 | $50M-$150M | Regional structure |
-| **Enterprise Dealer** | 16+ | 201+ | $150M+ | Multi-regional |
+| Category              | Locations | Employees | Annual Revenue | Structure          |
+| --------------------- | --------- | --------- | -------------- | ------------------ |
+| **Micro Dealer**      | 1         | 1-10      | $0-$2M         | Flat               |
+| **Small Dealer**      | 1-2       | 11-25     | $2M-$10M       | Simple hierarchy   |
+| **Mid-Size Dealer**   | 3-5       | 26-75     | $10M-$50M      | Department heads   |
+| **Large Dealer**      | 6-15      | 76-200    | $50M-$150M     | Regional structure |
+| **Enterprise Dealer** | 16+       | 201+      | $150M+         | Multi-regional     |
 
 ### Organizational Tiers:
 
@@ -46,6 +46,7 @@ Platform (Printyx)
 ### Level 8: Platform Administrators (Printyx Staff Only)
 
 **Roles:**
+
 - Platform Administrator
 - Support Engineer
 - Platform Developer
@@ -53,12 +54,14 @@ Platform (Printyx)
 **Scope:** Cross-tenant, all data access
 
 **Responsibilities:**
+
 - Platform maintenance and monitoring
 - Cross-tenant support
 - System configuration
 - Tenant provisioning
 
 **Reporting Access:**
+
 - System-wide metrics
 - All tenant data
 - Platform health monitoring
@@ -69,6 +72,7 @@ Platform (Printyx)
 ### Level 7: C-Suite / Company Executives
 
 **Roles:**
+
 - **CEO / President**: Overall company leadership
 - **CFO**: Financial oversight
 - **COO**: Operations oversight
@@ -79,6 +83,7 @@ Platform (Printyx)
 **Scope:** Company-wide, all departments
 
 **Responsibilities:**
+
 - Strategic planning
 - P&L ownership
 - Company-wide goals
@@ -86,6 +91,7 @@ Platform (Printyx)
 - Major decisions (M&A, expansion, etc.)
 
 **Reporting Access:**
+
 - Executive dashboard (comprehensive)
 - Company-wide P&L
 - Revenue by department/location/region
@@ -102,30 +108,37 @@ Platform (Printyx)
 **Roles:**
 
 **Sales Department:**
+
 - VP of Sales (if no separate VP role at Level 7)
 - Director of Sales
 
 **Service Department:**
+
 - VP of Service (if no separate VP role at Level 7)
 - Director of Service Operations
 
 **Operations:**
+
 - Director of Operations
 - Director of Logistics
 
 **Finance:**
+
 - Director of Finance (if no CFO)
 - Controller
 
 **IT:**
+
 - Director of IT / CTO
 
 **HR:**
+
 - Director of HR / CHRO
 
 **Scope:** Company-wide for specific department
 
 **Responsibilities:**
+
 - Departmental strategy
 - Multi-location oversight
 - Budget ownership
@@ -136,6 +149,7 @@ Platform (Printyx)
 **Reporting Access by Department:**
 
 **Sales Directors:**
+
 - Company-wide sales metrics
 - Pipeline by location/region
 - Win/loss analysis
@@ -146,6 +160,7 @@ Platform (Printyx)
 - Sales forecasting (company-wide)
 
 **Service Directors:**
+
 - Company-wide service metrics
 - SLA compliance (all locations)
 - Technician productivity (all)
@@ -156,6 +171,7 @@ Platform (Printyx)
 - Warranty vs billable analysis
 
 **Operations Directors:**
+
 - Inventory levels (all locations)
 - Warehouse efficiency
 - FPY (First Pass Yield) metrics
@@ -164,6 +180,7 @@ Platform (Printyx)
 - Process efficiency metrics
 
 **Finance Directors:**
+
 - Company-wide financials
 - AR/AP aging (all)
 - Cash flow
@@ -179,19 +196,23 @@ Platform (Printyx)
 **Roles:**
 
 **Sales:**
+
 - Regional Sales Director
 - Area Sales Manager
 
 **Service:**
+
 - Regional Service Manager
 - Area Service Manager
 
 **Operations:**
+
 - Regional Operations Manager
 
 **Scope:** Multi-location within region
 
 **Responsibilities:**
+
 - Regional strategy execution
 - Multi-location coordination
 - Regional goal achievement
@@ -201,6 +222,7 @@ Platform (Printyx)
 **Reporting Access by Department:**
 
 **Regional Sales Managers:**
+
 - Regional sales performance
 - Location comparison within region
 - Regional pipeline health
@@ -211,6 +233,7 @@ Platform (Printyx)
 - Competitive positioning (region)
 
 **Regional Service Managers:**
+
 - Regional service metrics
 - Location SLA comparison
 - Technician utilization (region)
@@ -220,6 +243,7 @@ Platform (Printyx)
 - Customer health scores (region)
 
 **Regional Operations Managers:**
+
 - Regional inventory levels
 - Cross-location logistics
 - Regional warehouse metrics
@@ -232,28 +256,34 @@ Platform (Printyx)
 **Roles:**
 
 **General Management:**
+
 - Branch Manager / General Manager
 - Location Manager
 
 **Sales:**
+
 - Sales Manager (location)
 - Sales Director (small single-location dealers)
 
 **Service:**
+
 - Service Manager (location)
 - Service Director (small single-location dealers)
 
 **Operations:**
+
 - Operations Manager (location)
 - Warehouse Manager
 
 **Finance:**
+
 - Finance Manager (location)
 - Accounting Manager
 
 **Scope:** Single location, all departments OR single department company-wide (small dealers)
 
 **Responsibilities:**
+
 - Location P&L (Branch Managers)
 - Department goal achievement (Department Managers)
 - Team management
@@ -265,6 +295,7 @@ Platform (Printyx)
 **Reporting Access by Role:**
 
 **Branch Managers:**
+
 - Location P&L
 - Location sales vs targets
 - Location service metrics
@@ -275,6 +306,7 @@ Platform (Printyx)
 - Cross-departmental location KPIs
 
 **Sales Managers:**
+
 - Location sales pipeline
 - Sales team performance
 - Territory coverage (location)
@@ -284,6 +316,7 @@ Platform (Printyx)
 - Commission reports (location team)
 
 **Service Managers:**
+
 - Location service tickets
 - Technician productivity
 - SLA compliance (location)
@@ -293,6 +326,7 @@ Platform (Printyx)
 - Technician certifications/training
 
 **Operations/Warehouse Managers:**
+
 - Location inventory
 - Warehouse metrics (FPY, kitting)
 - Purchase orders
@@ -301,6 +335,7 @@ Platform (Printyx)
 - Supply chain metrics (location)
 
 **Finance Managers:**
+
 - Location AR/AP
 - Location billing
 - Location collections
@@ -315,23 +350,28 @@ Platform (Printyx)
 **Roles:**
 
 **Sales:**
+
 - Sales Supervisor
 - Inside Sales Supervisor
 
 **Service:**
+
 - Service Supervisor
 - Dispatch Supervisor
 
 **Operations:**
+
 - Warehouse Supervisor
 - Inventory Supervisor
 
 **Finance:**
+
 - Accounting Supervisor
 
 **Scope:** Team + location visibility
 
 **Responsibilities:**
+
 - Daily team oversight
 - Quality assurance
 - Coaching and mentoring
@@ -342,6 +382,7 @@ Platform (Printyx)
 **Reporting Access by Department:**
 
 **Sales Supervisors:**
+
 - Team sales performance
 - Individual rep pipelines (team)
 - Team activity metrics (calls, meetings, quotes)
@@ -350,6 +391,7 @@ Platform (Printyx)
 - Quota attainment (team)
 
 **Service Supervisors:**
+
 - Team service tickets
 - Technician daily schedules
 - Team productivity metrics
@@ -358,6 +400,7 @@ Platform (Printyx)
 - Quality metrics (team)
 
 **Warehouse Supervisors:**
+
 - Daily warehouse operations
 - Team productivity
 - Inventory movements
@@ -371,25 +414,30 @@ Platform (Printyx)
 **Roles:**
 
 **Sales:**
+
 - Senior Sales Representative
 - Lead Sales Representative
 - Inside Sales Team Lead
 
 **Service:**
+
 - Senior Field Technician
 - Lead Technician
 - Senior Service Dispatcher
 
 **Operations:**
+
 - Lead Warehouse Associate
 - Senior Inventory Specialist
 
 **Finance:**
+
 - Senior Accountant
 
 **Scope:** Self + small team (2-5 people)
 
 **Responsibilities:**
+
 - Mentoring junior staff
 - Subject matter expertise
 - Lead on complex deals/tickets
@@ -400,18 +448,21 @@ Platform (Printyx)
 **Reporting Access:**
 
 **Sales Senior Reps:**
+
 - Own pipeline and performance
 - Team performance comparison (for coaching)
 - Activity leaderboard (team visibility)
 - Commission reports (own + team overview)
 
 **Senior Technicians:**
+
 - Own tickets and time
 - Team workload visibility (for distribution)
 - Team efficiency comparison
 - Mentee performance
 
 **Senior Staff (Other):**
+
 - Own performance
 - Team metrics (read-only)
 - Peer comparison
@@ -423,28 +474,33 @@ Platform (Printyx)
 **Roles:**
 
 **Sales:**
+
 - Sales Representative
 - Inside Sales Representative
 - Business Development Representative (BDR)
 
 **Service:**
+
 - Field Service Technician
 - Bench Technician
 - Service Dispatcher
 
 **Operations:**
+
 - Warehouse Associate
 - Inventory Specialist
 - Purchasing Clerk
 - Delivery Driver
 
 **Finance:**
+
 - Accounting Clerk
 - AR Specialist
 - AP Specialist
 - Billing Specialist
 
 **Administration:**
+
 - Administrative Assistant
 - Receptionist
 - Data Entry Clerk
@@ -452,6 +508,7 @@ Platform (Printyx)
 **Scope:** Self only (own data)
 
 **Responsibilities:**
+
 - Execute assigned tasks
 - Meet individual quotas/targets
 - Follow processes
@@ -461,6 +518,7 @@ Platform (Printyx)
 **Reporting Access:**
 
 **Sales Reps:**
+
 - Own pipeline
 - Own activity metrics
 - Own quota attainment
@@ -468,6 +526,7 @@ Platform (Printyx)
 - Leaderboard position
 
 **Field Technicians:**
+
 - Own service tickets
 - Own schedule
 - Own time tracking
@@ -475,11 +534,13 @@ Platform (Printyx)
 - Own customer feedback scores
 
 **Operations Staff:**
+
 - Own task assignments
 - Own productivity metrics
 - Own time tracking
 
 **Finance Staff:**
+
 - Own task queue
 - Own transaction volume
 - Own accuracy metrics
@@ -501,6 +562,7 @@ VP Sales (Level 7)
 ```
 
 **Parallel Structure: Inside Sales**
+
 ```
 VP Sales (Level 7)
 └── Director of Inside Sales (Level 6)
@@ -527,6 +589,7 @@ VP Service (Level 7)
 **Parallel Structures:**
 
 **Dispatch:**
+
 ```
 Service Manager (Level 4)
 └── Dispatch Supervisor (Level 3)
@@ -535,6 +598,7 @@ Service Manager (Level 4)
 ```
 
 **Parts:**
+
 ```
 Service Manager (Level 4)
 └── Parts Manager (Level 4)
@@ -623,38 +687,39 @@ CHRO / Director of HR (Level 6/7)
 
 ### Data Access Hierarchy
 
-| Level | Self | Direct Reports | Team | Location | Region | Company | Cross-Tenant |
-|-------|------|----------------|------|----------|--------|---------|--------------|
-| 1 - Individual | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 2 - Team Lead | ✅ | ✅ | ✅ | 👁️ | ❌ | ❌ | ❌ |
-| 3 - Supervisor | ✅ | ✅ | ✅ | ✅ | 👁️ | ❌ | ❌ |
-| 4 - Manager | ✅ | ✅ | ✅ | ✅ | 👁️ | 👁️ | ❌ |
-| 5 - Regional | ✅ | ✅ | ✅ | ✅ | ✅ | 👁️ | ❌ |
-| 6 - Director | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| 7 - Executive | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| 8 - Platform | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Level          | Self | Direct Reports | Team | Location | Region | Company | Cross-Tenant |
+| -------------- | ---- | -------------- | ---- | -------- | ------ | ------- | ------------ |
+| 1 - Individual | ✅   | ❌             | ❌   | ❌       | ❌     | ❌      | ❌           |
+| 2 - Team Lead  | ✅   | ✅             | ✅   | 👁️       | ❌     | ❌      | ❌           |
+| 3 - Supervisor | ✅   | ✅             | ✅   | ✅       | 👁️     | ❌      | ❌           |
+| 4 - Manager    | ✅   | ✅             | ✅   | ✅       | 👁️     | 👁️      | ❌           |
+| 5 - Regional   | ✅   | ✅             | ✅   | ✅       | ✅     | 👁️      | ❌           |
+| 6 - Director   | ✅   | ✅             | ✅   | ✅       | ✅     | ✅      | ❌           |
+| 7 - Executive  | ✅   | ✅             | ✅   | ✅       | ✅     | ✅      | ❌           |
+| 8 - Platform   | ✅   | ✅             | ✅   | ✅       | ✅     | ✅      | ✅           |
 
 **Legend:**
+
 - ✅ Full Access (read/write appropriate to role)
 - 👁️ Read-Only Access (for comparison/context)
 - ❌ No Access
 
 ### Report Capabilities by Level
 
-| Capability | L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8 |
-|------------|----|----|----|----|----|----|----|----|
-| View own metrics | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View team metrics | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View location metrics | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| View regional metrics | ❌ | ❌ | ❌ | 👁️ | ✅ | ✅ | ✅ | ✅ |
-| View company metrics | ❌ | ❌ | ❌ | 👁️ | 👁️ | ✅ | ✅ | ✅ |
-| Export reports | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Schedule reports | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Create custom reports | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Manage KPIs | ❌ | ❌ | ❌ | ❌ | 👁️ | ✅ | ✅ | ✅ |
-| View sensitive financials | ❌ | ❌ | ❌ | ❌ | ❌ | Dept | ✅ | ✅ |
-| Customize dashboards | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Share dashboards | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Capability                | L1  | L2  | L3  | L4  | L5  | L6   | L7  | L8  |
+| ------------------------- | --- | --- | --- | --- | --- | ---- | --- | --- |
+| View own metrics          | ✅  | ✅  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| View team metrics         | ❌  | ✅  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| View location metrics     | ❌  | ❌  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| View regional metrics     | ❌  | ❌  | ❌  | 👁️  | ✅  | ✅   | ✅  | ✅  |
+| View company metrics      | ❌  | ❌  | ❌  | 👁️  | 👁️  | ✅   | ✅  | ✅  |
+| Export reports            | ❌  | ✅  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| Schedule reports          | ❌  | ❌  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| Create custom reports     | ❌  | ❌  | ❌  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| Manage KPIs               | ❌  | ❌  | ❌  | ❌  | 👁️  | ✅   | ✅  | ✅  |
+| View sensitive financials | ❌  | ❌  | ❌  | ❌  | ❌  | Dept | ✅  | ✅  |
+| Customize dashboards      | ✅  | ✅  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
+| Share dashboards          | ❌  | ✅  | ✅  | ✅  | ✅  | ✅   | ✅  | ✅  |
 
 ---
 
@@ -665,6 +730,7 @@ CHRO / Director of HR (Level 6/7)
 Format: `<module>.<entity>.<action>_<scope>`
 
 **Examples:**
+
 - `sales.lead.view_own` - View only leads assigned to me
 - `sales.lead.view_team` - View leads for my team
 - `sales.lead.view_location` - View all leads at my location
@@ -675,6 +741,7 @@ Format: `<module>.<entity>.<action>_<scope>`
 ### Core Permission Categories
 
 **1. View Permissions** (Read-only access)
+
 ```
 <module>.<entity>.view_own
 <module>.<entity>.view_team
@@ -685,6 +752,7 @@ Format: `<module>.<entity>.<action>_<scope>`
 ```
 
 **2. Modify Permissions** (Write access)
+
 ```
 <module>.<entity>.create
 <module>.<entity>.edit_own
@@ -695,6 +763,7 @@ Format: `<module>.<entity>.<action>_<scope>`
 ```
 
 **3. Special Permissions** (Workflows)
+
 ```
 <module>.<entity>.assign
 <module>.<entity>.approve
@@ -704,6 +773,7 @@ Format: `<module>.<entity>.<action>_<scope>`
 ```
 
 **4. Administrative Permissions**
+
 ```
 <module>.settings.configure
 <module>.users.manage
@@ -713,6 +783,7 @@ Format: `<module>.<entity>.<action>_<scope>`
 ### Permission Properties
 
 Each permission has:
+
 - **code**: Unique identifier
 - **module**: sales, service, finance, operations, admin, platform
 - **riskLevel**: low, medium, high, critical
@@ -727,12 +798,14 @@ Each permission has:
 ### Micro Dealer (1-10 employees)
 
 **Typical Roles:**
+
 - Owner (Level 7) - All permissions
 - Sales Rep (Level 1-2) - Basic sales
 - Technician (Level 1-2) - Basic service
 - Admin Assistant (Level 1) - Data entry
 
 **Simplified Structure:**
+
 - No regional hierarchy
 - Minimal role separation
 - Owner has executive + manager + director permissions
@@ -743,6 +816,7 @@ Each permission has:
 ### Small Dealer (11-25 employees)
 
 **Typical Roles:**
+
 - Owner/President (Level 7)
 - Sales Manager (Level 4)
 - Service Manager (Level 4)
@@ -752,6 +826,7 @@ Each permission has:
 - Admin/Finance Staff (Level 1-2) x 2-3
 
 **Structure:**
+
 - Single location
 - Department managers
 - Clear separation: sales, service, admin
@@ -762,6 +837,7 @@ Each permission has:
 ### Mid-Size Dealer (26-75 employees)
 
 **Typical Roles:**
+
 - President (Level 7)
 - VP Sales / Sales Director (Level 6)
 - VP Service / Service Director (Level 6)
@@ -776,6 +852,7 @@ Each permission has:
 - Operations/Admin Staff (Level 1-3) x 8-10
 
 **Structure:**
+
 - 3-5 locations
 - Department directors
 - Supervisors at each location
@@ -786,6 +863,7 @@ Each permission has:
 ### Large Dealer (76-200 employees)
 
 **Typical Roles:**
+
 - President/CEO (Level 7)
 - CFO (Level 7)
 - VP Sales (Level 6-7)
@@ -800,6 +878,7 @@ Each permission has:
 - Individual Contributors (Level 1-2) x 100-150
 
 **Structure:**
+
 - 6-15 locations
 - Regional hierarchy
 - Full department structure (sales, service, ops, finance, IT, HR)
@@ -810,6 +889,7 @@ Each permission has:
 ### Enterprise Dealer (201+ employees)
 
 **Typical Roles:**
+
 - CEO (Level 7)
 - CFO, COO, CTO, CHRO (Level 7)
 - VPs (Level 6-7) x 6-10
@@ -820,6 +900,7 @@ Each permission has:
 - Individual Contributors (Level 1) x 150-300+
 
 **Structure:**
+
 - 16+ locations
 - Multiple regions/divisions
 - Full corporate structure

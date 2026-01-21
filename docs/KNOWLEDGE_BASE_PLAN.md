@@ -20,9 +20,11 @@ Both knowledge bases will leverage the existing schema defined in `shared/knowle
 ## Part 1: Tenant Knowledge Base
 
 ### Purpose
+
 Provide comprehensive, searchable documentation for all Printyx features to reduce support tickets, improve onboarding, and enable customer self-service.
 
 ### Target Audience
+
 - End users (Sales reps, Service technicians, Managers)
 - Administrators (Tenant admins configuring their instance)
 - Decision makers (Understanding platform capabilities)
@@ -32,6 +34,7 @@ Provide comprehensive, searchable documentation for all Printyx features to redu
 Based on the existing `articleCategoryEnum`, we'll organize content into these top-level categories:
 
 #### 1. Getting Started (getting_started)
+
 **Priority: Critical | Target Articles: 15**
 
 - **Welcome to Printyx** (tutorial)
@@ -59,9 +62,11 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
   - Browser extension installation
 
 #### 2. CRM & Sales (crm_sales)
+
 **Priority: Critical | Target Articles: 45**
 
 **Leads Management**
+
 - Creating and importing leads (how_to)
 - Lead scoring explained (reference)
 - Lead assignment and routing (how_to)
@@ -70,6 +75,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Data enrichment with Apollo.io/ZoomInfo (reference)
 
 **Business Records**
+
 - Understanding unified business records (reference)
 - Zero-data-loss lead-to-customer conversion (tutorial)
 - Managing contact information (how_to)
@@ -77,6 +83,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Bulk operations on records (how_to)
 
 **Sales Pipeline**
+
 - Deal stages and workflows (tutorial)
 - Opportunity management (how_to)
 - Sales forecasting (reference)
@@ -84,6 +91,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Win/loss analysis (tutorial)
 
 **Quotes & Proposals**
+
 - Creating quotes (tutorial)
 - Quote builder advanced features (how_to)
 - Proposal generation (how_to)
@@ -92,21 +100,25 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Pricing and margin management (reference)
 
 **CRM Goals & Commission**
+
 - Setting sales goals (how_to)
 - Tracking performance against goals (reference)
 - Commission calculation (reference)
 - Sales handoff process (tutorial)
 
 **Integrations**
+
 - Salesforce bidirectional sync (how_to)
 - QuickBooks integration (how_to)
 - Calendar integration (Google/Microsoft) (how_to)
 - Social media integration (reference)
 
 #### 3. Service Management (service_management)
+
 **Priority: Critical | Target Articles: 40**
 
 **Service Dispatch**
+
 - Creating service calls (how_to)
 - Dispatch optimization (tutorial)
 - Technician assignment (how_to)
@@ -114,6 +126,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Real-time GPS tracking (how_to)
 
 **Mobile Field Service**
+
 - Mobile app installation (how_to)
 - Mobile service workflows (tutorial)
 - Offline mode capabilities (reference)
@@ -121,32 +134,38 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Photo and signature capture (how_to)
 
 **Phone-In Tickets**
+
 - Creating phone-in tickets (how_to)
 - Ticket prioritization (reference)
 - Technician session management (tutorial)
 
 **Service Analysis**
+
 - Service call reporting (reference)
 - Parts tracking and management (how_to)
 - Service metrics and KPIs (reference)
 - Performance analysis (tutorial)
 
 **Maintenance Programs**
+
 - Proactive maintenance setup (tutorial)
 - Preventive maintenance schedules (how_to)
 - Predictive service dispatch (reference)
 - Equipment lifecycle management (tutorial)
 
 **Equipment Management**
+
 - Equipment onboarding (tutorial)
 - Delivery and installation tracking (how_to)
 - Equipment status monitoring (reference)
 - Decommissioning process (how_to)
 
 #### 4. Meter Billing & Invoicing (meter_billing)
+
 **Priority: High | Target Articles: 25**
 
 **Meter Billing**
+
 - Understanding meter billing (tutorial)
 - Usage-based pricing models (reference)
 - Meter collection methods (how_to)
@@ -154,6 +173,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Tiered pricing configuration (how_to)
 
 **Invoice Management**
+
 - Creating invoices (how_to)
 - Invoice templates (reference)
 - Payment processing (tutorial)
@@ -161,33 +181,39 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Past-due invoice management (best_practice)
 
 **Advanced Billing**
+
 - Contract billing (reference)
 - Subscription management (how_to)
 - Billing adjustments and credits (how_to)
 - Tax configuration (reference)
 
 #### 5. Inventory & Warehouse (inventory_warehouse)
+
 **Priority: High | Target Articles: 30**
 
 **Inventory Management**
+
 - Stock level tracking (how_to)
 - Reorder points and alerts (tutorial)
 - Parts management (reference)
 - Auto supply replenishment (tutorial)
 
 **Warehouse Operations**
+
 - Warehouse workflows (tutorial)
 - First Pass Yield (FPY) tracking (reference)
 - Kitting operations (how_to)
 - Quality control processes (best_practice)
 
 **Purchasing**
+
 - Creating purchase orders (how_to)
 - Vendor management (reference)
 - Receiving and inventory updates (tutorial)
 - Cost tracking (reference)
 
 **Product Catalog**
+
 - Product Hub overview (tutorial)
 - Product models and variants (reference)
 - Software products (reference)
@@ -195,9 +221,11 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Pricing management (how_to)
 
 #### 6. Fleet Monitoring (fleet_monitoring)
+
 **Priority: High | Target Articles: 20**
 
 **Printyx Client (SNMP Monitoring)**
+
 - What is the Printyx Client? (tutorial)
 - System requirements (reference)
 - Installation guide - Windows (how_to)
@@ -220,6 +248,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Client logs and diagnostics (troubleshooting)
 
 **Device Monitoring**
+
 - Remote monitoring dashboard (tutorial)
 - Meter readings and trends (reference)
 - Supply level alerts (how_to)
@@ -227,6 +256,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Manufacturer integration (reference)
 
 #### 7. Customer Portal (customer_portal)
+
 **Priority: Medium | Target Articles: 15**
 
 - Customer portal overview (tutorial)
@@ -237,9 +267,11 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Portal configuration (admin) (how_to)
 
 #### 8. Reporting & Analytics (reporting_analytics)
+
 **Priority: High | Target Articles: 30**
 
 **Standard Reports**
+
 - Report library overview (reference)
 - Sales reports (how_to)
 - Service reports (how_to)
@@ -247,12 +279,14 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Inventory reports (how_to)
 
 **Custom Reporting**
+
 - Report builder tutorial (tutorial)
 - Custom report creation (how_to)
 - Scheduled reports (how_to)
 - Export options (CSV/Excel/PDF) (reference)
 
 **Analytics & AI**
+
 - Predictive analytics (reference)
 - AI-powered insights (tutorial)
 - Sales forecasting (tutorial)
@@ -260,11 +294,13 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Lead scoring models (reference)
 
 **Dashboard Customization**
+
 - Creating custom dashboards (how_to)
 - Widget library (reference)
 - Dashboard sharing (how_to)
 
 #### 9. Workflow Automation (workflow_automation)
+
 **Priority: Medium | Target Articles: 20**
 
 - Workflow builder overview (tutorial)
@@ -277,6 +313,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Notification configuration (how_to)
 
 #### 10. AI Features (ai_features)
+
 **Priority: Medium | Target Articles: 15**
 
 - AI-powered lead scoring (reference)
@@ -287,9 +324,11 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Natural language search (how_to)
 
 #### 11. System Setup & Administration (system_setup)
+
 **Priority: High | Target Articles: 35**
 
 **Tenant Configuration**
+
 - Initial tenant setup (tutorial)
 - Company information (how_to)
 - Regional and location setup (how_to)
@@ -298,6 +337,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - 8-level role hierarchy explained (reference)
 
 **Integration Hub**
+
 - Integration Hub overview (tutorial)
 - API key management (how_to)
 - Webhook configuration (reference)
@@ -305,6 +345,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Data synchronization (reference)
 
 **Security & Compliance**
+
 - Security settings (reference)
 - Multi-factor authentication (MFA) (how_to)
 - Audit logs (reference)
@@ -313,6 +354,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Breach detection (reference)
 
 **Subscription & Billing**
+
 - Subscription plans (reference)
 - Payment methods (how_to)
 - Trial management (reference)
@@ -320,6 +362,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Plan upgrades/downgrades (how_to)
 
 **Chrome Extension**
+
 - LinkedIn Lead Importer overview (tutorial)
 - Installation guide (how_to)
 - Configuration and API setup (how_to)
@@ -330,9 +373,11 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Import history and analytics (how_to)
 
 #### 12. Troubleshooting (troubleshooting)
+
 **Priority: High | Target Articles: 40**
 
 **Common Issues**
+
 - Login and authentication issues
 - Permission denied errors
 - Data not syncing
@@ -343,6 +388,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Payment processing issues
 
 **Printyx Client Troubleshooting**
+
 - Connection failed errors
 - No devices found
 - Incomplete metrics
@@ -351,6 +397,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Certificate validation errors
 
 **Chrome Extension Troubleshooting**
+
 - Button not appearing
 - Import failing
 - Enrichment not working
@@ -358,12 +405,14 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - CORS and connectivity issues
 
 **Performance Issues**
+
 - Slow page loads
 - Timeout errors
 - Large dataset handling
 - Browser compatibility
 
 #### 13. Best Practices (best_practices)
+
 **Priority: Medium | Target Articles: 25**
 
 - CRM data hygiene
@@ -378,6 +427,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Multi-location management
 
 #### 14. Release Notes (release_notes)
+
 **Priority: Low | Target Articles: Ongoing**
 
 - Monthly platform updates
@@ -387,6 +437,7 @@ Based on the existing `articleCategoryEnum`, we'll organize content into these t
 - Migration guides
 
 #### 15. FAQs (faq)
+
 **Priority: High | Target Articles: 50**
 
 Organized by category (CRM, Service, Billing, etc.)
@@ -396,18 +447,21 @@ Organized by category (CRM, Service, Billing, etc.)
 ### Search & Discovery Features
 
 **Full-Text Search**
+
 - Keyword search across all articles
 - Faceted search (by category, content type, difficulty)
 - Search suggestions and autocomplete
 - Recent searches
 
 **AI-Powered Search**
+
 - Semantic search using vector embeddings
 - Natural language queries
 - AI-generated answers
 - Related article recommendations
 
 **Navigation**
+
 - Breadcrumb navigation
 - Category browse tree
 - Popular articles
@@ -423,6 +477,7 @@ Organized by category (CRM, Service, Billing, etc.)
 Each article type follows a consistent structure:
 
 **Tutorial Articles:**
+
 ```markdown
 # [Article Title]
 
@@ -431,85 +486,108 @@ Each article type follows a consistent structure:
 **Prerequisites:** [Links to required articles]
 
 ## What You'll Learn
+
 - Bullet point 1
 - Bullet point 2
 
 ## Overview
+
 [Brief description]
 
 ## Step-by-Step Guide
+
 ### Step 1: [Action]
+
 [Detailed instructions with screenshots]
 
 ### Step 2: [Action]
+
 [Detailed instructions with screenshots]
 
 ## Video Tutorial
+
 [Embedded video]
 
 ## Common Issues
+
 [Troubleshooting tips]
 
 ## Related Articles
+
 - [Link 1]
 - [Link 2]
 
 ## Feedback
+
 Was this helpful? [Yes/No buttons]
 ```
 
 **How-To Articles:**
+
 ```markdown
 # How to [Task]
 
 **Quick Answer:** [1-2 sentence summary]
 
 ## Steps
+
 1. [Action with screenshot]
 2. [Action with screenshot]
 3. [Action with screenshot]
 
 ## Tips & Best Practices
+
 - Tip 1
 - Tip 2
 
 ## Video Guide
+
 [Optional embedded video]
 
 ## Troubleshooting
+
 [Common issues]
 
 ## Related
+
 - [Similar how-to articles]
 ```
 
 **Reference Articles:**
+
 ```markdown
 # [Feature/Concept Name] Reference
 
 ## Overview
+
 [Comprehensive description]
 
 ## Key Concepts
+
 - Concept 1: Definition
 - Concept 2: Definition
 
 ## Configuration Options
+
 | Option | Description | Default | Values |
-|--------|-------------|---------|--------|
-| ... | ... | ... | ... |
+| ------ | ----------- | ------- | ------ |
+| ...    | ...         | ...     | ...    |
 
 ## API Reference
+
 [If applicable]
 
 ## Examples
+
 [Code snippets or screenshots]
 
 ## See Also
+
 - [Related references]
 ```
 
 **Troubleshooting Articles:**
+
 ```markdown
 # Troubleshooting: [Issue]
 
@@ -518,32 +596,43 @@ Was this helpful? [Yes/No buttons]
 **Impact:** Low/Medium/High
 
 ## Quick Fixes
+
 1. [Most common solution]
 2. [Second most common]
 
 ## Detailed Diagnosis
+
 ### Step 1: Check [Something]
+
 [Instructions]
 
 ### Step 2: Verify [Something]
+
 [Instructions]
 
 ## Solutions
+
 ### Solution 1: [Name]
+
 **When to use:** [Condition]
 **Steps:**
+
 1. ...
 2. ...
 
 ### Solution 2: [Name]
+
 [Same format]
 
 ## If Nothing Works
+
 Contact support with:
+
 - [Information to gather]
 - [Logs to include]
 
 ## Prevention
+
 [How to avoid this issue]
 ```
 
@@ -584,9 +673,11 @@ Contact support with:
 ## Part 2: Admin Knowledge Base
 
 ### Purpose
+
 Internal documentation for platform administrators, DevOps, and support teams to set up, configure, maintain, and troubleshoot the Printyx platform.
 
 ### Target Audience
+
 - Platform administrators
 - DevOps engineers
 - Support engineers
@@ -603,6 +694,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 # Printyx Platform Setup Checklist
 
 ## Pre-Installation Requirements
+
 - [ ] Node.js 18+ installed
 - [ ] PostgreSQL database provisioned
 - [ ] Domain/subdomain configured
@@ -613,6 +705,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ## Environment Variables Configuration
 
 ### Critical Variables (Required for Startup)
+
 - [ ] `DATABASE_URL` - PostgreSQL connection string
 - [ ] `SESSION_SECRET` - Random secret for sessions (use: openssl rand -base64 32)
 - [ ] `NODE_ENV` - production/development
@@ -621,26 +714,32 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] `CLIENT_URL` - Frontend URL (e.g., https://app.printyx.com)
 
 ### Authentication & OAuth (Required for Login)
+
 #### Replit Auth (if using Replit hosting)
+
 - [ ] `REPL_ID` - Replit application ID
 - [ ] `REPL_OWNER` - Replit owner username
 
 #### Google OAuth (Optional - Calendar Integration)
+
 - [ ] `GOOGLE_CLIENT_ID` - From Google Cloud Console
 - [ ] `GOOGLE_CLIENT_SECRET` - From Google Cloud Console
 - [ ] `GOOGLE_REDIRECT_URI` - OAuth callback URL
 
 #### Microsoft OAuth (Optional - Calendar Integration)
+
 - [ ] `MICROSOFT_CLIENT_ID` - From Azure Portal
 - [ ] `MICROSOFT_CLIENT_SECRET` - From Azure Portal
 - [ ] `MICROSOFT_REDIRECT_URI` - OAuth callback URL
 
 ### Payment Processing (Required for Billing)
+
 - [ ] `STRIPE_SECRET_KEY` - From Stripe Dashboard
 - [ ] `STRIPE_PUBLISHABLE_KEY` - From Stripe Dashboard
 - [ ] `STRIPE_WEBHOOK_SECRET` - Webhook signing secret
 
 ### Email Service (Required for Notifications)
+
 - [ ] `SMTP_HOST` - Email server hostname
 - [ ] `SMTP_PORT` - Email server port (usually 587)
 - [ ] `SMTP_USER` - SMTP username
@@ -648,6 +747,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] `SMTP_FROM` - Default "from" email address
 
 ### Storage (Optional - File Uploads)
+
 - [ ] `STORAGE_PROVIDER` - local/gcs/s3
 - [ ] `STORAGE_PATH` - Local path or bucket name
 - [ ] `GCS_PROJECT_ID` - Google Cloud project (if using GCS)
@@ -657,6 +757,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] `AWS_REGION` - AWS region
 
 ### SEO & Analytics (Optional - Marketing Features)
+
 - [ ] `PAGESPEED_INSIGHTS_API_KEY` - Google PageSpeed API
 - [ ] `GOOGLE_SEO_CLIENT_ID` - Search Console OAuth
 - [ ] `GOOGLE_SEO_CLIENT_SECRET` - Search Console OAuth
@@ -665,31 +766,39 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] `SERPAPI_KEY` - SERP tracking (optional)
 
 ### AI Services (Optional - AI Features)
+
 - [ ] `ANTHROPIC_API_KEY` - Claude AI integration
 - [ ] `OPENAI_API_KEY` - GPT integration
 
 ### Third-Party Integrations (Optional - Per Tenant)
+
 #### Salesforce
+
 - [ ] `SALESFORCE_CLIENT_ID` - Connected app ID
 - [ ] `SALESFORCE_CLIENT_SECRET` - Connected app secret
 - [ ] `SALESFORCE_REDIRECT_URI` - OAuth callback
 
 #### QuickBooks
+
 - [ ] `QUICKBOOKS_CLIENT_ID` - App credentials
 - [ ] `QUICKBOOKS_CLIENT_SECRET` - App credentials
 - [ ] `QUICKBOOKS_REDIRECT_URI` - OAuth callback
 
 #### Apollo.io (Lead Enrichment)
+
 - Configured per-tenant in Integration Hub
 
 #### ZoomInfo (Lead Enrichment)
+
 - Configured per-tenant in Integration Hub
 
 ### Webhooks & Background Jobs
+
 - [ ] `WEBHOOK_BASE_URL` - Base URL for incoming webhooks
 - [ ] `INTEGRATION_SYNC_INTERVAL` - Sync frequency (ms)
 
 ## Database Setup
+
 - [ ] Create database: `createdb printyx`
 - [ ] Create forecasting database: `createdb printyx_forecasting`
 - [ ] Run migrations: `npm run db:push`
@@ -697,6 +806,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Verify schema: `npm run check`
 
 ## First-Time Deployment
+
 - [ ] Build frontend: `npm run build`
 - [ ] Start server: `npm start`
 - [ ] Verify health check: `GET /api/health`
@@ -704,6 +814,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Create first tenant
 
 ## Post-Deployment Verification
+
 - [ ] Test login flow
 - [ ] Test payment processing (Stripe test mode)
 - [ ] Test email sending
@@ -714,6 +825,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Monitor performance
 
 ## Production Hardening
+
 - [ ] Enable HTTPS only
 - [ ] Configure rate limiting
 - [ ] Set up monitoring (logs, metrics)
@@ -726,6 +838,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Set up CDN (optional)
 
 ## Ongoing Maintenance Checklist
+
 - [ ] Weekly: Review error logs
 - [ ] Weekly: Check database backups
 - [ ] Monthly: Security updates
@@ -737,6 +850,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ```
 
 **Installation Guides**
+
 - Development environment setup
 - Production deployment
 - Docker deployment
@@ -870,6 +984,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ## Implementation Plan
 
 ### Phase 1: Foundation (Weeks 1-2)
+
 **Goal:** Set up knowledge base infrastructure
 
 - [ ] Push database schema (knowledge base tables already exist)
@@ -880,69 +995,83 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Build public-facing knowledge base viewer
 
 **Deliverables:**
+
 - Admin panel at `/admin/knowledge-base`
 - Public knowledge base at `/docs` or `/help`
 - Basic CRUD operations for articles and categories
 
 ### Phase 2: Tenant Knowledge Base - Critical Content (Weeks 3-6)
+
 **Goal:** Document most-used features
 
 **Priority 1: Getting Started (Week 3)**
+
 - [ ] Write 15 getting started articles
 - [ ] Create onboarding tutorial videos
 - [ ] Design quick reference cards
 
 **Priority 2: CRM & Sales (Week 4)**
+
 - [ ] Write 25 core CRM articles
 - [ ] Document lead management workflows
 - [ ] Create sales pipeline tutorials
 - [ ] Document Chrome extension
 
 **Priority 3: Service Management (Week 5)**
+
 - [ ] Write 20 core service articles
 - [ ] Document dispatch workflows
 - [ ] Create mobile app guides
 
 **Priority 4: Fleet Monitoring (Week 6)**
+
 - [ ] Write 20 Printyx Client articles
 - [ ] Installation guides for all platforms
 - [ ] SNMP configuration by manufacturer
 - [ ] Troubleshooting guides
 
 **Deliverables:**
+
 - 80+ published articles
 - Video tutorials for key workflows
 - Screenshot library
 
 ### Phase 3: Tenant Knowledge Base - Comprehensive Content (Weeks 7-10)
+
 **Goal:** Complete coverage of all features
 
 **Week 7: Billing & Inventory**
+
 - [ ] 25 meter billing articles
 - [ ] 30 inventory/warehouse articles
 
 **Week 8: Reporting & Analytics**
+
 - [ ] 30 reporting articles
 - [ ] Custom report tutorials
 - [ ] Dashboard customization guides
 
 **Week 9: Integrations & Workflow**
+
 - [ ] 15 customer portal articles
 - [ ] 20 workflow automation articles
 - [ ] 15 AI features articles
 
 **Week 10: Admin & Troubleshooting**
+
 - [ ] 35 system setup articles
 - [ ] 40 troubleshooting articles
 - [ ] 25 best practices articles
 - [ ] 50 FAQs
 
 **Deliverables:**
+
 - 290+ total tenant-facing articles
 - Complete feature coverage
 - Troubleshooting database
 
 ### Phase 4: Admin Knowledge Base (Weeks 11-12)
+
 **Goal:** Complete internal documentation
 
 - [ ] Platform setup checklist (comprehensive)
@@ -956,11 +1085,13 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Support procedures
 
 **Deliverables:**
+
 - 60+ admin articles
 - Complete setup checklist
 - Runbook for common operations
 
 ### Phase 5: Enhancement Features (Weeks 13-14)
+
 **Goal:** Add advanced functionality
 
 - [ ] AI-powered article generation
@@ -973,12 +1104,14 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Multi-language support (optional)
 
 **Deliverables:**
+
 - AI content generation queue
 - Vector search
 - Analytics dashboard
 - Feedback loop
 
 ### Phase 6: Launch & Iteration (Week 15+)
+
 **Goal:** Public launch and continuous improvement
 
 - [ ] Beta test with select customers
@@ -989,6 +1122,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - [ ] Quarterly content review
 
 **Deliverables:**
+
 - Public knowledge base launch
 - Feedback integration
 - Content roadmap
@@ -998,6 +1132,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ## Success Metrics
 
 ### User Engagement
+
 - **Articles viewed** - Track most popular content
 - **Search queries** - Identify content gaps
 - **Time on page** - Measure engagement
@@ -1005,18 +1140,21 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - **Article completion rate** - Did they read it all?
 
 ### Self-Service Success
+
 - **Support ticket reduction** - Target: -35% after 3 months
 - **Customer satisfaction** - Track "was this helpful?" votes
 - **Search success rate** - Did users find what they needed?
 - **Portal adoption** - % of customers using self-service
 
 ### Content Quality
+
 - **Article ratings** - Target: 4.5/5 average
 - **Feedback volume** - Track comments and suggestions
 - **Content freshness** - % of articles updated in last 90 days
 - **Accuracy issues** - Track correction requests
 
 ### Business Impact
+
 - **Onboarding time** - Reduce time to first value
 - **Feature adoption** - Increase usage of documented features
 - **Training costs** - Reduce 1:1 training needs
@@ -1027,24 +1165,28 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ## Content Governance
 
 ### Ownership
+
 - **Knowledge Base Lead:** [Assign owner]
 - **Content Writers:** Support team, Product managers
 - **Technical Reviewers:** Engineering team
 - **Subject Matter Experts:** By domain
 
 ### Review Schedule
+
 - **New articles:** Review before publication
 - **Quarterly:** All articles reviewed for accuracy
 - **Post-release:** Update articles affected by changes
 - **Continuous:** Monitor feedback and analytics
 
 ### Version Control
+
 - All articles version-controlled
 - Change log maintained
 - Major/minor/patch versioning
 - Approval workflow for changes
 
 ### Style Guide
+
 - Use clear, concise language
 - Write for your audience (beginner vs advanced)
 - Include visuals (screenshots, diagrams, videos)
@@ -1057,6 +1199,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ## Technology Stack
 
 ### Existing (Already Implemented)
+
 - **Database:** PostgreSQL with schema defined
 - **Backend:** Express.js routes needed
 - **Frontend:** React components needed
@@ -1064,6 +1207,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - **AI:** Claude/OpenAI for content generation
 
 ### To Implement
+
 - **Rich Text Editor:** TipTap or Lexical
 - **Vector Search:** OpenAI embeddings + pgvector
 - **Analytics:** Custom implementation
@@ -1075,6 +1219,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 ## Next Steps
 
 ### Immediate Actions (This Week)
+
 1. **Review and approve this plan**
 2. **Assign knowledge base lead**
 3. **Create Phase 1 sprint**
@@ -1082,6 +1227,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 5. **Begin admin panel development**
 
 ### Short-term (Next 2 Weeks)
+
 6. **Complete Phase 1 infrastructure**
 7. **Begin writing critical content**
 8. **Create screenshot guidelines**
@@ -1089,6 +1235,7 @@ Internal documentation for platform administrators, DevOps, and support teams to
 10. **Recruit content contributors**
 
 ### Medium-term (Next 3 Months)
+
 11. **Complete Phases 2-4**
 12. **Beta launch with select customers**
 13. **Gather feedback**
@@ -1101,29 +1248,30 @@ Internal documentation for platform administrators, DevOps, and support teams to
 
 ### Article Count Summary
 
-| Category | Target Articles | Priority |
-|----------|----------------|----------|
-| Getting Started | 15 | Critical |
-| CRM & Sales | 45 | Critical |
-| Service Management | 40 | Critical |
-| Meter Billing | 25 | High |
-| Inventory & Warehouse | 30 | High |
-| Fleet Monitoring | 20 | High |
-| Customer Portal | 15 | Medium |
-| Reporting & Analytics | 30 | High |
-| Workflow Automation | 20 | Medium |
-| AI Features | 15 | Medium |
-| System Setup | 35 | High |
-| Troubleshooting | 40 | High |
-| Best Practices | 25 | Medium |
-| FAQs | 50 | High |
-| **Total Tenant KB** | **405** | - |
-| **Total Admin KB** | **60** | Critical |
-| **Grand Total** | **465** | - |
+| Category              | Target Articles | Priority |
+| --------------------- | --------------- | -------- |
+| Getting Started       | 15              | Critical |
+| CRM & Sales           | 45              | Critical |
+| Service Management    | 40              | Critical |
+| Meter Billing         | 25              | High     |
+| Inventory & Warehouse | 30              | High     |
+| Fleet Monitoring      | 20              | High     |
+| Customer Portal       | 15              | Medium   |
+| Reporting & Analytics | 30              | High     |
+| Workflow Automation   | 20              | Medium   |
+| AI Features           | 15              | Medium   |
+| System Setup          | 35              | High     |
+| Troubleshooting       | 40              | High     |
+| Best Practices        | 25              | Medium   |
+| FAQs                  | 50              | High     |
+| **Total Tenant KB**   | **405**         | -        |
+| **Total Admin KB**    | **60**          | Critical |
+| **Grand Total**       | **465**         | -        |
 
 ### Resource Requirements
 
 **Team:**
+
 - 1 Knowledge Base Lead (full-time)
 - 2-3 Technical Writers (contract/full-time)
 - 5-6 Subject Matter Experts (part-time)
@@ -1131,12 +1279,14 @@ Internal documentation for platform administrators, DevOps, and support teams to
 - 1 Frontend Developer (full-time, Phase 1)
 
 **Tools:**
+
 - Screen recording software (Loom, Camtasia)
 - Screenshot tools (Snagit, CloudApp)
 - Video editing (if needed)
 - Design tools (Figma for diagrams)
 
 **Timeline:**
+
 - **Phase 1:** 2 weeks (Infrastructure)
 - **Phase 2:** 4 weeks (Critical content)
 - **Phase 3:** 4 weeks (Comprehensive content)

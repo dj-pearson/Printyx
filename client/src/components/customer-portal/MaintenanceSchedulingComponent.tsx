@@ -1,26 +1,56 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, Wrench, CheckCircle, X, AlertCircle, Phone, Mail, MessageSquare, Edit } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format, addDays, parseISO } from "date-fns";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { 
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Calendar,
+  Clock,
+  Wrench,
+  CheckCircle,
+  X,
+  AlertCircle,
+  Phone,
+  Mail,
+  MessageSquare,
+  Edit,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { format, addDays, parseISO } from 'date-fns';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import {
   maintenanceSchedulingRequestSchema,
   rescheduleAppointmentSchema,
   type MaintenanceSchedulingRequest,
-  type RescheduleAppointmentRequest
-} from "@shared/customer-portal-schema";
+  type RescheduleAppointmentRequest,
+} from '@shared/customer-portal-schema';
 
 // Use shared schemas for consistency
 type MaintenanceSchedulingFormData = MaintenanceSchedulingRequest;
@@ -57,7 +87,9 @@ export const MaintenanceSchedulingComponent = () => {
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
-  const [rescheduleAppointment, setRescheduleAppointment] = useState<MaintenanceAppointment | null>(null);
+  const [rescheduleAppointment, setRescheduleAppointment] = useState<MaintenanceAppointment | null>(
+    null,
+  );
   const { toast } = useToast();
 
   const form = useForm<MaintenanceSchedulingFormData>({
@@ -65,8 +97,8 @@ export const MaintenanceSchedulingComponent = () => {
     defaultValues: {
       duration: 60,
       contactMethod: 'email',
-      maintenanceType: 'routine_maintenance'
-    }
+      maintenanceType: 'routine_maintenance',
+    },
   });
 
   // Get available time slots for selected date
@@ -74,12 +106,12 @@ export const MaintenanceSchedulingComponent = () => {
     queryKey: ['/api/customer-portal/maintenance-availability', selectedDate],
     queryFn: async () => {
       if (!selectedDate) return null;
-      
+
       const params = new URLSearchParams({
         date: selectedDate,
         duration: '60', // Default duration
       });
-      
+
       // Add customer portal session header
       const headers: Record<string, string> = {};
       if (typeof window !== 'undefined') {
@@ -88,8 +120,13 @@ export const MaintenanceSchedulingComponent = () => {
           headers['x-portal-session'] = portalSession;
         }
       }
-      
-      return apiRequest(`/api/customer-portal/maintenance-availability?${params.toString()}`, 'GET', undefined, headers);
+
+      return apiRequest(
+        `/api/customer-portal/maintenance-availability?${params.toString()}`,
+        'GET',
+        undefined,
+        headers,
+      );
     },
     enabled: !!selectedDate,
     refetchOnWindowFocus: false,
@@ -108,7 +145,7 @@ export const MaintenanceSchedulingComponent = () => {
           headers['x-portal-session'] = portalSession;
         }
       }
-      
+
       return apiRequest('/api/customer-portal/maintenance-appointments', 'GET', undefined, headers);
     },
     refetchOnWindowFocus: false,
@@ -125,31 +162,33 @@ export const MaintenanceSchedulingComponent = () => {
           headers['x-portal-session'] = portalSession;
         }
       }
-      
+
       return apiRequest('/api/customer-portal/maintenance-appointments', 'POST', data, headers);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/customer-portal/maintenance-appointments'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/customer-portal/maintenance-appointments'],
+      });
       setIsBookingDialogOpen(false);
       form.reset();
       setSelectedSlot(null);
       toast({
-        title: "Appointment Booked",
-        description: "Your maintenance appointment has been successfully scheduled.",
+        title: 'Appointment Booked',
+        description: 'Your maintenance appointment has been successfully scheduled.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Booking Failed",
-        description: error.message || "Failed to book appointment. Please try again.",
-        variant: "destructive",
+        title: 'Booking Failed',
+        description: error.message || 'Failed to book appointment. Please try again.',
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Cancel appointment mutation
   const cancelAppointmentMutation = useMutation({
-    mutationFn: ({ appointmentId, reason }: { appointmentId: string, reason?: string }) => {
+    mutationFn: ({ appointmentId, reason }: { appointmentId: string; reason?: string }) => {
       // Add customer portal session header
       const headers: Record<string, string> = {};
       if (typeof window !== 'undefined') {
@@ -158,30 +197,37 @@ export const MaintenanceSchedulingComponent = () => {
           headers['x-portal-session'] = portalSession;
         }
       }
-      
-      return apiRequest(`/api/customer-portal/maintenance-appointments/${appointmentId}`, 'DELETE', { reason }, headers);
+
+      return apiRequest(
+        `/api/customer-portal/maintenance-appointments/${appointmentId}`,
+        'DELETE',
+        { reason },
+        headers,
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/customer-portal/maintenance-appointments'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/customer-portal/maintenance-appointments'],
+      });
       toast({
-        title: "Appointment Cancelled",
-        description: "Your appointment has been cancelled successfully.",
+        title: 'Appointment Cancelled',
+        description: 'Your appointment has been cancelled successfully.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Cancellation Failed",
-        description: error.message || "Failed to cancel appointment. Please try again.",
-        variant: "destructive",
+        title: 'Cancellation Failed',
+        description: error.message || 'Failed to cancel appointment. Please try again.',
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   const rescheduleForm = useForm<RescheduleFormData>({
     resolver: zodResolver(rescheduleAppointmentSchema),
     defaultValues: {
-      reason: ''
-    }
+      reason: '',
+    },
   });
 
   // Reschedule appointment mutation
@@ -195,26 +241,33 @@ export const MaintenanceSchedulingComponent = () => {
           headers['x-portal-session'] = portalSession;
         }
       }
-      
-      return apiRequest(`/api/customer-portal/maintenance-appointments/${data.appointmentId}/reschedule`, 'PUT', data, headers);
+
+      return apiRequest(
+        `/api/customer-portal/maintenance-appointments/${data.appointmentId}/reschedule`,
+        'PUT',
+        data,
+        headers,
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/customer-portal/maintenance-appointments'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/customer-portal/maintenance-appointments'],
+      });
       setIsRescheduleDialogOpen(false);
       setRescheduleAppointment(null);
       rescheduleForm.reset();
       toast({
-        title: "Appointment Rescheduled",
-        description: "Your appointment has been successfully rescheduled.",
+        title: 'Appointment Rescheduled',
+        description: 'Your appointment has been successfully rescheduled.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Reschedule Failed",
-        description: error.message || "Failed to reschedule appointment. Please try again.",
-        variant: "destructive",
+        title: 'Reschedule Failed',
+        description: error.message || 'Failed to reschedule appointment. Please try again.',
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Generate next 14 days for date selection
@@ -225,7 +278,7 @@ export const MaintenanceSchedulingComponent = () => {
 
   const handleSlotSelect = (slot: AvailableSlot, date: string) => {
     if (!slot.isAvailable) return;
-    
+
     setSelectedSlot(slot);
     form.setValue('appointmentDate', date);
     form.setValue('appointmentTime', slot.time);
@@ -239,43 +292,53 @@ export const MaintenanceSchedulingComponent = () => {
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case 'confirmed': return 'default';
-      case 'requested': return 'secondary';
-      case 'in_progress': return 'outline';
-      case 'completed': return 'outline';
-      case 'cancelled': return 'destructive';
-      case 'rescheduled': return 'secondary';
-      default: return 'secondary';
+      case 'confirmed':
+        return 'default';
+      case 'requested':
+        return 'secondary';
+      case 'in_progress':
+        return 'outline';
+      case 'completed':
+        return 'outline';
+      case 'cancelled':
+        return 'destructive';
+      case 'rescheduled':
+        return 'secondary';
+      default:
+        return 'secondary';
     }
   };
 
   const getMaintenanceTypeLabel = (type: string) => {
     const labels = {
-      'routine_maintenance': 'Routine Maintenance',
-      'preventive_maintenance': 'Preventive Maintenance',
-      'deep_cleaning': 'Deep Cleaning',
-      'firmware_update': 'Firmware Update',
-      'parts_replacement': 'Parts Replacement',
-      'calibration': 'Calibration',
-      'inspection': 'Inspection'
+      routine_maintenance: 'Routine Maintenance',
+      preventive_maintenance: 'Preventive Maintenance',
+      deep_cleaning: 'Deep Cleaning',
+      firmware_update: 'Firmware Update',
+      parts_replacement: 'Parts Replacement',
+      calibration: 'Calibration',
+      inspection: 'Inspection',
     };
     return labels[type as keyof typeof labels] || type;
   };
 
   const getContactMethodIcon = (method: string) => {
     switch (method) {
-      case 'phone': return <Phone className="h-4 w-4" />;
-      case 'text': return <MessageSquare className="h-4 w-4" />;
-      default: return <Mail className="h-4 w-4" />;
+      case 'phone':
+        return <Phone className="h-4 w-4" />;
+      case 'text':
+        return <MessageSquare className="h-4 w-4" />;
+      default:
+        return <Mail className="h-4 w-4" />;
     }
   };
 
   const appointments = appointmentsData?.data || [];
-  const upcomingAppointments = appointments.filter((apt: MaintenanceAppointment) => 
-    apt.status !== 'completed' && apt.status !== 'cancelled'
+  const upcomingAppointments = appointments.filter(
+    (apt: MaintenanceAppointment) => apt.status !== 'completed' && apt.status !== 'cancelled',
   );
-  const pastAppointments = appointments.filter((apt: MaintenanceAppointment) => 
-    apt.status === 'completed' || apt.status === 'cancelled'
+  const pastAppointments = appointments.filter(
+    (apt: MaintenanceAppointment) => apt.status === 'completed' || apt.status === 'cancelled',
   );
 
   return (
@@ -297,8 +360,12 @@ export const MaintenanceSchedulingComponent = () => {
 
       <Tabs defaultValue="schedule" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 gap-3">
-          <TabsTrigger value="schedule" data-testid="tab-schedule" className="touch-target">Schedule Appointment</TabsTrigger>
-          <TabsTrigger value="appointments" data-testid="tab-appointments" className="touch-target">My Appointments</TabsTrigger>
+          <TabsTrigger value="schedule" data-testid="tab-schedule" className="touch-target">
+            Schedule Appointment
+          </TabsTrigger>
+          <TabsTrigger value="appointments" data-testid="tab-appointments" className="touch-target">
+            My Appointments
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="schedule" className="space-y-6">
@@ -315,17 +382,13 @@ export const MaintenanceSchedulingComponent = () => {
                 {availableDates.map((date) => (
                   <Button
                     key={date}
-                    variant={selectedDate === date ? "default" : "outline"}
+                    variant={selectedDate === date ? 'default' : 'outline'}
                     onClick={() => setSelectedDate(date)}
                     className="p-4 h-auto flex flex-col min-h-[48px] touch-target"
                     data-testid={`date-button-${date}`}
                   >
-                    <span className="text-xs font-medium">
-                      {format(parseISO(date), 'MMM dd')}
-                    </span>
-                    <span className="text-xs opacity-75">
-                      {format(parseISO(date), 'EEE')}
-                    </span>
+                    <span className="text-xs font-medium">{format(parseISO(date), 'MMM dd')}</span>
+                    <span className="text-xs opacity-75">{format(parseISO(date), 'EEE')}</span>
                   </Button>
                 ))}
               </div>
@@ -345,37 +408,43 @@ export const MaintenanceSchedulingComponent = () => {
                 {availabilityLoading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Loading available times...</p>
+                    <p className="mt-2 text-gray-600 dark:text-gray-400">
+                      Loading available times...
+                    </p>
                   </div>
                 ) : availabilityData?.data?.availableSlots ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {availabilityData.data.availableSlots.map((slot: AvailableSlot, index: number) => (
-                      <Button
-                        key={index}
-                        variant={slot.isAvailable ? "outline" : "secondary"}
-                        disabled={!slot.isAvailable}
-                        onClick={() => handleSlotSelect(slot, selectedDate)}
-                        className={`p-4 h-auto flex flex-col min-h-[56px] touch-target ${
-                          slot.isAvailable 
-                            ? "hover:bg-blue-50 dark:hover:bg-blue-900 border-blue-200 dark:border-blue-800" 
-                            : "opacity-50 cursor-not-allowed"
-                        }`}
-                        data-testid={`time-slot-${slot.time}`}
-                      >
-                        <span className="font-medium">{slot.time}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {slot.duration}min • {slot.technicianName}
-                        </span>
-                        {!slot.isAvailable && (
-                          <span className="text-xs text-red-500">Unavailable</span>
-                        )}
-                      </Button>
-                    ))}
+                    {availabilityData.data.availableSlots.map(
+                      (slot: AvailableSlot, index: number) => (
+                        <Button
+                          key={index}
+                          variant={slot.isAvailable ? 'outline' : 'secondary'}
+                          disabled={!slot.isAvailable}
+                          onClick={() => handleSlotSelect(slot, selectedDate)}
+                          className={`p-4 h-auto flex flex-col min-h-[56px] touch-target ${
+                            slot.isAvailable
+                              ? 'hover:bg-blue-50 dark:hover:bg-blue-900 border-blue-200 dark:border-blue-800'
+                              : 'opacity-50 cursor-not-allowed'
+                          }`}
+                          data-testid={`time-slot-${slot.time}`}
+                        >
+                          <span className="font-medium">{slot.time}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {slot.duration}min • {slot.technicianName}
+                          </span>
+                          {!slot.isAvailable && (
+                            <span className="text-xs text-red-500">Unavailable</span>
+                          )}
+                        </Button>
+                      ),
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 dark:text-gray-400">No available time slots for this date.</p>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      No available time slots for this date.
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -401,8 +470,8 @@ export const MaintenanceSchedulingComponent = () => {
               ) : upcomingAppointments.length > 0 ? (
                 <div className="space-y-4">
                   {upcomingAppointments.map((appointment: MaintenanceAppointment) => (
-                    <div 
-                      key={appointment.id} 
+                    <div
+                      key={appointment.id}
                       className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3"
                       data-testid={`appointment-${appointment.id}`}
                     >
@@ -437,7 +506,8 @@ export const MaintenanceSchedulingComponent = () => {
                           )}
                           {appointment.confirmationCode && (
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Confirmation: <span className="font-mono">{appointment.confirmationCode}</span>
+                              Confirmation:{' '}
+                              <span className="font-mono">{appointment.confirmationCode}</span>
                             </p>
                           )}
                         </div>
@@ -461,10 +531,12 @@ export const MaintenanceSchedulingComponent = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => cancelAppointmentMutation.mutate({ 
-                                appointmentId: appointment.id,
-                                reason: 'Cancelled by customer'
-                              })}
+                              onClick={() =>
+                                cancelAppointmentMutation.mutate({
+                                  appointmentId: appointment.id,
+                                  reason: 'Cancelled by customer',
+                                })
+                              }
                               disabled={cancelAppointmentMutation.isPending}
                               data-testid={`cancel-button-${appointment.id}`}
                               className="touch-target min-h-[44px] px-4"
@@ -493,7 +565,9 @@ export const MaintenanceSchedulingComponent = () => {
               ) : (
                 <div className="text-center py-8">
                   <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600 dark:text-gray-400">No upcoming appointments scheduled.</p>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No upcoming appointments scheduled.
+                  </p>
                   <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                     Use the "Schedule Appointment" tab to book maintenance.
                   </p>
@@ -514,8 +588,8 @@ export const MaintenanceSchedulingComponent = () => {
               <CardContent>
                 <div className="space-y-3">
                   {pastAppointments.slice(0, 5).map((appointment: MaintenanceAppointment) => (
-                    <div 
-                      key={appointment.id} 
+                    <div
+                      key={appointment.id}
                       className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 opacity-75"
                       data-testid={`past-appointment-${appointment.id}`}
                     >
@@ -525,7 +599,9 @@ export const MaintenanceSchedulingComponent = () => {
                             {getMaintenanceTypeLabel(appointment.maintenanceType)}
                           </h5>
                           <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                            <span>{format(parseISO(appointment.appointmentDate), 'MMM dd, yyyy')}</span>
+                            <span>
+                              {format(parseISO(appointment.appointmentDate), 'MMM dd, yyyy')}
+                            </span>
                             <span>{appointment.appointmentTime}</span>
                           </div>
                         </div>
@@ -548,15 +624,19 @@ export const MaintenanceSchedulingComponent = () => {
           <DialogHeader>
             <DialogTitle>Book Maintenance Appointment</DialogTitle>
           </DialogHeader>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Selected Time Display */}
               {selectedSlot && (
                 <div className="bg-blue-50 dark:bg-blue-900/50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Selected Time Slot</h4>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                    Selected Time Slot
+                  </h4>
                   <div className="flex items-center gap-4 text-sm text-blue-800 dark:text-blue-200">
-                    <span>{format(parseISO(form.getValues('appointmentDate')), 'MMMM dd, yyyy')}</span>
+                    <span>
+                      {format(parseISO(form.getValues('appointmentDate')), 'MMMM dd, yyyy')}
+                    </span>
                     <span>{selectedSlot.time}</span>
                     <span>{selectedSlot.duration} minutes</span>
                     <span>with {selectedSlot.technicianName}</span>
@@ -573,13 +653,18 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormLabel>Maintenance Type</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-maintenance-type" className="touch-target min-h-[44px]">
+                          <SelectTrigger
+                            data-testid="select-maintenance-type"
+                            className="touch-target min-h-[44px]"
+                          >
                             <SelectValue placeholder="Select maintenance type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="routine_maintenance">Routine Maintenance</SelectItem>
-                          <SelectItem value="preventive_maintenance">Preventive Maintenance</SelectItem>
+                          <SelectItem value="preventive_maintenance">
+                            Preventive Maintenance
+                          </SelectItem>
                           <SelectItem value="deep_cleaning">Deep Cleaning</SelectItem>
                           <SelectItem value="firmware_update">Firmware Update</SelectItem>
                           <SelectItem value="parts_replacement">Parts Replacement</SelectItem>
@@ -600,7 +685,10 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormLabel>Preferred Contact Method</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger data-testid="select-contact-method" className="touch-target min-h-[44px]">
+                          <SelectTrigger
+                            data-testid="select-contact-method"
+                            className="touch-target min-h-[44px]"
+                          >
                             <SelectValue placeholder="Select contact method" />
                           </SelectTrigger>
                         </FormControl>
@@ -623,7 +711,7 @@ export const MaintenanceSchedulingComponent = () => {
                   <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Describe any specific issues or requests"
                         className="min-h-[100px]"
                         data-testid="input-description"
@@ -642,7 +730,7 @@ export const MaintenanceSchedulingComponent = () => {
                   <FormItem>
                     <FormLabel>Special Instructions (Optional)</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Textarea
                         placeholder="Any special instructions for the technician"
                         data-testid="input-special-instructions"
                         {...field}
@@ -654,22 +742,22 @@ export const MaintenanceSchedulingComponent = () => {
               />
 
               <div className="flex justify-end gap-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsBookingDialogOpen(false)}
                   data-testid="button-cancel-booking"
                   className="touch-target min-h-[44px] px-6"
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={bookAppointmentMutation.isPending}
                   data-testid="button-confirm-booking"
                   className="touch-target min-h-[44px] px-6"
                 >
-                  {bookAppointmentMutation.isPending ? "Booking..." : "Book Appointment"}
+                  {bookAppointmentMutation.isPending ? 'Booking...' : 'Book Appointment'}
                 </Button>
               </div>
             </form>
@@ -683,19 +771,29 @@ export const MaintenanceSchedulingComponent = () => {
           <DialogHeader>
             <DialogTitle>Reschedule Appointment</DialogTitle>
           </DialogHeader>
-          
+
           {rescheduleAppointment && (
             <div className="space-y-4">
               <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Current Appointment</h4>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  Current Appointment
+                </h4>
                 <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                   <div>{getMaintenanceTypeLabel(rescheduleAppointment.maintenanceType)}</div>
-                  <div>{format(parseISO(rescheduleAppointment.appointmentDate), 'MMMM dd, yyyy')} at {rescheduleAppointment.appointmentTime}</div>
+                  <div>
+                    {format(parseISO(rescheduleAppointment.appointmentDate), 'MMMM dd, yyyy')} at{' '}
+                    {rescheduleAppointment.appointmentTime}
+                  </div>
                 </div>
               </div>
 
               <Form {...rescheduleForm}>
-                <form onSubmit={rescheduleForm.handleSubmit((data) => rescheduleAppointmentMutation.mutate(data))} className="space-y-4">
+                <form
+                  onSubmit={rescheduleForm.handleSubmit((data) =>
+                    rescheduleAppointmentMutation.mutate(data),
+                  )}
+                  className="space-y-4"
+                >
                   <FormField
                     control={rescheduleForm.control}
                     name="newDate"
@@ -703,8 +801,8 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormItem>
                         <FormLabel>New Date</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
+                          <Input
+                            type="date"
                             min={format(new Date(), 'yyyy-MM-dd')}
                             data-testid="input-reschedule-date"
                             {...field}
@@ -722,11 +820,7 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormItem>
                         <FormLabel>New Time</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="time" 
-                            data-testid="input-reschedule-time"
-                            {...field}
-                          />
+                          <Input type="time" data-testid="input-reschedule-time" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -740,7 +834,7 @@ export const MaintenanceSchedulingComponent = () => {
                       <FormItem>
                         <FormLabel>Reason for Rescheduling (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Reason for rescheduling..."
                             data-testid="input-reschedule-reason"
                             {...field}
@@ -752,9 +846,9 @@ export const MaintenanceSchedulingComponent = () => {
                   />
 
                   <div className="flex justify-end gap-4">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => {
                         setIsRescheduleDialogOpen(false);
                         setRescheduleAppointment(null);
@@ -765,13 +859,13 @@ export const MaintenanceSchedulingComponent = () => {
                     >
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={rescheduleAppointmentMutation.isPending}
                       data-testid="button-confirm-reschedule"
                       className="touch-target min-h-[44px] px-6"
                     >
-                      {rescheduleAppointmentMutation.isPending ? "Rescheduling..." : "Reschedule"}
+                      {rescheduleAppointmentMutation.isPending ? 'Rescheduling...' : 'Reschedule'}
                     </Button>
                   </div>
                 </form>

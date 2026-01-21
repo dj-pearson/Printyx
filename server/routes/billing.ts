@@ -99,7 +99,10 @@ router.get('/payment-methods', requireTenantContext, async (req: any, res) => {
       .select()
       .from(subscriptionPaymentMethods)
       .where(eq(subscriptionPaymentMethods.tenantId, tenantId))
-      .orderBy(desc(subscriptionPaymentMethods.isDefault), desc(subscriptionPaymentMethods.createdAt));
+      .orderBy(
+        desc(subscriptionPaymentMethods.isDefault),
+        desc(subscriptionPaymentMethods.createdAt),
+      );
 
     res.json(paymentMethods);
   } catch (error) {
@@ -191,8 +194,8 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
       .where(
         and(
           eq(subscriptionPaymentMethods.id, paymentMethodId),
-          eq(subscriptionPaymentMethods.tenantId, tenantId)
-        )
+          eq(subscriptionPaymentMethods.tenantId, tenantId),
+        ),
       )
       .limit(1);
 
@@ -332,20 +335,15 @@ router.get('/invoices', requireTenantContext, async (req: any, res) => {
 
     // Special filters (LEAN playbook)
     if (filter === 'overdue') {
-      conditions.push(
-        and(
-          eq(invoices.invoiceStatus, 'open'),
-          sql`${invoices.dueDate} < NOW()`
-        )!
-      );
+      conditions.push(and(eq(invoices.invoiceStatus, 'open'), sql`${invoices.dueDate} < NOW()`)!);
     }
 
     if (filter === 'recent_auto_generated') {
       conditions.push(
         and(
           isNotNull(invoices.externalCustomerId),
-          gte(invoices.createdAt, sql`NOW() - INTERVAL '7 days'`)
-        )!
+          gte(invoices.createdAt, sql`NOW() - INTERVAL '7 days'`),
+        )!,
       );
     }
 
@@ -462,15 +460,13 @@ router.post('/invoices', isAuthenticated, requireTenantContext, async (req: any,
     if (req.body.contractId && req.body.useContractGeneration) {
       const schema = invoiceGenerationSchema.parse(req.body);
 
-      const invoice = await billingEngine.generateInvoiceFromContract(
-        schema.contractId,
-        tenantId,
-        {
-          billingPeriodStart: schema.billingPeriodStart ? new Date(schema.billingPeriodStart) : undefined,
-          billingPeriodEnd: schema.billingPeriodEnd ? new Date(schema.billingPeriodEnd) : undefined,
-          autoSend: schema.autoSend,
-        }
-      );
+      const invoice = await billingEngine.generateInvoiceFromContract(schema.contractId, tenantId, {
+        billingPeriodStart: schema.billingPeriodStart
+          ? new Date(schema.billingPeriodStart)
+          : undefined,
+        billingPeriodEnd: schema.billingPeriodEnd ? new Date(schema.billingPeriodEnd) : undefined,
+        autoSend: schema.autoSend,
+      });
 
       return res.status(201).json(invoice);
     }
@@ -485,10 +481,7 @@ router.post('/invoices', isAuthenticated, requireTenantContext, async (req: any,
       invoiceStatus: req.body.invoiceStatus || 'draft',
     });
 
-    const [newInvoice] = await db
-      .insert(invoices)
-      .values(invoiceData)
-      .returning();
+    const [newInvoice] = await db.insert(invoices).values(invoiceData).returning();
 
     res.status(201).json(newInvoice);
   } catch (error: any) {
@@ -553,9 +546,7 @@ router.delete('/invoices/:id', isAuthenticated, requireTenantContext, async (req
     }
 
     // Delete line items first
-    await db
-      .delete(invoiceLineItems)
-      .where(eq(invoiceLineItems.invoiceId, invoiceId));
+    await db.delete(invoiceLineItems).where(eq(invoiceLineItems.invoiceId, invoiceId));
 
     // Delete invoice
     await db
@@ -762,7 +753,8 @@ async function handlePaymentRecording(req: any, res: any) {
     const paymentAmount = amount || parseFloat(invoice.balance || invoice.totalAmount);
     const newPaid = parseFloat(invoice.paid || '0') + paymentAmount;
     const newBalance = parseFloat(invoice.totalAmount) - newPaid;
-    const newStatus = newBalance <= 0 ? 'paid' : newBalance < parseFloat(invoice.totalAmount) ? 'partial' : 'sent';
+    const newStatus =
+      newBalance <= 0 ? 'paid' : newBalance < parseFloat(invoice.totalAmount) ? 'partial' : 'sent';
 
     const [updatedInvoice] = await db
       .update(invoices)
@@ -817,11 +809,9 @@ router.get('/invoices/:id/pdf', requireTenantContext, async (req: any, res) => {
     }
 
     // Generate PDF
-    const pdfBuffer = await pdfGenerationService.generateInvoicePDF(
-      invoiceId,
-      tenantId,
-      { watermark }
-    );
+    const pdfBuffer = await pdfGenerationService.generateInvoicePDF(invoiceId, tenantId, {
+      watermark,
+    });
 
     // Set response headers
     const filename = `Invoice-${invoice.invoiceNumber}.pdf`;
@@ -995,8 +985,8 @@ router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any,
         and(
           eq(invoices.tenantId, tenantId),
           eq(invoices.invoiceStatus, 'sent'),
-          sql`${invoices.dueDate} < CURRENT_DATE`
-        )
+          sql`${invoices.dueDate} < CURRENT_DATE`,
+        ),
       );
 
     const totalInvoices = totalInvoicesResult?.count || 0;
@@ -1042,8 +1032,8 @@ router.get('/info', requireTenantContext, async (req: any, res) => {
       .where(
         and(
           eq(subscriptionPaymentMethods.tenantId, tenantId),
-          eq(subscriptionPaymentMethods.isDefault, true)
-        )
+          eq(subscriptionPaymentMethods.isDefault, true),
+        ),
       )
       .limit(1);
 
@@ -1072,8 +1062,8 @@ router.put('/address', requireTenantContext, async (req: any, res) => {
       .where(
         and(
           eq(subscriptionPaymentMethods.tenantId, tenantId),
-          eq(subscriptionPaymentMethods.isDefault, true)
-        )
+          eq(subscriptionPaymentMethods.isDefault, true),
+        ),
       )
       .limit(1);
 
@@ -1196,11 +1186,7 @@ router.post('/stripe/webhooks', async (req: any, res) => {
     }
 
     // Verify and construct event
-    const event = StripeService.constructWebhookEvent(
-      req.body,
-      signature,
-      webhookSecret
-    );
+    const event = StripeService.constructWebhookEvent(req.body, signature, webhookSecret);
 
     // Handle the event
     await StripeService.handleWebhookEvent(event);
@@ -1226,14 +1212,7 @@ router.post('/stripe/webhooks', async (req: any, res) => {
 router.get('/rules', requireTenantContext, async (req: any, res) => {
   try {
     const tenantId = req.tenantId;
-    const {
-      status,
-      ruleType,
-      customerId,
-      contractId,
-      limit = 50,
-      offset = 0,
-    } = req.query;
+    const { status, ruleType, customerId, contractId, limit = 50, offset = 0 } = req.query;
 
     // Build filter conditions
     const conditions = [eq(billingRules.tenantId, tenantId)];
@@ -1324,10 +1303,7 @@ router.post('/rules', isAuthenticated, requireTenantContext, async (req: any, re
       createdBy: userId,
     });
 
-    const [newRule] = await db
-      .insert(billingRules)
-      .values(ruleData)
-      .returning();
+    const [newRule] = await db.insert(billingRules).values(ruleData).returning();
 
     res.status(201).json(newRule);
   } catch (error: any) {
@@ -1428,59 +1404,69 @@ router.delete('/rules/:id', isAuthenticated, requireTenantContext, async (req: a
  * PATCH /api/billing/rules/:id/activate
  * Activate a billing rule
  */
-router.patch('/rules/:id/activate', isAuthenticated, requireTenantContext, async (req: any, res) => {
-  try {
-    const tenantId = req.tenantId;
-    const ruleId = req.params.id;
+router.patch(
+  '/rules/:id/activate',
+  isAuthenticated,
+  requireTenantContext,
+  async (req: any, res) => {
+    try {
+      const tenantId = req.tenantId;
+      const ruleId = req.params.id;
 
-    const [updatedRule] = await db
-      .update(billingRules)
-      .set({
-        ruleStatus: 'active',
-        updatedAt: new Date(),
-      })
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
-      .returning();
+      const [updatedRule] = await db
+        .update(billingRules)
+        .set({
+          ruleStatus: 'active',
+          updatedAt: new Date(),
+        })
+        .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+        .returning();
 
-    if (!updatedRule) {
-      return res.status(404).json({ error: 'Billing rule not found' });
+      if (!updatedRule) {
+        return res.status(404).json({ error: 'Billing rule not found' });
+      }
+
+      res.json(updatedRule);
+    } catch (error) {
+      console.error('Error activating billing rule:', error);
+      res.status(500).json({ error: 'Failed to activate billing rule' });
     }
-
-    res.json(updatedRule);
-  } catch (error) {
-    console.error('Error activating billing rule:', error);
-    res.status(500).json({ error: 'Failed to activate billing rule' });
-  }
-});
+  },
+);
 
 /**
  * PATCH /api/billing/rules/:id/deactivate
  * Deactivate a billing rule
  */
-router.patch('/rules/:id/deactivate', isAuthenticated, requireTenantContext, async (req: any, res) => {
-  try {
-    const tenantId = req.tenantId;
-    const ruleId = req.params.id;
+router.patch(
+  '/rules/:id/deactivate',
+  isAuthenticated,
+  requireTenantContext,
+  async (req: any, res) => {
+    try {
+      const tenantId = req.tenantId;
+      const ruleId = req.params.id;
 
-    const [updatedRule] = await db
-      .update(billingRules)
-      .set({
-        ruleStatus: 'inactive',
-        updatedAt: new Date(),
-      })
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
-      .returning();
+      const [updatedRule] = await db
+        .update(billingRules)
+        .set({
+          ruleStatus: 'inactive',
+          updatedAt: new Date(),
+        })
+        .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+        .returning();
 
-    if (!updatedRule) {
-      return res.status(404).json({ error: 'Billing rule not found' });
+      if (!updatedRule) {
+        return res.status(404).json({ error: 'Billing rule not found' });
+      }
+
+      res.json(updatedRule);
+    } catch (error) {
+      console.error('Error deactivating billing rule:', error);
+      res.status(500).json({ error: 'Failed to deactivate billing rule' });
     }
-
-    res.json(updatedRule);
-  } catch (error) {
-    console.error('Error deactivating billing rule:', error);
-    res.status(500).json({ error: 'Failed to deactivate billing rule' });
-  }
-});
+  },
+);
 
 // =============================================================================
 // ADVANCED ANALYTICS
@@ -1495,10 +1481,7 @@ router.get('/analytics/revenue-forecast', requireTenantContext, async (req: any,
     const tenantId = req.tenantId;
     const { periods = 3 } = req.query;
 
-    const forecast = await billingAnalytics.forecastRevenue(
-      tenantId,
-      parseInt(periods as string)
-    );
+    const forecast = await billingAnalytics.forecastRevenue(tenantId, parseInt(periods as string));
 
     res.json({
       forecast,
@@ -1527,10 +1510,10 @@ router.get('/analytics/churn-prediction', requireTenantContext, async (req: any,
       predictions,
       summary: {
         total: predictions.length,
-        critical: predictions.filter(p => p.riskLevel === 'critical').length,
-        high: predictions.filter(p => p.riskLevel === 'high').length,
-        medium: predictions.filter(p => p.riskLevel === 'medium').length,
-        low: predictions.filter(p => p.riskLevel === 'low').length,
+        critical: predictions.filter((p) => p.riskLevel === 'critical').length,
+        high: predictions.filter((p) => p.riskLevel === 'high').length,
+        medium: predictions.filter((p) => p.riskLevel === 'medium').length,
+        low: predictions.filter((p) => p.riskLevel === 'low').length,
       },
       generatedAt: new Date().toISOString(),
     });
@@ -1554,7 +1537,7 @@ router.get('/analytics/lifetime-value', requireTenantContext, async (req: any, r
 
     const lifetimeValues = await billingAnalytics.calculateLifetimeValue(
       tenantId,
-      customerId as string | undefined
+      customerId as string | undefined,
     );
 
     res.json({
@@ -1563,9 +1546,11 @@ router.get('/analytics/lifetime-value', requireTenantContext, async (req: any, r
         totalCustomers: lifetimeValues.length,
         totalHistoricalValue: lifetimeValues.reduce((sum, c) => sum + c.historicalValue, 0),
         totalPredictedValue: lifetimeValues.reduce((sum, c) => sum + c.predictedLifetimeValue, 0),
-        averageLifetimeValue: lifetimeValues.length > 0
-          ? lifetimeValues.reduce((sum, c) => sum + c.predictedLifetimeValue, 0) / lifetimeValues.length
-          : 0,
+        averageLifetimeValue:
+          lifetimeValues.length > 0
+            ? lifetimeValues.reduce((sum, c) => sum + c.predictedLifetimeValue, 0) /
+              lifetimeValues.length
+            : 0,
       },
       generatedAt: new Date().toISOString(),
     });

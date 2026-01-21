@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   Calendar,
@@ -11,7 +11,7 @@ import {
   FileText,
   Target,
   BarChart3,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   StatCard,
   PriorityList,
@@ -19,8 +19,8 @@ import {
   TeamStatus,
   PipelineWidget,
   QuickActions,
-} from "./dashboard-widgets";
-import { apiRequest } from "@/lib/queryClient";
+} from './dashboard-widgets';
+import { apiRequest } from '@/lib/queryClient';
 
 // ============================================================================
 // SERVICE MANAGER DASHBOARD
@@ -29,23 +29,30 @@ import { apiRequest } from "@/lib/queryClient";
 export function ServiceManagerDashboard() {
   // Fetch dashboard data
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/dashboards/service-manager"],
+    queryKey: ['/api/dashboards/service-manager'],
     queryFn: async () => {
       try {
-        return await apiRequest("/api/dashboards/service-manager");
+        return await apiRequest('/api/dashboards/service-manager');
       } catch (err) {
         // Fallback: construct from individual endpoints
-        const tickets = await apiRequest("/api/service-tickets");
-        const technicians = await apiRequest("/api/technicians");
+        const tickets = await apiRequest('/api/service-tickets');
+        const technicians = await apiRequest('/api/technicians');
 
         return {
           stats: {
-            emergencyTickets: tickets.filter((t: any) => t.priority === "critical").length,
-            dueToday: tickets.filter((t: any) => t.dueDate === new Date().toISOString().split("T")[0]).length,
-            scheduledTomorrow: tickets.filter((t: any) => t.scheduledDate === new Date(Date.now() + 86400000).toISOString().split("T")[0]).length,
-            averageResponseTime: "1.2 hrs",
+            emergencyTickets: tickets.filter((t: any) => t.priority === 'critical').length,
+            dueToday: tickets.filter(
+              (t: any) => t.dueDate === new Date().toISOString().split('T')[0],
+            ).length,
+            scheduledTomorrow: tickets.filter(
+              (t: any) =>
+                t.scheduledDate === new Date(Date.now() + 86400000).toISOString().split('T')[0],
+            ).length,
+            averageResponseTime: '1.2 hrs',
           },
-          priorities: tickets.filter((t: any) => ["critical", "high"].includes(t.priority)).slice(0, 5),
+          priorities: tickets
+            .filter((t: any) => ['critical', 'high'].includes(t.priority))
+            .slice(0, 5),
           technicians: technicians,
           recentActivity: [],
         };
@@ -91,7 +98,7 @@ export function ServiceManagerDashboard() {
         />
         <StatCard
           title="Avg Response Time"
-          value={stats.averageResponseTime || "N/A"}
+          value={stats.averageResponseTime || 'N/A'}
           icon={<CheckCircle className="h-5 w-5" />}
           trend="down"
           change={-15}
@@ -109,8 +116,8 @@ export function ServiceManagerDashboard() {
             title="Today's Priorities"
             items={priorities.map((ticket: any) => ({
               id: ticket.id,
-              title: `${ticket.ticketNumber} - ${ticket.description || "Service Request"}`,
-              subtitle: `${ticket.customerName} - ${ticket.equipmentName || "Equipment"}`,
+              title: `${ticket.ticketNumber} - ${ticket.description || 'Service Request'}`,
+              subtitle: `${ticket.customerName} - ${ticket.equipmentName || 'Equipment'}`,
               priority: ticket.priority,
               href: `/service-hub/${ticket.id}`,
             }))}
@@ -124,25 +131,25 @@ export function ServiceManagerDashboard() {
             title="Quick Actions"
             actions={[
               {
-                label: "New Service Request",
+                label: 'New Service Request',
                 icon: <Wrench className="h-5 w-5" />,
-                href: "/service-hub?action=new",
+                href: '/service-hub?action=new',
               },
               {
-                label: "Emergency Dispatch",
+                label: 'Emergency Dispatch',
                 icon: <AlertCircle className="h-5 w-5" />,
-                href: "/service-dispatch?emergency=true",
-                variant: "default",
+                href: '/service-dispatch?emergency=true',
+                variant: 'default',
               },
               {
-                label: "View Parts Inventory",
+                label: 'View Parts Inventory',
                 icon: <Package className="h-5 w-5" />,
-                href: "/warehouse-operations",
+                href: '/warehouse-operations',
               },
               {
-                label: "Review Pending Approvals",
+                label: 'Review Pending Approvals',
                 icon: <CheckCircle className="h-5 w-5" />,
-                href: "/service-hub?status=pending-approval",
+                href: '/service-hub?status=pending-approval',
               },
             ]}
           />
@@ -157,7 +164,7 @@ export function ServiceManagerDashboard() {
               id: tech.id,
               name: tech.name,
               avatar: tech.avatar,
-              status: tech.status || "available",
+              status: tech.status || 'available',
               currentJob: tech.currentJob,
               jobsToday: tech.jobsToday || 0,
               href: `/technicians/${tech.id}/track`,
@@ -184,10 +191,10 @@ export function ServiceManagerDashboard() {
 
 export function SalesRepDashboard() {
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/dashboards/sales-rep"],
+    queryKey: ['/api/dashboards/sales-rep'],
     queryFn: async () => {
       try {
-        return await apiRequest("/api/dashboards/sales-rep");
+        return await apiRequest('/api/dashboards/sales-rep');
       } catch (err) {
         // Fallback
         return {
@@ -198,10 +205,10 @@ export function SalesRepDashboard() {
             quotesPending: 273000,
           },
           pipeline: [
-            { name: "New Lead", value: 150000, count: 8, deals: [] },
-            { name: "Qualified", value: 120000, count: 5, deals: [] },
-            { name: "Proposal", value: 167000, count: 4, deals: [] },
-            { name: "Won", value: 50000, count: 2, deals: [] },
+            { name: 'New Lead', value: 150000, count: 8, deals: [] },
+            { name: 'Qualified', value: 120000, count: 5, deals: [] },
+            { name: 'Proposal', value: 167000, count: 4, deals: [] },
+            { name: 'Won', value: 50000, count: 2, deals: [] },
           ],
           recentActivity: [],
           aiRecommendations: [],
@@ -262,11 +269,7 @@ export function SalesRepDashboard() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Pipeline Visualization */}
-          <PipelineWidget
-            title="Deal Pipeline"
-            stages={pipeline}
-            loading={isLoading}
-          />
+          <PipelineWidget title="Deal Pipeline" stages={pipeline} loading={isLoading} />
 
           {/* AI Recommendations */}
           <PriorityList
@@ -275,7 +278,7 @@ export function SalesRepDashboard() {
               id: rec.id,
               title: rec.title,
               subtitle: rec.description,
-              priority: rec.priority || "medium",
+              priority: rec.priority || 'medium',
               href: rec.href,
             }))}
             emptyMessage="No recommendations at this time"
@@ -287,24 +290,24 @@ export function SalesRepDashboard() {
             title="Quick Actions"
             actions={[
               {
-                label: "Create Quote",
+                label: 'Create Quote',
                 icon: <FileText className="h-5 w-5" />,
-                href: "/quotes?action=new",
+                href: '/quotes?action=new',
               },
               {
-                label: "New Lead",
+                label: 'New Lead',
                 icon: <Users className="h-5 w-5" />,
-                href: "/customers?action=new-lead",
+                href: '/customers?action=new-lead',
               },
               {
-                label: "View Reports",
+                label: 'View Reports',
                 icon: <BarChart3 className="h-5 w-5" />,
-                href: "/reports/sales",
+                href: '/reports/sales',
               },
               {
-                label: "Schedule Call",
+                label: 'Schedule Call',
                 icon: <Calendar className="h-5 w-5" />,
-                onClick: () => console.log("Schedule call"),
+                onClick: () => console.log('Schedule call'),
               },
             ]}
           />
@@ -331,17 +334,17 @@ export function SalesRepDashboard() {
 
 export function TechnicianDashboard() {
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/dashboards/technician"],
+    queryKey: ['/api/dashboards/technician'],
     queryFn: async () => {
       try {
-        return await apiRequest("/api/dashboards/technician");
+        return await apiRequest('/api/dashboards/technician');
       } catch (err) {
         return {
           stats: {
             jobsToday: 4,
             jobsCompleted: 1,
-            nextJobETA: "15 min",
-            todayMiles: "23.4 mi",
+            nextJobETA: '15 min',
+            todayMiles: '23.4 mi',
           },
           todayJobs: [],
           recentCompletions: [],
@@ -359,10 +362,10 @@ export function TechnicianDashboard() {
       <div>
         <h1 className="text-3xl font-bold">Your Jobs - Today</h1>
         <p className="text-muted-foreground">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
           })}
         </p>
       </div>
@@ -383,13 +386,13 @@ export function TechnicianDashboard() {
         />
         <StatCard
           title="Next Job ETA"
-          value={stats.nextJobETA || "N/A"}
+          value={stats.nextJobETA || 'N/A'}
           icon={<Calendar className="h-5 w-5" />}
           loading={isLoading}
         />
         <StatCard
           title="Miles Today"
-          value={stats.todayMiles || "0 mi"}
+          value={stats.todayMiles || '0 mi'}
           icon={<TrendingUp className="h-5 w-5" />}
           loading={isLoading}
         />
@@ -414,25 +417,25 @@ export function TechnicianDashboard() {
         title="Quick Actions"
         actions={[
           {
-            label: "Clock In",
+            label: 'Clock In',
             icon: <CheckCircle className="h-5 w-5" />,
-            variant: "default",
-            onClick: () => console.log("Clock in"),
+            variant: 'default',
+            onClick: () => console.log('Clock in'),
           },
           {
-            label: "View Route",
+            label: 'View Route',
             icon: <Calendar className="h-5 w-5" />,
-            href: "/service-dispatch/my-route",
+            href: '/service-dispatch/my-route',
           },
           {
-            label: "Parts Lookup",
+            label: 'Parts Lookup',
             icon: <Package className="h-5 w-5" />,
-            href: "/warehouse-operations/lookup",
+            href: '/warehouse-operations/lookup',
           },
           {
-            label: "Report Issue",
+            label: 'Report Issue',
             icon: <AlertCircle className="h-5 w-5" />,
-            onClick: () => console.log("Report issue"),
+            onClick: () => console.log('Report issue'),
           },
         ]}
       />
@@ -446,10 +449,10 @@ export function TechnicianDashboard() {
 
 export function ExecutiveDashboard() {
   const { data, isLoading } = useQuery({
-    queryKey: ["/api/dashboards/executive"],
+    queryKey: ['/api/dashboards/executive'],
     queryFn: async () => {
       try {
-        return await apiRequest("/api/dashboards/executive");
+        return await apiRequest('/api/dashboards/executive');
       } catch (err) {
         return {
           stats: {
@@ -543,7 +546,7 @@ export function ExecutiveDashboard() {
             id: opp.id,
             title: opp.title,
             subtitle: opp.description,
-            priority: "high",
+            priority: 'high',
             href: opp.href,
           }))}
           emptyMessage="No new opportunities identified"

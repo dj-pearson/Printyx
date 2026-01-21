@@ -7,6 +7,7 @@ A Chrome extension that allows you to import LinkedIn profiles directly into you
 ## ✅ What's Complete
 
 ### Backend API (100% Complete)
+
 - ✅ `/api/extension/leads/quick-import` - Main import endpoint
 - ✅ `/api/extension/leads/check-duplicate` - Duplicate detection
 - ✅ `/api/extension/health` - Health check
@@ -16,6 +17,7 @@ A Chrome extension that allows you to import LinkedIn profiles directly into you
 - ✅ Session-based authentication
 
 ### Chrome Extension (100% Complete)
+
 - ✅ Manifest V3 configuration
 - ✅ LinkedIn profile parser (extracts public data)
 - ✅ Content script (injects "Add to Printyx" button)
@@ -42,6 +44,7 @@ cd printyx-extension/assets/icons/
 ```
 
 **Quick Solution**: Use any online icon generator or download placeholder icons:
+
 - Visit https://www.favicon-generator.org/
 - Upload any Printyx logo
 - Download all sizes to `assets/icons/`
@@ -224,6 +227,7 @@ server/routes/
 ## ✨ Success Criteria
 
 Extension is working when:
+
 - ✅ Button appears on LinkedIn profiles
 - ✅ Clicking button imports contact
 - ✅ Contact appears in Printyx CRM

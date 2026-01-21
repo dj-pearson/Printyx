@@ -122,8 +122,8 @@ function buildWhereClause(filters: any): SQL | undefined {
       or(
         like(platformBusinessRecords.companyName, searchTerm),
         like(platformBusinessRecords.primaryContactEmail, searchTerm),
-        like(platformBusinessRecords.primaryContactName, searchTerm)
-      )!
+        like(platformBusinessRecords.primaryContactName, searchTerm),
+      )!,
     );
   }
 
@@ -156,8 +156,8 @@ function buildWhereClause(filters: any): SQL | undefined {
     conditions.push(
       and(
         lte(platformBusinessRecords.nextFollowUpDate, new Date()),
-        eq(platformBusinessRecords.recordType, 'prospect')
-      )!
+        eq(platformBusinessRecords.recordType, 'prospect'),
+      )!,
     );
   }
 
@@ -213,7 +213,9 @@ router.get('/business-records', async (req: Request, res: Response) => {
     const whereClause = buildWhereClause(filters);
 
     // Build ORDER BY clause
-    const orderByColumn = platformBusinessRecords[sortBy as keyof typeof platformBusinessRecords] || platformBusinessRecords.createdAt;
+    const orderByColumn =
+      platformBusinessRecords[sortBy as keyof typeof platformBusinessRecords] ||
+      platformBusinessRecords.createdAt;
     const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
     // Execute query with pagination
@@ -247,7 +249,7 @@ router.get('/business-records', async (req: Request, res: Response) => {
     console.error('Error fetching business records:', error);
     res.status(500).json({
       error: 'Failed to fetch business records',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -309,8 +311,8 @@ router.get('/business-records/stats', async (req: Request, res: Response) => {
       .where(
         and(
           eq(platformBusinessRecords.recordType, 'tenant'),
-          sql`${platformBusinessRecords.churnRisk} IS NOT NULL`
-        )!
+          sql`${platformBusinessRecords.churnRisk} IS NOT NULL`,
+        )!,
       )
       .groupBy(platformBusinessRecords.churnRisk);
 
@@ -324,7 +326,7 @@ router.get('/business-records/stats', async (req: Request, res: Response) => {
     console.error('Error fetching business record stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -408,7 +410,7 @@ router.get('/business-records/:id', async (req: Request, res: Response) => {
     console.error('Error fetching business record:', error);
     res.status(500).json({
       error: 'Failed to fetch business record',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -446,7 +448,7 @@ router.get('/business-records/:id/timeline', async (req: Request, res: Response)
     console.error('Error fetching timeline:', error);
     res.status(500).json({
       error: 'Failed to fetch timeline',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -474,10 +476,7 @@ router.post('/business-records', async (req: Request, res: Response) => {
     }
 
     // Create record
-    const [newRecord] = await db
-      .insert(platformBusinessRecords)
-      .values(data)
-      .returning();
+    const [newRecord] = await db.insert(platformBusinessRecords).values(data).returning();
 
     // Log creation activity
     await db.insert(platformActivities).values({
@@ -494,7 +493,7 @@ router.post('/business-records', async (req: Request, res: Response) => {
     console.error('Error creating business record:', error);
     res.status(500).json({
       error: 'Failed to create business record',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -541,7 +540,9 @@ router.patch('/business-records/:id', async (req: Request, res: Response) => {
       significantChanges.push(`Assigned sales rep changed`);
     }
     if (updates.leadScore && updates.leadScore !== currentRecord.leadScore) {
-      significantChanges.push(`Lead score changed from ${currentRecord.leadScore} to ${updates.leadScore}`);
+      significantChanges.push(
+        `Lead score changed from ${currentRecord.leadScore} to ${updates.leadScore}`,
+      );
     }
 
     if (significantChanges.length > 0) {
@@ -560,7 +561,7 @@ router.patch('/business-records/:id', async (req: Request, res: Response) => {
     console.error('Error updating business record:', error);
     res.status(500).json({
       error: 'Failed to update business record',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -625,7 +626,7 @@ router.post('/business-records/:id/convert-to-tenant', async (req: Request, res:
     console.error('Error converting to tenant:', error);
     res.status(500).json({
       error: 'Failed to convert to tenant',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -663,7 +664,7 @@ router.post('/business-records/bulk-update', async (req: Request, res: Response)
     console.error('Error bulk updating records:', error);
     res.status(500).json({
       error: 'Failed to bulk update records',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -698,7 +699,7 @@ router.delete('/business-records/bulk-delete', async (req: Request, res: Respons
     console.error('Error bulk deleting records:', error);
     res.status(500).json({
       error: 'Failed to bulk delete records',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -727,12 +728,25 @@ router.get('/business-records/export', async (req: Request, res: Response) => {
     if (format === 'csv') {
       // Convert to CSV
       const headers = [
-        'ID', 'Company Name', 'Type', 'Status', 'Email', 'Contact Name',
-        'Lead Score', 'Lead Tier', 'Industry', 'Company Size', 'Territory',
-        'Assigned Sales Rep', 'Created At', 'Customer Since', 'MRR', 'ARR'
+        'ID',
+        'Company Name',
+        'Type',
+        'Status',
+        'Email',
+        'Contact Name',
+        'Lead Score',
+        'Lead Tier',
+        'Industry',
+        'Company Size',
+        'Territory',
+        'Assigned Sales Rep',
+        'Created At',
+        'Customer Since',
+        'MRR',
+        'ARR',
       ];
 
-      const rows = records.map(r => [
+      const rows = records.map((r) => [
         r.id,
         r.companyName,
         r.recordType,
@@ -752,11 +766,14 @@ router.get('/business-records/export', async (req: Request, res: Response) => {
       ]);
 
       const csv = [headers, ...rows]
-        .map(row => row.map(cell => `"${cell || ''}"`).join(','))
+        .map((row) => row.map((cell) => `"${cell || ''}"`).join(','))
         .join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=business-records-${Date.now()}.csv`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=business-records-${Date.now()}.csv`,
+      );
       res.send(csv);
     } else {
       // JSON export
@@ -766,7 +783,7 @@ router.get('/business-records/export', async (req: Request, res: Response) => {
     console.error('Error exporting records:', error);
     res.status(500).json({
       error: 'Failed to export records',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -801,7 +818,7 @@ router.delete('/business-records/:id', async (req: Request, res: Response) => {
     console.error('Error deleting business record:', error);
     res.status(500).json({
       error: 'Failed to delete business record',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

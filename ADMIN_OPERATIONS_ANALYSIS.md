@@ -46,7 +46,9 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 ### 🔴 Critical Manual Tasks (High Time Cost)
 
 #### 1. User Lifecycle Management
+
 **Current Process**: Entirely manual
+
 - **Time per user**: 30-45 minutes
 - **Steps**:
   1. Create user account (5 min)
@@ -57,6 +59,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
   6. Offboarding: Revoke access, export data, audit activity (30+ min)
 
 **Pain Points**:
+
 - No templates for common role combinations
 - Risk of incorrect permission assignment
 - Delays in onboarding new employees
@@ -64,7 +67,9 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 - No bulk user operations
 
 #### 2. Tenant Onboarding
+
 **Current Process**: Highly manual
+
 - **Time per tenant**: 2-4 hours
 - **Steps**:
   1. Create tenant record (10 min)
@@ -77,6 +82,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
   8. Verify tenant isolation and access (15-20 min)
 
 **Pain Points**:
+
 - Repetitive setup for similar tenant types
 - High error rate in manual configuration
 - Delayed time-to-value for new customers
@@ -84,7 +90,9 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 - No validation checklist
 
 #### 3. Security Incident Response
+
 **Current Process**: Manual investigation and assignment
+
 - **Time per incident**: 15-60 minutes (varies by severity)
 - **Steps**:
   1. Review security alert details (5-10 min)
@@ -95,6 +103,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
   6. Monitor progress and escalate if needed (ongoing)
 
 **Pain Points**:
+
 - Delayed response to critical alerts
 - Inconsistent severity classification
 - Manual correlation of related incidents
@@ -102,7 +111,9 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 - Lack of resolution suggestions
 
 #### 4. Database Operations
+
 **Current Process**: Reactive manual maintenance
+
 - **Time per week**: 3-5 hours
 - **Tasks**:
   - Running VACUUM/ANALYZE operations
@@ -112,6 +123,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
   - Index management
 
 **Pain Points**:
+
 - No automated performance optimization
 - Manual backup scheduling (UI shows "coming soon")
 - Reactive rather than proactive maintenance
@@ -119,7 +131,9 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 - Limited capacity planning insights
 
 #### 5. Integration Management
+
 **Current Process**: Manual troubleshooting
+
 - **Time per issue**: 30-90 minutes
 - **Tasks**:
   - Diagnosing integration failures
@@ -129,6 +143,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
   - Manual retry of failed operations
 
 **Pain Points**:
+
 - No automated health checks
 - Manual credential rotation
   - Limited integration debugging tools
@@ -228,6 +243,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 ### Current State: 6.5/10
 
 **Strengths**:
+
 - ✅ Comprehensive user listing with filtering
 - ✅ Role assignment interface
 - ✅ Audit log tracking
@@ -235,6 +251,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 - ✅ Permission override system
 
 **Weaknesses**:
+
 - ❌ No bulk user operations (import/export/modify)
 - ❌ No user provisioning templates
 - ❌ Manual role assignment for each user
@@ -260,6 +277,7 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 ### Current Tools: 7/10
 
 **Strengths**:
+
 - ✅ SQL query console with safety restrictions
 - ✅ Audit log viewer
 - ✅ Database table inspector
@@ -321,14 +339,17 @@ Printyx has a **mature admin infrastructure** with comprehensive dashboards, rob
 **Estimated Time Savings**: 8-12 hours/week (for team managing 20-30 users/month)
 
 #### Problem Statement
+
 User onboarding/offboarding is entirely manual, taking 30-45 minutes per user with high error risk. No templates, bulk operations, or automated workflows exist. Offboarding is particularly risky with potential incomplete access revocation.
 
 #### Solution Overview
+
 Intelligent user lifecycle automation with templates, bulk operations, and automated workflows.
 
 #### Key Components
 
 1. **User Provisioning Templates**
+
    ```
    Template: "Sales Representative - Regional Level"
    ├── Auto-assign roles: Sales Rep (Level 3), Regional User
@@ -353,6 +374,7 @@ Intelligent user lifecycle automation with templates, bulk operations, and autom
    - Bulk notification configuration
 
 3. **Automated Onboarding Workflow**
+
    ```
    Trigger: New user created
    ├── Step 1: Validate email domain (prevent typos)
@@ -365,6 +387,7 @@ Intelligent user lifecycle automation with templates, bulk operations, and autom
    ```
 
 4. **Automated Offboarding Workflow**
+
    ```
    Trigger: User marked for offboarding
    ├── Step 1: Generate user activity report
@@ -385,6 +408,7 @@ Intelligent user lifecycle automation with templates, bulk operations, and autom
    - **Temporary access**: Auto-expire elevated permissions after set time
 
 6. **User Access Review Automation**
+
    ```
    Quarterly automated process:
    ├── Generate access certification report for each manager
@@ -405,12 +429,14 @@ Intelligent user lifecycle automation with templates, bulk operations, and autom
 #### UI Components
 
 **Admin Dashboard > User Lifecycle Tab**
+
 - Quick stats: Pending onboarding, Recent offboardings, Failed logins
 - Templates library with usage statistics
 - Bulk import interface with CSV validator
 - Upcoming access reviews calendar
 
 **User Detail Page > Lifecycle Section**
+
 - Onboarding checklist progress (if new user)
 - Applied template information
 - Access review history
@@ -420,31 +446,43 @@ Intelligent user lifecycle automation with templates, bulk operations, and autom
 
 ```typescript
 // New routes in server/routes-rbac.ts
-app.post('/api/users/provision', requireRoles(['root_admin', 'company_admin']), async (req, res) => {
-  const { templateId, userData, bulkMode } = req.body;
+app.post(
+  '/api/users/provision',
+  requireRoles(['root_admin', 'company_admin']),
+  async (req, res) => {
+    const { templateId, userData, bulkMode } = req.body;
 
-  // Apply template, create user, trigger onboarding workflow
-  const result = await userLifecycleService.provisionUser(templateId, userData);
+    // Apply template, create user, trigger onboarding workflow
+    const result = await userLifecycleService.provisionUser(templateId, userData);
 
-  res.json(result);
-});
+    res.json(result);
+  },
+);
 
-app.post('/api/users/:userId/offboard', requireRoles(['root_admin', 'company_admin']), async (req, res) => {
-  const { userId } = req.params;
-  const { transferTo, reason } = req.body;
+app.post(
+  '/api/users/:userId/offboard',
+  requireRoles(['root_admin', 'company_admin']),
+  async (req, res) => {
+    const { userId } = req.params;
+    const { transferTo, reason } = req.body;
 
-  // Execute offboarding workflow with full audit trail
-  const result = await userLifecycleService.offboardUser(userId, transferTo, reason);
+    // Execute offboarding workflow with full audit trail
+    const result = await userLifecycleService.offboardUser(userId, transferTo, reason);
 
-  res.json(result);
-});
+    res.json(result);
+  },
+);
 
-app.get('/api/users/access-review', requireRoles(['root_admin', 'company_admin', 'manager']), async (req, res) => {
-  // Generate access certification report for manager
-  const report = await userLifecycleService.generateAccessReview(req.user.id);
+app.get(
+  '/api/users/access-review',
+  requireRoles(['root_admin', 'company_admin', 'manager']),
+  async (req, res) => {
+    // Generate access certification report for manager
+    const report = await userLifecycleService.generateAccessReview(req.user.id);
 
-  res.json(report);
-});
+    res.json(report);
+  },
+);
 ```
 
 ```typescript
@@ -499,6 +537,7 @@ export const userLifecycleEvents = pgTable('user_lifecycle_events', {
 ```
 
 #### Success Metrics
+
 - User onboarding time: 30-45 min → 5-10 min (80% reduction)
 - Offboarding completion rate: ~70% → 100%
 - Role assignment errors: ~15% → <2%
@@ -512,14 +551,17 @@ export const userLifecycleEvents = pgTable('user_lifecycle_events', {
 **Estimated Time Savings**: 5-8 hours/week (for system with 20-30 alerts/week)
 
 #### Problem Statement
+
 Security alerts and incidents require manual investigation (10-20 min), classification (5 min), assignment (5 min), and monitoring. No automated containment, resolution suggestions, or intelligent routing. Critical alerts can be delayed if admin is unavailable.
 
 #### Solution Overview
+
 AI-powered alert triage system with automated containment, intelligent routing, and suggested resolutions based on historical patterns.
 
 #### Key Components
 
 1. **Intelligent Alert Classification**
+
    ```
    Incoming Alert
    ├── AI Analysis:
@@ -535,6 +577,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
    ```
 
 2. **Automated Containment Actions**
+
    ```
    Critical Alert Detected
    ├── Immediate actions (if confidence >90%):
@@ -555,6 +598,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
    - **DDoS pattern** → Enable rate limiting, notify infrastructure team
 
 3. **Intelligent Routing & Assignment**
+
    ```
    Assignment Logic:
    ├── Rule-based routing:
@@ -574,6 +618,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
    ```
 
 4. **Resolution Suggestions (AI-Powered)**
+
    ```
    For each incident:
    ├── Analyze similar past incidents:
@@ -589,6 +634,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
    ```
 
 5. **Incident Correlation**
+
    ```
    Detect related incidents:
    ├── Same user across multiple alerts
@@ -604,6 +650,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
    ```
 
 6. **Proactive Threat Detection**
+
    ```
    Continuous monitoring:
    ├── Anomaly detection:
@@ -630,6 +677,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
 #### UI Components
 
 **Security Center > Intelligent Alerts Tab**
+
 - Auto-classified alerts with confidence scores
 - Suggested actions with "Execute" buttons
 - Assignment recommendations with reasoning
@@ -637,6 +685,7 @@ AI-powered alert triage system with automated containment, intelligent routing, 
 - Automated containment log
 
 **Incident Detail Page > AI Assistant Panel**
+
 - Similar past incidents (clickable to view)
 - Suggested resolution steps with success rate
 - Root cause hypotheses ranked by likelihood
@@ -647,24 +696,32 @@ AI-powered alert triage system with automated containment, intelligent routing, 
 
 ```typescript
 // Enhanced: server/routes-security-compliance.ts
-app.post('/api/security/alerts/triage', requireRoles(['root_admin', 'security_admin']), async (req, res) => {
-  const { alertId } = req.body;
+app.post(
+  '/api/security/alerts/triage',
+  requireRoles(['root_admin', 'security_admin']),
+  async (req, res) => {
+    const { alertId } = req.body;
 
-  // AI-powered triage
-  const triage = await intelligentAlertService.triageAlert(alertId);
+    // AI-powered triage
+    const triage = await intelligentAlertService.triageAlert(alertId);
 
-  res.json(triage);
-});
+    res.json(triage);
+  },
+);
 
-app.post('/api/security/incidents/:id/execute-suggestion', requireRoles(['root_admin', 'security_admin']), async (req, res) => {
-  const { id } = req.params;
-  const { suggestionId } = req.body;
+app.post(
+  '/api/security/incidents/:id/execute-suggestion',
+  requireRoles(['root_admin', 'security_admin']),
+  async (req, res) => {
+    const { id } = req.params;
+    const { suggestionId } = req.body;
 
-  // Execute suggested resolution steps
-  const result = await intelligentAlertService.executeSuggestion(id, suggestionId);
+    // Execute suggested resolution steps
+    const result = await intelligentAlertService.executeSuggestion(id, suggestionId);
 
-  res.json(result);
-});
+    res.json(result);
+  },
+);
 
 app.post('/api/security/alerts/:id/auto-contain', async (req, res) => {
   // Executed automatically by system for critical alerts
@@ -739,6 +796,7 @@ export const incidentResolutionPatterns = pgTable('incident_resolution_patterns'
 ```
 
 #### Success Metrics
+
 - Time to initial response: 15-60 min → 1-5 min (90% reduction)
 - Classification accuracy: Manual → 85-90% automated
 - False positive rate: Baseline → <10%
@@ -754,14 +812,17 @@ export const incidentResolutionPatterns = pgTable('incident_resolution_patterns'
 **Estimated Time Savings**: 6-10 hours/week (for 3-5 new tenants/month)
 
 #### Problem Statement
+
 Tenant onboarding takes 2-4 hours of manual setup with high error rates. Includes creating tenant, setting up hierarchy, configuring integrations, importing data, and verifying isolation. No templates or automated workflows exist. Inconsistent configurations across tenants.
 
 #### Solution Overview
+
 Template-based tenant onboarding with industry-specific configurations, automated integration setup, guided data import, and validation checklists.
 
 #### Key Components
 
 1. **Tenant Onboarding Templates**
+
    ```
    Template: "Managed Print Services - Regional Company"
    ├── Organizational Structure:
@@ -802,6 +863,7 @@ Template-based tenant onboarding with industry-specific configurations, automate
    - Basic CRM (no equipment tracking)
 
 2. **Guided Onboarding Wizard**
+
    ```
    Step 1: Company Information
    ├── Company name, logo, address
@@ -860,6 +922,7 @@ Template-based tenant onboarding with industry-specific configurations, automate
    ```
 
 3. **Automated Integration Setup**
+
    ```
    QuickBooks Integration:
    ├── 1. OAuth flow (guided)
@@ -884,6 +947,7 @@ Template-based tenant onboarding with industry-specific configurations, automate
    ```
 
 4. **Data Import Intelligence**
+
    ```
    CSV Import with AI Validation:
    ├── Upload CSV
@@ -907,6 +971,7 @@ Template-based tenant onboarding with industry-specific configurations, automate
    ```
 
 5. **Tenant Health Validation**
+
    ```
    Post-Setup Automated Checks:
    ├── Tenant Isolation:
@@ -933,6 +998,7 @@ Template-based tenant onboarding with industry-specific configurations, automate
    ```
 
 6. **Tenant Cloning (for Similar Setups)**
+
    ```
    Clone from existing tenant:
    ├── Select source tenant as template
@@ -958,12 +1024,14 @@ Template-based tenant onboarding with industry-specific configurations, automate
 #### UI Components
 
 **Admin Dashboard > Tenant Onboarding Tab**
+
 - "Create New Tenant" button → Launches wizard
 - Templates library with preview
 - In-progress onboarding list (resume capability)
 - Recently onboarded tenants with health scores
 
 **Onboarding Wizard Interface**
+
 - Progress bar (8 steps)
 - Step validation indicators (✓, ⚠, ✗)
 - Save and resume later capability
@@ -972,6 +1040,7 @@ Template-based tenant onboarding with industry-specific configurations, automate
 - Rollback capability (undo step)
 
 **Tenant Health Dashboard**
+
 - Health score with trend
 - Validation checklist with pass/fail
 - Recommended actions for improvement
@@ -990,33 +1059,45 @@ app.post('/api/tenants/onboarding/start', requireRoles(['root_admin']), async (r
   res.json(session);
 });
 
-app.put('/api/tenants/onboarding/:sessionId/step/:stepNumber', requireRoles(['root_admin']), async (req, res) => {
-  const { sessionId, stepNumber } = req.params;
-  const stepData = req.body;
+app.put(
+  '/api/tenants/onboarding/:sessionId/step/:stepNumber',
+  requireRoles(['root_admin']),
+  async (req, res) => {
+    const { sessionId, stepNumber } = req.params;
+    const stepData = req.body;
 
-  // Process step, validate, save progress
-  const result = await tenantOnboardingService.completeStep(sessionId, stepNumber, stepData);
+    // Process step, validate, save progress
+    const result = await tenantOnboardingService.completeStep(sessionId, stepNumber, stepData);
 
-  res.json(result);
-});
+    res.json(result);
+  },
+);
 
-app.post('/api/tenants/onboarding/:sessionId/complete', requireRoles(['root_admin']), async (req, res) => {
-  const { sessionId } = req.params;
+app.post(
+  '/api/tenants/onboarding/:sessionId/complete',
+  requireRoles(['root_admin']),
+  async (req, res) => {
+    const { sessionId } = req.params;
 
-  // Final validation, activate tenant, generate report
-  const result = await tenantOnboardingService.completeonboarding(sessionId);
+    // Final validation, activate tenant, generate report
+    const result = await tenantOnboardingService.completeonboarding(sessionId);
 
-  res.json(result);
-});
+    res.json(result);
+  },
+);
 
-app.post('/api/tenants/:tenantId/validate-health', requireRoles(['root_admin']), async (req, res) => {
-  const { tenantId } = req.params;
+app.post(
+  '/api/tenants/:tenantId/validate-health',
+  requireRoles(['root_admin']),
+  async (req, res) => {
+    const { tenantId } = req.params;
 
-  // Run comprehensive health checks
-  const health = await tenantOnboardingService.validateTenantHealth(tenantId);
+    // Run comprehensive health checks
+    const health = await tenantOnboardingService.validateTenantHealth(tenantId);
 
-  res.json(health);
-});
+    res.json(health);
+  },
+);
 ```
 
 ```typescript
@@ -1112,6 +1193,7 @@ export const tenantHealthScores = pgTable('tenant_health_scores', {
 ```
 
 #### Success Metrics
+
 - Onboarding time: 2-4 hours → 20-30 min (85-90% reduction)
 - Configuration errors: ~20% → <5%
 - Template usage: 0% → 80%+ of new tenants
@@ -1124,35 +1206,41 @@ export const tenantHealthScores = pgTable('tenant_health_scores', {
 ## Implementation Priority & Roadmap
 
 ### Phase 1 (Weeks 1-4): Foundation
+
 - Design database schema for all 3 features
 - Implement core services (without AI initially)
 - Build basic UI components
 
 ### Phase 2 (Weeks 5-8): Feature #1 - User Lifecycle
+
 - User provisioning templates
 - Bulk operations
 - Automated onboarding workflow
 - Basic offboarding workflow
 
 ### Phase 3 (Weeks 9-12): Feature #3 - Tenant Onboarding
+
 - Onboarding templates
 - Guided wizard (steps 1-4)
 - Basic integration setup
 - Health validation
 
 ### Phase 4 (Weeks 13-16): Feature #2 - Intelligent Alerts
+
 - Alert classification logic
 - Automated routing
 - Basic containment actions
 - Incident correlation
 
 ### Phase 5 (Weeks 17-20): AI Enhancement
+
 - Resolution suggestions (ML model)
 - Similar incident matching
 - Data import intelligence
 - Predictive threat detection
 
 ### Phase 6 (Weeks 21-24): Polish & Scale
+
 - Complete onboarding wizard (all steps)
 - Advanced offboarding with data export
 - User impersonation for support
@@ -1164,17 +1252,20 @@ export const tenantHealthScores = pgTable('tenant_health_scores', {
 ## Total Impact Summary
 
 ### Time Savings (Weekly)
+
 - **Feature #1** (User Lifecycle): 8-12 hours/week
 - **Feature #2** (Intelligent Alerts): 5-8 hours/week
 - **Feature #3** (Tenant Onboarding): 6-10 hours/week
 - **Total**: **19-30 hours/week** (2.5-4 days of admin time)
 
 ### Annual Value (for team of 3 admins)
+
 - Admin hours saved: 988-1,560 hours/year
 - At $75/hour: **$74,100 - $117,000/year**
 - Plus: Reduced errors, faster onboarding, better security
 
 ### ROI Estimate
+
 - Development cost (6 months): ~$150,000
 - Annual savings: ~$100,000
 - **Break-even**: 18 months
@@ -1185,12 +1276,14 @@ export const tenantHealthScores = pgTable('tenant_health_scores', {
 ## Additional Recommendations (Lower Priority)
 
 ### 4. Automated Database Performance Optimizer
+
 - Auto-detect slow queries and suggest indexes
 - Auto-execute VACUUM/ANALYZE based on thresholds
 - Predictive capacity planning
 - **Time savings**: 3-5 hours/week
 
 ### 5. Integration Self-Healing System
+
 - Auto-detect integration failures
 - Auto-retry with exponential backoff
 - Auto-refresh credentials when expired
@@ -1198,6 +1291,7 @@ export const tenantHealthScores = pgTable('tenant_health_scores', {
 - **Time savings**: 3-5 hours/week
 
 ### 6. Customer Self-Service Portal (Expanded)
+
 - Automated ticket routing by category
 - AI-powered knowledge base search
 - Self-service password resets
@@ -1217,6 +1311,7 @@ Printyx has a solid foundation, but significant admin time is spent on repetitiv
 Combined, these features would save **19-30 hours/week** for a typical admin team, with an estimated **ROI of 200-300% over 3 years**.
 
 The features are also complementary:
+
 - User Lifecycle + Tenant Onboarding = Complete tenant setup automation
 - User Lifecycle + Intelligent Alerts = Automated response to suspicious user activity
 - All three = Enterprise-grade admin operations with minimal manual overhead

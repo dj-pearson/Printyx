@@ -7,6 +7,7 @@ Users were being shown as normal users instead of admins, even though they had '
 ## Root Cause
 
 The database has two ways of storing role information:
+
 1. **Legacy**: `users.role` column with string values ('admin', 'manager', 'director', etc.)
 2. **New RBAC**: `users.role_id` column referencing the `roles` table
 
@@ -15,6 +16,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 ## Changes Made
 
 ### 1. Frontend: useSupabaseAuth Hook
+
 **File**: `client/src/hooks/useSupabaseAuth.ts`
 
 - Updated to read both `role` (string) and `role_id` (FK) columns
@@ -24,6 +26,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 - Sets `isPlatformUser` flag based on role level and name
 
 **Role Level Mapping**:
+
 - Level 8: admin, root_admin, platform_admin (full platform access)
 - Level 7: company_admin, director (company-wide access)
 - Level 5: manager, sales_manager, service_manager
@@ -32,6 +35,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 - Level 1: default user
 
 ### 2. Backend: Enhanced RBAC Middleware
+
 **File**: `server/middleware/enhanced-rbac-middleware.ts`
 
 - Updated `computeUserPermissions()` to check for string role when no role assignment exists
@@ -41,6 +45,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 - Logs role detection for debugging: `[RBAC] User {id} has string role '{role}' (level {level})`
 
 ### 3. Backend: Supabase JWT Middleware
+
 **File**: `server/middleware/supabase-auth.ts`
 
 - Updated `authenticateSupabaseJWT` to fetch user from database after JWT verification
@@ -49,6 +54,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 - Updates JWT user object with database role information
 
 ### 4. Backend: Auth Helpers
+
 **File**: `server/utils/auth-helpers.ts`
 
 - Enhanced `isPlatformAdmin()` function to check multiple sources:
@@ -58,6 +64,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
   - Role code/name patterns (checks for 'admin', 'root', 'platform', 'system')
 
 ### 5. Database Schema
+
 **File**: `shared/schema.ts`
 
 - Added `role: varchar('role')` column to users table schema
@@ -67,6 +74,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 ## How Role Detection Now Works
 
 ### Frontend Flow
+
 1. User logs in with Supabase Auth
 2. `useSupabaseAuth` fetches user profile from `users` table
 3. Checks for `role` string column
@@ -75,6 +83,7 @@ The authentication system was only checking for `role_id` and ignoring the `role
 6. Frontend shows appropriate UI based on role level
 
 ### Backend API Flow
+
 1. Request arrives with JWT token
 2. `authenticateSupabaseJWT` validates JWT
 3. Fetches user from database to get role string

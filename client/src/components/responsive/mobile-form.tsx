@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface MobileFormProps {
   children: ReactNode;
@@ -18,15 +18,15 @@ export default function MobileForm({
   children,
   title,
   onSubmit,
-  submitText = "Save",
-  cancelText = "Cancel",
+  submitText = 'Save',
+  cancelText = 'Cancel',
   onCancel,
   isLoading = false,
-  className
+  className,
 }: MobileFormProps) {
   return (
     <div className="w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
-      <Card className={cn("w-full", className)}>
+      <Card className={cn('w-full', className)}>
         {title && (
           <CardHeader className="pb-4 sticky top-0 bg-white z-10 border-b">
             <CardTitle className="text-lg sm:text-xl">{title}</CardTitle>
@@ -34,10 +34,8 @@ export default function MobileForm({
         )}
         <CardContent className="space-y-6 pb-4">
           <form onSubmit={onSubmit} className="space-y-4 sm:space-y-6">
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-              {children}
-            </div>
-            
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">{children}</div>
+
             <div className="flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 pt-4 border-t sticky bottom-0 bg-white">
               {onCancel && (
                 <Button
@@ -50,12 +48,8 @@ export default function MobileForm({
                   {cancelText}
                 </Button>
               )}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full sm:w-auto sm:ml-auto"
-              >
-                {isLoading ? "Saving..." : submitText}
+              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto sm:ml-auto">
+                {isLoading ? 'Saving...' : submitText}
               </Button>
             </div>
           </form>

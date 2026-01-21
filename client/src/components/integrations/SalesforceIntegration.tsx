@@ -75,7 +75,11 @@ export default function SalesforceIntegration() {
   const [selectedObjectType, setSelectedObjectType] = useState<string>('Account');
 
   // Fetch sync status
-  const { data: syncStatusData, isLoading: isLoadingSyncStatus, refetch: refetchSyncStatus } = useQuery({
+  const {
+    data: syncStatusData,
+    isLoading: isLoadingSyncStatus,
+    refetch: refetchSyncStatus,
+  } = useQuery({
     queryKey: ['salesforce-sync-status'],
     queryFn: async () => {
       const res = await fetch('/api/salesforce/sync-status');
@@ -277,7 +281,9 @@ export default function SalesforceIntegration() {
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Synced from Salesforce</div>
-              <div className="text-2xl font-bold text-blue-600">{stats.synced.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {stats.synced.toLocaleString()}
+              </div>
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Sync Rate</div>
@@ -288,9 +294,7 @@ export default function SalesforceIntegration() {
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Last Sync</div>
               <div className="text-lg font-medium">
-                {stats.lastSync
-                  ? new Date(stats.lastSync).toLocaleDateString()
-                  : 'Never'}
+                {stats.lastSync ? new Date(stats.lastSync).toLocaleDateString() : 'Never'}
               </div>
             </div>
           </div>
@@ -310,9 +314,7 @@ export default function SalesforceIntegration() {
           <Card>
             <CardHeader>
               <CardTitle>Sync Status by Object</CardTitle>
-              <CardDescription>
-                Records synchronized per Salesforce object type
-              </CardDescription>
+              <CardDescription>Records synchronized per Salesforce object type</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingSyncStatus ? (
@@ -334,9 +336,13 @@ export default function SalesforceIntegration() {
                     {syncStatusData?.syncStatus?.rows?.map((status: SyncStatus, idx: number) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">
-                          {status.table_name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                          {status.table_name
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, (l) => l.toUpperCase())}
                         </TableCell>
-                        <TableCell className="text-right">{Number(status.total_records).toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          {Number(status.total_records).toLocaleString()}
+                        </TableCell>
                         <TableCell className="text-right text-blue-600">
                           {Number(status.salesforce_records).toLocaleString()}
                         </TableCell>
@@ -367,7 +373,9 @@ export default function SalesforceIntegration() {
                   onClick={() => refetchSyncStatus()}
                   disabled={isLoadingSyncStatus}
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingSyncStatus ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${isLoadingSyncStatus ? 'animate-spin' : ''}`}
+                  />
                   Refresh Status
                 </Button>
               </div>
@@ -434,10 +442,7 @@ Example:
                   <Eye className="h-4 w-4 mr-2" />
                   Preview Transform
                 </Button>
-                <Button
-                  onClick={handleImport}
-                  disabled={!importData || importMutation.isPending}
-                >
+                <Button onClick={handleImport} disabled={!importData || importMutation.isPending}>
                   {importMutation.isPending ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
@@ -456,13 +461,17 @@ Example:
                       <div className="font-medium mb-2">Transformation Preview:</div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-muted-foreground mb-1">Original (Salesforce)</div>
+                          <div className="text-sm text-muted-foreground mb-1">
+                            Original (Salesforce)
+                          </div>
                           <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-48">
                             {JSON.stringify(previewMutation.data.originalRecord, null, 2)}
                           </pre>
                         </div>
                         <div>
-                          <div className="text-sm text-muted-foreground mb-1">Transformed (Printyx)</div>
+                          <div className="text-sm text-muted-foreground mb-1">
+                            Transformed (Printyx)
+                          </div>
                           <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-48">
                             {JSON.stringify(previewMutation.data.transformedRecord, null, 2)}
                           </pre>
@@ -493,7 +502,9 @@ Example:
                 {mappingsData?.mappings?.map((mapping: FieldMapping) => (
                   <Button
                     key={mapping.salesforceObject}
-                    variant={selectedObjectType === mapping.salesforceObject ? 'default' : 'outline'}
+                    variant={
+                      selectedObjectType === mapping.salesforceObject ? 'default' : 'outline'
+                    }
                     size="sm"
                     onClick={() => setSelectedObjectType(mapping.salesforceObject)}
                     className="gap-2"
@@ -535,9 +546,7 @@ Example:
                       <TableBody>
                         {fieldMappingData.fieldMappings.map((field: any, idx: number) => (
                           <TableRow key={idx}>
-                            <TableCell className="font-mono text-sm">
-                              {field.sourceField}
-                            </TableCell>
+                            <TableCell className="font-mono text-sm">{field.sourceField}</TableCell>
                             <TableCell className="font-mono text-sm text-blue-600">
                               {field.targetField}
                             </TableCell>
@@ -570,9 +579,7 @@ Example:
           <Card>
             <CardHeader>
               <CardTitle>Sync Settings</CardTitle>
-              <CardDescription>
-                Configure Salesforce synchronization behavior
-              </CardDescription>
+              <CardDescription>Configure Salesforce synchronization behavior</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
@@ -608,8 +615,9 @@ Example:
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Coming Soon:</strong> OAuth authentication and real-time bi-directional sync.
-                  Currently supports JSON import. Contact support for direct Salesforce API integration.
+                  <strong>Coming Soon:</strong> OAuth authentication and real-time bi-directional
+                  sync. Currently supports JSON import. Contact support for direct Salesforce API
+                  integration.
                 </AlertDescription>
               </Alert>
             </CardContent>

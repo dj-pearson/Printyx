@@ -1,15 +1,15 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -18,33 +18,33 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const billingRuleSchema = z.object({
-  ruleName: z.string().min(1, "Rule name is required"),
+  ruleName: z.string().min(1, 'Rule name is required'),
   ruleDescription: z.string().optional(),
-  ruleType: z.enum(["tiered", "volume_discount", "time_based", "overage", "flat_rate", "custom"]),
-  ruleStatus: z.enum(["active", "inactive", "draft"]).default("draft"),
+  ruleType: z.enum(['tiered', 'volume_discount', 'time_based', 'overage', 'flat_rate', 'custom']),
+  ruleStatus: z.enum(['active', 'inactive', 'draft']).default('draft'),
   priority: z.coerce.number().min(0).default(0),
-  effectiveStartDate: z.string().min(1, "Start date is required"),
+  effectiveStartDate: z.string().min(1, 'Start date is required'),
   effectiveEndDate: z.string().optional(),
-  billingCycle: z.enum(["daily", "weekly", "monthly", "quarterly", "annual"]).default("monthly"),
+  billingCycle: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'annual']).default('monthly'),
   baseCharge: z.string().optional(),
   minimumCharge: z.string().optional(),
   maximumCharge: z.string().optional(),
@@ -55,7 +55,7 @@ const billingRuleSchema = z.object({
   overageMultiplier: z.string().optional(),
   applicableToAllCustomers: z.boolean().default(false),
   applicableToAllEquipment: z.boolean().default(false),
-  roundingMethod: z.enum(["up", "down", "nearest"]).default("nearest"),
+  roundingMethod: z.enum(['up', 'down', 'nearest']).default('nearest'),
   roundingPrecision: z.coerce.number().default(2),
   customCalculationFormula: z.string().optional(),
 });
@@ -75,16 +75,16 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
   const form = useForm<BillingRuleFormValues>({
     resolver: zodResolver(billingRuleSchema),
     defaultValues: {
-      ruleName: "",
-      ruleDescription: "",
-      ruleType: "flat_rate",
-      ruleStatus: "draft",
+      ruleName: '',
+      ruleDescription: '',
+      ruleType: 'flat_rate',
+      ruleStatus: 'draft',
       priority: 0,
-      effectiveStartDate: new Date().toISOString().split("T")[0],
-      billingCycle: "monthly",
+      effectiveStartDate: new Date().toISOString().split('T')[0],
+      billingCycle: 'monthly',
       applicableToAllCustomers: false,
       applicableToAllEquipment: false,
-      roundingMethod: "nearest",
+      roundingMethod: 'nearest',
       roundingPrecision: 2,
     },
   });
@@ -93,44 +93,44 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
   useEffect(() => {
     if (rule) {
       form.reset({
-        ruleName: rule.ruleName || "",
-        ruleDescription: rule.ruleDescription || "",
-        ruleType: rule.ruleType || "flat_rate",
-        ruleStatus: rule.ruleStatus || "draft",
+        ruleName: rule.ruleName || '',
+        ruleDescription: rule.ruleDescription || '',
+        ruleType: rule.ruleType || 'flat_rate',
+        ruleStatus: rule.ruleStatus || 'draft',
         priority: rule.priority || 0,
         effectiveStartDate: rule.effectiveStartDate
-          ? new Date(rule.effectiveStartDate).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
+          ? new Date(rule.effectiveStartDate).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
         effectiveEndDate: rule.effectiveEndDate
-          ? new Date(rule.effectiveEndDate).toISOString().split("T")[0]
+          ? new Date(rule.effectiveEndDate).toISOString().split('T')[0]
           : undefined,
-        billingCycle: rule.billingCycle || "monthly",
-        baseCharge: rule.baseCharge || "",
-        minimumCharge: rule.minimumCharge || "",
-        maximumCharge: rule.maximumCharge || "",
-        bwRate: rule.bwRate || "",
-        colorRate: rule.colorRate || "",
+        billingCycle: rule.billingCycle || 'monthly',
+        baseCharge: rule.baseCharge || '',
+        minimumCharge: rule.minimumCharge || '',
+        maximumCharge: rule.maximumCharge || '',
+        bwRate: rule.bwRate || '',
+        colorRate: rule.colorRate || '',
         baseVolumeBw: rule.baseVolumeBw || 0,
         baseVolumeColor: rule.baseVolumeColor || 0,
-        overageMultiplier: rule.overageMultiplier || "",
+        overageMultiplier: rule.overageMultiplier || '',
         applicableToAllCustomers: rule.applicableToAllCustomers || false,
         applicableToAllEquipment: rule.applicableToAllEquipment || false,
-        roundingMethod: rule.roundingMethod || "nearest",
+        roundingMethod: rule.roundingMethod || 'nearest',
         roundingPrecision: rule.roundingPrecision || 2,
-        customCalculationFormula: rule.customCalculationFormula || "",
+        customCalculationFormula: rule.customCalculationFormula || '',
       });
     } else {
       form.reset({
-        ruleName: "",
-        ruleDescription: "",
-        ruleType: "flat_rate",
-        ruleStatus: "draft",
+        ruleName: '',
+        ruleDescription: '',
+        ruleType: 'flat_rate',
+        ruleStatus: 'draft',
         priority: 0,
-        effectiveStartDate: new Date().toISOString().split("T")[0],
-        billingCycle: "monthly",
+        effectiveStartDate: new Date().toISOString().split('T')[0],
+        billingCycle: 'monthly',
         applicableToAllCustomers: false,
         applicableToAllEquipment: false,
-        roundingMethod: "nearest",
+        roundingMethod: 'nearest',
         roundingPrecision: 2,
       });
     }
@@ -140,24 +140,24 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
   const saveMutation = useMutation({
     mutationFn: async (data: BillingRuleFormValues) => {
       if (rule?.id) {
-        return await apiRequest(`/api/billing/rules/${rule.id}`, "PUT", data);
+        return await apiRequest(`/api/billing/rules/${rule.id}`, 'PUT', data);
       } else {
-        return await apiRequest("/api/billing/rules", "POST", data);
+        return await apiRequest('/api/billing/rules', 'POST', data);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/rules"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/rules'] });
       toast({
-        title: rule ? "Rule updated" : "Rule created",
-        description: `Billing rule has been ${rule ? "updated" : "created"} successfully.`,
+        title: rule ? 'Rule updated' : 'Rule created',
+        description: `Billing rule has been ${rule ? 'updated' : 'created'} successfully.`,
       });
       onOpenChange(false);
     },
     onError: (error: any) => {
       toast({
-        title: `Failed to ${rule ? "update" : "create"} rule`,
-        description: error.message || "Please try again",
-        variant: "destructive",
+        title: `Failed to ${rule ? 'update' : 'create'} rule`,
+        description: error.message || 'Please try again',
+        variant: 'destructive',
       });
     },
   });
@@ -170,11 +170,11 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>{rule ? "Edit Billing Rule" : "Create Billing Rule"}</DialogTitle>
+          <DialogTitle>{rule ? 'Edit Billing Rule' : 'Create Billing Rule'}</DialogTitle>
           <DialogDescription>
             {rule
-              ? "Update your billing rule configuration"
-              : "Create a new billing rule to automate your pricing"}
+              ? 'Update your billing rule configuration'
+              : 'Create a new billing rule to automate your pricing'}
           </DialogDescription>
         </DialogHeader>
 
@@ -501,9 +501,7 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
                             <FormLabel className="text-base">Apply to All Equipment</FormLabel>
-                            <FormDescription>
-                              Use this rule for all equipment types
-                            </FormDescription>
+                            <FormDescription>Use this rule for all equipment types</FormDescription>
                           </div>
                           <FormControl>
                             <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -581,7 +579,7 @@ export function BillingRuleDialog({ open, onOpenChange, rule }: BillingRuleDialo
                   Cancel
                 </Button>
                 <Button type="submit" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? "Saving..." : rule ? "Update Rule" : "Create Rule"}
+                  {saveMutation.isPending ? 'Saving...' : rule ? 'Update Rule' : 'Create Rule'}
                 </Button>
               </div>
             </form>

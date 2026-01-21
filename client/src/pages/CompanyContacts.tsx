@@ -1,11 +1,11 @@
-import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import MultipleContactsForm from "@/components/forms/MultipleContactsForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Building2, ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
+import { useParams, useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import MultipleContactsForm from '@/components/forms/MultipleContactsForm';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Building2, ArrowLeft } from 'lucide-react';
+import { Link } from 'wouter';
 
 export default function CompanyContacts() {
   const { companyId } = useParams();
@@ -54,7 +54,9 @@ export default function CompanyContacts() {
               <div className="text-center">
                 <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Company Not Found</h3>
-                <p className="text-gray-600 mb-4">The company you're looking for doesn't exist or you don't have access to it.</p>
+                <p className="text-gray-600 mb-4">
+                  The company you're looking for doesn't exist or you don't have access to it.
+                </p>
                 <Link href="/crm">
                   <Button variant="outline">
                     <ArrowLeft className="w-4 h-4 mr-2" />
@@ -87,14 +89,10 @@ export default function CompanyContacts() {
               <span className="text-sm text-gray-600">Company Contacts</span>
             </div>
           </div>
-          
+
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {company.name}
-            </h1>
-            <p className="text-gray-600">
-              Manage contacts and key personnel for this company
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{company.name}</h1>
+            <p className="text-gray-600">Manage contacts and key personnel for this company</p>
           </div>
         </div>
 
@@ -128,9 +126,13 @@ export default function CompanyContacts() {
                 <div>
                   <label className="text-sm font-medium text-gray-500">Website</label>
                   <p className="text-gray-900">
-                    <a 
-                      href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
-                      target="_blank" 
+                    <a
+                      href={
+                        company.website.startsWith('http')
+                          ? company.website
+                          : `https://${company.website}`
+                      }
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 underline"
                     >
@@ -170,9 +172,7 @@ export default function CompanyContacts() {
                         </span>
                       )}
                     </div>
-                    {contact.title && (
-                      <p className="text-sm text-gray-600 mb-1">{contact.title}</p>
-                    )}
+                    {contact.title && <p className="text-sm text-gray-600 mb-1">{contact.title}</p>}
                     {contact.department && (
                       <p className="text-sm text-gray-600 mb-2">{contact.department}</p>
                     )}

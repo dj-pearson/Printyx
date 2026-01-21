@@ -25,6 +25,7 @@ const mappings = autoMapSalesforceColumns(['Business Name', 'Email', 'Phone']);
 ```
 
 The system:
+
 - Normalizes header names (case-insensitive)
 - Matches against known Salesforce field names
 - Returns confidence score based on required field coverage
@@ -41,7 +42,7 @@ import { ColumnMappingInterface } from '@/components/import/ColumnMappingInterfa
     // mappings is a Map<csvColumn, printyxField>
     console.log('Mapped fields:', mappings);
   }}
-/>
+/>;
 ```
 
 ### 3. Confidence Score
@@ -92,14 +93,14 @@ function CsvImportWizard() {
   const transformData = () => {
     return csvData.rows.map((row) => {
       const transformed: Record<string, any> = {};
-      
+
       // Add system fields
       transformed.tenant_id = currentUser.tenantId;
       transformed.created_by = currentUser.id;
       transformed.external_system_id = 'salesforce';
       transformed.record_type = 'customer';
       transformed.status = 'active';
-      
+
       // Map CSV columns to Printyx fields
       csvData.headers.forEach((csvColumn, index) => {
         const printyxField = columnMappings.get(csvColumn);
@@ -107,13 +108,12 @@ function CsvImportWizard() {
           transformed[printyxField] = row[index];
         }
       });
-      
+
       // Combine first + last name if needed
       if (transformed.primary_contact_first_name && transformed.primary_contact_last_name) {
-        transformed.primary_contact_name = 
-          `${transformed.primary_contact_first_name} ${transformed.primary_contact_last_name}`;
+        transformed.primary_contact_name = `${transformed.primary_contact_first_name} ${transformed.primary_contact_last_name}`;
       }
-      
+
       return transformed;
     });
   };
@@ -164,6 +164,7 @@ export function autoMapEAutomateColumns(csvHeaders: string[]): Map<string, strin
 ## Field Types & Validation
 
 Supported field types:
+
 - `string` - Any text
 - `number` - Numeric values
 - `date` - Date/datetime values
@@ -178,15 +179,19 @@ Validation happens automatically during import.
 ## API Reference
 
 ### `autoMapSalesforceColumns(csvHeaders: string[])`
+
 Returns auto-detected mappings as `Map<csvColumn, printyxField>`
 
 ### `calculateMappingConfidence(csvHeaders: string[])`
+
 Returns confidence score 0-100
 
 ### `getPrintyxFields()`
+
 Returns all available Printyx fields for manual mapping
 
 ### `validateFieldValue(value: any, fieldType: string)`
+
 Validates a value against its field type
 
 ---
@@ -216,6 +221,7 @@ Validates a value against its field type
 ## Testing
 
 Test with the sample Salesforce export:
+
 ```
 c:\Users\dpearson\Downloads\report1768837291734.xls
 ```

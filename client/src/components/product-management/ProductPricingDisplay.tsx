@@ -1,7 +1,7 @@
-import { DollarSign, TrendingUp } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { DollarSign, TrendingUp } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
 interface PricingTierData {
   active?: boolean;
@@ -28,23 +28,26 @@ export function ProductPricingDisplay({
   const { data: visibility } = usePricingVisibility();
 
   const formatCurrency = (value?: string | number | null): string => {
-    if (value === null || value === undefined || value === "") return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    if (value === null || value === undefined || value === '') return '—';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return '—';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(num);
   };
 
-  const calculateMargin = (dealerCost?: string | number | null, retailPrice?: string | number | null): string => {
-    if (!dealerCost || !retailPrice) return "—";
-    const dealer = typeof dealerCost === "string" ? parseFloat(dealerCost) : dealerCost;
-    const retail = typeof retailPrice === "string" ? parseFloat(retailPrice) : retailPrice;
+  const calculateMargin = (
+    dealerCost?: string | number | null,
+    retailPrice?: string | number | null,
+  ): string => {
+    if (!dealerCost || !retailPrice) return '—';
+    const dealer = typeof dealerCost === 'string' ? parseFloat(dealerCost) : dealerCost;
+    const retail = typeof retailPrice === 'string' ? parseFloat(retailPrice) : retailPrice;
 
-    if (dealer === 0 || isNaN(dealer) || isNaN(retail)) return "—";
+    if (dealer === 0 || isNaN(dealer) || isNaN(retail)) return '—';
 
     const margin = ((retail - dealer) / dealer) * 100;
     return `${margin.toFixed(1)}%`;
@@ -53,7 +56,7 @@ export function ProductPricingDisplay({
   const renderTierPricing = (
     tierData: PricingTierData | undefined,
     tierName: string,
-    tierColor: string
+    tierColor: string,
   ) => {
     if (!tierData?.active) return null;
 
@@ -135,11 +138,13 @@ export function ProductPricingDisplay({
         <span className="text-sm font-medium">Pricing Tiers</span>
       </div>
 
-      {renderTierPricing(newTier, "New", "bg-blue-50 text-blue-700")}
-      {(newTier?.active && upgradeTier?.active) && <Separator className="my-2" />}
-      {renderTierPricing(upgradeTier, "Upgrade", "bg-purple-50 text-purple-700")}
-      {((newTier?.active || upgradeTier?.active) && lexmarkTier?.active) && <Separator className="my-2" />}
-      {renderTierPricing(lexmarkTier, "Lexmark", "bg-green-50 text-green-700")}
+      {renderTierPricing(newTier, 'New', 'bg-blue-50 text-blue-700')}
+      {newTier?.active && upgradeTier?.active && <Separator className="my-2" />}
+      {renderTierPricing(upgradeTier, 'Upgrade', 'bg-purple-50 text-purple-700')}
+      {(newTier?.active || upgradeTier?.active) && lexmarkTier?.active && (
+        <Separator className="my-2" />
+      )}
+      {renderTierPricing(lexmarkTier, 'Lexmark', 'bg-green-50 text-green-700')}
 
       {/* MSRP as reference if tiers exist */}
       {msrp && (
@@ -160,19 +165,19 @@ export function ProductPricingDisplayCompact({
   tierData,
   tierName,
 }: {
-  tier: "new" | "upgrade" | "lexmark";
+  tier: 'new' | 'upgrade' | 'lexmark';
   tierData?: PricingTierData;
   tierName: string;
 }) {
   const { data: visibility } = usePricingVisibility();
 
   const formatCurrency = (value?: string | number | null): string => {
-    if (value === null || value === undefined || value === "") return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    if (value === null || value === undefined || value === '') return '—';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return '—';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(num);
@@ -181,9 +186,9 @@ export function ProductPricingDisplayCompact({
   if (!tierData?.active) return null;
 
   const tierColors = {
-    new: "bg-blue-100 text-blue-800",
-    upgrade: "bg-purple-100 text-purple-800",
-    lexmark: "bg-green-100 text-green-800",
+    new: 'bg-blue-100 text-blue-800',
+    upgrade: 'bg-purple-100 text-purple-800',
+    lexmark: 'bg-green-100 text-green-800',
   };
 
   return (
@@ -198,9 +203,7 @@ export function ProductPricingDisplayCompact({
           </span>
         )}
         {visibility?.showRepCost && tierData.repCost && (
-          <span className="text-purple-600 font-medium">
-            R: {formatCurrency(tierData.repCost)}
-          </span>
+          <span className="text-purple-600 font-medium">R: {formatCurrency(tierData.repCost)}</span>
         )}
         {tierData.suggestedRetail && (
           <span className="text-green-600 font-bold">

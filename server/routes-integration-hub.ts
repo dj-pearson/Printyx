@@ -19,16 +19,15 @@ const router = express.Router();
 router.get('/api/integration-hub/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Use real dashboard service instead of mock data
     const integrationHubData = await DashboardService.getDashboardData(tenantId);
 
     res.json(integrationHubData);
-    
   } catch (error) {
     console.error('Error fetching integration hub dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
@@ -39,9 +38,9 @@ router.get('/api/integration-hub/dashboard', async (req: any, res) => {
 router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const integrationHubData = {
@@ -58,7 +57,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
         integrationUptime: 99.8,
         averageLatency: 189, // ms
         errorRate: 0.8,
-        rateLimitHits: 23
+        rateLimitHits: 23,
       },
 
       // API Marketplace
@@ -80,10 +79,15 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             authentication: 'OAuth2',
             pricing: 'freemium',
             documentation: 'https://developer.salesforce.com/docs',
-            capabilities: ['lead_management', 'opportunity_tracking', 'contact_sync', 'activity_logging'],
+            capabilities: [
+              'lead_management',
+              'opportunity_tracking',
+              'contact_sync',
+              'activity_logging',
+            ],
             lastUpdated: new Date('2025-01-15T00:00:00Z'),
             supportLevel: 'enterprise',
-            setupComplexity: 'medium'
+            setupComplexity: 'medium',
           },
           {
             id: 'api-hubspot',
@@ -104,7 +108,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             capabilities: ['email_marketing', 'lead_scoring', 'campaign_automation', 'analytics'],
             lastUpdated: new Date('2025-01-20T00:00:00Z'),
             supportLevel: 'standard',
-            setupComplexity: 'easy'
+            setupComplexity: 'easy',
           },
           {
             id: 'api-stripe',
@@ -122,10 +126,15 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             authentication: 'API Key',
             pricing: 'usage_based',
             documentation: 'https://stripe.com/docs/api',
-            capabilities: ['payment_processing', 'subscription_billing', 'fraud_detection', 'reporting'],
+            capabilities: [
+              'payment_processing',
+              'subscription_billing',
+              'fraud_detection',
+              'reporting',
+            ],
             lastUpdated: new Date('2025-01-25T00:00:00Z'),
             supportLevel: 'enterprise',
-            setupComplexity: 'medium'
+            setupComplexity: 'medium',
           },
           {
             id: 'api-quickbooks',
@@ -146,7 +155,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             capabilities: ['financial_sync', 'invoice_management', 'expense_tracking', 'reporting'],
             lastUpdated: new Date('2025-01-10T00:00:00Z'),
             supportLevel: 'standard',
-            setupComplexity: 'hard'
+            setupComplexity: 'hard',
           },
           {
             id: 'api-mailchimp',
@@ -167,7 +176,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             capabilities: ['email_campaigns', 'audience_sync', 'automation', 'analytics'],
             lastUpdated: new Date('2025-01-18T00:00:00Z'),
             supportLevel: 'standard',
-            setupComplexity: 'easy'
+            setupComplexity: 'easy',
           },
           {
             id: 'api-slack',
@@ -185,13 +194,18 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             authentication: 'OAuth2',
             pricing: 'free',
             documentation: 'https://api.slack.com/',
-            capabilities: ['notifications', 'channel_management', 'file_sharing', 'bot_integration'],
+            capabilities: [
+              'notifications',
+              'channel_management',
+              'file_sharing',
+              'bot_integration',
+            ],
             lastUpdated: new Date('2025-01-22T00:00:00Z'),
             supportLevel: 'community',
-            setupComplexity: 'easy'
-          }
+            setupComplexity: 'easy',
+          },
         ],
-        
+
         categories: [
           { name: 'CRM', count: 8, description: 'Customer relationship management systems' },
           { name: 'Marketing', count: 6, description: 'Marketing automation and campaign tools' },
@@ -200,14 +214,18 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           { name: 'Communication', count: 7, description: 'Team communication and collaboration' },
           { name: 'Analytics', count: 3, description: 'Business intelligence and reporting' },
           { name: 'E-commerce', count: 4, description: 'Online store and marketplace platforms' },
-          { name: 'Project Management', count: 5, description: 'Project tracking and team coordination' }
+          {
+            name: 'Project Management',
+            count: 5,
+            description: 'Project tracking and team coordination',
+          },
         ],
-        
+
         featuredIntegrations: [
           { id: 'api-salesforce', reason: 'Most popular CRM integration' },
           { id: 'api-stripe', reason: 'Highest rated payment processor' },
-          { id: 'api-hubspot', reason: 'Best for marketing automation' }
-        ]
+          { id: 'api-hubspot', reason: 'Best for marketing automation' },
+        ],
       },
 
       // Active Integrations
@@ -226,34 +244,68 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           averageLatency: 234, // ms
           dataVolume: 2.3, // GB
           errorCount: 5,
-          
+
           configuration: {
             environment: 'production',
             instanceUrl: 'https://company.my.salesforce.com',
             apiVersion: 'v59.0',
             rateLimitPerHour: 5000,
             retryAttempts: 3,
-            timeoutSeconds: 30
+            timeoutSeconds: 30,
           },
-          
+
           dataMapping: {
-            contacts: { source: 'salesforce.Contact', target: 'printyx.BusinessRecord', fields: 23 },
+            contacts: {
+              source: 'salesforce.Contact',
+              target: 'printyx.BusinessRecord',
+              fields: 23,
+            },
             accounts: { source: 'salesforce.Account', target: 'printyx.Customer', fields: 18 },
             opportunities: { source: 'salesforce.Opportunity', target: 'printyx.Deal', fields: 15 },
-            activities: { source: 'salesforce.Task', target: 'printyx.Activity', fields: 12 }
+            activities: { source: 'salesforce.Task', target: 'printyx.Activity', fields: 12 },
           },
-          
+
           webhooks: [
-            { event: 'contact.created', url: '/webhook/salesforce/contact', status: 'active', deliveryRate: 99.2 },
-            { event: 'opportunity.updated', url: '/webhook/salesforce/opportunity', status: 'active', deliveryRate: 97.8 },
-            { event: 'account.deleted', url: '/webhook/salesforce/account', status: 'active', deliveryRate: 98.5 }
+            {
+              event: 'contact.created',
+              url: '/webhook/salesforce/contact',
+              status: 'active',
+              deliveryRate: 99.2,
+            },
+            {
+              event: 'opportunity.updated',
+              url: '/webhook/salesforce/opportunity',
+              status: 'active',
+              deliveryRate: 97.8,
+            },
+            {
+              event: 'account.deleted',
+              url: '/webhook/salesforce/account',
+              status: 'active',
+              deliveryRate: 98.5,
+            },
           ],
-          
+
           recentActivity: [
-            { timestamp: new Date('2025-02-01T08:20:00Z'), action: 'contact_sync', records: 234, status: 'success' },
-            { timestamp: new Date('2025-02-01T08:15:00Z'), action: 'opportunity_update', records: 67, status: 'success' },
-            { timestamp: new Date('2025-02-01T08:10:00Z'), action: 'account_sync', records: 12, status: 'success' }
-          ]
+            {
+              timestamp: new Date('2025-02-01T08:20:00Z'),
+              action: 'contact_sync',
+              records: 234,
+              status: 'success',
+            },
+            {
+              timestamp: new Date('2025-02-01T08:15:00Z'),
+              action: 'opportunity_update',
+              records: 67,
+              status: 'success',
+            },
+            {
+              timestamp: new Date('2025-02-01T08:10:00Z'),
+              action: 'account_sync',
+              records: 12,
+              status: 'success',
+            },
+          ],
         },
         {
           id: 'integration-002',
@@ -269,33 +321,67 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           averageLatency: 187,
           dataVolume: 0.8,
           errorCount: 2,
-          
+
           configuration: {
             environment: 'production',
             publishableKey: 'pk_live_***',
             webhookSecret: 'whsec_***',
             accountId: 'acct_***',
-            apiVersion: '2023-10-16'
+            apiVersion: '2023-10-16',
           },
-          
+
           dataMapping: {
             payments: { source: 'stripe.PaymentIntent', target: 'printyx.Payment', fields: 14 },
             customers: { source: 'stripe.Customer', target: 'printyx.Customer', fields: 8 },
             invoices: { source: 'stripe.Invoice', target: 'printyx.Invoice', fields: 16 },
-            subscriptions: { source: 'stripe.Subscription', target: 'printyx.Contract', fields: 11 }
+            subscriptions: {
+              source: 'stripe.Subscription',
+              target: 'printyx.Contract',
+              fields: 11,
+            },
           },
-          
+
           webhooks: [
-            { event: 'payment_intent.succeeded', url: '/webhook/stripe/payment', status: 'active', deliveryRate: 99.8 },
-            { event: 'invoice.payment_failed', url: '/webhook/stripe/invoice', status: 'active', deliveryRate: 98.9 },
-            { event: 'customer.subscription.updated', url: '/webhook/stripe/subscription', status: 'active', deliveryRate: 99.1 }
+            {
+              event: 'payment_intent.succeeded',
+              url: '/webhook/stripe/payment',
+              status: 'active',
+              deliveryRate: 99.8,
+            },
+            {
+              event: 'invoice.payment_failed',
+              url: '/webhook/stripe/invoice',
+              status: 'active',
+              deliveryRate: 98.9,
+            },
+            {
+              event: 'customer.subscription.updated',
+              url: '/webhook/stripe/subscription',
+              status: 'active',
+              deliveryRate: 99.1,
+            },
           ],
-          
+
           recentActivity: [
-            { timestamp: new Date('2025-02-01T08:18:00Z'), action: 'payment_processed', records: 45, status: 'success' },
-            { timestamp: new Date('2025-02-01T08:12:00Z'), action: 'invoice_created', records: 23, status: 'success' },
-            { timestamp: new Date('2025-02-01T08:05:00Z'), action: 'subscription_updated', records: 8, status: 'success' }
-          ]
+            {
+              timestamp: new Date('2025-02-01T08:18:00Z'),
+              action: 'payment_processed',
+              records: 45,
+              status: 'success',
+            },
+            {
+              timestamp: new Date('2025-02-01T08:12:00Z'),
+              action: 'invoice_created',
+              records: 23,
+              status: 'success',
+            },
+            {
+              timestamp: new Date('2025-02-01T08:05:00Z'),
+              action: 'subscription_updated',
+              records: 8,
+              status: 'success',
+            },
+          ],
         },
         {
           id: 'integration-003',
@@ -311,33 +397,58 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           averageLatency: 298,
           dataVolume: 1.5,
           errorCount: 8,
-          
+
           configuration: {
             portalId: '12345678',
             apiKey: 'pat-na1-***',
             region: 'na1',
             rateLimitPerDay: 100000,
-            batchSize: 100
+            batchSize: 100,
           },
-          
+
           dataMapping: {
             contacts: { source: 'hubspot.Contact', target: 'printyx.Lead', fields: 19 },
             companies: { source: 'hubspot.Company', target: 'printyx.Account', fields: 13 },
             deals: { source: 'hubspot.Deal', target: 'printyx.Opportunity', fields: 17 },
-            emails: { source: 'hubspot.Email', target: 'printyx.EmailActivity', fields: 9 }
+            emails: { source: 'hubspot.Email', target: 'printyx.EmailActivity', fields: 9 },
           },
-          
+
           webhooks: [
-            { event: 'contact.propertyChange', url: '/webhook/hubspot/contact', status: 'active', deliveryRate: 96.7 },
-            { event: 'deal.creation', url: '/webhook/hubspot/deal', status: 'active', deliveryRate: 98.3 }
+            {
+              event: 'contact.propertyChange',
+              url: '/webhook/hubspot/contact',
+              status: 'active',
+              deliveryRate: 96.7,
+            },
+            {
+              event: 'deal.creation',
+              url: '/webhook/hubspot/deal',
+              status: 'active',
+              deliveryRate: 98.3,
+            },
           ],
-          
+
           recentActivity: [
-            { timestamp: new Date('2025-02-01T08:16:00Z'), action: 'contact_sync', records: 156, status: 'success' },
-            { timestamp: new Date('2025-02-01T07:16:00Z'), action: 'deal_update', records: 34, status: 'success' },
-            { timestamp: new Date('2025-02-01T06:16:00Z'), action: 'company_sync', records: 67, status: 'success' }
-          ]
-        }
+            {
+              timestamp: new Date('2025-02-01T08:16:00Z'),
+              action: 'contact_sync',
+              records: 156,
+              status: 'success',
+            },
+            {
+              timestamp: new Date('2025-02-01T07:16:00Z'),
+              action: 'deal_update',
+              records: 34,
+              status: 'success',
+            },
+            {
+              timestamp: new Date('2025-02-01T06:16:00Z'),
+              action: 'company_sync',
+              records: 67,
+              status: 'success',
+            },
+          ],
+        },
       ],
 
       // Webhook Management
@@ -350,7 +461,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
         averageDeliveryTime: 234, // ms
         retryAttempts: 1567,
         successfulRetries: 1456,
-        
+
         recentDeliveries: [
           {
             id: 'delivery-001',
@@ -361,7 +472,11 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             responseCode: 200,
             responseTime: 187, // ms
             attempts: 1,
-            payload: { event: 'contact.created', objectId: 'SF001234', changes: ['email', 'phone'] }
+            payload: {
+              event: 'contact.created',
+              objectId: 'SF001234',
+              changes: ['email', 'phone'],
+            },
           },
           {
             id: 'delivery-002',
@@ -372,7 +487,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             responseCode: 200,
             responseTime: 156,
             attempts: 1,
-            payload: { event: 'payment_intent.succeeded', amount: 15000, currency: 'usd' }
+            payload: { event: 'payment_intent.succeeded', amount: 15000, currency: 'usd' },
           },
           {
             id: 'delivery-003',
@@ -384,23 +499,23 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             responseTime: 5000,
             attempts: 3,
             payload: { event: 'deal.propertyChange', dealId: 'HS789012', stage: 'closed-won' },
-            error: 'Internal server error during processing'
-          }
+            error: 'Internal server error during processing',
+          },
         ],
-        
+
         deliveryMetrics: {
           last24Hours: { delivered: 2345, failed: 67, successRate: 97.2 },
           last7Days: { delivered: 16789, failed: 456, successRate: 97.3 },
-          last30Days: { delivered: 78456, failed: 2134, successRate: 97.4 }
+          last30Days: { delivered: 78456, failed: 2134, successRate: 97.4 },
         },
-        
+
         retryConfiguration: {
           maxAttempts: 5,
           backoffStrategy: 'exponential',
           initialDelay: 1000, // ms
           maxDelay: 30000,
-          timeoutAfter: 3600000 // 1 hour
-        }
+          timeoutAfter: 3600000, // 1 hour
+        },
       },
 
       // Data Transformation Engine
@@ -415,26 +530,49 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             recordsProcessed: 45678,
             successRate: 98.7,
             lastRun: new Date('2025-02-01T08:20:00Z'),
-            
+
             fieldMappings: [
-              { source: 'FirstName', target: 'firstName', transformation: 'capitalize', required: true },
-              { source: 'LastName', target: 'lastName', transformation: 'capitalize', required: true },
+              {
+                source: 'FirstName',
+                target: 'firstName',
+                transformation: 'capitalize',
+                required: true,
+              },
+              {
+                source: 'LastName',
+                target: 'lastName',
+                transformation: 'capitalize',
+                required: true,
+              },
               { source: 'Email', target: 'email', transformation: 'lowercase', required: true },
               { source: 'Phone', target: 'phone', transformation: 'format_phone', required: false },
-              { source: 'Account.Name', target: 'companyName', transformation: 'none', required: false }
+              {
+                source: 'Account.Name',
+                target: 'companyName',
+                transformation: 'none',
+                required: false,
+              },
             ],
-            
+
             validationRules: [
               { field: 'email', rule: 'email_format', errorAction: 'reject' },
               { field: 'phone', rule: 'phone_format', errorAction: 'warn' },
-              { field: 'firstName', rule: 'required', errorAction: 'reject' }
+              { field: 'firstName', rule: 'required', errorAction: 'reject' },
             ],
-            
+
             businessRules: [
-              { condition: 'Account.Type = "Customer"', action: 'set_record_type', value: 'customer' },
+              {
+                condition: 'Account.Type = "Customer"',
+                action: 'set_record_type',
+                value: 'customer',
+              },
               { condition: 'Lead.Status = "Qualified"', action: 'set_priority', value: 'high' },
-              { condition: 'Contact.CreatedDate > LAST_N_DAYS:30', action: 'add_tag', value: 'new_contact' }
-            ]
+              {
+                condition: 'Contact.CreatedDate > LAST_N_DAYS:30',
+                action: 'add_tag',
+                value: 'new_contact',
+              },
+            ],
           },
           {
             id: 'rule-002',
@@ -445,33 +583,57 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             recordsProcessed: 8934,
             successRate: 99.4,
             lastRun: new Date('2025-02-01T08:18:00Z'),
-            
+
             fieldMappings: [
-              { source: 'amount', target: 'totalAmount', transformation: 'cents_to_dollars', required: true },
-              { source: 'currency', target: 'currency', transformation: 'uppercase', required: true },
-              { source: 'customer.email', target: 'customerEmail', transformation: 'lowercase', required: true },
-              { source: 'created', target: 'paymentDate', transformation: 'unix_to_date', required: true }
+              {
+                source: 'amount',
+                target: 'totalAmount',
+                transformation: 'cents_to_dollars',
+                required: true,
+              },
+              {
+                source: 'currency',
+                target: 'currency',
+                transformation: 'uppercase',
+                required: true,
+              },
+              {
+                source: 'customer.email',
+                target: 'customerEmail',
+                transformation: 'lowercase',
+                required: true,
+              },
+              {
+                source: 'created',
+                target: 'paymentDate',
+                transformation: 'unix_to_date',
+                required: true,
+              },
             ],
-            
+
             validationRules: [
               { field: 'totalAmount', rule: 'positive_number', errorAction: 'reject' },
-              { field: 'currency', rule: 'valid_currency', errorAction: 'reject' }
+              { field: 'currency', rule: 'valid_currency', errorAction: 'reject' },
             ],
-            
+
             businessRules: [
               { condition: 'amount > 100000', action: 'set_status', value: 'requires_approval' },
-              { condition: 'currency != "USD"', action: 'convert_currency', value: 'USD' }
-            ]
-          }
+              { condition: 'currency != "USD"', action: 'convert_currency', value: 'USD' },
+            ],
+          },
         ],
-        
+
         customFunctions: [
-          { name: 'format_phone', description: 'Format phone number to standard format', usage: 2345 },
+          {
+            name: 'format_phone',
+            description: 'Format phone number to standard format',
+            usage: 2345,
+          },
           { name: 'capitalize', description: 'Capitalize first letter of each word', usage: 5678 },
           { name: 'cents_to_dollars', description: 'Convert cents to dollar amount', usage: 1234 },
-          { name: 'unix_to_date', description: 'Convert Unix timestamp to date', usage: 3456 }
+          { name: 'unix_to_date', description: 'Convert Unix timestamp to date', usage: 3456 },
         ],
-        
+
         errorHandling: {
           totalErrors: 234,
           fieldValidationErrors: 156,
@@ -479,8 +641,8 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           businessRuleErrors: 33,
           retryableErrors: 178,
           permanentErrors: 56,
-          averageRetryTime: 2.3 // minutes
-        }
+          averageRetryTime: 2.3, // minutes
+        },
       },
 
       // API Rate Limiting & Quotas
@@ -494,7 +656,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             remaining: 1544,
             resetTime: new Date('2025-02-02T00:00:00Z'),
             warningThreshold: 4000,
-            status: 'ok'
+            status: 'ok',
           },
           {
             apiId: 'api-stripe',
@@ -504,7 +666,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             remaining: 33,
             resetTime: new Date('2025-02-01T08:21:00Z'),
             warningThreshold: 80,
-            status: 'ok'
+            status: 'ok',
           },
           {
             apiId: 'api-hubspot',
@@ -514,10 +676,10 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             remaining: 12346,
             resetTime: new Date('2025-02-02T00:00:00Z'),
             warningThreshold: 90000,
-            status: 'warning'
-          }
+            status: 'warning',
+          },
         ],
-        
+
         rateLimitHits: [
           {
             timestamp: new Date('2025-02-01T07:45:00Z'),
@@ -525,7 +687,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             endpoint: '/contacts/v1/lists/all/contacts/all',
             limitType: 'requests_per_second',
             retryAfter: 2000, // ms
-            action: 'queued'
+            action: 'queued',
           },
           {
             timestamp: new Date('2025-02-01T06:30:00Z'),
@@ -533,9 +695,9 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
             endpoint: '/services/data/v59.0/query',
             limitType: 'concurrent_requests',
             retryAfter: 1000,
-            action: 'delayed'
-          }
-        ]
+            action: 'delayed',
+          },
+        ],
       },
 
       // Integration Analytics
@@ -547,40 +709,40 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           averageResponseTime: 189, // ms
           peakUsageHour: '10:00-11:00',
           topIntegrationByVolume: 'Salesforce CRM',
-          topIntegrationByUsage: 'Stripe Payments'
+          topIntegrationByUsage: 'Stripe Payments',
         },
-        
+
         performanceMetrics: {
           responseTimePercentiles: {
             p50: 156, // ms
             p95: 789,
-            p99: 2345
+            p99: 2345,
           },
           errorRateByCategory: {
             authentication: 0.2, // percentage
             rateLimiting: 0.3,
             timeout: 0.1,
-            serverError: 0.2
+            serverError: 0.2,
           },
           uptimeByIntegration: {
             'Salesforce CRM': 99.8,
             'Stripe Payments': 99.9,
             'HubSpot Marketing': 99.2,
-            'QuickBooks Online': 98.7
-          }
+            'QuickBooks Online': 98.7,
+          },
         },
-        
+
         costAnalysis: {
           totalMonthlyCost: 2345.67,
           costByProvider: {
-            'Salesforce': 890.00,
-            'Stripe': 567.89,
-            'HubSpot': 234.56,
-            'Others': 653.22
+            Salesforce: 890.0,
+            Stripe: 567.89,
+            HubSpot: 234.56,
+            Others: 653.22,
           },
           costPerApiCall: 0.0019,
-          estimatedMonthlySavings: 1234.56 // from automation
-        }
+          estimatedMonthlySavings: 1234.56, // from automation
+        },
       },
 
       // Security & Compliance
@@ -591,38 +753,37 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
           certificateBasedAuth: 3,
           tokenRotationSchedule: 'monthly',
           lastSecurityAudit: new Date('2025-01-15T00:00:00Z'),
-          vulnerabilityScore: 2.4 // out of 10, lower is better
+          vulnerabilityScore: 2.4, // out of 10, lower is better
         },
-        
+
         dataEncryption: {
           inTransit: true,
           atRest: true,
           encryptionStandard: 'AES-256',
           keyManagement: 'AWS KMS',
-          certificateValidUntil: new Date('2025-12-31T00:00:00Z')
+          certificateValidUntil: new Date('2025-12-31T00:00:00Z'),
         },
-        
+
         complianceStatus: {
           gdprCompliant: true,
           hipaaCompliant: true,
           soc2Compliant: true,
           lastComplianceReview: new Date('2025-01-20T00:00:00Z'),
           dataRetentionPolicies: 'active',
-          auditLogsRetention: '7 years'
+          auditLogsRetention: '7 years',
         },
-        
+
         accessControl: {
           rbacEnabled: true,
           mfaRequired: true,
           ipWhitelistingActive: false,
           sessionTimeout: 3600, // seconds
-          failedLoginLockout: 15 // minutes
-        }
-      }
+          failedLoginLockout: 15, // minutes
+        },
+      },
     };
 
     res.json(integrationHubData);
-    
   } catch (error) {
     console.error('Error fetching integration hub dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
@@ -634,9 +795,9 @@ router.get('/api/integration-hub/marketplace', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { category, search } = req.query;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock marketplace data with filtering
@@ -646,7 +807,6 @@ router.get('/api/integration-hub/marketplace', async (req: any, res) => {
     ];
 
     res.json({ apis: marketplaceAPIs, total: marketplaceAPIs.length });
-    
   } catch (error) {
     console.error('Error fetching marketplace APIs:', error);
     res.status(500).json({ message: 'Failed to fetch marketplace APIs' });
@@ -658,9 +818,9 @@ router.post('/api/integration-hub/integrations', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const { apiId, configuration } = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock integration setup
@@ -670,11 +830,10 @@ router.post('/api/integration-hub/integrations', async (req: any, res) => {
       status: 'configuring',
       configuredAt: new Date(),
       configuredBy: req.user.email,
-      configuration
+      configuration,
     };
 
     res.status(201).json(newIntegration);
-    
   } catch (error) {
     console.error('Error creating integration:', error);
     res.status(500).json({ message: 'Failed to create integration' });

@@ -1,36 +1,63 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Plus, 
-  Calculator, 
-  Calendar, 
-  Activity, 
-  DollarSign, 
-  FileText, 
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Plus,
+  Calculator,
+  Calendar,
+  Activity,
+  DollarSign,
+  FileText,
   TrendingUp,
   AlertCircle,
   CheckCircle,
   Clock,
-  RefreshCw
-} from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMeterReadingSchema, insertContractTieredRateSchema } from "@shared/schema";
-import type { MeterReading, Equipment, Contract, ContractTieredRate, Invoice } from "@shared/schema";
-import { z } from "zod";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+  RefreshCw,
+} from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertMeterReadingSchema, insertContractTieredRateSchema } from '@shared/schema';
+import type {
+  MeterReading,
+  Equipment,
+  Contract,
+  ContractTieredRate,
+  Invoice,
+} from '@shared/schema';
+import { z } from 'zod';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 const createMeterReadingSchema = insertMeterReadingSchema.extend({
   readingDate: z.string(),
@@ -47,28 +74,28 @@ type CreateTieredRateInput = z.infer<typeof createTieredRateSchema>;
 export default function MeterBilling() {
   const [isCreateReadingDialogOpen, setIsCreateReadingDialogOpen] = useState(false);
   const [isCreateTieredRateDialogOpen, setIsCreateTieredRateDialogOpen] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<string>("");
+  const [selectedContract, setSelectedContract] = useState<string>('');
   const queryClient = useQueryClient();
 
   // Data fetching
   const { data: meterReadings, isLoading: isLoadingReadings } = useQuery<MeterReading[]>({
-    queryKey: ["/api/meter-readings"],
+    queryKey: ['/api/meter-readings'],
   });
 
   const { data: equipment } = useQuery<Equipment[]>({
-    queryKey: ["/api/equipment"],
+    queryKey: ['/api/equipment'],
   });
 
   const { data: contracts } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts"],
+    queryKey: ['/api/contracts'],
   });
 
   const { data: tieredRates } = useQuery<ContractTieredRate[]>({
-    queryKey: ["/api/contract-tiered-rates"],
+    queryKey: ['/api/contract-tiered-rates'],
   });
 
   const { data: invoices } = useQuery<Invoice[]>({
-    queryKey: ["/api/invoices"],
+    queryKey: ['/api/invoices'],
   });
 
   // Forms
@@ -110,8 +137,8 @@ export default function MeterBilling() {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/meter-readings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meter-readings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
       setIsCreateReadingDialogOpen(false);
       meterForm.reset();
     },
@@ -130,8 +157,8 @@ export default function MeterBilling() {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contract-tiered-rates"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contract-tiered-rates'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       setIsCreateTieredRateDialogOpen(false);
       tieredRateForm.reset();
     },
@@ -145,8 +172,8 @@ export default function MeterBilling() {
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/meter-readings"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meter-readings'] });
     },
   });
 
@@ -161,12 +188,12 @@ export default function MeterBilling() {
 
   // Utility functions
   const getEquipmentName = (equipmentId: string) => {
-    const eq = equipment?.find(e => e.id === equipmentId);
+    const eq = equipment?.find((e) => e.id === equipmentId);
     return eq ? `${eq.manufacturer} ${eq.model} (${eq.serialNumber})` : 'Unknown Equipment';
   };
 
   const getContractNumber = (contractId: string) => {
-    const contract = contracts?.find(c => c.id === contractId);
+    const contract = contracts?.find((c) => c.id === contractId);
     return contract?.contractNumber || 'Unknown Contract';
   };
 
@@ -178,14 +205,10 @@ export default function MeterBilling() {
       api: { variant: 'outline' as const, color: 'bg-purple-100' },
       remote_monitoring: { variant: 'secondary' as const, color: 'bg-orange-100' },
     };
-    
+
     const config = variants[method as keyof typeof variants] || variants.manual;
-    
-    return (
-      <Badge variant={config.variant}>
-        {method.replace('_', ' ').toUpperCase()}
-      </Badge>
-    );
+
+    return <Badge variant={config.variant}>{method.replace('_', ' ').toUpperCase()}</Badge>;
   };
 
   const getBillingStatusBadge = (status: string) => {
@@ -195,10 +218,10 @@ export default function MeterBilling() {
       billed: { variant: 'default' as const, icon: FileText },
       disputed: { variant: 'destructive' as const, icon: AlertCircle },
     };
-    
+
     const config = variants[status as keyof typeof variants] || variants.pending;
     const Icon = config.icon;
-    
+
     return (
       <Badge variant={config.variant} className="gap-1">
         <Icon className="w-3 h-3" />
@@ -208,15 +231,20 @@ export default function MeterBilling() {
   };
 
   // Calculate metrics
-  const monthlyRevenue = invoices?.reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0) || 0;
-  const pendingReadings = meterReadings?.filter(r => r.billingStatus === 'pending').length || 0;
-  const averageBlackRate = contracts?.reduce((sum, c) => sum + parseFloat(c.blackRate?.toString() || '0'), 0) / (contracts?.length || 1) || 0;
-  const averageColorRate = contracts?.reduce((sum, c) => sum + parseFloat(c.colorRate?.toString() || '0'), 0) / (contracts?.length || 1) || 0;
+  const monthlyRevenue =
+    invoices?.reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0) || 0;
+  const pendingReadings = meterReadings?.filter((r) => r.billingStatus === 'pending').length || 0;
+  const averageBlackRate =
+    contracts?.reduce((sum, c) => sum + parseFloat(c.blackRate?.toString() || '0'), 0) /
+      (contracts?.length || 1) || 0;
+  const averageColorRate =
+    contracts?.reduce((sum, c) => sum + parseFloat(c.colorRate?.toString() || '0'), 0) /
+      (contracts?.length || 1) || 0;
 
   if (isLoadingReadings) {
     return (
-      <MainLayout 
-        title="Meter Billing" 
+      <MainLayout
+        title="Meter Billing"
         description="Comprehensive meter billing and contract management system"
       >
         <div className="grid gap-4">
@@ -234,8 +262,8 @@ export default function MeterBilling() {
   }
 
   return (
-    <MainLayout 
-      title="Meter Billing" 
+    <MainLayout
+      title="Meter Billing"
       description="Comprehensive meter billing and contract management system"
     >
       <div className="space-y-6">
@@ -245,7 +273,9 @@ export default function MeterBilling() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Monthly Revenue</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                    Monthly Revenue
+                  </p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                     ${monthlyRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
@@ -261,8 +291,12 @@ export default function MeterBilling() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Pending Readings</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{pendingReadings}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                    Pending Readings
+                  </p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
+                    {pendingReadings}
+                  </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
@@ -275,7 +309,9 @@ export default function MeterBilling() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Avg B&W Rate</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                    Avg B&W Rate
+                  </p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                     ${averageBlackRate.toFixed(4)}
                   </p>
@@ -291,7 +327,9 @@ export default function MeterBilling() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">Avg Color Rate</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                    Avg Color Rate
+                  </p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
                     ${averageColorRate.toFixed(4)}
                   </p>
@@ -321,7 +359,10 @@ export default function MeterBilling() {
                 </DialogDescription>
               </DialogHeader>
               <Form {...meterForm}>
-                <form onSubmit={meterForm.handleSubmit(handleCreateMeterReading)} className="space-y-4">
+                <form
+                  onSubmit={meterForm.handleSubmit(handleCreateMeterReading)}
+                  className="space-y-4"
+                >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={meterForm.control}
@@ -372,7 +413,7 @@ export default function MeterBilling() {
                       )}
                     />
                   </div>
-                  
+
                   <FormField
                     control={meterForm.control}
                     name="readingDate"
@@ -464,8 +505,8 @@ export default function MeterBilling() {
                     >
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={createMeterReadingMutation.isPending}
                       className="w-full sm:w-auto"
                     >
@@ -477,8 +518,8 @@ export default function MeterBilling() {
             </DialogContent>
           </Dialog>
 
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => generateInvoicesMutation.mutate()}
             className="w-full sm:w-auto"
             disabled={generateInvoicesMutation.isPending}
@@ -491,23 +532,30 @@ export default function MeterBilling() {
         {/* Main Content Tabs */}
         <Tabs defaultValue="readings" className="space-y-4">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-10">
-            <TabsTrigger value="readings" className="text-xs sm:text-sm">Meter Readings</TabsTrigger>
-            <TabsTrigger value="contracts" className="text-xs sm:text-sm">Contract Management</TabsTrigger>
-            <TabsTrigger value="profitability" className="text-xs sm:text-sm">Profitability Analysis</TabsTrigger>
+            <TabsTrigger value="readings" className="text-xs sm:text-sm">
+              Meter Readings
+            </TabsTrigger>
+            <TabsTrigger value="contracts" className="text-xs sm:text-sm">
+              Contract Management
+            </TabsTrigger>
+            <TabsTrigger value="profitability" className="text-xs sm:text-sm">
+              Profitability Analysis
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="readings" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Recent Meter Readings</CardTitle>
-                <CardDescription>
-                  Track equipment usage and billing calculations
-                </CardDescription>
+                <CardDescription>Track equipment usage and billing calculations</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {meterReadings?.slice(0, 10).map((reading) => (
-                    <div key={reading.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={reading.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{getEquipmentName(reading.equipmentId)}</p>
@@ -515,8 +563,8 @@ export default function MeterBilling() {
                           {getBillingStatusBadge(reading.billingStatus)}
                         </div>
                         <p className="text-sm text-gray-600">
-                          Contract: {getContractNumber(reading.contractId)} | 
-                          Date: {format(new Date(reading.readingDate), 'MMM dd, yyyy')}
+                          Contract: {getContractNumber(reading.contractId)} | Date:{' '}
+                          {format(new Date(reading.readingDate), 'MMM dd, yyyy')}
                         </p>
                       </div>
                       <div className="text-right">
@@ -543,9 +591,7 @@ export default function MeterBilling() {
             <Card>
               <CardHeader>
                 <CardTitle>Contract Overview</CardTitle>
-                <CardDescription>
-                  Manage billing contracts and pricing structures
-                </CardDescription>
+                <CardDescription>Manage billing contracts and pricing structures</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -555,7 +601,7 @@ export default function MeterBilling() {
                         <div>
                           <h3 className="font-medium">{contract.contractNumber}</h3>
                           <p className="text-sm text-gray-600">
-                            {format(new Date(contract.startDate), 'MMM dd, yyyy')} - 
+                            {format(new Date(contract.startDate), 'MMM dd, yyyy')} -
                             {format(new Date(contract.endDate), 'MMM dd, yyyy')}
                           </p>
                         </div>
@@ -597,11 +643,18 @@ export default function MeterBilling() {
                   <div className="space-y-4">
                     <h4 className="font-medium">Revenue by Contract</h4>
                     {contracts?.map((contract) => {
-                      const contractInvoices = invoices?.filter(inv => inv.contractId === contract.id) || [];
-                      const totalRevenue = contractInvoices.reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0);
+                      const contractInvoices =
+                        invoices?.filter((inv) => inv.contractId === contract.id) || [];
+                      const totalRevenue = contractInvoices.reduce(
+                        (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
+                        0,
+                      );
                       const equipmentCost = parseFloat(contract.equipmentCost?.toString() || '0');
-                      const margin = equipmentCost > 0 ? ((totalRevenue - equipmentCost) / totalRevenue * 100) : 0;
-                      
+                      const margin =
+                        equipmentCost > 0
+                          ? ((totalRevenue - equipmentCost) / totalRevenue) * 100
+                          : 0;
+
                       return (
                         <div key={contract.id} className="p-3 border rounded">
                           <div className="flex justify-between items-center">
@@ -616,19 +669,25 @@ export default function MeterBilling() {
                       );
                     })}
                   </div>
-                  
+
                   <div className="space-y-4">
                     <h4 className="font-medium">Collection Method Performance</h4>
-                    {['manual', 'email', 'dca', 'api'].map(method => {
-                      const methodReadings = meterReadings?.filter(r => r.collectionMethod === method) || [];
-                      const successRate = methodReadings.length > 0 
-                        ? (methodReadings.filter(r => r.billingStatus !== 'pending').length / methodReadings.length * 100) 
-                        : 0;
-                      
+                    {['manual', 'email', 'dca', 'api'].map((method) => {
+                      const methodReadings =
+                        meterReadings?.filter((r) => r.collectionMethod === method) || [];
+                      const successRate =
+                        methodReadings.length > 0
+                          ? (methodReadings.filter((r) => r.billingStatus !== 'pending').length /
+                              methodReadings.length) *
+                            100
+                          : 0;
+
                       return (
                         <div key={method} className="p-3 border rounded">
                           <div className="flex justify-between items-center">
-                            <span className="font-medium">{method.replace('_', ' ').toUpperCase()}</span>
+                            <span className="font-medium">
+                              {method.replace('_', ' ').toUpperCase()}
+                            </span>
                             <span>{successRate.toFixed(1)}%</span>
                           </div>
                           <div className="text-sm text-gray-600 mt-1">

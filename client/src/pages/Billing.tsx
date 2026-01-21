@@ -1,14 +1,8 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -24,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Form,
   FormControl,
@@ -32,33 +26,25 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import {
-  CreditCard,
-  Download,
-  Plus,
-  Trash2,
-  Edit,
-  CheckCircle,
-  Building2,
-} from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { format } from "date-fns";
+} from '@/components/ui/form';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import { CreditCard, Download, Plus, Trash2, Edit, CheckCircle, Building2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { format } from 'date-fns';
 
 const billingAddressSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  addressLine1: z.string().min(1, "Address is required"),
+  name: z.string().min(1, 'Name is required'),
+  addressLine1: z.string().min(1, 'Address is required'),
   addressLine2: z.string().optional(),
-  city: z.string().min(1, "City is required"),
-  state: z.string().min(1, "State is required"),
-  postalCode: z.string().min(1, "Postal code is required"),
-  country: z.string().default("US"),
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(1, 'State is required'),
+  postalCode: z.string().min(1, 'Postal code is required'),
+  country: z.string().default('US'),
 });
 
 type BillingAddressForm = z.infer<typeof billingAddressSchema>;
@@ -71,57 +57,54 @@ export default function Billing() {
   const form = useForm<BillingAddressForm>({
     resolver: zodResolver(billingAddressSchema),
     defaultValues: {
-      name: "",
-      addressLine1: "",
-      addressLine2: "",
-      city: "",
-      state: "",
-      postalCode: "",
-      country: "US",
+      name: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: 'US',
     },
   });
 
   // Fetch payment methods
   const { data: paymentMethods, isLoading: loadingPaymentMethods } = useQuery({
-    queryKey: ["/api/billing/payment-methods"],
+    queryKey: ['/api/billing/payment-methods'],
   });
 
   // Fetch billing history
   const { data: invoices, isLoading: loadingInvoices } = useQuery({
-    queryKey: ["/api/billing/invoices"],
+    queryKey: ['/api/billing/invoices'],
   });
 
   // Fetch trial status
   const { data: trialStatus } = useQuery({
-    queryKey: ["/api/trial/status"],
+    queryKey: ['/api/trial/status'],
     retry: false, // Don't retry if not in trial
   });
 
   // Fetch billing info
   const { data: billingInfo } = useQuery({
-    queryKey: ["/api/billing/info"],
+    queryKey: ['/api/billing/info'],
   });
 
   // Delete payment method mutation
   const deletePaymentMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
-      return await apiRequest(
-        `/api/billing/payment-methods/${paymentMethodId}`,
-        "DELETE"
-      );
+      return await apiRequest(`/api/billing/payment-methods/${paymentMethodId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/payment-methods"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
       toast({
-        title: "Payment method removed",
-        description: "Your payment method has been successfully removed.",
+        title: 'Payment method removed',
+        description: 'Your payment method has been successfully removed.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to remove payment method",
-        description: error.message || "Please try again",
-        variant: "destructive",
+        title: 'Failed to remove payment method',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
       });
     },
   });
@@ -129,21 +112,21 @@ export default function Billing() {
   // Update billing address mutation
   const updateBillingAddressMutation = useMutation({
     mutationFn: async (data: BillingAddressForm) => {
-      return await apiRequest("/api/billing/address", "PUT", data);
+      return await apiRequest('/api/billing/address', 'PUT', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/info"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/info'] });
       setIsEditAddressOpen(false);
       toast({
-        title: "Billing address updated",
-        description: "Your billing address has been successfully updated.",
+        title: 'Billing address updated',
+        description: 'Your billing address has been successfully updated.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to update address",
-        description: error.message || "Please try again",
-        variant: "destructive",
+        title: 'Failed to update address',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
       });
     },
   });
@@ -157,7 +140,7 @@ export default function Billing() {
       const response = await fetch(`/api/billing/invoices/${invoiceId}/pdf`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = `invoice-${invoiceId}.pdf`;
       document.body.appendChild(a);
@@ -166,18 +149,15 @@ export default function Billing() {
       document.body.removeChild(a);
     } catch (error) {
       toast({
-        title: "Failed to download invoice",
-        description: "Please try again",
-        variant: "destructive",
+        title: 'Failed to download invoice',
+        description: 'Please try again',
+        variant: 'destructive',
       });
     }
   };
 
   return (
-    <MainLayout
-      title="Billing"
-      description="Manage your payment methods and billing information"
-    >
+    <MainLayout title="Billing" description="Manage your payment methods and billing information">
       <div className="space-y-6">
         {/* Trial/Subscription Status */}
         {trialStatus && trialStatus.status === 'active' && (
@@ -204,7 +184,7 @@ export default function Billing() {
                       {new Date(trialStatus.trialEndDate).toLocaleDateString('en-US', {
                         month: 'long',
                         day: 'numeric',
-                        year: 'numeric'
+                        year: 'numeric',
                       })}
                     </p>
                   </div>
@@ -212,7 +192,8 @@ export default function Billing() {
 
                 <div className="bg-white rounded-lg p-4 border border-blue-200">
                   <p className="text-sm text-gray-700">
-                    <strong>✅ Active Trial:</strong> Your subscription will start when your trial ends. Cancel anytime before then if you change your mind.
+                    <strong>✅ Active Trial:</strong> Your subscription will start when your trial
+                    ends. Cancel anytime before then if you change your mind.
                   </p>
                 </div>
               </div>
@@ -226,9 +207,7 @@ export default function Billing() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Payment Methods</CardTitle>
-                <CardDescription>
-                  Payment method management coming soon
-                </CardDescription>
+                <CardDescription>Payment method management coming soon</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -251,9 +230,7 @@ export default function Billing() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Billing Information</CardTitle>
-                <CardDescription>
-                  Your billing address and contact information
-                </CardDescription>
+                <CardDescription>Your billing address and contact information</CardDescription>
               </div>
               <Dialog open={isEditAddressOpen} onOpenChange={setIsEditAddressOpen}>
                 <DialogTrigger asChild>
@@ -265,15 +242,10 @@ export default function Billing() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Edit Billing Address</DialogTitle>
-                    <DialogDescription>
-                      Update your billing address information
-                    </DialogDescription>
+                    <DialogDescription>Update your billing address information</DialogDescription>
                   </DialogHeader>
                   <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(onSubmitAddress)}
-                      className="space-y-4"
-                    >
+                    <form onSubmit={form.handleSubmit(onSubmitAddress)} className="space-y-4">
                       <FormField
                         control={form.control}
                         name="name"
@@ -384,13 +356,8 @@ export default function Billing() {
                         >
                           Cancel
                         </Button>
-                        <Button
-                          type="submit"
-                          disabled={updateBillingAddressMutation.isPending}
-                        >
-                          {updateBillingAddressMutation.isPending
-                            ? "Saving..."
-                            : "Save Address"}
+                        <Button type="submit" disabled={updateBillingAddressMutation.isPending}>
+                          {updateBillingAddressMutation.isPending ? 'Saving...' : 'Save Address'}
                         </Button>
                       </div>
                     </form>
@@ -404,14 +371,12 @@ export default function Billing() {
               <div className="flex items-start space-x-4">
                 <Building2 className="h-10 w-10 text-muted-foreground" />
                 <div>
-                  <p className="font-medium">{billingInfo.name || "Not set"}</p>
+                  <p className="font-medium">{billingInfo.name || 'Not set'}</p>
                   <p className="text-sm text-muted-foreground">
-                    {billingInfo.addressLine1 || "No address on file"}
+                    {billingInfo.addressLine1 || 'No address on file'}
                   </p>
                   {billingInfo.addressLine2 && (
-                    <p className="text-sm text-muted-foreground">
-                      {billingInfo.addressLine2}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{billingInfo.addressLine2}</p>
                   )}
                   {billingInfo.city && (
                     <p className="text-sm text-muted-foreground">
@@ -419,9 +384,7 @@ export default function Billing() {
                     </p>
                   )}
                   {billingInfo.country && (
-                    <p className="text-sm text-muted-foreground">
-                      {billingInfo.country}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{billingInfo.country}</p>
                   )}
                 </div>
               </div>
@@ -437,15 +400,11 @@ export default function Billing() {
         <Card>
           <CardHeader>
             <CardTitle>Billing History</CardTitle>
-            <CardDescription>
-              View and download your past invoices
-            </CardDescription>
+            <CardDescription>View and download your past invoices</CardDescription>
           </CardHeader>
           <CardContent>
             {loadingInvoices ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading invoices...
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Loading invoices...</div>
             ) : !invoices || invoices.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">No invoices yet</p>
@@ -467,27 +426,19 @@ export default function Billing() {
                 <TableBody>
                   {invoices.map((invoice: any) => (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
-                        {invoice.invoiceNumber}
-                      </TableCell>
+                      <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                      <TableCell>{format(new Date(invoice.invoiceDate), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>${parseFloat(invoice.total).toFixed(2)}</TableCell>
                       <TableCell>
-                        {format(new Date(invoice.invoiceDate), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        ${parseFloat(invoice.total).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {invoice.status === "paid" ? (
+                        {invoice.status === 'paid' ? (
                           <Badge className="bg-green-100 text-green-800">
                             <CheckCircle className="mr-1 h-3 w-3" />
                             Paid
                           </Badge>
-                        ) : invoice.status === "pending" ? (
+                        ) : invoice.status === 'pending' ? (
                           <Badge variant="secondary">Pending</Badge>
                         ) : (
-                          <Badge variant="destructive">
-                            {invoice.status}
-                          </Badge>
+                          <Badge variant="destructive">{invoice.status}</Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

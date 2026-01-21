@@ -4,19 +4,19 @@
  * Consolidates functionality from TaskManagement.tsx
  */
 
-import React, { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,20 +24,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import {
-  Search,
-  Filter,
-  List,
-  Kanban,
-  BarChart3,
-} from "lucide-react";
+} from '@/components/ui/dropdown-menu';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { Search, Filter, List, Kanban, BarChart3 } from 'lucide-react';
 
 // Import sub-components
-import { TaskListView } from "./TaskListView";
-import { TaskBoardView } from "./TaskBoardView";
+import { TaskListView } from './TaskListView';
+import { TaskBoardView } from './TaskBoardView';
 
 interface Task {
   id: string;
@@ -60,10 +54,10 @@ interface AllTasksViewProps {
 }
 
 interface ViewConfig {
-  type: "list" | "board" | "gantt";
-  groupBy: "status" | "assignee" | "priority" | "project";
-  sortBy: "dueDate" | "priority" | "status" | "created";
-  sortOrder: "asc" | "desc";
+  type: 'list' | 'board' | 'gantt';
+  groupBy: 'status' | 'assignee' | 'priority' | 'project';
+  sortBy: 'dueDate' | 'priority' | 'status' | 'created';
+  sortOrder: 'asc' | 'desc';
   filters: {
     status: string[];
     priority: string[];
@@ -71,18 +65,13 @@ interface ViewConfig {
   };
 }
 
-export function AllTasksView({
-  tasks,
-  isLoading,
-  teamMembers,
-  projects,
-}: AllTasksViewProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+export function AllTasksView({ tasks, isLoading, teamMembers, projects }: AllTasksViewProps) {
+  const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<ViewConfig>({
-    type: "list",
-    groupBy: "status",
-    sortBy: "dueDate",
-    sortOrder: "asc",
+    type: 'list',
+    groupBy: 'status',
+    sortBy: 'dueDate',
+    sortOrder: 'asc',
     filters: {
       status: [],
       priority: [],
@@ -96,35 +85,26 @@ export function AllTasksView({
   // Update task mutation
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) =>
-      apiRequest(`/api/tasks/${id}`, "PATCH", data),
+      apiRequest(`/api/tasks/${id}`, 'PATCH', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
     },
   });
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
     // Search filter
-    if (
-      searchTerm &&
-      !task.title.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
+    if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
 
     // Status filter
-    if (
-      view.filters.status.length > 0 &&
-      !view.filters.status.includes(task.status)
-    ) {
+    if (view.filters.status.length > 0 && !view.filters.status.includes(task.status)) {
       return false;
     }
 
     // Priority filter
-    if (
-      view.filters.priority.length > 0 &&
-      !view.filters.priority.includes(task.priority)
-    ) {
+    if (view.filters.priority.length > 0 && !view.filters.priority.includes(task.priority)) {
       return false;
     }
 
@@ -147,11 +127,11 @@ export function AllTasksView({
   };
 
   const statusConfig = {
-    todo: { label: "To Do", color: "bg-gray-100 text-gray-800" },
-    in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-800" },
-    review: { label: "Review", color: "bg-purple-100 text-purple-800" },
-    completed: { label: "Completed", color: "bg-green-100 text-green-800" },
-    cancelled: { label: "Cancelled", color: "bg-red-100 text-red-800" },
+    todo: { label: 'To Do', color: 'bg-gray-100 text-gray-800' },
+    in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
+    review: { label: 'Review', color: 'bg-purple-100 text-purple-800' },
+    completed: { label: 'Completed', color: 'bg-green-100 text-green-800' },
+    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800' },
   };
 
   return (
@@ -176,29 +156,25 @@ export function AllTasksView({
               {/* View Type Toggle */}
               <div className="flex rounded-lg border p-1">
                 <Button
-                  variant={view.type === "list" ? "default" : "ghost"}
+                  variant={view.type === 'list' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setView((prev) => ({ ...prev, type: "list" }))}
+                  onClick={() => setView((prev) => ({ ...prev, type: 'list' }))}
                   title="List View"
                 >
                   <List className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={view.type === "board" ? "default" : "ghost"}
+                  variant={view.type === 'board' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() =>
-                    setView((prev) => ({ ...prev, type: "board" }))
-                  }
+                  onClick={() => setView((prev) => ({ ...prev, type: 'board' }))}
                   title="Board View"
                 >
                   <Kanban className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant={view.type === "gantt" ? "default" : "ghost"}
+                  variant={view.type === 'gantt' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() =>
-                    setView((prev) => ({ ...prev, type: "gantt" }))
-                  }
+                  onClick={() => setView((prev) => ({ ...prev, type: 'gantt' }))}
                   title="Gantt View"
                 >
                   <BarChart3 className="h-4 w-4" />
@@ -208,9 +184,7 @@ export function AllTasksView({
               {/* Group By */}
               <Select
                 value={view.groupBy}
-                onValueChange={(value) =>
-                  setView((prev) => ({ ...prev, groupBy: value as any }))
-                }
+                onValueChange={(value) => setView((prev) => ({ ...prev, groupBy: value as any }))}
               >
                 <SelectTrigger className="w-[160px]">
                   <SelectValue />
@@ -274,7 +248,7 @@ export function AllTasksView({
       </Card>
 
       {/* Task Views */}
-      {view.type === "list" && (
+      {view.type === 'list' && (
         <TaskListView
           tasks={filteredTasks}
           groupBy={view.groupBy}
@@ -284,7 +258,7 @@ export function AllTasksView({
         />
       )}
 
-      {view.type === "board" && (
+      {view.type === 'board' && (
         <TaskBoardView
           tasks={filteredTasks}
           teamMembers={teamMembers}
@@ -293,14 +267,12 @@ export function AllTasksView({
         />
       )}
 
-      {view.type === "gantt" && (
+      {view.type === 'gantt' && (
         <Card>
           <CardContent className="p-8 text-center">
             <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Gantt View</h3>
-            <p className="text-muted-foreground">
-              Gantt chart visualization coming soon
-            </p>
+            <p className="text-muted-foreground">Gantt chart visualization coming soon</p>
           </CardContent>
         </Card>
       )}

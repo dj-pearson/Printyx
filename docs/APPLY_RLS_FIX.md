@@ -1,10 +1,13 @@
 # Apply RLS Fix for User Role Detection
 
 ## Problem
+
 The frontend cannot read user records from the `users` table due to missing Row Level Security (RLS) policies in Supabase. This causes all users to appear as "User" instead of showing their actual role (admin, manager, etc.).
 
 ## Solution
+
 Apply RLS policies that allow:
+
 1. Users to read their own user record
 2. Service role to read all users
 3. Platform admins to read all users
@@ -94,12 +97,14 @@ After applying the migration:
 ## Expected Results
 
 After applying RLS policies, the console should show:
+
 - ✅ No 403 Forbidden errors
 - ✅ User profile successfully loaded
 - ✅ Role detected from database
 - ✅ Correct permissions granted
 
 Example:
+
 ```
 Using role string 'admin' - level 8, isAdmin: true
 isPlatformUser: true
@@ -112,10 +117,12 @@ role.name: "admin"
 ### Still getting 403 Forbidden?
 
 1. **Check if RLS is causing the issue**:
+
    ```sql
    -- Temporarily disable RLS to test (NOT for production!)
    ALTER TABLE users DISABLE ROW LEVEL SECURITY;
    ```
+
    If this fixes it, the RLS policies aren't configured correctly.
 
 2. **Check your JWT token**:
@@ -130,8 +137,9 @@ role.name: "admin"
 
 4. **Use Service Role Key** (temporary workaround):
    You can temporarily bypass RLS by using the service role key in the frontend, but this is NOT recommended for production:
-   
+
    In `.env`:
+
    ```env
    # TEMPORARY - DO NOT USE IN PRODUCTION
    VITE_SUPABASE_ANON_KEY=<your-service-role-key>
@@ -148,13 +156,9 @@ app.get('/api/auth/me', authenticateSupabaseJWT, async (req, res) => {
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .limit(1);
-  
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
   return res.json(user);
 });
 ```
@@ -186,6 +190,7 @@ ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ---
 
 **Next Steps**:
+
 1. Apply the RLS migration using one of the methods above
 2. Refresh your browser
 3. Check console for successful user profile fetch
@@ -193,6 +198,7 @@ ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 
 **Questions?**
 If you still see issues after applying the RLS policies, check:
+
 - Supabase server logs for RLS policy violations
 - Your JWT token payload (jwt.io)
 - Database connection settings

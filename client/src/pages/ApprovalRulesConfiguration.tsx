@@ -1,18 +1,32 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
 import {
   Plus,
   Edit,
@@ -27,7 +41,7 @@ import {
   TrendingUp,
   ChevronDown,
   ChevronUp,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ApprovalRule {
   id: string;
@@ -64,13 +78,13 @@ export default function ApprovalRulesConfiguration() {
 
   // Form state
   const [formData, setFormData] = useState<Partial<ApprovalRule>>({
-    ruleName: "",
-    description: "",
-    ruleType: "discount",
-    thresholdType: "discount_percentage",
-    thresholdValue: "10",
-    comparisonOperator: ">",
-    approvalChainType: "sequential",
+    ruleName: '',
+    description: '',
+    ruleType: 'discount',
+    thresholdType: 'discount_percentage',
+    thresholdValue: '10',
+    comparisonOperator: '>',
+    approvalChainType: 'sequential',
     approvers: [{ level: 1, isRequired: true, canDelegate: false }],
     slaHours: 24,
     escalationEnabled: true,
@@ -104,15 +118,15 @@ export default function ApprovalRulesConfiguration() {
       setEditingRule(null);
       resetForm();
       toast({
-        title: editingRule ? "Rule Updated" : "Rule Created",
-        description: "Approval rule has been saved successfully.",
+        title: editingRule ? 'Rule Updated' : 'Rule Created',
+        description: 'Approval rule has been saved successfully.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to save rule",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to save rule',
+        variant: 'destructive',
       });
     },
   });
@@ -127,21 +141,21 @@ export default function ApprovalRulesConfiguration() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/rules'] });
       toast({
-        title: "Rule Deleted",
-        description: "Approval rule has been deleted.",
+        title: 'Rule Deleted',
+        description: 'Approval rule has been deleted.',
       });
     },
   });
 
   const resetForm = () => {
     setFormData({
-      ruleName: "",
-      description: "",
-      ruleType: "discount",
-      thresholdType: "discount_percentage",
-      thresholdValue: "10",
-      comparisonOperator: ">",
-      approvalChainType: "sequential",
+      ruleName: '',
+      description: '',
+      ruleType: 'discount',
+      thresholdType: 'discount_percentage',
+      thresholdValue: '10',
+      comparisonOperator: '>',
+      approvalChainType: 'sequential',
       approvers: [{ level: 1, isRequired: true, canDelegate: false }],
       slaHours: 24,
       escalationEnabled: true,
@@ -161,7 +175,7 @@ export default function ApprovalRulesConfiguration() {
   };
 
   const handleDeleteRule = (id: string) => {
-    if (confirm("Are you sure you want to delete this rule?")) {
+    if (confirm('Are you sure you want to delete this rule?')) {
       deleteMutation.mutate(id);
     }
   };
@@ -182,50 +196,50 @@ export default function ApprovalRulesConfiguration() {
       ...formData,
       approvers: [
         ...(formData.approvers || []),
-        { level: newLevel, isRequired: true, canDelegate: false }
-      ]
+        { level: newLevel, isRequired: true, canDelegate: false },
+      ],
     });
   };
 
   const removeApprover = (level: number) => {
     setFormData({
       ...formData,
-      approvers: formData.approvers?.filter(a => a.level !== level).map((a, idx) => ({
-        ...a,
-        level: idx + 1
-      }))
+      approvers: formData.approvers
+        ?.filter((a) => a.level !== level)
+        .map((a, idx) => ({
+          ...a,
+          level: idx + 1,
+        })),
     });
   };
 
   const updateApprover = (level: number, field: string, value: any) => {
     setFormData({
       ...formData,
-      approvers: formData.approvers?.map(a =>
-        a.level === level ? { ...a, [field]: value } : a
-      )
+      approvers: formData.approvers?.map((a) => (a.level === level ? { ...a, [field]: value } : a)),
     });
   };
 
   const getRuleTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      discount: "Discount Approval",
-      custom_pricing: "Custom Pricing",
-      payment_terms: "Payment Terms",
-      contract_terms: "Contract Terms",
-      deal_structure: "Deal Structure",
-      pricing_exception: "Pricing Exception",
+      discount: 'Discount Approval',
+      custom_pricing: 'Custom Pricing',
+      payment_terms: 'Payment Terms',
+      contract_terms: 'Contract Terms',
+      deal_structure: 'Deal Structure',
+      pricing_exception: 'Pricing Exception',
     };
     return labels[type] || type;
   };
 
   const getThresholdTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      discount_percentage: "Discount %",
-      discount_amount: "Discount $",
-      margin_below: "Margin Below",
-      deal_value: "Deal Value",
-      total_contract_value: "Contract Value",
-      payment_terms_days: "Payment Terms (Days)",
+      discount_percentage: 'Discount %',
+      discount_amount: 'Discount $',
+      margin_below: 'Margin Below',
+      deal_value: 'Deal Value',
+      total_contract_value: 'Contract Value',
+      payment_terms_days: 'Payment Terms (Days)',
     };
     return labels[type] || type;
   };
@@ -236,14 +250,24 @@ export default function ApprovalRulesConfiguration() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/deal-desk')} className="mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/deal-desk')}
+              className="mb-2"
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Deal Desk
             </Button>
             <h1 className="text-3xl font-bold text-slate-900">Approval Rules</h1>
             <p className="text-slate-600 mt-1">Configure approval thresholds and routing</p>
           </div>
-          <Button onClick={() => { resetForm(); setIsCreateDialogOpen(true); }}>
+          <Button
+            onClick={() => {
+              resetForm();
+              setIsCreateDialogOpen(true);
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Create Rule
           </Button>
@@ -258,7 +282,9 @@ export default function ApprovalRulesConfiguration() {
               <CardContent className="text-center py-12">
                 <Target className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-600 font-medium">No approval rules configured</p>
-                <p className="text-sm text-slate-500 mt-1">Create your first rule to start automating approvals</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Create your first rule to start automating approvals
+                </p>
                 <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Rule
@@ -266,114 +292,122 @@ export default function ApprovalRulesConfiguration() {
               </CardContent>
             </Card>
           ) : (
-            rules.sort((a, b) => (b.priority || 0) - (a.priority || 0)).map((rule) => (
-              <Card key={rule.id} className={!rule.isActive ? 'opacity-60' : ''}>
-                <CardHeader className="cursor-pointer" onClick={() => toggleExpanded(rule.id)}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="mt-1">
-                        {expandedRules.has(rule.id) ? (
-                          <ChevronUp className="h-5 w-5 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          {rule.ruleName}
-                          {!rule.isActive && (
-                            <Badge variant="outline" className="text-xs">Inactive</Badge>
+            rules
+              .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+              .map((rule) => (
+                <Card key={rule.id} className={!rule.isActive ? 'opacity-60' : ''}>
+                  <CardHeader className="cursor-pointer" onClick={() => toggleExpanded(rule.id)}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="mt-1">
+                          {expandedRules.has(rule.id) ? (
+                            <ChevronUp className="h-5 w-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-slate-400" />
                           )}
-                        </CardTitle>
-                        <CardDescription className="mt-1">
-                          {rule.description || 'No description'}
-                        </CardDescription>
-                        <div className="flex items-center gap-4 mt-2 text-sm">
-                          <Badge variant="outline">{getRuleTypeLabel(rule.ruleType)}</Badge>
-                          <span className="text-slate-600">
-                            {getThresholdTypeLabel(rule.thresholdType)} {rule.comparisonOperator} {rule.thresholdValue}
-                          </span>
-                          <span className="text-slate-500 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {rule.slaHours}h SLA
-                          </span>
-                          <span className="text-slate-500 flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {rule.approvers?.length || 0} approvers
-                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {rule.ruleName}
+                            {!rule.isActive && (
+                              <Badge variant="outline" className="text-xs">
+                                Inactive
+                              </Badge>
+                            )}
+                          </CardTitle>
+                          <CardDescription className="mt-1">
+                            {rule.description || 'No description'}
+                          </CardDescription>
+                          <div className="flex items-center gap-4 mt-2 text-sm">
+                            <Badge variant="outline">{getRuleTypeLabel(rule.ruleType)}</Badge>
+                            <span className="text-slate-600">
+                              {getThresholdTypeLabel(rule.thresholdType)} {rule.comparisonOperator}{' '}
+                              {rule.thresholdValue}
+                            </span>
+                            <span className="text-slate-500 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {rule.slaHours}h SLA
+                            </span>
+                            <span className="text-slate-500 flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {rule.approvers?.length || 0} approvers
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditRule(rule);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRule(rule.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditRule(rule);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRule(rule.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
 
-                {expandedRules.has(rule.id) && (
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  {expandedRules.has(rule.id) && (
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-slate-600 font-medium mb-1">Approval Chain Type</p>
+                          <p className="capitalize">{rule.approvalChainType.replace('_', ' ')}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-600 font-medium mb-1">Priority</p>
+                          <p>{rule.priority}</p>
+                        </div>
+                      </div>
+
                       <div>
-                        <p className="text-slate-600 font-medium mb-1">Approval Chain Type</p>
-                        <p className="capitalize">{rule.approvalChainType.replace('_', ' ')}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-600 font-medium mb-1">Priority</p>
-                        <p>{rule.priority}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-slate-600 font-medium mb-2 text-sm">Approval Chain</p>
-                      <div className="space-y-2">
-                        {rule.approvers?.map((approver, idx) => (
-                          <div key={idx} className="flex items-center gap-3 p-2 bg-slate-50 rounded-md">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-medium text-sm">
-                              {approver.level}
+                        <p className="text-slate-600 font-medium mb-2 text-sm">Approval Chain</p>
+                        <div className="space-y-2">
+                          {rule.approvers?.map((approver, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-3 p-2 bg-slate-50 rounded-md"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-medium text-sm">
+                                {approver.level}
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">
+                                  {approver.userName || approver.roleName || 'Not configured'}
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {approver.isRequired ? 'Required' : 'Optional'}
+                                  {approver.canDelegate && ' • Can delegate'}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">
-                                {approver.userName || approver.roleName || 'Not configured'}
-                              </p>
-                              <p className="text-xs text-slate-500">
-                                {approver.isRequired ? 'Required' : 'Optional'}
-                                {approver.canDelegate && ' • Can delegate'}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    {rule.escalationEnabled && (
-                      <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded-md">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>Escalation enabled for SLA breaches</span>
-                      </div>
-                    )}
-                  </CardContent>
-                )}
-              </Card>
-            ))
+                      {rule.escalationEnabled && (
+                        <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 p-2 rounded-md">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Escalation enabled for SLA breaches</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              ))
           )}
         </div>
       </div>
@@ -415,7 +449,10 @@ export default function ApprovalRulesConfiguration() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="ruleType">Request Type *</Label>
-                <Select value={formData.ruleType} onValueChange={(value) => setFormData({ ...formData, ruleType: value })}>
+                <Select
+                  value={formData.ruleType}
+                  onValueChange={(value) => setFormData({ ...formData, ruleType: value })}
+                >
                   <SelectTrigger id="ruleType">
                     <SelectValue />
                   </SelectTrigger>
@@ -431,7 +468,10 @@ export default function ApprovalRulesConfiguration() {
 
               <div className="space-y-2">
                 <Label htmlFor="thresholdType">Threshold Type *</Label>
-                <Select value={formData.thresholdType} onValueChange={(value) => setFormData({ ...formData, thresholdType: value })}>
+                <Select
+                  value={formData.thresholdType}
+                  onValueChange={(value) => setFormData({ ...formData, thresholdType: value })}
+                >
                   <SelectTrigger id="thresholdType">
                     <SelectValue />
                   </SelectTrigger>
@@ -449,7 +489,10 @@ export default function ApprovalRulesConfiguration() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="comparisonOperator">Comparison *</Label>
-                <Select value={formData.comparisonOperator} onValueChange={(value) => setFormData({ ...formData, comparisonOperator: value })}>
+                <Select
+                  value={formData.comparisonOperator}
+                  onValueChange={(value) => setFormData({ ...formData, comparisonOperator: value })}
+                >
                   <SelectTrigger id="comparisonOperator">
                     <SelectValue />
                   </SelectTrigger>
@@ -478,7 +521,10 @@ export default function ApprovalRulesConfiguration() {
             {/* Approval Chain */}
             <div className="space-y-2">
               <Label>Approval Chain Type *</Label>
-              <Select value={formData.approvalChainType} onValueChange={(value) => setFormData({ ...formData, approvalChainType: value })}>
+              <Select
+                value={formData.approvalChainType}
+                onValueChange={(value) => setFormData({ ...formData, approvalChainType: value })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -523,14 +569,18 @@ export default function ApprovalRulesConfiguration() {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={approver.isRequired}
-                        onCheckedChange={(checked) => updateApprover(approver.level, 'isRequired', checked)}
+                        onCheckedChange={(checked) =>
+                          updateApprover(approver.level, 'isRequired', checked)
+                        }
                       />
                       <Label className="text-sm">Required</Label>
                     </div>
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={approver.canDelegate}
-                        onCheckedChange={(checked) => updateApprover(approver.level, 'canDelegate', checked)}
+                        onCheckedChange={(checked) =>
+                          updateApprover(approver.level, 'canDelegate', checked)
+                        }
                       />
                       <Label className="text-sm">Can Delegate</Label>
                     </div>
@@ -566,7 +616,9 @@ export default function ApprovalRulesConfiguration() {
               <div className="flex items-center gap-2">
                 <Switch
                   checked={formData.escalationEnabled}
-                  onCheckedChange={(checked) => setFormData({ ...formData, escalationEnabled: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, escalationEnabled: checked })
+                  }
                 />
                 <Label className="text-sm">Enable Escalation</Label>
               </div>
@@ -581,14 +633,20 @@ export default function ApprovalRulesConfiguration() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsCreateDialogOpen(false);
-              setEditingRule(null);
-              resetForm();
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateDialogOpen(false);
+                setEditingRule(null);
+                resetForm();
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveRule} disabled={saveMutation.isPending || !formData.ruleName}>
+            <Button
+              onClick={handleSaveRule}
+              disabled={saveMutation.isPending || !formData.ruleName}
+            >
               {saveMutation.isPending ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule'}
             </Button>
           </DialogFooter>

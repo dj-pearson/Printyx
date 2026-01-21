@@ -1,21 +1,21 @@
-import * as React from "react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import * as React from 'react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Check, X, Pencil } from "lucide-react";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Check, X, Pencil } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface InlineEditProps {
   value: string | number;
   onSave: (value: string) => void | Promise<void>;
-  type?: "text" | "number" | "email" | "textarea" | "select";
+  type?: 'text' | 'number' | 'email' | 'textarea' | 'select';
   selectOptions?: { value: string; label: string }[];
   placeholder?: string;
   className?: string;
@@ -28,7 +28,7 @@ interface InlineEditProps {
 export function InlineEdit({
   value,
   onSave,
-  type = "text",
+  type = 'text',
   selectOptions = [],
   placeholder,
   className,
@@ -82,7 +82,7 @@ export function InlineEdit({
       await onSave(editValue);
       setIsEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setIsSaving(false);
     }
@@ -95,19 +95,19 @@ export function InlineEdit({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (type === "textarea") {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    if (type === 'textarea') {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         handleSave();
       }
     } else {
-      if (e.key === "Enter") {
+      if (e.key === 'Enter') {
         e.preventDefault();
         handleSave();
       }
     }
 
-    if (e.key === "Escape") {
+    if (e.key === 'Escape') {
       handleCancel();
     }
   };
@@ -124,14 +124,14 @@ export function InlineEdit({
     return (
       <div
         className={cn(
-          "group relative inline-flex items-center gap-2",
-          editable && "cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1",
-          className
+          'group relative inline-flex items-center gap-2',
+          editable && 'cursor-pointer hover:bg-muted/50 rounded px-2 py-1 -mx-2 -my-1',
+          className,
         )}
         onClick={() => editable && setIsEditing(true)}
       >
-        <span className={cn(!value && "text-muted-foreground")}>
-          {value ? displayValue : placeholder || "Click to edit"}
+        <span className={cn(!value && 'text-muted-foreground')}>
+          {value ? displayValue : placeholder || 'Click to edit'}
         </span>
         {editable && (
           <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -141,9 +141,9 @@ export function InlineEdit({
   }
 
   return (
-    <div className={cn("inline-flex flex-col gap-1", className)}>
+    <div className={cn('inline-flex flex-col gap-1', className)}>
       <div className="flex items-center gap-2">
-        {type === "select" ? (
+        {type === 'select' ? (
           <Select value={editValue} onValueChange={setEditValue}>
             <SelectTrigger className="h-8">
               <SelectValue />
@@ -156,7 +156,7 @@ export function InlineEdit({
               ))}
             </SelectContent>
           </Select>
-        ) : type === "textarea" ? (
+        ) : type === 'textarea' ? (
           <Textarea
             ref={inputRef as React.RefObject<HTMLTextAreaElement>}
             value={editValue}
@@ -217,11 +217,7 @@ interface InlineEditCurrencyProps extends Omit<InlineEditProps, 'type' | 'displa
   currency?: string;
 }
 
-export function InlineEditCurrency({
-  value,
-  currency = 'USD',
-  ...props
-}: InlineEditCurrencyProps) {
+export function InlineEditCurrency({ value, currency = 'USD', ...props }: InlineEditCurrencyProps) {
   return (
     <InlineEdit
       {...props}
@@ -236,8 +232,8 @@ export function InlineEditCurrency({
       }}
       validation={(val) => {
         const num = parseFloat(val);
-        if (isNaN(num)) return "Please enter a valid number";
-        if (num < 0) return "Value must be positive";
+        if (isNaN(num)) return 'Please enter a valid number';
+        if (num < 0) return 'Value must be positive';
         return null;
       }}
     />

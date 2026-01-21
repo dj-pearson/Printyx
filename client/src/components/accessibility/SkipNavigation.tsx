@@ -34,18 +34,11 @@ export function SkipNavigation({ links = defaultLinks }: SkipNavigationProps) {
   }, []);
 
   return (
-    <nav
-      aria-label="Skip navigation"
-      className="skip-navigation"
-    >
+    <nav aria-label="Skip navigation" className="skip-navigation">
       <ul className="skip-navigation-list">
         {links.map((link) => (
           <li key={link.id}>
-            <a
-              href={`#${link.id}`}
-              onClick={(e) => handleSkip(e, link.id)}
-              className="skip-link"
-            >
+            <a href={`#${link.id}`} onClick={(e) => handleSkip(e, link.id)} className="skip-link">
               {link.label}
             </a>
           </li>
@@ -67,11 +60,7 @@ interface SkipTargetProps {
 
 export function SkipTarget({ id, children, as: Component = 'div' }: SkipTargetProps) {
   return (
-    <Component
-      id={id}
-      tabIndex={-1}
-      className="skip-target outline-none focus:outline-none"
-    >
+    <Component id={id} tabIndex={-1} className="skip-target outline-none focus:outline-none">
       {children}
     </Component>
   );

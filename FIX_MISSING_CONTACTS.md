@@ -1,6 +1,7 @@
 # Fix Missing Contacts for Imported Companies
 
 ## Problem
+
 Companies imported before the latest fix don't have `company_contacts` records, so they don't appear in the Customers page (which uses `INNER JOIN` with `company_contacts`).
 
 ## Solution: Re-Import Your CSV
@@ -40,6 +41,7 @@ The easiest fix is to **re-import the same CSV file**. The updated import logic 
 ## Why This Works
 
 The updated import function now:
+
 - Creates `company_contacts` record when creating customer relationship
 - Checks for missing contacts on existing companies
 - Creates a default "Primary Contact" if none exists
@@ -51,7 +53,7 @@ If you prefer to fix it directly in the database, run this SQL in Supabase:
 
 ```sql
 -- Find companies with customers but no contacts
-SELECT 
+SELECT
   c.id,
   c.business_name,
   c.tenant_id,
@@ -72,7 +74,7 @@ INSERT INTO company_contacts (
   is_primary_contact,
   created_by
 )
-SELECT 
+SELECT
   c.id,
   c.tenant_id,
   'Primary',

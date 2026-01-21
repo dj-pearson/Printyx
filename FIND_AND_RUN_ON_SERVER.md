@@ -11,6 +11,7 @@ ssh root@209.145.59.219
 Try these commands to locate your Printyx project:
 
 ### Option A: Search from root
+
 ```bash
 # Search for the project by finding package.json with "rest-express"
 find / -name "package.json" -type f 2>/dev/null | xargs grep -l "rest-express" | head -5
@@ -26,6 +27,7 @@ find / -name "drizzle.config.ts" 2>/dev/null
 ```
 
 ### Option B: Check common deployment locations
+
 ```bash
 # Check common locations
 ls -la /root/Printyx 2>/dev/null || echo "Not in /root/Printyx"
@@ -40,6 +42,7 @@ ls -la /data/coolify/applications/* 2>/dev/null | grep -i printyx
 ```
 
 ### Option C: Check running Docker containers for clues
+
 ```bash
 # List all containers and look for paths
 docker ps --format "table {{.Names}}\t{{.Command}}" | grep -E "(printyx|edge|functions)"
@@ -52,6 +55,7 @@ find / -name "docker-compose.yml" -type f 2>/dev/null | xargs grep -l "printyx" 
 ```
 
 ### Option D: Check recent Git operations
+
 ```bash
 # Find recently modified Git repositories
 find / -name ".git" -type d 2>/dev/null | while read git; do
@@ -126,4 +130,3 @@ ssh root@209.145.59.219 "find / -name 'drizzle.config.ts' -type f 2>/dev/null | 
 ```
 
 This will show you the exact directory path!
-

@@ -21,7 +21,7 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
 
     console.log(`Received webhook from ${provider}:`, {
       headers: headers,
-      payload: JSON.stringify(payload, null, 2)
+      payload: JSON.stringify(payload, null, 2),
     });
 
     const result = await WebhookService.processWebhook(provider, payload, headers);
@@ -29,19 +29,19 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
     if (result.success) {
       res.status(200).json({
         message: result.message,
-        processed: result.processed
+        processed: result.processed,
       });
     } else {
       res.status(400).json({
         error: result.message,
-        details: result.error
+        details: result.error,
       });
     }
   } catch (error) {
     console.error(`Webhook error for ${req.params.provider}:`, error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -51,8 +51,12 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
  */
 router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
   try {
-    const result = await WebhookService.processWebhook('salesforce', req.body, req.headers as Record<string, string>);
-    
+    const result = await WebhookService.processWebhook(
+      'salesforce',
+      req.body,
+      req.headers as Record<string, string>,
+    );
+
     if (result.success) {
       res.status(200).json({ message: result.message });
     } else {
@@ -70,8 +74,12 @@ router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
 router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
   try {
     const payload = JSON.parse(req.body.toString());
-    const result = await WebhookService.processWebhook('stripe', payload, req.headers as Record<string, string>);
-    
+    const result = await WebhookService.processWebhook(
+      'stripe',
+      payload,
+      req.headers as Record<string, string>,
+    );
+
     if (result.success) {
       res.status(200).json({ received: true });
     } else {
@@ -95,8 +103,12 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
       return;
     }
 
-    const result = await WebhookService.processWebhook('microsoft-calendar', req.body, req.headers as Record<string, string>);
-    
+    const result = await WebhookService.processWebhook(
+      'microsoft-calendar',
+      req.body,
+      req.headers as Record<string, string>,
+    );
+
     if (result.success) {
       res.status(202).json({ message: result.message });
     } else {
@@ -113,8 +125,12 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
  */
 router.post('/api/webhooks/google-calendar', express.json(), async (req, res) => {
   try {
-    const result = await WebhookService.processWebhook('google-calendar', req.body, req.headers as Record<string, string>);
-    
+    const result = await WebhookService.processWebhook(
+      'google-calendar',
+      req.body,
+      req.headers as Record<string, string>,
+    );
+
     if (result.success) {
       res.status(200).json({ message: result.message });
     } else {
@@ -132,8 +148,12 @@ router.post('/api/webhooks/google-calendar', express.json(), async (req, res) =>
 router.post('/api/webhooks/quickbooks', rawBodyParser, async (req, res) => {
   try {
     const payload = JSON.parse(req.body.toString());
-    const result = await WebhookService.processWebhook('quickbooks', payload, req.headers as Record<string, string>);
-    
+    const result = await WebhookService.processWebhook(
+      'quickbooks',
+      payload,
+      req.headers as Record<string, string>,
+    );
+
     if (result.success) {
       res.status(200).json({ message: result.message });
     } else {
@@ -157,8 +177,8 @@ router.get('/api/webhooks/health', (req, res) => {
       stripe: '/api/webhooks/stripe',
       'microsoft-calendar': '/api/webhooks/microsoft-calendar',
       'google-calendar': '/api/webhooks/google-calendar',
-      quickbooks: '/api/webhooks/quickbooks'
-    }
+      quickbooks: '/api/webhooks/quickbooks',
+    },
   });
 });
 
@@ -172,36 +192,36 @@ router.get('/api/webhooks', (req, res) => {
         provider: 'salesforce',
         url: '/api/webhooks/salesforce',
         method: 'POST',
-        contentType: 'application/json'
+        contentType: 'application/json',
       },
       {
         provider: 'stripe',
         url: '/api/webhooks/stripe',
         method: 'POST',
         contentType: 'application/json',
-        notes: 'Requires stripe-signature header'
+        notes: 'Requires stripe-signature header',
       },
       {
         provider: 'microsoft-calendar',
         url: '/api/webhooks/microsoft-calendar',
         method: 'POST',
         contentType: 'application/json',
-        notes: 'Supports validation token parameter'
+        notes: 'Supports validation token parameter',
       },
       {
         provider: 'google-calendar',
         url: '/api/webhooks/google-calendar',
         method: 'POST',
-        contentType: 'application/json'
+        contentType: 'application/json',
       },
       {
         provider: 'quickbooks',
         url: '/api/webhooks/quickbooks',
         method: 'POST',
         contentType: 'application/json',
-        notes: 'Requires intuit-signature header'
-      }
-    ]
+        notes: 'Requires intuit-signature header',
+      },
+    ],
   });
 });
 

@@ -7,6 +7,7 @@
 ## Executive Summary
 
 Printyx currently has **two parallel RBAC systems** in operation:
+
 1. **Legacy System**: 8-level hierarchy with boolean permission flags
 2. **Enhanced System**: Sophisticated nested-set model with 60+ granular permissions
 
@@ -18,16 +19,16 @@ The enhanced system is implemented but **not fully integrated** across the appli
 
 ### Enhanced RBAC System (Recommended)
 
-| Level | Title | Typical Roles | Scope |
-|-------|-------|---------------|-------|
-| 8 | Platform Administrators | Printyx Staff, Support Engineers | Cross-tenant access |
-| 7 | Company Executives | CEO, President, CFO, VP | Company-wide |
-| 6 | Company Directors | VP Sales, VP Service, Operations Director | Company-wide department |
-| 5 | Regional Managers | Regional Sales Director, Regional Service Manager | Multi-location |
-| 4 | Location Managers | Branch Manager, Sales Manager, Service Manager | Single location |
-| 3 | Department Supervisors | Sales Supervisor, Service Supervisor | Team + location |
-| 2 | Team Leads | Senior Sales Rep, Senior Technician | Small team |
-| 1 | Individual Contributors | Sales Rep, Field Technician, Accounting Clerk | Self only |
+| Level | Title                   | Typical Roles                                     | Scope                   |
+| ----- | ----------------------- | ------------------------------------------------- | ----------------------- |
+| 8     | Platform Administrators | Printyx Staff, Support Engineers                  | Cross-tenant access     |
+| 7     | Company Executives      | CEO, President, CFO, VP                           | Company-wide            |
+| 6     | Company Directors       | VP Sales, VP Service, Operations Director         | Company-wide department |
+| 5     | Regional Managers       | Regional Sales Director, Regional Service Manager | Multi-location          |
+| 4     | Location Managers       | Branch Manager, Sales Manager, Service Manager    | Single location         |
+| 3     | Department Supervisors  | Sales Supervisor, Service Supervisor              | Team + location         |
+| 2     | Team Leads              | Senior Sales Rep, Senior Technician               | Small team              |
+| 1     | Individual Contributors | Sales Rep, Field Technician, Accounting Clerk     | Self only               |
 
 ### Legacy System (Deprecated - Still in Use)
 
@@ -84,6 +85,7 @@ Similar 8-level structure but with less granular permissions and no organization
 ### Enhanced RBAC Permissions (60+ defined)
 
 #### Permission Structure:
+
 - **Code**: Unique identifier (e.g., `lead.view_team`)
 - **Module**: sales, service, finance, operations, admin, platform
 - **Scope**: own, team, location, regional, company, platform
@@ -94,6 +96,7 @@ Similar 8-level structure but with less granular permissions and no organization
 #### Key Permission Categories:
 
 **Sales & CRM:**
+
 ```
 lead.view_own, lead.view_team, lead.view_location, lead.view_regional, lead.view_company
 lead.create, lead.edit_own, lead.edit_team, lead.assign, lead.delete
@@ -102,6 +105,7 @@ territory.manage_assignments, territory.view_performance
 ```
 
 **Service Management:**
+
 ```
 ticket.view_own, ticket.view_team, ticket.view_location
 ticket.create, ticket.assign, ticket.close
@@ -109,6 +113,7 @@ equipment.install, equipment.configure, equipment.remote_access
 ```
 
 **Financial:**
+
 ```
 commission.view_own, commission.view_team, commission.approve
 financial.view_location, financial.view_regional, financial.view_company
@@ -116,6 +121,7 @@ invoice.create, invoice.approve, invoice.void
 ```
 
 **User & Role Management:**
+
 ```
 user.create_location, user.create_regional, user.create_company
 user.edit_profile, user.manage_permissions
@@ -123,12 +129,14 @@ role.create, role.assign, role.manage_permissions
 ```
 
 **Audit & Compliance:**
+
 ```
 audit.view_location, audit.view_regional, audit.view_company
 compliance.manage, compliance.view_reports
 ```
 
 **Platform:**
+
 ```
 platform.access_all_tenants
 platform.view_system_metrics
@@ -138,6 +146,7 @@ platform.manage_subscriptions
 ### Legacy Permissions (Boolean Flags)
 
 20+ boolean flags on roles table:
+
 ```
 canAccessDashboard, canManageCustomers, canManageLeads,
 canManageOpportunities, canManageInvoices, canManageInventory,
@@ -159,6 +168,7 @@ Platform (Printyx System)
 ```
 
 ### Nested Set Model:
+
 - Uses `lft`, `rght`, `depth` fields for efficient hierarchy queries
 - Supports complex organizational structures
 - Enables permission inheritance down the tree
@@ -187,44 +197,49 @@ ABC Copiers (Company)
 ### Reporting Schema Components:
 
 **1. Report Definitions Table:**
+
 - Categories: sales, service, finance, operations, hr, it, compliance, executive
 - Scopes: platform, company, regional, location, team, individual
 - **Status**: Schema defined but **no reports seeded**
 
 **2. KPI Definitions Table:**
+
 - Department-specific KPIs
 - Aggregation methods (sum, avg, count, etc.)
 - Thresholds for alerts
 - **Status**: Schema defined but **no KPIs seeded**
 
 **3. Report Execution Tracking:**
+
 - Tracks who runs reports and when
 - Export format tracking
 - **Status**: Implemented but **not actively used**
 
 **4. Dashboard Layouts:**
+
 - Custom layouts per role/user
 - Widget positioning
 - **Status**: Schema defined but **no default layouts**
 
 ### Current Report Access by Level:
 
-| Level | Access Scope | Capabilities | Limitations |
-|-------|-------------|--------------|-------------|
-| 1 - Individual | Own data only | View personal metrics | Cannot export or schedule |
-| 2 - Team Lead | Self + direct reports | Team performance reports | Limited export |
-| 3 - Supervisor | Team + location | Export reports, operational metrics | No scheduling |
-| 4 - Manager | Location-wide | Schedule reports, financial summaries | Location-scoped only |
-| 5 - Regional | Multi-location | Advanced analytics, forecasting | Regional-scoped only |
-| 6 - Director | Company-wide dept | Advanced analytics, KPI management | Department-specific |
-| 7 - Executive | Company-wide all | All reports, sensitive financials | Single company |
-| 8 - Platform | Cross-tenant | System metrics, all tenant data | Full access |
+| Level          | Access Scope          | Capabilities                          | Limitations               |
+| -------------- | --------------------- | ------------------------------------- | ------------------------- |
+| 1 - Individual | Own data only         | View personal metrics                 | Cannot export or schedule |
+| 2 - Team Lead  | Self + direct reports | Team performance reports              | Limited export            |
+| 3 - Supervisor | Team + location       | Export reports, operational metrics   | No scheduling             |
+| 4 - Manager    | Location-wide         | Schedule reports, financial summaries | Location-scoped only      |
+| 5 - Regional   | Multi-location        | Advanced analytics, forecasting       | Regional-scoped only      |
+| 6 - Director   | Company-wide dept     | Advanced analytics, KPI management    | Department-specific       |
+| 7 - Executive  | Company-wide all      | All reports, sensitive financials     | Single company            |
+| 8 - Platform   | Cross-tenant          | System metrics, all tenant data       | Full access               |
 
 ### Reporting Middleware:
 
 **File**: `server/reporting-rbac-middleware.ts`
 
 **Permission Checks:**
+
 - `canViewReports`: Basic report access
 - `canViewSalesReports`: Sales-specific reports
 - `canViewServiceReports`: Service-specific reports
@@ -233,6 +248,7 @@ ABC Copiers (Company)
 - `canViewOwnData`, `canViewTeamData`, `canViewLocationData`, etc.
 
 **Hierarchical Query Builder:**
+
 - Automatically filters data based on user's organizational position
 - Injects WHERE clauses for tenancy and hierarchy
 - Prevents unauthorized data access
@@ -242,34 +258,40 @@ ABC Copiers (Company)
 ## 6. Existing Dashboard Implementations
 
 ### General Dashboards:
+
 - **ModularDashboard** (client/src/pages/dashboard.tsx): Role-based widget display
 - **Executive Dashboard** (client/src/pages/ExecutiveDashboard.tsx): C-suite metrics
 
 ### Department-Specific Dashboards (80+):
 
 **Sales:**
+
 - Sales Command Center
 - Deal Pipeline Dashboard
 - Territory Performance Dashboard
 - Commission Dashboard
 
 **Service:**
+
 - Service Hub
 - Technician Performance Dashboard
 - Equipment Health Dashboard
 - SLA Compliance Dashboard
 
 **Finance:**
+
 - Financial Intelligence Dashboard
 - AR/AP Dashboard
 - Revenue Recognition Dashboard
 
 **Operations:**
+
 - Warehouse Dashboard
 - Inventory Dashboard
 - FPY (First Pass Yield) Dashboard
 
 **Analytics:**
+
 - Predictive Analytics Dashboard
 - Customer Success Dashboard
 - Performance Monitoring Dashboard
@@ -361,24 +383,28 @@ ABC Copiers (Company)
 ### Critical Issues:
 
 **1. Dual RBAC Systems**
+
 - Legacy and enhanced systems both active
 - Leads to inconsistent permission enforcement
 - Developers unclear which to use
 - Potential security gaps
 
 **2. No Seeded Data**
+
 - Report definitions table empty
 - KPI definitions table empty
 - Dashboard layouts table empty
 - Requires seeding for system to be functional
 
 **3. Inconsistent Middleware**
+
 - Some routes use `requirePermission()`
 - Others use legacy `requireRole()`
 - Some routes have no RBAC checks
 - Creates security vulnerabilities
 
 **4. No Department Hierarchy**
+
 - Departments defined but not structured
 - No clear reporting chain
 - Cannot map role → department → reports
@@ -386,16 +412,19 @@ ABC Copiers (Company)
 ### Moderate Issues:
 
 **5. Documentation Gap**
+
 - Enhanced RBAC not documented in CLAUDE.md
 - Developers unaware of proper implementation
 - No permission code reference
 
 **6. Dashboard Inconsistency**
+
 - 80+ dashboards but inconsistent role filtering
 - Some respect RBAC, others don't
 - No standard pattern
 
 **7. Role Seeding Confusion**
+
 - Three different seeders
 - Unclear which to use
 - Potential data conflicts
@@ -403,16 +432,19 @@ ABC Copiers (Company)
 ### Minor Issues:
 
 **8. Permission Caching**
+
 - L1 (memory) cache implemented
 - L2 (database) cache defined but unused
 - Could improve performance
 
 **9. Approval Workflows**
+
 - Permissions have `requiresApproval` flag
 - No approval workflow implemented
 - Flag ignored in current code
 
 **10. MFA Enforcement**
+
 - Permissions have `requiresMFA` flag
 - MFA implemented but not enforced per-permission
 - Critical operations not protected

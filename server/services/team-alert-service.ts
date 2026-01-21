@@ -55,8 +55,8 @@ export class TeamAlertService {
           and(
             eq(alertConfigurations.tenantId, userContext.tenantId),
             eq(alertConfigurations.userId, userContext.userId),
-            eq(alertConfigurations.enabled, true)
-          )
+            eq(alertConfigurations.enabled, true),
+          ),
         );
 
       if (configs.length === 0) {
@@ -81,7 +81,7 @@ export class TeamAlertService {
   private static async evaluateWarehouseAlert(
     config: AlertConfiguration,
     stats: any,
-    userContext: EnhancedUserContext
+    userContext: EnhancedUserContext,
   ): Promise<void> {
     const thresholds = config.thresholds as any;
     let shouldAlert = false;
@@ -129,15 +129,18 @@ export class TeamAlertService {
     }
 
     if (shouldAlert) {
-      await this.createAlert({
-        tenantId: userContext.tenantId,
-        configurationId: config.id,
-        alertType: config.alertType,
-        severity: this.determineSeverity(alertDetails),
-        title: this.generateWarehouseAlertTitle(config.alertType, alertDetails),
-        message: this.generateWarehouseAlertMessage(config.alertType, alertDetails, stats),
-        data: alertDetails,
-      }, config);
+      await this.createAlert(
+        {
+          tenantId: userContext.tenantId,
+          configurationId: config.id,
+          alertType: config.alertType,
+          severity: this.determineSeverity(alertDetails),
+          title: this.generateWarehouseAlertTitle(config.alertType, alertDetails),
+          message: this.generateWarehouseAlertMessage(config.alertType, alertDetails, stats),
+          data: alertDetails,
+        },
+        config,
+      );
     }
   }
 
@@ -154,8 +157,8 @@ export class TeamAlertService {
           and(
             eq(alertConfigurations.tenantId, userContext.tenantId),
             eq(alertConfigurations.userId, userContext.userId),
-            eq(alertConfigurations.enabled, true)
-          )
+            eq(alertConfigurations.enabled, true),
+          ),
         );
 
       if (configs.length === 0) {
@@ -180,7 +183,7 @@ export class TeamAlertService {
   private static async evaluateServiceAlert(
     config: AlertConfiguration,
     stats: any,
-    userContext: EnhancedUserContext
+    userContext: EnhancedUserContext,
   ): Promise<void> {
     const thresholds = config.thresholds as any;
     let shouldAlert = false;
@@ -244,15 +247,18 @@ export class TeamAlertService {
     }
 
     if (shouldAlert) {
-      await this.createAlert({
-        tenantId: userContext.tenantId,
-        configurationId: config.id,
-        alertType: config.alertType,
-        severity: this.determineSeverity(alertDetails),
-        title: this.generateServiceAlertTitle(config.alertType, alertDetails),
-        message: this.generateServiceAlertMessage(config.alertType, alertDetails, stats),
-        data: alertDetails,
-      }, config);
+      await this.createAlert(
+        {
+          tenantId: userContext.tenantId,
+          configurationId: config.id,
+          alertType: config.alertType,
+          severity: this.determineSeverity(alertDetails),
+          title: this.generateServiceAlertTitle(config.alertType, alertDetails),
+          message: this.generateServiceAlertMessage(config.alertType, alertDetails, stats),
+          data: alertDetails,
+        },
+        config,
+      );
     }
   }
 
@@ -261,7 +267,7 @@ export class TeamAlertService {
    */
   private static async createAlert(
     alertData: NewAlertInstance,
-    config: AlertConfiguration
+    config: AlertConfiguration,
   ): Promise<void> {
     try {
       // Check if similar alert already exists and is active
@@ -273,8 +279,8 @@ export class TeamAlertService {
             eq(alertInstances.tenantId, alertData.tenantId!),
             eq(alertInstances.alertType, alertData.alertType),
             eq(alertInstances.status, 'active'),
-            gte(alertInstances.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)) // Last 24 hours
-          )
+            gte(alertInstances.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)), // Last 24 hours
+          ),
         )
         .limit(1);
 
@@ -305,10 +311,7 @@ export class TeamAlertService {
   /**
    * Send notifications for an alert
    */
-  private static async sendNotifications(
-    alert: any,
-    config: AlertConfiguration
-  ): Promise<void> {
+  private static async sendNotifications(alert: any, config: AlertConfiguration): Promise<void> {
     const channels = config.notificationChannels as string[];
 
     for (const channel of channels) {
@@ -334,7 +337,7 @@ export class TeamAlertService {
    */
   private static async sendEmailNotification(
     alert: any,
-    config: AlertConfiguration
+    config: AlertConfiguration,
   ): Promise<void> {
     try {
       const emailSvc = await getEmailService();
@@ -349,7 +352,7 @@ export class TeamAlertService {
         return;
       }
 
-      const recipients = [user.email, ...(config.additionalRecipients as string[] || [])];
+      const recipients = [user.email, ...((config.additionalRecipients as string[]) || [])];
 
       // Generate email HTML
       const html = this.generateAlertEmailHTML(alert);
@@ -414,7 +417,11 @@ export class TeamAlertService {
     }
   }
 
-  private static generateWarehouseAlertMessage(alertType: string, details: any, stats: any): string {
+  private static generateWarehouseAlertMessage(
+    alertType: string,
+    details: any,
+    stats: any,
+  ): string {
     switch (alertType) {
       case 'warehouse_low_fpy':
         return `Warehouse FPY rate (${details.currentValue.toFixed(1)}%) has fallen below the threshold of ${details.threshold}%. Current stats: ${stats.activity.completedKits} completed kits, ${stats.activity.reworkRequired} requiring rework.`;
@@ -493,7 +500,9 @@ export class TeamAlertService {
       ${alert.message}
     </p>
 
-    ${alert.data?.currentValue !== undefined ? `
+    ${
+      alert.data?.currentValue !== undefined
+        ? `
     <div style="display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
       <div>
         <p style="margin: 0; font-size: 12px; color: #666;">Current Value</p>
@@ -501,16 +510,22 @@ export class TeamAlertService {
           ${typeof alert.data.currentValue === 'number' ? alert.data.currentValue.toFixed(1) : alert.data.currentValue}${alert.data.metric?.includes('Rate') || alert.data.metric?.includes('Compliance') ? '%' : ''}
         </p>
       </div>
-      ${alert.data?.threshold !== undefined ? `
+      ${
+        alert.data?.threshold !== undefined
+          ? `
       <div>
         <p style="margin: 0; font-size: 12px; color: #666;">Threshold</p>
         <p style="margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #6b7280;">
           ${alert.data.threshold}${alert.data.metric?.includes('Rate') || alert.data.metric?.includes('Compliance') ? '%' : ''}
         </p>
       </div>
-      ` : ''}
+      `
+          : ''
+      }
     </div>
-    ` : ''}
+    `
+        : ''
+    }
   </div>
 
   <div style="background-color: #fff; padding: 20px; border: 1px solid #e5e7eb; border-radius: 4px;">
@@ -571,12 +586,7 @@ export class TeamAlertService {
     return await db
       .select()
       .from(alertInstances)
-      .where(
-        and(
-          eq(alertInstances.tenantId, tenantId),
-          eq(alertInstances.status, 'active')
-        )
-      )
+      .where(and(eq(alertInstances.tenantId, tenantId), eq(alertInstances.status, 'active')))
       .orderBy(sql`${alertInstances.createdAt} DESC`)
       .limit(50);
   }

@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -12,16 +12,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import {
   Database,
   Server,
@@ -47,10 +47,10 @@ import {
   Zap,
   TrendingUp,
   Users,
-} from "lucide-react";
-import { format } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
-import { apiRequest } from "@/lib/queryClient";
+} from 'lucide-react';
+import { format } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
+import { apiRequest } from '@/lib/queryClient';
 
 interface DatabaseStats {
   totalSize: string;
@@ -68,15 +68,15 @@ interface TableInfo {
   rowCount: number;
   lastModified: string;
   indexes: number;
-  status: "healthy" | "warning" | "error";
+  status: 'healthy' | 'warning' | 'error';
 }
 
 interface BackupInfo {
   id: string;
   name: string;
-  type: "full" | "incremental" | "differential";
+  type: 'full' | 'incremental' | 'differential';
   size: string;
-  status: "completed" | "running" | "failed";
+  status: 'completed' | 'running' | 'failed';
   createdAt: string;
   duration: string;
 }
@@ -88,7 +88,7 @@ interface QueryLog {
   timestamp: string;
   user: string;
   database: string;
-  status: "success" | "error";
+  status: 'success' | 'error';
 }
 
 interface DatabaseUpdaterApiResponse {
@@ -110,171 +110,171 @@ interface DatabaseUpdaterApiResponse {
 export default function DatabaseManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedTab, setSelectedTab] = useState("overview");
-  const [sqlQuery, setSqlQuery] = useState("");
-  const [filterTable, setFilterTable] = useState("all");
+  const [selectedTab, setSelectedTab] = useState('overview');
+  const [sqlQuery, setSqlQuery] = useState('');
+  const [filterTable, setFilterTable] = useState('all');
   const [queryResult, setQueryResult] = useState<any>(null);
 
   // Fetch real system resources (database stats)
   const { data: systemResources, isLoading: resourcesLoading } = useQuery({
-    queryKey: ["/api/root-admin/system-resources"],
+    queryKey: ['/api/root-admin/system-resources'],
     refetchInterval: 30000,
   });
 
   // Fetch real database tables information
   const { data: tablesData, isLoading: tablesLoading } = useQuery({
-    queryKey: ["/api/root-admin/database-tables"],
+    queryKey: ['/api/root-admin/database-tables'],
     refetchInterval: 60000,
   });
 
   // Fetch real audit logs (for query monitoring)
   const { data: auditLogs, isLoading: auditLoading } = useQuery({
-    queryKey: ["/api/root-admin/audit-logs"],
+    queryKey: ['/api/root-admin/audit-logs'],
     refetchInterval: 30000,
   });
 
   // Fetch database updater status
   const { data: updaterStatus, isLoading: updaterLoading } = useQuery<DatabaseUpdaterApiResponse>({
-    queryKey: ["/api/database-updater/status"],
+    queryKey: ['/api/database-updater/status'],
     refetchInterval: 10000,
   });
 
   // Execute SQL Query mutation
   const executeQueryMutation = useMutation({
     mutationFn: async (query: string) =>
-      apiRequest("/api/root-admin/execute-query", "POST", { query }),
+      apiRequest('/api/root-admin/execute-query', 'POST', { query }),
     onSuccess: (data) => {
       setQueryResult(data);
       if (data.success) {
         toast({
-          title: "Query Executed Successfully",
+          title: 'Query Executed Successfully',
           description: `${data.rowCount} rows returned in ${data.executionTime}ms`,
         });
       } else {
         toast({
-          title: "Query Failed",
+          title: 'Query Failed',
           description: data.message,
-          variant: "destructive",
+          variant: 'destructive',
         });
       }
     },
     onError: (error: any) => {
       toast({
-        title: "Query Error",
-        description: error.message || "Failed to execute query",
-        variant: "destructive",
+        title: 'Query Error',
+        description: error.message || 'Failed to execute query',
+        variant: 'destructive',
       });
     },
   });
 
   // Database updater control mutations
   const startUpdaterMutation = useMutation({
-    mutationFn: () => apiRequest("/api/database-updater/start", "POST"),
+    mutationFn: () => apiRequest('/api/database-updater/start', 'POST'),
     onSuccess: () => {
       toast({
-        title: "Database Updater Started",
-        description: "The database updater system is now running",
+        title: 'Database Updater Started',
+        description: 'The database updater system is now running',
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to Start Updater",
-        description: error.message || "Could not start the database updater",
-        variant: "destructive",
+        title: 'Failed to Start Updater',
+        description: error.message || 'Could not start the database updater',
+        variant: 'destructive',
       });
     },
   });
 
   const stopUpdaterMutation = useMutation({
-    mutationFn: () => apiRequest("/api/database-updater/stop", "POST"),
+    mutationFn: () => apiRequest('/api/database-updater/stop', 'POST'),
     onSuccess: () => {
       toast({
-        title: "Database Updater Stopped",
-        description: "The database updater system has been stopped",
+        title: 'Database Updater Stopped',
+        description: 'The database updater system has been stopped',
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to Stop Updater",
-        description: error.message || "Could not stop the database updater",
-        variant: "destructive",
+        title: 'Failed to Stop Updater',
+        description: error.message || 'Could not stop the database updater',
+        variant: 'destructive',
       });
     },
   });
 
   const executeUpdaterMutation = useMutation({
-    mutationFn: (updaterName: string) => 
-      apiRequest(`/api/database-updater/execute/${updaterName}`, "POST"),
+    mutationFn: (updaterName: string) =>
+      apiRequest(`/api/database-updater/execute/${updaterName}`, 'POST'),
     onSuccess: (data, updaterName) => {
       toast({
-        title: "Updater Executed Successfully",
+        title: 'Updater Executed Successfully',
         description: `${updaterName} has been executed successfully`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] });
     },
     onError: (error: any, updaterName) => {
       toast({
-        title: "Updater Execution Failed",
+        title: 'Updater Execution Failed',
         description: `Failed to execute ${updaterName}: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const dryRunUpdaterMutation = useMutation({
-    mutationFn: (updaterName: string) => 
-      apiRequest(`/api/database-updater/dry-run/${updaterName}`, "POST"),
+    mutationFn: (updaterName: string) =>
+      apiRequest(`/api/database-updater/dry-run/${updaterName}`, 'POST'),
     onSuccess: (data, updaterName) => {
       toast({
-        title: "Dry Run Completed",
+        title: 'Dry Run Completed',
         description: `Dry run for ${updaterName} completed successfully`,
       });
     },
     onError: (error: any, updaterName) => {
       toast({
-        title: "Dry Run Failed",
+        title: 'Dry Run Failed',
         description: `Dry run for ${updaterName} failed: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const disableUpdaterMutation = useMutation({
-    mutationFn: (updaterName: string) => 
-      apiRequest(`/api/database-updater/disable/${updaterName}`, "POST"),
+    mutationFn: (updaterName: string) =>
+      apiRequest(`/api/database-updater/disable/${updaterName}`, 'POST'),
     onSuccess: (data, updaterName) => {
       toast({
-        title: "Updater Disabled",
+        title: 'Updater Disabled',
         description: `${updaterName} has been disabled successfully`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] });
     },
     onError: (error: any, updaterName) => {
       toast({
-        title: "Failed to Disable Updater",
+        title: 'Failed to Disable Updater',
         description: `Could not disable ${updaterName}: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const enableUpdaterMutation = useMutation({
-    mutationFn: (updaterName: string) => 
-      apiRequest(`/api/database-updater/enable/${updaterName}`, "POST"),
+    mutationFn: (updaterName: string) =>
+      apiRequest(`/api/database-updater/enable/${updaterName}`, 'POST'),
     onSuccess: (data, updaterName) => {
       toast({
-        title: "Updater Enabled",
+        title: 'Updater Enabled',
         description: `${updaterName} has been enabled successfully`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] });
     },
     onError: (error: any, updaterName) => {
       toast({
-        title: "Failed to Enable Updater",
+        title: 'Failed to Enable Updater',
         description: `Could not enable ${updaterName}: ${error.message}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -299,66 +299,58 @@ export default function DatabaseManagement() {
   // Create database stats from system resources
   const dbStats: DatabaseStats = {
     totalSize:
-      systemResources?.find((r: any) => r.name === "Database Size")?.current +
-        " " +
-        systemResources?.find((r: any) => r.name === "Database Size")?.unit ||
-      "Unknown",
-    tableCount:
-      systemResources?.find((r: any) => r.name === "Tables Count")?.current ||
-      0,
+      systemResources?.find((r: any) => r.name === 'Database Size')?.current +
+        ' ' +
+        systemResources?.find((r: any) => r.name === 'Database Size')?.unit || 'Unknown',
+    tableCount: systemResources?.find((r: any) => r.name === 'Tables Count')?.current || 0,
     connectionCount:
-      systemResources?.find((r: any) => r.name === "Active Connections")
-        ?.current || 0,
+      systemResources?.find((r: any) => r.name === 'Active Connections')?.current || 0,
     activeQueries: 0, // Would come from real monitoring
-    cacheHitRatio:
-      systemResources?.find((r: any) => r.name === "Cache Hit Ratio")
-        ?.current || 0,
-    uptime: "Unknown", // Would come from real monitoring
+    cacheHitRatio: systemResources?.find((r: any) => r.name === 'Cache Hit Ratio')?.current || 0,
+    uptime: 'Unknown', // Would come from real monitoring
   };
 
   // Process tables data for display
   const processedTables: TableInfo[] = tables.map((table: any) => ({
     name: table.name,
-    schema: table.schema || "public",
-    size: table.size || "Unknown",
+    schema: table.schema || 'public',
+    size: table.size || 'Unknown',
     rowCount: table.row_count || 0,
     lastModified: table.last_vacuum || new Date().toISOString(),
     indexes: table.index_scans || 0,
-    status: table.row_count > 100000 ? "warning" : "healthy",
+    status: table.row_count > 100000 ? 'warning' : 'healthy',
   }));
 
   // Backup functionality would require additional backend implementation
   const backups: BackupInfo[] = [
     {
-      id: "backup-001",
-      name: `automatic_backup_${format(new Date(), "yyyy_MM_dd")}`,
-      type: "full",
+      id: 'backup-001',
+      name: `automatic_backup_${format(new Date(), 'yyyy_MM_dd')}`,
+      type: 'full',
       size: dbStats.totalSize,
-      status: "completed",
+      status: 'completed',
       createdAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-      duration: "Real backup system needed",
+      duration: 'Real backup system needed',
     },
   ];
 
   // Process audit logs as query logs
   const queryLogs: QueryLog[] = logs.slice(0, 20).map((log: any) => ({
     id: log.id,
-    query: `${log.action} on ${log.tableName}${
-      log.recordId ? ` (ID: ${log.recordId})` : ""
-    }`,
+    query: `${log.action} on ${log.tableName}${log.recordId ? ` (ID: ${log.recordId})` : ''}`,
     duration: Math.floor(Math.random() * 1000) + 10, // Would be real timing data
     timestamp: log.timestamp,
-    user: log.userName || "System",
-    database: "printyx_main",
-    status: "success",
+    user: log.userName || 'System',
+    database: 'printyx_main',
+    status: 'success',
   }));
 
   const handleExecuteQuery = () => {
     if (!sqlQuery.trim()) {
       toast({
-        title: "Query Required",
-        description: "Please enter a SQL query to execute",
-        variant: "destructive",
+        title: 'Query Required',
+        description: 'Please enter a SQL query to execute',
+        variant: 'destructive',
       });
       return;
     }
@@ -367,32 +359,32 @@ export default function DatabaseManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "healthy":
-      case "completed":
-      case "success":
-        return "bg-green-100 text-green-800";
-      case "warning":
-      case "running":
-        return "bg-yellow-100 text-yellow-800";
-      case "error":
-      case "failed":
-        return "bg-red-100 text-red-800";
+      case 'healthy':
+      case 'completed':
+      case 'success':
+        return 'bg-green-100 text-green-800';
+      case 'warning':
+      case 'running':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'error':
+      case 'failed':
+        return 'bg-red-100 text-red-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "healthy":
-      case "completed":
-      case "success":
+      case 'healthy':
+      case 'completed':
+      case 'success':
         return <CheckCircle className="w-4 h-4" />;
-      case "warning":
-      case "running":
+      case 'warning':
+      case 'running':
         return <Clock className="w-4 h-4" />;
-      case "error":
-      case "failed":
+      case 'error':
+      case 'failed':
         return <AlertTriangle className="w-4 h-4" />;
       default:
         return <Activity className="w-4 h-4" />;
@@ -401,19 +393,19 @@ export default function DatabaseManagement() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case "full":
-        return "bg-blue-100 text-blue-800";
-      case "incremental":
-        return "bg-green-100 text-green-800";
-      case "differential":
-        return "bg-purple-100 text-purple-800";
+      case 'full':
+        return 'bg-blue-100 text-blue-800';
+      case 'incremental':
+        return 'bg-green-100 text-green-800';
+      case 'differential':
+        return 'bg-purple-100 text-purple-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const filteredTables = processedTables.filter(
-    (table) => filterTable === "all" || table.status === filterTable
+    (table) => filterTable === 'all' || table.status === filterTable,
   );
 
   return (
@@ -438,9 +430,7 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Size
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Total Size</p>
                   <p className="text-2xl font-bold">{dbStats.totalSize}</p>
                 </div>
                 <HardDrive className="w-8 h-8 text-blue-600" />
@@ -464,12 +454,8 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Connections
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {dbStats.connectionCount}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Connections</p>
+                  <p className="text-2xl font-bold">{dbStats.connectionCount}</p>
                 </div>
                 <Server className="w-8 h-8 text-purple-600" />
               </div>
@@ -480,9 +466,7 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Active Queries
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Active Queries</p>
                   <p className="text-2xl font-bold">{dbStats.activeQueries}</p>
                 </div>
                 <Activity className="w-8 h-8 text-orange-600" />
@@ -494,9 +478,7 @@ export default function DatabaseManagement() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Cache Hit Ratio
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Cache Hit Ratio</p>
                   <p className="text-2xl font-bold">{dbStats.cacheHitRatio}%</p>
                 </div>
                 <BarChart3 className="w-8 h-8 text-indigo-600" />
@@ -568,9 +550,7 @@ export default function DatabaseManagement() {
                   <TableBody>
                     {filteredTables.map((table) => (
                       <TableRow key={table.name}>
-                        <TableCell className="font-medium">
-                          {table.name}
-                        </TableCell>
+                        <TableCell className="font-medium">{table.name}</TableCell>
                         <TableCell>{table.schema}</TableCell>
                         <TableCell>{table.size}</TableCell>
                         <TableCell>{table.rowCount.toLocaleString()}</TableCell>
@@ -578,16 +558,11 @@ export default function DatabaseManagement() {
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             {getStatusIcon(table.status)}
-                            <Badge className={getStatusColor(table.status)}>
-                              {table.status}
-                            </Badge>
+                            <Badge className={getStatusColor(table.status)}>{table.status}</Badge>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {format(
-                            new Date(table.lastModified),
-                            "MMM dd, HH:mm"
-                          )}
+                          {format(new Date(table.lastModified), 'MMM dd, HH:mm')}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -620,9 +595,7 @@ export default function DatabaseManagement() {
                     <AlertTriangle className="w-3 h-3 mr-1" />
                     Production Database
                   </Badge>
-                  <span className="text-sm text-gray-500">
-                    Execute queries with caution
-                  </span>
+                  <span className="text-sm text-gray-500">Execute queries with caution</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -638,9 +611,7 @@ export default function DatabaseManagement() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Button
-                      disabled={
-                        !sqlQuery.trim() || executeQueryMutation.isPending
-                      }
+                      disabled={!sqlQuery.trim() || executeQueryMutation.isPending}
                       onClick={handleExecuteQuery}
                     >
                       {executeQueryMutation.isPending ? (
@@ -653,7 +624,7 @@ export default function DatabaseManagement() {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setSqlQuery("");
+                        setSqlQuery('');
                         setQueryResult(null);
                       }}
                     >
@@ -661,17 +632,13 @@ export default function DatabaseManagement() {
                       Clear
                     </Button>
                   </div>
-                  <div className="text-sm text-gray-500">
-                    Connected as: postgres_admin
-                  </div>
+                  <div className="text-sm text-gray-500">Connected as: postgres_admin</div>
                 </div>
 
                 {/* Query Results */}
                 {queryResult && (
                   <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-3">
-                      Query Results
-                    </h3>
+                    <h3 className="text-lg font-semibold mb-3">Query Results</h3>
                     {queryResult.success ? (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -680,8 +647,7 @@ export default function DatabaseManagement() {
                             Success
                           </Badge>
                           <span className="text-sm text-gray-500">
-                            {queryResult.rowCount} rows •{" "}
-                            {queryResult.executionTime}ms
+                            {queryResult.rowCount} rows • {queryResult.executionTime}ms
                           </span>
                         </div>
                         {queryResult.data && queryResult.data.length > 0 && (
@@ -689,42 +655,30 @@ export default function DatabaseManagement() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  {Object.keys(queryResult.data[0]).map(
-                                    (key) => (
-                                      <TableHead key={key}>{key}</TableHead>
-                                    )
-                                  )}
+                                  {Object.keys(queryResult.data[0]).map((key) => (
+                                    <TableHead key={key}>{key}</TableHead>
+                                  ))}
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {queryResult.data
-                                  .slice(0, 100)
-                                  .map((row: any, index: number) => (
-                                    <TableRow key={index}>
-                                      {Object.values(row).map(
-                                        (value: any, cellIndex) => (
-                                          <TableCell
-                                            key={cellIndex}
-                                            className="font-mono text-sm"
-                                          >
-                                            {value === null ? (
-                                              <span className="text-gray-400 italic">
-                                                null
-                                              </span>
-                                            ) : (
-                                              String(value)
-                                            )}
-                                          </TableCell>
-                                        )
-                                      )}
-                                    </TableRow>
-                                  ))}
+                                {queryResult.data.slice(0, 100).map((row: any, index: number) => (
+                                  <TableRow key={index}>
+                                    {Object.values(row).map((value: any, cellIndex) => (
+                                      <TableCell key={cellIndex} className="font-mono text-sm">
+                                        {value === null ? (
+                                          <span className="text-gray-400 italic">null</span>
+                                        ) : (
+                                          String(value)
+                                        )}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
                               </TableBody>
                             </Table>
                             {queryResult.data.length > 100 && (
                               <p className="text-sm text-gray-500 mt-2">
-                                Showing first 100 rows of{" "}
-                                {queryResult.data.length} total
+                                Showing first 100 rows of {queryResult.data.length} total
                               </p>
                             )}
                           </div>
@@ -763,16 +717,23 @@ export default function DatabaseManagement() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Status</span>
-                    <Badge 
-                      className={updaterStatus?.data?.isRunning 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-red-100 text-red-800"
+                    <Badge
+                      className={
+                        updaterStatus?.data?.isRunning
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
                       }
                     >
                       {updaterStatus?.data?.isRunning ? (
-                        <><CheckCircle className="w-3 h-3 mr-1" />Running</>
+                        <>
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Running
+                        </>
                       ) : (
-                        <><Pause className="w-3 h-3 mr-1" />Stopped</>
+                        <>
+                          <Pause className="w-3 h-3 mr-1" />
+                          Stopped
+                        </>
                       )}
                     </Badge>
                   </div>
@@ -797,7 +758,7 @@ export default function DatabaseManagement() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Enabled</span>
                     <span className="text-sm font-semibold">
-                      {updaterStatus?.data?.updaters?.filter(u => u.isEnabled)?.length || 0}
+                      {updaterStatus?.data?.updaters?.filter((u) => u.isEnabled)?.length || 0}
                     </span>
                   </div>
                 </CardContent>
@@ -840,7 +801,9 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full"
                     variant="outline"
-                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/database-updater/status"] })}
+                    onClick={() =>
+                      queryClient.invalidateQueries({ queryKey: ['/api/database-updater/status'] })
+                    }
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Refresh Status
@@ -858,15 +821,19 @@ export default function DatabaseManagement() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <div className="text-xs font-medium text-gray-600 mb-1">Business Activities</div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">
+                      Business Activities
+                    </div>
                     <code className="text-xs bg-blue-50 px-2 py-1 rounded block">
-                      {updaterStatus?.data?.config?.scheduleConfig?.businessActivities || 'Every 2 hours, 9-5 PM'}
+                      {updaterStatus?.data?.config?.scheduleConfig?.businessActivities ||
+                        'Every 2 hours, 9-5 PM'}
                     </code>
                   </div>
                   <div>
                     <div className="text-xs font-medium text-gray-600 mb-1">Service Tickets</div>
                     <code className="text-xs bg-green-50 px-2 py-1 rounded block">
-                      {updaterStatus?.data?.config?.scheduleConfig?.serviceTickets || 'Every 6 hours'}
+                      {updaterStatus?.data?.config?.scheduleConfig?.serviceTickets ||
+                        'Every 6 hours'}
                     </code>
                   </div>
                   <div>
@@ -894,119 +861,133 @@ export default function DatabaseManagement() {
                       <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
                       <span className="ml-2 text-gray-600">Loading updaters...</span>
                     </div>
-                  ) : updaterStatus?.data?.updaters?.map((updater, index) => (
-                    <Card key={updater.name} className="border">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-2">
-                              <Badge 
-                                className={updater.isEnabled 
-                                  ? "bg-green-100 text-green-800" 
-                                  : "bg-gray-100 text-gray-800"
-                                }
-                              >
-                                {updater.isEnabled ? (
-                                  <><CheckCircle className="w-3 h-3 mr-1" />Enabled</>
-                                ) : (
-                                  <><Pause className="w-3 h-3 mr-1" />Disabled</>
-                                )}
-                              </Badge>
-                              <h3 className="font-medium">
-                                {updater.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                              </h3>
-                            </div>
-                            <div className="text-sm text-gray-600 mb-3">
-                              {updater.name === 'business_record_activities' && (
-                                <>
-                                  <Users className="w-4 h-4 inline mr-1" />
-                                  Generates realistic CRM activities (calls, emails, meetings, demos)
-                                </>
-                              )}
-                              {updater.name === 'service_tickets' && (
-                                <>
-                                  <Settings className="w-4 h-4 inline mr-1" />
-                                  Creates service requests with realistic scenarios and error codes
-                                </>
-                              )}
-                              {updater.name === 'business_records' && (
-                                <>
-                                  <TrendingUp className="w-4 h-4 inline mr-1" />
-                                  Adds new leads with industry-appropriate company data
-                                </>
-                              )}
-                            </div>
-                            {updater.lastExecution && (
-                              <div className="text-xs text-gray-500">
-                                Last execution: {format(new Date(updater.lastExecution), "MMM dd, HH:mm")}
+                  ) : (
+                    updaterStatus?.data?.updaters?.map((updater, index) => (
+                      <Card key={updater.name} className="border">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <Badge
+                                  className={
+                                    updater.isEnabled
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-gray-100 text-gray-800'
+                                  }
+                                >
+                                  {updater.isEnabled ? (
+                                    <>
+                                      <CheckCircle className="w-3 h-3 mr-1" />
+                                      Enabled
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Pause className="w-3 h-3 mr-1" />
+                                      Disabled
+                                    </>
+                                  )}
+                                </Badge>
+                                <h3 className="font-medium">
+                                  {updater.name
+                                    .replace(/_/g, ' ')
+                                    .replace(/\b\w/g, (l) => l.toUpperCase())}
+                                </h3>
                               </div>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => dryRunUpdaterMutation.mutate(updater.name)}
-                              disabled={dryRunUpdaterMutation.isPending}
-                              data-testid={`button-dryrun-${updater.name}`}
-                            >
-                              {dryRunUpdaterMutation.isPending ? (
-                                <RefreshCw className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Eye className="w-4 h-4" />
+                              <div className="text-sm text-gray-600 mb-3">
+                                {updater.name === 'business_record_activities' && (
+                                  <>
+                                    <Users className="w-4 h-4 inline mr-1" />
+                                    Generates realistic CRM activities (calls, emails, meetings,
+                                    demos)
+                                  </>
+                                )}
+                                {updater.name === 'service_tickets' && (
+                                  <>
+                                    <Settings className="w-4 h-4 inline mr-1" />
+                                    Creates service requests with realistic scenarios and error
+                                    codes
+                                  </>
+                                )}
+                                {updater.name === 'business_records' && (
+                                  <>
+                                    <TrendingUp className="w-4 h-4 inline mr-1" />
+                                    Adds new leads with industry-appropriate company data
+                                  </>
+                                )}
+                              </div>
+                              {updater.lastExecution && (
+                                <div className="text-xs text-gray-500">
+                                  Last execution:{' '}
+                                  {format(new Date(updater.lastExecution), 'MMM dd, HH:mm')}
+                                </div>
                               )}
-                            </Button>
-                            {updater.isEnabled ? (
+                            </div>
+                            <div className="flex items-center space-x-2 ml-4">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => disableUpdaterMutation.mutate(updater.name)}
-                                disabled={disableUpdaterMutation.isPending}
-                                data-testid={`button-disable-${updater.name}`}
+                                onClick={() => dryRunUpdaterMutation.mutate(updater.name)}
+                                disabled={dryRunUpdaterMutation.isPending}
+                                data-testid={`button-dryrun-${updater.name}`}
                               >
-                                {disableUpdaterMutation.isPending ? (
+                                {dryRunUpdaterMutation.isPending ? (
                                   <RefreshCw className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <Pause className="w-4 h-4" />
+                                  <Eye className="w-4 h-4" />
                                 )}
                               </Button>
-                            ) : (
+                              {updater.isEnabled ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => disableUpdaterMutation.mutate(updater.name)}
+                                  disabled={disableUpdaterMutation.isPending}
+                                  data-testid={`button-disable-${updater.name}`}
+                                >
+                                  {disableUpdaterMutation.isPending ? (
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Pause className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => enableUpdaterMutation.mutate(updater.name)}
+                                  disabled={enableUpdaterMutation.isPending}
+                                  data-testid={`button-enable-${updater.name}`}
+                                >
+                                  {enableUpdaterMutation.isPending ? (
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Play className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              )}
                               <Button
                                 size="sm"
-                                variant="outline"
-                                onClick={() => enableUpdaterMutation.mutate(updater.name)}
-                                disabled={enableUpdaterMutation.isPending}
-                                data-testid={`button-enable-${updater.name}`}
+                                onClick={() => executeUpdaterMutation.mutate(updater.name)}
+                                disabled={executeUpdaterMutation.isPending || !updater.isEnabled}
+                                data-testid={`button-execute-${updater.name}`}
                               >
-                                {enableUpdaterMutation.isPending ? (
-                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                {executeUpdaterMutation.isPending ? (
+                                  <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
                                 ) : (
-                                  <Play className="w-4 h-4" />
+                                  <Zap className="w-4 h-4 mr-1" />
                                 )}
+                                Execute
                               </Button>
-                            )}
-                            <Button
-                              size="sm"
-                              onClick={() => executeUpdaterMutation.mutate(updater.name)}
-                              disabled={executeUpdaterMutation.isPending || !updater.isEnabled}
-                              data-testid={`button-execute-${updater.name}`}
-                            >
-                              {executeUpdaterMutation.isPending ? (
-                                <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
-                              ) : (
-                                <Zap className="w-4 h-4 mr-1" />
-                              )}
-                              Execute
-                            </Button>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )) || (
-                    <div className="text-center py-8 text-gray-500">
-                      <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" />
-                      Loading updater status...
-                    </div>
+                        </CardContent>
+                      </Card>
+                    )) || (
+                      <div className="text-center py-8 text-gray-500">
+                        <RefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                        Loading updater status...
+                      </div>
+                    )
                   )}
                 </div>
 
@@ -1014,17 +995,31 @@ export default function DatabaseManagement() {
                   <div className="flex items-start space-x-3">
                     <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div>
-                      <h4 className="font-medium text-blue-900 mb-1">Database Updater Information</h4>
+                      <h4 className="font-medium text-blue-900 mb-1">
+                        Database Updater Information
+                      </h4>
                       <p className="text-sm text-blue-800">
-                        This system automatically injects realistic data into your database tables for testing and development. 
-                        All data is generated for tenant <code className="bg-blue-100 px-1 rounded">550e8400-e29b-41d4-a716-446655440000</code> 
-                        {" "}and customer <code className="bg-blue-100 px-1 rounded">cust-1</code>.
+                        This system automatically injects realistic data into your database tables
+                        for testing and development. All data is generated for tenant{' '}
+                        <code className="bg-blue-100 px-1 rounded">
+                          550e8400-e29b-41d4-a716-446655440000
+                        </code>{' '}
+                        and customer <code className="bg-blue-100 px-1 rounded">cust-1</code>.
                       </p>
                       <ul className="text-sm text-blue-800 mt-2 space-y-1">
-                        <li>• <strong>Dry Run</strong>: Test without affecting the database</li>
-                        <li>• <strong>Disable/Enable</strong>: Stop or start individual updaters</li>
-                        <li>• <strong>Execute</strong>: Run the updater and insert data (only when enabled)</li>
-                        <li>• <strong>Scheduled</strong>: Automatic execution based on CRON schedules</li>
+                        <li>
+                          • <strong>Dry Run</strong>: Test without affecting the database
+                        </li>
+                        <li>
+                          • <strong>Disable/Enable</strong>: Stop or start individual updaters
+                        </li>
+                        <li>
+                          • <strong>Execute</strong>: Run the updater and insert data (only when
+                          enabled)
+                        </li>
+                        <li>
+                          • <strong>Scheduled</strong>: Automatic execution based on CRON schedules
+                        </li>
                       </ul>
                     </div>
                   </div>
@@ -1047,9 +1042,9 @@ export default function DatabaseManagement() {
                       variant="outline"
                       onClick={() =>
                         toast({
-                          title: "Backup System",
+                          title: 'Backup System',
                           description:
-                            "Automated backups are managed by the hosting provider. Manual backup functionality coming soon.",
+                            'Automated backups are managed by the hosting provider. Manual backup functionality coming soon.',
                         })
                       }
                     >
@@ -1060,9 +1055,9 @@ export default function DatabaseManagement() {
                       variant="outline"
                       onClick={() =>
                         toast({
-                          title: "Restore System",
+                          title: 'Restore System',
                           description:
-                            "Database restore functionality requires administrator approval. Contact support for assistance.",
+                            'Database restore functionality requires administrator approval. Contact support for assistance.',
                         })
                       }
                     >
@@ -1088,29 +1083,20 @@ export default function DatabaseManagement() {
                   <TableBody>
                     {backups.map((backup) => (
                       <TableRow key={backup.id}>
-                        <TableCell className="font-medium">
-                          {backup.name}
-                        </TableCell>
+                        <TableCell className="font-medium">{backup.name}</TableCell>
                         <TableCell>
-                          <Badge className={getTypeColor(backup.type)}>
-                            {backup.type}
-                          </Badge>
+                          <Badge className={getTypeColor(backup.type)}>{backup.type}</Badge>
                         </TableCell>
                         <TableCell>{backup.size}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             {getStatusIcon(backup.status)}
-                            <Badge className={getStatusColor(backup.status)}>
-                              {backup.status}
-                            </Badge>
+                            <Badge className={getStatusColor(backup.status)}>{backup.status}</Badge>
                           </div>
                         </TableCell>
                         <TableCell>{backup.duration}</TableCell>
                         <TableCell>
-                          {format(
-                            new Date(backup.createdAt),
-                            "MMM dd, yyyy HH:mm"
-                          )}
+                          {format(new Date(backup.createdAt), 'MMM dd, yyyy HH:mm')}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
@@ -1150,15 +1136,10 @@ export default function DatabaseManagement() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
-                              <Badge className={getStatusColor(log.status)}>
-                                {log.status}
-                              </Badge>
+                              <Badge className={getStatusColor(log.status)}>{log.status}</Badge>
                               <Badge variant="outline">{log.duration}ms</Badge>
                               <span className="text-sm text-gray-500">
-                                {format(
-                                  new Date(log.timestamp),
-                                  "MMM dd, HH:mm:ss"
-                                )}
+                                {format(new Date(log.timestamp), 'MMM dd, HH:mm:ss')}
                               </span>
                             </div>
                             <div className="bg-gray-50 p-3 rounded-md mb-2">
@@ -1190,7 +1171,7 @@ export default function DatabaseManagement() {
                 <CardContent className="space-y-3">
                   <Button
                     className="w-full justify-start"
-                    onClick={() => executeQueryMutation.mutate("ANALYZE;")}
+                    onClick={() => executeQueryMutation.mutate('ANALYZE;')}
                     disabled={executeQueryMutation.isPending}
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -1199,9 +1180,7 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() =>
-                      executeQueryMutation.mutate("VACUUM ANALYZE;")
-                    }
+                    onClick={() => executeQueryMutation.mutate('VACUUM ANALYZE;')}
                     disabled={executeQueryMutation.isPending}
                   >
                     <Database className="w-4 h-4 mr-2" />
@@ -1210,9 +1189,7 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() =>
-                      executeQueryMutation.mutate("SELECT pg_stat_reset();")
-                    }
+                    onClick={() => executeQueryMutation.mutate('SELECT pg_stat_reset();')}
                     disabled={executeQueryMutation.isPending}
                   >
                     <BarChart3 className="w-4 h-4 mr-2" />
@@ -1221,11 +1198,7 @@ export default function DatabaseManagement() {
                   <Button
                     className="w-full justify-start"
                     variant="outline"
-                    onClick={() =>
-                      executeQueryMutation.mutate(
-                        "REINDEX DATABASE SCHEMA public;"
-                      )
-                    }
+                    onClick={() => executeQueryMutation.mutate('REINDEX DATABASE SCHEMA public;')}
                     disabled={executeQueryMutation.isPending}
                   >
                     <Archive className="w-4 h-4 mr-2" />
@@ -1246,7 +1219,7 @@ export default function DatabaseManagement() {
                     className="w-full justify-start"
                     onClick={() =>
                       executeQueryMutation.mutate(
-                        "SELECT * FROM information_schema.table_privileges WHERE grantee != 'postgres' LIMIT 20;"
+                        "SELECT * FROM information_schema.table_privileges WHERE grantee != 'postgres' LIMIT 20;",
                       )
                     }
                     disabled={executeQueryMutation.isPending}
@@ -1259,9 +1232,9 @@ export default function DatabaseManagement() {
                     variant="outline"
                     onClick={() =>
                       toast({
-                        title: "Integrity Check",
+                        title: 'Integrity Check',
                         description:
-                          "Database integrity checks are performed automatically by PostgreSQL. No issues detected.",
+                          'Database integrity checks are performed automatically by PostgreSQL. No issues detected.',
                       })
                     }
                   >
@@ -1273,7 +1246,7 @@ export default function DatabaseManagement() {
                     variant="outline"
                     onClick={() =>
                       executeQueryMutation.mutate(
-                        "SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 50;"
+                        'SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 50;',
                       )
                     }
                     disabled={executeQueryMutation.isPending}
@@ -1286,9 +1259,9 @@ export default function DatabaseManagement() {
                     variant="outline"
                     onClick={() =>
                       toast({
-                        title: "Log Rotation",
+                        title: 'Log Rotation',
                         description:
-                          "Log rotation is managed automatically by the system. Logs are archived and cleaned up regularly.",
+                          'Log rotation is managed automatically by the system. Logs are archived and cleaned up regularly.',
                       })
                     }
                   >

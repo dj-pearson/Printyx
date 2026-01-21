@@ -1,4 +1,5 @@
 # Authentication Setup Documentation
+
 ## Self-Hosted Supabase + Edge Functions Architecture
 
 **Last Updated:** January 7, 2026  
@@ -74,14 +75,14 @@
 
 ### Key Differences from Hosted Supabase
 
-| Aspect | Hosted Supabase | Self-Hosted Setup |
-|--------|----------------|-------------------|
-| **Auth API** | `<project>.supabase.co` | `https://api.tryeatpal.com` |
-| **Edge Functions** | Same domain | **Separate** `https://functions.tryeatpal.com` |
-| **Database** | Managed | Self-managed PostgreSQL (port 5434) |
-| **Configuration** | Supabase Dashboard | `supabase/config.toml` + ENV vars |
-| **JWT Secret** | Auto-generated | **Custom JWT secret required** |
-| **RLS Policies** | Same | Same (maintained in migrations) |
+| Aspect             | Hosted Supabase         | Self-Hosted Setup                              |
+| ------------------ | ----------------------- | ---------------------------------------------- |
+| **Auth API**       | `<project>.supabase.co` | `https://api.tryeatpal.com`                    |
+| **Edge Functions** | Same domain             | **Separate** `https://functions.tryeatpal.com` |
+| **Database**       | Managed                 | Self-managed PostgreSQL (port 5434)            |
+| **Configuration**  | Supabase Dashboard      | `supabase/config.toml` + ENV vars              |
+| **JWT Secret**     | Auto-generated          | **Custom JWT secret required**                 |
+| **RLS Policies**   | Same                    | Same (maintained in migrations)                |
 
 ---
 
@@ -253,6 +254,7 @@ verify_jwt = false  # Public endpoint
 ### Separate Service Architecture
 
 **Why Separate?**
+
 - Deno runtime requirements
 - Independent scaling
 - Different deployment cycle
@@ -261,6 +263,7 @@ verify_jwt = false  # Public endpoint
 ### Deployed Functions (77 total)
 
 Categories:
+
 - **AI Services:** `ai-meal-plan`, `suggest-foods`, `suggest-recipe`, `analyze-content`
 - **Auth:** `send-auth-email`, `oauth-token-refresh`
 - **Payments:** `create-checkout`, `stripe-webhook`, `manage-subscription`
@@ -289,8 +292,8 @@ const { data, error } = await supabase.functions.invoke('ai-meal-plan', {
   body: {
     kid_id: 'uuid',
     start_date: '2026-01-01',
-    days: 7
-  }
+    days: 7,
+  },
 });
 
 // Without JWT (public endpoints)
@@ -313,25 +316,22 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_PUBLISHABLE_KEY,
-  {
-    auth: {
-      storage: typeof localStorage !== 'undefined' ? localStorage : undefined,
-      persistSession: true,
-      autoRefreshToken: true,
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    storage: typeof localStorage !== 'undefined' ? localStorage : undefined,
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'eatpal-web',
     },
-    global: {
-      headers: {
-        'X-Client-Info': 'eatpal-web',
-      },
-    },
-  }
-);
+  },
+});
 ```
 
 **Key Features:**
+
 - ✅ Graceful fallback if Supabase not configured
 - ✅ Mock client for development without backend
 - ✅ Auto token refresh
@@ -385,6 +385,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 ```
 
 **Security Features:**
+
 - ✅ Race condition prevention (no premature redirects)
 - ✅ Route memory (saves intended destination)
 - ✅ Loading state prevents flash
@@ -395,6 +396,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 **File:** `src/pages/Auth.tsx`
 
 **Sign Up Flow:**
+
 1. User enters email + password
 2. Real-time validation (Zod schemas)
 3. Password requirements displayed
@@ -406,6 +408,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 9. Redirect to onboarding or dashboard
 
 **Sign In Flow:**
+
 1. User enters email + password
 2. Call `supabase.auth.signInWithPassword()`
 3. Session created automatically
@@ -414,6 +417,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 6. Redirect to appropriate page
 
 **OAuth Flow (Google/Apple):**
+
 1. User clicks OAuth button
 2. Call `supabase.auth.signInWithOAuth({ provider: 'google' })`
 3. Redirect to OAuth provider
@@ -428,7 +432,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 **File:** `src/lib/validations.ts`
 
 ```typescript
-export const PasswordSchema = z.string()
+export const PasswordSchema = z
+  .string()
   .min(12, 'Password must be at least 12 characters long')
   .max(128, 'Password must not exceed 128 characters')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
@@ -440,6 +445,7 @@ export const EmailSchema = z.string().email('Invalid email address').max(255);
 ```
 
 **Real-Time Feedback:**
+
 - Shows checkmarks as requirements are met
 - Green border when valid, red when invalid
 - Visual indicators for each requirement
@@ -447,6 +453,7 @@ export const EmailSchema = z.string().email('Invalid email address').max(255);
 ### 5. OTP Email Verification
 
 **Features:**
+
 - 6-digit code sent via email
 - InputOTP component with autofocus
 - Resend cooldown (60 seconds)
@@ -454,6 +461,7 @@ export const EmailSchema = z.string().email('Invalid email address').max(255);
 - Error handling with toast notifications
 
 **Code:**
+
 ```typescript
 const handleVerifyOtp = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -461,14 +469,14 @@ const handleVerifyOtp = async (e: React.FormEvent) => {
   const { error } = await supabase.auth.verifyOtp({
     email: pendingEmail,
     token: otpCode,
-    type: "signup",
+    type: 'signup',
   });
 
   if (error) {
-    toast({ title: "Verification Failed", variant: "destructive" });
+    toast({ title: 'Verification Failed', variant: 'destructive' });
   } else {
     // Session automatically created, onAuthStateChange fires
-    toast({ title: "Email Verified!", description: "Welcome to EatPal!" });
+    toast({ title: 'Email Verified!', description: 'Welcome to EatPal!' });
   }
 };
 ```
@@ -495,6 +503,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_onboarding ON profiles(onboarding_comple
 ```
 
 **Columns:**
+
 - `id` (UUID): Links to `auth.users.id`
 - `email` (TEXT): User email
 - `full_name` (TEXT): User's full name
@@ -505,6 +514,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_onboarding ON profiles(onboarding_comple
 #### 2. **`auth.users` Table**
 
 Managed by Supabase Auth (DO NOT modify directly):
+
 - `id` (UUID): Primary user identifier
 - `email` (TEXT): User email
 - `encrypted_password` (TEXT): Bcrypt hash
@@ -533,6 +543,7 @@ CREATE POLICY "Users update own profile"
 ```
 
 **Applied to all tables:**
+
 - `kids`, `foods`, `recipes`, `plan_entries`
 - `grocery_items`, `grocery_lists`
 - `blog_posts` (author check)
@@ -552,14 +563,14 @@ import { EmailSchema, PasswordSchema, sanitizeURL } from '@/lib/validations';
 // Validate email
 const emailResult = EmailSchema.safeParse(email);
 if (!emailResult.success) {
-  toast({ title: "Invalid Email", variant: "destructive" });
+  toast({ title: 'Invalid Email', variant: 'destructive' });
   return;
 }
 
 // Validate password
 const passwordResult = PasswordSchema.safeParse(password);
 if (!passwordResult.success) {
-  toast({ title: "Weak Password", variant: "destructive" });
+  toast({ title: 'Weak Password', variant: 'destructive' });
   return;
 }
 
@@ -574,10 +585,10 @@ const redirectTo = sanitizeURL(rawRedirect);
 ```typescript
 // Get the redirect URL from query params (where user was trying to go)
 // Validate redirect URL to prevent open redirect attacks
-const rawRedirect = searchParams.get("redirect") || "/dashboard";
+const rawRedirect = searchParams.get('redirect') || '/dashboard';
 const sanitizedRedirect = sanitizeURL(rawRedirect);
 // Only allow internal redirects (relative paths starting with /)
-const redirectTo = sanitizedRedirect.startsWith("/") ? sanitizedRedirect : "/dashboard";
+const redirectTo = sanitizedRedirect.startsWith('/') ? sanitizedRedirect : '/dashboard';
 ```
 
 ### 3. **XSS Prevention**
@@ -585,6 +596,7 @@ const redirectTo = sanitizedRedirect.startsWith("/") ? sanitizedRedirect : "/das
 **File:** `src/lib/validations.ts`
 
 Functions:
+
 - `sanitizeHTML()` - Removes script tags, event handlers
 - `sanitizeInput()` - Removes HTML, SQL injection patterns
 - `sanitizeEmail()` - Prevents email header injection
@@ -610,6 +622,7 @@ CREATE TABLE rate_limit_config (
 ```
 
 Applied to:
+
 - `/auth/signup` - 5 attempts per hour
 - `/auth/signin` - 10 attempts per hour
 - Edge Functions - varies by tier
@@ -648,6 +661,7 @@ auth: {
    - Create OAuth 2.0 credentials
 
 2. **Authorized Redirect URIs:**
+
    ```
    https://api.tryeatpal.com/auth/v1/callback
    https://tryeatpal.com/auth
@@ -672,6 +686,7 @@ auth: {
    - Create Service ID: `com.eatpal.web`
 
 2. **Return URLs:**
+
    ```
    https://api.tryeatpal.com/auth/v1/callback
    ```
@@ -703,12 +718,13 @@ const signInWithOAuth = async (provider: 'google' | 'apple') => {
   });
 
   if (error) {
-    toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: 'Error', description: error.message, variant: 'destructive' });
   }
 };
 ```
 
 **What happens:**
+
 1. User clicks "Continue with Google"
 2. Redirected to Google login
 3. User authorizes app
@@ -751,6 +767,7 @@ CNAME www.tryeatpal.com        →  tryeatpal.com
 ### Build & Deploy Commands
 
 **Web (Cloudflare Pages):**
+
 ```bash
 npm run build
 # Output: dist/
@@ -762,6 +779,7 @@ npx wrangler pages deploy dist
 ```
 
 **Edge Functions:**
+
 ```bash
 # Deploy all functions
 supabase functions deploy
@@ -822,33 +840,34 @@ import { test, expect } from '@playwright/test';
 
 test('user can sign up and verify email', async ({ page }) => {
   await page.goto('/auth');
-  
+
   // Fill sign up form
   await page.fill('input[id="signup-email"]', 'test@example.com');
   await page.fill('input[id="signup-password"]', 'StrongP@ssw0rd123');
   await page.click('button[type="submit"]');
-  
+
   // Should show OTP screen
   await expect(page.locator('text=Check Your Email')).toBeVisible();
 });
 
 test('user can sign in', async ({ page }) => {
   await page.goto('/auth');
-  
+
   // Switch to sign in tab
   await page.click('text=Sign In');
-  
+
   // Fill sign in form
   await page.fill('input[id="signin-email"]', 'test@example.com');
   await page.fill('input[id="signin-password"]', 'StrongP@ssw0rd123');
   await page.click('button[type="submit"]');
-  
+
   // Should redirect to dashboard
   await expect(page).toHaveURL('/dashboard');
 });
 ```
 
 **Run Tests:**
+
 ```bash
 npm run test:e2e
 ```
@@ -864,6 +883,7 @@ npm run test:e2e
 **Cause:** JWT secret mismatch between frontend and backend
 
 **Fix:**
+
 ```bash
 # Ensure VITE_SUPABASE_ANON_KEY matches the JWT generated with your JWT_SECRET
 # Regenerate JWT if needed:
@@ -882,6 +902,7 @@ npm run test:e2e
 #### 2. **Email OTP Not Sending**
 
 **Check:**
+
 - [ ] SMTP credentials correct
 - [ ] Email service (Resend) API key valid
 - [ ] Sender email verified
@@ -889,6 +910,7 @@ npm run test:e2e
 - [ ] Check Supabase Auth logs
 
 **Debug:**
+
 ```bash
 # Check Supabase logs
 supabase logs --project-ref <ref>
@@ -904,12 +926,14 @@ curl -v --url 'smtp://smtp.resend.com:587' \
 #### 3. **OAuth Redirect Not Working**
 
 **Check:**
+
 - [ ] Redirect URLs match exactly in OAuth provider settings
 - [ ] Using HTTPS (not HTTP)
 - [ ] Callback URL includes `/auth/v1/callback`
 - [ ] No trailing slashes
 
 **Correct URLs:**
+
 ```
 ✅ https://api.tryeatpal.com/auth/v1/callback
 ❌ http://api.tryeatpal.com/auth/v1/callback  (HTTP)
@@ -919,30 +943,36 @@ curl -v --url 'smtp://smtp.resend.com:587' \
 #### 4. **Session Not Persisting**
 
 **Check:**
+
 - [ ] localStorage enabled in browser
 - [ ] Cookies not blocked
 - [ ] Same-site cookie policy correct
 - [ ] Token not expired
 
 **Debug:**
+
 ```javascript
 // In browser console
-localStorage.getItem('sb-api-auth-token')
+localStorage.getItem('sb-api-auth-token');
 // Should show JWT token
 
 // Check session
-const { data: { session } } = await supabase.auth.getSession();
+const {
+  data: { session },
+} = await supabase.auth.getSession();
 console.log(session);
 ```
 
 #### 5. **CORS Errors**
 
 **Check:**
+
 - [ ] `ADDITIONAL_REDIRECT_URLS` includes your frontend domain
 - [ ] `SITE_URL` set correctly
 - [ ] Nginx/Caddy CORS headers configured
 
 **Nginx Config:**
+
 ```nginx
 add_header 'Access-Control-Allow-Origin' 'https://tryeatpal.com';
 add_header 'Access-Control-Allow-Credentials' 'true';
@@ -955,12 +985,14 @@ add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type';
 **From test report:** All 77 edge functions returning 503
 
 **Possible Causes:**
+
 - Edge Functions service not running
 - Wrong `VITE_FUNCTIONS_URL` in frontend
 - Network connectivity issues
 - Functions not deployed
 
 **Fix:**
+
 ```bash
 # Check if functions service is running
 curl https://functions.tryeatpal.com/health

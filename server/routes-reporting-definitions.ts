@@ -15,7 +15,8 @@ export const SALES_REPORTS = [
     id: 'sales_pipeline_overview',
     name: 'Sales Pipeline Overview',
     code: 'sales_pipeline_overview',
-    description: 'Complete pipeline analysis with stage progression, conversion rates, and forecasting',
+    description:
+      'Complete pipeline analysis with stage progression, conversion rates, and forecasting',
     category: 'sales' as const,
     organizationalScope: 'location' as const,
     requiredPermissions: { canViewSalesReports: true },
@@ -80,36 +81,40 @@ export const SALES_REPORTS = [
       locationIds: null,
       regionIds: null,
       fromDate: null,
-      toDate: null
+      toDate: null,
     },
     availableFilters: {
       dateRange: { type: 'dateRange', label: 'Date Range' },
       pipelineStage: { type: 'multiSelect', options: ['Prospecting', 'Qualified', 'Negotiation'] },
-      leadSource: { type: 'multiSelect', options: ['Website', 'Referral', 'Cold Call', 'Trade Show'] },
+      leadSource: {
+        type: 'multiSelect',
+        options: ['Website', 'Referral', 'Cold Call', 'Trade Show'],
+      },
       owner: { type: 'userSelect', label: 'Sales Rep' },
-      amountRange: { type: 'numberRange', label: 'Deal Value' }
+      amountRange: { type: 'numberRange', label: 'Deal Value' },
     },
     availableGroupings: {
       stage: 'pipeline_stage',
       owner: 'owner_name',
       location: 'location_name',
       source: 'lead_source',
-      month: 'DATE_TRUNC(\'month\', created_at)'
+      month: "DATE_TRUNC('month', created_at)",
     },
     chartConfig: {
       defaultChartType: 'pipeline',
       xAxis: 'pipeline_stage',
       yAxis: 'estimated_amount',
-      colorBy: 'activity_status'
+      colorBy: 'activity_status',
     },
-    supportsDrillDown: true
+    supportsDrillDown: true,
   },
 
   {
     id: 'sales_rep_performance',
     name: 'Sales Rep Performance Analytics',
     code: 'sales_rep_performance',
-    description: 'Individual sales rep performance with activity metrics, conversion rates, and coaching insights',
+    description:
+      'Individual sales rep performance with activity metrics, conversion rates, and coaching insights',
     category: 'sales' as const,
     organizationalScope: 'team' as const,
     requiredPermissions: { canViewSalesReports: true, canViewTeamData: true },
@@ -184,19 +189,22 @@ export const SALES_REPORTS = [
     `,
     availableFilters: {
       dateRange: { type: 'dateRange', label: 'Performance Period' },
-      performanceTier: { type: 'multiSelect', options: ['High Performer', 'Solid Performer', 'Developing', 'Needs Coaching'] },
-      location: { type: 'locationSelect', label: 'Location' }
+      performanceTier: {
+        type: 'multiSelect',
+        options: ['High Performer', 'Solid Performer', 'Developing', 'Needs Coaching'],
+      },
+      location: { type: 'locationSelect', label: 'Location' },
     },
     chartConfig: {
       defaultChartType: 'scatter',
       xAxis: 'qualification_rate',
       yAxis: 'close_rate',
       sizeBy: 'total_revenue',
-      colorBy: 'performance_tier'
+      colorBy: 'performance_tier',
     },
     isRealTime: false,
-    supportsDrillDown: true
-  }
+    supportsDrillDown: true,
+  },
 ];
 
 // =====================================================================
@@ -208,7 +216,8 @@ export const SERVICE_REPORTS = [
     id: 'service_sla_performance',
     name: 'Service SLA Performance Dashboard',
     code: 'service_sla_performance',
-    description: 'Real-time SLA monitoring with response times, resolution rates, and breach analysis',
+    description:
+      'Real-time SLA monitoring with response times, resolution rates, and breach analysis',
     category: 'service' as const,
     organizationalScope: 'location' as const,
     requiredPermissions: { canViewServiceReports: true },
@@ -287,22 +296,26 @@ export const SERVICE_REPORTS = [
       priority: { type: 'select', options: ['critical', 'high', 'medium', 'low'] },
       status: { type: 'multiSelect', options: ['open', 'in_progress', 'resolved', 'closed'] },
       technician: { type: 'userSelect', label: 'Technician' },
-      slaStatus: { type: 'multiSelect', options: ['Response Met', 'Response Breached', 'Resolution Met', 'Resolution Breached'] }
+      slaStatus: {
+        type: 'multiSelect',
+        options: ['Response Met', 'Response Breached', 'Resolution Met', 'Resolution Breached'],
+      },
     },
     chartConfig: {
       defaultChartType: 'gauge',
       primaryMetric: 'response_performance_pct',
-      secondaryMetric: 'resolution_performance_pct'
+      secondaryMetric: 'resolution_performance_pct',
     },
     isRealTime: true,
-    cacheDuration: 60 // 1 minute cache for real-time SLA monitoring
+    cacheDuration: 60, // 1 minute cache for real-time SLA monitoring
   },
 
   {
     id: 'technician_productivity',
     name: 'Technician Productivity Analysis',
     code: 'technician_productivity',
-    description: 'Comprehensive technician performance including utilization, efficiency, and customer satisfaction',
+    description:
+      'Comprehensive technician performance including utilization, efficiency, and customer satisfaction',
     category: 'service' as const,
     organizationalScope: 'team' as const,
     requiredPermissions: { canViewServiceReports: true, canViewTeamData: true },
@@ -376,14 +389,22 @@ export const SERVICE_REPORTS = [
     `,
     availableFilters: {
       dateRange: { type: 'dateRange', label: 'Performance Period' },
-      performanceTier: { type: 'multiSelect', options: ['Elite', 'Proficient', 'Developing', 'Needs Training'] },
-      location: { type: 'locationSelect', label: 'Location' }
+      performanceTier: {
+        type: 'multiSelect',
+        options: ['Elite', 'Proficient', 'Developing', 'Needs Training'],
+      },
+      location: { type: 'locationSelect', label: 'Location' },
     },
     chartConfig: {
       defaultChartType: 'radar',
-      metrics: ['resolution_rate', 'first_time_fix_rate', 'work_efficiency_pct', 'tickets_per_hour']
-    }
-  }
+      metrics: [
+        'resolution_rate',
+        'first_time_fix_rate',
+        'work_efficiency_pct',
+        'tickets_per_hour',
+      ],
+    },
+  },
 ];
 
 // =====================================================================
@@ -395,7 +416,8 @@ export const FINANCE_REPORTS = [
     id: 'accounts_receivable_aging',
     name: 'Accounts Receivable Aging Analysis',
     code: 'ar_aging_analysis',
-    description: 'Comprehensive AR aging with DSO calculations, collection effectiveness, and risk assessment',
+    description:
+      'Comprehensive AR aging with DSO calculations, collection effectiveness, and risk assessment',
     category: 'finance' as const,
     organizationalScope: 'company' as const,
     requiredPermissions: { canViewFinanceReports: true, canViewSensitiveFinancials: true },
@@ -468,18 +490,21 @@ export const FINANCE_REPORTS = [
     `,
     availableFilters: {
       dateRange: { type: 'dateRange', label: 'Invoice Date Range' },
-      agingBucket: { type: 'multiSelect', options: ['Current', '1-30 Days', '31-60 Days', '61-90 Days', '91-120 Days', '120+ Days'] },
+      agingBucket: {
+        type: 'multiSelect',
+        options: ['Current', '1-30 Days', '31-60 Days', '61-90 Days', '91-120 Days', '120+ Days'],
+      },
       collectionPriority: { type: 'multiSelect', options: ['Critical', 'High', 'Medium', 'Low'] },
       amountRange: { type: 'numberRange', label: 'Outstanding Balance' },
-      customer: { type: 'customerSelect', label: 'Customer' }
+      customer: { type: 'customerSelect', label: 'Customer' },
     },
     chartConfig: {
       defaultChartType: 'aging_chart',
       primaryAxis: 'aging_bucket',
       valueAxis: 'outstanding_balance',
-      colorBy: 'collection_priority'
-    }
-  }
+      colorBy: 'collection_priority',
+    },
+  },
 ];
 
 // =====================================================================
@@ -511,9 +536,9 @@ export const SALES_KPIS = [
     `,
     displayFormat: 'currency' as const,
     targetType: 'absolute' as const,
-    refreshFrequency: 1800 // 30 minutes
+    refreshFrequency: 1800, // 30 minutes
   },
-  
+
   {
     code: 'monthly_revenue',
     name: 'Monthly Revenue',
@@ -531,8 +556,8 @@ export const SALES_KPIS = [
         AND (:locationIds IS NULL OR location_id = ANY(:locationIds))
     `,
     displayFormat: 'currency' as const,
-    targetType: 'absolute' as const
-  }
+    targetType: 'absolute' as const,
+  },
 ];
 
 export const SERVICE_KPIS = [
@@ -566,8 +591,8 @@ export const SERVICE_KPIS = [
     targetValue: 95,
     targetType: 'percentage' as const,
     alertEnabled: true,
-    alertThresholds: { critical: 90, warning: 93 }
-  }
+    alertThresholds: { critical: 90, warning: 93 },
+  },
 ];
 
 // =====================================================================
@@ -577,30 +602,35 @@ export const SERVICE_KPIS = [
 export async function seedReportDefinitions(tenantId: string): Promise<void> {
   try {
     console.log('🌱 Seeding report definitions for tenant:', tenantId);
-    
+
     const allReports = [...SALES_REPORTS, ...SERVICE_REPORTS, ...FINANCE_REPORTS];
     const allKPIs = [...SALES_KPIS, ...SERVICE_KPIS];
-    
+
     // Insert report definitions
     for (const report of allReports) {
-      await db.insert(reportDefinitions).values({
-        tenantId,
-        ...report,
-        createdBy: 'system'
-      }).onConflictDoNothing();
+      await db
+        .insert(reportDefinitions)
+        .values({
+          tenantId,
+          ...report,
+          createdBy: 'system',
+        })
+        .onConflictDoNothing();
     }
-    
+
     // Insert KPI definitions
     for (const kpi of allKPIs) {
-      await db.insert(kpiDefinitions).values({
-        tenantId,
-        ...kpi,
-        createdBy: 'system'
-      }).onConflictDoNothing();
+      await db
+        .insert(kpiDefinitions)
+        .values({
+          tenantId,
+          ...kpi,
+          createdBy: 'system',
+        })
+        .onConflictDoNothing();
     }
-    
+
     console.log(`✅ Successfully seeded ${allReports.length} reports and ${allKPIs.length} KPIs`);
-    
   } catch (error) {
     console.error('❌ Error seeding report definitions:', error);
     throw error;

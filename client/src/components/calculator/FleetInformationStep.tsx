@@ -1,7 +1,13 @@
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { DEVICE_TYPES, FLEET_AGES } from './types';
 import type { FleetInputs } from './types';
 
@@ -15,7 +21,7 @@ export function FleetInformationStep({ data, onChange }: FleetInformationStepPro
     const currentTypes = data.deviceTypes || [];
     const newTypes = checked
       ? [...currentTypes, deviceType]
-      : currentTypes.filter(t => t !== deviceType);
+      : currentTypes.filter((t) => t !== deviceType);
     onChange({ deviceTypes: newTypes });
   };
 
@@ -51,11 +57,16 @@ export function FleetInformationStep({ data, onChange }: FleetInformationStepPro
         <Label>Device types in your fleet (select all that apply)</Label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {DEVICE_TYPES.map((type) => (
-            <div key={type.value} className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50">
+            <div
+              key={type.value}
+              className="flex items-center space-x-2 border rounded-lg p-3 hover:bg-gray-50"
+            >
               <Checkbox
                 id={type.value}
                 checked={(data.deviceTypes || []).includes(type.value)}
-                onCheckedChange={(checked) => handleDeviceTypeToggle(type.value, checked as boolean)}
+                onCheckedChange={(checked) =>
+                  handleDeviceTypeToggle(type.value, checked as boolean)
+                }
               />
               <label
                 htmlFor={type.value}
@@ -91,7 +102,11 @@ export function FleetInformationStep({ data, onChange }: FleetInformationStepPro
       {/* Monthly Page Volume */}
       <div className="space-y-2">
         <Label htmlFor="page-volume">
-          Monthly page volume: <span className="font-semibold text-lg">{(data.monthlyPageVolume || 0).toLocaleString()}</span> pages
+          Monthly page volume:{' '}
+          <span className="font-semibold text-lg">
+            {(data.monthlyPageVolume || 0).toLocaleString()}
+          </span>{' '}
+          pages
         </Label>
         <Slider
           id="page-volume"
@@ -111,7 +126,8 @@ export function FleetInformationStep({ data, onChange }: FleetInformationStepPro
       {/* Color Ratio */}
       <div className="space-y-2">
         <Label htmlFor="color-ratio">
-          Color printing ratio: <span className="font-semibold text-lg">{data.colorRatio || 0}%</span> color
+          Color printing ratio:{' '}
+          <span className="font-semibold text-lg">{data.colorRatio || 0}%</span> color
         </Label>
         <Slider
           id="color-ratio"

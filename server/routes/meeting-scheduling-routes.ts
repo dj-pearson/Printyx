@@ -23,7 +23,7 @@ router.post('/schedule-request', async (req, res) => {
     const requestData = {
       ...req.body,
       tenantId: req.user.tenantId,
-      requesterId: req.user.id
+      requesterId: req.user.id,
     };
 
     const result = await MeetingSchedulingService.createSchedulingRequest(requestData);
@@ -50,7 +50,7 @@ router.post('/schedule/:requestId', async (req, res) => {
     const meeting = await MeetingSchedulingService.scheduleMeeting(
       requestId,
       selectedSuggestion,
-      roomId
+      roomId,
     );
 
     res.json(meeting);
@@ -66,14 +66,7 @@ router.post('/schedule/:requestId', async (req, res) => {
  */
 router.get('/meetings', async (req, res) => {
   try {
-    const { 
-      start, 
-      end, 
-      status, 
-      participant, 
-      room,
-      type 
-    } = req.query;
+    const { start, end, status, participant, room, type } = req.query;
 
     // Mock meetings data
     const meetings = [
@@ -90,22 +83,22 @@ router.get('/meetings', async (req, res) => {
         location: 'Conference Room A',
         meetingUrl: 'https://meet.company.com/q4-planning',
         isRecurring: false,
-        
+
         // AI insights
         aiSchedulingScore: 0.92,
         aiParticipantCompatibility: 0.88,
         aiOptimalDurationMinutes: 90,
         aiPreparationTimeMinutes: 15,
-        
+
         // Organization
         organizerId: 'user-manager-1',
         organizerName: 'John Smith',
         meetingType: {
           id: 'type-planning',
           name: 'Project Planning',
-          defaultDuration: 90
+          defaultDuration: 90,
         },
-        
+
         // Participants
         participants: [
           {
@@ -116,7 +109,7 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.95,
-            aiEngagementScore: 0.88
+            aiEngagementScore: 0.88,
           },
           {
             id: 'part-2',
@@ -126,7 +119,7 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.91,
-            aiEngagementScore: 0.82
+            aiEngagementScore: 0.82,
           },
           {
             id: 'part-3',
@@ -136,29 +129,29 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'tentative',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.75,
-            aiEngagementScore: 0.79
-          }
+            aiEngagementScore: 0.79,
+          },
         ],
-        
+
         // Room booking
         room: {
           id: 'room-1',
           name: 'Conference Room A',
           capacity: 12,
           equipment: ['projector', 'whiteboard', 'video_conf'],
-          bookingConfirmed: true
+          bookingConfirmed: true,
         },
-        
+
         // Agenda
         agenda: [
           { title: 'Q3 Review', duration: 20, presenter: 'Sarah Johnson' },
           { title: 'Q4 Goals', duration: 30, presenter: 'John Smith' },
           { title: 'Resource Planning', duration: 25, presenter: 'Mike Chen' },
-          { title: 'Next Steps', duration: 15, presenter: 'John Smith' }
+          { title: 'Next Steps', duration: 15, presenter: 'John Smith' },
         ],
-        
+
         createdAt: new Date('2025-09-20T14:30:00Z'),
-        updatedAt: new Date('2025-09-25T09:15:00Z')
+        updatedAt: new Date('2025-09-25T09:15:00Z'),
       },
       {
         id: 'meeting-2',
@@ -173,22 +166,22 @@ router.get('/meetings', async (req, res) => {
         location: 'Conference Room A',
         meetingUrl: 'https://meet.company.com/client-demo',
         isRecurring: false,
-        
+
         // AI insights
         aiSchedulingScore: 0.89,
         aiParticipantCompatibility: 0.92,
         aiOptimalDurationMinutes: 60,
         aiPreparationTimeMinutes: 30,
-        
+
         // Organization
         organizerId: 'user-sales-1',
         organizerName: 'Sarah Johnson',
         meetingType: {
           id: 'type-client',
           name: 'Client Presentation',
-          defaultDuration: 60
+          defaultDuration: 60,
         },
-        
+
         // Participants
         participants: [
           {
@@ -199,7 +192,7 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.98,
-            aiEngagementScore: 0.95
+            aiEngagementScore: 0.95,
           },
           {
             id: 'part-5',
@@ -209,7 +202,7 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.94,
-            aiEngagementScore: 0.87
+            aiEngagementScore: 0.87,
           },
           {
             id: 'part-6',
@@ -219,30 +212,30 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.85,
-            aiEngagementScore: 0.90
-          }
+            aiEngagementScore: 0.9,
+          },
         ],
-        
+
         // Room booking
         room: {
           id: 'room-1',
           name: 'Conference Room A',
           capacity: 12,
           equipment: ['projector', 'whiteboard', 'video_conf'],
-          bookingConfirmed: true
+          bookingConfirmed: true,
         },
-        
+
         // Agenda
         agenda: [
           { title: 'Introductions', duration: 5, presenter: 'Sarah Johnson' },
           { title: 'Company Overview', duration: 10, presenter: 'Sarah Johnson' },
           { title: 'Product Demonstration', duration: 25, presenter: 'Mike Chen' },
           { title: 'Proposal Discussion', duration: 15, presenter: 'Sarah Johnson' },
-          { title: 'Q&A and Next Steps', duration: 5, presenter: 'Sarah Johnson' }
+          { title: 'Q&A and Next Steps', duration: 5, presenter: 'Sarah Johnson' },
         ],
-        
+
         createdAt: new Date('2025-09-22T11:20:00Z'),
-        updatedAt: new Date('2025-09-25T16:45:00Z')
+        updatedAt: new Date('2025-09-25T16:45:00Z'),
       },
       {
         id: 'meeting-3',
@@ -260,24 +253,24 @@ router.get('/meetings', async (req, res) => {
         recurrencePattern: {
           frequency: 'daily',
           interval: 1,
-          daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+          daysOfWeek: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
         },
-        
+
         // AI insights
         aiSchedulingScore: 0.96,
         aiParticipantCompatibility: 0.94,
         aiOptimalDurationMinutes: 15,
         aiPreparationTimeMinutes: 0,
-        
+
         // Organization
         organizerId: 'user-manager-2',
         organizerName: 'Alex Rodriguez',
         meetingType: {
           id: 'type-standup',
           name: 'Team Standup',
-          defaultDuration: 15
+          defaultDuration: 15,
         },
-        
+
         // Participants
         participants: [
           {
@@ -288,7 +281,7 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.92,
-            aiEngagementScore: 0.85
+            aiEngagementScore: 0.85,
           },
           {
             id: 'part-8',
@@ -298,7 +291,7 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.89,
-            aiEngagementScore: 0.83
+            aiEngagementScore: 0.83,
           },
           {
             id: 'part-9',
@@ -308,54 +301,54 @@ router.get('/meetings', async (req, res) => {
             invitationStatus: 'accepted',
             attendanceStatus: 'unknown',
             aiAttendanceProbability: 0.94,
-            aiEngagementScore: 0.88
-          }
+            aiEngagementScore: 0.88,
+          },
         ],
-        
+
         // Room booking
         room: {
           id: 'room-2',
           name: 'Huddle Room 1',
           capacity: 4,
           equipment: ['tv_display', 'conference_phone'],
-          bookingConfirmed: true
+          bookingConfirmed: true,
         },
-        
+
         // Agenda
         agenda: [
-          { title: 'Yesterday\'s Progress', duration: 5, presenter: 'Team' },
-          { title: 'Today\'s Plans', duration: 5, presenter: 'Team' },
-          { title: 'Blockers & Help Needed', duration: 5, presenter: 'Team' }
+          { title: "Yesterday's Progress", duration: 5, presenter: 'Team' },
+          { title: "Today's Plans", duration: 5, presenter: 'Team' },
+          { title: 'Blockers & Help Needed', duration: 5, presenter: 'Team' },
         ],
-        
+
         createdAt: new Date('2025-09-01T10:00:00Z'),
-        updatedAt: new Date('2025-09-25T08:30:00Z')
-      }
+        updatedAt: new Date('2025-09-25T08:30:00Z'),
+      },
     ];
 
     // Apply filters
     let filteredMeetings = meetings;
-    
+
     if (status) {
-      filteredMeetings = filteredMeetings.filter(m => m.status === status);
+      filteredMeetings = filteredMeetings.filter((m) => m.status === status);
     }
-    
+
     if (start || end) {
       const startDate = start ? new Date(start as string) : new Date(0);
       const endDate = end ? new Date(end as string) : new Date('2030-01-01');
-      filteredMeetings = filteredMeetings.filter(m => 
-        m.startTime >= startDate && m.startTime <= endDate
+      filteredMeetings = filteredMeetings.filter(
+        (m) => m.startTime >= startDate && m.startTime <= endDate,
       );
     }
-    
+
     if (participant) {
-      filteredMeetings = filteredMeetings.filter(m => 
-        m.participants.some(p => p.userId === participant)
+      filteredMeetings = filteredMeetings.filter((m) =>
+        m.participants.some((p) => p.userId === participant),
       );
     }
-    
+
     if (room) {
-      filteredMeetings = filteredMeetings.filter(m => m.room?.id === room);
+      filteredMeetings = filteredMeetings.filter((m) => m.room?.id === room);
     }
 
     res.json(filteredMeetings);
@@ -372,7 +365,7 @@ router.get('/meetings', async (req, res) => {
 router.get('/meetings/:meetingId', async (req, res) => {
   try {
     const { meetingId } = req.params;
-    
+
     // Mock detailed meeting data
     const meeting = {
       id: meetingId,
@@ -387,31 +380,31 @@ router.get('/meetings/:meetingId', async (req, res) => {
       location: 'Conference Room A',
       meetingUrl: 'https://meet.company.com/q4-planning',
       isRecurring: false,
-      
+
       // AI optimization insights
       aiSchedulingScore: 0.92,
       aiParticipantCompatibility: 0.88,
       aiOptimalDurationMinutes: 90,
       aiPreparationTimeMinutes: 15,
       aiFollowUpRequired: true,
-      
+
       // Scheduling context
       schedulingFactors: {
         participantProductivity: 0.91,
         meetingFatigue: 0.15,
         travelTime: 0.95,
-        businessPriority: 0.93
+        businessPriority: 0.93,
       },
-      
+
       conflictResolutions: [
         {
           type: 'participant_conflict',
           description: 'Resolved scheduling conflict for Lisa Wang',
           resolution: 'Moved meeting 30 minutes later to accommodate previous commitment',
-          impact: 'low'
-        }
+          impact: 'low',
+        },
       ],
-      
+
       // Organization details
       organizerId: 'user-manager-1',
       organizerName: 'John Smith',
@@ -422,9 +415,9 @@ router.get('/meetings/:meetingId', async (req, res) => {
         description: 'Strategic planning and coordination session',
         defaultDuration: 90,
         bufferTime: 15,
-        aiSchedulingPriority: 7
+        aiSchedulingPriority: 7,
       },
-      
+
       // Detailed participants
       participants: [
         {
@@ -436,17 +429,17 @@ router.get('/meetings/:meetingId', async (req, res) => {
           invitationStatus: 'accepted',
           attendanceStatus: 'unknown',
           respondedAt: new Date('2025-09-20T15:30:00Z'),
-          
+
           // AI insights
           aiAttendanceProbability: 0.95,
           aiEngagementScore: 0.88,
           aiContributionValue: 0.92,
           aiSchedulingFlexibility: 0.78,
-          
+
           // Preferences for this meeting
           availabilityPreference: 'flexible',
           preferredTimeSlots: [],
-          responseNotes: 'Looking forward to discussing Q4 strategy'
+          responseNotes: 'Looking forward to discussing Q4 strategy',
         },
         {
           id: 'part-2',
@@ -457,18 +450,18 @@ router.get('/meetings/:meetingId', async (req, res) => {
           invitationStatus: 'accepted',
           attendanceStatus: 'unknown',
           respondedAt: new Date('2025-09-20T16:45:00Z'),
-          
+
           // AI insights
           aiAttendanceProbability: 0.91,
           aiEngagementScore: 0.82,
           aiContributionValue: 0.85,
           aiSchedulingFlexibility: 0.65,
-          
+
           availabilityPreference: 'preferred',
           preferredTimeSlots: [
             { start: '10:00', end: '12:00' },
-            { start: '14:00', end: '16:00' }
-          ]
+            { start: '14:00', end: '16:00' },
+          ],
         },
         {
           id: 'part-3',
@@ -479,21 +472,19 @@ router.get('/meetings/:meetingId', async (req, res) => {
           invitationStatus: 'tentative',
           attendanceStatus: 'unknown',
           respondedAt: new Date('2025-09-21T09:20:00Z'),
-          
+
           // AI insights
           aiAttendanceProbability: 0.75,
           aiEngagementScore: 0.79,
           aiContributionValue: 0.88,
           aiSchedulingFlexibility: 0.45,
-          
+
           availabilityPreference: 'required',
-          blackoutTimes: [
-            { start: '2025-09-27T09:30:00Z', end: '2025-09-27T10:30:00Z' }
-          ],
-          responseNotes: 'Have a conflict until 10:30, but can join after that'
-        }
+          blackoutTimes: [{ start: '2025-09-27T09:30:00Z', end: '2025-09-27T10:30:00Z' }],
+          responseNotes: 'Have a conflict until 10:30, but can join after that',
+        },
       ],
-      
+
       // Room details
       room: {
         id: 'room-1',
@@ -506,9 +497,9 @@ router.get('/meetings/:meetingId', async (req, res) => {
         bookingConfirmed: true,
         setupTime: 10, // minutes
         cleanupTime: 5,
-        specialRequirements: 'Whiteboard setup for brainstorming session'
+        specialRequirements: 'Whiteboard setup for brainstorming session',
       },
-      
+
       // Detailed agenda
       agenda: [
         {
@@ -518,7 +509,7 @@ router.get('/meetings/:meetingId', async (req, res) => {
           duration: 20,
           presenter: 'Sarah Johnson',
           materials: ['Q3 Performance Report', 'Metrics Dashboard'],
-          objectives: ['Assess Q3 performance', 'Identify key learnings']
+          objectives: ['Assess Q3 performance', 'Identify key learnings'],
         },
         {
           id: 'agenda-2',
@@ -527,7 +518,7 @@ router.get('/meetings/:meetingId', async (req, res) => {
           duration: 30,
           presenter: 'John Smith',
           materials: ['Q4 Strategy Document', 'Market Analysis'],
-          objectives: ['Set Q4 priorities', 'Align team on objectives']
+          objectives: ['Set Q4 priorities', 'Align team on objectives'],
         },
         {
           id: 'agenda-3',
@@ -536,7 +527,7 @@ router.get('/meetings/:meetingId', async (req, res) => {
           duration: 25,
           presenter: 'Mike Chen',
           materials: ['Resource Capacity Report', 'Budget Overview'],
-          objectives: ['Allocate resources', 'Identify hiring needs']
+          objectives: ['Allocate resources', 'Identify hiring needs'],
         },
         {
           id: 'agenda-4',
@@ -544,10 +535,10 @@ router.get('/meetings/:meetingId', async (req, res) => {
           description: 'Define action items and follow-up plan',
           duration: 15,
           presenter: 'John Smith',
-          objectives: ['Assign action items', 'Set follow-up schedule']
-        }
+          objectives: ['Assign action items', 'Set follow-up schedule'],
+        },
       ],
-      
+
       // Attachments and materials
       attachments: [
         {
@@ -555,17 +546,17 @@ router.get('/meetings/:meetingId', async (req, res) => {
           name: 'Q3 Performance Report.pdf',
           size: '2.4 MB',
           uploadedBy: 'Sarah Johnson',
-          uploadedAt: new Date('2025-09-25T14:20:00Z')
+          uploadedAt: new Date('2025-09-25T14:20:00Z'),
         },
         {
           id: 'att-2',
           name: 'Q4 Strategy Draft.docx',
           size: '1.8 MB',
           uploadedBy: 'John Smith',
-          uploadedAt: new Date('2025-09-24T11:15:00Z')
-        }
+          uploadedAt: new Date('2025-09-24T11:15:00Z'),
+        },
       ],
-      
+
       // Meeting preparation
       preparation: {
         aiSuggestedPrepTime: 15,
@@ -573,14 +564,11 @@ router.get('/meetings/:meetingId', async (req, res) => {
           'Review Q3 performance metrics',
           'Read Q4 strategy document',
           'Prepare resource allocation questions',
-          'Bring ideas for Q4 initiatives'
+          'Bring ideas for Q4 initiatives',
         ],
-        requiredReading: [
-          'Q3 Performance Report',
-          'Q4 Strategy Draft'
-        ]
+        requiredReading: ['Q3 Performance Report', 'Q4 Strategy Draft'],
       },
-      
+
       // Analytics and insights
       analytics: {
         invitationsSent: 3,
@@ -590,12 +578,12 @@ router.get('/meetings/:meetingId', async (req, res) => {
         costEstimate: {
           participantTime: 270, // 3 people * 90 minutes
           roomCost: 45, // $0.50/minute * 90 minutes
-          totalCost: 315
-        }
+          totalCost: 315,
+        },
       },
-      
+
       createdAt: new Date('2025-09-20T14:30:00Z'),
-      updatedAt: new Date('2025-09-25T09:15:00Z')
+      updatedAt: new Date('2025-09-25T09:15:00Z'),
     };
 
     res.json(meeting);
@@ -625,11 +613,11 @@ router.get('/types', async (req, res) => {
         aiSchedulingPriority: 8,
         aiOptimalTimeSlots: [
           { start: '09:00', end: '09:30' },
-          { start: '17:00', end: '17:30' }
+          { start: '17:00', end: '17:30' },
         ],
         usageCount: 156,
         averageDuration: 12,
-        satisfactionScore: 4.2
+        satisfactionScore: 4.2,
       },
       {
         id: 'type-client',
@@ -643,11 +631,11 @@ router.get('/types', async (req, res) => {
         aiSchedulingPriority: 9,
         aiOptimalTimeSlots: [
           { start: '10:00', end: '12:00' },
-          { start: '14:00', end: '16:00' }
+          { start: '14:00', end: '16:00' },
         ],
         usageCount: 89,
         averageDuration: 58,
-        satisfactionScore: 4.6
+        satisfactionScore: 4.6,
       },
       {
         id: 'type-planning',
@@ -661,11 +649,11 @@ router.get('/types', async (req, res) => {
         aiSchedulingPriority: 7,
         aiOptimalTimeSlots: [
           { start: '10:00', end: '12:00' },
-          { start: '13:00', end: '15:00' }
+          { start: '13:00', end: '15:00' },
         ],
         usageCount: 67,
         averageDuration: 85,
-        satisfactionScore: 4.1
+        satisfactionScore: 4.1,
       },
       {
         id: 'type-sales',
@@ -679,11 +667,11 @@ router.get('/types', async (req, res) => {
         aiSchedulingPriority: 9,
         aiOptimalTimeSlots: [
           { start: '10:00', end: '12:00' },
-          { start: '14:00', end: '17:00' }
+          { start: '14:00', end: '17:00' },
         ],
         usageCount: 234,
         averageDuration: 28,
-        satisfactionScore: 4.4
+        satisfactionScore: 4.4,
       },
       {
         id: 'type-training',
@@ -697,12 +685,12 @@ router.get('/types', async (req, res) => {
         aiSchedulingPriority: 6,
         aiOptimalTimeSlots: [
           { start: '09:00', end: '12:00' },
-          { start: '13:00', end: '16:00' }
+          { start: '13:00', end: '16:00' },
         ],
         usageCount: 45,
         averageDuration: 115,
-        satisfactionScore: 4.3
-      }
+        satisfactionScore: 4.3,
+      },
     ];
 
     res.json(meetingTypes);
@@ -719,7 +707,7 @@ router.get('/types', async (req, res) => {
 router.get('/rooms', async (req, res) => {
   try {
     const { capacity, equipment, features, available_at } = req.query;
-    
+
     // Mock meeting rooms
     const rooms = [
       {
@@ -737,28 +725,28 @@ router.get('/rooms', async (req, res) => {
           tuesday: { start: '08:00', end: '18:00' },
           wednesday: { start: '08:00', end: '18:00' },
           thursday: { start: '08:00', end: '18:00' },
-          friday: { start: '08:00', end: '18:00' }
+          friday: { start: '08:00', end: '18:00' },
         },
-        
+
         // AI insights
         aiUsagePatterns: {
           peakHours: ['10:00-12:00', '14:00-16:00'],
           popularMeetingTypes: ['client_presentation', 'project_planning'],
-          averageBookingDuration: 75
+          averageBookingDuration: 75,
         },
         aiPopularityScore: 0.85,
         aiOptimalMeetingTypes: ['client_presentation', 'all_hands', 'training'],
-        
+
         // Booking stats
         utilizationRate: 0.68,
         bookingsThisWeek: 15,
         averageRating: 4.3,
-        
+
         // Availability (mock - would be real-time)
         isAvailable: true,
         nextAvailableSlot: new Date('2025-09-27T15:30:00Z'),
-        
-        isActive: true
+
+        isActive: true,
       },
       {
         id: 'room-2',
@@ -775,32 +763,32 @@ router.get('/rooms', async (req, res) => {
           tuesday: { start: '08:00', end: '18:00' },
           wednesday: { start: '08:00', end: '18:00' },
           thursday: { start: '08:00', end: '18:00' },
-          friday: { start: '08:00', end: '18:00' }
+          friday: { start: '08:00', end: '18:00' },
         },
-        
+
         // AI insights
         aiUsagePatterns: {
           peakHours: ['09:00-11:00', '15:00-17:00'],
           popularMeetingTypes: ['team_meeting', 'project_planning'],
-          averageBookingDuration: 60
+          averageBookingDuration: 60,
         },
         aiPopularityScore: 0.72,
         aiOptimalMeetingTypes: ['team_meeting', 'project_planning', 'training'],
-        
+
         // Booking stats
         utilizationRate: 0.71,
         bookingsThisWeek: 18,
         averageRating: 4.1,
-        
+
         // Availability (mock)
         isAvailable: false,
         nextAvailableSlot: new Date('2025-09-27T16:00:00Z'),
         currentBooking: {
           title: 'Sprint Planning',
-          endTime: new Date('2025-09-27T15:30:00Z')
+          endTime: new Date('2025-09-27T15:30:00Z'),
         },
-        
-        isActive: true
+
+        isActive: true,
       },
       {
         id: 'room-3',
@@ -817,50 +805,50 @@ router.get('/rooms', async (req, res) => {
           tuesday: { start: '08:00', end: '18:00' },
           wednesday: { start: '08:00', end: '18:00' },
           thursday: { start: '08:00', end: '18:00' },
-          friday: { start: '08:00', end: '18:00' }
+          friday: { start: '08:00', end: '18:00' },
         },
-        
+
         // AI insights
         aiUsagePatterns: {
           peakHours: ['11:00-12:00', '16:00-17:00'],
           popularMeetingTypes: ['one_on_one', 'sales_call'],
-          averageBookingDuration: 30
+          averageBookingDuration: 30,
         },
         aiPopularityScore: 0.64,
         aiOptimalMeetingTypes: ['one_on_one', 'sales_call', 'quick_sync'],
-        
+
         // Booking stats
         utilizationRate: 0.58,
         bookingsThisWeek: 22,
         averageRating: 4.0,
-        
+
         // Availability (mock)
         isAvailable: true,
         nextAvailableSlot: new Date('2025-09-27T14:00:00Z'),
-        
-        isActive: true
-      }
+
+        isActive: true,
+      },
     ];
 
     // Apply filters
     let filteredRooms = rooms;
-    
+
     if (capacity) {
       const minCapacity = parseInt(capacity as string);
-      filteredRooms = filteredRooms.filter(room => room.capacity >= minCapacity);
+      filteredRooms = filteredRooms.filter((room) => room.capacity >= minCapacity);
     }
-    
+
     if (equipment) {
       const requiredEquipment = Array.isArray(equipment) ? equipment : [equipment];
-      filteredRooms = filteredRooms.filter(room => 
-        requiredEquipment.every((eq: string) => room.equipment.includes(eq))
+      filteredRooms = filteredRooms.filter((room) =>
+        requiredEquipment.every((eq: string) => room.equipment.includes(eq)),
       );
     }
-    
+
     if (features) {
       const requiredFeatures = Array.isArray(features) ? features : [features];
-      filteredRooms = filteredRooms.filter(room => 
-        requiredFeatures.every((feat: string) => room.features.includes(feat))
+      filteredRooms = filteredRooms.filter((room) =>
+        requiredFeatures.every((feat: string) => room.features.includes(feat)),
       );
     }
 
@@ -878,14 +866,11 @@ router.get('/rooms', async (req, res) => {
 router.get('/analytics', async (req, res) => {
   try {
     const { timeRange = 'month' } = req.query;
-    
-    const analytics = await MeetingSchedulingService.getMeetingAnalytics(
-      req.user.tenantId,
-      {
-        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
-        end: new Date()
-      }
-    );
+
+    const analytics = await MeetingSchedulingService.getMeetingAnalytics(req.user.tenantId, {
+      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+      end: new Date(),
+    });
 
     res.json(analytics);
   } catch (error) {
@@ -900,23 +885,23 @@ router.get('/analytics', async (req, res) => {
  */
 router.post('/optimize-schedule', async (req, res) => {
   try {
-    const { 
-      timeRange = { 
-        start: new Date(), 
-        end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) 
+    const {
+      timeRange = {
+        start: new Date(),
+        end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
       optimizationGoals = {
         minimizeMeetingFatigue: 0.8,
         maximizeProductivity: 0.9,
         improveAttendance: 0.7,
-        optimizeRoomUsage: 0.6
-      }
+        optimizeRoomUsage: 0.6,
+      },
     } = req.body;
 
     const optimization = await MeetingSchedulingService.optimizeExistingSchedule(
       req.user.tenantId,
       timeRange,
-      optimizationGoals
+      optimizationGoals,
     );
 
     res.json(optimization);

@@ -206,7 +206,7 @@ export default function LeaderboardTable({
               </TableHead>
               <TableHead className="text-right">Deals</TableHead>
               <TableHead className="text-right">Pipeline</TableHead>
-              {leaderboard.some(e => e.quotaAttainment !== undefined) && (
+              {leaderboard.some((e) => e.quotaAttainment !== undefined) && (
                 <TableHead className="text-right">
                   <button
                     onClick={() => handleSort('quotaAttainment')}
@@ -226,7 +226,9 @@ export default function LeaderboardTable({
               return (
                 <TableRow
                   key={entry.userId}
-                  className={isCurrentUser ? 'bg-blue-50 dark:bg-blue-950 border-l-4 border-l-blue-500' : ''}
+                  className={
+                    isCurrentUser ? 'bg-blue-50 dark:bg-blue-950 border-l-4 border-l-blue-500' : ''
+                  }
                 >
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -264,7 +266,7 @@ export default function LeaderboardTable({
                   <TableCell className="text-right text-muted-foreground">
                     {entry.pipelineValue ? formatCurrency(entry.pipelineValue) : '-'}
                   </TableCell>
-                  {leaderboard.some(e => e.quotaAttainment !== undefined) && (
+                  {leaderboard.some((e) => e.quotaAttainment !== undefined) && (
                     <TableCell className="text-right">
                       {entry.quotaAttainment !== undefined ? (
                         <span
@@ -272,8 +274,8 @@ export default function LeaderboardTable({
                             entry.quotaAttainment >= 100
                               ? 'text-green-600'
                               : entry.quotaAttainment >= 80
-                              ? 'text-yellow-600'
-                              : 'text-red-600'
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
                           }`}
                         >
                           {entry.quotaAttainment.toFixed(0)}%
@@ -301,7 +303,8 @@ export default function LeaderboardTable({
           Showing {sortedLeaderboard.length} {sortedLeaderboard.length === 1 ? 'rep' : 'reps'}
         </div>
         <div>
-          Total Revenue: <span className="font-semibold text-foreground">
+          Total Revenue:{' '}
+          <span className="font-semibold text-foreground">
             {formatCurrency(sortedLeaderboard.reduce((sum, entry) => sum + entry.metricValue, 0))}
           </span>
         </div>

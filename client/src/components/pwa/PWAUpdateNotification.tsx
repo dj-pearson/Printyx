@@ -5,11 +5,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { RefreshCw, X } from 'lucide-react';
 import { usePWA } from '@/hooks/usePWA';
 
@@ -48,7 +44,8 @@ export function PWAUpdateNotification({ onDismiss }: PWAUpdateNotificationProps)
         </AlertTitle>
         <AlertDescription className="mt-2">
           <p className="text-sm text-muted-foreground mb-3">
-            A new version of Printyx is available. Update now to get the latest features and improvements.
+            A new version of Printyx is available. Update now to get the latest features and
+            improvements.
           </p>
           <Button onClick={handleUpdate} size="sm" className="w-full">
             <RefreshCw className="h-3 w-3 mr-2" />

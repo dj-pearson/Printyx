@@ -17,7 +17,7 @@ const router = Router();
 router.get('/categories', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).user?.tenantId;
-    
+
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -29,11 +29,15 @@ router.get('/categories', async (req: Request, res: Response) => {
 
     const categories = await KnowledgeBaseService.getCategories(tenantId, {
       includeInactive: includeInactive === 'true',
-      parentCategoryId: parentCategoryId === 'null' ? null : (parentCategoryId as string | undefined),
+      parentCategoryId:
+        parentCategoryId === 'null' ? null : (parentCategoryId as string | undefined),
     });
 
     // Get article counts for each category
-    const categoriesWithCounts = await KnowledgeBaseService.getCategoriesWithArticleCounts(tenantId, categories);
+    const categoriesWithCounts = await KnowledgeBaseService.getCategoriesWithArticleCounts(
+      tenantId,
+      categories,
+    );
 
     res.json(categoriesWithCounts);
   } catch (error: any) {
@@ -56,11 +60,7 @@ router.post('/categories', async (req: Request, res: Response) => {
 
     const validatedData = insertKnowledgeCategorySchema.parse(req.body);
 
-    const category = await KnowledgeBaseService.createCategory(
-      tenantId,
-      userId,
-      validatedData
-    );
+    const category = await KnowledgeBaseService.createCategory(tenantId, userId, validatedData);
 
     res.status(201).json({
       success: true,
@@ -82,7 +82,7 @@ router.post('/categories', async (req: Request, res: Response) => {
 router.get('/articles', async (req: Request, res: Response) => {
   try {
     const tenantId = (req as any).user?.tenantId;
-    
+
     if (!tenantId) {
       return res.status(400).json({
         success: false,
@@ -102,20 +102,16 @@ router.get('/articles', async (req: Request, res: Response) => {
       useSemanticSearch,
     } = req.query;
 
-    const result = await KnowledgeBaseService.searchArticles(
-      tenantId,
-      query as string || '',
-      {
-        categoryId: categoryId as string,
-        status: status as string || 'published',
-        tags: tags ? (tags as string).split(',') : undefined,
-        contentType: contentType as string,
-        difficultyLevel: difficultyLevel as string,
-        limit: limit ? parseInt(limit as string) : undefined,
-        offset: offset ? parseInt(offset as string) : undefined,
-        useSemanticSearch: useSemanticSearch === 'true',
-      }
-    );
+    const result = await KnowledgeBaseService.searchArticles(tenantId, (query as string) || '', {
+      categoryId: categoryId as string,
+      status: (status as string) || 'published',
+      tags: tags ? (tags as string).split(',') : undefined,
+      contentType: contentType as string,
+      difficultyLevel: difficultyLevel as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+      offset: offset ? parseInt(offset as string) : undefined,
+      useSemanticSearch: useSemanticSearch === 'true',
+    });
 
     res.json({
       success: true,
@@ -182,11 +178,7 @@ router.post('/articles', async (req: Request, res: Response) => {
     const tenantId = (req as any).tenantId || 'demo-tenant';
     const userId = (req as any).userId || 'demo-user';
 
-    const article = await KnowledgeBaseService.createArticle(
-      tenantId,
-      userId,
-      req.body
-    );
+    const article = await KnowledgeBaseService.createArticle(tenantId, userId, req.body);
 
     res.status(201).json({
       success: true,
@@ -211,12 +203,7 @@ router.put('/articles/:id', async (req: Request, res: Response) => {
     const userId = (req as any).userId || 'demo-user';
     const { id } = req.params;
 
-    const article = await KnowledgeBaseService.updateArticle(
-      id,
-      tenantId,
-      userId,
-      req.body
-    );
+    const article = await KnowledgeBaseService.updateArticle(id, tenantId, userId, req.body);
 
     res.json({
       success: true,
@@ -241,14 +228,10 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { id } = req.params;
 
-    const feedback = await KnowledgeBaseService.submitFeedback(
-      tenantId,
-      id,
-      {
-        ...req.body,
-        userId,
-      }
-    );
+    const feedback = await KnowledgeBaseService.submitFeedback(tenantId, id, {
+      ...req.body,
+      userId,
+    });
 
     res.status(201).json({
       success: true,
@@ -288,7 +271,7 @@ router.post('/ai/generate', async (req: Request, res: Response) => {
     const result = await KnowledgeBaseService.generateArticleWithAI(
       tenantId,
       userId,
-      validatedData
+      validatedData,
     );
 
     res.status(202).json({
@@ -351,7 +334,7 @@ router.get('/featured', async (req: Request, res: Response) => {
     });
 
     // Filter for featured articles
-    const featured = result.articles.filter(a => a.featured);
+    const featured = result.articles.filter((a) => a.featured);
 
     res.json({
       success: true,

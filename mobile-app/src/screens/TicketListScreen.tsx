@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -77,9 +70,7 @@ export default function TicketListScreen() {
 
       {/* Footer */}
       <View style={styles.ticketFooter}>
-        <Text style={styles.ticketDate}>
-          {new Date(ticket.createdAt).toLocaleDateString()}
-        </Text>
+        <Text style={styles.ticketDate}>{new Date(ticket.createdAt).toLocaleDateString()}</Text>
         {ticket.scheduledDate && (
           <View style={styles.scheduledBadge}>
             <Ionicons name="calendar-outline" size={12} color="#2563eb" />
@@ -109,11 +100,7 @@ export default function TicketListScreen() {
           isActive={filter === undefined}
           onPress={() => setFilter(undefined)}
         />
-        <FilterTab
-          label="Open"
-          isActive={filter === 'new'}
-          onPress={() => setFilter('new')}
-        />
+        <FilterTab label="Open" isActive={filter === 'new'} onPress={() => setFilter('new')} />
         <FilterTab
           label="In Progress"
           isActive={filter === 'in_progress'}
@@ -132,9 +119,7 @@ export default function TicketListScreen() {
         renderItem={renderTicket}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={refetch} />
-        }
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="checkmark-circle-outline" size={64} color="#d1d5db" />
@@ -166,9 +151,7 @@ function FilterTab({
       style={[styles.filterTab, isActive && styles.filterTabActive]}
       onPress={onPress}
     >
-      <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
-        {label}
-      </Text>
+      <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -194,9 +177,7 @@ function StatusBadge({ status }: { status: string }) {
  * Priority Flag Component
  */
 function PriorityFlag({ priority }: { priority: string }) {
-  return (
-    <Ionicons name="flag" size={16} color={getPriorityColor(priority)} />
-  );
+  return <Ionicons name="flag" size={16} color={getPriorityColor(priority)} />;
 }
 
 /**

@@ -24,7 +24,11 @@ export default function TechnicianDashboard() {
   });
 
   // Fetch service calls data
-  const { data: serviceCallsData, isLoading: callsLoading, refetch: refetchCalls } = useQuery({
+  const {
+    data: serviceCallsData,
+    isLoading: callsLoading,
+    refetch: refetchCalls,
+  } = useQuery({
     queryKey: ['service-reports', 'personal', 'calls', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -75,9 +79,7 @@ export default function TechnicianDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Technician Dashboard</h1>
-          <p className="text-muted-foreground">
-            Track your service calls, parts usage, and time
-          </p>
+          <p className="text-muted-foreground">Track your service calls, parts usage, and time</p>
         </div>
         <div className="flex items-center gap-2">
           <Popover>
@@ -86,7 +88,8 @@ export default function TechnicianDashboard() {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange.from && dateRange.to ? (
                   <>
-                    {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                    {format(dateRange.from, 'MMM dd, yyyy')} -{' '}
+                    {format(dateRange.to, 'MMM dd, yyyy')}
                   </>
                 ) : (
                   <span>Pick a date range</span>
@@ -99,7 +102,9 @@ export default function TechnicianDashboard() {
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}
+                  onClick={() =>
+                    setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })
+                  }
                 >
                   This Month
                 </Button>
@@ -136,9 +141,7 @@ export default function TechnicianDashboard() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {serviceCallsData?.summary?.totalCalls || 0}
-            </div>
+            <div className="text-2xl font-bold">{serviceCallsData?.summary?.totalCalls || 0}</div>
             <p className="text-xs text-muted-foreground">
               {serviceCallsData?.summary?.completed || 0} completed
             </p>
@@ -155,8 +158,11 @@ export default function TechnicianDashboard() {
               {serviceCallsData?.summary?.firstTimeFixRate?.toFixed(0) || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {serviceCallsData?.performance?.quality >= 80 ? 'Excellent' :
-               serviceCallsData?.performance?.quality >= 60 ? 'Good' : 'Needs Improvement'}
+              {serviceCallsData?.performance?.quality >= 80
+                ? 'Excellent'
+                : serviceCallsData?.performance?.quality >= 60
+                  ? 'Good'
+                  : 'Needs Improvement'}
             </p>
           </CardContent>
         </Card>

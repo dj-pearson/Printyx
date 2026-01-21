@@ -1,6 +1,28 @@
-import { TrendingUp, Users, HardDrive, Activity, MapPin, FileText, Calendar, CreditCard, AlertCircle } from 'lucide-react';
-import { useSubscription, useUpgradeSubscription, useCancelSubscription, useUsagePercentage } from '@/hooks/useSubscription';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  TrendingUp,
+  Users,
+  HardDrive,
+  Activity,
+  MapPin,
+  FileText,
+  Calendar,
+  CreditCard,
+  AlertCircle,
+} from 'lucide-react';
+import {
+  useSubscription,
+  useUpgradeSubscription,
+  useCancelSubscription,
+  useUsagePercentage,
+} from '@/hooks/useSubscription';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +30,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useState } from 'react';
 
 /**
@@ -71,7 +101,8 @@ export default function SubscriptionSettings() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-4">
-              You don't have an active subscription yet. Browse our plans and start your free trial today.
+              You don't have an active subscription yet. Browse our plans and start your free trial
+              today.
             </p>
           </CardContent>
           <CardFooter>
@@ -111,12 +142,8 @@ export default function SubscriptionSettings() {
                 <CardTitle>Current Plan</CardTitle>
                 <CardDescription>Your subscription details</CardDescription>
               </div>
-              {isTrialing && (
-                <Badge variant="secondary">Trial</Badge>
-              )}
-              {isFree && (
-                <Badge className="bg-green-500">Free</Badge>
-              )}
+              {isTrialing && <Badge variant="secondary">Trial</Badge>}
+              {isFree && <Badge className="bg-green-500">Free</Badge>}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -124,7 +151,8 @@ export default function SubscriptionSettings() {
               <h3 className="text-2xl font-bold">{subscription.plan?.name}</h3>
               {!isFree && (
                 <p className="text-muted-foreground">
-                  ${subscription.subscription?.amount}/{subscription.subscription?.billingCycle === 'annual' ? 'year' : 'month'}
+                  ${subscription.subscription?.amount}/
+                  {subscription.subscription?.billingCycle === 'annual' ? 'year' : 'month'}
                 </p>
               )}
             </div>
@@ -133,8 +161,11 @@ export default function SubscriptionSettings() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Your trial {trialDaysRemaining === 0 ? 'expires today' : `ends in ${trialDaysRemaining} day${trialDaysRemaining !== 1 ? 's' : ''}`}.
-                  {trialDaysRemaining <= 3 && ' Add a payment method to continue.'}
+                  Your trial{' '}
+                  {trialDaysRemaining === 0
+                    ? 'expires today'
+                    : `ends in ${trialDaysRemaining} day${trialDaysRemaining !== 1 ? 's' : ''}`}
+                  .{trialDaysRemaining <= 3 && ' Add a payment method to continue.'}
                 </AlertDescription>
               </Alert>
             )}
@@ -148,13 +179,16 @@ export default function SubscriptionSettings() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Billing Cycle</span>
-                <span className="font-medium capitalize">{subscription.subscription?.billingCycle}</span>
+                <span className="font-medium capitalize">
+                  {subscription.subscription?.billingCycle}
+                </span>
               </div>
               {subscription.daysUntilRenewal && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Next Billing</span>
                   <span className="font-medium">
-                    {subscription.daysUntilRenewal} day{subscription.daysUntilRenewal !== 1 ? 's' : ''}
+                    {subscription.daysUntilRenewal} day
+                    {subscription.daysUntilRenewal !== 1 ? 's' : ''}
                   </span>
                 </div>
               )}
@@ -178,7 +212,8 @@ export default function SubscriptionSettings() {
                   <DialogHeader>
                     <DialogTitle>Cancel Subscription</DialogTitle>
                     <DialogDescription>
-                      Are you sure you want to cancel your subscription? You can choose to cancel immediately or at the end of your billing period.
+                      Are you sure you want to cancel your subscription? You can choose to cancel
+                      immediately or at the end of your billing period.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter className="flex gap-2">
@@ -228,7 +263,9 @@ export default function SubscriptionSettings() {
                 <span>Storage</span>
               </div>
               <span className="font-medium">
-                {subscription.limits?.storage === -1 ? 'Unlimited' : `${subscription.limits?.storage}GB`}
+                {subscription.limits?.storage === -1
+                  ? 'Unlimited'
+                  : `${subscription.limits?.storage}GB`}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -237,7 +274,9 @@ export default function SubscriptionSettings() {
                 <span>API Calls</span>
               </div>
               <span className="font-medium">
-                {subscription.limits?.apiCalls === -1 ? 'Unlimited' : `${subscription.limits?.apiCalls.toLocaleString()}/mo`}
+                {subscription.limits?.apiCalls === -1
+                  ? 'Unlimited'
+                  : `${subscription.limits?.apiCalls.toLocaleString()}/mo`}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -246,7 +285,9 @@ export default function SubscriptionSettings() {
                 <span>Locations</span>
               </div>
               <span className="font-medium">
-                {subscription.limits?.locations === -1 ? 'Unlimited' : subscription.limits?.locations}
+                {subscription.limits?.locations === -1
+                  ? 'Unlimited'
+                  : subscription.limits?.locations}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -255,7 +296,9 @@ export default function SubscriptionSettings() {
                 <span>Business Records</span>
               </div>
               <span className="font-medium">
-                {subscription.limits?.businessRecords === -1 ? 'Unlimited' : subscription.limits?.businessRecords.toLocaleString()}
+                {subscription.limits?.businessRecords === -1
+                  ? 'Unlimited'
+                  : subscription.limits?.businessRecords.toLocaleString()}
               </span>
             </div>
           </CardContent>
@@ -270,7 +313,11 @@ export default function SubscriptionSettings() {
             <CardDescription>
               Your usage for the current billing period
               {subscription.daysUntilRenewal && (
-                <> • Resets in {subscription.daysUntilRenewal} day{subscription.daysUntilRenewal !== 1 ? 's' : ''}</>
+                <>
+                  {' '}
+                  • Resets in {subscription.daysUntilRenewal} day
+                  {subscription.daysUntilRenewal !== 1 ? 's' : ''}
+                </>
               )}
             </CardDescription>
           </CardHeader>
@@ -318,7 +365,8 @@ export default function SubscriptionSettings() {
               <Alert className="w-full">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  You've exceeded your plan limits. Consider upgrading to avoid service interruptions.
+                  You've exceeded your plan limits. Consider upgrading to avoid service
+                  interruptions.
                 </AlertDescription>
               </Alert>
             </CardFooter>
@@ -446,10 +494,15 @@ function UsageMetric({
           <Icon className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{label}</span>
         </div>
-        <span className={`text-sm font-medium ${isDanger ? 'text-red-600' : isWarning ? 'text-orange-600' : ''}`}>
+        <span
+          className={`text-sm font-medium ${isDanger ? 'text-red-600' : isWarning ? 'text-orange-600' : ''}`}
+        >
           {current.toLocaleString()} {unit}
           {!isUnlimited && (
-            <span className="text-muted-foreground"> / {limit.toLocaleString()} {unit}</span>
+            <span className="text-muted-foreground">
+              {' '}
+              / {limit.toLocaleString()} {unit}
+            </span>
           )}
         </span>
       </div>
@@ -459,14 +512,10 @@ function UsageMetric({
             value={percentage}
             className={`h-2 ${isDanger ? '[&>div]:bg-red-500' : isWarning ? '[&>div]:bg-orange-500' : ''}`}
           />
-          <p className="text-xs text-muted-foreground text-right">
-            {percentage.toFixed(1)}% used
-          </p>
+          <p className="text-xs text-muted-foreground text-right">{percentage.toFixed(1)}% used</p>
         </div>
       )}
-      {isUnlimited && (
-        <p className="text-xs text-emerald-600 dark:text-emerald-400">Unlimited</p>
-      )}
+      {isUnlimited && <p className="text-xs text-emerald-600 dark:text-emerald-400">Unlimited</p>}
     </div>
   );
 }

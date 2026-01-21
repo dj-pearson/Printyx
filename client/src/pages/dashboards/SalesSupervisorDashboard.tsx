@@ -31,7 +31,11 @@ export default function SalesSupervisorDashboard() {
   });
 
   // Fetch location pipeline overview (Report 8)
-  const { data: pipelineData, isLoading: pipelineLoading, refetch: refetchPipeline } = useQuery({
+  const {
+    data: pipelineData,
+    isLoading: pipelineLoading,
+    refetch: refetchPipeline,
+  } = useQuery({
     queryKey: ['sales-supervisor-reports', 'location', 'pipeline-overview', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -103,7 +107,8 @@ export default function SalesSupervisorDashboard() {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange.from && dateRange.to ? (
                   <>
-                    {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                    {format(dateRange.from, 'MMM dd, yyyy')} -{' '}
+                    {format(dateRange.to, 'MMM dd, yyyy')}
                   </>
                 ) : (
                   <span>Pick a date range</span>
@@ -116,7 +121,9 @@ export default function SalesSupervisorDashboard() {
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}
+                  onClick={() =>
+                    setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })
+                  }
                 >
                   This Month
                 </Button>
@@ -153,12 +160,8 @@ export default function SalesSupervisorDashboard() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {pipelineData?.summary?.totalLocations || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Active locations
-            </p>
+            <div className="text-2xl font-bold">{pipelineData?.summary?.totalLocations || 0}</div>
+            <p className="text-xs text-muted-foreground">Active locations</p>
           </CardContent>
         </Card>
 
@@ -240,9 +243,7 @@ export default function SalesSupervisorDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Location Pipeline Overview</CardTitle>
-              <CardDescription>
-                Pipeline breakdown by location and stage
-              </CardDescription>
+              <CardDescription>Pipeline breakdown by location and stage</CardDescription>
             </CardHeader>
             <CardContent>
               {pipelineLoading ? (
@@ -288,9 +289,7 @@ export default function SalesSupervisorDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Location Quota Tracking</CardTitle>
-              <CardDescription>
-                Monitor quota attainment and forecast by location
-              </CardDescription>
+              <CardDescription>Monitor quota attainment and forecast by location</CardDescription>
             </CardHeader>
             <CardContent>
               {quotaLoading ? (
@@ -312,9 +311,7 @@ export default function SalesSupervisorDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Location Activity Summary</CardTitle>
-              <CardDescription>
-                Track sales activities by location
-              </CardDescription>
+              <CardDescription>Track sales activities by location</CardDescription>
             </CardHeader>
             <CardContent>
               {activityLoading ? (

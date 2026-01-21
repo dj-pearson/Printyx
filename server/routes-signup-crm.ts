@@ -6,7 +6,12 @@
 import { Router } from 'express';
 import { db } from './db';
 import { eq, desc, and, gte, lte, count } from 'drizzle-orm';
-import { platformSignups, trialActivityLog, trialCommunications, conversionFunnelEvents } from '@shared/schema-signups';
+import {
+  platformSignups,
+  trialActivityLog,
+  trialCommunications,
+  conversionFunnelEvents,
+} from '@shared/schema-signups';
 import { requireRootAdmin } from './routes-root-admin';
 import { z } from 'zod';
 
@@ -27,7 +32,7 @@ router.get('/signups', async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     let query = db.select().from(platformSignups);
-    
+
     if (status) {
       query = query.where(eq(platformSignups.status, status as string));
     }
@@ -43,9 +48,9 @@ router.get('/signups', async (req, res) => {
     // Execute with ordering
     const signups = await query
       .orderBy(
-        order === 'asc' 
-          ? undefined 
-          : desc(platformSignups[sortBy as keyof typeof platformSignups] as any)
+        order === 'asc'
+          ? undefined
+          : desc(platformSignups[sortBy as keyof typeof platformSignups] as any),
       )
       .limit(limitNum)
       .offset(offset);
@@ -154,17 +159,16 @@ router.patch('/signups/:id', async (req, res) => {
 router.get('/signups-analytics', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const start = startDate
+      ? new Date(startDate as string)
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const end = endDate ? new Date(endDate as string) : new Date();
 
     // Total signups
     const totalSignups = await db
       .select({ count: count() })
       .from(platformSignups)
-      .where(and(
-        gte(platformSignups.createdAt, start),
-        lte(platformSignups.createdAt, end)
-      ));
+      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)));
 
     // Signups by status
     const byStatus = await db
@@ -173,10 +177,7 @@ router.get('/signups-analytics', async (req, res) => {
         count: count(),
       })
       .from(platformSignups)
-      .where(and(
-        gte(platformSignups.createdAt, start),
-        lte(platformSignups.createdAt, end)
-      ))
+      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)))
       .groupBy(platformSignups.status);
 
     // Signups by source
@@ -186,39 +187,36 @@ router.get('/signups-analytics', async (req, res) => {
         count: count(),
       })
       .from(platformSignups)
-      .where(and(
-        gte(platformSignups.createdAt, start),
-        lte(platformSignups.createdAt, end)
-      ))
+      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)))
       .groupBy(platformSignups.source);
 
     // Average qualification score
     const avgQualification = await db
       .select({ avg: platformSignups.qualificationScore })
       .from(platformSignups)
-      .where(and(
-        gte(platformSignups.createdAt, start),
-        lte(platformSignups.createdAt, end)
-      ));
+      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)));
 
     // Conversion rate (signups to activated)
     const activated = await db
       .select({ count: count() })
       .from(platformSignups)
-      .where(and(
-        eq(platformSignups.status, 'activated'),
-        gte(platformSignups.createdAt, start),
-        lte(platformSignups.createdAt, end)
-      ));
+      .where(
+        and(
+          eq(platformSignups.status, 'activated'),
+          gte(platformSignups.createdAt, start),
+          lte(platformSignups.createdAt, end),
+        ),
+      );
 
     res.json({
       totalSignups: totalSignups[0].count,
-      byStatus: Object.fromEntries(byStatus.map(s => [s.status, s.count])),
-      bySource: Object.fromEntries(bySource.map(s => [s.source, s.count])),
+      byStatus: Object.fromEntries(byStatus.map((s) => [s.status, s.count])),
+      bySource: Object.fromEntries(bySource.map((s) => [s.source, s.count])),
       avgQualificationScore: avgQualification[0]?.avg || 0,
-      conversionRate: totalSignups[0].count > 0 
-        ? ((activated[0]?.count || 0) / totalSignups[0].count * 100).toFixed(2)
-        : 0,
+      conversionRate:
+        totalSignups[0].count > 0
+          ? (((activated[0]?.count || 0) / totalSignups[0].count) * 100).toFixed(2)
+          : 0,
       dateRange: { start, end },
     });
   } catch (error) {
@@ -252,15 +250,19 @@ router.get('/trial-funnel', async (req, res) => {
           .where(eq(conversionFunnelEvents.stage, stage));
 
         return { stage, count: count[0]?.count || 0 };
-      })
+      }),
     );
 
     // Calculate drop-off rates
     const funnelWithDropoff = funnelData.map((item, index) => ({
       ...item,
-      dropoffPercent: index > 0
-        ? ((funnelData[index - 1].count - item.count) / funnelData[index - 1].count * 100).toFixed(2)
-        : 0,
+      dropoffPercent:
+        index > 0
+          ? (
+              ((funnelData[index - 1].count - item.count) / funnelData[index - 1].count) *
+              100
+            ).toFixed(2)
+          : 0,
     }));
 
     res.json({ funnel: funnelWithDropoff });
@@ -277,16 +279,25 @@ router.get('/trial-funnel', async (req, res) => {
 router.post('/signups/:id/log-activity', async (req, res) => {
   try {
     const { id } = req.params;
-    const { activityType, description, featureModule, actionDetails, engagementValue = 1 } = req.body;
-
-    const activity = await db.insert(trialActivityLog).values({
-      signupId: id,
+    const {
       activityType,
       description,
       featureModule,
-      actionDetails: actionDetails || {},
-      engagementValue,
-    }).returning();
+      actionDetails,
+      engagementValue = 1,
+    } = req.body;
+
+    const activity = await db
+      .insert(trialActivityLog)
+      .values({
+        signupId: id,
+        activityType,
+        description,
+        featureModule,
+        actionDetails: actionDetails || {},
+        engagementValue,
+      })
+      .returning();
 
     // Update last activity timestamp
     await db
@@ -310,14 +321,17 @@ router.post('/signups/:id/send-email', async (req, res) => {
     const { id } = req.params;
     const { campaignName, emailTemplate, subject } = req.body;
 
-    const communication = await db.insert(trialCommunications).values({
-      signupId: id,
-      campaignName,
-      emailTemplate,
-      subject,
-      sentAt: new Date(),
-      status: 'sent',
-    }).returning();
+    const communication = await db
+      .insert(trialCommunications)
+      .values({
+        signupId: id,
+        campaignName,
+        emailTemplate,
+        subject,
+        sentAt: new Date(),
+        status: 'sent',
+      })
+      .returning();
 
     res.json({ data: communication[0] });
   } catch (error) {

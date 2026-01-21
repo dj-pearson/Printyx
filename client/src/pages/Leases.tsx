@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'wouter';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   FileText,
   Plus,
@@ -23,7 +23,7 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-} from "lucide-react";
+} from 'lucide-react';
 
 type Lease = {
   id: string;
@@ -43,40 +43,43 @@ type Lease = {
 };
 
 export default function Leases() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { data: leases = [], isLoading } = useQuery<Lease[]>({
-    queryKey: ["/api/leases"],
+    queryKey: ['/api/leases'],
   });
 
   const filteredLeases = leases.filter((lease) => {
     const matchesSearch =
-      searchQuery === "" ||
+      searchQuery === '' ||
       lease.leaseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       lease.leaseNumber.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || lease.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || lease.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
-  const activeLeases = leases.filter((l) => l.status === "active");
-  const pendingRenewalLeases = leases.filter((l) => l.status === "pending_renewal");
-  const expiredLeases = leases.filter((l) => l.status === "expired");
+  const activeLeases = leases.filter((l) => l.status === 'active');
+  const pendingRenewalLeases = leases.filter((l) => l.status === 'pending_renewal');
+  const expiredLeases = leases.filter((l) => l.status === 'expired');
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      active: { label: "Active", variant: "default" },
-      pending: { label: "Pending", variant: "secondary" },
-      pending_renewal: { label: "Pending Renewal", variant: "outline" },
-      renewed: { label: "Renewed", variant: "default" },
-      expired: { label: "Expired", variant: "destructive" },
-      terminated: { label: "Terminated", variant: "destructive" },
-      defaulted: { label: "Defaulted", variant: "destructive" },
+    const statusConfig: Record<
+      string,
+      { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+    > = {
+      active: { label: 'Active', variant: 'default' },
+      pending: { label: 'Pending', variant: 'secondary' },
+      pending_renewal: { label: 'Pending Renewal', variant: 'outline' },
+      renewed: { label: 'Renewed', variant: 'default' },
+      expired: { label: 'Expired', variant: 'destructive' },
+      terminated: { label: 'Terminated', variant: 'destructive' },
+      defaulted: { label: 'Defaulted', variant: 'destructive' },
     };
 
-    const config = statusConfig[status] || { label: status, variant: "secondary" as const };
+    const config = statusConfig[status] || { label: status, variant: 'secondary' as const };
     return (
       <Badge variant={config.variant} data-testid={`badge-status-${status}`}>
         {config.label}
@@ -86,12 +89,12 @@ export default function Leases() {
 
   const getLeaseTypeBadge = (leaseType: string) => {
     const typeLabels: Record<string, string> = {
-      fmv: "FMV",
-      dollar_buyout: "$1 Buyout",
-      ten_percent: "10% Buyout",
-      trac: "TRAC",
-      operating: "Operating",
-      capital: "Capital",
+      fmv: 'FMV',
+      dollar_buyout: '$1 Buyout',
+      ten_percent: '10% Buyout',
+      trac: 'TRAC',
+      operating: 'Operating',
+      capital: 'Capital',
     };
 
     return (
@@ -102,23 +105,23 @@ export default function Leases() {
   };
 
   const getPaymentHealthIcon = (health: string) => {
-    if (health === "good") return <CheckCircle className="h-4 w-4 text-green-600" />;
-    if (health === "warning") return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+    if (health === 'good') return <CheckCircle className="h-4 w-4 text-green-600" />;
+    if (health === 'warning') return <AlertCircle className="h-4 w-4 text-yellow-600" />;
     return <AlertCircle className="h-4 w-4 text-red-600" />;
   };
 
   const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(parseFloat(amount));
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
@@ -130,9 +133,7 @@ export default function Leases() {
           <h1 className="text-3xl font-bold" data-testid="text-page-title">
             Lease Management
           </h1>
-          <p className="text-muted-foreground">
-            Manage equipment leases, payments, and renewals
-          </p>
+          <p className="text-muted-foreground">Manage equipment leases, payments, and renewals</p>
         </div>
         <Link href="/leases/new">
           <Button data-testid="button-create-lease">
@@ -152,10 +153,9 @@ export default function Leases() {
           <CardContent>
             <div className="text-2xl font-bold">{activeLeases.length}</div>
             <p className="text-xs text-muted-foreground">
-              Total: {formatCurrency(
-                activeLeases
-                  .reduce((sum, l) => sum + parseFloat(l.totalAmount), 0)
-                  .toString()
+              Total:{' '}
+              {formatCurrency(
+                activeLeases.reduce((sum, l) => sum + parseFloat(l.totalAmount), 0).toString(),
               )}
             </p>
           </CardContent>
@@ -180,9 +180,7 @@ export default function Leases() {
           <CardContent>
             <div className="text-2xl font-bold">
               {formatCurrency(
-                activeLeases
-                  .reduce((sum, l) => sum + parseFloat(l.monthlyPayment), 0)
-                  .toString()
+                activeLeases.reduce((sum, l) => sum + parseFloat(l.monthlyPayment), 0).toString(),
               )}
             </div>
             <p className="text-xs text-muted-foreground">From active leases</p>
@@ -243,7 +241,10 @@ export default function Leases() {
                   Loading leases...
                 </div>
               ) : filteredLeases.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground" data-testid="text-no-leases">
+                <div
+                  className="text-center py-8 text-muted-foreground"
+                  data-testid="text-no-leases"
+                >
                   No leases found
                 </div>
               ) : (
@@ -266,10 +267,16 @@ export default function Leases() {
                       {filteredLeases.map((lease) => (
                         <TableRow key={lease.id} data-testid={`row-lease-${lease.id}`}>
                           <TableCell>
-                            <div className="font-medium" data-testid={`text-lease-name-${lease.id}`}>
+                            <div
+                              className="font-medium"
+                              data-testid={`text-lease-name-${lease.id}`}
+                            >
                               {lease.leaseName}
                             </div>
-                            <div className="text-sm text-muted-foreground" data-testid={`text-lease-number-${lease.id}`}>
+                            <div
+                              className="text-sm text-muted-foreground"
+                              data-testid={`text-lease-number-${lease.id}`}
+                            >
                               {lease.leaseNumber}
                             </div>
                           </TableCell>
@@ -287,12 +294,16 @@ export default function Leases() {
                                 {lease.paymentsCompleted} / {lease.term} payments
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {formatCurrency(lease.totalPaid)} / {formatCurrency(lease.totalAmount)}
+                                {formatCurrency(lease.totalPaid)} /{' '}
+                                {formatCurrency(lease.totalAmount)}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2" data-testid={`health-${lease.id}`}>
+                            <div
+                              className="flex items-center gap-2"
+                              data-testid={`health-${lease.id}`}
+                            >
                               {getPaymentHealthIcon(lease.paymentHealth)}
                               <span className="text-sm capitalize">{lease.paymentHealth}</span>
                             </div>
@@ -302,7 +313,11 @@ export default function Leases() {
                           </TableCell>
                           <TableCell>
                             <Link href={`/leases/${lease.id}`}>
-                              <Button variant="ghost" size="sm" data-testid={`button-view-${lease.id}`}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                data-testid={`button-view-${lease.id}`}
+                              >
                                 View
                               </Button>
                             </Link>

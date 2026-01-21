@@ -1,9 +1,9 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
-import { storage } from "./storage";
-import { authRoutes } from "./auth-routes";
+import type { Express } from 'express';
+import { createServer, type Server } from 'http';
+import session from 'express-session';
+import connectPg from 'connect-pg-simple';
+import { storage } from './storage';
+import { authRoutes } from './auth-routes';
 import {
   insertCustomerSchema,
   insertCompanySchema,
@@ -31,26 +31,26 @@ import {
   insertDealSchema,
   insertDealStageSchema,
   insertDealActivitySchema,
-} from "@shared/schema";
-import multer from "multer";
-import csv from "csv-parser";
-import { Readable } from "stream";
-import { format } from "date-fns";
-import { equipmentLifecycle } from "../shared/equipment-schema";
+} from '@shared/schema';
+import multer from 'multer';
+import csv from 'csv-parser';
+import { Readable } from 'stream';
+import { format } from 'date-fns';
+import { equipmentLifecycle } from '../shared/equipment-schema';
 // Mobile routes integrated directly in main routes file
-import { registerIntegrationRoutes } from "./routes-integrations";
-import { registerTaskRoutes } from "./routes-tasks";
-import { registerEnhancedTaskRoutes } from "./routes-enhanced-tasks";
-import { registerPurchaseOrderRoutes } from "./routes-purchase-orders";
-import { registerWarehouseRoutes } from "./routes-warehouse";
-import { registerServiceAnalysisRoutes } from "./routes-service-analysis";
-import { registerCrmGoalRoutes } from "./routes-crm-goals";
-import { registerBusinessRecordRoutes } from "./routes-business-records";
-import { registerSalesforceRoutes } from "./routes-salesforce-integration";
-import { registerSalesforceTestRoutes } from "./test-salesforce-integration";
-import { registerDataEnrichmentRoutes } from "./routes-data-enrichment";
-import { registerQuickBooksRoutes } from "./routes-quickbooks-integration";
-import { setupSalesPipelineRoutes } from "./routes-sales-pipeline";
+import { registerIntegrationRoutes } from './routes-integrations';
+import { registerTaskRoutes } from './routes-tasks';
+import { registerEnhancedTaskRoutes } from './routes-enhanced-tasks';
+import { registerPurchaseOrderRoutes } from './routes-purchase-orders';
+import { registerWarehouseRoutes } from './routes-warehouse';
+import { registerServiceAnalysisRoutes } from './routes-service-analysis';
+import { registerCrmGoalRoutes } from './routes-crm-goals';
+import { registerBusinessRecordRoutes } from './routes-business-records';
+import { registerSalesforceRoutes } from './routes-salesforce-integration';
+import { registerSalesforceTestRoutes } from './test-salesforce-integration';
+import { registerDataEnrichmentRoutes } from './routes-data-enrichment';
+import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
+import { setupSalesPipelineRoutes } from './routes-sales-pipeline';
 // import { registerCommissionRoutes } from "./routes-commission"; // TODO: Add commission schema tables first
 import {
   getCompanyPricingSettings,
@@ -67,13 +67,9 @@ import {
   updateQuoteLineItem,
   deleteQuoteLineItem,
   calculatePricingForProduct,
-} from "./routes-pricing";
-import {
-  resolveTenant,
-  requireTenant,
-  TenantRequest,
-} from "./middleware/tenancy";
-import { db } from "./db";
+} from './routes-pricing';
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
+import { db } from './db';
 import {
   eq,
   and,
@@ -90,7 +86,7 @@ import {
   count,
   isNull,
   isNotNull,
-} from "drizzle-orm";
+} from 'drizzle-orm';
 import {
   locations,
   regions,
@@ -101,16 +97,15 @@ import {
   serviceTickets,
   invoices,
   type User,
-} from "@shared/schema";
+} from '@shared/schema';
 
 // Basic authentication middleware - Updated to work with current auth system
 const requireAuth = (req: any, res: any, next: any) => {
   // Check for session-based auth (legacy) or user object (current)
-  const isAuthenticated =
-    req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
 
   if (!isAuthenticated) {
-    return res.status(401).json({ message: "Authentication required" });
+    return res.status(401).json({ message: 'Authentication required' });
   }
 
   // Add user context for backwards compatibility
@@ -137,10 +132,10 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === "text/csv" || file.originalname.endsWith(".csv")) {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true);
     } else {
-      cb(new Error("Only CSV files are allowed"));
+      cb(new Error('Only CSV files are allowed'));
     }
   },
 });
@@ -153,18 +148,14 @@ function parseCSV(buffer: Buffer): Promise<any[]> {
 
     stream
       .pipe(csv())
-      .on("data", (data) => results.push(data))
-      .on("end", () => resolve(results))
-      .on("error", (error) => reject(error));
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', (error) => reject(error));
   });
 }
 
 // Helper function to calculate tiered billing amounts
-function calculateTieredAmount(
-  totalCopies: number,
-  tieredRates: any[],
-  baseRate: number,
-): number {
+function calculateTieredAmount(totalCopies: number, tieredRates: any[], baseRate: number): number {
   if (!tieredRates || tieredRates.length === 0) {
     return totalCopies * baseRate;
   }
@@ -201,38 +192,30 @@ function calculateTieredAmount(
 function validateProductModelData(row: any): any {
   const errors: string[] = [];
 
-  if (!row["Product Code"]) errors.push("Product Code is required");
-  if (!row["Product Name"]) errors.push("Product Name is required");
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
 
   return {
     isValid: errors.length === 0,
     errors,
     data: {
-      productCode: row["Product Code"]?.trim(),
-      productName: row["Product Name"]?.trim(),
-      manufacturer: row["Manufacturer"]?.trim() || null,
-      model: row["Model"]?.trim() || null,
-      description: row["Description"]?.trim() || null,
-      category: row["Category"]?.trim() || null,
-      requiredAccessories: row["Required Accessory"]?.trim() || null,
-      colorPrint: row["Color Print"]?.toLowerCase() === "yes",
-      bwPrint: row["BW Print"]?.toLowerCase() === "yes",
-      colorCopy: row["Color Copy"]?.toLowerCase() === "yes",
-      bwCopy: row["BW Copy"]?.toLowerCase() === "yes",
-      standardCost: row["Standard Cost"]
-        ? parseFloat(row["Standard Cost"])
-        : null,
-      standardRepPrice: row["Standard Rep Price"]
-        ? parseFloat(row["Standard Rep Price"])
-        : null,
-      newCost: row["New Cost"] ? parseFloat(row["New Cost"]) : null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeCost: row["Upgrade Cost"] ? parseFloat(row["Upgrade Cost"]) : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      manufacturer: row['Manufacturer']?.trim() || null,
+      model: row['Model']?.trim() || null,
+      description: row['Description']?.trim() || null,
+      category: row['Category']?.trim() || null,
+      requiredAccessories: row['Required Accessory']?.trim() || null,
+      colorPrint: row['Color Print']?.toLowerCase() === 'yes',
+      bwPrint: row['BW Print']?.toLowerCase() === 'yes',
+      colorCopy: row['Color Copy']?.toLowerCase() === 'yes',
+      bwCopy: row['BW Copy']?.toLowerCase() === 'yes',
+      standardCost: row['Standard Cost'] ? parseFloat(row['Standard Cost']) : null,
+      standardRepPrice: row['Standard Rep Price'] ? parseFloat(row['Standard Rep Price']) : null,
+      newCost: row['New Cost'] ? parseFloat(row['New Cost']) : null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeCost: row['Upgrade Cost'] ? parseFloat(row['Upgrade Cost']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
       isActive: true,
       availableForAll: false,
       salesRepCredit: true,
@@ -245,36 +228,28 @@ function validateProductModelData(row: any): any {
 function validateSupplyData(row: any): any {
   const errors: string[] = [];
 
-  if (!row["Product Code"]) errors.push("Product Code is required");
-  if (!row["Product Name"]) errors.push("Product Name is required");
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
 
   return {
     isValid: errors.length === 0,
     errors,
     data: {
-      productCode: row["Product Code"]?.trim(),
-      productName: row["Product Name"]?.trim(),
-      productType: row["Product Type"]?.trim() || "Supplies",
-      dealerComp: row["Dealer Comp"]?.trim() || null,
-      inventory: row["Inventory"]?.trim() || null,
-      inStock: row["In Stock"]?.trim() || null,
-      description: row["Description"]?.trim() || null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
-      lexmarkRepPrice: row["Lexmark Rep Price"]
-        ? parseFloat(row["Lexmark Rep Price"])
-        : null,
-      graphicRepPrice: row["Graphic Rep Price"]
-        ? parseFloat(row["Graphic Rep Price"])
-        : null,
-      newActive: !!row["New Rep Price"],
-      upgradeActive: !!row["Upgrade Rep Price"],
-      lexmarkActive: !!row["Lexmark Rep Price"],
-      graphicActive: !!row["Graphic Rep Price"],
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      productType: row['Product Type']?.trim() || 'Supplies',
+      dealerComp: row['Dealer Comp']?.trim() || null,
+      inventory: row['Inventory']?.trim() || null,
+      inStock: row['In Stock']?.trim() || null,
+      description: row['Description']?.trim() || null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      lexmarkRepPrice: row['Lexmark Rep Price'] ? parseFloat(row['Lexmark Rep Price']) : null,
+      graphicRepPrice: row['Graphic Rep Price'] ? parseFloat(row['Graphic Rep Price']) : null,
+      newActive: !!row['New Rep Price'],
+      upgradeActive: !!row['Upgrade Rep Price'],
+      lexmarkActive: !!row['Lexmark Rep Price'],
+      graphicActive: !!row['Graphic Rep Price'],
       isActive: true,
       salesRepCredit: true,
       funding: true,
@@ -286,40 +261,32 @@ function validateSupplyData(row: any): any {
 function validateManagedServiceData(row: any): any {
   const errors: string[] = [];
 
-  if (!row["Product Code"]) errors.push("Product Code is required");
-  if (!row["Product Name"]) errors.push("Product Name is required");
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
 
   return {
     isValid: errors.length === 0,
     errors,
     data: {
-      productCode: row["Product Code"]?.trim(),
-      productName: row["Product Name"]?.trim(),
-      category: "IT Services",
-      serviceType: row["Service Type"]?.trim() || null,
-      serviceLevel: row["Service Level"]?.trim() || null,
-      supportHours: row["Support Hours"]?.trim() || null,
-      responseTime: row["Response Time"]?.trim() || null,
-      remoteMgmt: row["Remote Management"]?.toLowerCase() === "yes",
-      onsiteSupport: row["Onsite Support"]?.toLowerCase() === "yes",
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      category: 'IT Services',
+      serviceType: row['Service Type']?.trim() || null,
+      serviceLevel: row['Service Level']?.trim() || null,
+      supportHours: row['Support Hours']?.trim() || null,
+      responseTime: row['Response Time']?.trim() || null,
+      remoteMgmt: row['Remote Management']?.toLowerCase() === 'yes',
+      onsiteSupport: row['Onsite Support']?.toLowerCase() === 'yes',
       includesHardware: false,
-      description: row["Description"]?.trim() || null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
-      lexmarkRepPrice: row["Lexmark Rep Price"]
-        ? parseFloat(row["Lexmark Rep Price"])
-        : null,
-      graphicRepPrice: row["Graphic Rep Price"]
-        ? parseFloat(row["Graphic Rep Price"])
-        : null,
-      newActive: !!row["New Rep Price"],
-      upgradeActive: !!row["Upgrade Rep Price"],
-      lexmarkActive: !!row["Lexmark Rep Price"],
-      graphicActive: !!row["Graphic Rep Price"],
+      description: row['Description']?.trim() || null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      lexmarkRepPrice: row['Lexmark Rep Price'] ? parseFloat(row['Lexmark Rep Price']) : null,
+      graphicRepPrice: row['Graphic Rep Price'] ? parseFloat(row['Graphic Rep Price']) : null,
+      newActive: !!row['New Rep Price'],
+      upgradeActive: !!row['Upgrade Rep Price'],
+      lexmarkActive: !!row['Lexmark Rep Price'],
+      graphicActive: !!row['Graphic Rep Price'],
       isActive: true,
       salesRepCredit: true,
       funding: true,
@@ -331,33 +298,25 @@ function validateManagedServiceData(row: any): any {
 function validateAccessoryData(row: any): any {
   const errors: string[] = [];
 
-  if (!row["Product Code"]) errors.push("Product Code is required");
-  if (!row["Product Name"]) errors.push("Product Name is required");
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
 
   return {
     isValid: errors.length === 0,
     errors,
     data: {
-      accessoryCode: row["Product Code"]?.trim(),
-      accessoryName: row["Product Name"]?.trim(),
-      accessoryType: row["Accessory Type"]?.trim() || null,
-      manufacturer: row["Manufacturer"]?.trim() || null,
-      category: row["Category"]?.trim() || null,
-      description: row["Description"]?.trim() || null,
-      standardCost: row["Standard Cost"]
-        ? parseFloat(row["Standard Cost"])
-        : null,
-      standardRepPrice: row["Standard Rep Price"]
-        ? parseFloat(row["Standard Rep Price"])
-        : null,
-      newCost: row["New Cost"] ? parseFloat(row["New Cost"]) : null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeCost: row["Upgrade Cost"] ? parseFloat(row["Upgrade Cost"]) : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
+      accessoryCode: row['Product Code']?.trim(),
+      accessoryName: row['Product Name']?.trim(),
+      accessoryType: row['Accessory Type']?.trim() || null,
+      manufacturer: row['Manufacturer']?.trim() || null,
+      category: row['Category']?.trim() || null,
+      description: row['Description']?.trim() || null,
+      standardCost: row['Standard Cost'] ? parseFloat(row['Standard Cost']) : null,
+      standardRepPrice: row['Standard Rep Price'] ? parseFloat(row['Standard Rep Price']) : null,
+      newCost: row['New Cost'] ? parseFloat(row['New Cost']) : null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeCost: row['Upgrade Cost'] ? parseFloat(row['Upgrade Cost']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
       isActive: true,
       availableForAll: false,
       salesRepCredit: true,
@@ -370,36 +329,28 @@ function validateAccessoryData(row: any): any {
 function validateProfessionalServiceData(row: any): any {
   const errors: string[] = [];
 
-  if (!row["Product Code"]) errors.push("Product Code is required");
-  if (!row["Product Name"]) errors.push("Product Name is required");
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
 
   return {
     isValid: errors.length === 0,
     errors,
     data: {
-      productCode: row["Product Code"]?.trim(),
-      productName: row["Product Name"]?.trim(),
-      category: "Professional Services",
-      accessoryType: row["Accessory Type"]?.trim() || null,
-      manufacturer: row["Manufacturer"]?.trim() || null,
-      model: row["Model"]?.trim() || null,
-      description: row["Description"]?.trim() || null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
-      lexmarkRepPrice: row["Lexmark Rep Price"]
-        ? parseFloat(row["Lexmark Rep Price"])
-        : null,
-      graphicRepPrice: row["Graphic Rep Price"]
-        ? parseFloat(row["Graphic Rep Price"])
-        : null,
-      newActive: !!row["New Rep Price"],
-      upgradeActive: !!row["Upgrade Rep Price"],
-      lexmarkActive: !!row["Lexmark Rep Price"],
-      graphicActive: !!row["Graphic Rep Price"],
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      category: 'Professional Services',
+      accessoryType: row['Accessory Type']?.trim() || null,
+      manufacturer: row['Manufacturer']?.trim() || null,
+      model: row['Model']?.trim() || null,
+      description: row['Description']?.trim() || null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      lexmarkRepPrice: row['Lexmark Rep Price'] ? parseFloat(row['Lexmark Rep Price']) : null,
+      graphicRepPrice: row['Graphic Rep Price'] ? parseFloat(row['Graphic Rep Price']) : null,
+      newActive: !!row['New Rep Price'],
+      upgradeActive: !!row['Upgrade Rep Price'],
+      lexmarkActive: !!row['Lexmark Rep Price'],
+      graphicActive: !!row['Graphic Rep Price'],
       isActive: true,
       salesRepCredit: true,
       funding: true,
@@ -411,35 +362,27 @@ function validateProfessionalServiceData(row: any): any {
 function validateSoftwareProductData(row: any): any {
   const errors: string[] = [];
 
-  if (!row["Product Code"]) errors.push("Product Code is required");
-  if (!row["Product Name"]) errors.push("Product Name is required");
+  if (!row['Product Code']) errors.push('Product Code is required');
+  if (!row['Product Name']) errors.push('Product Name is required');
 
   return {
     isValid: errors.length === 0,
     errors,
     data: {
-      productCode: row["Product Code"]?.trim(),
-      productName: row["Product Name"]?.trim(),
-      productType: row["Product Type"]?.trim() || "Software",
-      category: row["Category"]?.trim() || "Software",
-      description: row["Description"]?.trim() || null,
-      standardCost: row["Standard Cost"]
-        ? parseFloat(row["Standard Cost"])
-        : null,
-      standardRepPrice: row["Standard Rep Price"]
-        ? parseFloat(row["Standard Rep Price"])
-        : null,
-      newCost: row["New Cost"] ? parseFloat(row["New Cost"]) : null,
-      newRepPrice: row["New Rep Price"]
-        ? parseFloat(row["New Rep Price"])
-        : null,
-      upgradeCost: row["Upgrade Cost"] ? parseFloat(row["Upgrade Cost"]) : null,
-      upgradeRepPrice: row["Upgrade Rep Price"]
-        ? parseFloat(row["Upgrade Rep Price"])
-        : null,
-      standardActive: !!row["Standard Rep Price"],
-      newActive: !!row["New Rep Price"],
-      upgradeActive: !!row["Upgrade Rep Price"],
+      productCode: row['Product Code']?.trim(),
+      productName: row['Product Name']?.trim(),
+      productType: row['Product Type']?.trim() || 'Software',
+      category: row['Category']?.trim() || 'Software',
+      description: row['Description']?.trim() || null,
+      standardCost: row['Standard Cost'] ? parseFloat(row['Standard Cost']) : null,
+      standardRepPrice: row['Standard Rep Price'] ? parseFloat(row['Standard Rep Price']) : null,
+      newCost: row['New Cost'] ? parseFloat(row['New Cost']) : null,
+      newRepPrice: row['New Rep Price'] ? parseFloat(row['New Rep Price']) : null,
+      upgradeCost: row['Upgrade Cost'] ? parseFloat(row['Upgrade Cost']) : null,
+      upgradeRepPrice: row['Upgrade Rep Price'] ? parseFloat(row['Upgrade Rep Price']) : null,
+      standardActive: !!row['Standard Rep Price'],
+      newActive: !!row['New Rep Price'],
+      upgradeActive: !!row['Upgrade Rep Price'],
       isActive: true,
       salesRepCredit: true,
       funding: true,
@@ -455,10 +398,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       store: new pgStore({
         conString: process.env.DATABASE_URL,
         createTableIfMissing: false, // Don't recreate tables - use existing schema
-        tableName: "sessions",
+        tableName: 'sessions',
       }),
-      secret:
-        process.env.SESSION_SECRET || "demo-secret-key-change-in-production",
+      secret: process.env.SESSION_SECRET || 'demo-secret-key-change-in-production',
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -470,35 +412,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Auth routes
-  app.use("/api/auth", authRoutes);
+  app.use('/api/auth', authRoutes);
 
   // Tenants route for platform users
-  app.get(
-    "/api/tenants",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const user = await storage.getUserWithRole(req.session.userId);
+  app.get('/api/tenants', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const user = await storage.getUserWithRole(req.session.userId);
 
-        // Only platform admin roles can access all tenants
-        if (!user?.role?.canAccessAllTenants) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-
-        const tenants = await storage.getAllTenants();
-        res.json(tenants);
-      } catch (error) {
-        console.error("Error fetching tenants:", error);
-        res.status(500).json({ message: "Failed to fetch tenants" });
+      // Only platform admin roles can access all tenants
+      if (!user?.role?.canAccessAllTenants) {
+        return res.status(403).json({ message: 'Access denied' });
       }
-    },
-  );
+
+      const tenants = await storage.getAllTenants();
+      res.json(tenants);
+    } catch (error) {
+      console.error('Error fetching tenants:', error);
+      res.status(500).json({ message: 'Failed to fetch tenants' });
+    }
+  });
 
   // Multi-location support routes for enhanced tenant selector
   app.get(
-    "/api/tenants/:tenantId/locations",
+    '/api/tenants/:tenantId/locations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -509,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
-          return res.status(403).json({ error: "Insufficient permissions" });
+          return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
         const locationResults = await db
@@ -532,14 +468,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(locationResults);
       } catch (error) {
-        console.error("Error fetching locations:", error);
-        res.status(500).json({ error: "Failed to fetch locations" });
+        console.error('Error fetching locations:', error);
+        res.status(500).json({ error: 'Failed to fetch locations' });
       }
     },
   );
 
   app.get(
-    "/api/tenants/:tenantId/regions",
+    '/api/tenants/:tenantId/regions',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -550,7 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
-          return res.status(403).json({ error: "Insufficient permissions" });
+          return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
         const tenantRegions = await db
@@ -568,14 +504,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(tenantRegions);
       } catch (error) {
-        console.error("Error fetching regions:", error);
-        res.status(500).json({ error: "Failed to fetch regions" });
+        console.error('Error fetching regions:', error);
+        res.status(500).json({ error: 'Failed to fetch regions' });
       }
     },
   );
 
   app.get(
-    "/api/tenants/:tenantId/summary",
+    '/api/tenants/:tenantId/summary',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -586,18 +522,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Only allow platform admins or users from the same tenant
         if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
-          return res.status(403).json({ error: "Insufficient permissions" });
+          return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
         // Get tenant basic info
-        const [tenant] = await db
-          .select()
-          .from(tenants)
-          .where(eq(tenants.id, tenantId))
-          .limit(1);
+        const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
 
         if (!tenant) {
-          return res.status(404).json({ error: "Tenant not found" });
+          return res.status(404).json({ error: 'Tenant not found' });
         }
 
         // Get location and employee counts
@@ -618,245 +550,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalEmployees: summary?.totalEmployees || 0,
         });
       } catch (error) {
-        console.error("Error fetching tenant summary:", error);
-        res.status(500).json({ error: "Failed to fetch tenant summary" });
+        console.error('Error fetching tenant summary:', error);
+        res.status(500).json({ error: 'Failed to fetch tenant summary' });
       }
     },
   );
 
   // Dashboard routes - using authenticated user's tenant
-  app.get(
-    "/api/dashboard/metrics",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.get('/api/dashboard/metrics', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        // Real dashboard metrics from database
-        const [customerCount, contractCount, monthlyRevenue, openTicketCount] =
-          await Promise.all([
-            // Total customers count
-            db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(businessRecords)
-              .where(
-                and(
-                  eq(businessRecords.tenantId, tenantId),
-                  eq(businessRecords.recordType, "customer"),
-                ),
-              ),
-
-            // Active contracts count
-            db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(contracts)
-              .where(
-                and(
-                  eq(contracts.tenantId, tenantId),
-                  eq(contracts.status, "active"),
-                ),
-              ),
-
-            // Monthly revenue from invoices (current month)
-            db
-              .select({
-                total: sql<number>`coalesce(sum(${invoices.totalAmount}::numeric), 0)::numeric`,
-              })
-              .from(invoices)
-              .where(
-                and(
-                  eq(invoices.tenantId, tenantId),
-                  sql`date_trunc('month', ${invoices.createdAt}) = date_trunc('month', current_date)`,
-                ),
-              ),
-
-            // Open service tickets count
-            db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(serviceTickets)
-              .where(
-                and(
-                  eq(serviceTickets.tenantId, tenantId),
-                  eq(serviceTickets.status, "open"),
-                ),
-              ),
-          ]);
-
-        const metrics = {
-          totalCustomers: customerCount[0]?.count || 0,
-          activeContracts: contractCount[0]?.count || 0,
-          monthlyRevenue: Number(monthlyRevenue[0]?.total || 0),
-          openTickets: openTicketCount[0]?.count || 0,
-          recentGrowth: 0, // Calculate based on historical data if needed
-        };
-
-        res.json(metrics);
-      } catch (error) {
-        console.error("Error fetching dashboard metrics:", error);
-        res.status(500).json({ message: "Failed to fetch dashboard metrics" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/dashboard/recent-tickets",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        // Real recent tickets from database
-        const tickets = await db
-          .select({
-            id: serviceTickets.id,
-            title: serviceTickets.title,
-            status: serviceTickets.status,
-            priority: serviceTickets.priority,
-            customer: businessRecords.companyName,
-            createdAt: serviceTickets.createdAt,
-            description: serviceTickets.description,
-          })
-          .from(serviceTickets)
-          .leftJoin(
-            businessRecords,
-            eq(serviceTickets.customerId, businessRecords.id),
-          )
-          .where(eq(serviceTickets.tenantId, tenantId))
-          .orderBy(desc(serviceTickets.createdAt))
-          .limit(10);
-
-        res.json(tickets);
-      } catch (error) {
-        console.error("Error fetching recent tickets:", error);
-        res.status(500).json({ message: "Failed to fetch recent tickets" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/dashboard/top-customers",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        // Real top customers from database based on contract values
-        const customers = await db
-          .select({
-            id: businessRecords.id,
-            name: businessRecords.companyName,
-            accountValue: sql<number>`coalesce(sum(${contracts.monthlyBase}::numeric), 0)::numeric`,
-            contractsCount: sql<number>`count(${contracts.id})::int`,
-          })
+      // Real dashboard metrics from database
+      const [customerCount, contractCount, monthlyRevenue, openTicketCount] = await Promise.all([
+        // Total customers count
+        db
+          .select({ count: sql<number>`count(*)::int` })
           .from(businessRecords)
-          .leftJoin(contracts, eq(businessRecords.id, contracts.customerId))
           .where(
-            and(
-              eq(businessRecords.tenantId, tenantId),
-              eq(businessRecords.recordType, "customer"),
-            ),
-          )
-          .groupBy(businessRecords.id, businessRecords.companyName)
-          .orderBy(
-            desc(sql`coalesce(sum(${contracts.monthlyBase}::numeric), 0)`),
-          )
-          .limit(10);
+            and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+          ),
 
-        res.json(
-          customers.map((customer) => ({
-            ...customer,
-            accountValue: Number(customer.accountValue || 0),
-          })),
-        );
-      } catch (error) {
-        console.error("Error fetching top customers:", error);
-        res.status(500).json({ message: "Failed to fetch top customers" });
-      }
-    },
-  );
+        // Active contracts count
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(contracts)
+          .where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
 
-  app.get(
-    "/api/dashboard/alerts",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-
-        // Real alerts from database - low stock items
-        const lowStockItems = await db
+        // Monthly revenue from invoices (current month)
+        db
           .select({
-            id: inventoryItems.id,
-            name: inventoryItems.name,
-            category: inventoryItems.category,
-            currentStock: inventoryItems.currentStock,
-            minThreshold: inventoryItems.reorderPoint,
-            status: sql<string>`'active'`,
+            total: sql<number>`coalesce(sum(${invoices.totalAmount}::numeric), 0)::numeric`,
           })
-          .from(inventoryItems)
+          .from(invoices)
           .where(
             and(
-              eq(inventoryItems.tenantId, tenantId),
-              sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`,
+              eq(invoices.tenantId, tenantId),
+              sql`date_trunc('month', ${invoices.createdAt}) = date_trunc('month', current_date)`,
             ),
-          )
-          .orderBy(asc(inventoryItems.currentStock))
-          .limit(20);
+          ),
 
-        res.json({ lowStock: lowStockItems });
-      } catch (error) {
-        console.error("Error fetching alerts:", error);
-        res.status(500).json({ message: "Failed to fetch alerts" });
-      }
-    },
-  );
+        // Open service tickets count
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(serviceTickets)
+          .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'open'))),
+      ]);
+
+      const metrics = {
+        totalCustomers: customerCount[0]?.count || 0,
+        activeContracts: contractCount[0]?.count || 0,
+        monthlyRevenue: Number(monthlyRevenue[0]?.total || 0),
+        openTickets: openTicketCount[0]?.count || 0,
+        recentGrowth: 0, // Calculate based on historical data if needed
+      };
+
+      res.json(metrics);
+    } catch (error) {
+      console.error('Error fetching dashboard metrics:', error);
+      res.status(500).json({ message: 'Failed to fetch dashboard metrics' });
+    }
+  });
+
+  app.get('/api/dashboard/recent-tickets', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+
+      // Real recent tickets from database
+      const tickets = await db
+        .select({
+          id: serviceTickets.id,
+          title: serviceTickets.title,
+          status: serviceTickets.status,
+          priority: serviceTickets.priority,
+          customer: businessRecords.companyName,
+          createdAt: serviceTickets.createdAt,
+          description: serviceTickets.description,
+        })
+        .from(serviceTickets)
+        .leftJoin(businessRecords, eq(serviceTickets.customerId, businessRecords.id))
+        .where(eq(serviceTickets.tenantId, tenantId))
+        .orderBy(desc(serviceTickets.createdAt))
+        .limit(10);
+
+      res.json(tickets);
+    } catch (error) {
+      console.error('Error fetching recent tickets:', error);
+      res.status(500).json({ message: 'Failed to fetch recent tickets' });
+    }
+  });
+
+  app.get('/api/dashboard/top-customers', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+
+      // Real top customers from database based on contract values
+      const customers = await db
+        .select({
+          id: businessRecords.id,
+          name: businessRecords.companyName,
+          accountValue: sql<number>`coalesce(sum(${contracts.monthlyBase}::numeric), 0)::numeric`,
+          contractsCount: sql<number>`count(${contracts.id})::int`,
+        })
+        .from(businessRecords)
+        .leftJoin(contracts, eq(businessRecords.id, contracts.customerId))
+        .where(
+          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+        )
+        .groupBy(businessRecords.id, businessRecords.companyName)
+        .orderBy(desc(sql`coalesce(sum(${contracts.monthlyBase}::numeric), 0)`))
+        .limit(10);
+
+      res.json(
+        customers.map((customer) => ({
+          ...customer,
+          accountValue: Number(customer.accountValue || 0),
+        })),
+      );
+    } catch (error) {
+      console.error('Error fetching top customers:', error);
+      res.status(500).json({ message: 'Failed to fetch top customers' });
+    }
+  });
+
+  app.get('/api/dashboard/alerts', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+
+      // Real alerts from database - low stock items
+      const lowStockItems = await db
+        .select({
+          id: inventoryItems.id,
+          name: inventoryItems.name,
+          category: inventoryItems.category,
+          currentStock: inventoryItems.currentStock,
+          minThreshold: inventoryItems.reorderPoint,
+          status: sql<string>`'active'`,
+        })
+        .from(inventoryItems)
+        .where(
+          and(
+            eq(inventoryItems.tenantId, tenantId),
+            sql`${inventoryItems.currentStock} <= ${inventoryItems.reorderPoint}`,
+          ),
+        )
+        .orderBy(asc(inventoryItems.currentStock))
+        .limit(20);
+
+      res.json({ lowStock: lowStockItems });
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      res.status(500).json({ message: 'Failed to fetch alerts' });
+    }
+  });
 
   // Demo Scheduling Routes
-  app.get("/api/demos", requireAuth, async (req: any, res) => {
+  app.get('/api/demos', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // For now, return sample demo data structure until schema is updated
       const sampleDemos = [
         {
-          id: "demo-1",
-          businessRecordId: "customer-1",
-          customerName: "ABC Corporation",
-          contactPerson: "John Smith",
-          scheduledDate: new Date("2025-01-10"),
-          scheduledTime: "10:00 AM",
+          id: 'demo-1',
+          businessRecordId: 'customer-1',
+          customerName: 'ABC Corporation',
+          contactPerson: 'John Smith',
+          scheduledDate: new Date('2025-01-10'),
+          scheduledTime: '10:00 AM',
           duration: 60,
-          demoType: "equipment",
-          equipmentModels: ["Canon imageRUNNER ADVANCE C3330i"],
-          demoLocation: "customer_site",
-          assignedSalesRep: "Sales Rep Name",
-          status: "scheduled",
-          confirmationStatus: "pending",
+          demoType: 'equipment',
+          equipmentModels: ['Canon imageRUNNER ADVANCE C3330i'],
+          demoLocation: 'customer_site',
+          assignedSalesRep: 'Sales Rep Name',
+          status: 'scheduled',
+          confirmationStatus: 'pending',
           preparationCompleted: false,
-          demoObjectives:
-            "Demonstrate color printing capabilities and scan-to-email features",
+          demoObjectives: 'Demonstrate color printing capabilities and scan-to-email features',
           proposalAmount: 15000,
-          createdAt: new Date("2025-01-05"),
+          createdAt: new Date('2025-01-05'),
         },
       ];
 
       res.json(sampleDemos);
     } catch (error) {
-      console.error("Error fetching demos:", error);
-      res.status(500).json({ message: "Failed to fetch demos" });
+      console.error('Error fetching demos:', error);
+      res.status(500).json({ message: 'Failed to fetch demos' });
     }
   });
 
-  app.get("/api/demos/customers", requireAuth, async (req: any, res) => {
+  app.get('/api/demos/customers', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Get real customers from business records
@@ -874,36 +764,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(businessRecords)
         .where(
-          and(
-            eq(businessRecords.tenantId, tenantId),
-            eq(businessRecords.recordType, "customer"),
-          ),
+          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
         )
         .orderBy(asc(businessRecords.companyName));
 
       res.json(customers);
     } catch (error) {
-      console.error("Error fetching customers for demo:", error);
-      res.status(500).json({ message: "Failed to fetch customers" });
+      console.error('Error fetching customers for demo:', error);
+      res.status(500).json({ message: 'Failed to fetch customers' });
     }
   });
 
   // Sales Pipeline Forecasting Routes
-  app.get("/api/sales-forecasts", requireAuth, async (req: any, res) => {
+  app.get('/api/sales-forecasts', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample forecasting data until schema is updated
       const sampleForecasts = [
         {
-          id: "forecast-1",
-          forecastName: "Q1 2025 Forecast",
-          forecastType: "quarterly",
-          startDate: new Date("2025-01-01"),
-          endDate: new Date("2025-03-31"),
+          id: 'forecast-1',
+          forecastName: 'Q1 2025 Forecast',
+          forecastType: 'quarterly',
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-03-31'),
           revenueTarget: 500000,
           unitTarget: 25,
           dealCountTarget: 15,
@@ -913,139 +800,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pipelineValue: 425000,
           weightedPipelineValue: 318750,
           probabilityAdjustedRevenue: 275000,
-          confidenceLevel: "high",
+          confidenceLevel: 'high',
           confidencePercentage: 85,
           conversionRate: 40.0,
           averageDealSize: 31250,
           salesCycleLength: 45,
-          status: "active",
+          status: 'active',
           achievementPercentage: 37.5,
           projectedRevenue: 412500,
           gapToTarget: 87500,
-          createdAt: new Date("2024-12-15"),
+          createdAt: new Date('2024-12-15'),
         },
       ];
 
       res.json(sampleForecasts);
     } catch (error) {
-      console.error("Error fetching sales forecasts:", error);
-      res.status(500).json({ message: "Failed to fetch sales forecasts" });
+      console.error('Error fetching sales forecasts:', error);
+      res.status(500).json({ message: 'Failed to fetch sales forecasts' });
     }
   });
 
-  app.get("/api/sales-trends", requireAuth, async (req: any, res) => {
+  app.get('/api/sales-trends', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       const { months = 6 } = req.query;
 
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample trend data
-      const sampleTrends = Array.from(
-        { length: parseInt(months as string) },
-        (_, i) => {
-          const date = new Date();
-          date.setMonth(date.getMonth() - i);
+      const sampleTrends = Array.from({ length: parseInt(months as string) }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
 
-          return {
-            month: date.toISOString().substring(0, 7),
-            monthName: date.toLocaleDateString("en-US", {
-              month: "long",
-              year: "numeric",
-            }),
-            revenue: Math.floor(Math.random() * 50000) + 80000,
-            deals: Math.floor(Math.random() * 3) + 3,
-            units: Math.floor(Math.random() * 4) + 4,
-            pipelineValue: Math.floor(Math.random() * 100000) + 300000,
-            conversionRate: Math.floor(Math.random() * 20) + 25,
-            averageDealSize: Math.floor(Math.random() * 10000) + 25000,
-          };
-        },
-      ).reverse();
+        return {
+          month: date.toISOString().substring(0, 7),
+          monthName: date.toLocaleDateString('en-US', {
+            month: 'long',
+            year: 'numeric',
+          }),
+          revenue: Math.floor(Math.random() * 50000) + 80000,
+          deals: Math.floor(Math.random() * 3) + 3,
+          units: Math.floor(Math.random() * 4) + 4,
+          pipelineValue: Math.floor(Math.random() * 100000) + 300000,
+          conversionRate: Math.floor(Math.random() * 20) + 25,
+          averageDealSize: Math.floor(Math.random() * 10000) + 25000,
+        };
+      }).reverse();
 
       res.json(sampleTrends);
     } catch (error) {
-      console.error("Error fetching sales trends:", error);
-      res.status(500).json({ message: "Failed to fetch sales trends" });
+      console.error('Error fetching sales trends:', error);
+      res.status(500).json({ message: 'Failed to fetch sales trends' });
     }
   });
 
   // E-signature Integration Routes
-  app.get("/api/signature-requests", requireAuth, async (req: any, res) => {
+  app.get('/api/signature-requests', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample signature requests until schema is updated
       const sampleRequests = [
         {
-          id: "sig-req-1",
-          documentName: "Service Agreement - ABC Corporation",
-          documentType: "service_agreement",
-          businessRecordId: "customer-1",
-          customerName: "ABC Corporation",
-          customerEmail: "john.smith@abccorp.com",
-          status: "pending",
-          requestedBy: "Sales Rep",
-          requestedDate: new Date("2025-01-20"),
-          expirationDate: new Date("2025-02-20"),
+          id: 'sig-req-1',
+          documentName: 'Service Agreement - ABC Corporation',
+          documentType: 'service_agreement',
+          businessRecordId: 'customer-1',
+          customerName: 'ABC Corporation',
+          customerEmail: 'john.smith@abccorp.com',
+          status: 'pending',
+          requestedBy: 'Sales Rep',
+          requestedDate: new Date('2025-01-20'),
+          expirationDate: new Date('2025-02-20'),
           signedDate: null,
-          documentUrl: "/documents/service-agreement-abc-corp.pdf",
+          documentUrl: '/documents/service-agreement-abc-corp.pdf',
           signatureUrl: null,
           remindersSent: 1,
-          lastReminderDate: new Date("2025-01-25"),
+          lastReminderDate: new Date('2025-01-25'),
           contractValue: 85000,
           contractDuration: 36,
           signers: [
             {
-              name: "John Smith",
-              email: "john.smith@abccorp.com",
-              role: "Customer",
-              status: "pending",
+              name: 'John Smith',
+              email: 'john.smith@abccorp.com',
+              role: 'Customer',
+              status: 'pending',
               signedDate: null,
             },
           ],
-          createdAt: new Date("2025-01-20"),
+          createdAt: new Date('2025-01-20'),
         },
       ];
 
       res.json(sampleRequests);
     } catch (error) {
-      console.error("Error fetching signature requests:", error);
-      res.status(500).json({ message: "Failed to fetch signature requests" });
+      console.error('Error fetching signature requests:', error);
+      res.status(500).json({ message: 'Failed to fetch signature requests' });
     }
   });
 
-  app.get("/api/signature-templates", requireAuth, async (req: any, res) => {
+  app.get('/api/signature-templates', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample signature templates
       const sampleTemplates = [
         {
-          id: "template-1",
-          templateName: "Standard Service Agreement",
-          documentType: "service_agreement",
-          description:
-            "Standard copier service and maintenance agreement template",
-          templateUrl: "/templates/standard-service-agreement.pdf",
+          id: 'template-1',
+          templateName: 'Standard Service Agreement',
+          documentType: 'service_agreement',
+          description: 'Standard copier service and maintenance agreement template',
+          templateUrl: '/templates/standard-service-agreement.pdf',
           signatureFields: [
             {
-              fieldName: "customer_signature",
+              fieldName: 'customer_signature',
               x: 100,
               y: 750,
               page: 1,
               required: true,
             },
             {
-              fieldName: "customer_date",
+              fieldName: 'customer_date',
               x: 300,
               y: 750,
               page: 1,
@@ -1054,23 +937,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
           isActive: true,
           usageCount: 25,
-          lastUsed: new Date("2025-01-20"),
-          createdAt: new Date("2024-10-15"),
+          lastUsed: new Date('2025-01-20'),
+          createdAt: new Date('2024-10-15'),
         },
       ];
 
       res.json(sampleTemplates);
     } catch (error) {
-      console.error("Error fetching signature templates:", error);
-      res.status(500).json({ message: "Failed to fetch signature templates" });
+      console.error('Error fetching signature templates:', error);
+      res.status(500).json({ message: 'Failed to fetch signature templates' });
     }
   });
 
-  app.get("/api/signature-analytics", requireAuth, async (req: any, res) => {
+  app.get('/api/signature-analytics', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample analytics data
@@ -1084,14 +967,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalContractValue: 1850000,
         byDocumentType: [
           {
-            type: "service_agreement",
+            type: 'service_agreement',
             count: 18,
             completed: 14,
             value: 950000,
           },
-          { type: "equipment_lease", count: 20, completed: 15, value: 750000 },
+          { type: 'equipment_lease', count: 20, completed: 15, value: 750000 },
           {
-            type: "maintenance_contract",
+            type: 'maintenance_contract',
             count: 7,
             completed: 3,
             value: 150000,
@@ -1107,151 +990,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(analytics);
     } catch (error) {
-      console.error("Error fetching signature analytics:", error);
-      res.status(500).json({ message: "Failed to fetch signature analytics" });
+      console.error('Error fetching signature analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch signature analytics' });
     }
   });
 
   // Advanced Service Dispatch Optimization Routes
-  app.get(
-    "/api/dispatch/recommendations",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        // Sample dispatch recommendations with AI optimization
-        const recommendations = [
-          {
-            id: "rec-1",
-            ticketId: "ticket-001",
-            ticketTitle: "Printer Jam - ABC Corp",
-            customerName: "ABC Corporation",
-            customerAddress: "123 Business Way, Downtown",
-            priority: "high",
-            estimatedDuration: 90,
-            requiredSkills: ["printer_repair", "mechanical"],
-            recommendedTechnician: {
-              id: "tech-1",
-              name: "Mike Johnson",
-              currentLocation: "456 Service Ave",
-              distanceToCustomer: 2.3,
-              travelTime: 12,
-              skillMatch: 95,
-              availabilityScore: 100,
-              workloadScore: 75,
-              overallScore: 90.5,
-              reasons: [
-                "Closest available technician",
-                "Perfect skill match for printer repair",
-                "Light current workload",
-              ],
-            },
-            alternatives: [
-              {
-                id: "tech-2",
-                name: "Sarah Wilson",
-                distanceToCustomer: 4.1,
-                travelTime: 18,
-                skillMatch: 85,
-                availabilityScore: 100,
-                workloadScore: 60,
-                overallScore: 82.3,
-              },
-            ],
-            suggestedTimeSlot: "10:30 AM - 12:00 PM",
-            routeOptimization: {
-              beforeThisCall: {
-                ticketId: "ticket-002",
-                customer: "XYZ Industries",
-                endTime: "10:15 AM",
-              },
-              afterThisCall: {
-                ticketId: "ticket-003",
-                customer: "Tech Solutions",
-                startTime: "1:00 PM",
-              },
-              totalTravelTime: 45,
-              fuelSavings: 12.5,
-            },
-          },
-        ];
-
-        res.json(recommendations);
-      } catch (error) {
-        console.error("Error fetching dispatch recommendations:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch dispatch recommendations" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/dispatch/technicians/availability",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        // Sample technician availability data
-        const technicianAvailability = [
-          {
-            id: "tech-1",
-            name: "Mike Johnson",
-            email: "mike.johnson@company.com",
-            phone: "(555) 123-4567",
-            currentLocation: "456 Service Ave",
-            skills: ["printer_repair", "mechanical", "electrical"],
-            certifications: ["Canon Certified", "HP Specialist"],
-            availability: {
-              totalHours: 8,
-              bookedHours: 5.5,
-              availableHours: 2.5,
-              utilizationRate: 68.8,
-            },
-            currentAssignments: [
-              {
-                ticketId: "ticket-101",
-                customer: "Alpha Corp",
-                startTime: "9:00 AM",
-                endTime: "10:30 AM",
-                status: "in_progress",
-              },
-            ],
-            performance: {
-              completionRate: 94.2,
-              averageCallTime: 105,
-              customerSatisfaction: 4.6,
-              onTimeArrival: 92.3,
-            },
-            status: "available",
-            nextAvailableSlot: "12:45 PM",
-            endOfDayAvailable: "4:45 PM",
-          },
-        ];
-
-        res.json(technicianAvailability);
-      } catch (error) {
-        console.error("Error fetching technician availability:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch technician availability" });
-      }
-    },
-  );
-
-  app.get("/api/dispatch/analytics", requireAuth, async (req: any, res) => {
+  app.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Sample dispatch recommendations with AI optimization
+      const recommendations = [
+        {
+          id: 'rec-1',
+          ticketId: 'ticket-001',
+          ticketTitle: 'Printer Jam - ABC Corp',
+          customerName: 'ABC Corporation',
+          customerAddress: '123 Business Way, Downtown',
+          priority: 'high',
+          estimatedDuration: 90,
+          requiredSkills: ['printer_repair', 'mechanical'],
+          recommendedTechnician: {
+            id: 'tech-1',
+            name: 'Mike Johnson',
+            currentLocation: '456 Service Ave',
+            distanceToCustomer: 2.3,
+            travelTime: 12,
+            skillMatch: 95,
+            availabilityScore: 100,
+            workloadScore: 75,
+            overallScore: 90.5,
+            reasons: [
+              'Closest available technician',
+              'Perfect skill match for printer repair',
+              'Light current workload',
+            ],
+          },
+          alternatives: [
+            {
+              id: 'tech-2',
+              name: 'Sarah Wilson',
+              distanceToCustomer: 4.1,
+              travelTime: 18,
+              skillMatch: 85,
+              availabilityScore: 100,
+              workloadScore: 60,
+              overallScore: 82.3,
+            },
+          ],
+          suggestedTimeSlot: '10:30 AM - 12:00 PM',
+          routeOptimization: {
+            beforeThisCall: {
+              ticketId: 'ticket-002',
+              customer: 'XYZ Industries',
+              endTime: '10:15 AM',
+            },
+            afterThisCall: {
+              ticketId: 'ticket-003',
+              customer: 'Tech Solutions',
+              startTime: '1:00 PM',
+            },
+            totalTravelTime: 45,
+            fuelSavings: 12.5,
+          },
+        },
+      ];
+
+      res.json(recommendations);
+    } catch (error) {
+      console.error('Error fetching dispatch recommendations:', error);
+      res.status(500).json({ message: 'Failed to fetch dispatch recommendations' });
+    }
+  });
+
+  app.get('/api/dispatch/technicians/availability', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Sample technician availability data
+      const technicianAvailability = [
+        {
+          id: 'tech-1',
+          name: 'Mike Johnson',
+          email: 'mike.johnson@company.com',
+          phone: '(555) 123-4567',
+          currentLocation: '456 Service Ave',
+          skills: ['printer_repair', 'mechanical', 'electrical'],
+          certifications: ['Canon Certified', 'HP Specialist'],
+          availability: {
+            totalHours: 8,
+            bookedHours: 5.5,
+            availableHours: 2.5,
+            utilizationRate: 68.8,
+          },
+          currentAssignments: [
+            {
+              ticketId: 'ticket-101',
+              customer: 'Alpha Corp',
+              startTime: '9:00 AM',
+              endTime: '10:30 AM',
+              status: 'in_progress',
+            },
+          ],
+          performance: {
+            completionRate: 94.2,
+            averageCallTime: 105,
+            customerSatisfaction: 4.6,
+            onTimeArrival: 92.3,
+          },
+          status: 'available',
+          nextAvailableSlot: '12:45 PM',
+          endOfDayAvailable: '4:45 PM',
+        },
+      ];
+
+      res.json(technicianAvailability);
+    } catch (error) {
+      console.error('Error fetching technician availability:', error);
+      res.status(500).json({ message: 'Failed to fetch technician availability' });
+    }
+  });
+
+  app.get('/api/dispatch/analytics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample dispatch analytics
@@ -1274,8 +1145,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         technician_performance: [
           {
-            technicianId: "tech-1",
-            name: "Mike Johnson",
+            technicianId: 'tech-1',
+            name: 'Mike Johnson',
             ticketsCompleted: 48,
             averageCallTime: 105,
             completionRate: 94.2,
@@ -1285,19 +1156,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         daily_trends: [
           {
-            day: "Monday",
+            day: 'Monday',
             tickets: 28,
             avgResponseTime: 3.8,
             satisfaction: 4.5,
           },
           {
-            day: "Tuesday",
+            day: 'Tuesday',
             tickets: 32,
             avgResponseTime: 4.1,
             satisfaction: 4.6,
           },
           {
-            day: "Wednesday",
+            day: 'Wednesday',
             tickets: 35,
             avgResponseTime: 4.5,
             satisfaction: 4.7,
@@ -1313,34 +1184,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(analytics);
     } catch (error) {
-      console.error("Error fetching dispatch analytics:", error);
-      res.status(500).json({ message: "Failed to fetch dispatch analytics" });
+      console.error('Error fetching dispatch analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch dispatch analytics' });
     }
   });
 
-  app.get("/api/dispatch/tracking", requireAuth, async (req: any, res) => {
+  app.get('/api/dispatch/tracking', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample real-time tracking data
       const trackingData = [
         {
-          technicianId: "tech-1",
-          name: "Mike Johnson",
-          currentStatus: "on_route",
+          technicianId: 'tech-1',
+          name: 'Mike Johnson',
+          currentStatus: 'on_route',
           currentLocation: {
             latitude: 40.7128,
             longitude: -74.006,
-            address: "En route to ABC Corporation",
+            address: 'En route to ABC Corporation',
           },
           currentTicket: {
-            id: "ticket-101",
-            customer: "ABC Corporation",
-            estimatedArrival: "10:15 AM",
-            actualETA: "10:18 AM",
+            id: 'ticket-101',
+            customer: 'ABC Corporation',
+            estimatedArrival: '10:15 AM',
+            actualETA: '10:18 AM',
           },
           lastUpdate: new Date().toISOString(),
         },
@@ -1348,89 +1219,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(trackingData);
     } catch (error) {
-      console.error("Error fetching tracking data:", error);
-      res.status(500).json({ message: "Failed to fetch tracking data" });
+      console.error('Error fetching tracking data:', error);
+      res.status(500).json({ message: 'Failed to fetch tracking data' });
     }
   });
 
   // Preventive Maintenance Automation Routes
-  app.get("/api/maintenance/schedules", requireAuth, async (req: any, res) => {
+  app.get('/api/maintenance/schedules', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample maintenance schedules until schema is updated
       const maintenanceSchedules = [
         {
-          id: "schedule-1",
-          equipmentId: "eq-001",
-          equipmentModel: "Canon imageRUNNER ADVANCE DX C5750i",
-          customerName: "ABC Corporation",
-          customerLocation: "123 Business Way, Downtown",
-          maintenanceType: "quarterly_service",
-          serviceName: "Quarterly Preventive Maintenance",
-          frequency: "quarterly",
+          id: 'schedule-1',
+          equipmentId: 'eq-001',
+          equipmentModel: 'Canon imageRUNNER ADVANCE DX C5750i',
+          customerName: 'ABC Corporation',
+          customerLocation: '123 Business Way, Downtown',
+          maintenanceType: 'quarterly_service',
+          serviceName: 'Quarterly Preventive Maintenance',
+          frequency: 'quarterly',
           frequencyValue: 3,
-          nextDueDate: new Date("2025-02-15"),
-          lastServiceDate: new Date("2024-11-15"),
+          nextDueDate: new Date('2025-02-15'),
+          lastServiceDate: new Date('2024-11-15'),
           meterBasedScheduling: true,
           currentMeterReading: 45230,
           meterAtLastService: 42500,
           nextServiceMeter: 47500,
           meterThreshold: 2500,
           estimatedDuration: 120,
-          requiredSkills: ["preventive_maintenance", "copier_service"],
-          requiredParts: ["toner_cartridge", "transfer_belt", "fuser_kit"],
-          status: "scheduled",
-          priority: "medium",
+          requiredSkills: ['preventive_maintenance', 'copier_service'],
+          requiredParts: ['toner_cartridge', 'transfer_belt', 'fuser_kit'],
+          status: 'scheduled',
+          priority: 'medium',
           urgencyScore: 75,
-          assignedTechnicianId: "tech-2",
-          assignedTechnicianName: "Sarah Wilson",
-          scheduledDate: new Date("2025-02-15"),
-          scheduledTimeSlot: "10:00 AM - 12:00 PM",
+          assignedTechnicianId: 'tech-2',
+          assignedTechnicianName: 'Sarah Wilson',
+          scheduledDate: new Date('2025-02-15'),
+          scheduledTimeSlot: '10:00 AM - 12:00 PM',
           autoScheduleEnabled: true,
           reminderDaysBefore: 7,
           escalationDays: 3,
           serviceHistory: [
             {
-              date: new Date("2024-11-15"),
-              technician: "Mike Johnson",
+              date: new Date('2024-11-15'),
+              technician: 'Mike Johnson',
               duration: 105,
-              partsUsed: ["toner_cartridge"],
-              issues: ["paper jam sensor cleaned"],
+              partsUsed: ['toner_cartridge'],
+              issues: ['paper jam sensor cleaned'],
               meterReading: 42500,
             },
           ],
           predictiveInsights: {
-            riskLevel: "low",
+            riskLevel: 'low',
             failurePrediction: 12,
             recommendedActions: [
-              "Monitor toner levels - replacement due soon",
-              "Check paper feed mechanism during next service",
+              'Monitor toner levels - replacement due soon',
+              'Check paper feed mechanism during next service',
             ],
             costSavings: 450,
           },
-          createdAt: new Date("2024-08-01"),
-          updatedAt: new Date("2025-01-20"),
+          createdAt: new Date('2024-08-01'),
+          updatedAt: new Date('2025-01-20'),
         },
       ];
 
       res.json(maintenanceSchedules);
     } catch (error) {
-      console.error("Error fetching maintenance schedules:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to fetch maintenance schedules" });
+      console.error('Error fetching maintenance schedules:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance schedules' });
     }
   });
 
-  app.get("/api/maintenance/analytics", requireAuth, async (req: any, res) => {
+  app.get('/api/maintenance/analytics', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample maintenance analytics
@@ -1455,7 +1324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         equipment_health: [
           {
-            category: "Copiers/MFPs",
+            category: 'Copiers/MFPs',
             totalUnits: 78,
             healthyUnits: 65,
             warningUnits: 10,
@@ -1471,13 +1340,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           averageCostPerUnit: 56.09,
           costTrends: [
             {
-              month: "Dec 2024",
+              month: 'Dec 2024',
               preventive: 6650,
               reactive: 2200,
               total: 8850,
             },
             {
-              month: "Jan 2025",
+              month: 'Jan 2025',
               preventive: 6850,
               reactive: 1900,
               total: 8750,
@@ -1485,150 +1354,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
         },
         performance_trends: [
-          { month: "Dec", compliance: 93.1, satisfaction: 4.8, savings: 12300 },
-          { month: "Jan", compliance: 92.3, satisfaction: 4.7, savings: 12450 },
+          { month: 'Dec', compliance: 93.1, satisfaction: 4.8, savings: 12300 },
+          { month: 'Jan', compliance: 92.3, satisfaction: 4.7, savings: 12450 },
         ],
       };
 
       res.json(analytics);
     } catch (error) {
-      console.error("Error fetching maintenance analytics:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to fetch maintenance analytics" });
+      console.error('Error fetching maintenance analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance analytics' });
     }
   });
 
-  app.get("/api/maintenance/templates", requireAuth, async (req: any, res) => {
+  app.get('/api/maintenance/templates', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample maintenance templates
       const templates = [
         {
-          id: "template-1",
-          templateName: "Standard Copier Quarterly Service",
-          description:
-            "Comprehensive quarterly maintenance for copiers and MFPs",
-          equipmentTypes: ["copier", "mfp"],
+          id: 'template-1',
+          templateName: 'Standard Copier Quarterly Service',
+          description: 'Comprehensive quarterly maintenance for copiers and MFPs',
+          equipmentTypes: ['copier', 'mfp'],
           estimatedDuration: 120,
-          frequency: "quarterly",
+          frequency: 'quarterly',
           checklist: [
             {
-              item: "Clean paper path and feed rollers",
+              item: 'Clean paper path and feed rollers',
               required: true,
               estimatedTime: 15,
             },
             {
-              item: "Replace toner cartridges if below 20%",
+              item: 'Replace toner cartridges if below 20%',
               required: true,
               estimatedTime: 10,
             },
           ],
-          requiredParts: [
-            { partName: "Toner Cartridge Set", quantity: 1, optional: true },
-          ],
-          requiredSkills: ["copier_maintenance", "preventive_service"],
-          safetyRequirements: [
-            "power_off_before_service",
-            "use_cleaning_gloves",
-          ],
+          requiredParts: [{ partName: 'Toner Cartridge Set', quantity: 1, optional: true }],
+          requiredSkills: ['copier_maintenance', 'preventive_service'],
+          safetyRequirements: ['power_off_before_service', 'use_cleaning_gloves'],
           isActive: true,
           usageCount: 34,
-          lastUsed: new Date("2025-01-20"),
-          createdAt: new Date("2024-06-15"),
+          lastUsed: new Date('2025-01-20'),
+          createdAt: new Date('2024-06-15'),
         },
       ];
 
       res.json(templates);
     } catch (error) {
-      console.error("Error fetching maintenance templates:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to fetch maintenance templates" });
+      console.error('Error fetching maintenance templates:', error);
+      res.status(500).json({ message: 'Failed to fetch maintenance templates' });
     }
   });
 
-  app.get(
-    "/api/maintenance/predictions",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        // Sample predictive maintenance data
-        const predictions = [
-          {
-            equipmentId: "eq-005",
-            model: "Canon imageRUNNER ADVANCE DX C7765i",
-            customer: "Gamma Solutions",
-            location: "Building A, Floor 3",
-            prediction: {
-              riskLevel: "high",
-              failureProbability: 78,
-              predictedComponent: "Fuser Unit",
-              timeToFailure: 14,
-              confidence: 87,
-            },
-            recommendation: {
-              action: "immediate_service",
-              priority: "urgent",
-              estimatedCost: 485,
-              preventiveCost: 320,
-              reactiveCost: 750,
-              potentialSavings: 430,
-            },
-            dataPoints: {
-              currentMeterReading: 87540,
-              averageMonthlyVolume: 12500,
-              lastServiceDate: new Date("2024-10-15"),
-              errorFrequency: "increasing",
-              performanceMetrics: {
-                printQuality: "declining",
-                speedReduction: "15%",
-                jamFrequency: "high",
-              },
-            },
-          },
-        ];
-
-        res.json(predictions);
-      } catch (error) {
-        console.error("Error fetching predictive maintenance:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch predictive maintenance" });
-      }
-    },
-  );
-
-  // Commission Management Routes
-  app.get("/api/commission/plans", requireAuth, async (req: any, res) => {
+  app.get('/api/maintenance/predictions', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Sample predictive maintenance data
+      const predictions = [
+        {
+          equipmentId: 'eq-005',
+          model: 'Canon imageRUNNER ADVANCE DX C7765i',
+          customer: 'Gamma Solutions',
+          location: 'Building A, Floor 3',
+          prediction: {
+            riskLevel: 'high',
+            failureProbability: 78,
+            predictedComponent: 'Fuser Unit',
+            timeToFailure: 14,
+            confidence: 87,
+          },
+          recommendation: {
+            action: 'immediate_service',
+            priority: 'urgent',
+            estimatedCost: 485,
+            preventiveCost: 320,
+            reactiveCost: 750,
+            potentialSavings: 430,
+          },
+          dataPoints: {
+            currentMeterReading: 87540,
+            averageMonthlyVolume: 12500,
+            lastServiceDate: new Date('2024-10-15'),
+            errorFrequency: 'increasing',
+            performanceMetrics: {
+              printQuality: 'declining',
+              speedReduction: '15%',
+              jamFrequency: 'high',
+            },
+          },
+        },
+      ];
+
+      res.json(predictions);
+    } catch (error) {
+      console.error('Error fetching predictive maintenance:', error);
+      res.status(500).json({ message: 'Failed to fetch predictive maintenance' });
+    }
+  });
+
+  // Commission Management Routes
+  app.get('/api/commission/plans', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       // Sample commission plans
       const commissionPlans = [
         {
-          id: "plan-1",
-          planName: "Sales Rep Standard",
-          planType: "sales_rep",
-          description: "Standard commission plan for sales representatives",
+          id: 'plan-1',
+          planName: 'Sales Rep Standard',
+          planType: 'sales_rep',
+          description: 'Standard commission plan for sales representatives',
           isActive: true,
-          effectiveDate: new Date("2024-01-01"),
+          effectiveDate: new Date('2024-01-01'),
           tiers: [
             {
               tierLevel: 1,
-              tierName: "Starter",
+              tierName: 'Starter',
               minimumSales: 0,
               maximumSales: 50000,
               commissionRate: 5.0,
@@ -1637,7 +1490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             {
               tierLevel: 2,
-              tierName: "Achiever",
+              tierName: 'Achiever',
               minimumSales: 50001,
               maximumSales: 100000,
               commissionRate: 6.5,
@@ -1646,7 +1499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
           ],
           rules: {
-            paymentFrequency: "monthly",
+            paymentFrequency: 'monthly',
             paymentDelay: 30,
             splitCommissionAllowed: true,
             chargebackEnabled: true,
@@ -1655,103 +1508,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           productRates: [
             {
-              category: "new_equipment",
+              category: 'new_equipment',
               rate: 8.0,
-              description: "New copier/printer sales",
+              description: 'New copier/printer sales',
             },
             {
-              category: "service_contracts",
+              category: 'service_contracts',
               rate: 4.0,
-              description: "Service and maintenance contracts",
+              description: 'Service and maintenance contracts',
             },
           ],
-          createdAt: new Date("2024-01-01"),
-          updatedAt: new Date("2025-01-15"),
+          createdAt: new Date('2024-01-01'),
+          updatedAt: new Date('2025-01-15'),
         },
       ];
 
       res.json(commissionPlans);
     } catch (error) {
-      console.error("Error fetching commission plans:", error);
-      res.status(500).json({ message: "Failed to fetch commission plans" });
+      console.error('Error fetching commission plans:', error);
+      res.status(500).json({ message: 'Failed to fetch commission plans' });
     }
   });
 
-  app.get(
-    "/api/commission/calculations",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        // Sample commission calculations
-        const calculations = [
-          {
-            id: "calc-1",
-            employeeId: "emp-001",
-            employeeName: "John Smith",
-            employeeRole: "Sales Representative",
-            planId: "plan-1",
-            planName: "Sales Rep Standard",
-            calculationPeriod: {
-              startDate: new Date("2025-01-01"),
-              endDate: new Date("2025-01-31"),
-              periodName: "January 2025",
-            },
-            salesMetrics: {
-              totalSales: 87500,
-              quotaTarget: 75000,
-              quotaAchievement: 116.7,
-            },
-            commissionDetails: [
-              {
-                category: "new_equipment",
-                salesAmount: 65000,
-                commissionRate: 6.5,
-                commissionAmount: 4225,
-                description: "Tier 2 rate (6.5%) applied for sales over $50k",
-              },
-            ],
-            bonuses: [
-              {
-                type: "tier_bonus",
-                description: "Achiever tier bonus for exceeding $75k",
-                amount: 2500,
-                eligibilityMet: true,
-              },
-            ],
-            adjustments: [],
-            summary: {
-              grossCommission: 5350,
-              totalBonuses: 3500,
-              totalAdjustments: 0,
-              netCommission: 8850,
-              payoutDate: new Date("2025-03-01"),
-              status: "calculated",
-            },
-            calculatedAt: new Date("2025-02-01"),
-            calculatedBy: "system",
-          },
-        ];
-
-        res.json(calculations);
-      } catch (error) {
-        console.error("Error fetching commission calculations:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch commission calculations" });
-      }
-    },
-  );
-
-  app.get("/api/commission/analytics", requireAuth, async (req: any, res) => {
+  app.get('/api/commission/calculations', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      // Sample commission calculations
+      const calculations = [
+        {
+          id: 'calc-1',
+          employeeId: 'emp-001',
+          employeeName: 'John Smith',
+          employeeRole: 'Sales Representative',
+          planId: 'plan-1',
+          planName: 'Sales Rep Standard',
+          calculationPeriod: {
+            startDate: new Date('2025-01-01'),
+            endDate: new Date('2025-01-31'),
+            periodName: 'January 2025',
+          },
+          salesMetrics: {
+            totalSales: 87500,
+            quotaTarget: 75000,
+            quotaAchievement: 116.7,
+          },
+          commissionDetails: [
+            {
+              category: 'new_equipment',
+              salesAmount: 65000,
+              commissionRate: 6.5,
+              commissionAmount: 4225,
+              description: 'Tier 2 rate (6.5%) applied for sales over $50k',
+            },
+          ],
+          bonuses: [
+            {
+              type: 'tier_bonus',
+              description: 'Achiever tier bonus for exceeding $75k',
+              amount: 2500,
+              eligibilityMet: true,
+            },
+          ],
+          adjustments: [],
+          summary: {
+            grossCommission: 5350,
+            totalBonuses: 3500,
+            totalAdjustments: 0,
+            netCommission: 8850,
+            payoutDate: new Date('2025-03-01'),
+            status: 'calculated',
+          },
+          calculatedAt: new Date('2025-02-01'),
+          calculatedBy: 'system',
+        },
+      ];
+
+      res.json(calculations);
+    } catch (error) {
+      console.error('Error fetching commission calculations:', error);
+      res.status(500).json({ message: 'Failed to fetch commission calculations' });
+    }
+  });
+
+  app.get('/api/commission/analytics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       const analytics = {
@@ -1774,13 +1621,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         monthly_trends: [
           {
-            month: "Dec 2024",
+            month: 'Dec 2024',
             totalCommissions: 85210,
             avgPayout: 9356,
             quotaAchievement: 89.2,
           },
           {
-            month: "Jan 2025",
+            month: 'Jan 2025',
             totalCommissions: 87500,
             avgPayout: 9611,
             quotaAchievement: 91.5,
@@ -1788,9 +1635,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         top_performers: [
           {
-            employeeId: "emp-001",
-            name: "John Smith",
-            role: "Sales Representative",
+            employeeId: 'emp-001',
+            name: 'John Smith',
+            role: 'Sales Representative',
             totalCommission: 18750,
             quotaAchievement: 191.7,
             rank: 1,
@@ -1798,8 +1645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         plan_performance: [
           {
-            planId: "plan-1",
-            planName: "Sales Rep Standard",
+            planId: 'plan-1',
+            planName: 'Sales Rep Standard',
             participants: 18,
             avgPayout: 9235,
             totalPayout: 166230,
@@ -1816,631 +1663,593 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(analytics);
     } catch (error) {
-      console.error("Error fetching commission analytics:", error);
-      res.status(500).json({ message: "Failed to fetch commission analytics" });
+      console.error('Error fetching commission analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch commission analytics' });
     }
   });
 
-  app.get("/api/commission/disputes", requireAuth, async (req: any, res) => {
+  app.get('/api/commission/disputes', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       const disputes = [
         {
-          id: "dispute-1",
-          disputeNumber: "DISP-2025-001",
-          employeeId: "emp-001",
-          employeeName: "John Smith",
-          calculationPeriod: "January 2025",
+          id: 'dispute-1',
+          disputeNumber: 'DISP-2025-001',
+          employeeId: 'emp-001',
+          employeeName: 'John Smith',
+          calculationPeriod: 'January 2025',
           disputeDetails: {
-            type: "calculation_error",
-            description: "Incorrect commission rate applied for large deal",
+            type: 'calculation_error',
+            description: 'Incorrect commission rate applied for large deal',
             disputedAmount: 2850,
             expectedAmount: 5200,
             difference: 2350,
           },
-          status: "under_review",
-          priority: "high",
+          status: 'under_review',
+          priority: 'high',
           resolution: {
-            assignedToName: "Mary Johnson",
-            estimatedResolution: new Date("2025-02-10"),
-            notes: "Reviewing contract terms and commission plan details",
+            assignedToName: 'Mary Johnson',
+            estimatedResolution: new Date('2025-02-10'),
+            notes: 'Reviewing contract terms and commission plan details',
           },
         },
       ];
 
       res.json(disputes);
     } catch (error) {
-      console.error("Error fetching commission disputes:", error);
-      res.status(500).json({ message: "Failed to fetch commission disputes" });
+      console.error('Error fetching commission disputes:', error);
+      res.status(500).json({ message: 'Failed to fetch commission disputes' });
     }
   });
 
   // Customer Success & Retention Routes
-  app.get(
-    "/api/customer-success/health-scores",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const healthScores = [
-          {
-            customerId: "cust-001",
-            customerName: "Metro Office Solutions",
-            accountManager: "John Smith",
-            overallHealthScore: 85,
-            healthStatus: "healthy",
-            riskLevel: "low",
-            churnProbability: 12,
-            scoreBreakdown: {
-              usageHealth: 92,
-              paymentHealth: 95,
-              serviceHealth: 78,
-              contractHealth: 88,
-              engagementHealth: 82,
-            },
-            metrics: {
-              contractValue: 15600,
-              monthsRemaining: 18,
-              lastPaymentDate: new Date("2025-01-28"),
-              daysSinceLastService: 45,
-              averageResponseTime: 2.3,
-              satisfactionScore: 4.2,
-              usageUtilization: 87,
-              renewalProbability: 89,
-            },
-            trends: {
-              usageTrend: "stable",
-              paymentTrend: "improving",
-              serviceTrend: "declining",
-              engagementTrend: "stable",
-            },
-            riskFactors: [
-              {
-                factor: "Service Response Time",
-                severity: "medium",
-                description:
-                  "Average response time has increased by 20% over past 3 months",
-                impact: 15,
-                recommendation:
-                  "Schedule proactive service check and review technician assignments",
-              },
-            ],
-            opportunities: [
-              {
-                type: "contract_renewal",
-                description:
-                  "Contract renewal due in 18 months - early engagement opportunity",
-                value: 15600,
-                probability: 89,
-                action: "Schedule renewal discussion meeting",
-              },
-            ],
-            alerts: [
-              {
-                type: "service_alert",
-                priority: "medium",
-                message:
-                  "Service response time degrading - schedule proactive maintenance",
-                dueDate: new Date("2025-02-15"),
-              },
-            ],
-            lastUpdated: new Date("2025-02-03"),
-            nextReviewDate: new Date("2025-02-17"),
-          },
-        ];
-
-        res.json(healthScores);
-      } catch (error) {
-        console.error("Error fetching customer health scores:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch customer health scores" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/customer-success/usage-analytics",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const usageAnalytics = {
-          summary: {
-            totalCustomers: 45,
-            averageUtilization: 76.5,
-            totalMonthlyVolume: 2847500,
-            utilizationTrend: 2.3,
-            topPerformingAccounts: 12,
-            underutilizedAccounts: 8,
-          },
-          customerBreakdown: [
-            {
-              customerId: "cust-001",
-              customerName: "Metro Office Solutions",
-              equipment: [
-                {
-                  serialNumber: "MX-2020-001",
-                  model: "Canon ImageRunner 2525i",
-                  monthlyVolume: 12500,
-                  capacity: 15000,
-                  utilization: 83.3,
-                  averageDailyUsage: 417,
-                  peakUsageDay: "Tuesday",
-                  maintenanceScore: 92,
-                },
-              ],
-              usageTrends: {
-                currentMonth: 21250,
-                lastMonth: 20800,
-                growth: 2.2,
-                yearOverYear: 15.7,
-                seasonalPattern: "stable",
-              },
-              recommendations: [
-                {
-                  type: "optimization",
-                  priority: "medium",
-                  description: "Equipment nearing capacity - consider upgrade",
-                  potentialSavings: 2400,
-                  implementationCost: 850,
-                },
-              ],
-              alerts: [
-                {
-                  type: "capacity_warning",
-                  equipment: "MX-2020-001",
-                  message: "Operating at 83% capacity",
-                  severity: "medium",
-                },
-              ],
-            },
-          ],
-          optimizationOpportunities: [
-            {
-              type: "equipment_consolidation",
-              description: "Multiple underutilized devices can be consolidated",
-              potentialSavings: 12600,
-              implementationCost: 4200,
-              roi: 300,
-            },
-          ],
-        };
-
-        res.json(usageAnalytics);
-      } catch (error) {
-        console.error("Error fetching usage analytics:", error);
-        res.status(500).json({ message: "Failed to fetch usage analytics" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/customer-success/satisfaction",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const satisfactionData = {
-          summary: {
-            overallSatisfaction: 4.2,
-            responseRate: 68.5,
-            totalSurveys: 156,
-            completedSurveys: 107,
-            npsScore: 42,
-            promoters: 65,
-            detractors: 23,
-            trend: "improving",
-          },
-          recentSurveys: [
-            {
-              surveyId: "surv-001",
-              customerId: "cust-001",
-              customerName: "Metro Office Solutions",
-              submittedDate: new Date("2025-01-30"),
-              scores: {
-                overall: 4.5,
-                serviceQuality: 4.7,
-                responseTime: 4.2,
-                technicalExpertise: 4.8,
-                communication: 4.3,
-                valueForMoney: 4.1,
-              },
-              npsScore: 9,
-              category: "promoter",
-              feedback:
-                "Excellent service team - always responsive and knowledgeable.",
-              actionItems: [],
-            },
-          ],
-          categoryTrends: {
-            serviceQuality: {
-              current: 4.3,
-              previous: 4.1,
-              trend: "improving",
-              target: 4.5,
-            },
-            responseTime: {
-              current: 3.8,
-              previous: 3.6,
-              trend: "improving",
-              target: 4.2,
-            },
-            technicalExpertise: {
-              current: 4.5,
-              previous: 4.4,
-              trend: "stable",
-              target: 4.6,
-            },
-          },
-        };
-
-        res.json(satisfactionData);
-      } catch (error) {
-        console.error("Error fetching satisfaction data:", error);
-        res.status(500).json({ message: "Failed to fetch satisfaction data" });
-      }
-    },
-  );
-
-  // Remote Monitoring & IoT Integration Routes
-  app.get(
-    "/api/remote-monitoring/equipment-status",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const equipmentStatus = [
-          {
-            equipmentId: "eq-001",
-            serialNumber: "MX-2025-001",
-            model: "Canon ImageRunner 2535i",
-            location: {
-              customerName: "Metro Office Solutions",
-              address: "123 Business Center Dr, Suite 200",
-              floor: "2nd Floor - Copy Center",
-              coordinates: { lat: 40.7128, lng: -74.006 },
-            },
-            status: "operational",
-            connectionStatus: "connected",
-            lastPing: new Date("2025-02-03T23:45:32Z"),
-            uptime: 98.7,
-            currentMetrics: {
-              pagesPerMinute: 35,
-              tonerLevels: { black: 78, cyan: 82, magenta: 75, yellow: 91 },
-              paperLevels: { tray1: 85, tray2: 92, tray3: 67 },
-              temperature: 42.3,
-              humidity: 45,
-              errorCount: 0,
-              jamCount: 2,
-              lastJobCompleted: new Date("2025-02-03T23:44:15Z"),
-            },
-            performance: {
-              dailyPageCount: 1247,
-              weeklyPageCount: 8650,
-              monthlyPageCount: 32450,
-              utilizationRate: 87,
-              efficiency: 94.2,
-              averageJobSize: 12.5,
-              peakUsageHour: 14,
-            },
-            maintenance: {
-              nextScheduled: new Date("2025-02-15T09:00:00Z"),
-              lastCompleted: new Date("2025-01-20T14:30:00Z"),
-              maintenanceScore: 92,
-              predictiveAlerts: [
-                {
-                  component: "Fuser Unit",
-                  condition: "good",
-                  estimatedLife: 85,
-                  nextReplacement: new Date("2025-04-15T00:00:00Z"),
-                },
-              ],
-            },
-            alerts: [
-              {
-                id: "alert-001",
-                type: "supply_low",
-                severity: "medium",
-                message: "Magenta toner at 75% - consider ordering replacement",
-                timestamp: new Date("2025-02-03T22:30:00Z"),
-                acknowledged: false,
-              },
-            ],
-            environmental: {
-              powerConsumption: 450,
-              energyEfficiency: "A+",
-              carbonFootprint: 2.3,
-              sleepModeActive: false,
-              autoSleepEnabled: true,
-            },
-          },
-        ];
-
-        res.json(equipmentStatus);
-      } catch (error) {
-        console.error("Error fetching equipment status:", error);
-        res.status(500).json({ message: "Failed to fetch equipment status" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/remote-monitoring/fleet-overview",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const fleetOverview = {
-          summary: {
-            totalEquipment: 47,
-            onlineEquipment: 44,
-            offlineEquipment: 3,
-            equipmentWithAlerts: 8,
-            criticalAlerts: 2,
-            averageUptime: 96.8,
-            fleetUtilization: 78.5,
-            energyEfficiency: "A-",
-          },
-          statusDistribution: {
-            operational: 38,
-            warning: 6,
-            critical: 2,
-            offline: 3,
-            maintenance: 1,
-          },
-          performanceTrends: {
-            weeklyUptime: [96.2, 97.1, 96.8, 97.5, 96.9, 97.2, 96.8],
-            weeklyUtilization: [75.2, 78.1, 76.8, 79.5, 77.9, 80.2, 78.5],
-            weeklyEfficiency: [89.2, 91.1, 90.8, 92.5, 91.9, 93.2, 91.5],
-          },
-          topPerformers: [
-            {
-              equipmentId: "eq-003",
-              customerName: "Regional Medical Center",
-              model: "Ricoh MP C3004",
-              uptime: 99.2,
-              efficiency: 98.7,
-              utilizationRate: 95,
-            },
-          ],
-          attentionRequired: [
-            {
-              equipmentId: "eq-002",
-              customerName: "TechStart Innovations",
-              model: "Xerox WorkCentre 5855",
-              issues: ["Critical toner low", "Frequent jams"],
-              priority: "high",
-              estimatedRevenueLoss: 1200,
-            },
-          ],
-        };
-
-        res.json(fleetOverview);
-      } catch (error) {
-        console.error("Error fetching fleet overview:", error);
-        res.status(500).json({ message: "Failed to fetch fleet overview" });
-      }
-    },
-  );
-
-  // Document Management & Workflow Automation Routes
-  app.get(
-    "/api/document-management/library",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const documentLibrary = {
-          summary: {
-            totalDocuments: 2847,
-            categoriesCount: 12,
-            pendingApproval: 23,
-            expiringSoon: 8,
-            storageUsed: "4.2 GB",
-            storageLimit: "50 GB",
-            lastBackup: new Date("2025-02-03T02:00:00Z"),
-            complianceScore: 96.5,
-          },
-          categories: [
-            {
-              id: "contracts",
-              name: "Contracts & Agreements",
-              documentCount: 456,
-              subcategories: [
-                { name: "Service Contracts", count: 234, icon: "FileText" },
-                { name: "Lease Agreements", count: 156, icon: "FileSignature" },
-                {
-                  name: "Master Service Agreements",
-                  count: 45,
-                  icon: "FileContract",
-                },
-              ],
-              recentActivity: 12,
-              complianceStatus: "compliant",
-              retentionPolicy: "7 years",
-              accessLevel: "restricted",
-            },
-            {
-              id: "service-docs",
-              name: "Service Documentation",
-              documentCount: 1342,
-              subcategories: [
-                { name: "Service Reports", count: 789, icon: "FileText" },
-                { name: "Installation Docs", count: 234, icon: "Settings" },
-                { name: "Maintenance Records", count: 198, icon: "Wrench" },
-              ],
-              recentActivity: 45,
-              complianceStatus: "compliant",
-              retentionPolicy: "5 years",
-              accessLevel: "department",
-            },
-          ],
-          recentDocuments: [
-            {
-              id: "doc-001",
-              title: "Metro Office Solutions - Service Contract Renewal",
-              category: "contracts",
-              subcategory: "Service Contracts",
-              fileType: "pdf",
-              fileSize: "2.4 MB",
-              lastModified: new Date("2025-02-03T16:30:00Z"),
-              modifiedBy: "Sarah Chen",
-              status: "active",
-              version: "2.1",
-              tags: ["renewal", "service", "metro-office"],
-              workflow: {
-                currentStage: "customer_review",
-                nextAction: "awaiting_signature",
-                dueDate: new Date("2025-02-10T17:00:00Z"),
-                assignedTo: "John Smith",
-              },
-            },
-          ],
-          pendingActions: [
-            {
-              id: "action-001",
-              documentId: "doc-001",
-              documentTitle:
-                "Metro Office Solutions - Service Contract Renewal",
-              actionType: "approval_required",
-              priority: "high",
-              assignedTo: "John Smith",
-              dueDate: new Date("2025-02-05T17:00:00Z"),
-              description:
-                "Contract renewal requires final management approval",
-              estimatedTime: 15,
-            },
-          ],
-        };
-
-        res.json(documentLibrary);
-      } catch (error) {
-        console.error("Error fetching document library:", error);
-        res.status(500).json({ message: "Failed to fetch document library" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/document-management/workflows",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const workflowData = {
-          templates: [
-            {
-              id: "contract-approval",
-              name: "Contract Approval Workflow",
-              description: "Multi-stage approval process for service contracts",
-              isActive: true,
-              usage: 156,
-              stages: [
-                {
-                  id: "stage-1",
-                  name: "Initial Review",
-                  assignedRole: "sales",
-                  slaHours: 24,
-                },
-                {
-                  id: "stage-2",
-                  name: "Legal Review",
-                  assignedRole: "legal",
-                  slaHours: 48,
-                },
-                {
-                  id: "stage-3",
-                  name: "Management Approval",
-                  assignedRole: "management",
-                  slaHours: 12,
-                },
-              ],
-              metrics: {
-                averageCompletionTime: 4.2,
-                approvalRate: 89.5,
-                slaComplianceRate: 92.1,
-              },
-            },
-          ],
-          activeWorkflows: [
-            {
-              id: "wf-001",
-              templateId: "contract-approval",
-              documentTitle:
-                "Metro Office Solutions - Service Contract Renewal",
-              currentStage: "management_approval",
-              progress: 75,
-              startedAt: new Date("2025-01-30T09:00:00Z"),
-              dueAt: new Date("2025-02-05T17:00:00Z"),
-              assignedTo: "John Smith",
-              priority: "high",
-              slaStatus: "on_track",
-            },
-          ],
-          automationStats: {
-            totalRulesActive: 24,
-            rulesTriggeredToday: 12,
-            automationSuccessRate: 96.8,
-            timesSaved: 145,
-            documentsProcessed: 2847,
-          },
-        };
-
-        res.json(workflowData);
-      } catch (error) {
-        console.error("Error fetching workflow data:", error);
-        res.status(500).json({ message: "Failed to fetch workflow data" });
-      }
-    },
-  );
-
-  // Mobile Service App Routes
-  app.get("/api/mobile/dashboard", requireAuth, async (req: any, res) => {
+  app.get('/api/customer-success/health-scores', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const healthScores = [
+        {
+          customerId: 'cust-001',
+          customerName: 'Metro Office Solutions',
+          accountManager: 'John Smith',
+          overallHealthScore: 85,
+          healthStatus: 'healthy',
+          riskLevel: 'low',
+          churnProbability: 12,
+          scoreBreakdown: {
+            usageHealth: 92,
+            paymentHealth: 95,
+            serviceHealth: 78,
+            contractHealth: 88,
+            engagementHealth: 82,
+          },
+          metrics: {
+            contractValue: 15600,
+            monthsRemaining: 18,
+            lastPaymentDate: new Date('2025-01-28'),
+            daysSinceLastService: 45,
+            averageResponseTime: 2.3,
+            satisfactionScore: 4.2,
+            usageUtilization: 87,
+            renewalProbability: 89,
+          },
+          trends: {
+            usageTrend: 'stable',
+            paymentTrend: 'improving',
+            serviceTrend: 'declining',
+            engagementTrend: 'stable',
+          },
+          riskFactors: [
+            {
+              factor: 'Service Response Time',
+              severity: 'medium',
+              description: 'Average response time has increased by 20% over past 3 months',
+              impact: 15,
+              recommendation: 'Schedule proactive service check and review technician assignments',
+            },
+          ],
+          opportunities: [
+            {
+              type: 'contract_renewal',
+              description: 'Contract renewal due in 18 months - early engagement opportunity',
+              value: 15600,
+              probability: 89,
+              action: 'Schedule renewal discussion meeting',
+            },
+          ],
+          alerts: [
+            {
+              type: 'service_alert',
+              priority: 'medium',
+              message: 'Service response time degrading - schedule proactive maintenance',
+              dueDate: new Date('2025-02-15'),
+            },
+          ],
+          lastUpdated: new Date('2025-02-03'),
+          nextReviewDate: new Date('2025-02-17'),
+        },
+      ];
+
+      res.json(healthScores);
+    } catch (error) {
+      console.error('Error fetching customer health scores:', error);
+      res.status(500).json({ message: 'Failed to fetch customer health scores' });
+    }
+  });
+
+  app.get('/api/customer-success/usage-analytics', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const usageAnalytics = {
+        summary: {
+          totalCustomers: 45,
+          averageUtilization: 76.5,
+          totalMonthlyVolume: 2847500,
+          utilizationTrend: 2.3,
+          topPerformingAccounts: 12,
+          underutilizedAccounts: 8,
+        },
+        customerBreakdown: [
+          {
+            customerId: 'cust-001',
+            customerName: 'Metro Office Solutions',
+            equipment: [
+              {
+                serialNumber: 'MX-2020-001',
+                model: 'Canon ImageRunner 2525i',
+                monthlyVolume: 12500,
+                capacity: 15000,
+                utilization: 83.3,
+                averageDailyUsage: 417,
+                peakUsageDay: 'Tuesday',
+                maintenanceScore: 92,
+              },
+            ],
+            usageTrends: {
+              currentMonth: 21250,
+              lastMonth: 20800,
+              growth: 2.2,
+              yearOverYear: 15.7,
+              seasonalPattern: 'stable',
+            },
+            recommendations: [
+              {
+                type: 'optimization',
+                priority: 'medium',
+                description: 'Equipment nearing capacity - consider upgrade',
+                potentialSavings: 2400,
+                implementationCost: 850,
+              },
+            ],
+            alerts: [
+              {
+                type: 'capacity_warning',
+                equipment: 'MX-2020-001',
+                message: 'Operating at 83% capacity',
+                severity: 'medium',
+              },
+            ],
+          },
+        ],
+        optimizationOpportunities: [
+          {
+            type: 'equipment_consolidation',
+            description: 'Multiple underutilized devices can be consolidated',
+            potentialSavings: 12600,
+            implementationCost: 4200,
+            roi: 300,
+          },
+        ],
+      };
+
+      res.json(usageAnalytics);
+    } catch (error) {
+      console.error('Error fetching usage analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch usage analytics' });
+    }
+  });
+
+  app.get('/api/customer-success/satisfaction', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const satisfactionData = {
+        summary: {
+          overallSatisfaction: 4.2,
+          responseRate: 68.5,
+          totalSurveys: 156,
+          completedSurveys: 107,
+          npsScore: 42,
+          promoters: 65,
+          detractors: 23,
+          trend: 'improving',
+        },
+        recentSurveys: [
+          {
+            surveyId: 'surv-001',
+            customerId: 'cust-001',
+            customerName: 'Metro Office Solutions',
+            submittedDate: new Date('2025-01-30'),
+            scores: {
+              overall: 4.5,
+              serviceQuality: 4.7,
+              responseTime: 4.2,
+              technicalExpertise: 4.8,
+              communication: 4.3,
+              valueForMoney: 4.1,
+            },
+            npsScore: 9,
+            category: 'promoter',
+            feedback: 'Excellent service team - always responsive and knowledgeable.',
+            actionItems: [],
+          },
+        ],
+        categoryTrends: {
+          serviceQuality: {
+            current: 4.3,
+            previous: 4.1,
+            trend: 'improving',
+            target: 4.5,
+          },
+          responseTime: {
+            current: 3.8,
+            previous: 3.6,
+            trend: 'improving',
+            target: 4.2,
+          },
+          technicalExpertise: {
+            current: 4.5,
+            previous: 4.4,
+            trend: 'stable',
+            target: 4.6,
+          },
+        },
+      };
+
+      res.json(satisfactionData);
+    } catch (error) {
+      console.error('Error fetching satisfaction data:', error);
+      res.status(500).json({ message: 'Failed to fetch satisfaction data' });
+    }
+  });
+
+  // Remote Monitoring & IoT Integration Routes
+  app.get('/api/remote-monitoring/equipment-status', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const equipmentStatus = [
+        {
+          equipmentId: 'eq-001',
+          serialNumber: 'MX-2025-001',
+          model: 'Canon ImageRunner 2535i',
+          location: {
+            customerName: 'Metro Office Solutions',
+            address: '123 Business Center Dr, Suite 200',
+            floor: '2nd Floor - Copy Center',
+            coordinates: { lat: 40.7128, lng: -74.006 },
+          },
+          status: 'operational',
+          connectionStatus: 'connected',
+          lastPing: new Date('2025-02-03T23:45:32Z'),
+          uptime: 98.7,
+          currentMetrics: {
+            pagesPerMinute: 35,
+            tonerLevels: { black: 78, cyan: 82, magenta: 75, yellow: 91 },
+            paperLevels: { tray1: 85, tray2: 92, tray3: 67 },
+            temperature: 42.3,
+            humidity: 45,
+            errorCount: 0,
+            jamCount: 2,
+            lastJobCompleted: new Date('2025-02-03T23:44:15Z'),
+          },
+          performance: {
+            dailyPageCount: 1247,
+            weeklyPageCount: 8650,
+            monthlyPageCount: 32450,
+            utilizationRate: 87,
+            efficiency: 94.2,
+            averageJobSize: 12.5,
+            peakUsageHour: 14,
+          },
+          maintenance: {
+            nextScheduled: new Date('2025-02-15T09:00:00Z'),
+            lastCompleted: new Date('2025-01-20T14:30:00Z'),
+            maintenanceScore: 92,
+            predictiveAlerts: [
+              {
+                component: 'Fuser Unit',
+                condition: 'good',
+                estimatedLife: 85,
+                nextReplacement: new Date('2025-04-15T00:00:00Z'),
+              },
+            ],
+          },
+          alerts: [
+            {
+              id: 'alert-001',
+              type: 'supply_low',
+              severity: 'medium',
+              message: 'Magenta toner at 75% - consider ordering replacement',
+              timestamp: new Date('2025-02-03T22:30:00Z'),
+              acknowledged: false,
+            },
+          ],
+          environmental: {
+            powerConsumption: 450,
+            energyEfficiency: 'A+',
+            carbonFootprint: 2.3,
+            sleepModeActive: false,
+            autoSleepEnabled: true,
+          },
+        },
+      ];
+
+      res.json(equipmentStatus);
+    } catch (error) {
+      console.error('Error fetching equipment status:', error);
+      res.status(500).json({ message: 'Failed to fetch equipment status' });
+    }
+  });
+
+  app.get('/api/remote-monitoring/fleet-overview', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const fleetOverview = {
+        summary: {
+          totalEquipment: 47,
+          onlineEquipment: 44,
+          offlineEquipment: 3,
+          equipmentWithAlerts: 8,
+          criticalAlerts: 2,
+          averageUptime: 96.8,
+          fleetUtilization: 78.5,
+          energyEfficiency: 'A-',
+        },
+        statusDistribution: {
+          operational: 38,
+          warning: 6,
+          critical: 2,
+          offline: 3,
+          maintenance: 1,
+        },
+        performanceTrends: {
+          weeklyUptime: [96.2, 97.1, 96.8, 97.5, 96.9, 97.2, 96.8],
+          weeklyUtilization: [75.2, 78.1, 76.8, 79.5, 77.9, 80.2, 78.5],
+          weeklyEfficiency: [89.2, 91.1, 90.8, 92.5, 91.9, 93.2, 91.5],
+        },
+        topPerformers: [
+          {
+            equipmentId: 'eq-003',
+            customerName: 'Regional Medical Center',
+            model: 'Ricoh MP C3004',
+            uptime: 99.2,
+            efficiency: 98.7,
+            utilizationRate: 95,
+          },
+        ],
+        attentionRequired: [
+          {
+            equipmentId: 'eq-002',
+            customerName: 'TechStart Innovations',
+            model: 'Xerox WorkCentre 5855',
+            issues: ['Critical toner low', 'Frequent jams'],
+            priority: 'high',
+            estimatedRevenueLoss: 1200,
+          },
+        ],
+      };
+
+      res.json(fleetOverview);
+    } catch (error) {
+      console.error('Error fetching fleet overview:', error);
+      res.status(500).json({ message: 'Failed to fetch fleet overview' });
+    }
+  });
+
+  // Document Management & Workflow Automation Routes
+  app.get('/api/document-management/library', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const documentLibrary = {
+        summary: {
+          totalDocuments: 2847,
+          categoriesCount: 12,
+          pendingApproval: 23,
+          expiringSoon: 8,
+          storageUsed: '4.2 GB',
+          storageLimit: '50 GB',
+          lastBackup: new Date('2025-02-03T02:00:00Z'),
+          complianceScore: 96.5,
+        },
+        categories: [
+          {
+            id: 'contracts',
+            name: 'Contracts & Agreements',
+            documentCount: 456,
+            subcategories: [
+              { name: 'Service Contracts', count: 234, icon: 'FileText' },
+              { name: 'Lease Agreements', count: 156, icon: 'FileSignature' },
+              {
+                name: 'Master Service Agreements',
+                count: 45,
+                icon: 'FileContract',
+              },
+            ],
+            recentActivity: 12,
+            complianceStatus: 'compliant',
+            retentionPolicy: '7 years',
+            accessLevel: 'restricted',
+          },
+          {
+            id: 'service-docs',
+            name: 'Service Documentation',
+            documentCount: 1342,
+            subcategories: [
+              { name: 'Service Reports', count: 789, icon: 'FileText' },
+              { name: 'Installation Docs', count: 234, icon: 'Settings' },
+              { name: 'Maintenance Records', count: 198, icon: 'Wrench' },
+            ],
+            recentActivity: 45,
+            complianceStatus: 'compliant',
+            retentionPolicy: '5 years',
+            accessLevel: 'department',
+          },
+        ],
+        recentDocuments: [
+          {
+            id: 'doc-001',
+            title: 'Metro Office Solutions - Service Contract Renewal',
+            category: 'contracts',
+            subcategory: 'Service Contracts',
+            fileType: 'pdf',
+            fileSize: '2.4 MB',
+            lastModified: new Date('2025-02-03T16:30:00Z'),
+            modifiedBy: 'Sarah Chen',
+            status: 'active',
+            version: '2.1',
+            tags: ['renewal', 'service', 'metro-office'],
+            workflow: {
+              currentStage: 'customer_review',
+              nextAction: 'awaiting_signature',
+              dueDate: new Date('2025-02-10T17:00:00Z'),
+              assignedTo: 'John Smith',
+            },
+          },
+        ],
+        pendingActions: [
+          {
+            id: 'action-001',
+            documentId: 'doc-001',
+            documentTitle: 'Metro Office Solutions - Service Contract Renewal',
+            actionType: 'approval_required',
+            priority: 'high',
+            assignedTo: 'John Smith',
+            dueDate: new Date('2025-02-05T17:00:00Z'),
+            description: 'Contract renewal requires final management approval',
+            estimatedTime: 15,
+          },
+        ],
+      };
+
+      res.json(documentLibrary);
+    } catch (error) {
+      console.error('Error fetching document library:', error);
+      res.status(500).json({ message: 'Failed to fetch document library' });
+    }
+  });
+
+  app.get('/api/document-management/workflows', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const workflowData = {
+        templates: [
+          {
+            id: 'contract-approval',
+            name: 'Contract Approval Workflow',
+            description: 'Multi-stage approval process for service contracts',
+            isActive: true,
+            usage: 156,
+            stages: [
+              {
+                id: 'stage-1',
+                name: 'Initial Review',
+                assignedRole: 'sales',
+                slaHours: 24,
+              },
+              {
+                id: 'stage-2',
+                name: 'Legal Review',
+                assignedRole: 'legal',
+                slaHours: 48,
+              },
+              {
+                id: 'stage-3',
+                name: 'Management Approval',
+                assignedRole: 'management',
+                slaHours: 12,
+              },
+            ],
+            metrics: {
+              averageCompletionTime: 4.2,
+              approvalRate: 89.5,
+              slaComplianceRate: 92.1,
+            },
+          },
+        ],
+        activeWorkflows: [
+          {
+            id: 'wf-001',
+            templateId: 'contract-approval',
+            documentTitle: 'Metro Office Solutions - Service Contract Renewal',
+            currentStage: 'management_approval',
+            progress: 75,
+            startedAt: new Date('2025-01-30T09:00:00Z'),
+            dueAt: new Date('2025-02-05T17:00:00Z'),
+            assignedTo: 'John Smith',
+            priority: 'high',
+            slaStatus: 'on_track',
+          },
+        ],
+        automationStats: {
+          totalRulesActive: 24,
+          rulesTriggeredToday: 12,
+          automationSuccessRate: 96.8,
+          timesSaved: 145,
+          documentsProcessed: 2847,
+        },
+      };
+
+      res.json(workflowData);
+    } catch (error) {
+      console.error('Error fetching workflow data:', error);
+      res.status(500).json({ message: 'Failed to fetch workflow data' });
+    }
+  });
+
+  // Mobile Service App Routes
+  app.get('/api/mobile/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       const mobileDashboard = {
         technician: {
           id: req.user.id,
           name: req.user.name,
-          employeeId: "TECH-001",
-          certification: "Senior Technician",
+          employeeId: 'TECH-001',
+          certification: 'Senior Technician',
           rating: 4.8,
           completedJobs: 1247,
         },
@@ -2453,39 +2262,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         jobsQueue: [
           {
-            id: "job-001",
-            priority: "high",
-            status: "assigned",
-            customerName: "Metro Office Solutions",
-            contactPerson: "Sarah Johnson",
-            contactPhone: "+1-555-0123",
-            address: "123 Business Center Dr, Suite 200",
+            id: 'job-001',
+            priority: 'high',
+            status: 'assigned',
+            customerName: 'Metro Office Solutions',
+            contactPerson: 'Sarah Johnson',
+            contactPhone: '+1-555-0123',
+            address: '123 Business Center Dr, Suite 200',
             coordinates: { lat: 40.7128, lng: -74.006 },
             equipment: {
-              model: "Canon ImageRunner 2535i",
-              serialNumber: "MX-2025-001",
-              location: "2nd Floor - Copy Center",
+              model: 'Canon ImageRunner 2535i',
+              serialNumber: 'MX-2025-001',
+              location: '2nd Floor - Copy Center',
             },
-            serviceType: "maintenance",
-            issueDescription:
-              "Routine preventive maintenance and toner replacement",
+            serviceType: 'maintenance',
+            issueDescription: 'Routine preventive maintenance and toner replacement',
             estimatedDuration: 90,
-            scheduledTime: new Date("2025-02-04T09:00:00Z"),
+            scheduledTime: new Date('2025-02-04T09:00:00Z'),
             requiredParts: [
               {
-                partNumber: "TNR-2535-BK",
-                description: "Black Toner Cartridge",
+                partNumber: 'TNR-2535-BK',
+                description: 'Black Toner Cartridge',
                 quantity: 1,
                 available: true,
               },
             ],
-            customerNotes: "Equipment heavily used, check paper feed mechanism",
-            internalNotes: "Customer prefers morning service calls",
+            customerNotes: 'Equipment heavily used, check paper feed mechanism',
+            internalNotes: 'Customer prefers morning service calls',
             routeOptimization: {
               driveTime: 15,
               distanceFromPrevious: 3.2,
-              trafficConditions: "light",
-              parkingNotes: "Visitor parking available on 1st floor",
+              trafficConditions: 'light',
+              parkingNotes: 'Visitor parking available on 1st floor',
             },
           },
         ],
@@ -2512,64 +2320,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
             fuserUnits: 3,
           },
           pendingOrders: 2,
-          criticalLowItems: ["PF-5855-ROLL"],
-          lastRestocked: new Date("2025-02-01T00:00:00Z"),
+          criticalLowItems: ['PF-5855-ROLL'],
+          lastRestocked: new Date('2025-02-01T00:00:00Z'),
         },
       };
 
       res.json(mobileDashboard);
     } catch (error) {
-      console.error("Error fetching mobile dashboard:", error);
-      res.status(500).json({ message: "Failed to fetch mobile dashboard" });
+      console.error('Error fetching mobile dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch mobile dashboard' });
     }
   });
 
-  app.get(
-    "/api/mobile/route-optimization",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const routeData = {
-          optimizedRoute: {
-            totalDistance: 28.4,
-            totalDriveTime: 72,
-            totalServiceTime: 390,
-            fuelCost: 12.5,
-            stops: [
-              {
-                sequence: 1,
-                jobId: "job-001",
-                customerName: "Metro Office Solutions",
-                address: "123 Business Center Dr, Suite 200",
-                estimatedArrival: new Date("2025-02-04T09:00:00Z"),
-                serviceWindow: { start: "09:00", end: "10:30" },
-                drivingTime: 15,
-                serviceTime: 90,
-                parkingInfo: "Visitor parking available",
-              },
-            ],
-          },
-        };
-
-        res.json(routeData);
-      } catch (error) {
-        console.error("Error fetching route data:", error);
-        res.status(500).json({ message: "Failed to fetch route data" });
-      }
-    },
-  );
-
-  // Advanced Analytics Dashboard Routes
-  app.get("/api/analytics/dashboard", requireAuth, async (req: any, res) => {
+  app.get('/api/mobile/route-optimization', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const routeData = {
+        optimizedRoute: {
+          totalDistance: 28.4,
+          totalDriveTime: 72,
+          totalServiceTime: 390,
+          fuelCost: 12.5,
+          stops: [
+            {
+              sequence: 1,
+              jobId: 'job-001',
+              customerName: 'Metro Office Solutions',
+              address: '123 Business Center Dr, Suite 200',
+              estimatedArrival: new Date('2025-02-04T09:00:00Z'),
+              serviceWindow: { start: '09:00', end: '10:30' },
+              drivingTime: 15,
+              serviceTime: 90,
+              parkingInfo: 'Visitor parking available',
+            },
+          ],
+        },
+      };
+
+      res.json(routeData);
+    } catch (error) {
+      console.error('Error fetching route data:', error);
+      res.status(500).json({ message: 'Failed to fetch route data' });
+    }
+  });
+
+  // Advanced Analytics Dashboard Routes
+  app.get('/api/analytics/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       const analyticsDashboard = {
@@ -2578,37 +2382,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             current: 2847650.75,
             previous: 2634580.2,
             growth: 8.1,
-            trend: "up",
+            trend: 'up',
           },
           activeCustomers: {
             current: 847,
             previous: 832,
             growth: 1.8,
-            trend: "up",
+            trend: 'up',
           },
           serviceTickets: {
             current: 2156,
             previous: 2089,
             growth: 3.2,
-            trend: "up",
+            trend: 'up',
           },
           grossMargin: {
             current: 42.7,
             previous: 41.2,
             growth: 1.5,
-            trend: "up",
+            trend: 'up',
           },
         },
         revenueAnalytics: {
           monthlyRevenue: [
             {
-              month: "2024-07",
+              month: '2024-07',
               revenue: 245680.5,
               contracts: 78,
               newCustomers: 12,
             },
             {
-              month: "2025-01",
+              month: '2025-01',
               revenue: 356290.1,
               contracts: 102,
               newCustomers: 28,
@@ -2616,13 +2420,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
           revenueByCategory: [
             {
-              category: "Equipment Sales",
+              category: 'Equipment Sales',
               amount: 1247850.3,
               percentage: 43.8,
               growth: 12.5,
             },
             {
-              category: "Service Contracts",
+              category: 'Service Contracts',
               amount: 892640.75,
               percentage: 31.4,
               growth: 6.2,
@@ -2630,18 +2434,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
           topPerformingProducts: [
             {
-              product: "Canon ImageRunner Advance DX 6780i",
+              product: 'Canon ImageRunner Advance DX 6780i',
               revenue: 287450.0,
               units: 23,
               margin: 38.5,
-              trend: "up",
+              trend: 'up',
             },
           ],
         },
         customerAnalytics: {
           customerSegmentation: [
             {
-              segment: "Enterprise (500+ employees)",
+              segment: 'Enterprise (500+ employees)',
               count: 89,
               revenue: 1456780.25,
               percentage: 51.2,
@@ -2656,12 +2460,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           topCustomers: [
             {
-              name: "Metro Healthcare Systems",
+              name: 'Metro Healthcare Systems',
               revenue: 187450.75,
               contracts: 15,
               satisfaction: 4.8,
-              lastPurchase: new Date("2025-01-28T00:00:00Z"),
-              nextRenewal: new Date("2025-06-15T00:00:00Z"),
+              lastPurchase: new Date('2025-01-28T00:00:00Z'),
+              nextRenewal: new Date('2025-06-15T00:00:00Z'),
             },
           ],
         },
@@ -2675,18 +2479,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           ticketTrends: [
             {
-              month: "2025-01",
+              month: '2025-01',
               tickets: 338,
               resolved: 329,
               satisfaction: 4.6,
             },
           ],
-          topIssues: [
-            { issue: "Paper Jam", count: 387, avgTime: 1.2, resolution: 96.8 },
-          ],
+          topIssues: [{ issue: 'Paper Jam', count: 387, avgTime: 1.2, resolution: 96.8 }],
           technicianPerformance: [
             {
-              technician: "Mike Rodriguez",
+              technician: 'Mike Rodriguez',
               tickets: 187,
               avgTime: 2.8,
               satisfaction: 4.8,
@@ -2703,7 +2505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           equipmentByManufacturer: [
             {
-              manufacturer: "Canon",
+              manufacturer: 'Canon',
               units: 387,
               percentage: 31.0,
               avgAge: 2.8,
@@ -2726,7 +2528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           cashFlow: [
             {
-              month: "2025-01",
+              month: '2025-01',
               inflow: 434567.1,
               outflow: 324567.85,
               net: 109999.25,
@@ -2734,25 +2536,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
           expenseBreakdown: [
             {
-              category: "Cost of Goods Sold",
+              category: 'Cost of Goods Sold',
               amount: 1631783.3,
               percentage: 57.3,
             },
           ],
         },
         predictiveAnalytics: {
-          revenueForecast: [
-            { month: "2025-02", predicted: 389670.5, confidence: 87.5 },
-          ],
+          revenueForecast: [{ month: '2025-02', predicted: 389670.5, confidence: 87.5 }],
           churnPrediction: {
             highRisk: 23,
             mediumRisk: 67,
             lowRisk: 757,
             actions: [
               {
-                customer: "Sunset Industries",
+                customer: 'Sunset Industries',
                 risk: 89.2,
-                action: "Immediate intervention required",
+                action: 'Immediate intervention required',
               },
             ],
           },
@@ -2771,142 +2571,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lost: 89,
             pending: 42,
             winRate: 54.4,
-            lossReasons: [{ reason: "Price", count: 34, percentage: 38.2 }],
+            lossReasons: [{ reason: 'Price', count: 34, percentage: 38.2 }],
           },
         },
       };
 
       res.json(analyticsDashboard);
     } catch (error) {
-      console.error("Error fetching analytics dashboard:", error);
-      res.status(500).json({ message: "Failed to fetch analytics dashboard" });
+      console.error('Error fetching analytics dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics dashboard' });
     }
   });
 
   // Business Process Optimization Routes
-  app.get(
-    "/api/business-process/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const processOptimizationData = {
-          processOverview: {
-            totalProcesses: 47,
-            automatedProcesses: 32,
-            manualProcesses: 15,
-            automationRate: 68.1,
-            avgProcessTime: 4.7,
-            processEfficiency: 84.3,
-            costSavings: 127890.5,
-            timeReduction: 32.4,
-          },
-          keyMetrics: [
-            {
-              metric: "Lead to Customer Conversion",
-              currentTime: 5.2,
-              optimizedTime: 3.1,
-              improvement: 40.4,
-              status: "optimized",
-              automationLevel: 85,
-            },
-            {
-              metric: "Service Ticket Resolution",
-              currentTime: 6.8,
-              optimizedTime: 4.2,
-              improvement: 38.2,
-              status: "optimized",
-              automationLevel: 72,
-            },
-          ],
-          workflowTemplates: [
-            {
-              id: "wf-001",
-              name: "New Customer Onboarding",
-              description:
-                "Standardized process for onboarding new customers from lead to active account",
-              steps: 12,
-              avgDuration: 3.5,
-              automationLevel: 85,
-              successRate: 96.8,
-              category: "Customer Management",
-              status: "active",
-              usageCount: 156,
-              lastUpdated: new Date("2025-01-15T00:00:00Z"),
-            },
-          ],
-          processAnalytics: {
-            bottlenecks: [
-              {
-                process: "Equipment Installation",
-                step: "Site Survey Scheduling",
-                avgDelay: 3.2,
-                impact: "high",
-                frequency: 78,
-                recommendation:
-                  "Implement automated scheduling with customer self-service portal",
-              },
-            ],
-            efficiency: [
-              {
-                department: "Sales",
-                currentEfficiency: 78.5,
-                targetEfficiency: 90.0,
-                gap: 11.5,
-                improvementAreas: ["Lead qualification", "Proposal generation"],
-                estimatedROI: 156780.25,
-              },
-            ],
-            trends: [
-              {
-                month: "2025-01",
-                efficiency: 84.3,
-                automation: 68.1,
-                processes: 47,
-              },
-            ],
-          },
-          automationOpportunities: [
-            {
-              id: "auto-001",
-              process: "Customer Onboarding Documentation",
-              description:
-                "Automate generation of welcome packets and setup documentation",
-              currentEffort: 2.5,
-              estimatedReduction: 80,
-              potentialSavings: 45600.0,
-              complexity: "low",
-              priority: "high",
-              implementationTime: 2,
-              roi: 456.7,
-              status: "ready_to_implement",
-            },
-          ],
-        };
-
-        res.json(processOptimizationData);
-      } catch (error) {
-        console.error(
-          "Error fetching business process optimization data:",
-          error,
-        );
-        res.status(500).json({
-          message: "Failed to fetch business process optimization data",
-        });
-      }
-    },
-  );
-
-  // Security & Compliance Management Routes
-  app.get("/api/security/dashboard", requireAuth, async (req: any, res) => {
+  app.get('/api/business-process/dashboard', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const processOptimizationData = {
+        processOverview: {
+          totalProcesses: 47,
+          automatedProcesses: 32,
+          manualProcesses: 15,
+          automationRate: 68.1,
+          avgProcessTime: 4.7,
+          processEfficiency: 84.3,
+          costSavings: 127890.5,
+          timeReduction: 32.4,
+        },
+        keyMetrics: [
+          {
+            metric: 'Lead to Customer Conversion',
+            currentTime: 5.2,
+            optimizedTime: 3.1,
+            improvement: 40.4,
+            status: 'optimized',
+            automationLevel: 85,
+          },
+          {
+            metric: 'Service Ticket Resolution',
+            currentTime: 6.8,
+            optimizedTime: 4.2,
+            improvement: 38.2,
+            status: 'optimized',
+            automationLevel: 72,
+          },
+        ],
+        workflowTemplates: [
+          {
+            id: 'wf-001',
+            name: 'New Customer Onboarding',
+            description:
+              'Standardized process for onboarding new customers from lead to active account',
+            steps: 12,
+            avgDuration: 3.5,
+            automationLevel: 85,
+            successRate: 96.8,
+            category: 'Customer Management',
+            status: 'active',
+            usageCount: 156,
+            lastUpdated: new Date('2025-01-15T00:00:00Z'),
+          },
+        ],
+        processAnalytics: {
+          bottlenecks: [
+            {
+              process: 'Equipment Installation',
+              step: 'Site Survey Scheduling',
+              avgDelay: 3.2,
+              impact: 'high',
+              frequency: 78,
+              recommendation: 'Implement automated scheduling with customer self-service portal',
+            },
+          ],
+          efficiency: [
+            {
+              department: 'Sales',
+              currentEfficiency: 78.5,
+              targetEfficiency: 90.0,
+              gap: 11.5,
+              improvementAreas: ['Lead qualification', 'Proposal generation'],
+              estimatedROI: 156780.25,
+            },
+          ],
+          trends: [
+            {
+              month: '2025-01',
+              efficiency: 84.3,
+              automation: 68.1,
+              processes: 47,
+            },
+          ],
+        },
+        automationOpportunities: [
+          {
+            id: 'auto-001',
+            process: 'Customer Onboarding Documentation',
+            description: 'Automate generation of welcome packets and setup documentation',
+            currentEffort: 2.5,
+            estimatedReduction: 80,
+            potentialSavings: 45600.0,
+            complexity: 'low',
+            priority: 'high',
+            implementationTime: 2,
+            roi: 456.7,
+            status: 'ready_to_implement',
+          },
+        ],
+      };
+
+      res.json(processOptimizationData);
+    } catch (error) {
+      console.error('Error fetching business process optimization data:', error);
+      res.status(500).json({
+        message: 'Failed to fetch business process optimization data',
+      });
+    }
+  });
+
+  // Security & Compliance Management Routes
+  app.get('/api/security/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       const securityData = {
@@ -2920,19 +2711,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             total: 25,
           },
           complianceScore: 96.2,
-          lastSecurityAudit: new Date("2024-12-15T00:00:00Z"),
-          nextAuditDue: new Date("2025-06-15T00:00:00Z"),
+          lastSecurityAudit: new Date('2024-12-15T00:00:00Z'),
+          nextAuditDue: new Date('2025-06-15T00:00:00Z'),
           activeThreats: 3,
           resolvedIncidents: 47,
           systemUptime: 99.97,
         },
         complianceStatus: [
           {
-            framework: "SOC 2 Type II",
-            status: "compliant",
+            framework: 'SOC 2 Type II',
+            status: 'compliant',
             score: 96.8,
-            lastAudit: new Date("2024-09-30T00:00:00Z"),
-            nextAudit: new Date("2025-09-30T00:00:00Z"),
+            lastAudit: new Date('2024-09-30T00:00:00Z'),
+            nextAudit: new Date('2025-09-30T00:00:00Z'),
             findings: 1,
             remediated: 3,
             inProgress: 0,
@@ -2946,41 +2737,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ],
         securityIncidents: [
           {
-            id: "INC-2025-001",
-            title: "Suspicious Login Attempts",
-            severity: "medium",
-            status: "investigating",
-            category: "authentication",
-            reportedAt: new Date("2025-01-30T14:30:00Z"),
-            reportedBy: "Security Monitoring System",
-            affectedSystems: ["User Authentication", "CRM Access"],
+            id: 'INC-2025-001',
+            title: 'Suspicious Login Attempts',
+            severity: 'medium',
+            status: 'investigating',
+            category: 'authentication',
+            reportedAt: new Date('2025-01-30T14:30:00Z'),
+            reportedBy: 'Security Monitoring System',
+            affectedSystems: ['User Authentication', 'CRM Access'],
             description:
-              "Multiple failed login attempts detected from unusual geographic locations",
-            assignedTo: "Security Team",
-            estimatedResolution: new Date("2025-02-01T18:00:00Z"),
+              'Multiple failed login attempts detected from unusual geographic locations',
+            assignedTo: 'Security Team',
+            estimatedResolution: new Date('2025-02-01T18:00:00Z'),
             actions: [
-              "IP addresses blocked temporarily",
-              "User accounts secured",
-              "Additional monitoring enabled",
+              'IP addresses blocked temporarily',
+              'User accounts secured',
+              'Additional monitoring enabled',
             ],
           },
         ],
         vulnerabilities: [
           {
-            id: "VULN-2025-001",
-            title: "Outdated SSL Certificate",
-            severity: "high",
+            id: 'VULN-2025-001',
+            title: 'Outdated SSL Certificate',
+            severity: 'high',
             cvss: 7.2,
-            category: "network_security",
-            affectedAssets: ["mail.company.com"],
-            discoveredDate: new Date("2025-01-20T00:00:00Z"),
-            status: "remediation_in_progress",
-            dueDate: new Date("2025-02-05T00:00:00Z"),
-            assignedTo: "Network Security Team",
-            description:
-              "SSL certificate for mail server expires within 30 days",
-            remediation: "Renew SSL certificate and update configuration",
-            businessImpact: "Medium - Email service continuity risk",
+            category: 'network_security',
+            affectedAssets: ['mail.company.com'],
+            discoveredDate: new Date('2025-01-20T00:00:00Z'),
+            status: 'remediation_in_progress',
+            dueDate: new Date('2025-02-05T00:00:00Z'),
+            assignedTo: 'Network Security Team',
+            description: 'SSL certificate for mail server expires within 30 days',
+            remediation: 'Renew SSL certificate and update configuration',
+            businessImpact: 'Medium - Email service continuity risk',
           },
         ],
         accessControl: {
@@ -3028,26 +2818,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           privacyRequests: [
             {
-              id: "PR-2025-001",
-              type: "data_access",
-              requestDate: new Date("2025-01-28T00:00:00Z"),
-              status: "completed",
+              id: 'PR-2025-001',
+              type: 'data_access',
+              requestDate: new Date('2025-01-28T00:00:00Z'),
+              status: 'completed',
               responseTime: 18,
-              dataSubject: "customer@example.com",
-              completedDate: new Date("2025-01-29T18:00:00Z"),
+              dataSubject: 'customer@example.com',
+              completedDate: new Date('2025-01-29T18:00:00Z'),
             },
           ],
         },
         securityTraining: {
           trainingPrograms: [
             {
-              program: "Security Awareness Fundamentals",
+              program: 'Security Awareness Fundamentals',
               participants: 231,
               completed: 218,
               inProgress: 13,
               completionRate: 94.4,
               averageScore: 87.3,
-              lastUpdated: new Date("2024-12-01T00:00:00Z"),
+              lastUpdated: new Date('2024-12-01T00:00:00Z'),
             },
           ],
           phishingSimulations: {
@@ -3057,209 +2847,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
             reported: 89,
             clickRate: 6.0,
             reportRate: 3.2,
-            improvementTrend: "positive",
+            improvementTrend: 'positive',
           },
         },
       };
 
       res.json(securityData);
     } catch (error) {
-      console.error("Error fetching security dashboard data:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to fetch security dashboard data" });
+      console.error('Error fetching security dashboard data:', error);
+      res.status(500).json({ message: 'Failed to fetch security dashboard data' });
     }
   });
 
   // Security Incident Response System Routes
-  app.get(
-    "/api/incident-response/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const incidentResponseData = {
-          responseOverview: {
-            activeIncidents: 7,
-            criticalIncidents: 1,
-            highIncidents: 2,
-            mediumIncidents: 3,
-            lowIncidents: 1,
-            avgResponseTime: 12.5,
-            avgResolutionTime: 4.2,
-            mttr: 3.8,
-            slaCompliance: 94.7,
-            escalatedIncidents: 2,
-            falsePositives: 8,
-          },
-          activeIncidents: [
-            {
-              id: "INC-2025-007",
-              title: "Potential Data Exfiltration",
-              severity: "critical",
-              priority: "p1",
-              status: "investigating",
-              category: "data_breach",
-              subcategory: "data_exfiltration",
-              detectedAt: new Date("2025-02-01T08:15:00Z"),
-              reportedBy: "DLP System",
-              assignedTo: "Incident Response Team Alpha",
-              responder: "Sarah Chen",
-              affectedSystems: [
-                "Customer Database",
-                "File Server",
-                "Email System",
-              ],
-              affectedUsers: 15,
-              estimatedImpact: "high",
-              businessImpact:
-                "Potential customer data exposure - regulatory compliance risk",
-              detectionMethod: "automated",
-              confidenceLevel: 87.5,
-              ttl: 2.3,
-              slaDeadline: new Date("2025-02-01T12:15:00Z"),
-              currentPhase: "containment",
-              progress: 35,
-              tags: ["gdpr", "customer_data", "regulatory"],
-              threatActors: ["Unknown Internal User"],
-              indicators: [
-                "Unusual bulk data access pattern",
-                "Large file transfers to external email",
-                "After-hours system access",
-              ],
-            },
-          ],
-          incidentStats: {
-            monthlyTrends: [
-              { month: "2025-01", incidents: 24, resolved: 22, avgTime: 4.2 },
-            ],
-            categoriesBreakdown: [
-              {
-                category: "malware",
-                count: 35,
-                percentage: 28.5,
-                avgSeverity: "medium",
-              },
-              {
-                category: "social_engineering",
-                count: 28,
-                percentage: 22.8,
-                avgSeverity: "high",
-              },
-            ],
-            severityDistribution: {
-              critical: { count: 8, percentage: 6.5, avgResolutionTime: 2.1 },
-              high: { count: 31, percentage: 25.2, avgResolutionTime: 6.8 },
-            },
-            detectionSources: [
-              { source: "SIEM/SOAR", incidents: 45, percentage: 36.6 },
-              { source: "EDR/XDR", incidents: 32, percentage: 26.0 },
-            ],
-          },
-          teamPerformance: {
-            teams: [
-              {
-                name: "Incident Response Team Alpha",
-                lead: "Sarah Chen",
-                members: 4,
-                specialization: "Critical Incidents & Data Breaches",
-                activeIncidents: 3,
-                avgResponseTime: 8.2,
-                avgResolutionTime: 2.8,
-                slaCompliance: 97.3,
-                workload: "high",
-                status: "available",
-                onCallSchedule: "Week 1-2 February",
-              },
-            ],
-            individuals: [
-              {
-                name: "Sarah Chen",
-                role: "Senior Incident Response Analyst",
-                team: "Alpha",
-                activeIncidents: 1,
-                totalIncidents: 47,
-                avgResponseTime: 6.2,
-                avgResolutionTime: 2.1,
-                specialties: ["Data Breaches", "Forensics", "Compliance"],
-                certifications: ["GCIH", "GCFA", "CISSP"],
-                availability: "on_call",
-                performance: "excellent",
-              },
-            ],
-          },
-          threatIntelligence: {
-            activeThreatFeeds: 12,
-            iocMatches: 156,
-            newThreats: 23,
-            currentThreats: [
-              {
-                threatId: "TI-2025-001",
-                name: "Lazarus Group Campaign",
-                threatActor: "Lazarus Group (APT38)",
-                firstSeen: new Date("2025-01-28T00:00:00Z"),
-                lastUpdated: new Date("2025-02-01T06:30:00Z"),
-                severity: "high",
-                confidence: 89.2,
-                targeting: ["Financial Services", "Technology"],
-                ttps: ["T1566.001", "T1055", "T1071.001"],
-                iocs: [
-                  {
-                    type: "domain",
-                    value: "malicious-domain.com",
-                    confidence: 95,
-                  },
-                ],
-                mitigation:
-                  "Block domains, monitor for lateral movement techniques",
-                relevanceScore: 78.5,
-              },
-            ],
-          },
-          automatedResponse: {
-            playbooks: [
-              {
-                id: "playbook-001",
-                name: "Malware Incident Response",
-                triggers: ["malware_detected", "suspicious_process"],
-                automationLevel: 78.5,
-                steps: 12,
-                avgExecutionTime: 15.7,
-                successRate: 94.2,
-                lastUpdated: new Date("2025-01-15T00:00:00Z"),
-                status: "active",
-              },
-            ],
-            automationMetrics: {
-              totalAutomatedActions: 1247,
-              automationSuccessRate: 92.8,
-              timesSaved: 847.3,
-              falsePositiveReduction: 67.4,
-              humanInterventionRequired: 12.5,
-            },
-          },
-        };
-
-        res.json(incidentResponseData);
-      } catch (error) {
-        console.error("Error fetching incident response dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch incident response dashboard" });
-      }
-    },
-  );
-
-  // AI-Powered Analytics & Intelligence Routes
-  app.get("/api/ai-analytics/dashboard", requireAuth, async (req: any, res) => {
+  app.get('/api/incident-response/dashboard', requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const incidentResponseData = {
+        responseOverview: {
+          activeIncidents: 7,
+          criticalIncidents: 1,
+          highIncidents: 2,
+          mediumIncidents: 3,
+          lowIncidents: 1,
+          avgResponseTime: 12.5,
+          avgResolutionTime: 4.2,
+          mttr: 3.8,
+          slaCompliance: 94.7,
+          escalatedIncidents: 2,
+          falsePositives: 8,
+        },
+        activeIncidents: [
+          {
+            id: 'INC-2025-007',
+            title: 'Potential Data Exfiltration',
+            severity: 'critical',
+            priority: 'p1',
+            status: 'investigating',
+            category: 'data_breach',
+            subcategory: 'data_exfiltration',
+            detectedAt: new Date('2025-02-01T08:15:00Z'),
+            reportedBy: 'DLP System',
+            assignedTo: 'Incident Response Team Alpha',
+            responder: 'Sarah Chen',
+            affectedSystems: ['Customer Database', 'File Server', 'Email System'],
+            affectedUsers: 15,
+            estimatedImpact: 'high',
+            businessImpact: 'Potential customer data exposure - regulatory compliance risk',
+            detectionMethod: 'automated',
+            confidenceLevel: 87.5,
+            ttl: 2.3,
+            slaDeadline: new Date('2025-02-01T12:15:00Z'),
+            currentPhase: 'containment',
+            progress: 35,
+            tags: ['gdpr', 'customer_data', 'regulatory'],
+            threatActors: ['Unknown Internal User'],
+            indicators: [
+              'Unusual bulk data access pattern',
+              'Large file transfers to external email',
+              'After-hours system access',
+            ],
+          },
+        ],
+        incidentStats: {
+          monthlyTrends: [{ month: '2025-01', incidents: 24, resolved: 22, avgTime: 4.2 }],
+          categoriesBreakdown: [
+            {
+              category: 'malware',
+              count: 35,
+              percentage: 28.5,
+              avgSeverity: 'medium',
+            },
+            {
+              category: 'social_engineering',
+              count: 28,
+              percentage: 22.8,
+              avgSeverity: 'high',
+            },
+          ],
+          severityDistribution: {
+            critical: { count: 8, percentage: 6.5, avgResolutionTime: 2.1 },
+            high: { count: 31, percentage: 25.2, avgResolutionTime: 6.8 },
+          },
+          detectionSources: [
+            { source: 'SIEM/SOAR', incidents: 45, percentage: 36.6 },
+            { source: 'EDR/XDR', incidents: 32, percentage: 26.0 },
+          ],
+        },
+        teamPerformance: {
+          teams: [
+            {
+              name: 'Incident Response Team Alpha',
+              lead: 'Sarah Chen',
+              members: 4,
+              specialization: 'Critical Incidents & Data Breaches',
+              activeIncidents: 3,
+              avgResponseTime: 8.2,
+              avgResolutionTime: 2.8,
+              slaCompliance: 97.3,
+              workload: 'high',
+              status: 'available',
+              onCallSchedule: 'Week 1-2 February',
+            },
+          ],
+          individuals: [
+            {
+              name: 'Sarah Chen',
+              role: 'Senior Incident Response Analyst',
+              team: 'Alpha',
+              activeIncidents: 1,
+              totalIncidents: 47,
+              avgResponseTime: 6.2,
+              avgResolutionTime: 2.1,
+              specialties: ['Data Breaches', 'Forensics', 'Compliance'],
+              certifications: ['GCIH', 'GCFA', 'CISSP'],
+              availability: 'on_call',
+              performance: 'excellent',
+            },
+          ],
+        },
+        threatIntelligence: {
+          activeThreatFeeds: 12,
+          iocMatches: 156,
+          newThreats: 23,
+          currentThreats: [
+            {
+              threatId: 'TI-2025-001',
+              name: 'Lazarus Group Campaign',
+              threatActor: 'Lazarus Group (APT38)',
+              firstSeen: new Date('2025-01-28T00:00:00Z'),
+              lastUpdated: new Date('2025-02-01T06:30:00Z'),
+              severity: 'high',
+              confidence: 89.2,
+              targeting: ['Financial Services', 'Technology'],
+              ttps: ['T1566.001', 'T1055', 'T1071.001'],
+              iocs: [
+                {
+                  type: 'domain',
+                  value: 'malicious-domain.com',
+                  confidence: 95,
+                },
+              ],
+              mitigation: 'Block domains, monitor for lateral movement techniques',
+              relevanceScore: 78.5,
+            },
+          ],
+        },
+        automatedResponse: {
+          playbooks: [
+            {
+              id: 'playbook-001',
+              name: 'Malware Incident Response',
+              triggers: ['malware_detected', 'suspicious_process'],
+              automationLevel: 78.5,
+              steps: 12,
+              avgExecutionTime: 15.7,
+              successRate: 94.2,
+              lastUpdated: new Date('2025-01-15T00:00:00Z'),
+              status: 'active',
+            },
+          ],
+          automationMetrics: {
+            totalAutomatedActions: 1247,
+            automationSuccessRate: 92.8,
+            timesSaved: 847.3,
+            falsePositiveReduction: 67.4,
+            humanInterventionRequired: 12.5,
+          },
+        },
+      };
+
+      res.json(incidentResponseData);
+    } catch (error) {
+      console.error('Error fetching incident response dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch incident response dashboard' });
+    }
+  });
+
+  // AI-Powered Analytics & Intelligence Routes
+  app.get('/api/ai-analytics/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
       const aiAnalyticsData = {
@@ -3268,9 +3042,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           predictionsGenerated: 15847,
           accuracyScore: 94.3,
           automatedDecisions: 8934,
-          mlModelStatus: "optimal",
+          mlModelStatus: 'optimal',
           dataQualityScore: 97.2,
-          lastModelUpdate: new Date("2025-01-28T00:00:00Z"),
+          lastModelUpdate: new Date('2025-01-28T00:00:00Z'),
           computeUtilization: 67.8,
           apiCallsToday: 2456,
           costOptimization: 23.7,
@@ -3286,23 +3060,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             estimatedRevenueSaved: 342500,
             highRiskCustomers: [
               {
-                customerId: "CUST-001",
-                customerName: "Tech Solutions Inc",
+                customerId: 'CUST-001',
+                customerName: 'Tech Solutions Inc',
                 churnProbability: 0.87,
-                riskFactors: [
-                  "Decreasing usage",
-                  "Service complaints",
-                  "Payment delays",
-                ],
+                riskFactors: ['Decreasing usage', 'Service complaints', 'Payment delays'],
                 estimatedValue: 45600,
                 recommendedActions: [
-                  "Schedule executive meeting",
-                  "Offer service upgrade",
-                  "Provide usage training",
+                  'Schedule executive meeting',
+                  'Offer service upgrade',
+                  'Provide usage training',
                 ],
                 timeToIntervene: 14,
-                lastInteraction: new Date("2025-01-15T00:00:00Z"),
-                trend: "deteriorating",
+                lastInteraction: new Date('2025-01-15T00:00:00Z'),
+                trend: 'deteriorating',
               },
             ],
           },
@@ -3311,7 +3081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             clivAccuracyRate: 91.7,
             customerSegments: [
               {
-                segment: "High Value Prospects",
+                segment: 'High Value Prospects',
                 count: 156,
                 avgPredictedCLV: 125400,
                 conversionProbability: 0.73,
@@ -3322,17 +3092,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           upsellPredictions: [
             {
-              customerId: "CUST-003",
-              customerName: "Downtown Legal Group",
+              customerId: 'CUST-003',
+              customerName: 'Downtown Legal Group',
               currentMRR: 850,
               predictedUpsellValue: 2100,
               upsellProbability: 0.76,
-              recommendedProducts: [
-                "Document Finishing",
-                "Cloud Services",
-                "Security Package",
-              ],
-              bestApproachTime: new Date("2025-02-15T00:00:00Z"),
+              recommendedProducts: ['Document Finishing', 'Cloud Services', 'Security Package'],
+              bestApproachTime: new Date('2025-02-15T00:00:00Z'),
               confidence: 0.83,
             },
           ],
@@ -3348,11 +3114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             nextMonth: {
               predicted: 523800,
               confidence: 0.89,
-              factors: [
-                "Seasonal uptick",
-                "Pipeline momentum",
-                "New product launch",
-              ],
+              factors: ['Seasonal uptick', 'Pipeline momentum', 'New product launch'],
             },
             quarterlyForecast: {
               q1: { predicted: 1560000, confidence: 0.87 },
@@ -3361,20 +3123,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           dealProbabilityScoring: [
             {
-              dealId: "DEAL-001",
-              prospectName: "Enterprise Solutions Ltd",
+              dealId: 'DEAL-001',
+              prospectName: 'Enterprise Solutions Ltd',
               dealValue: 125000,
               originalProbability: 0.6,
               aiProbability: 0.78,
-              probabilityFactors: [
-                { factor: "Engagement level", impact: 0.12, confidence: 0.91 },
-              ],
+              probabilityFactors: [{ factor: 'Engagement level', impact: 0.12, confidence: 0.91 }],
               recommendedActions: [
-                "Schedule C-level meeting",
-                "Provide competitive differentiation",
+                'Schedule C-level meeting',
+                'Provide competitive differentiation',
               ],
-              nextBestAction: "Schedule demo with decision makers",
-              optimalCloseDate: new Date("2025-03-15T00:00:00Z"),
+              nextBestAction: 'Schedule demo with decision makers',
+              optimalCloseDate: new Date('2025-03-15T00:00:00Z'),
             },
           ],
         },
@@ -3387,13 +3147,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             accuracyRate: 87.6,
             criticalAlerts: [
               {
-                equipmentId: "EQ-001",
-                location: "Downtown Office Complex",
-                model: "Canon imageRUNNER C7565i",
-                predictedFailure: "Fuser assembly failure",
+                equipmentId: 'EQ-001',
+                location: 'Downtown Office Complex',
+                model: 'Canon imageRUNNER C7565i',
+                predictedFailure: 'Fuser assembly failure',
                 probability: 0.89,
-                estimatedFailureDate: new Date("2025-02-08T00:00:00Z"),
-                recommendedAction: "Schedule preventive replacement",
+                estimatedFailureDate: new Date('2025-02-08T00:00:00Z'),
+                recommendedAction: 'Schedule preventive replacement',
                 costOfFailure: 4500,
                 costOfPrevention: 850,
                 savingsPotential: 3650,
@@ -3404,18 +3164,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nlpInsights: {
           customerSentiment: {
             overallSentiment: 0.72,
-            sentimentTrend: "improving",
+            sentimentTrend: 'improving',
             analysisVolume: 8934,
-            sentimentByChannel: [
-              { channel: "Email", sentiment: 0.68, volume: 4567 },
-            ],
+            sentimentByChannel: [{ channel: 'Email', sentiment: 0.68, volume: 4567 }],
             keyTopics: [
               {
-                topic: "Service Quality",
+                topic: 'Service Quality',
                 sentiment: 0.81,
                 volume: 1234,
-                trend: "improving",
-                keywords: ["fast response", "professional"],
+                trend: 'improving',
+                keywords: ['fast response', 'professional'],
               },
             ],
           },
@@ -3423,16 +3181,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         modelPerformance: {
           models: [
             {
-              modelName: "Customer Churn Predictor",
-              version: "2.1.0",
+              modelName: 'Customer Churn Predictor',
+              version: '2.1.0',
               accuracy: 89.4,
               precision: 0.87,
               recall: 0.91,
               f1Score: 0.89,
-              lastTrained: new Date("2025-01-25T00:00:00Z"),
+              lastTrained: new Date('2025-01-25T00:00:00Z'),
               dataPoints: 15647,
-              status: "production",
-              performanceTrend: "improving",
+              status: 'production',
+              performanceTrend: 'improving',
             },
           ],
         },
@@ -3444,15 +3202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             revenueGenerated: 189400,
             activeRecommendations: [
               {
-                customerId: "CUST-005",
-                customerName: "Regional Accounting Firm",
-                recommendation: "Document Management Suite",
-                reasoning:
-                  "High document volume, compliance needs, efficiency gains",
+                customerId: 'CUST-005',
+                customerName: 'Regional Accounting Firm',
+                recommendation: 'Document Management Suite',
+                reasoning: 'High document volume, compliance needs, efficiency gains',
                 confidence: 0.83,
                 estimatedValue: 12400,
-                deliveryChannel: "email",
-                optimalTiming: new Date("2025-02-07T00:00:00Z"),
+                deliveryChannel: 'email',
+                optimalTiming: new Date('2025-02-07T00:00:00Z'),
               },
             ],
           },
@@ -3461,1217 +3218,1133 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(aiAnalyticsData);
     } catch (error) {
-      console.error("Error fetching AI analytics dashboard:", error);
-      res
-        .status(500)
-        .json({ message: "Failed to fetch AI analytics dashboard" });
+      console.error('Error fetching AI analytics dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch AI analytics dashboard' });
     }
   });
 
   // Advanced Integration Hub Routes
-  app.get(
-    "/api/integration-hub/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-        const integrationHubData = {
-          integrationOverview: {
-            totalIntegrations: 47,
-            activeIntegrations: 42,
-            pendingIntegrations: 3,
-            failedIntegrations: 2,
-            successRate: 97.4,
-            apiCallsToday: 45672,
-            dataVolumeProcessed: 2.4,
-            uptimePercentage: 99.7,
-            averageResponseTime: 156,
-            errorRate: 0.3,
-            lastSyncTime: new Date("2025-02-01T08:45:00Z"),
+      const integrationHubData = {
+        integrationOverview: {
+          totalIntegrations: 47,
+          activeIntegrations: 42,
+          pendingIntegrations: 3,
+          failedIntegrations: 2,
+          successRate: 97.4,
+          apiCallsToday: 45672,
+          dataVolumeProcessed: 2.4,
+          uptimePercentage: 99.7,
+          averageResponseTime: 156,
+          errorRate: 0.3,
+          lastSyncTime: new Date('2025-02-01T08:45:00Z'),
+        },
+        activeIntegrations: [
+          {
+            id: 'int-001',
+            name: 'Salesforce CRM',
+            category: 'CRM',
+            provider: 'Salesforce',
+            status: 'active',
+            health: 'healthy',
+            version: '2.1.0',
+            lastSync: new Date('2025-02-01T08:30:00Z'),
+            syncFrequency: 'real-time',
+            recordsSynced: 15672,
+            errorCount: 2,
+            uptimePercentage: 99.8,
+            dataFlow: 'bidirectional',
+            authStatus: 'valid',
+            authExpiresAt: new Date('2025-08-15T00:00:00Z'),
+            endpoints: [
+              {
+                name: 'Accounts',
+                status: 'active',
+                lastCall: new Date('2025-02-01T08:29:00Z'),
+              },
+              {
+                name: 'Contacts',
+                status: 'active',
+                lastCall: new Date('2025-02-01T08:28:00Z'),
+              },
+            ],
+            metrics: {
+              apiCallsToday: 8934,
+              successRate: 99.2,
+              avgResponseTime: 234,
+              bandwidth: 145.6,
+            },
           },
-          activeIntegrations: [
+        ],
+        apiMarketplace: {
+          availableIntegrations: 156,
+          popularIntegrations: [
             {
-              id: "int-001",
-              name: "Salesforce CRM",
-              category: "CRM",
-              provider: "Salesforce",
-              status: "active",
-              health: "healthy",
-              version: "2.1.0",
-              lastSync: new Date("2025-02-01T08:30:00Z"),
-              syncFrequency: "real-time",
-              recordsSynced: 15672,
-              errorCount: 2,
-              uptimePercentage: 99.8,
-              dataFlow: "bidirectional",
-              authStatus: "valid",
-              authExpiresAt: new Date("2025-08-15T00:00:00Z"),
-              endpoints: [
-                {
-                  name: "Accounts",
-                  status: "active",
-                  lastCall: new Date("2025-02-01T08:29:00Z"),
-                },
-                {
-                  name: "Contacts",
-                  status: "active",
-                  lastCall: new Date("2025-02-01T08:28:00Z"),
-                },
+              id: 'market-001',
+              name: 'Microsoft 365',
+              category: 'Productivity',
+              provider: 'Microsoft',
+              description:
+                'Integrate with Outlook, Teams, SharePoint, and OneDrive for comprehensive productivity suite connectivity',
+              rating: 4.8,
+              reviews: 234,
+              installations: 12567,
+              pricing: 'free',
+              features: [
+                'Email Integration',
+                'Calendar Sync',
+                'Document Storage',
+                'Team Collaboration',
               ],
-              metrics: {
-                apiCallsToday: 8934,
-                successRate: 99.2,
-                avgResponseTime: 234,
-                bandwidth: 145.6,
+              lastUpdated: new Date('2025-01-25T00:00:00Z'),
+              compatibility: ['Cloud', 'On-Premise'],
+              dataTypes: ['Contacts', 'Calendar', 'Documents', 'Communications'],
+              estimatedSetupTime: 30,
+            },
+          ],
+          categories: [{ name: 'CRM', count: 23, popular: true }],
+        },
+        dataFlowManagement: {
+          activeFlows: 23,
+          totalDataProcessed: 4.7,
+          transformationRules: 89,
+          mappingConfigurations: 156,
+          dataFlows: [
+            {
+              id: 'flow-001',
+              name: 'Salesforce to Business Records Sync',
+              source: 'Salesforce CRM',
+              destination: 'Business Records',
+              status: 'active',
+              frequency: 'real-time',
+              recordsProcessed: 8934,
+              lastRun: new Date('2025-02-01T08:30:00Z'),
+              successRate: 98.7,
+              avgProcessingTime: 234,
+              dataTypes: ['Accounts', 'Contacts', 'Opportunities'],
+              transformations: ['Name standardization', 'Phone number formatting'],
+              errorHandling: 'retry_with_notification',
+              retentionPeriod: 90,
+            },
+          ],
+        },
+        webhookManagement: {
+          activeWebhooks: 34,
+          webhooksTriggered: 15672,
+          successfulDeliveries: 15234,
+          failedDeliveries: 438,
+          deliverySuccessRate: 97.2,
+          averageDeliveryTime: 89,
+          webhooks: [
+            {
+              id: 'webhook-001',
+              name: 'New Customer Created',
+              event: 'customer.created',
+              url: 'https://api.partner.com/webhooks/customer',
+              method: 'POST',
+              status: 'active',
+              secret: 'whsec_••••••••••••••••',
+              retryPolicy: 'exponential_backoff',
+              maxRetries: 3,
+              timeout: 30,
+              lastTriggered: new Date('2025-02-01T08:35:00Z'),
+              deliveryAttempts: 8934,
+              successfulDeliveries: 8901,
+              failedDeliveries: 33,
+              successRate: 99.6,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Printyx-Event': 'customer.created',
               },
             },
           ],
-          apiMarketplace: {
-            availableIntegrations: 156,
-            popularIntegrations: [
-              {
-                id: "market-001",
-                name: "Microsoft 365",
-                category: "Productivity",
-                provider: "Microsoft",
-                description:
-                  "Integrate with Outlook, Teams, SharePoint, and OneDrive for comprehensive productivity suite connectivity",
-                rating: 4.8,
-                reviews: 234,
-                installations: 12567,
-                pricing: "free",
-                features: [
-                  "Email Integration",
-                  "Calendar Sync",
-                  "Document Storage",
-                  "Team Collaboration",
-                ],
-                lastUpdated: new Date("2025-01-25T00:00:00Z"),
-                compatibility: ["Cloud", "On-Premise"],
-                dataTypes: [
-                  "Contacts",
-                  "Calendar",
-                  "Documents",
-                  "Communications",
-                ],
-                estimatedSetupTime: 30,
-              },
-            ],
-            categories: [{ name: "CRM", count: 23, popular: true }],
-          },
-          dataFlowManagement: {
-            activeFlows: 23,
-            totalDataProcessed: 4.7,
-            transformationRules: 89,
-            mappingConfigurations: 156,
-            dataFlows: [
-              {
-                id: "flow-001",
-                name: "Salesforce to Business Records Sync",
-                source: "Salesforce CRM",
-                destination: "Business Records",
-                status: "active",
-                frequency: "real-time",
-                recordsProcessed: 8934,
-                lastRun: new Date("2025-02-01T08:30:00Z"),
-                successRate: 98.7,
-                avgProcessingTime: 234,
-                dataTypes: ["Accounts", "Contacts", "Opportunities"],
-                transformations: [
-                  "Name standardization",
-                  "Phone number formatting",
-                ],
-                errorHandling: "retry_with_notification",
-                retentionPeriod: 90,
-              },
-            ],
-          },
-          webhookManagement: {
-            activeWebhooks: 34,
-            webhooksTriggered: 15672,
-            successfulDeliveries: 15234,
-            failedDeliveries: 438,
-            deliverySuccessRate: 97.2,
-            averageDeliveryTime: 89,
-            webhooks: [
-              {
-                id: "webhook-001",
-                name: "New Customer Created",
-                event: "customer.created",
-                url: "https://api.partner.com/webhooks/customer",
-                method: "POST",
-                status: "active",
-                secret: "whsec_••••••••••••••••",
-                retryPolicy: "exponential_backoff",
-                maxRetries: 3,
-                timeout: 30,
-                lastTriggered: new Date("2025-02-01T08:35:00Z"),
-                deliveryAttempts: 8934,
-                successfulDeliveries: 8901,
-                failedDeliveries: 33,
-                successRate: 99.6,
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-Printyx-Event": "customer.created",
-                },
-              },
-            ],
-          },
-          healthMonitoring: {
-            overallHealth: "healthy",
-            monitoringRules: 45,
-            alertsTriggered: 12,
-            issuesResolved: 34,
-            alerts: [
-              {
-                id: "alert-001",
-                integration: "E-Automate",
-                severity: "warning",
-                type: "high_error_rate",
-                message:
-                  "Error rate above 5% threshold for Service Calls endpoint",
-                triggeredAt: new Date("2025-02-01T06:30:00Z"),
-                acknowledged: false,
-                assignedTo: "Integration Team",
-                suggestedAction:
-                  "Check E-Automate system status and network connectivity",
-              },
-            ],
-            healthChecks: [
-              {
-                name: "Endpoint Availability",
-                status: "passing",
-                lastCheck: new Date("2025-02-01T08:45:00Z"),
-              },
-            ],
-          },
-        };
+        },
+        healthMonitoring: {
+          overallHealth: 'healthy',
+          monitoringRules: 45,
+          alertsTriggered: 12,
+          issuesResolved: 34,
+          alerts: [
+            {
+              id: 'alert-001',
+              integration: 'E-Automate',
+              severity: 'warning',
+              type: 'high_error_rate',
+              message: 'Error rate above 5% threshold for Service Calls endpoint',
+              triggeredAt: new Date('2025-02-01T06:30:00Z'),
+              acknowledged: false,
+              assignedTo: 'Integration Team',
+              suggestedAction: 'Check E-Automate system status and network connectivity',
+            },
+          ],
+          healthChecks: [
+            {
+              name: 'Endpoint Availability',
+              status: 'passing',
+              lastCheck: new Date('2025-02-01T08:45:00Z'),
+            },
+          ],
+        },
+      };
 
-        res.json(integrationHubData);
-      } catch (error) {
-        console.error("Error fetching integration hub dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch integration hub dashboard" });
-      }
-    },
-  );
+      res.json(integrationHubData);
+    } catch (error) {
+      console.error('Error fetching integration hub dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
+    }
+  });
 
   // Advanced Workflow Automation Routes
-  app.get(
-    "/api/workflow-automation/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.get('/api/workflow-automation/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-        const workflowAutomationData = {
-          automationOverview: {
-            totalWorkflows: 89,
-            activeWorkflows: 76,
-            pausedWorkflows: 8,
-            failedWorkflows: 5,
-            successRate: 94.7,
-            executionsToday: 15672,
-            timeSaved: 847.3,
-            errorRate: 2.1,
-            averageExecutionTime: 234,
-            automationCoverage: 78.4,
-            lastExecution: new Date("2025-02-01T08:45:00Z"),
-          },
-          activeWorkflows: [
-            {
-              id: "wf-001",
-              name: "Customer Onboarding Automation",
-              category: "Customer Management",
-              status: "active",
-              trigger: "customer_created",
-              priority: "high",
-              version: "2.1.0",
-              createdAt: new Date("2024-12-15T00:00:00Z"),
-              lastModified: new Date("2025-01-28T00:00:00Z"),
-              lastExecution: new Date("2025-02-01T08:30:00Z"),
-              executionCount: 2456,
-              successRate: 96.8,
-              averageExecutionTime: 1245,
-              estimatedTimeSaved: 45.7,
-              steps: [
-                {
-                  id: "step-001",
-                  name: "Send Welcome Email",
-                  type: "email",
-                  status: "active",
-                  config: {},
-                  successRate: 98.9,
-                  avgExecutionTime: 234,
-                },
-                {
-                  id: "step-002",
-                  name: "Create Initial Service Ticket",
-                  type: "service_ticket",
-                  status: "active",
-                  config: {},
-                  successRate: 97.2,
-                  avgExecutionTime: 456,
-                },
-              ],
-              triggers: [
-                {
-                  type: "event",
-                  event: "customer_created",
-                  conditions: [
-                    {
-                      field: "customer_type",
-                      operator: "equals",
-                      value: "business",
-                    },
-                  ],
-                },
-              ],
-              metrics: {
-                totalExecutions: 2456,
-                successfulExecutions: 2378,
-                failedExecutions: 78,
-                costSavings: 12400,
-              },
-            },
-          ],
-          workflowTemplates: [
-            {
-              id: "template-001",
-              name: "Customer Communication Sequence",
-              category: "Customer Management",
-              description:
-                "Automated communication workflow for customer lifecycle management",
-              popularity: 87.5,
-              installations: 234,
-              rating: 4.8,
-              complexity: "beginner",
-              estimatedSetupTime: 30,
-              features: [
-                "Multi-channel communication",
-                "Personalization engine",
-              ],
-              steps: ["Initial contact", "Follow-up sequence"],
-              integrations: ["email", "sms", "crm"],
-            },
-          ],
-          rulesEngine: {
-            totalRules: 234,
-            activeRules: 198,
-            ruleCategories: [
-              { category: "Customer Management", count: 67, performance: 96.2 },
-            ],
-            rules: [
+      const workflowAutomationData = {
+        automationOverview: {
+          totalWorkflows: 89,
+          activeWorkflows: 76,
+          pausedWorkflows: 8,
+          failedWorkflows: 5,
+          successRate: 94.7,
+          executionsToday: 15672,
+          timeSaved: 847.3,
+          errorRate: 2.1,
+          averageExecutionTime: 234,
+          automationCoverage: 78.4,
+          lastExecution: new Date('2025-02-01T08:45:00Z'),
+        },
+        activeWorkflows: [
+          {
+            id: 'wf-001',
+            name: 'Customer Onboarding Automation',
+            category: 'Customer Management',
+            status: 'active',
+            trigger: 'customer_created',
+            priority: 'high',
+            version: '2.1.0',
+            createdAt: new Date('2024-12-15T00:00:00Z'),
+            lastModified: new Date('2025-01-28T00:00:00Z'),
+            lastExecution: new Date('2025-02-01T08:30:00Z'),
+            executionCount: 2456,
+            successRate: 96.8,
+            averageExecutionTime: 1245,
+            estimatedTimeSaved: 45.7,
+            steps: [
               {
-                id: "rule-001",
-                name: "High-Value Customer Priority",
-                category: "Customer Management",
-                status: "active",
-                priority: "high",
-                description:
-                  "Automatically prioritize service tickets for high-value customers",
-                trigger: "service_ticket_created",
+                id: 'step-001',
+                name: 'Send Welcome Email',
+                type: 'email',
+                status: 'active',
+                config: {},
+                successRate: 98.9,
+                avgExecutionTime: 234,
+              },
+              {
+                id: 'step-002',
+                name: 'Create Initial Service Ticket',
+                type: 'service_ticket',
+                status: 'active',
+                config: {},
+                successRate: 97.2,
+                avgExecutionTime: 456,
+              },
+            ],
+            triggers: [
+              {
+                type: 'event',
+                event: 'customer_created',
                 conditions: [
                   {
-                    field: "customer_value",
-                    operator: "greater_than",
-                    value: 50000,
+                    field: 'customer_type',
+                    operator: 'equals',
+                    value: 'business',
                   },
                 ],
-                actions: [{ type: "set_priority", value: "urgent" }],
-                executionCount: 1245,
-                successRate: 97.8,
-                lastExecuted: new Date("2025-02-01T07:45:00Z"),
               },
             ],
-          },
-          performanceAnalytics: {
-            executionTrends: [
-              { date: "2025-02-01", executions: 15672, successRate: 94.7 },
-            ],
-            topPerformingWorkflows: [
-              {
-                name: "Invoice Processing Automation",
-                successRate: 99.1,
-                executions: 4567,
-                timeSaved: 156.8,
-              },
-            ],
-            errorAnalysis: [
-              {
-                errorType: "Integration Timeout",
-                count: 234,
-                percentage: 34.5,
-                trend: "decreasing",
-              },
-            ],
-            businessImpact: {
-              totalTimeSaved: 847.3,
-              totalCostSavings: 234500,
-              errorReduction: 67.8,
-              customerSatisfactionIncrease: 23.4,
-              processEfficiencyGain: 45.7,
+            metrics: {
+              totalExecutions: 2456,
+              successfulExecutions: 2378,
+              failedExecutions: 78,
+              costSavings: 12400,
             },
           },
-        };
+        ],
+        workflowTemplates: [
+          {
+            id: 'template-001',
+            name: 'Customer Communication Sequence',
+            category: 'Customer Management',
+            description: 'Automated communication workflow for customer lifecycle management',
+            popularity: 87.5,
+            installations: 234,
+            rating: 4.8,
+            complexity: 'beginner',
+            estimatedSetupTime: 30,
+            features: ['Multi-channel communication', 'Personalization engine'],
+            steps: ['Initial contact', 'Follow-up sequence'],
+            integrations: ['email', 'sms', 'crm'],
+          },
+        ],
+        rulesEngine: {
+          totalRules: 234,
+          activeRules: 198,
+          ruleCategories: [{ category: 'Customer Management', count: 67, performance: 96.2 }],
+          rules: [
+            {
+              id: 'rule-001',
+              name: 'High-Value Customer Priority',
+              category: 'Customer Management',
+              status: 'active',
+              priority: 'high',
+              description: 'Automatically prioritize service tickets for high-value customers',
+              trigger: 'service_ticket_created',
+              conditions: [
+                {
+                  field: 'customer_value',
+                  operator: 'greater_than',
+                  value: 50000,
+                },
+              ],
+              actions: [{ type: 'set_priority', value: 'urgent' }],
+              executionCount: 1245,
+              successRate: 97.8,
+              lastExecuted: new Date('2025-02-01T07:45:00Z'),
+            },
+          ],
+        },
+        performanceAnalytics: {
+          executionTrends: [{ date: '2025-02-01', executions: 15672, successRate: 94.7 }],
+          topPerformingWorkflows: [
+            {
+              name: 'Invoice Processing Automation',
+              successRate: 99.1,
+              executions: 4567,
+              timeSaved: 156.8,
+            },
+          ],
+          errorAnalysis: [
+            {
+              errorType: 'Integration Timeout',
+              count: 234,
+              percentage: 34.5,
+              trend: 'decreasing',
+            },
+          ],
+          businessImpact: {
+            totalTimeSaved: 847.3,
+            totalCostSavings: 234500,
+            errorReduction: 67.8,
+            customerSatisfactionIncrease: 23.4,
+            processEfficiencyGain: 45.7,
+          },
+        },
+      };
 
-        res.json(workflowAutomationData);
-      } catch (error) {
-        console.error("Error fetching workflow automation dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch workflow automation dashboard" });
-      }
-    },
-  );
+      res.json(workflowAutomationData);
+    } catch (error) {
+      console.error('Error fetching workflow automation dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch workflow automation dashboard' });
+    }
+  });
 
   // Import and register the new predictive analytics routes
-  const predictiveAnalyticsRoutes = await import(
-    "./routes-predictive-analytics.js"
-  );
-  app.use("/api/predictive-analytics", predictiveAnalyticsRoutes.default);
+  const predictiveAnalyticsRoutes = await import('./routes-predictive-analytics.js');
+  app.use('/api/predictive-analytics', predictiveAnalyticsRoutes.default);
 
   // Predictive Analytics Engine Routes (Legacy - keeping for backwards compatibility)
-  app.get(
-    "/api/predictive-analytics/legacy-dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.get('/api/predictive-analytics/legacy-dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-        const predictiveAnalyticsData = {
-          analyticsOverview: {
-            totalModels: 18,
-            activeModels: 15,
-            trainingModels: 2,
-            failedModels: 1,
-            averageAccuracy: 91.3,
-            predictionsToday: 28947,
-            dataPointsProcessed: 4.7,
-            computeTimeUsed: 234.5,
-            modelRefreshFrequency: "daily",
-            lastModelUpdate: new Date("2025-02-01T06:00:00Z"),
-            predictionSuccessRate: 94.7,
+      const predictiveAnalyticsData = {
+        analyticsOverview: {
+          totalModels: 18,
+          activeModels: 15,
+          trainingModels: 2,
+          failedModels: 1,
+          averageAccuracy: 91.3,
+          predictionsToday: 28947,
+          dataPointsProcessed: 4.7,
+          computeTimeUsed: 234.5,
+          modelRefreshFrequency: 'daily',
+          lastModelUpdate: new Date('2025-02-01T06:00:00Z'),
+          predictionSuccessRate: 94.7,
+        },
+        predictiveModels: [
+          {
+            id: 'model-001',
+            name: 'Customer Churn Prediction',
+            category: 'Customer Analytics',
+            type: 'classification',
+            status: 'active',
+            accuracy: 94.2,
+            precision: 92.8,
+            recall: 96.1,
+            f1Score: 94.4,
+            version: '3.2.1',
+            lastTrained: new Date('2025-02-01T06:00:00Z'),
+            trainingDataSize: 145623,
+            features: 47,
+            predictionsToday: 8934,
+            confidenceThreshold: 0.85,
+            featureImportance: [
+              {
+                feature: 'payment_history',
+                importance: 0.234,
+                description: 'Payment delays and defaults',
+              },
+              {
+                feature: 'service_call_frequency',
+                importance: 0.198,
+                description: 'Equipment maintenance frequency',
+              },
+            ],
           },
-          predictiveModels: [
+          {
+            id: 'model-002',
+            name: 'Revenue Forecasting',
+            category: 'Financial Analytics',
+            type: 'regression',
+            status: 'active',
+            accuracy: 89.7,
+            version: '2.8.4',
+            lastTrained: new Date('2025-01-31T06:00:00Z'),
+            trainingDataSize: 89456,
+            features: 34,
+            predictionsToday: 5678,
+          },
+        ],
+        businessIntelligence: {
+          keyInsights: [
             {
-              id: "model-001",
-              name: "Customer Churn Prediction",
-              category: "Customer Analytics",
-              type: "classification",
-              status: "active",
-              accuracy: 94.2,
-              precision: 92.8,
-              recall: 96.1,
-              f1Score: 94.4,
-              version: "3.2.1",
-              lastTrained: new Date("2025-02-01T06:00:00Z"),
-              trainingDataSize: 145623,
-              features: 47,
-              predictionsToday: 8934,
-              confidenceThreshold: 0.85,
-              featureImportance: [
-                {
-                  feature: "payment_history",
-                  importance: 0.234,
-                  description: "Payment delays and defaults",
-                },
-                {
-                  feature: "service_call_frequency",
-                  importance: 0.198,
-                  description: "Equipment maintenance frequency",
-                },
+              id: 'insight-001',
+              category: 'Customer Behavior',
+              title: 'Peak Service Request Pattern Identified',
+              description:
+                'Equipment service requests spike 23% on Mondays and 18% after holidays, indicating usage pattern optimization opportunities.',
+              impact: 'high',
+              confidence: 0.94,
+              dataPoints: 12456,
+              timeframe: 'last_6_months',
+              recommendedActions: [
+                'Adjust technician schedules for Monday coverage',
+                'Proactive maintenance before holidays',
               ],
-            },
-            {
-              id: "model-002",
-              name: "Revenue Forecasting",
-              category: "Financial Analytics",
-              type: "regression",
-              status: "active",
-              accuracy: 89.7,
-              version: "2.8.4",
-              lastTrained: new Date("2025-01-31T06:00:00Z"),
-              trainingDataSize: 89456,
-              features: 34,
-              predictionsToday: 5678,
+              potentialValue: 45000,
+              implementation: 'immediate',
             },
           ],
-          businessIntelligence: {
-            keyInsights: [
-              {
-                id: "insight-001",
-                category: "Customer Behavior",
-                title: "Peak Service Request Pattern Identified",
-                description:
-                  "Equipment service requests spike 23% on Mondays and 18% after holidays, indicating usage pattern optimization opportunities.",
-                impact: "high",
-                confidence: 0.94,
-                dataPoints: 12456,
-                timeframe: "last_6_months",
-                recommendedActions: [
-                  "Adjust technician schedules for Monday coverage",
-                  "Proactive maintenance before holidays",
-                ],
-                potentialValue: 45000,
-                implementation: "immediate",
-              },
-            ],
-            marketTrends: [
-              {
-                trend: "Remote Work Impact",
-                description:
-                  "Remote work adoption has reduced office printing by 42% but increased home office equipment demand by 67%",
-                strength: "strong",
-                confidence: 0.89,
-                businessImpact: "reshaping_market",
-                opportunity: "home_office_solutions",
-              },
-            ],
-            competitiveIntelligence: [
-              {
-                competitor: "Regional Competitor A",
-                activity: "aggressive_pricing",
-                impact: "moderate",
-                affectedSegments: ["small_business", "healthcare"],
-                responseStrategy: "value_proposition_enhancement",
-                confidence: 0.76,
-              },
-            ],
-          },
-          performanceMetrics: {
-            predictionAccuracy: {
-              churnPrediction: 94.2,
-              revenueForecast: 89.7,
-              equipmentFailure: 92.4,
-              salesConversion: 88.9,
+          marketTrends: [
+            {
+              trend: 'Remote Work Impact',
+              description:
+                'Remote work adoption has reduced office printing by 42% but increased home office equipment demand by 67%',
+              strength: 'strong',
+              confidence: 0.89,
+              businessImpact: 'reshaping_market',
+              opportunity: 'home_office_solutions',
             },
-            businessImpact: {
-              revenueProtected: 1234000,
-              costsAvoided: 567000,
-              efficiencyGains: 345000,
-              newOpportunities: 789000,
+          ],
+          competitiveIntelligence: [
+            {
+              competitor: 'Regional Competitor A',
+              activity: 'aggressive_pricing',
+              impact: 'moderate',
+              affectedSegments: ['small_business', 'healthcare'],
+              responseStrategy: 'value_proposition_enhancement',
+              confidence: 0.76,
             },
-            modelPerformance: [
-              {
-                model: "Customer Churn",
-                accuracy: 94.2,
-                improvement: "+2.3%",
-                trend: "improving",
-              },
-              {
-                model: "Revenue Forecast",
-                accuracy: 89.7,
-                improvement: "+1.8%",
-                trend: "stable",
-              },
-            ],
+          ],
+        },
+        performanceMetrics: {
+          predictionAccuracy: {
+            churnPrediction: 94.2,
+            revenueForecast: 89.7,
+            equipmentFailure: 92.4,
+            salesConversion: 88.9,
           },
-          realTimeAnalytics: {
-            liveMetrics: {
-              predictionsPerMinute: 127,
-              dataIngestionRate: 45.7,
-              modelResponseTime: 234,
-              alertsTriggered: 23,
-              confidenceThreshold: 0.85,
-              activeMonitoringDevices: 1247,
+          businessImpact: {
+            revenueProtected: 1234000,
+            costsAvoided: 567000,
+            efficiencyGains: 345000,
+            newOpportunities: 789000,
+          },
+          modelPerformance: [
+            {
+              model: 'Customer Churn',
+              accuracy: 94.2,
+              improvement: '+2.3%',
+              trend: 'improving',
             },
-            alertsAndNotifications: [
-              {
-                id: "alert-001",
-                type: "high_churn_risk",
-                severity: "critical",
-                customer: "TechCorp Solutions",
-                probability: 0.87,
-                triggeredAt: new Date("2025-02-01T08:45:00Z"),
-                status: "active",
-                assignedTo: "customer_success_team",
-                estimatedImpact: 125000,
-              },
-            ],
+            {
+              model: 'Revenue Forecast',
+              accuracy: 89.7,
+              improvement: '+1.8%',
+              trend: 'stable',
+            },
+          ],
+        },
+        realTimeAnalytics: {
+          liveMetrics: {
+            predictionsPerMinute: 127,
+            dataIngestionRate: 45.7,
+            modelResponseTime: 234,
+            alertsTriggered: 23,
+            confidenceThreshold: 0.85,
+            activeMonitoringDevices: 1247,
           },
-        };
+          alertsAndNotifications: [
+            {
+              id: 'alert-001',
+              type: 'high_churn_risk',
+              severity: 'critical',
+              customer: 'TechCorp Solutions',
+              probability: 0.87,
+              triggeredAt: new Date('2025-02-01T08:45:00Z'),
+              status: 'active',
+              assignedTo: 'customer_success_team',
+              estimatedImpact: 125000,
+            },
+          ],
+        },
+      };
 
-        res.json(predictiveAnalyticsData);
-      } catch (error) {
-        console.error("Error fetching predictive analytics dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch predictive analytics dashboard" });
-      }
-    },
-  );
+      res.json(predictiveAnalyticsData);
+    } catch (error) {
+      console.error('Error fetching predictive analytics dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch predictive analytics dashboard' });
+    }
+  });
 
   // Security & Compliance Management Routes
-  app.get(
-    "/api/security-compliance/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const securityComplianceData = {
-          securityOverview: {
-            overallSecurityScore: 94.7,
-            complianceStatus: "compliant",
-            activeThreats: 3,
-            resolvedThreats: 127,
-            securityIncidents: 2,
-            lastSecurityAudit: new Date("2025-01-28T00:00:00Z"),
-            nextAuditDue: new Date("2025-04-28T00:00:00Z"),
-            certificationsActive: 6,
-            vulnerabilitiesDetected: 8,
-            vulnerabilitiesPatched: 45,
-            securityTrainingCompliance: 96.8,
-            dataBackupStatus: "healthy",
-            encryptionCoverage: 100.0,
-          },
-          threatDetection: {
-            realTimeMonitoring: {
-              activeScans: 12,
-              threatsDetected: 3,
-              falsePositives: 7,
-              threatScore: 2.4,
-              lastScanCompleted: new Date("2025-02-01T07:30:00Z"),
-              nextScheduledScan: new Date("2025-02-01T19:30:00Z"),
-              monitoringUptime: 99.94,
-            },
-            detectedThreats: [
-              {
-                id: "threat-001",
-                type: "suspicious_login_attempt",
-                severity: "medium",
-                status: "investigating",
-                detectedAt: new Date("2025-02-01T06:45:00Z"),
-                source: "192.168.1.247",
-                targetUser: "john.smith@printyx.com",
-                description:
-                  "Multiple failed login attempts from unusual location",
-                riskScore: 6.2,
-                affectedSystems: ["user_portal", "admin_dashboard"],
-                mitigationActions: [
-                  "account_lockout",
-                  "security_notification",
-                  "ip_monitoring",
-                ],
-                investigator: "security_team",
-                estimatedResolutionTime: 45,
-              },
-              {
-                id: "threat-002",
-                type: "data_access_anomaly",
-                severity: "high",
-                status: "contained",
-                detectedAt: new Date("2025-02-01T04:20:00Z"),
-                source: "internal_user",
-                targetUser: "admin@dealership.com",
-                description:
-                  "Unusual bulk data access outside normal business hours",
-                riskScore: 7.8,
-                affectedSystems: ["customer_database", "financial_records"],
-                mitigationActions: [
-                  "access_restriction",
-                  "audit_trail_review",
-                  "manager_notification",
-                ],
-                investigator: "compliance_officer",
-                estimatedResolutionTime: 120,
-              },
-            ],
-            threatTrends: [
-              {
-                category: "phishing_attempts",
-                count: 23,
-                change: "+12%",
-                severity: "medium",
-              },
-              {
-                category: "suspicious_logins",
-                count: 15,
-                change: "-8%",
-                severity: "medium",
-              },
-            ],
-          },
-          complianceManagement: {
-            regulations: [
-              {
-                id: "gdpr",
-                name: "General Data Protection Regulation (GDPR)",
-                status: "compliant",
-                complianceScore: 96.8,
-                lastAudit: new Date("2025-01-15T00:00:00Z"),
-                nextAudit: new Date("2025-07-15T00:00:00Z"),
-                requirements: 47,
-                compliantRequirements: 45,
-                nonCompliantRequirements: 2,
-                actionItemsOpen: 3,
-                actionItemsCompleted: 28,
-                certificationStatus: "active",
-                expiryDate: new Date("2025-12-31T00:00:00Z"),
-                auditor: "EU Compliance Solutions",
-                riskLevel: "low",
-              },
-            ],
-            actionItems: [
-              {
-                id: "action-001",
-                regulation: "GDPR",
-                priority: "high",
-                title: "Update Data Processing Records",
-                description:
-                  "Complete documentation of new data processing activities for Q1 2025",
-                assignee: "data_protection_officer",
-                dueDate: new Date("2025-02-15T00:00:00Z"),
-                status: "in_progress",
-                progress: 67,
-                estimatedHours: 8,
-                completedHours: 5.5,
-                riskIfDelayed: "regulatory_fine",
-              },
-            ],
-            complianceMetrics: {
-              overallComplianceScore: 95.2,
-              regulationsMonitored: 4,
-              activeCompliance: 4,
-              nonCompliantRegulations: 0,
-              overdueActionItems: 1,
-              upcomingAudits: 3,
-              certificationRenewals: 2,
-              complianceTrainingCompletion: 94.8,
-            },
-          },
-          accessControl: {
-            userAccessMatrix: {
-              totalUsers: 247,
-              activeUsers: 234,
-              inactiveUsers: 13,
-              privilegedUsers: 23,
-              serviceAccounts: 8,
-              pendingAccessRequests: 5,
-              expiredAccounts: 2,
-              multiFactorEnabled: 231,
-              singleSignOnEnabled: 198,
-            },
-            roleBasedAccess: {
-              totalRoles: 15,
-              customRoles: 8,
-              defaultRoles: 7,
-              roleAssignments: 247,
-              roleConflicts: 0,
-              segregationOfDutiesViolations: 0,
-              leastPrivilegeCompliance: 94.3,
-            },
-          },
-        };
-
-        res.json(securityComplianceData);
-      } catch (error) {
-        console.error("Error fetching security compliance dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch security compliance dashboard" });
+  app.get('/api/security-compliance/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+
+      const securityComplianceData = {
+        securityOverview: {
+          overallSecurityScore: 94.7,
+          complianceStatus: 'compliant',
+          activeThreats: 3,
+          resolvedThreats: 127,
+          securityIncidents: 2,
+          lastSecurityAudit: new Date('2025-01-28T00:00:00Z'),
+          nextAuditDue: new Date('2025-04-28T00:00:00Z'),
+          certificationsActive: 6,
+          vulnerabilitiesDetected: 8,
+          vulnerabilitiesPatched: 45,
+          securityTrainingCompliance: 96.8,
+          dataBackupStatus: 'healthy',
+          encryptionCoverage: 100.0,
+        },
+        threatDetection: {
+          realTimeMonitoring: {
+            activeScans: 12,
+            threatsDetected: 3,
+            falsePositives: 7,
+            threatScore: 2.4,
+            lastScanCompleted: new Date('2025-02-01T07:30:00Z'),
+            nextScheduledScan: new Date('2025-02-01T19:30:00Z'),
+            monitoringUptime: 99.94,
+          },
+          detectedThreats: [
+            {
+              id: 'threat-001',
+              type: 'suspicious_login_attempt',
+              severity: 'medium',
+              status: 'investigating',
+              detectedAt: new Date('2025-02-01T06:45:00Z'),
+              source: '192.168.1.247',
+              targetUser: 'john.smith@printyx.com',
+              description: 'Multiple failed login attempts from unusual location',
+              riskScore: 6.2,
+              affectedSystems: ['user_portal', 'admin_dashboard'],
+              mitigationActions: ['account_lockout', 'security_notification', 'ip_monitoring'],
+              investigator: 'security_team',
+              estimatedResolutionTime: 45,
+            },
+            {
+              id: 'threat-002',
+              type: 'data_access_anomaly',
+              severity: 'high',
+              status: 'contained',
+              detectedAt: new Date('2025-02-01T04:20:00Z'),
+              source: 'internal_user',
+              targetUser: 'admin@dealership.com',
+              description: 'Unusual bulk data access outside normal business hours',
+              riskScore: 7.8,
+              affectedSystems: ['customer_database', 'financial_records'],
+              mitigationActions: [
+                'access_restriction',
+                'audit_trail_review',
+                'manager_notification',
+              ],
+              investigator: 'compliance_officer',
+              estimatedResolutionTime: 120,
+            },
+          ],
+          threatTrends: [
+            {
+              category: 'phishing_attempts',
+              count: 23,
+              change: '+12%',
+              severity: 'medium',
+            },
+            {
+              category: 'suspicious_logins',
+              count: 15,
+              change: '-8%',
+              severity: 'medium',
+            },
+          ],
+        },
+        complianceManagement: {
+          regulations: [
+            {
+              id: 'gdpr',
+              name: 'General Data Protection Regulation (GDPR)',
+              status: 'compliant',
+              complianceScore: 96.8,
+              lastAudit: new Date('2025-01-15T00:00:00Z'),
+              nextAudit: new Date('2025-07-15T00:00:00Z'),
+              requirements: 47,
+              compliantRequirements: 45,
+              nonCompliantRequirements: 2,
+              actionItemsOpen: 3,
+              actionItemsCompleted: 28,
+              certificationStatus: 'active',
+              expiryDate: new Date('2025-12-31T00:00:00Z'),
+              auditor: 'EU Compliance Solutions',
+              riskLevel: 'low',
+            },
+          ],
+          actionItems: [
+            {
+              id: 'action-001',
+              regulation: 'GDPR',
+              priority: 'high',
+              title: 'Update Data Processing Records',
+              description: 'Complete documentation of new data processing activities for Q1 2025',
+              assignee: 'data_protection_officer',
+              dueDate: new Date('2025-02-15T00:00:00Z'),
+              status: 'in_progress',
+              progress: 67,
+              estimatedHours: 8,
+              completedHours: 5.5,
+              riskIfDelayed: 'regulatory_fine',
+            },
+          ],
+          complianceMetrics: {
+            overallComplianceScore: 95.2,
+            regulationsMonitored: 4,
+            activeCompliance: 4,
+            nonCompliantRegulations: 0,
+            overdueActionItems: 1,
+            upcomingAudits: 3,
+            certificationRenewals: 2,
+            complianceTrainingCompletion: 94.8,
+          },
+        },
+        accessControl: {
+          userAccessMatrix: {
+            totalUsers: 247,
+            activeUsers: 234,
+            inactiveUsers: 13,
+            privilegedUsers: 23,
+            serviceAccounts: 8,
+            pendingAccessRequests: 5,
+            expiredAccounts: 2,
+            multiFactorEnabled: 231,
+            singleSignOnEnabled: 198,
+          },
+          roleBasedAccess: {
+            totalRoles: 15,
+            customRoles: 8,
+            defaultRoles: 7,
+            roleAssignments: 247,
+            roleConflicts: 0,
+            segregationOfDutiesViolations: 0,
+            leastPrivilegeCompliance: 94.3,
+          },
+        },
+      };
+
+      res.json(securityComplianceData);
+    } catch (error) {
+      console.error('Error fetching security compliance dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch security compliance dashboard' });
+    }
+  });
 
   // ERP Integration Hub Routes
-  app.get(
-    "/api/erp-integration/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.get('/api/erp-integration/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-        const erpIntegrationData = {
-          integrationOverview: {
-            totalIntegrations: 18,
-            activeIntegrations: 16,
-            failedIntegrations: 2,
-            syncSuccessRate: 98.7,
-            dataPointsSynced: 2.4,
-            syncFrequency: "real-time",
-            lastSyncCompleted: new Date("2025-02-01T08:15:00Z"),
-            nextScheduledSync: new Date("2025-02-01T08:30:00Z"),
-            averageLatency: 234,
-            systemUptime: 99.94,
-            errorRate: 0.13,
-          },
-          erpSystems: [
-            {
-              id: "sap-001",
-              name: "SAP Business One",
-              type: "erp",
-              category: "financial_management",
-              status: "active",
-              version: "10.0",
-              lastSync: new Date("2025-02-01T08:15:00Z"),
-              syncFrequency: "real-time",
-              successRate: 99.2,
-              recordsProcessed: 45672,
-              apiCalls: 234567,
-              dataVolume: 1.2,
-              latency: 187,
-              capabilities: [
-                "accounting",
-                "financial_reporting",
-                "inventory",
-                "procurement",
-                "sales_orders",
-              ],
-              endpoints: [
-                {
-                  name: "Chart of Accounts",
-                  url: "/api/ChartOfAccounts",
-                  status: "active",
-                  lastCall: new Date("2025-02-01T08:14:00Z"),
-                },
-                {
-                  name: "Business Partners",
-                  url: "/api/BusinessPartners",
-                  status: "active",
-                  lastCall: new Date("2025-02-01T08:13:00Z"),
-                },
-              ],
-              authentication: {
-                type: "oauth2",
-                status: "authenticated",
-                tokenExpiry: new Date("2025-02-15T00:00:00Z"),
-                lastRefresh: new Date("2025-02-01T06:00:00Z"),
+      const erpIntegrationData = {
+        integrationOverview: {
+          totalIntegrations: 18,
+          activeIntegrations: 16,
+          failedIntegrations: 2,
+          syncSuccessRate: 98.7,
+          dataPointsSynced: 2.4,
+          syncFrequency: 'real-time',
+          lastSyncCompleted: new Date('2025-02-01T08:15:00Z'),
+          nextScheduledSync: new Date('2025-02-01T08:30:00Z'),
+          averageLatency: 234,
+          systemUptime: 99.94,
+          errorRate: 0.13,
+        },
+        erpSystems: [
+          {
+            id: 'sap-001',
+            name: 'SAP Business One',
+            type: 'erp',
+            category: 'financial_management',
+            status: 'active',
+            version: '10.0',
+            lastSync: new Date('2025-02-01T08:15:00Z'),
+            syncFrequency: 'real-time',
+            successRate: 99.2,
+            recordsProcessed: 45672,
+            apiCalls: 234567,
+            dataVolume: 1.2,
+            latency: 187,
+            capabilities: [
+              'accounting',
+              'financial_reporting',
+              'inventory',
+              'procurement',
+              'sales_orders',
+            ],
+            endpoints: [
+              {
+                name: 'Chart of Accounts',
+                url: '/api/ChartOfAccounts',
+                status: 'active',
+                lastCall: new Date('2025-02-01T08:14:00Z'),
               },
-              recentSync: {
-                recordsCreated: 124,
-                recordsUpdated: 3456,
-                recordsDeleted: 23,
-                errors: 5,
-                warnings: 12,
-                duration: 2.4,
+              {
+                name: 'Business Partners',
+                url: '/api/BusinessPartners',
+                status: 'active',
+                lastCall: new Date('2025-02-01T08:13:00Z'),
               },
+            ],
+            authentication: {
+              type: 'oauth2',
+              status: 'authenticated',
+              tokenExpiry: new Date('2025-02-15T00:00:00Z'),
+              lastRefresh: new Date('2025-02-01T06:00:00Z'),
             },
+            recentSync: {
+              recordsCreated: 124,
+              recordsUpdated: 3456,
+              recordsDeleted: 23,
+              errors: 5,
+              warnings: 12,
+              duration: 2.4,
+            },
+          },
+          {
+            id: 'oracle-001',
+            name: 'Oracle NetSuite',
+            type: 'erp',
+            category: 'cloud_erp',
+            status: 'active',
+            version: '2024.2',
+            lastSync: new Date('2025-02-01T08:14:00Z'),
+            syncFrequency: 'hourly',
+            successRate: 97.8,
+            recordsProcessed: 78934,
+            apiCalls: 456789,
+            dataVolume: 2.1,
+            latency: 298,
+            capabilities: ['financial_management', 'crm', 'inventory', 'e_commerce', 'analytics'],
+            endpoints: [
+              {
+                name: 'Customers',
+                url: '/services/rest/record/v1/customer',
+                status: 'active',
+                lastCall: new Date('2025-02-01T08:13:00Z'),
+              },
+            ],
+            authentication: {
+              type: 'token_based',
+              status: 'authenticated',
+              tokenExpiry: new Date('2025-03-01T00:00:00Z'),
+              lastRefresh: new Date('2025-02-01T00:00:00Z'),
+            },
+            recentSync: {
+              recordsCreated: 89,
+              recordsUpdated: 2134,
+              recordsDeleted: 12,
+              errors: 3,
+              warnings: 8,
+              duration: 3.7,
+            },
+          },
+        ],
+        dataSynchronization: {
+          syncSchedules: [
             {
-              id: "oracle-001",
-              name: "Oracle NetSuite",
-              type: "erp",
-              category: "cloud_erp",
-              status: "active",
-              version: "2024.2",
-              lastSync: new Date("2025-02-01T08:14:00Z"),
-              syncFrequency: "hourly",
+              id: 'schedule-001',
+              name: 'Customer Data Sync',
+              description: 'Synchronize customer records across all ERP systems',
+              systems: ['SAP Business One', 'Oracle NetSuite', 'Microsoft Dynamics 365'],
+              frequency: 'real-time',
+              lastRun: new Date('2025-02-01T08:15:00Z'),
+              nextRun: new Date('2025-02-01T08:30:00Z'),
+              status: 'active',
+              successRate: 99.1,
+              recordsProcessed: 12456,
+              averageDuration: 2.3,
+              conflicts: 3,
+              resolvedConflicts: 3,
+            },
+          ],
+          conflictResolution: {
+            totalConflicts: 34,
+            resolvedConflicts: 31,
+            pendingResolution: 3,
+            autoResolutionRate: 91.2,
+            resolutionRules: [{ rule: 'Last Modified Wins', usage: 67, success: 94.1 }],
+          },
+          dataQuality: {
+            overallScore: 96.8,
+            completeness: 98.2,
+            accuracy: 95.7,
+            consistency: 97.1,
+            timeliness: 96.3,
+            duplicates: 23,
+            missingFields: 156,
+            validationErrors: 45,
+          },
+        },
+        businessProcessAutomation: {
+          automatedProcesses: [
+            {
+              id: 'process-001',
+              name: 'Order-to-Cash Automation',
+              description: 'Automated end-to-end order processing from creation to payment',
+              systems: ['Oracle NetSuite', 'SAP Business One', 'Printyx CRM'],
+              status: 'active',
+              executionsToday: 234,
               successRate: 97.8,
-              recordsProcessed: 78934,
-              apiCalls: 456789,
-              dataVolume: 2.1,
-              latency: 298,
-              capabilities: [
-                "financial_management",
-                "crm",
-                "inventory",
-                "e_commerce",
-                "analytics",
-              ],
-              endpoints: [
+              averageProcessingTime: 45,
+              steps: [
                 {
-                  name: "Customers",
-                  url: "/services/rest/record/v1/customer",
-                  status: "active",
-                  lastCall: new Date("2025-02-01T08:13:00Z"),
+                  step: 'Order Creation',
+                  system: 'Printyx CRM',
+                  avgTime: 5,
+                  successRate: 99.2,
                 },
               ],
-              authentication: {
-                type: "token_based",
-                status: "authenticated",
-                tokenExpiry: new Date("2025-03-01T00:00:00Z"),
-                lastRefresh: new Date("2025-02-01T00:00:00Z"),
-              },
-              recentSync: {
-                recordsCreated: 89,
-                recordsUpdated: 2134,
-                recordsDeleted: 12,
-                errors: 3,
-                warnings: 8,
-                duration: 3.7,
+              kpis: {
+                cycleTimeReduction: 67.3,
+                errorReduction: 84.2,
+                costSavings: 45600,
+                customerSatisfaction: 94.7,
               },
             },
           ],
-          dataSynchronization: {
-            syncSchedules: [
-              {
-                id: "schedule-001",
-                name: "Customer Data Sync",
-                description:
-                  "Synchronize customer records across all ERP systems",
-                systems: [
-                  "SAP Business One",
-                  "Oracle NetSuite",
-                  "Microsoft Dynamics 365",
-                ],
-                frequency: "real-time",
-                lastRun: new Date("2025-02-01T08:15:00Z"),
-                nextRun: new Date("2025-02-01T08:30:00Z"),
-                status: "active",
-                successRate: 99.1,
-                recordsProcessed: 12456,
-                averageDuration: 2.3,
-                conflicts: 3,
-                resolvedConflicts: 3,
-              },
-            ],
-            conflictResolution: {
-              totalConflicts: 34,
-              resolvedConflicts: 31,
-              pendingResolution: 3,
-              autoResolutionRate: 91.2,
-              resolutionRules: [
-                { rule: "Last Modified Wins", usage: 67, success: 94.1 },
-              ],
-            },
-            dataQuality: {
-              overallScore: 96.8,
-              completeness: 98.2,
-              accuracy: 95.7,
-              consistency: 97.1,
-              timeliness: 96.3,
-              duplicates: 23,
-              missingFields: 156,
-              validationErrors: 45,
-            },
+          workflowOrchestration: {
+            totalWorkflows: 67,
+            activeWorkflows: 64,
+            pausedWorkflows: 2,
+            erroredWorkflows: 1,
+            executionsToday: 2134,
+            successRate: 96.7,
+            averageExecutionTime: 23.4,
+            parallelExecutions: 12,
+            queuedExecutions: 5,
           },
-          businessProcessAutomation: {
-            automatedProcesses: [
-              {
-                id: "process-001",
-                name: "Order-to-Cash Automation",
-                description:
-                  "Automated end-to-end order processing from creation to payment",
-                systems: ["Oracle NetSuite", "SAP Business One", "Printyx CRM"],
-                status: "active",
-                executionsToday: 234,
-                successRate: 97.8,
-                averageProcessingTime: 45,
-                steps: [
-                  {
-                    step: "Order Creation",
-                    system: "Printyx CRM",
-                    avgTime: 5,
-                    successRate: 99.2,
-                  },
-                ],
-                kpis: {
-                  cycleTimeReduction: 67.3,
-                  errorReduction: 84.2,
-                  costSavings: 45600,
-                  customerSatisfaction: 94.7,
-                },
-              },
-            ],
-            workflowOrchestration: {
-              totalWorkflows: 67,
-              activeWorkflows: 64,
-              pausedWorkflows: 2,
-              erroredWorkflows: 1,
-              executionsToday: 2134,
-              successRate: 96.7,
-              averageExecutionTime: 23.4,
-              parallelExecutions: 12,
-              queuedExecutions: 5,
+        },
+        monitoring: {
+          systemHealth: [
+            {
+              system: 'SAP Business One',
+              status: 'healthy',
+              uptime: 99.8,
+              lastCheck: new Date('2025-02-01T08:14:00Z'),
+              responseTime: 187,
             },
-          },
-          monitoring: {
-            systemHealth: [
-              {
-                system: "SAP Business One",
-                status: "healthy",
-                uptime: 99.8,
-                lastCheck: new Date("2025-02-01T08:14:00Z"),
-                responseTime: 187,
-              },
-              {
-                system: "Oracle NetSuite",
-                status: "healthy",
-                uptime: 99.2,
-                lastCheck: new Date("2025-02-01T08:13:00Z"),
-                responseTime: 298,
-              },
-            ],
-            alerts: [
-              {
-                id: "alert-001",
-                type: "performance_degradation",
-                severity: "medium",
-                system: "Oracle NetSuite",
-                message: "Response time increased by 25% in last hour",
-                triggeredAt: new Date("2025-02-01T07:45:00Z"),
-                status: "investigating",
-                assignee: "integration_team",
-              },
-            ],
-            performanceMetrics: {
-              dataLatency: 234,
-              syncThroughput: 12456,
-              errorRate: 0.13,
-              availabilityScore: 99.7,
-              integrationComplexity: 8.7,
-              maintenanceOverhead: 4.2,
+            {
+              system: 'Oracle NetSuite',
+              status: 'healthy',
+              uptime: 99.2,
+              lastCheck: new Date('2025-02-01T08:13:00Z'),
+              responseTime: 298,
             },
+          ],
+          alerts: [
+            {
+              id: 'alert-001',
+              type: 'performance_degradation',
+              severity: 'medium',
+              system: 'Oracle NetSuite',
+              message: 'Response time increased by 25% in last hour',
+              triggeredAt: new Date('2025-02-01T07:45:00Z'),
+              status: 'investigating',
+              assignee: 'integration_team',
+            },
+          ],
+          performanceMetrics: {
+            dataLatency: 234,
+            syncThroughput: 12456,
+            errorRate: 0.13,
+            availabilityScore: 99.7,
+            integrationComplexity: 8.7,
+            maintenanceOverhead: 4.2,
           },
-        };
+        },
+      };
 
-        res.json(erpIntegrationData);
-      } catch (error) {
-        console.error("Error fetching ERP integration dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch ERP integration dashboard" });
-      }
-    },
-  );
+      res.json(erpIntegrationData);
+    } catch (error) {
+      console.error('Error fetching ERP integration dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch ERP integration dashboard' });
+    }
+  });
 
   // Advanced Integration Hub Routes
-  app.get(
-    "/api/integration-hub/dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.get('/api/integration-hub/dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-        const integrationHubData = {
-          integrationOverview: {
-            totalIntegrations: 42,
-            activeIntegrations: 39,
-            pendingIntegrations: 2,
-            failedIntegrations: 1,
-            integrationSuccessRate: 97.4,
-            apiCallsToday: 1245678,
-            dataTransferred: 15.7,
-            webhooksDelivered: 34567,
-            integrationUptime: 99.8,
-            averageLatency: 189,
-            errorRate: 0.8,
-            rateLimitHits: 23,
-          },
-          apiMarketplace: {
-            availableAPIs: [
-              {
-                id: "api-salesforce",
-                name: "Salesforce CRM",
-                category: "CRM",
-                provider: "Salesforce",
-                version: "v59.0",
-                status: "active",
-                popularity: 94.7,
-                integrations: 1247,
-                ratingAverage: 4.8,
-                ratingCount: 356,
-                description:
-                  "Complete CRM integration for sales, marketing, and customer service",
-                endpoints: 15,
-                authentication: "OAuth2",
-                pricing: "freemium",
-                documentation: "https://developer.salesforce.com/docs",
-                capabilities: [
-                  "lead_management",
-                  "opportunity_tracking",
-                  "contact_sync",
-                  "activity_logging",
-                ],
-                lastUpdated: new Date("2025-01-15T00:00:00Z"),
-                supportLevel: "enterprise",
-                setupComplexity: "medium",
-              },
-              {
-                id: "api-stripe",
-                name: "Stripe Payments",
-                category: "Payments",
-                provider: "Stripe",
-                version: "2023-10-16",
-                status: "active",
-                popularity: 92.1,
-                integrations: 2134,
-                ratingAverage: 4.9,
-                ratingCount: 567,
-                description:
-                  "Complete payment processing and subscription management",
-                endpoints: 18,
-                authentication: "API Key",
-                pricing: "usage_based",
-                documentation: "https://stripe.com/docs/api",
-                capabilities: [
-                  "payment_processing",
-                  "subscription_billing",
-                  "fraud_detection",
-                  "reporting",
-                ],
-                lastUpdated: new Date("2025-01-25T00:00:00Z"),
-                supportLevel: "enterprise",
-                setupComplexity: "medium",
-              },
-            ],
-            categories: [
-              {
-                name: "CRM",
-                count: 8,
-                description: "Customer relationship management systems",
-              },
-              {
-                name: "Marketing",
-                count: 6,
-                description: "Marketing automation and campaign tools",
-              },
-              {
-                name: "Payments",
-                count: 4,
-                description: "Payment processing and billing systems",
-              },
-            ],
-            featuredIntegrations: [
-              { id: "api-salesforce", reason: "Most popular CRM integration" },
-            ],
-          },
-          activeIntegrations: [
+      const integrationHubData = {
+        integrationOverview: {
+          totalIntegrations: 42,
+          activeIntegrations: 39,
+          pendingIntegrations: 2,
+          failedIntegrations: 1,
+          integrationSuccessRate: 97.4,
+          apiCallsToday: 1245678,
+          dataTransferred: 15.7,
+          webhooksDelivered: 34567,
+          integrationUptime: 99.8,
+          averageLatency: 189,
+          errorRate: 0.8,
+          rateLimitHits: 23,
+        },
+        apiMarketplace: {
+          availableAPIs: [
             {
-              id: "integration-001",
-              apiId: "api-salesforce",
-              name: "Salesforce CRM Integration",
-              status: "active",
-              configuredAt: new Date("2024-12-15T00:00:00Z"),
-              lastSync: new Date("2025-02-01T08:20:00Z"),
-              syncFrequency: "real-time",
-              recordsSynced: 45678,
-              apiCallsToday: 12456,
-              successRate: 98.7,
-              averageLatency: 234,
-              dataVolume: 2.3,
-              errorCount: 5,
-              configuration: {
-                environment: "production",
-                instanceUrl: "https://company.my.salesforce.com",
-                apiVersion: "v59.0",
-              },
-              dataMapping: {
-                contacts: {
-                  source: "salesforce.Contact",
-                  target: "printyx.BusinessRecord",
-                  fields: 23,
-                },
-              },
-              webhooks: [
-                {
-                  event: "contact.created",
-                  url: "/webhook/salesforce/contact",
-                  status: "active",
-                  deliveryRate: 99.2,
-                },
+              id: 'api-salesforce',
+              name: 'Salesforce CRM',
+              category: 'CRM',
+              provider: 'Salesforce',
+              version: 'v59.0',
+              status: 'active',
+              popularity: 94.7,
+              integrations: 1247,
+              ratingAverage: 4.8,
+              ratingCount: 356,
+              description: 'Complete CRM integration for sales, marketing, and customer service',
+              endpoints: 15,
+              authentication: 'OAuth2',
+              pricing: 'freemium',
+              documentation: 'https://developer.salesforce.com/docs',
+              capabilities: [
+                'lead_management',
+                'opportunity_tracking',
+                'contact_sync',
+                'activity_logging',
               ],
-              recentActivity: [
-                {
-                  timestamp: new Date("2025-02-01T08:20:00Z"),
-                  action: "contact_sync",
-                  records: 234,
-                  status: "success",
-                },
+              lastUpdated: new Date('2025-01-15T00:00:00Z'),
+              supportLevel: 'enterprise',
+              setupComplexity: 'medium',
+            },
+            {
+              id: 'api-stripe',
+              name: 'Stripe Payments',
+              category: 'Payments',
+              provider: 'Stripe',
+              version: '2023-10-16',
+              status: 'active',
+              popularity: 92.1,
+              integrations: 2134,
+              ratingAverage: 4.9,
+              ratingCount: 567,
+              description: 'Complete payment processing and subscription management',
+              endpoints: 18,
+              authentication: 'API Key',
+              pricing: 'usage_based',
+              documentation: 'https://stripe.com/docs/api',
+              capabilities: [
+                'payment_processing',
+                'subscription_billing',
+                'fraud_detection',
+                'reporting',
               ],
+              lastUpdated: new Date('2025-01-25T00:00:00Z'),
+              supportLevel: 'enterprise',
+              setupComplexity: 'medium',
             },
           ],
-          webhookManagement: {
-            totalWebhooks: 67,
-            activeWebhooks: 64,
-            pausedWebhooks: 2,
-            failedWebhooks: 1,
-            deliverySuccessRate: 98.3,
-            averageDeliveryTime: 234,
-            retryAttempts: 1567,
-            successfulRetries: 1456,
-            recentDeliveries: [
+          categories: [
+            {
+              name: 'CRM',
+              count: 8,
+              description: 'Customer relationship management systems',
+            },
+            {
+              name: 'Marketing',
+              count: 6,
+              description: 'Marketing automation and campaign tools',
+            },
+            {
+              name: 'Payments',
+              count: 4,
+              description: 'Payment processing and billing systems',
+            },
+          ],
+          featuredIntegrations: [{ id: 'api-salesforce', reason: 'Most popular CRM integration' }],
+        },
+        activeIntegrations: [
+          {
+            id: 'integration-001',
+            apiId: 'api-salesforce',
+            name: 'Salesforce CRM Integration',
+            status: 'active',
+            configuredAt: new Date('2024-12-15T00:00:00Z'),
+            lastSync: new Date('2025-02-01T08:20:00Z'),
+            syncFrequency: 'real-time',
+            recordsSynced: 45678,
+            apiCallsToday: 12456,
+            successRate: 98.7,
+            averageLatency: 234,
+            dataVolume: 2.3,
+            errorCount: 5,
+            configuration: {
+              environment: 'production',
+              instanceUrl: 'https://company.my.salesforce.com',
+              apiVersion: 'v59.0',
+            },
+            dataMapping: {
+              contacts: {
+                source: 'salesforce.Contact',
+                target: 'printyx.BusinessRecord',
+                fields: 23,
+              },
+            },
+            webhooks: [
               {
-                id: "delivery-001",
-                webhook: "Salesforce Contact Created",
-                url: "/webhook/salesforce/contact",
-                timestamp: new Date("2025-02-01T08:20:00Z"),
-                status: "delivered",
-                responseCode: 200,
-                responseTime: 187,
-                attempts: 1,
-                payload: { event: "contact.created", objectId: "SF001234" },
+                event: 'contact.created',
+                url: '/webhook/salesforce/contact',
+                status: 'active',
+                deliveryRate: 99.2,
               },
             ],
-            deliveryMetrics: {
-              last24Hours: { delivered: 2345, failed: 67, successRate: 97.2 },
-              last7Days: { delivered: 16789, failed: 456, successRate: 97.3 },
-              last30Days: { delivered: 78456, failed: 2134, successRate: 97.4 },
+            recentActivity: [
+              {
+                timestamp: new Date('2025-02-01T08:20:00Z'),
+                action: 'contact_sync',
+                records: 234,
+                status: 'success',
+              },
+            ],
+          },
+        ],
+        webhookManagement: {
+          totalWebhooks: 67,
+          activeWebhooks: 64,
+          pausedWebhooks: 2,
+          failedWebhooks: 1,
+          deliverySuccessRate: 98.3,
+          averageDeliveryTime: 234,
+          retryAttempts: 1567,
+          successfulRetries: 1456,
+          recentDeliveries: [
+            {
+              id: 'delivery-001',
+              webhook: 'Salesforce Contact Created',
+              url: '/webhook/salesforce/contact',
+              timestamp: new Date('2025-02-01T08:20:00Z'),
+              status: 'delivered',
+              responseCode: 200,
+              responseTime: 187,
+              attempts: 1,
+              payload: { event: 'contact.created', objectId: 'SF001234' },
+            },
+          ],
+          deliveryMetrics: {
+            last24Hours: { delivered: 2345, failed: 67, successRate: 97.2 },
+            last7Days: { delivered: 16789, failed: 456, successRate: 97.3 },
+            last30Days: { delivered: 78456, failed: 2134, successRate: 97.4 },
+          },
+        },
+        integrationAnalytics: {
+          usageStatistics: {
+            totalApiCalls: 1245678,
+            totalDataTransferred: 15.7,
+            totalWebhooksDelivered: 34567,
+            averageResponseTime: 189,
+            peakUsageHour: '10:00-11:00',
+            topIntegrationByVolume: 'Salesforce CRM',
+            topIntegrationByUsage: 'Stripe Payments',
+          },
+          performanceMetrics: {
+            responseTimePercentiles: { p50: 156, p95: 789, p99: 2345 },
+            errorRateByCategory: {
+              authentication: 0.2,
+              rateLimiting: 0.3,
+              timeout: 0.1,
+              serverError: 0.2,
+            },
+            uptimeByIntegration: {
+              'Salesforce CRM': 99.8,
+              'Stripe Payments': 99.9,
             },
           },
-          integrationAnalytics: {
-            usageStatistics: {
-              totalApiCalls: 1245678,
-              totalDataTransferred: 15.7,
-              totalWebhooksDelivered: 34567,
-              averageResponseTime: 189,
-              peakUsageHour: "10:00-11:00",
-              topIntegrationByVolume: "Salesforce CRM",
-              topIntegrationByUsage: "Stripe Payments",
+          costAnalysis: {
+            totalMonthlyCost: 2345.67,
+            costByProvider: {
+              Salesforce: 890.0,
+              Stripe: 567.89,
+              HubSpot: 234.56,
+              Others: 653.22,
             },
-            performanceMetrics: {
-              responseTimePercentiles: { p50: 156, p95: 789, p99: 2345 },
-              errorRateByCategory: {
-                authentication: 0.2,
-                rateLimiting: 0.3,
-                timeout: 0.1,
-                serverError: 0.2,
-              },
-              uptimeByIntegration: {
-                "Salesforce CRM": 99.8,
-                "Stripe Payments": 99.9,
-              },
-            },
-            costAnalysis: {
-              totalMonthlyCost: 2345.67,
-              costByProvider: {
-                Salesforce: 890.0,
-                Stripe: 567.89,
-                HubSpot: 234.56,
-                Others: 653.22,
-              },
-              costPerApiCall: 0.0019,
-              estimatedMonthlySavings: 1234.56,
-            },
+            costPerApiCall: 0.0019,
+            estimatedMonthlySavings: 1234.56,
           },
-        };
+        },
+      };
 
-        res.json(integrationHubData);
-      } catch (error) {
-        console.error("Error fetching integration hub dashboard:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch integration hub dashboard" });
-      }
-    },
-  );
+      res.json(integrationHubData);
+    } catch (error) {
+      console.error('Error fetching integration hub dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
+    }
+  });
 
   // Apply tenant resolution middleware to all API routes
-  app.use("/api", resolveTenant);
+  app.use('/api', resolveTenant);
 
   // Contacts routes
-  app.get("/api/contacts", requireAuth, async (req: TenantRequest, res) => {
+  app.get('/api/contacts', requireAuth, async (req: TenantRequest, res) => {
     try {
       const user = req.user as any;
       const tenantId = req.tenantId || user.tenantId;
@@ -4682,16 +4355,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get query parameters
       const {
-        search = "",
-        contactOwner = "",
-        createDate = "",
-        lastActivityDate = "",
-        leadStatus = "",
-        view = "all",
-        sortBy = "lastActivityDate",
-        sortOrder = "desc",
-        page = "1",
-        limit = "25",
+        search = '',
+        contactOwner = '',
+        createDate = '',
+        lastActivityDate = '',
+        leadStatus = '',
+        view = 'all',
+        sortBy = 'lastActivityDate',
+        sortOrder = 'desc',
+        page = '1',
+        limit = '25',
       } = req.query;
 
       const pageNum = parseInt(page as string, 10);
@@ -4701,19 +4374,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build filters based on role and view
       let filters: any = { tenantId };
 
-      console.log(
-        `[CONTACTS DEBUG] Filters before role logic: ${JSON.stringify(filters)}`,
-      );
+      console.log(`[CONTACTS DEBUG] Filters before role logic: ${JSON.stringify(filters)}`);
 
       // Role-based access control
-      if (user.role === "salesperson") {
+      if (user.role === 'salesperson') {
         filters.ownerId = user.id; // Salespeople only see their own contacts
       }
 
       // Apply view filter
-      if (view === "my") {
+      if (view === 'my') {
         filters.ownerId = user.id;
-      } else if (view === "unassigned") {
+      } else if (view === 'unassigned') {
         filters.ownerId = null;
       }
 
@@ -4733,29 +4404,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       if (createDate) {
         switch (createDate) {
-          case "today":
+          case 'today':
             filters.createdAt = {
               gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
             break;
-          case "yesterday":
+          case 'yesterday':
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
             filters.createdAt = {
-              gte: new Date(
-                yesterday.getFullYear(),
-                yesterday.getMonth(),
-                yesterday.getDate(),
-              ),
+              gte: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()),
               lt: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
             break;
-          case "last7days":
+          case 'last7days':
             const last7Days = new Date(now);
             last7Days.setDate(last7Days.getDate() - 7);
             filters.createdAt = { gte: last7Days };
             break;
-          case "last30days":
+          case 'last30days':
             const last30Days = new Date(now);
             last30Days.setDate(last30Days.getDate() - 30);
             filters.createdAt = { gte: last30Days };
@@ -4765,34 +4432,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (lastActivityDate) {
         switch (lastActivityDate) {
-          case "today":
+          case 'today':
             filters.lastContactDate = {
               gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
             break;
-          case "yesterday":
+          case 'yesterday':
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
             filters.lastContactDate = {
-              gte: new Date(
-                yesterday.getFullYear(),
-                yesterday.getMonth(),
-                yesterday.getDate(),
-              ),
+              gte: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()),
               lt: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
             break;
-          case "last7days":
+          case 'last7days':
             const last7Days = new Date(now);
             last7Days.setDate(last7Days.getDate() - 7);
             filters.lastContactDate = { gte: last7Days };
             break;
-          case "last30days":
+          case 'last30days':
             const last30Days = new Date(now);
             last30Days.setDate(last30Days.getDate() - 30);
             filters.lastContactDate = { gte: last30Days };
             break;
-          case "never":
+          case 'never':
             filters.lastContactDate = null;
             break;
         }
@@ -4808,7 +4471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters,
         search: search as string,
         sortBy: sortBy as string,
-        sortOrder: sortOrder as "asc" | "desc",
+        sortOrder: sortOrder as 'asc' | 'desc',
         offset,
         limit: limitNum,
       });
@@ -4818,9 +4481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         search: search as string,
       });
 
-      console.log(
-        `[CONTACTS DEBUG] Results: contacts.length=${contacts.length}, total=${total}`,
-      );
+      console.log(`[CONTACTS DEBUG] Results: contacts.length=${contacts.length}, total=${total}`);
 
       res.json({
         contacts,
@@ -4830,12 +4491,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pages: Math.ceil(total / limitNum),
       });
     } catch (error) {
-      console.error("Error fetching contacts:", error);
-      res.status(500).json({ error: "Failed to fetch contacts" });
+      console.error('Error fetching contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
 
-  app.post("/api/contacts", requireAuth, async (req, res) => {
+  app.post('/api/contacts', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const tenantId = user.tenantId;
@@ -4852,12 +4513,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contact = await storage.createContact(contactData);
       res.status(201).json(contact);
     } catch (error) {
-      console.error("Error creating contact:", error);
-      res.status(500).json({ error: "Failed to create contact" });
+      console.error('Error creating contact:', error);
+      res.status(500).json({ error: 'Failed to create contact' });
     }
   });
 
-  app.get("/api/contacts/:id", requireAuth, async (req, res) => {
+  app.get('/api/contacts/:id', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const tenantId = user.tenantId;
@@ -4866,29 +4527,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contact = await storage.getContactById(id);
 
       if (!contact) {
-        return res.status(404).json({ error: "Contact not found" });
+        return res.status(404).json({ error: 'Contact not found' });
       }
 
       // Check tenant access
       if (contact.tenantId !== tenantId) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: 'Access denied' });
       }
 
       // Role-based access control
-      if (user.role === "salesperson" && contact.ownerId !== user.id) {
+      if (user.role === 'salesperson' && contact.ownerId !== user.id) {
         return res.status(403).json({
-          error: "Access denied - you can only view your own contacts",
+          error: 'Access denied - you can only view your own contacts',
         });
       }
 
       res.json(contact);
     } catch (error) {
-      console.error("Error fetching contact:", error);
-      res.status(500).json({ error: "Failed to fetch contact" });
+      console.error('Error fetching contact:', error);
+      res.status(500).json({ error: 'Failed to fetch contact' });
     }
   });
 
-  app.put("/api/contacts/:id", requireAuth, async (req, res) => {
+  app.put('/api/contacts/:id', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const tenantId = user.tenantId;
@@ -4897,30 +4558,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contact = await storage.getContactById(id);
 
       if (!contact) {
-        return res.status(404).json({ error: "Contact not found" });
+        return res.status(404).json({ error: 'Contact not found' });
       }
 
       // Check tenant access
       if (contact.tenantId !== tenantId) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: 'Access denied' });
       }
 
       // Role-based access control
-      if (user.role === "salesperson" && contact.ownerId !== user.id) {
+      if (user.role === 'salesperson' && contact.ownerId !== user.id) {
         return res.status(403).json({
-          error: "Access denied - you can only edit your own contacts",
+          error: 'Access denied - you can only edit your own contacts',
         });
       }
 
       const updatedContact = await storage.updateContact(id, req.body);
       res.json(updatedContact);
     } catch (error) {
-      console.error("Error updating contact:", error);
-      res.status(500).json({ error: "Failed to update contact" });
+      console.error('Error updating contact:', error);
+      res.status(500).json({ error: 'Failed to update contact' });
     }
   });
 
-  app.delete("/api/contacts/:id", requireAuth, async (req, res) => {
+  app.delete('/api/contacts/:id', requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const tenantId = user.tenantId;
@@ -4929,202 +4590,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contact = await storage.getContactById(id);
 
       if (!contact) {
-        return res.status(404).json({ error: "Contact not found" });
+        return res.status(404).json({ error: 'Contact not found' });
       }
 
       // Check tenant access
       if (contact.tenantId !== tenantId) {
-        return res.status(403).json({ error: "Access denied" });
+        return res.status(403).json({ error: 'Access denied' });
       }
 
       // Role-based access control
-      if (user.role === "salesperson" && contact.ownerId !== user.id) {
+      if (user.role === 'salesperson' && contact.ownerId !== user.id) {
         return res.status(403).json({
-          error: "Access denied - you can only delete your own contacts",
+          error: 'Access denied - you can only delete your own contacts',
         });
       }
 
       await storage.deleteContact(id);
       res.status(204).send();
     } catch (error) {
-      console.error("Error deleting contact:", error);
-      res.status(500).json({ error: "Failed to delete contact" });
+      console.error('Error deleting contact:', error);
+      res.status(500).json({ error: 'Failed to delete contact' });
     }
   });
 
   // Business Records routes (client's customers/leads)
-  app.get(
-    "/api/customers",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        // Get business records where recordType = 'customer' (copier buyers)
-        const customers = await storage.getCustomers(tenantId);
-        res.json(customers);
-      } catch (error) {
-        console.error("Error fetching customers:", error);
-        res.status(500).json({ message: "Failed to fetch customers" });
+  app.get('/api/customers', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      // Get business records where recordType = 'customer' (copier buyers)
+      const customers = await storage.getCustomers(tenantId);
+      res.json(customers);
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      res.status(500).json({ message: 'Failed to fetch customers' });
+    }
+  });
 
-  app.get(
-    "/api/customers/:id",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const customer = await storage.getCustomer(id, tenantId);
-
-        if (!customer) {
-          return res.status(404).json({ message: "Customer not found" });
-        }
-
-        res.json(customer);
-      } catch (error) {
-        console.error("Error fetching customer:", error);
-        res.status(500).json({ message: "Failed to fetch customer" });
+  app.get('/api/customers/:id', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const customer = await storage.getCustomer(id, tenantId);
 
-  app.post(
-    "/api/customers",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-
-        const validatedData = insertCustomerSchema.parse({
-          ...req.body,
-          tenantId: tenantId,
-        });
-
-        const customer = await storage.createCustomer(validatedData);
-        res.status(201).json(customer);
-      } catch (error) {
-        console.error("Error creating customer:", error);
-        res.status(500).json({ message: "Failed to create customer" });
+      if (!customer) {
+        return res.status(404).json({ message: 'Customer not found' });
       }
-    },
-  );
+
+      res.json(customer);
+    } catch (error) {
+      console.error('Error fetching customer:', error);
+      res.status(500).json({ message: 'Failed to fetch customer' });
+    }
+  });
+
+  app.post('/api/customers', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const validatedData = insertCustomerSchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+      });
+
+      const customer = await storage.createCustomer(validatedData);
+      res.status(201).json(customer);
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      res.status(500).json({ message: 'Failed to create customer' });
+    }
+  });
 
   // Company management routes (new primary business entity)
-  app.get(
-    "/api/companies",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const user = req.user as User;
-        const tenantId = user.tenantId;
-        const { search } = req.query;
+  app.get('/api/companies', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user as User;
+      const tenantId = user.tenantId;
+      const { search } = req.query;
 
-        const companies = await storage.getCompanies(tenantId, search);
-        res.json(companies);
-      } catch (error) {
-        console.error("Error fetching companies:", error);
-        res.status(500).json({ message: "Failed to fetch companies" });
-      }
-    },
-  );
+      const companies = await storage.getCompanies(tenantId, search);
+      res.json(companies);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      res.status(500).json({ message: 'Failed to fetch companies' });
+    }
+  });
 
-  app.get(
-    "/api/companies/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const company = await storage.getCompany(id, tenantId);
-        if (!company) {
-          return res.status(404).json({ message: "Company not found" });
-        }
-        res.json(company);
-      } catch (error) {
-        console.error("Error fetching company:", error);
-        res.status(500).json({ message: "Failed to fetch company" });
+  app.get('/api/companies/:id', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const company = await storage.getCompany(id, tenantId);
+      if (!company) {
+        return res.status(404).json({ message: 'Company not found' });
+      }
+      res.json(company);
+    } catch (error) {
+      console.error('Error fetching company:', error);
+      res.status(500).json({ message: 'Failed to fetch company' });
+    }
+  });
 
-  app.post(
-    "/api/companies",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertCompanySchema.parse({
-          ...req.body,
-          tenantId: tenantId,
-        });
-        const company = await storage.createCompany(validatedData);
-        res.status(201).json(company);
-      } catch (error) {
-        console.error("Error creating company:", error);
-        res.status(500).json({ message: "Failed to create company" });
+  app.post('/api/companies', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const validatedData = insertCompanySchema.parse({
+        ...req.body,
+        tenantId: tenantId,
+      });
+      const company = await storage.createCompany(validatedData);
+      res.status(201).json(company);
+    } catch (error) {
+      console.error('Error creating company:', error);
+      res.status(500).json({ message: 'Failed to create company' });
+    }
+  });
 
-  app.put(
-    "/api/companies/:id",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const updatedCompany = await storage.updateCompany(
-          id,
-          req.body,
-          tenantId,
-        );
-        if (!updatedCompany) {
-          return res.status(404).json({ message: "Company not found" });
-        }
-        res.json(updatedCompany);
-      } catch (error) {
-        console.error("Error updating company:", error);
-        res.status(500).json({ message: "Failed to update company" });
+  app.put('/api/companies/:id', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const updatedCompany = await storage.updateCompany(id, req.body, tenantId);
+      if (!updatedCompany) {
+        return res.status(404).json({ message: 'Company not found' });
+      }
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error('Error updating company:', error);
+      res.status(500).json({ message: 'Failed to update company' });
+    }
+  });
 
   // Company contact routes
   app.get(
-    "/api/companies/:companyId/contacts",
+    '/api/companies/:companyId/contacts',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -5133,7 +4749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { companyId } = req.params;
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
 
         // Check if this is actually a business record ID instead of a company ID
@@ -5144,10 +4760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!existingCompany) {
           // It might be a business record ID, try to get the business record
-          const businessRecord = await storage.getBusinessRecord(
-            companyId,
-            tenantId,
-          );
+          const businessRecord = await storage.getBusinessRecord(companyId, tenantId);
           if (businessRecord) {
             // Try to find an existing company with the same name
             const existingCompanyByName = await storage.getCompanyByName(
@@ -5162,26 +4775,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return res.json([]);
             }
           } else {
-            return res
-              .status(404)
-              .json({ message: "Company or business record not found" });
+            return res.status(404).json({ message: 'Company or business record not found' });
           }
         }
 
-        const contacts = await storage.getCompanyContacts(
-          actualCompanyId,
-          tenantId,
-        );
+        const contacts = await storage.getCompanyContacts(actualCompanyId, tenantId);
         res.json(contacts);
       } catch (error) {
-        console.error("Error fetching company contacts:", error);
-        res.status(500).json({ message: "Failed to fetch company contacts" });
+        console.error('Error fetching company contacts:', error);
+        res.status(500).json({ message: 'Failed to fetch company contacts' });
       }
     },
   );
 
   app.post(
-    "/api/companies/:companyId/contacts",
+    '/api/companies/:companyId/contacts',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -5190,7 +4798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { companyId } = req.params;
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
 
         // Check if this is actually a business record ID instead of a company ID
@@ -5202,10 +4810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!existingCompany) {
           // It might be a business record ID, try to get the business record
-          const businessRecord = await storage.getBusinessRecord(
-            companyId,
-            tenantId,
-          );
+          const businessRecord = await storage.getBusinessRecord(companyId, tenantId);
           if (businessRecord) {
             // Try to find an existing company with the same name
             const existingCompanyByName = await storage.getCompanyByName(
@@ -5218,10 +4823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else {
               // Create a new company based on the business record
               const newCompany = await storage.createCompany({
-                name:
-                  businessRecord.company_name ||
-                  businessRecord.name ||
-                  "Unknown Company",
+                name: businessRecord.company_name || businessRecord.name || 'Unknown Company',
                 tenantId: tenantId,
                 businessRecordId: companyId, // Link back to the business record
                 industry: businessRecord.industry,
@@ -5231,14 +4833,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 city: businessRecord.city,
                 state: businessRecord.state,
                 zipCode: businessRecord.zip_code,
-                country: businessRecord.country || "USA",
+                country: businessRecord.country || 'USA',
               });
               actualCompanyId = newCompany.id;
             }
           } else {
-            return res
-              .status(404)
-              .json({ message: "Company or business record not found" });
+            return res.status(404).json({ message: 'Company or business record not found' });
           }
         }
 
@@ -5250,591 +4850,477 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contact = await storage.createCompanyContact(validatedData);
         res.status(201).json(contact);
       } catch (error) {
-        console.error("Error creating company contact:", error);
-        if (error.code === "23503") {
-          return res.status(400).json({ message: "Invalid company reference" });
+        console.error('Error creating company contact:', error);
+        if (error.code === '23503') {
+          return res.status(400).json({ message: 'Invalid company reference' });
         }
-        res.status(500).json({ message: "Failed to create company contact" });
+        res.status(500).json({ message: 'Failed to create company contact' });
       }
     },
   );
 
   // Lead management routes (potential copier buyers for Printyx clients)
-  app.get("/api/leads", requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/leads', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
       // Get business records where recordType = 'lead' (potential copier buyers)
       const leads = await storage.getLeads(tenantId);
       res.json(leads);
     } catch (error) {
-      console.error("Error fetching leads:", error);
-      res.status(500).json({ message: "Failed to fetch leads" });
+      console.error('Error fetching leads:', error);
+      res.status(500).json({ message: 'Failed to fetch leads' });
     }
   });
 
-  app.get("/api/leads/:id", requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/leads/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const lead = await storage.getLead(id, tenantId);
       if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
+        return res.status(404).json({ message: 'Lead not found' });
       }
       res.json(lead);
     } catch (error) {
-      console.error("Error fetching lead:", error);
-      res.status(500).json({ message: "Failed to fetch lead" });
+      console.error('Error fetching lead:', error);
+      res.status(500).json({ message: 'Failed to fetch lead' });
     }
   });
 
-  app.post("/api/leads", requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/leads', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const validatedData = insertLeadSchema.parse({
         ...req.body,
         tenantId: tenantId,
-        createdBy: "demo-user",
+        createdBy: 'demo-user',
       });
       const lead = await storage.createLead(validatedData);
       res.json(lead);
     } catch (error) {
-      console.error("Error creating lead:", error);
-      res.status(500).json({ message: "Failed to create lead" });
+      console.error('Error creating lead:', error);
+      res.status(500).json({ message: 'Failed to create lead' });
     }
   });
 
-  app.put("/api/leads/:id", requireAuth, requireAuth, async (req: any, res) => {
+  app.put('/api/leads/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const updatedLead = await storage.updateLead(id, req.body, tenantId);
       if (!updatedLead) {
-        return res.status(404).json({ message: "Lead not found" });
+        return res.status(404).json({ message: 'Lead not found' });
       }
       res.json(updatedLead);
     } catch (error) {
-      console.error("Error updating lead:", error);
-      res.status(500).json({ message: "Failed to update lead" });
+      console.error('Error updating lead:', error);
+      res.status(500).json({ message: 'Failed to update lead' });
     }
   });
 
   // Convert lead to customer
-  app.post(
-    "/api/leads/:id/convert",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const customer = await storage.convertLeadToCustomer(id, tenantId);
-        res.json(customer);
-      } catch (error) {
-        console.error("Error converting lead:", error);
-        res.status(500).json({ message: "Failed to convert lead to customer" });
+  app.post('/api/leads/:id/convert', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const customer = await storage.convertLeadToCustomer(id, tenantId);
+      res.json(customer);
+    } catch (error) {
+      console.error('Error converting lead:', error);
+      res.status(500).json({ message: 'Failed to convert lead to customer' });
+    }
+  });
 
   // Lead activities
-  app.get(
-    "/api/leads/:id/activities",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const activities = await storage.getLeadActivities(id, tenantId);
-        res.json(activities);
-      } catch (error) {
-        console.error("Error fetching lead activities:", error);
-        res.status(500).json({ message: "Failed to fetch lead activities" });
+  app.get('/api/leads/:id/activities', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const activities = await storage.getLeadActivities(id, tenantId);
+      res.json(activities);
+    } catch (error) {
+      console.error('Error fetching lead activities:', error);
+      res.status(500).json({ message: 'Failed to fetch lead activities' });
+    }
+  });
 
-  app.post(
-    "/api/leads/:id/activities",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const activityData = {
-          ...req.body,
-          leadId: id,
-          tenantId,
-          createdBy: "demo-user",
-        };
-        const activity = await storage.createLeadActivity(activityData);
-        res.json(activity);
-      } catch (error) {
-        console.error("Error creating lead activity:", error);
-        res.status(500).json({ message: "Failed to create lead activity" });
+  app.post('/api/leads/:id/activities', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const activityData = {
+        ...req.body,
+        leadId: id,
+        tenantId,
+        createdBy: 'demo-user',
+      };
+      const activity = await storage.createLeadActivity(activityData);
+      res.json(activity);
+    } catch (error) {
+      console.error('Error creating lead activity:', error);
+      res.status(500).json({ message: 'Failed to create lead activity' });
+    }
+  });
 
   // Lead contacts
-  app.get(
-    "/api/leads/:id/contacts",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const contacts = await storage.getLeadContacts(id, tenantId);
-        res.json(contacts);
-      } catch (error) {
-        console.error("Error fetching lead contacts:", error);
-        res.status(500).json({ message: "Failed to fetch lead contacts" });
+  app.get('/api/leads/:id/contacts', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const contacts = await storage.getLeadContacts(id, tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching lead contacts:', error);
+      res.status(500).json({ message: 'Failed to fetch lead contacts' });
+    }
+  });
 
-  app.post(
-    "/api/leads/:id/contacts",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const contactData = {
-          ...req.body,
-          leadId: id,
-          tenantId,
-        };
-        const contact = await storage.createLeadContact(contactData);
-        res.json(contact);
-      } catch (error) {
-        console.error("Error creating lead contact:", error);
-        res.status(500).json({ message: "Failed to create lead contact" });
+  app.post('/api/leads/:id/contacts', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const contactData = {
+        ...req.body,
+        leadId: id,
+        tenantId,
+      };
+      const contact = await storage.createLeadContact(contactData);
+      res.json(contact);
+    } catch (error) {
+      console.error('Error creating lead contact:', error);
+      res.status(500).json({ message: 'Failed to create lead contact' });
+    }
+  });
 
   // Lead related records
-  app.get(
-    "/api/leads/:id/related-records",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const records = await storage.getLeadRelatedRecords(id, tenantId);
-        res.json(records);
-      } catch (error) {
-        console.error("Error fetching lead related records:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch lead related records" });
+  app.get('/api/leads/:id/related-records', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const records = await storage.getLeadRelatedRecords(id, tenantId);
+      res.json(records);
+    } catch (error) {
+      console.error('Error fetching lead related records:', error);
+      res.status(500).json({ message: 'Failed to fetch lead related records' });
+    }
+  });
 
   // Product Management Routes
 
   // Product Models
-  app.get(
-    "/api/product-models",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const models = await storage.getProductModels(tenantId);
-        res.json(models);
-      } catch (error) {
-        console.error("Error fetching product models:", error);
-        res.status(500).json({ message: "Failed to fetch product models" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/product-models/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const model = await storage.getProductModel(id, tenantId);
-        if (!model) {
-          return res.status(404).json({ message: "Product model not found" });
-        }
-        res.json(model);
-      } catch (error) {
-        console.error("Error fetching product model:", error);
-        res.status(500).json({ message: "Failed to fetch product model" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/product-models",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertProductModelSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const model = await storage.createProductModel(validatedData);
-        res.json(model);
-      } catch (error) {
-        console.error("Error creating product model:", error);
-        res.status(500).json({ message: "Failed to create product model" });
-      }
-    },
-  );
-
-  app.patch(
-    "/api/product-models/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const model = await storage.updateProductModel(id, req.body, tenantId);
-        if (!model) {
-          return res.status(404).json({ message: "Product model not found" });
-        }
-        res.json(model);
-      } catch (error) {
-        console.error("Error updating product model:", error);
-        res.status(500).json({ message: "Failed to update product model" });
-      }
-    },
-  );
-
-  // Product Accessories
-  app.get(
-    "/api/product-accessories",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const accessories = await storage.getAllProductAccessories(tenantId);
-        res.json(accessories);
-      } catch (error) {
-        console.error("Error fetching product accessories:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch product accessories" });
-      }
-    },
-  );
-
-  app.get(
-    "/api/product-models/:modelId/accessories",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { modelId } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const accessories = await storage.getProductAccessories(
-          modelId,
-          tenantId,
-        );
-        res.json(accessories);
-      } catch (error) {
-        console.error("Error fetching product accessories:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch product accessories" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/product-accessories",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertProductAccessorySchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const accessory = await storage.createProductAccessory(validatedData);
-        res.json(accessory);
-      } catch (error) {
-        console.error("Error creating product accessory:", error);
-        res.status(500).json({ message: "Failed to create product accessory" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/product-models/:modelId/accessories",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { modelId } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertProductAccessorySchema.parse({
-          ...req.body,
-          modelId,
-          tenantId,
-        });
-        const accessory = await storage.createProductAccessory(validatedData);
-        res.json(accessory);
-      } catch (error) {
-        console.error("Error creating product accessory:", error);
-        res.status(500).json({ message: "Failed to create product accessory" });
-      }
-    },
-  );
-
-  app.patch(
-    "/api/product-accessories/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const accessory = await storage.updateProductAccessory(
-          id,
-          req.body,
-          tenantId,
-        );
-        if (!accessory) {
-          return res
-            .status(404)
-            .json({ message: "Product accessory not found" });
-        }
-        res.json(accessory);
-      } catch (error) {
-        console.error("Error updating product accessory:", error);
-        res.status(500).json({ message: "Failed to update product accessory" });
-      }
-    },
-  );
-
-  // Professional Services
-  app.get(
-    "/api/professional-services",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const services = await storage.getAllProfessionalServices(tenantId);
-        res.json(services);
-      } catch (error) {
-        console.error("Error fetching professional services:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch professional services" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/professional-services",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertProfessionalServiceSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const service = await storage.createProfessionalService(validatedData);
-        res.json(service);
-      } catch (error) {
-        console.error("Error creating professional service:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to create professional service" });
-      }
-    },
-  );
-
-  // Service Products
-  app.get(
-    "/api/service-products",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const services = await storage.getAllServiceProducts(tenantId);
-        res.json(services);
-      } catch (error) {
-        console.error("Error fetching service products:", error);
-        res.status(500).json({ message: "Failed to fetch service products" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/service-products",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertServiceProductSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const service = await storage.createServiceProduct(validatedData);
-        res.json(service);
-      } catch (error) {
-        console.error("Error creating service product:", error);
-        res.status(500).json({ message: "Failed to create service product" });
-      }
-    },
-  );
-
-  // Software Products
-  app.get(
-    "/api/software-products",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const products = await storage.getAllSoftwareProducts(tenantId);
-        res.json(products);
-      } catch (error) {
-        console.error("Error fetching software products:", error);
-        res.status(500).json({ message: "Failed to fetch software products" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/software-products",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertSoftwareProductSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const product = await storage.createSoftwareProduct(validatedData);
-        res.json(product);
-      } catch (error) {
-        console.error("Error creating software product:", error);
-        res.status(500).json({ message: "Failed to create software product" });
-      }
-    },
-  );
-
-  // Supplies
-  app.get("/api/supplies", requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/product-models', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const models = await storage.getProductModels(tenantId);
+      res.json(models);
+    } catch (error) {
+      console.error('Error fetching product models:', error);
+      res.status(500).json({ message: 'Failed to fetch product models' });
+    }
+  });
+
+  app.get('/api/product-models/:id', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const model = await storage.getProductModel(id, tenantId);
+      if (!model) {
+        return res.status(404).json({ message: 'Product model not found' });
+      }
+      res.json(model);
+    } catch (error) {
+      console.error('Error fetching product model:', error);
+      res.status(500).json({ message: 'Failed to fetch product model' });
+    }
+  });
+
+  app.post('/api/product-models', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const validatedData = insertProductModelSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const model = await storage.createProductModel(validatedData);
+      res.json(model);
+    } catch (error) {
+      console.error('Error creating product model:', error);
+      res.status(500).json({ message: 'Failed to create product model' });
+    }
+  });
+
+  app.patch('/api/product-models/:id', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const model = await storage.updateProductModel(id, req.body, tenantId);
+      if (!model) {
+        return res.status(404).json({ message: 'Product model not found' });
+      }
+      res.json(model);
+    } catch (error) {
+      console.error('Error updating product model:', error);
+      res.status(500).json({ message: 'Failed to update product model' });
+    }
+  });
+
+  // Product Accessories
+  app.get('/api/product-accessories', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const accessories = await storage.getAllProductAccessories(tenantId);
+      res.json(accessories);
+    } catch (error) {
+      console.error('Error fetching product accessories:', error);
+      res.status(500).json({ message: 'Failed to fetch product accessories' });
+    }
+  });
+
+  app.get(
+    '/api/product-models/:modelId/accessories',
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { modelId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const accessories = await storage.getProductAccessories(modelId, tenantId);
+        res.json(accessories);
+      } catch (error) {
+        console.error('Error fetching product accessories:', error);
+        res.status(500).json({ message: 'Failed to fetch product accessories' });
+      }
+    },
+  );
+
+  app.post('/api/product-accessories', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const validatedData = insertProductAccessorySchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const accessory = await storage.createProductAccessory(validatedData);
+      res.json(accessory);
+    } catch (error) {
+      console.error('Error creating product accessory:', error);
+      res.status(500).json({ message: 'Failed to create product accessory' });
+    }
+  });
+
+  app.post(
+    '/api/product-models/:modelId/accessories',
+    requireAuth,
+    requireAuth,
+    async (req: any, res) => {
+      try {
+        const { modelId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertProductAccessorySchema.parse({
+          ...req.body,
+          modelId,
+          tenantId,
+        });
+        const accessory = await storage.createProductAccessory(validatedData);
+        res.json(accessory);
+      } catch (error) {
+        console.error('Error creating product accessory:', error);
+        res.status(500).json({ message: 'Failed to create product accessory' });
+      }
+    },
+  );
+
+  app.patch('/api/product-accessories/:id', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const accessory = await storage.updateProductAccessory(id, req.body, tenantId);
+      if (!accessory) {
+        return res.status(404).json({ message: 'Product accessory not found' });
+      }
+      res.json(accessory);
+    } catch (error) {
+      console.error('Error updating product accessory:', error);
+      res.status(500).json({ message: 'Failed to update product accessory' });
+    }
+  });
+
+  // Professional Services
+  app.get('/api/professional-services', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const services = await storage.getAllProfessionalServices(tenantId);
+      res.json(services);
+    } catch (error) {
+      console.error('Error fetching professional services:', error);
+      res.status(500).json({ message: 'Failed to fetch professional services' });
+    }
+  });
+
+  app.post('/api/professional-services', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const validatedData = insertProfessionalServiceSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const service = await storage.createProfessionalService(validatedData);
+      res.json(service);
+    } catch (error) {
+      console.error('Error creating professional service:', error);
+      res.status(500).json({ message: 'Failed to create professional service' });
+    }
+  });
+
+  // Service Products
+  app.get('/api/service-products', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const services = await storage.getAllServiceProducts(tenantId);
+      res.json(services);
+    } catch (error) {
+      console.error('Error fetching service products:', error);
+      res.status(500).json({ message: 'Failed to fetch service products' });
+    }
+  });
+
+  app.post('/api/service-products', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const validatedData = insertServiceProductSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const service = await storage.createServiceProduct(validatedData);
+      res.json(service);
+    } catch (error) {
+      console.error('Error creating service product:', error);
+      res.status(500).json({ message: 'Failed to create service product' });
+    }
+  });
+
+  // Software Products
+  app.get('/api/software-products', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const products = await storage.getAllSoftwareProducts(tenantId);
+      res.json(products);
+    } catch (error) {
+      console.error('Error fetching software products:', error);
+      res.status(500).json({ message: 'Failed to fetch software products' });
+    }
+  });
+
+  app.post('/api/software-products', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+      const validatedData = insertSoftwareProductSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const product = await storage.createSoftwareProduct(validatedData);
+      res.json(product);
+    } catch (error) {
+      console.error('Error creating software product:', error);
+      res.status(500).json({ message: 'Failed to create software product' });
+    }
+  });
+
+  // Supplies
+  app.get('/api/supplies', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const supplies = await storage.getAllSupplies(tenantId);
       res.json(supplies);
     } catch (error) {
-      console.error("Error fetching supplies:", error);
-      res.status(500).json({ message: "Failed to fetch supplies" });
+      console.error('Error fetching supplies:', error);
+      res.status(500).json({ message: 'Failed to fetch supplies' });
     }
   });
 
-  app.post("/api/supplies", requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/supplies', requireAuth, requireAuth, async (req: any, res) => {
     try {
       const tenantId = req.user?.tenantId;
       if (!tenantId) {
-        return res.status(400).json({ message: "Tenant ID is required" });
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const validatedData = insertSupplySchema.parse({
         ...req.body,
@@ -5843,299 +5329,285 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const supply = await storage.createSupply(validatedData);
       res.json(supply);
     } catch (error) {
-      console.error("Error creating supply:", error);
-      res.status(500).json({ message: "Failed to create supply" });
+      console.error('Error creating supply:', error);
+      res.status(500).json({ message: 'Failed to create supply' });
     }
   });
 
   // Managed Services
-  app.get(
-    "/api/managed-services",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const services = await storage.getAllManagedServices(tenantId);
-        res.json(services);
-      } catch (error) {
-        console.error("Error fetching managed services:", error);
-        res.status(500).json({ message: "Failed to fetch managed services" });
+  app.get('/api/managed-services', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const services = await storage.getAllManagedServices(tenantId);
+      res.json(services);
+    } catch (error) {
+      console.error('Error fetching managed services:', error);
+      res.status(500).json({ message: 'Failed to fetch managed services' });
+    }
+  });
 
-  app.post(
-    "/api/managed-services",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertManagedServiceSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const service = await storage.createManagedService(validatedData);
-        res.json(service);
-      } catch (error) {
-        console.error("Error creating managed service:", error);
-        res.status(500).json({ message: "Failed to create managed service" });
+  app.post('/api/managed-services', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const validatedData = insertManagedServiceSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const service = await storage.createManagedService(validatedData);
+      res.json(service);
+    } catch (error) {
+      console.error('Error creating managed service:', error);
+      res.status(500).json({ message: 'Failed to create managed service' });
+    }
+  });
 
   // ============= ACCOUNTING API ROUTES =============
 
   // Vendors Management
-  app.get("/api/vendors", requireAuth, async (req, res) => {
+  app.get('/api/vendors', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const vendors = await storage.getVendors(tenantId);
       res.json(vendors);
     } catch (error) {
-      console.error("Error fetching vendors:", error);
-      res.status(500).json({ message: "Failed to fetch vendors" });
+      console.error('Error fetching vendors:', error);
+      res.status(500).json({ message: 'Failed to fetch vendors' });
     }
   });
 
-  app.get("/api/vendors/:id", requireAuth, async (req, res) => {
+  app.get('/api/vendors/:id', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const { id } = req.params;
       const vendor = await storage.getVendor(id, tenantId);
       if (!vendor) {
-        return res.status(404).json({ message: "Vendor not found" });
+        return res.status(404).json({ message: 'Vendor not found' });
       }
       res.json(vendor);
     } catch (error) {
-      console.error("Error fetching vendor:", error);
-      res.status(500).json({ message: "Failed to fetch vendor" });
+      console.error('Error fetching vendor:', error);
+      res.status(500).json({ message: 'Failed to fetch vendor' });
     }
   });
 
-  app.post("/api/vendors", requireAuth, async (req, res) => {
+  app.post('/api/vendors', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const vendorData = { ...req.body, tenantId };
       const newVendor = await storage.createVendor(vendorData);
       res.status(201).json(newVendor);
     } catch (error) {
-      console.error("Error creating vendor:", error);
-      res.status(500).json({ message: "Failed to create vendor" });
+      console.error('Error creating vendor:', error);
+      res.status(500).json({ message: 'Failed to create vendor' });
     }
   });
 
-  app.patch("/api/vendors/:id", requireAuth, async (req, res) => {
+  app.patch('/api/vendors/:id', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const { id } = req.params;
       const updatedVendor = await storage.updateVendor(id, req.body, tenantId);
       if (!updatedVendor) {
-        return res.status(404).json({ message: "Vendor not found" });
+        return res.status(404).json({ message: 'Vendor not found' });
       }
       res.json(updatedVendor);
     } catch (error) {
-      console.error("Error updating vendor:", error);
-      res.status(500).json({ message: "Failed to update vendor" });
+      console.error('Error updating vendor:', error);
+      res.status(500).json({ message: 'Failed to update vendor' });
     }
   });
 
-  app.delete("/api/vendors/:id", requireAuth, async (req, res) => {
+  app.delete('/api/vendors/:id', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const { id } = req.params;
       const success = await storage.deleteVendor(id, tenantId);
       if (success) {
-        res.json({ message: "Vendor deleted successfully" });
+        res.json({ message: 'Vendor deleted successfully' });
       } else {
-        res.status(404).json({ message: "Vendor not found" });
+        res.status(404).json({ message: 'Vendor not found' });
       }
     } catch (error) {
-      console.error("Error deleting vendor:", error);
-      res.status(500).json({ message: "Failed to delete vendor" });
+      console.error('Error deleting vendor:', error);
+      res.status(500).json({ message: 'Failed to delete vendor' });
     }
   });
 
   // Accounts Payable Management
-  app.get("/api/accounts-payable", requireAuth, async (req, res) => {
+  app.get('/api/accounts-payable', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const accountsPayable = await storage.getAccountsPayable(tenantId);
       res.json(accountsPayable);
     } catch (error) {
-      console.error("Error fetching accounts payable:", error);
-      res.status(500).json({ message: "Failed to fetch accounts payable" });
+      console.error('Error fetching accounts payable:', error);
+      res.status(500).json({ message: 'Failed to fetch accounts payable' });
     }
   });
 
-  app.post("/api/accounts-payable", requireAuth, async (req, res) => {
+  app.post('/api/accounts-payable', requireAuth, async (req, res) => {
     try {
       const { tenantId, id: userId } = req.user;
       const apData = { ...req.body, tenantId, createdBy: userId };
       const newAP = await storage.createAccountsPayable(apData);
       res.status(201).json(newAP);
     } catch (error) {
-      console.error("Error creating account payable:", error);
-      res.status(500).json({ message: "Failed to create account payable" });
+      console.error('Error creating account payable:', error);
+      res.status(500).json({ message: 'Failed to create account payable' });
     }
   });
 
   // Accounts Receivable Management
-  app.get("/api/accounts-receivable", requireAuth, async (req, res) => {
+  app.get('/api/accounts-receivable', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const accountsReceivable = await storage.getAccountsReceivable(tenantId);
       res.json(accountsReceivable);
     } catch (error) {
-      console.error("Error fetching accounts receivable:", error);
-      res.status(500).json({ message: "Failed to fetch accounts receivable" });
+      console.error('Error fetching accounts receivable:', error);
+      res.status(500).json({ message: 'Failed to fetch accounts receivable' });
     }
   });
 
-  app.post("/api/accounts-receivable", requireAuth, async (req, res) => {
+  app.post('/api/accounts-receivable', requireAuth, async (req, res) => {
     try {
       const { tenantId, id: userId } = req.user;
       const arData = { ...req.body, tenantId, createdBy: userId };
       const newAR = await storage.createAccountsReceivable(arData);
       res.status(201).json(newAR);
     } catch (error) {
-      console.error("Error creating account receivable:", error);
-      res.status(500).json({ message: "Failed to create account receivable" });
+      console.error('Error creating account receivable:', error);
+      res.status(500).json({ message: 'Failed to create account receivable' });
     }
   });
 
   // Chart of Accounts Management
-  app.get("/api/chart-of-accounts", requireAuth, async (req, res) => {
+  app.get('/api/chart-of-accounts', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const accounts = await storage.getChartOfAccounts(tenantId);
       res.json(accounts);
     } catch (error) {
-      console.error("Error fetching chart of accounts:", error);
-      res.status(500).json({ message: "Failed to fetch chart of accounts" });
+      console.error('Error fetching chart of accounts:', error);
+      res.status(500).json({ message: 'Failed to fetch chart of accounts' });
     }
   });
 
-  app.post("/api/chart-of-accounts", requireAuth, async (req, res) => {
+  app.post('/api/chart-of-accounts', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const accountData = { ...req.body, tenantId };
       const newAccount = await storage.createChartOfAccount(accountData);
       res.status(201).json(newAccount);
     } catch (error) {
-      console.error("Error creating account:", error);
-      res.status(500).json({ message: "Failed to create account" });
+      console.error('Error creating account:', error);
+      res.status(500).json({ message: 'Failed to create account' });
     }
   });
 
   // Journal Entries Management
-  app.get("/api/journal-entries", requireAuth, async (req, res) => {
+  app.get('/api/journal-entries', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const entries = await storage.getJournalEntries(tenantId);
       res.json(entries);
     } catch (error) {
-      console.error("Error fetching journal entries:", error);
-      res.status(500).json({ message: "Failed to fetch journal entries" });
+      console.error('Error fetching journal entries:', error);
+      res.status(500).json({ message: 'Failed to fetch journal entries' });
     }
   });
 
-  app.get("/api/journal-entries/:id", requireAuth, async (req, res) => {
+  app.get('/api/journal-entries/:id', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const { id } = req.params;
       const entry = await storage.getJournalEntry(id, tenantId);
       if (!entry) {
-        return res.status(404).json({ message: "Journal entry not found" });
+        return res.status(404).json({ message: 'Journal entry not found' });
       }
       res.json(entry);
     } catch (error) {
-      console.error("Error fetching journal entry:", error);
-      res.status(500).json({ message: "Failed to fetch journal entry" });
+      console.error('Error fetching journal entry:', error);
+      res.status(500).json({ message: 'Failed to fetch journal entry' });
     }
   });
 
-  app.post("/api/journal-entries", requireAuth, async (req, res) => {
+  app.post('/api/journal-entries', requireAuth, async (req, res) => {
     try {
       const { tenantId, id: userId } = req.user;
       const entryData = { ...req.body, tenantId, createdBy: userId };
       const newEntry = await storage.createJournalEntry(entryData);
       res.status(201).json(newEntry);
     } catch (error) {
-      console.error("Error creating journal entry:", error);
-      res.status(500).json({ message: "Failed to create journal entry" });
+      console.error('Error creating journal entry:', error);
+      res.status(500).json({ message: 'Failed to create journal entry' });
     }
   });
 
-  app.patch("/api/journal-entries/:id", requireAuth, async (req, res) => {
+  app.patch('/api/journal-entries/:id', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const { id } = req.params;
       const updateData = { ...req.body, updatedAt: new Date() };
-      const updatedEntry = await storage.updateJournalEntry(
-        id,
-        updateData,
-        tenantId,
-      );
+      const updatedEntry = await storage.updateJournalEntry(id, updateData, tenantId);
       if (!updatedEntry) {
-        return res.status(404).json({ message: "Journal entry not found" });
+        return res.status(404).json({ message: 'Journal entry not found' });
       }
       res.json(updatedEntry);
     } catch (error) {
-      console.error("Error updating journal entry:", error);
-      res.status(500).json({ message: "Failed to update journal entry" });
+      console.error('Error updating journal entry:', error);
+      res.status(500).json({ message: 'Failed to update journal entry' });
     }
   });
 
-  app.delete("/api/journal-entries/:id", requireAuth, async (req, res) => {
+  app.delete('/api/journal-entries/:id', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const { id } = req.params;
       const success = await storage.deleteJournalEntry(id, tenantId);
       if (!success) {
-        return res.status(404).json({ message: "Journal entry not found" });
+        return res.status(404).json({ message: 'Journal entry not found' });
       }
-      res.json({ message: "Journal entry deleted successfully" });
+      res.json({ message: 'Journal entry deleted successfully' });
     } catch (error) {
-      console.error("Error deleting journal entry:", error);
-      res.status(500).json({ message: "Failed to delete journal entry" });
+      console.error('Error deleting journal entry:', error);
+      res.status(500).json({ message: 'Failed to delete journal entry' });
     }
   });
 
   // Purchase Orders Management
-  app.get("/api/purchase-orders", requireAuth, async (req, res) => {
+  app.get('/api/purchase-orders', requireAuth, async (req, res) => {
     try {
       const { tenantId } = req.user;
       const purchaseOrders = await storage.getPurchaseOrders(tenantId);
       res.json(purchaseOrders);
     } catch (error) {
-      console.error("Error fetching purchase orders:", error);
-      res.status(500).json({ message: "Failed to fetch purchase orders" });
+      console.error('Error fetching purchase orders:', error);
+      res.status(500).json({ message: 'Failed to fetch purchase orders' });
     }
   });
 
-  app.post("/api/purchase-orders", requireAuth, async (req, res) => {
+  app.post('/api/purchase-orders', requireAuth, async (req, res) => {
     try {
       const { tenantId, id: userId } = req.user;
       const poData = { ...req.body, tenantId, createdBy: userId };
       const newPO = await storage.createPurchaseOrder(poData);
       res.status(201).json(newPO);
     } catch (error) {
-      console.error("Error creating purchase order:", error);
-      res.status(500).json({ message: "Failed to create purchase order" });
+      console.error('Error creating purchase order:', error);
+      res.status(500).json({ message: 'Failed to create purchase order' });
     }
   });
 
   // Company contacts endpoints
   app.post(
-    "/api/companies/:companyId/contacts",
+    '/api/companies/:companyId/contacts',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -6145,18 +5617,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Simple session-based authentication check
         if (!req.session.userId) {
-          return res.status(401).json({ message: "Not authenticated" });
+          return res.status(401).json({ message: 'Not authenticated' });
         }
 
         const user = await storage.getUser(req.session.userId);
         if (!user?.tenantId) {
-          return res.status(403).json({ message: "Access denied" });
+          return res.status(403).json({ message: 'Access denied' });
         }
 
         if (!Array.isArray(contacts) || contacts.length === 0) {
-          return res
-            .status(400)
-            .json({ message: "Contacts array is required" });
+          return res.status(400).json({ message: 'Contacts array is required' });
         }
 
         // Create contacts for the company
@@ -6175,8 +5645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contacts: createdContacts,
         });
       } catch (error) {
-        console.error("Error creating company contacts:", error);
-        res.status(500).json({ message: "Failed to create contacts" });
+        console.error('Error creating company contacts:', error);
+        res.status(500).json({ message: 'Failed to create contacts' });
       }
     },
   );
@@ -6184,204 +5654,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============= METER BILLING API ROUTES =============
 
   // Contract Tiered Rates Management
-  app.get(
-    "/api/contract-tiered-rates",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const rates = await storage.getContractTieredRates(tenantId);
-        res.json(rates);
-      } catch (error) {
-        console.error("Error fetching contract tiered rates:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch contract tiered rates" });
+  app.get('/api/contract-tiered-rates', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const rates = await storage.getContractTieredRates(tenantId);
+      res.json(rates);
+    } catch (error) {
+      console.error('Error fetching contract tiered rates:', error);
+      res.status(500).json({ message: 'Failed to fetch contract tiered rates' });
+    }
+  });
 
-  app.post(
-    "/api/contract-tiered-rates",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
-        const validatedData = insertContractTieredRateSchema.parse({
-          ...req.body,
-          tenantId,
-        });
-        const rate = await storage.createContractTieredRate(validatedData);
-        res.json(rate);
-      } catch (error) {
-        console.error("Error creating contract tiered rate:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to create contract tiered rate" });
+  app.post('/api/contract-tiered-rates', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
       }
-    },
-  );
+      const validatedData = insertContractTieredRateSchema.parse({
+        ...req.body,
+        tenantId,
+      });
+      const rate = await storage.createContractTieredRate(validatedData);
+      res.json(rate);
+    } catch (error) {
+      console.error('Error creating contract tiered rate:', error);
+      res.status(500).json({ message: 'Failed to create contract tiered rate' });
+    }
+  });
 
   // Automated Invoice Generation
-  app.post(
-    "/api/billing/generate-invoices",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user?.tenantId;
-        if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
-        }
+  app.post('/api/billing/generate-invoices', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-        // Get all pending meter readings
-        const pendingReadings = await storage.getMeterReadingsByStatus(
-          tenantId,
-          "pending",
-        );
+      // Get all pending meter readings
+      const pendingReadings = await storage.getMeterReadingsByStatus(tenantId, 'pending');
 
-        const generatedInvoices = [];
-        for (const reading of pendingReadings) {
-          try {
-            // Calculate billing amounts using tiered rates
-            const contract = await storage.getContract(
-              reading.contractId,
-              tenantId,
-            );
-            if (!contract) continue;
+      const generatedInvoices = [];
+      for (const reading of pendingReadings) {
+        try {
+          // Calculate billing amounts using tiered rates
+          const contract = await storage.getContract(reading.contractId, tenantId);
+          if (!contract) continue;
 
-            // Get tiered rates for this contract
-            const tieredRates = await storage.getContractTieredRatesByContract(
-              reading.contractId,
-            );
+          // Get tiered rates for this contract
+          const tieredRates = await storage.getContractTieredRatesByContract(reading.contractId);
 
-            let blackAmount = 0;
-            let colorAmount = 0;
+          let blackAmount = 0;
+          let colorAmount = 0;
 
-            // Calculate tiered billing for black & white copies
-            if (reading.blackCopies && reading.blackCopies > 0) {
-              const blackRates = tieredRates
-                .filter((rate) => rate.colorType === "black")
-                .sort((a, b) => a.minimumVolume - b.minimumVolume);
-              blackAmount = calculateTieredAmount(
-                reading.blackCopies,
-                blackRates,
-                parseFloat(contract.blackRate?.toString() || "0"),
-              );
-            }
-
-            // Calculate tiered billing for color copies
-            if (reading.colorCopies && reading.colorCopies > 0) {
-              const colorRates = tieredRates
-                .filter((rate) => rate.colorType === "color")
-                .sort((a, b) => a.minimumVolume - b.minimumVolume);
-              colorAmount = calculateTieredAmount(
-                reading.colorCopies,
-                colorRates,
-                parseFloat(contract.colorRate?.toString() || "0"),
-              );
-            }
-
-            const totalAmount =
-              blackAmount +
-              colorAmount +
-              parseFloat(contract.monthlyBase?.toString() || "0");
-
-            // Create invoice
-            const invoice = await storage.createInvoice({
-              tenantId,
-              customerId: contract.customerId,
-              contractId: contract.id,
-              invoiceNumber: `INV-${Date.now()}-${Math.random()
-                .toString(36)
-                .substr(2, 5)}`,
-              issueDate: new Date(),
-              dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-              totalAmount: totalAmount.toString(),
-              paidAmount: "0",
-              status: "pending",
-              description: `Meter billing for ${format(
-                new Date(reading.readingDate),
-                "MMMM yyyy",
-              )}`,
-            });
-
-            // Update meter reading billing status
-            await storage.updateMeterReading(
-              reading.id,
-              {
-                billingStatus: "processed",
-                billingAmount: totalAmount.toString(),
-                invoiceId: invoice.id,
-              },
-              tenantId,
-            );
-
-            generatedInvoices.push(invoice);
-          } catch (readingError) {
-            console.error(
-              `Error processing reading ${reading.id}:`,
-              readingError,
+          // Calculate tiered billing for black & white copies
+          if (reading.blackCopies && reading.blackCopies > 0) {
+            const blackRates = tieredRates
+              .filter((rate) => rate.colorType === 'black')
+              .sort((a, b) => a.minimumVolume - b.minimumVolume);
+            blackAmount = calculateTieredAmount(
+              reading.blackCopies,
+              blackRates,
+              parseFloat(contract.blackRate?.toString() || '0'),
             );
           }
-        }
 
-        res.json({
-          message: `Generated ${generatedInvoices.length} invoices`,
-          invoices: generatedInvoices,
-        });
-      } catch (error) {
-        console.error("Error generating invoices:", error);
-        res.status(500).json({ message: "Failed to generate invoices" });
+          // Calculate tiered billing for color copies
+          if (reading.colorCopies && reading.colorCopies > 0) {
+            const colorRates = tieredRates
+              .filter((rate) => rate.colorType === 'color')
+              .sort((a, b) => a.minimumVolume - b.minimumVolume);
+            colorAmount = calculateTieredAmount(
+              reading.colorCopies,
+              colorRates,
+              parseFloat(contract.colorRate?.toString() || '0'),
+            );
+          }
+
+          const totalAmount =
+            blackAmount + colorAmount + parseFloat(contract.monthlyBase?.toString() || '0');
+
+          // Create invoice
+          const invoice = await storage.createInvoice({
+            tenantId,
+            customerId: contract.customerId,
+            contractId: contract.id,
+            invoiceNumber: `INV-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            issueDate: new Date(),
+            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+            totalAmount: totalAmount.toString(),
+            paidAmount: '0',
+            status: 'pending',
+            description: `Meter billing for ${format(new Date(reading.readingDate), 'MMMM yyyy')}`,
+          });
+
+          // Update meter reading billing status
+          await storage.updateMeterReading(
+            reading.id,
+            {
+              billingStatus: 'processed',
+              billingAmount: totalAmount.toString(),
+              invoiceId: invoice.id,
+            },
+            tenantId,
+          );
+
+          generatedInvoices.push(invoice);
+        } catch (readingError) {
+          console.error(`Error processing reading ${reading.id}:`, readingError);
+        }
       }
-    },
-  );
+
+      res.json({
+        message: `Generated ${generatedInvoices.length} invoices`,
+        invoices: generatedInvoices,
+      });
+    } catch (error) {
+      console.error('Error generating invoices:', error);
+      res.status(500).json({ message: 'Failed to generate invoices' });
+    }
+  });
 
   // Contract Profitability Analysis
   app.get(
-    "/api/billing/contract-profitability",
+    '/api/billing/contract-profitability',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
 
         const contracts = await storage.getContracts(tenantId);
         const invoices = await storage.getInvoices(tenantId);
 
         const profitabilityData = contracts.map((contract) => {
-          const contractInvoices = invoices.filter(
-            (inv) => inv.contractId === contract.id,
-          );
+          const contractInvoices = invoices.filter((inv) => inv.contractId === contract.id);
           const totalRevenue = contractInvoices.reduce(
             (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
             0,
           );
           const totalPaid = contractInvoices.reduce(
-            (sum, inv) => sum + parseFloat(inv.paidAmount?.toString() || "0"),
+            (sum, inv) => sum + parseFloat(inv.paidAmount?.toString() || '0'),
             0,
           );
-          const equipmentCost = parseFloat(
-            contract.equipmentCost?.toString() || "0",
-          );
-          const monthlyCosts =
-            parseFloat(contract.monthlyBase?.toString() || "0") * 12; // Assume yearly cost
+          const equipmentCost = parseFloat(contract.equipmentCost?.toString() || '0');
+          const monthlyCosts = parseFloat(contract.monthlyBase?.toString() || '0') * 12; // Assume yearly cost
 
           const totalCosts = equipmentCost + monthlyCosts;
           const grossProfit = totalRevenue - totalCosts;
-          const marginPercent =
-            totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+          const marginPercent = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
           return {
             contractId: contract.id,
@@ -6393,129 +5820,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
             marginPercent,
             invoiceCount: contractInvoices.length,
             averageInvoiceAmount:
-              contractInvoices.length > 0
-                ? totalRevenue / contractInvoices.length
-                : 0,
+              contractInvoices.length > 0 ? totalRevenue / contractInvoices.length : 0,
           };
         });
 
         res.json(profitabilityData);
       } catch (error) {
-        console.error("Error calculating contract profitability:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to calculate contract profitability" });
+        console.error('Error calculating contract profitability:', error);
+        res.status(500).json({ message: 'Failed to calculate contract profitability' });
       }
     },
   );
 
-  app.get(
-    "/api/companies/:companyId/contacts",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { companyId } = req.params;
+  app.get('/api/companies/:companyId/contacts', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { companyId } = req.params;
 
-        // Simple session-based authentication check
-        if (!req.session.userId) {
-          return res.status(401).json({ message: "Not authenticated" });
-        }
-
-        const user = await storage.getUser(req.session.userId);
-        if (!user?.tenantId) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-
-        const contacts = await storage.getContactsByCompany(
-          companyId,
-          user.tenantId,
-        );
-        res.json(contacts);
-      } catch (error) {
-        console.error("Error fetching company contacts:", error);
-        res.status(500).json({ message: "Failed to fetch contacts" });
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: 'Not authenticated' });
       }
-    },
-  );
 
-  app.put(
-    "/api/contacts/:contactId",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { contactId } = req.params;
-        const contactData = req.body;
-
-        // Simple session-based authentication check
-        if (!req.session.userId) {
-          return res.status(401).json({ message: "Not authenticated" });
-        }
-
-        const user = await storage.getUser(req.session.userId);
-        if (!user?.tenantId) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-
-        const updatedContact = await storage.updateContact(contactId, {
-          ...contactData,
-          tenantId: user.tenantId,
-          updatedAt: new Date(),
-        });
-
-        res.json(updatedContact);
-      } catch (error) {
-        console.error("Error updating contact:", error);
-        res.status(500).json({ message: "Failed to update contact" });
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: 'Access denied' });
       }
-    },
-  );
 
-  app.delete(
-    "/api/contacts/:contactId",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { contactId } = req.params;
+      const contacts = await storage.getContactsByCompany(companyId, user.tenantId);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching company contacts:', error);
+      res.status(500).json({ message: 'Failed to fetch contacts' });
+    }
+  });
 
-        // Simple session-based authentication check
-        if (!req.session.userId) {
-          return res.status(401).json({ message: "Not authenticated" });
-        }
+  app.put('/api/contacts/:contactId', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { contactId } = req.params;
+      const contactData = req.body;
 
-        const user = await storage.getUser(req.session.userId);
-        if (!user?.tenantId) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-
-        await storage.deleteContact(contactId, user.tenantId);
-        res.json({ message: "Contact deleted successfully" });
-      } catch (error) {
-        console.error("Error deleting contact:", error);
-        res.status(500).json({ message: "Failed to delete contact" });
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: 'Not authenticated' });
       }
-    },
-  );
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const updatedContact = await storage.updateContact(contactId, {
+        ...contactData,
+        tenantId: user.tenantId,
+        updatedAt: new Date(),
+      });
+
+      res.json(updatedContact);
+    } catch (error) {
+      console.error('Error updating contact:', error);
+      res.status(500).json({ message: 'Failed to update contact' });
+    }
+  });
+
+  app.delete('/api/contacts/:contactId', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { contactId } = req.params;
+
+      // Simple session-based authentication check
+      if (!req.session.userId) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user?.tenantId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      await storage.deleteContact(contactId, user.tenantId);
+      res.json({ message: 'Contact deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      res.status(500).json({ message: 'Failed to delete contact' });
+    }
+  });
 
   // CSV Import Endpoints
 
   // Product Models Import
   app.post(
-    "/api/product-models/import",
-    upload.single("file"),
+    '/api/product-models/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const csvData = await parseCSV(req.file.buffer);
 
@@ -6529,18 +5934,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validation = validateProductModelData(row);
 
           if (!validation.isValid) {
-            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
             skipped++;
             continue;
           }
 
           try {
             const productData = { ...validation.data, tenantId };
-            
+
             // Check if product with same code already exists for this tenant
             const existingProduct = await storage.getProductModelByCode(
               validation.data.productCode,
-              tenantId
+              tenantId,
             );
 
             if (existingProduct) {
@@ -6555,7 +5960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`,
             );
             skipped++;
@@ -6571,27 +5976,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
-        console.error("Error importing product models:", error);
-        res.status(500).json({ message: "Failed to import product models" });
+        console.error('Error importing product models:', error);
+        res.status(500).json({ message: 'Failed to import product models' });
       }
     },
   );
 
   // Supplies Import
   app.post(
-    "/api/supplies/import",
-    upload.single("file"),
+    '/api/supplies/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const csvData = await parseCSV(req.file.buffer);
 
@@ -6605,18 +6010,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validation = validateSupplyData(row);
 
           if (!validation.isValid) {
-            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
             skipped++;
             continue;
           }
 
           try {
             const supplyData = { ...validation.data, tenantId };
-            
+
             // Check if supply with same code already exists for this tenant
             const existingSupply = await storage.getSupplyByCode(
               validation.data.productCode,
-              tenantId
+              tenantId,
             );
 
             if (existingSupply) {
@@ -6631,7 +6036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`,
             );
             skipped++;
@@ -6647,27 +6052,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
-        console.error("Error importing supplies:", error);
-        res.status(500).json({ message: "Failed to import supplies" });
+        console.error('Error importing supplies:', error);
+        res.status(500).json({ message: 'Failed to import supplies' });
       }
     },
   );
 
   // Managed Services Import
   app.post(
-    "/api/managed-services/import",
-    upload.single("file"),
+    '/api/managed-services/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const csvData = await parseCSV(req.file.buffer);
 
@@ -6681,18 +6086,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validation = validateManagedServiceData(row);
 
           if (!validation.isValid) {
-            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
             skipped++;
             continue;
           }
 
           try {
             const serviceData = { ...validation.data, tenantId };
-            
+
             // Check if managed service with same code already exists for this tenant
             const existingService = await storage.getManagedServiceByCode(
               validation.data.productCode,
-              tenantId
+              tenantId,
             );
 
             if (existingService) {
@@ -6707,7 +6112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`,
             );
             skipped++;
@@ -6723,27 +6128,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
-        console.error("Error importing managed services:", error);
-        res.status(500).json({ message: "Failed to import managed services" });
+        console.error('Error importing managed services:', error);
+        res.status(500).json({ message: 'Failed to import managed services' });
       }
     },
   );
 
   // Product Accessories Import
   app.post(
-    "/api/product-accessories/import",
-    upload.single("file"),
+    '/api/product-accessories/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const csvData = await parseCSV(req.file.buffer);
 
@@ -6757,18 +6162,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validation = validateAccessoryData(row);
 
           if (!validation.isValid) {
-            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
             skipped++;
             continue;
           }
 
           try {
             const accessoryData = { ...validation.data, tenantId };
-            
+
             // Check if accessory with same code already exists for this tenant
             const existingAccessory = await storage.getProductAccessoryByCode(
               validation.data.accessoryCode,
-              tenantId
+              tenantId,
             );
 
             if (existingAccessory) {
@@ -6783,7 +6188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`,
             );
             skipped++;
@@ -6799,27 +6204,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
-        console.error("Error importing product accessories:", error);
-        res.status(500).json({ message: "Failed to import product accessories" });
+        console.error('Error importing product accessories:', error);
+        res.status(500).json({ message: 'Failed to import product accessories' });
       }
     },
   );
 
   // Professional Services Import
   app.post(
-    "/api/professional-services/import",
-    upload.single("file"),
+    '/api/professional-services/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const csvData = await parseCSV(req.file.buffer);
 
@@ -6833,18 +6238,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validation = validateProfessionalServiceData(row);
 
           if (!validation.isValid) {
-            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
             skipped++;
             continue;
           }
 
           try {
             const serviceData = { ...validation.data, tenantId };
-            
+
             // Check if professional service with same code already exists for this tenant
             const existingService = await storage.getProfessionalServiceByCode(
               validation.data.productCode,
-              tenantId
+              tenantId,
             );
 
             if (existingService) {
@@ -6859,7 +6264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`,
             );
             skipped++;
@@ -6875,16 +6280,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
-        console.error("Error importing professional services:", error);
-        res.status(500).json({ message: "Failed to import professional services" });
+        console.error('Error importing professional services:', error);
+        res.status(500).json({ message: 'Failed to import professional services' });
       }
     },
   );
 
   // Service Products Import (deprecated - keeping for compatibility)
   app.post(
-    "/api/service-products/import",
-    upload.single("file"),
+    '/api/service-products/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -6892,26 +6297,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         imported: 0,
         skipped: 0,
-        errors: ["Service Products import deprecated - use Professional Services import instead"],
+        errors: ['Service Products import deprecated - use Professional Services import instead'],
       });
     },
   );
 
   // Software Products Import
   app.post(
-    "/api/software-products/import",
-    upload.single("file"),
+    '/api/software-products/import',
+    upload.single('file'),
     requireAuth,
     requireAuth,
     async (req: any, res) => {
       try {
         if (!req.file) {
-          return res.status(400).json({ message: "No file uploaded" });
+          return res.status(400).json({ message: 'No file uploaded' });
         }
 
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const csvData = await parseCSV(req.file.buffer);
 
@@ -6925,18 +6330,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const validation = validateSoftwareProductData(row);
 
           if (!validation.isValid) {
-            errors.push(`Row ${i + 2}: ${validation.errors.join(", ")}`);
+            errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
             skipped++;
             continue;
           }
 
           try {
             const productData = { ...validation.data, tenantId };
-            
+
             // Check if software product with same code already exists for this tenant
             const existingProduct = await storage.getSoftwareProductByCode(
               validation.data.productCode,
-              tenantId
+              tenantId,
             );
 
             if (existingProduct) {
@@ -6951,7 +6356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
-                error instanceof Error ? error.message : "Unknown error"
+                error instanceof Error ? error.message : 'Unknown error'
               }`,
             );
             skipped++;
@@ -6967,15 +6372,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Import completed: ${imported} new, ${updated} updated, ${skipped} skipped`,
         });
       } catch (error) {
-        console.error("Error importing software products:", error);
-        res.status(500).json({ message: "Failed to import software products" });
+        console.error('Error importing software products:', error);
+        res.status(500).json({ message: 'Failed to import software products' });
       }
     },
   );
 
   // CPC Rates
   app.get(
-    "/api/product-models/:modelId/cpc-rates",
+    '/api/product-models/:modelId/cpc-rates',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -6983,20 +6388,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { modelId } = req.params;
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const rates = await storage.getCpcRates(modelId, tenantId);
         res.json(rates);
       } catch (error) {
-        console.error("Error fetching CPC rates:", error);
-        res.status(500).json({ message: "Failed to fetch CPC rates" });
+        console.error('Error fetching CPC rates:', error);
+        res.status(500).json({ message: 'Failed to fetch CPC rates' });
       }
     },
   );
 
   // Get required accessories for a product model
   app.get(
-    "/api/product-models/:modelId/required-accessories",
+    '/api/product-models/:modelId/required-accessories',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -7004,20 +6409,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { modelId } = req.params;
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
-        
+
         const requiredAccessories = await storage.getRequiredAccessoriesForModel(modelId, tenantId);
         res.json(requiredAccessories);
       } catch (error) {
-        console.error("Error fetching required accessories:", error);
-        res.status(500).json({ message: "Failed to fetch required accessories" });
+        console.error('Error fetching required accessories:', error);
+        res.status(500).json({ message: 'Failed to fetch required accessories' });
       }
     },
   );
 
   app.post(
-    "/api/product-models/:modelId/cpc-rates",
+    '/api/product-models/:modelId/cpc-rates',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -7025,7 +6430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { modelId } = req.params;
         const tenantId = req.user?.tenantId;
         if (!tenantId) {
-          return res.status(400).json({ message: "Tenant ID is required" });
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
         const validatedData = insertCpcRateSchema.parse({
           ...req.body,
@@ -7035,165 +6440,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const rate = await storage.createCpcRate(validatedData);
         res.json(rate);
       } catch (error) {
-        console.error("Error creating CPC rate:", error);
-        res.status(500).json({ message: "Failed to create CPC rate" });
+        console.error('Error creating CPC rate:', error);
+        res.status(500).json({ message: 'Failed to create CPC rate' });
       }
     },
   );
 
   // Simple health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
   // Mobile routes already integrated above in main routes
 
   // Workflow Automation Routes
-  app.get(
-    "/api/workflow-rules",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.claims.sub;
+  app.get('/api/workflow-rules', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
 
-        // Mock workflow rules data for now - would come from database
-        const workflowRules = [
-          {
-            id: "1",
-            name: "Auto-Assign High Priority Tickets",
-            description:
-              "Automatically assign high priority service tickets to available senior technicians",
-            trigger: {
-              type: "service_ticket_created",
-              conditions: { priority: "high" },
-            },
-            actions: [
-              {
-                type: "assign_technician",
-                parameters: { skillLevel: "senior", available: true },
-              },
-            ],
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            lastTriggered: new Date(Date.now() - 86400000).toISOString(),
-            triggerCount: 15,
+      // Mock workflow rules data for now - would come from database
+      const workflowRules = [
+        {
+          id: '1',
+          name: 'Auto-Assign High Priority Tickets',
+          description:
+            'Automatically assign high priority service tickets to available senior technicians',
+          trigger: {
+            type: 'service_ticket_created',
+            conditions: { priority: 'high' },
           },
-          {
-            id: "2",
-            name: "Contract Expiration Alerts",
-            description:
-              "Send email notifications 30 days before contract expiration",
-            trigger: {
-              type: "contract_expiring",
-              conditions: { daysUntilExpiration: 30 },
+          actions: [
+            {
+              type: 'assign_technician',
+              parameters: { skillLevel: 'senior', available: true },
             },
-            actions: [
-              {
-                type: "send_email",
-                parameters: { recipients: ["account_manager", "customer"] },
-              },
-            ],
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            lastTriggered: new Date(Date.now() - 432000000).toISOString(),
-            triggerCount: 8,
+          ],
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          lastTriggered: new Date(Date.now() - 86400000).toISOString(),
+          triggerCount: 15,
+        },
+        {
+          id: '2',
+          name: 'Contract Expiration Alerts',
+          description: 'Send email notifications 30 days before contract expiration',
+          trigger: {
+            type: 'contract_expiring',
+            conditions: { daysUntilExpiration: 30 },
           },
-          {
-            id: "3",
-            name: "Overdue Payment Reminders",
-            description:
-              "Automatically send payment reminders for overdue invoices",
-            trigger: {
-              type: "customer_payment_overdue",
-              conditions: { overdueDays: 15 },
+          actions: [
+            {
+              type: 'send_email',
+              parameters: { recipients: ['account_manager', 'customer'] },
             },
-            actions: [
-              {
-                type: "send_email",
-                parameters: { template: "payment_reminder" },
-              },
-              {
-                type: "create_task",
-                parameters: { assignee: "account_manager", priority: "high" },
-              },
-            ],
-            isActive: false,
-            createdAt: new Date().toISOString(),
-            triggerCount: 0,
+          ],
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          lastTriggered: new Date(Date.now() - 432000000).toISOString(),
+          triggerCount: 8,
+        },
+        {
+          id: '3',
+          name: 'Overdue Payment Reminders',
+          description: 'Automatically send payment reminders for overdue invoices',
+          trigger: {
+            type: 'customer_payment_overdue',
+            conditions: { overdueDays: 15 },
           },
-        ];
-
-        res.json(workflowRules);
-      } catch (error) {
-        console.error("Error fetching workflow rules:", error);
-        res.status(500).json({ message: "Failed to fetch workflow rules" });
-      }
-    },
-  );
-
-  app.post(
-    "/api/workflow-rules",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.claims.sub;
-        const ruleData = {
-          id: Date.now().toString(),
-          ...req.body,
-          tenantId,
+          actions: [
+            {
+              type: 'send_email',
+              parameters: { template: 'payment_reminder' },
+            },
+            {
+              type: 'create_task',
+              parameters: { assignee: 'account_manager', priority: 'high' },
+            },
+          ],
+          isActive: false,
           createdAt: new Date().toISOString(),
           triggerCount: 0,
-        };
+        },
+      ];
 
-        // Would save to database in real implementation
-        res.status(201).json(ruleData);
-      } catch (error) {
-        console.error("Error creating workflow rule:", error);
-        res.status(500).json({ message: "Failed to create workflow rule" });
-      }
-    },
-  );
+      res.json(workflowRules);
+    } catch (error) {
+      console.error('Error fetching workflow rules:', error);
+      res.status(500).json({ message: 'Failed to fetch workflow rules' });
+    }
+  });
 
-  app.patch(
-    "/api/workflow-rules/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
-        const updates = req.body;
+  app.post('/api/workflow-rules', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.claims.sub;
+      const ruleData = {
+        id: Date.now().toString(),
+        ...req.body,
+        tenantId,
+        createdAt: new Date().toISOString(),
+        triggerCount: 0,
+      };
 
-        // Would update in database in real implementation
-        res.json({ id, ...updates });
-      } catch (error) {
-        console.error("Error updating workflow rule:", error);
-        res.status(500).json({ message: "Failed to update workflow rule" });
-      }
-    },
-  );
+      // Would save to database in real implementation
+      res.status(201).json(ruleData);
+    } catch (error) {
+      console.error('Error creating workflow rule:', error);
+      res.status(500).json({ message: 'Failed to create workflow rule' });
+    }
+  });
 
-  app.delete(
-    "/api/workflow-rules/:id",
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { id } = req.params;
+  app.patch('/api/workflow-rules/:id', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
 
-        // Would delete from database in real implementation
-        res.status(204).send();
-      } catch (error) {
-        console.error("Error deleting workflow rule:", error);
-        res.status(500).json({ message: "Failed to delete workflow rule" });
-      }
-    },
-  );
+      // Would update in database in real implementation
+      res.json({ id, ...updates });
+    } catch (error) {
+      console.error('Error updating workflow rule:', error);
+      res.status(500).json({ message: 'Failed to update workflow rule' });
+    }
+  });
+
+  app.delete('/api/workflow-rules/:id', requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+
+      // Would delete from database in real implementation
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting workflow rule:', error);
+      res.status(500).json({ message: 'Failed to delete workflow rule' });
+    }
+  });
 
   // Advanced Reporting Routes
   app.get(
-    "/api/advanced-reports/revenue-analytics",
+    '/api/advanced-reports/revenue-analytics',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -7206,30 +6589,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRevenue: 1248500,
           monthlyGrowth: 12.5,
           revenueByMonth: Array.from({ length: 12 }, (_, i) => ({
-            month: new Date(2024, i).toLocaleDateString("en-US", {
-              month: "short",
+            month: new Date(2024, i).toLocaleDateString('en-US', {
+              month: 'short',
             }),
             revenue: Math.floor(Math.random() * 150000) + 80000,
             contracts: Math.floor(Math.random() * 50) + 30,
           })),
           revenueByService: [
-            { service: "Meter Billing", revenue: 450000, percentage: 36 },
-            { service: "Service Contracts", revenue: 380000, percentage: 30 },
-            { service: "Equipment Sales", revenue: 280000, percentage: 22 },
-            { service: "Supplies", revenue: 138500, percentage: 12 },
+            { service: 'Meter Billing', revenue: 450000, percentage: 36 },
+            { service: 'Service Contracts', revenue: 380000, percentage: 30 },
+            { service: 'Equipment Sales', revenue: 280000, percentage: 22 },
+            { service: 'Supplies', revenue: 138500, percentage: 12 },
           ],
         };
 
         res.json(revenueData);
       } catch (error) {
-        console.error("Error fetching revenue analytics:", error);
-        res.status(500).json({ message: "Failed to fetch revenue analytics" });
+        console.error('Error fetching revenue analytics:', error);
+        res.status(500).json({ message: 'Failed to fetch revenue analytics' });
       }
     },
   );
 
   app.get(
-    "/api/advanced-reports/customer-profitability",
+    '/api/advanced-reports/customer-profitability',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -7250,16 +6633,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(profitabilityData);
       } catch (error) {
-        console.error("Error fetching customer profitability:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch customer profitability" });
+        console.error('Error fetching customer profitability:', error);
+        res.status(500).json({ message: 'Failed to fetch customer profitability' });
       }
     },
   );
 
   app.get(
-    "/api/advanced-reports/service-performance",
+    '/api/advanced-reports/service-performance',
     requireAuth,
     requireAuth,
     async (req: any, res) => {
@@ -7272,8 +6653,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstCallResolution: 78,
           customerSatisfaction: 4.2,
           monthlyMetrics: Array.from({ length: 6 }, (_, i) => ({
-            month: new Date(2024, 6 + i).toLocaleDateString("en-US", {
-              month: "short",
+            month: new Date(2024, 6 + i).toLocaleDateString('en-US', {
+              month: 'short',
             }),
             tickets: Math.floor(Math.random() * 100) + 50,
             resolved: Math.floor(Math.random() * 80) + 40,
@@ -7290,10 +6671,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(serviceData);
       } catch (error) {
-        console.error("Error fetching service performance:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch service performance" });
+        console.error('Error fetching service performance:', error);
+        res.status(500).json({ message: 'Failed to fetch service performance' });
       }
     },
   );
@@ -7301,15 +6680,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal Management Routes
 
   // Get all deals with optional filtering
-  app.get("/api/deals", requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/deals', requireAuth, requireAuth, async (req: any, res) => {
     // Simple session-based authentication check
     if (!req.session.userId) {
-      return res.status(401).json({ message: "Not authenticated" });
+      return res.status(401).json({ message: 'Not authenticated' });
     }
 
     const user = await storage.getUser(req.session.userId);
     if (!user?.tenantId) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ message: 'Access denied' });
     }
     try {
       const tenantId = user.tenantId;
@@ -7318,22 +6697,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deals = await storage.getDeals(tenantId, stageId, search);
       res.json(deals);
     } catch (error) {
-      console.error("Error fetching deals:", error);
-      res.status(500).json({ message: "Failed to fetch deals" });
+      console.error('Error fetching deals:', error);
+      res.status(500).json({ message: 'Failed to fetch deals' });
     }
   });
 
   // Get single deal
-  app.get("/api/deals/:id", requireAuth, requireAuth, async (req: any, res) => {
+  app.get('/api/deals/:id', requireAuth, requireAuth, async (req: any, res) => {
     try {
       // Simple session-based authentication check
       if (!req.session.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+        return res.status(401).json({ message: 'Not authenticated' });
       }
 
       const user = await storage.getUser(req.session.userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: 'Access denied' });
       }
 
       const tenantId = user.tenantId;
@@ -7341,27 +6720,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const deal = await storage.getDeal(dealId, tenantId);
       if (!deal) {
-        return res.status(404).json({ message: "Deal not found" });
+        return res.status(404).json({ message: 'Deal not found' });
       }
 
       res.json(deal);
     } catch (error) {
-      console.error("Error fetching deal:", error);
-      res.status(500).json({ message: "Failed to fetch deal" });
+      console.error('Error fetching deal:', error);
+      res.status(500).json({ message: 'Failed to fetch deal' });
     }
   });
 
   // Create new deal
-  app.post("/api/deals", requireAuth, requireAuth, async (req: any, res) => {
+  app.post('/api/deals', requireAuth, requireAuth, async (req: any, res) => {
     try {
       // Simple session-based authentication check
       if (!req.session.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+        return res.status(401).json({ message: 'Not authenticated' });
       }
 
       const user = await storage.getUser(req.session.userId);
       if (!user?.tenantId) {
-        return res.status(403).json({ message: "Access denied" });
+        return res.status(403).json({ message: 'Access denied' });
       }
 
       const tenantId = user.tenantId;
@@ -7375,50 +6754,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Initialize default stages if none exist
         const defaultStages = [
           {
-            name: "Appointment Scheduled",
-            color: "#3B82F6",
+            name: 'Appointment Scheduled',
+            color: '#3B82F6',
             sortOrder: 1,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Qualified to Buy",
-            color: "#8B5CF6",
+            name: 'Qualified to Buy',
+            color: '#8B5CF6',
             sortOrder: 2,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Presentation Scheduled",
-            color: "#06B6D4",
+            name: 'Presentation Scheduled',
+            color: '#06B6D4',
             sortOrder: 3,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Decision Maker Bought-In",
-            color: "#F59E0B",
+            name: 'Decision Maker Bought-In',
+            color: '#F59E0B',
             sortOrder: 4,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Contract Sent",
-            color: "#EF4444",
+            name: 'Contract Sent',
+            color: '#EF4444',
             sortOrder: 5,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Closed Won",
-            color: "#10B981",
+            name: 'Closed Won',
+            color: '#10B981',
             sortOrder: 6,
             isClosingStage: true,
             isWonStage: true,
           },
           {
-            name: "Closed Lost",
-            color: "#6B7280",
+            name: 'Closed Lost',
+            color: '#6B7280',
             sortOrder: 7,
             isClosingStage: true,
             isWonStage: false,
@@ -7437,7 +6816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (createdStages.length === 0) {
-          throw new Error("Could not create default deal stages");
+          throw new Error('Could not create default deal stages');
         }
       }
 
@@ -7446,7 +6825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const finalStageId = finalStages.length > 0 ? finalStages[0].id : null;
 
       if (!finalStageId) {
-        throw new Error("No deal stages available");
+        throw new Error('No deal stages available');
       }
 
       // Transform the data to match schema expectations
@@ -7461,130 +6840,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimatedMonthlyValue: req.body.estimatedMonthlyValue
           ? req.body.estimatedMonthlyValue
           : null,
-        expectedCloseDate: req.body.expectedCloseDate
-          ? new Date(req.body.expectedCloseDate)
-          : null,
+        expectedCloseDate: req.body.expectedCloseDate ? new Date(req.body.expectedCloseDate) : null,
         companyName: req.body.companyName || null,
         primaryContactName: req.body.primaryContactName || null,
         primaryContactEmail: req.body.primaryContactEmail || null,
         primaryContactPhone: req.body.primaryContactPhone || null,
         source: req.body.source || null,
         dealType: req.body.dealType || null,
-        priority: req.body.priority || "medium",
+        priority: req.body.priority || 'medium',
         productsInterested: req.body.productsInterested || null,
         probability: 25, // Default probability for new deals
       };
 
-      console.log(
-        "[DEAL DEBUG] Processed deal data:",
-        JSON.stringify(dealData, null, 2),
-      );
+      console.log('[DEAL DEBUG] Processed deal data:', JSON.stringify(dealData, null, 2));
 
       const deal = await storage.createDeal(dealData);
       res.status(201).json(deal);
     } catch (error) {
-      console.error("Error creating deal:", error);
-      res.status(500).json({ message: "Failed to create deal" });
+      console.error('Error creating deal:', error);
+      res.status(500).json({ message: 'Failed to create deal' });
     }
   });
 
   // Update deal
-  app.put(
-    "/api/deals/:id",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const dealId = req.params.id;
+  app.put('/api/deals/:id', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
 
-        const deal = await storage.updateDeal(dealId, req.body, tenantId);
-        if (!deal) {
-          return res.status(404).json({ message: "Deal not found" });
-        }
-
-        res.json(deal);
-      } catch (error) {
-        console.error("Error updating deal:", error);
-        res.status(500).json({ message: "Failed to update deal" });
+      const deal = await storage.updateDeal(dealId, req.body, tenantId);
+      if (!deal) {
+        return res.status(404).json({ message: 'Deal not found' });
       }
-    },
-  );
+
+      res.json(deal);
+    } catch (error) {
+      console.error('Error updating deal:', error);
+      res.status(500).json({ message: 'Failed to update deal' });
+    }
+  });
 
   // Update deal stage (for drag and drop)
-  app.put(
-    "/api/deals/:id/stage",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
-        const dealId = req.params.id;
-        const { stageId } = req.body;
+  app.put('/api/deals/:id/stage', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const dealId = req.params.id;
+      const { stageId } = req.body;
 
-        const deal = await storage.updateDealStage(dealId, stageId, tenantId);
-        if (!deal) {
-          return res.status(404).json({ message: "Deal not found" });
-        }
-
-        res.json(deal);
-      } catch (error) {
-        console.error("Error updating deal stage:", error);
-        res.status(500).json({ message: "Failed to update deal stage" });
+      const deal = await storage.updateDealStage(dealId, stageId, tenantId);
+      if (!deal) {
+        return res.status(404).json({ message: 'Deal not found' });
       }
-    },
-  );
+
+      res.json(deal);
+    } catch (error) {
+      console.error('Error updating deal stage:', error);
+      res.status(500).json({ message: 'Failed to update deal stage' });
+    }
+  });
 
   // Deal Stages Routes
 
   // Get all deal stages for tenant
-  app.get(
-    "/api/deal-stages",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.get('/api/deal-stages', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        const stages = await storage.getDealStages(tenantId);
-        res.json(stages);
-      } catch (error) {
-        console.error("Error fetching deal stages:", error);
-        res.status(500).json({ message: "Failed to fetch deal stages" });
-      }
-    },
-  );
+      const stages = await storage.getDealStages(tenantId);
+      res.json(stages);
+    } catch (error) {
+      console.error('Error fetching deal stages:', error);
+      res.status(500).json({ message: 'Failed to fetch deal stages' });
+    }
+  });
 
   // Create deal stage
-  app.post(
-    "/api/deal-stages",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.post('/api/deal-stages', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        const stageData = insertDealStageSchema.parse({
-          ...req.body,
-          tenantId,
-        });
+      const stageData = insertDealStageSchema.parse({
+        ...req.body,
+        tenantId,
+      });
 
-        const stage = await storage.createDealStage(stageData);
-        res.status(201).json(stage);
-      } catch (error) {
-        console.error("Error creating deal stage:", error);
-        res.status(500).json({ message: "Failed to create deal stage" });
-      }
-    },
-  );
+      const stage = await storage.createDealStage(stageData);
+      res.status(201).json(stage);
+    } catch (error) {
+      console.error('Error creating deal stage:', error);
+      res.status(500).json({ message: 'Failed to create deal stage' });
+    }
+  });
 
   // Initialize default deal stages for a tenant (called on first access)
   app.post(
-    "/api/deal-stages/initialize",
+    '/api/deal-stages/initialize',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7596,7 +6946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingStages = await storage.getDealStages(tenantId);
         if (existingStages.length > 0) {
           return res.json({
-            message: "Deal stages already initialized",
+            message: 'Deal stages already initialized',
             stages: existingStages,
           });
         }
@@ -7604,50 +6954,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create default stages
         const defaultStages = [
           {
-            name: "Appointment Scheduled",
-            color: "#3B82F6",
+            name: 'Appointment Scheduled',
+            color: '#3B82F6',
             sortOrder: 1,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Qualified to Buy",
-            color: "#8B5CF6",
+            name: 'Qualified to Buy',
+            color: '#8B5CF6',
             sortOrder: 2,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Presentation Scheduled",
-            color: "#06B6D4",
+            name: 'Presentation Scheduled',
+            color: '#06B6D4',
             sortOrder: 3,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Decision Maker Bought-In",
-            color: "#F59E0B",
+            name: 'Decision Maker Bought-In',
+            color: '#F59E0B',
             sortOrder: 4,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Contract Sent",
-            color: "#EF4444",
+            name: 'Contract Sent',
+            color: '#EF4444',
             sortOrder: 5,
             isClosingStage: false,
             isWonStage: false,
           },
           {
-            name: "Closed Won",
-            color: "#10B981",
+            name: 'Closed Won',
+            color: '#10B981',
             sortOrder: 6,
             isClosingStage: true,
             isWonStage: true,
           },
           {
-            name: "Closed Lost",
-            color: "#6B7280",
+            name: 'Closed Lost',
+            color: '#6B7280',
             sortOrder: 7,
             isClosingStage: true,
             isWonStage: false,
@@ -7665,12 +7015,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdStages.push(newStage);
         }
 
-        res
-          .status(201)
-          .json({ message: "Deal stages initialized", stages: createdStages });
+        res.status(201).json({ message: 'Deal stages initialized', stages: createdStages });
       } catch (error) {
-        console.error("Error initializing deal stages:", error);
-        res.status(500).json({ message: "Failed to initialize deal stages" });
+        console.error('Error initializing deal stages:', error);
+        res.status(500).json({ message: 'Failed to initialize deal stages' });
       }
     },
   );
@@ -7679,7 +7027,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get activities for a deal
   app.get(
-    "/api/deals/:id/activities",
+    '/api/deals/:id/activities',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7691,15 +7039,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const activities = await storage.getDealActivities(dealId, tenantId);
         res.json(activities);
       } catch (error) {
-        console.error("Error fetching deal activities:", error);
-        res.status(500).json({ message: "Failed to fetch deal activities" });
+        console.error('Error fetching deal activities:', error);
+        res.status(500).json({ message: 'Failed to fetch deal activities' });
       }
     },
   );
 
   // Create deal activity
   app.post(
-    "/api/deals/:id/activities",
+    '/api/deals/:id/activities',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7719,8 +7067,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const activity = await storage.createDealActivity(activityData);
         res.status(201).json(activity);
       } catch (error) {
-        console.error("Error creating deal activity:", error);
-        res.status(500).json({ message: "Failed to create deal activity" });
+        console.error('Error creating deal activity:', error);
+        res.status(500).json({ message: 'Failed to create deal activity' });
       }
     },
   );
@@ -7763,7 +7111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // registerCommissionRoutes(app); // TODO: Add commission schema tables first
 
   // Register Salesforce test routes (development only)
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === 'development') {
     registerSalesforceTestRoutes(app);
   }
 
@@ -7771,7 +7119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Performance monitoring routes
   app.get(
-    "/api/performance/metrics",
+    '/api/performance/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7781,14 +7129,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const metrics = await storage.getPerformanceMetrics(tenantId);
         res.json(metrics);
       } catch (error) {
-        console.error("Error fetching performance metrics:", error);
-        res.status(500).json({ error: "Failed to fetch performance metrics" });
+        console.error('Error fetching performance metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch performance metrics' });
       }
     },
   );
 
   app.get(
-    "/api/performance/alerts",
+    '/api/performance/alerts',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7798,31 +7146,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const alerts = await storage.getSystemAlerts(tenantId);
         res.json(alerts);
       } catch (error) {
-        console.error("Error fetching system alerts:", error);
-        res.status(500).json({ error: "Failed to fetch system alerts" });
+        console.error('Error fetching system alerts:', error);
+        res.status(500).json({ error: 'Failed to fetch system alerts' });
       }
     },
   );
 
   // Pricing Management Routes
-  app.get(
-    "/api/pricing/company-settings",
-    requireAuth,
-    getCompanyPricingSettings,
-  );
-  app.post(
-    "/api/pricing/company-settings",
-    requireAuth,
-    updateCompanyPricingSettings,
-  );
-  app.get("/api/pricing/products", requireAuth, getProductPricing);
-  app.post("/api/pricing/products", requireAuth, createProductPricing);
-  app.put("/api/pricing/products/:id", requireAuth, updateProductPricing);
-  app.delete("/api/pricing/products/:id", requireAuth, deleteProductPricing);
+  app.get('/api/pricing/company-settings', requireAuth, getCompanyPricingSettings);
+  app.post('/api/pricing/company-settings', requireAuth, updateCompanyPricingSettings);
+  app.get('/api/pricing/products', requireAuth, getProductPricing);
+  app.post('/api/pricing/products', requireAuth, createProductPricing);
+  app.put('/api/pricing/products/:id', requireAuth, updateProductPricing);
+  app.delete('/api/pricing/products/:id', requireAuth, deleteProductPricing);
 
   // Products with pricing information
   app.get(
-    "/api/products/with-pricing",
+    '/api/products/with-pricing',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7855,18 +7195,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Combine all products with pricing information
         const allProducts = [
-          ...models.map((m) => ({ ...m, category: "Equipment Models" })),
-          ...accessories.map((a) => ({ ...a, category: "Accessories" })),
-          ...services.map((s) => ({ ...s, category: "Services" })),
-          ...supplies.map((s) => ({ ...s, category: "Supplies" })),
+          ...models.map((m) => ({ ...m, category: 'Equipment Models' })),
+          ...accessories.map((a) => ({ ...a, category: 'Accessories' })),
+          ...services.map((s) => ({ ...s, category: 'Services' })),
+          ...supplies.map((s) => ({ ...s, category: 'Supplies' })),
           ...managedServices.map((m) => ({
             ...m,
-            category: "Managed Services",
+            category: 'Managed Services',
           })),
-          ...softwareProducts.map((s) => ({ ...s, category: "Software" })),
+          ...softwareProducts.map((s) => ({ ...s, category: 'Software' })),
           ...professionalServices.map((p) => ({
             ...p,
-            category: "Professional Services",
+            category: 'Professional Services',
           })),
         ].map((product) => {
           const pricing = pricingMap.get(product.id);
@@ -7883,17 +7223,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json(allProducts);
       } catch (error) {
-        console.error("Error fetching products with pricing:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch products with pricing" });
+        console.error('Error fetching products with pricing:', error);
+        res.status(500).json({ message: 'Failed to fetch products with pricing' });
       }
     },
   );
 
   // Bulk update pricing
   app.post(
-    "/api/pricing/products/bulk-update",
+    '/api/pricing/products/bulk-update',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -7908,46 +7246,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const pricing = await storage.createProductPricing({
               tenantId,
               productId: update.productId,
-              productType: "model", // Default type
+              productType: 'model', // Default type
               companyMarkupPercentage: update.markupPercentage,
               createdBy: req.user.id,
             });
             results.push(pricing);
           } catch (error) {
-            console.error(
-              `Error updating pricing for ${update.productId}:`,
-              error,
-            );
+            console.error(`Error updating pricing for ${update.productId}:`, error);
           }
         }
 
         res.json(results);
       } catch (error) {
-        console.error("Error bulk updating pricing:", error);
-        res.status(500).json({ message: "Failed to bulk update pricing" });
+        console.error('Error bulk updating pricing:', error);
+        res.status(500).json({ message: 'Failed to bulk update pricing' });
       }
     },
   );
 
-  app.get("/api/pricing/products", requireAuth, getProductPricing);
-  app.post("/api/pricing/products", requireAuth, createProductPricing);
-  app.put("/api/pricing/products/:id", requireAuth, updateProductPricing);
-  app.delete("/api/pricing/products/:id", requireAuth, deleteProductPricing);
+  app.get('/api/pricing/products', requireAuth, getProductPricing);
+  app.post('/api/pricing/products', requireAuth, createProductPricing);
+  app.put('/api/pricing/products/:id', requireAuth, updateProductPricing);
+  app.delete('/api/pricing/products/:id', requireAuth, deleteProductPricing);
 
-  app.get("/api/pricing/quotes/:quoteId", requireAuth, getQuotePricing);
-  app.post("/api/pricing/quotes", requireAuth, createQuotePricing);
-  app.put("/api/pricing/quotes/:id", requireAuth, updateQuotePricing);
+  app.get('/api/pricing/quotes/:quoteId', requireAuth, getQuotePricing);
+  app.post('/api/pricing/quotes', requireAuth, createQuotePricing);
+  app.put('/api/pricing/quotes/:id', requireAuth, updateQuotePricing);
 
-  app.get(
-    "/api/pricing/quotes/:quotePricingId/line-items",
-    requireAuth,
-    getQuoteLineItems,
-  );
-  app.post("/api/pricing/line-items", requireAuth, createQuoteLineItem);
-  app.put("/api/pricing/line-items/:id", requireAuth, updateQuoteLineItem);
-  app.delete("/api/pricing/line-items/:id", requireAuth, deleteQuoteLineItem);
+  app.get('/api/pricing/quotes/:quotePricingId/line-items', requireAuth, getQuoteLineItems);
+  app.post('/api/pricing/line-items', requireAuth, createQuoteLineItem);
+  app.put('/api/pricing/line-items/:id', requireAuth, updateQuoteLineItem);
+  app.delete('/api/pricing/line-items/:id', requireAuth, deleteQuoteLineItem);
 
-  app.post("/api/pricing/calculate", requireAuth, calculatePricingForProduct);
+  app.post('/api/pricing/calculate', requireAuth, calculatePricingForProduct);
 
   // User Settings Routes
   const {
@@ -7960,134 +7291,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     exportUserData,
     deleteUserAccount,
     upload: avatarUpload,
-  } = await import("./routes-settings");
+  } = await import('./routes-settings');
 
-  app.get("/api/user/settings", requireAuth, getUserSettings);
-  app.put("/api/user/profile", requireAuth, updateUserProfile);
-  app.put("/api/user/password", requireAuth, updateUserPassword);
-  app.put("/api/user/preferences", requireAuth, updateUserPreferences);
-  app.put("/api/user/accessibility", requireAuth, updateAccessibilitySettings);
-  app.post(
-    "/api/user/avatar",
-    requireAuth,
-    avatarUpload.single("avatar"),
-    uploadAvatar,
-  );
-  app.get("/api/user/export", requireAuth, exportUserData);
-  app.delete("/api/user/delete", requireAuth, deleteUserAccount);
+  app.get('/api/user/settings', requireAuth, getUserSettings);
+  app.put('/api/user/profile', requireAuth, updateUserProfile);
+  app.put('/api/user/password', requireAuth, updateUserPassword);
+  app.put('/api/user/preferences', requireAuth, updateUserPreferences);
+  app.put('/api/user/accessibility', requireAuth, updateAccessibilitySettings);
+  app.post('/api/user/avatar', requireAuth, avatarUpload.single('avatar'), uploadAvatar);
+  app.get('/api/user/export', requireAuth, exportUserData);
+  app.delete('/api/user/delete', requireAuth, deleteUserAccount);
 
   // Customer detail routes - for comprehensive customer information
   app.get(
-    "/api/customers/:id/equipment",
+    '/api/customers/:id/equipment',
     requireAuth,
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        const equipment = await storage.getCustomerEquipment(
-          req.params.id,
-          req.tenantId,
-        );
+        const equipment = await storage.getCustomerEquipment(req.params.id, req.tenantId);
         res.json(equipment);
       } catch (error) {
-        console.error("Error fetching customer equipment:", error);
-        res.status(500).json({ message: "Failed to fetch customer equipment" });
+        console.error('Error fetching customer equipment:', error);
+        res.status(500).json({ message: 'Failed to fetch customer equipment' });
       }
     },
   );
 
   app.get(
-    "/api/customers/:id/meter-readings",
+    '/api/customers/:id/meter-readings',
     requireAuth,
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        const meterReadings = await storage.getCustomerMeterReadings(
-          req.params.id,
-          req.tenantId,
-        );
+        const meterReadings = await storage.getCustomerMeterReadings(req.params.id, req.tenantId);
         res.json(meterReadings);
       } catch (error) {
-        console.error("Error fetching customer meter readings:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch customer meter readings" });
+        console.error('Error fetching customer meter readings:', error);
+        res.status(500).json({ message: 'Failed to fetch customer meter readings' });
       }
     },
   );
 
   app.get(
-    "/api/customers/:id/invoices",
+    '/api/customers/:id/invoices',
     requireAuth,
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        const invoices = await storage.getCustomerInvoices(
-          req.params.id,
-          req.tenantId,
-        );
+        const invoices = await storage.getCustomerInvoices(req.params.id, req.tenantId);
         res.json(invoices);
       } catch (error) {
-        console.error("Error fetching customer invoices:", error);
-        res.status(500).json({ message: "Failed to fetch customer invoices" });
+        console.error('Error fetching customer invoices:', error);
+        res.status(500).json({ message: 'Failed to fetch customer invoices' });
       }
     },
   );
 
   app.get(
-    "/api/customers/:id/service-tickets",
+    '/api/customers/:id/service-tickets',
     requireAuth,
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        const serviceTickets = await storage.getCustomerServiceTickets(
-          req.params.id,
-          req.tenantId,
-        );
+        const serviceTickets = await storage.getCustomerServiceTickets(req.params.id, req.tenantId);
         res.json(serviceTickets);
       } catch (error) {
-        console.error("Error fetching customer service tickets:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch customer service tickets" });
+        console.error('Error fetching customer service tickets:', error);
+        res.status(500).json({ message: 'Failed to fetch customer service tickets' });
       }
     },
   );
 
   app.get(
-    "/api/customers/:id/contracts",
+    '/api/customers/:id/contracts',
     requireAuth,
     requireTenant,
     async (req: TenantRequest, res) => {
       try {
-        const contracts = await storage.getCustomerContracts(
-          req.params.id,
-          req.tenantId,
-        );
+        const contracts = await storage.getCustomerContracts(req.params.id, req.tenantId);
         res.json(contracts);
       } catch (error) {
-        console.error("Error fetching customer contracts:", error);
-        res.status(500).json({ message: "Failed to fetch customer contracts" });
+        console.error('Error fetching customer contracts:', error);
+        res.status(500).json({ message: 'Failed to fetch customer contracts' });
       }
     },
   );
 
   // Import and register proposals routes
-  const proposalsRouter = await import("./routes-proposals.js");
-  app.use("/api/proposals", proposalsRouter.default);
+  const proposalsRouter = await import('./routes-proposals.js');
+  app.use('/api/proposals', proposalsRouter.default);
 
   // Social Media Post Generator Routes
-  const socialMediaRoutes = await import("./routes-social-media");
-  app.use("/", socialMediaRoutes.default);
+  const socialMediaRoutes = await import('./routes-social-media');
+  app.use('/', socialMediaRoutes.default);
 
   // Root Admin Routes
-  const rootAdminRoutes = await import("./routes-root-admin");
-  app.use("/api/root-admin", rootAdminRoutes.default);
+  const rootAdminRoutes = await import('./routes-root-admin');
+  app.use('/api/root-admin', rootAdminRoutes.default);
 
   // ============= PREVENTIVE MAINTENANCE SCHEDULING ROUTES =============
 
   // Get maintenance schedules
   app.get(
-    "/api/maintenance/schedules",
+    '/api/maintenance/schedules',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8122,28 +7429,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         LEFT JOIN customers c ON ms.customer_id = c.id
         LEFT JOIN business_records br ON ms.business_record_id = br.id
         WHERE ms.tenant_id = $1
-        ${status === "active" ? "AND ms.is_active = true" : ""}
-        ${status === "inactive" ? "AND ms.is_active = false" : ""}
-        ${equipmentId ? `AND ms.equipment_id = '${equipmentId}'` : ""}
-        ${customerId ? `AND ms.customer_id = '${customerId}'` : ""}
-        ${priority ? `AND ms.priority = '${priority}'` : ""}
+        ${status === 'active' ? 'AND ms.is_active = true' : ''}
+        ${status === 'inactive' ? 'AND ms.is_active = false' : ''}
+        ${equipmentId ? `AND ms.equipment_id = '${equipmentId}'` : ''}
+        ${customerId ? `AND ms.customer_id = '${customerId}'` : ''}
+        ${priority ? `AND ms.priority = '${priority}'` : ''}
         ORDER BY ms.next_service_date DESC NULLS LAST
       `;
 
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching maintenance schedules:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch maintenance schedules" });
+        console.error('Error fetching maintenance schedules:', error);
+        res.status(500).json({ error: 'Failed to fetch maintenance schedules' });
       }
     },
   );
 
   // Get due schedules (upcoming or overdue)
   app.get(
-    "/api/maintenance/schedules/due",
+    '/api/maintenance/schedules/due',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8175,21 +7480,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ORDER BY ms.next_service_date ASC
       `;
 
-        const result = await db.$client.query(query, [
-          tenantId,
-          futureDate.toISOString(),
-        ]);
+        const result = await db.$client.query(query, [tenantId, futureDate.toISOString()]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching due schedules:", error);
-        res.status(500).json({ error: "Failed to fetch due schedules" });
+        console.error('Error fetching due schedules:', error);
+        res.status(500).json({ error: 'Failed to fetch due schedules' });
       }
     },
   );
 
   // Create maintenance schedule
   app.post(
-    "/api/maintenance/schedules",
+    '/api/maintenance/schedules',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8209,7 +7511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessRecordId,
           estimatedCost,
           serviceDuration = 60,
-          priority = "medium",
+          priority = 'medium',
           advanceNotificationDays = 7,
           customerNotification = true,
           technicianNotification = true,
@@ -8246,17 +7548,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating maintenance schedule:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create maintenance schedule" });
+        console.error('Error creating maintenance schedule:', error);
+        res.status(500).json({ error: 'Failed to create maintenance schedule' });
       }
     },
   );
 
   // Analytics endpoint
   app.get(
-    "/api/maintenance/analytics/overview",
+    '/api/maintenance/analytics/overview',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8286,10 +7586,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dueThisWeek: parseInt(results[3].rows[0].due_this_week),
         });
       } catch (error) {
-        console.error("Error fetching maintenance analytics:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch maintenance analytics" });
+        console.error('Error fetching maintenance analytics:', error);
+        res.status(500).json({ error: 'Failed to fetch maintenance analytics' });
       }
     },
   );
@@ -8298,7 +7596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get customer service requests
   app.get(
-    "/api/customer-portal/service-requests",
+    '/api/customer-portal/service-requests',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8319,15 +7617,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching service requests:", error);
-        res.status(500).json({ error: "Failed to fetch service requests" });
+        console.error('Error fetching service requests:', error);
+        res.status(500).json({ error: 'Failed to fetch service requests' });
       }
     },
   );
 
   // Create service request
   app.post(
-    "/api/customer-portal/service-requests",
+    '/api/customer-portal/service-requests',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8384,15 +7682,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating service request:", error);
-        res.status(500).json({ error: "Failed to create service request" });
+        console.error('Error creating service request:', error);
+        res.status(500).json({ error: 'Failed to create service request' });
       }
     },
   );
 
   // Get customer equipment
   app.get(
-    "/api/customer-portal/equipment",
+    '/api/customer-portal/equipment',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8410,15 +7708,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching customer equipment:", error);
-        res.status(500).json({ error: "Failed to fetch customer equipment" });
+        console.error('Error fetching customer equipment:', error);
+        res.status(500).json({ error: 'Failed to fetch customer equipment' });
       }
     },
   );
 
   // Get supply orders
   app.get(
-    "/api/customer-portal/supply-orders",
+    '/api/customer-portal/supply-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8436,15 +7734,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching supply orders:", error);
-        res.status(500).json({ error: "Failed to fetch supply orders" });
+        console.error('Error fetching supply orders:', error);
+        res.status(500).json({ error: 'Failed to fetch supply orders' });
       }
     },
   );
 
   // Get knowledge base articles
   app.get(
-    "/api/customer-portal/knowledge-base",
+    '/api/customer-portal/knowledge-base',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8453,19 +7751,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tenantId = req.user.tenantId;
         const { search, category } = req.query;
 
-        let whereConditions = ["tenant_id = $1", "is_published = true"];
+        let whereConditions = ['tenant_id = $1', 'is_published = true'];
         const queryParams = [tenantId];
 
         if (search) {
           whereConditions.push(
-            `(title ILIKE $${queryParams.length + 1} OR content ILIKE $${
-              queryParams.length + 1
-            })`,
+            `(title ILIKE $${queryParams.length + 1} OR content ILIKE $${queryParams.length + 1})`,
           );
           queryParams.push(`%${search}%`);
         }
 
-        if (category && category !== "all") {
+        if (category && category !== 'all') {
           whereConditions.push(`category = $${queryParams.length + 1}`);
           queryParams.push(category);
         }
@@ -8474,17 +7770,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         SELECT id, title, summary, category, subcategory, view_count, 
                helpful_votes, is_featured, created_at
         FROM knowledge_base_articles
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY is_featured DESC, helpful_votes DESC, view_count DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching knowledge base articles:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch knowledge base articles" });
+        console.error('Error fetching knowledge base articles:', error);
+        res.status(500).json({ error: 'Failed to fetch knowledge base articles' });
       }
     },
   );
@@ -8493,7 +7787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get billing analytics
   app.get(
-    "/api/billing/analytics",
+    '/api/billing/analytics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8515,77 +7809,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         const totalRevenue = parseFloat(results[1].rows[0].total_revenue);
-        const outstandingAmount = parseFloat(
-          results[2].rows[0].outstanding_amount,
-        );
-        const monthlyRecurring = parseFloat(
-          results[5].rows[0].monthly_recurring,
-        );
+        const outstandingAmount = parseFloat(results[2].rows[0].outstanding_amount);
+        const monthlyRecurring = parseFloat(results[5].rows[0].monthly_recurring);
 
         res.json({
           totalInvoices: parseInt(results[0].rows[0].total_invoices),
           totalRevenue,
           outstandingAmount,
           overdueInvoices: parseInt(results[3].rows[0].overdue_invoices),
-          averageInvoiceAmount: parseFloat(
-            results[4].rows[0].average_invoice_amount,
-          ),
-          collectionRate:
-            totalRevenue > 0
-              ? totalRevenue / (totalRevenue + outstandingAmount)
-              : 0,
+          averageInvoiceAmount: parseFloat(results[4].rows[0].average_invoice_amount),
+          collectionRate: totalRevenue > 0 ? totalRevenue / (totalRevenue + outstandingAmount) : 0,
           monthlyRecurringRevenue: monthlyRecurring,
           annualRecurringRevenue: monthlyRecurring * 12,
         });
       } catch (error) {
-        console.error("Error fetching billing analytics:", error);
-        res.status(500).json({ error: "Failed to fetch billing analytics" });
+        console.error('Error fetching billing analytics:', error);
+        res.status(500).json({ error: 'Failed to fetch billing analytics' });
       }
     },
   );
 
   // Get billing invoices
-  app.get(
-    "/api/billing/invoices",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { status } = req.query;
-        const tenantId = req.user.tenantId;
+  app.get('/api/billing/invoices', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      const tenantId = req.user.tenantId;
 
-        let whereConditions = ["bi.tenant_id = $1"];
-        const queryParams = [tenantId];
+      let whereConditions = ['bi.tenant_id = $1'];
+      const queryParams = [tenantId];
 
-        if (status && status !== "all") {
-          whereConditions.push(`bi.status = $${queryParams.length + 1}`);
-          queryParams.push(status);
-        }
+      if (status && status !== 'all') {
+        whereConditions.push(`bi.status = $${queryParams.length + 1}`);
+        queryParams.push(status);
+      }
 
-        const query = `
+      const query = `
         SELECT 
           bi.*,
           br.company_name as business_record_name
         FROM billing_invoices bi
         LEFT JOIN business_records br ON bi.business_record_id = br.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY bi.created_at DESC
         LIMIT 100
       `;
 
-        const result = await db.$client.query(query, queryParams);
-        res.json(result.rows);
-      } catch (error) {
-        console.error("Error fetching billing invoices:", error);
-        res.status(500).json({ error: "Failed to fetch billing invoices" });
-      }
-    },
-  );
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching billing invoices:', error);
+      res.status(500).json({ error: 'Failed to fetch billing invoices' });
+    }
+  });
 
   // Get billing configurations
   app.get(
-    "/api/billing/configurations",
+    '/api/billing/configurations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8594,10 +7873,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { type } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (type && type !== "all") {
+        if (type && type !== 'all') {
           whereConditions.push(`billing_type = $${queryParams.length + 1}`);
           queryParams.push(type);
         }
@@ -8605,24 +7884,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const query = `
         SELECT *
         FROM billing_configurations
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY is_default DESC, configuration_name
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching billing configurations:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch billing configurations" });
+        console.error('Error fetching billing configurations:', error);
+        res.status(500).json({ error: 'Failed to fetch billing configurations' });
       }
     },
   );
 
   // Create billing configuration
   app.post(
-    "/api/billing/configurations",
+    '/api/billing/configurations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8651,7 +7928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // If setting as default, unset other defaults first
         if (is_default) {
           await db.$client.query(
-            "UPDATE billing_configurations SET is_default = false WHERE tenant_id = $1",
+            'UPDATE billing_configurations SET is_default = false WHERE tenant_id = $1',
             [tenantId],
           );
         }
@@ -8687,43 +7964,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating billing configuration:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create billing configuration" });
+        console.error('Error creating billing configuration:', error);
+        res.status(500).json({ error: 'Failed to create billing configuration' });
       }
     },
   );
 
   // Get billing cycles
-  app.get(
-    "/api/billing/cycles",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.get('/api/billing/cycles', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        const query = `
+      const query = `
         SELECT *
         FROM billing_cycles
         WHERE tenant_id = $1
         ORDER BY created_at DESC
       `;
 
-        const result = await db.$client.query(query, [tenantId]);
-        res.json(result.rows);
-      } catch (error) {
-        console.error("Error fetching billing cycles:", error);
-        res.status(500).json({ error: "Failed to fetch billing cycles" });
-      }
-    },
-  );
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching billing cycles:', error);
+      res.status(500).json({ error: 'Failed to fetch billing cycles' });
+    }
+  });
 
   // Run billing cycle
   app.post(
-    "/api/billing/cycles/run",
+    '/api/billing/cycles/run',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8733,8 +8002,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userId = req.user.id;
 
         // Create a new billing cycle
-        const cycleDate = new Date().toISOString().split("T")[0];
-        const cycleName = `Billing Cycle ${format(new Date(), "MMM yyyy")}`;
+        const cycleDate = new Date().toISOString().split('T')[0];
+        const cycleName = `Billing Cycle ${format(new Date(), 'MMM yyyy')}`;
 
         const cycleQuery = `
         INSERT INTO billing_cycles (
@@ -8743,11 +8012,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         RETURNING *
       `;
 
-        const cycleResult = await db.$client.query(cycleQuery, [
-          tenantId,
-          cycleName,
-          cycleDate,
-        ]);
+        const cycleResult = await db.$client.query(cycleQuery, [tenantId, cycleName, cycleDate]);
 
         const cycle = cycleResult.rows[0];
 
@@ -8755,12 +8020,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sampleInvoices = [
           {
             invoice_number: `INV-${Date.now()}-001`,
-            business_record_id: "adc117e7-611d-426a-b569-6c6c0b32e234",
+            business_record_id: 'adc117e7-611d-426a-b569-6c6c0b32e234',
             amount: 299.99,
           },
           {
             invoice_number: `INV-${Date.now()}-002`,
-            business_record_id: "adc117e7-611d-426a-b569-6c6c0b32e234",
+            business_record_id: 'adc117e7-611d-426a-b569-6c6c0b32e234',
             amount: 459.99,
           },
         ];
@@ -8815,31 +8080,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             total_amount = $4
         WHERE id = $5
       `,
-          [
-            sampleInvoices.length,
-            sampleInvoices.length,
-            invoicesGenerated,
-            totalAmount,
-            cycle.id,
-          ],
+          [sampleInvoices.length, sampleInvoices.length, invoicesGenerated, totalAmount, cycle.id],
         );
 
         res.status(201).json({
-          message: "Billing cycle completed successfully",
+          message: 'Billing cycle completed successfully',
           cycle_id: cycle.id,
           invoices_generated: invoicesGenerated,
           total_amount: totalAmount,
         });
       } catch (error) {
-        console.error("Error running billing cycle:", error);
-        res.status(500).json({ error: "Failed to run billing cycle" });
+        console.error('Error running billing cycle:', error);
+        res.status(500).json({ error: 'Failed to run billing cycle' });
       }
     },
   );
 
   // Get billing adjustments
   app.get(
-    "/api/billing/adjustments",
+    '/api/billing/adjustments',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8862,15 +8121,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching billing adjustments:", error);
-        res.status(500).json({ error: "Failed to fetch billing adjustments" });
+        console.error('Error fetching billing adjustments:', error);
+        res.status(500).json({ error: 'Failed to fetch billing adjustments' });
       }
     },
   );
 
   // Create billing adjustment
   app.post(
-    "/api/billing/adjustments",
+    '/api/billing/adjustments',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8909,8 +8168,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating billing adjustment:", error);
-        res.status(500).json({ error: "Failed to create billing adjustment" });
+        console.error('Error creating billing adjustment:', error);
+        res.status(500).json({ error: 'Failed to create billing adjustment' });
       }
     },
   );
@@ -8919,7 +8178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get financial metrics
   app.get(
-    "/api/financial/metrics",
+    '/api/financial/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8939,27 +8198,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         res.json({
-          totalRevenueForecast: parseFloat(
-            results[0].rows[0].total_revenue_forecast,
-          ),
-          cashFlowProjection: parseFloat(
-            results[1].rows[0].cash_flow_projection,
-          ),
+          totalRevenueForecast: parseFloat(results[0].rows[0].total_revenue_forecast),
+          cashFlowProjection: parseFloat(results[1].rows[0].cash_flow_projection),
           profitMargin: parseFloat(results[2].rows[0].avg_profit_margin),
           growthProjection: parseFloat(results[3].rows[0].avg_growth_rate),
-          riskLevel: "medium",
+          riskLevel: 'medium',
           forecastAccuracy: 0.85,
         });
       } catch (error) {
-        console.error("Error fetching financial metrics:", error);
-        res.status(500).json({ error: "Failed to fetch financial metrics" });
+        console.error('Error fetching financial metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch financial metrics' });
       }
     },
   );
 
   // Get financial forecasts
   app.get(
-    "/api/financial/forecasts",
+    '/api/financial/forecasts',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -8968,10 +8223,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { type } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (type && type !== "all") {
+        if (type && type !== 'all') {
           whereConditions.push(`forecast_type = $${queryParams.length + 1}`);
           queryParams.push(type);
         }
@@ -8979,22 +8234,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const query = `
         SELECT *
         FROM financial_forecasts
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching financial forecasts:", error);
-        res.status(500).json({ error: "Failed to fetch financial forecasts" });
+        console.error('Error fetching financial forecasts:', error);
+        res.status(500).json({ error: 'Failed to fetch financial forecasts' });
       }
     },
   );
 
   // Create financial forecast
   app.post(
-    "/api/financial/forecasts",
+    '/api/financial/forecasts',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9044,15 +8299,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating financial forecast:", error);
-        res.status(500).json({ error: "Failed to create financial forecast" });
+        console.error('Error creating financial forecast:', error);
+        res.status(500).json({ error: 'Failed to create financial forecast' });
       }
     },
   );
 
   // Get cash flow projections
   app.get(
-    "/api/financial/cash-flow",
+    '/api/financial/cash-flow',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9070,17 +8325,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching cash flow projections:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch cash flow projections" });
+        console.error('Error fetching cash flow projections:', error);
+        res.status(500).json({ error: 'Failed to fetch cash flow projections' });
       }
     },
   );
 
   // Create cash flow projection
   app.post(
-    "/api/financial/cash-flow",
+    '/api/financial/cash-flow',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9103,8 +8356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Calculate cash flow
         const totalCashInflow = beginning_cash + collections_forecast;
-        const totalCashOutflow =
-          payroll_expenses + operating_expenses + equipment_purchases;
+        const totalCashOutflow = payroll_expenses + operating_expenses + equipment_purchases;
         const netCashFlow = totalCashInflow - totalCashOutflow;
         const endingCash = beginning_cash + netCashFlow;
         const cashShortageRisk = endingCash < minimum_cash_required;
@@ -9144,17 +8396,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating cash flow projection:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create cash flow projection" });
+        console.error('Error creating cash flow projection:', error);
+        res.status(500).json({ error: 'Failed to create cash flow projection' });
       }
     },
   );
 
   // Get profitability analysis
   app.get(
-    "/api/financial/profitability",
+    '/api/financial/profitability',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9163,10 +8413,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { type } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (type && type !== "all") {
+        if (type && type !== 'all') {
           whereConditions.push(`analysis_type = $${queryParams.length + 1}`);
           queryParams.push(type);
         }
@@ -9174,24 +8424,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const query = `
         SELECT *
         FROM profitability_analysis
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching profitability analysis:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch profitability analysis" });
+        console.error('Error fetching profitability analysis:', error);
+        res.status(500).json({ error: 'Failed to fetch profitability analysis' });
       }
     },
   );
 
   // Run profitability analysis
   app.post(
-    "/api/financial/profitability/run",
+    '/api/financial/profitability/run',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9210,15 +8458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .from(businessRecords)
           .leftJoin(invoices, eq(businessRecords.id, invoices.customerId))
-          .leftJoin(
-            serviceTickets,
-            eq(businessRecords.id, serviceTickets.customerId),
-          )
+          .leftJoin(serviceTickets, eq(businessRecords.id, serviceTickets.customerId))
           .where(
-            and(
-              eq(businessRecords.tenantId, tenantId),
-              eq(businessRecords.recordType, "customer"),
-            ),
+            and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
           )
           .groupBy(businessRecords.id, businessRecords.companyName)
           .having(sql`sum(${invoices.totalAmount}) > 0`)
@@ -9229,10 +8471,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const totalCosts = Number(analysis.totalCosts || 0);
           const grossProfit = serviceRevenue - totalCosts;
           const netProfit = grossProfit * 0.85; // Simplified calculation
-          const grossMargin =
-            serviceRevenue > 0 ? (grossProfit / serviceRevenue) * 100 : 0;
-          const netMargin =
-            serviceRevenue > 0 ? (netProfit / serviceRevenue) * 100 : 0;
+          const grossMargin = serviceRevenue > 0 ? (grossProfit / serviceRevenue) * 100 : 0;
+          const netMargin = serviceRevenue > 0 ? (netProfit / serviceRevenue) * 100 : 0;
           const roi = totalCosts > 0 ? (netProfit / totalCosts) * 100 : 0;
 
           const query = `
@@ -9251,10 +8491,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await db.$client.query(query, [
             tenantId,
             `Customer Profitability: ${analysis.customerName}`,
-            "customer",
+            'customer',
             startDate,
             endDate,
-            "customer",
+            'customer',
             analysis.customerName,
             serviceRevenue,
             serviceRevenue,
@@ -9269,47 +8509,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         res.status(201).json({
-          message: "Profitability analysis completed",
+          message: 'Profitability analysis completed',
           analyses_created: customerAnalyses.length,
         });
       } catch (error) {
-        console.error("Error running profitability analysis:", error);
-        res.status(500).json({ error: "Failed to run profitability analysis" });
+        console.error('Error running profitability analysis:', error);
+        res.status(500).json({ error: 'Failed to run profitability analysis' });
       }
     },
   );
 
   // Get financial KPIs
-  app.get(
-    "/api/financial/kpis",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.get('/api/financial/kpis', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        const query = `
+      const query = `
         SELECT *
         FROM financial_kpis
         WHERE tenant_id = $1
         ORDER BY calculation_period DESC
       `;
 
-        const result = await db.$client.query(query, [tenantId]);
-        res.json(result.rows);
-      } catch (error) {
-        console.error("Error fetching financial KPIs:", error);
-        res.status(500).json({ error: "Failed to fetch financial KPIs" });
-      }
-    },
-  );
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching financial KPIs:', error);
+      res.status(500).json({ error: 'Failed to fetch financial KPIs' });
+    }
+  });
 
   // ============= EQUIPMENT LIFECYCLE MANAGEMENT ROUTES =============
 
   // Get equipment lifecycle metrics
   app.get(
-    "/api/equipment-lifecycle/metrics",
+    '/api/equipment-lifecycle/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9333,29 +8567,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           totalEquipmentInProcess: parseInt(results[0].rows[0].total_equipment),
           pendingDeliveries: parseInt(results[1].rows[0].pending_deliveries),
-          scheduledInstallations: parseInt(
-            results[2].rows[0].scheduled_installations,
-          ),
+          scheduledInstallations: parseInt(results[2].rows[0].scheduled_installations),
           activeAssets: parseInt(results[3].rows[0].active_assets),
-          averageInstallationTime: parseFloat(
-            results[4].rows[0].avg_installation_time,
-          ),
-          customerSatisfactionRating: parseFloat(
-            results[5].rows[0].avg_satisfaction,
-          ),
+          averageInstallationTime: parseFloat(results[4].rows[0].avg_installation_time),
+          customerSatisfactionRating: parseFloat(results[5].rows[0].avg_satisfaction),
         });
       } catch (error) {
-        console.error("Error fetching equipment lifecycle metrics:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch equipment lifecycle metrics" });
+        console.error('Error fetching equipment lifecycle metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch equipment lifecycle metrics' });
       }
     },
   );
 
   // Get equipment lifecycle stages
   app.get(
-    "/api/equipment-lifecycle/stages",
+    '/api/equipment-lifecycle/stages',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9364,17 +8590,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { stage, status } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["els.tenant_id = $1"];
+        let whereConditions = ['els.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (stage && stage !== "all") {
-          whereConditions.push(
-            `els.current_stage = $${queryParams.length + 1}`,
-          );
+        if (stage && stage !== 'all') {
+          whereConditions.push(`els.current_stage = $${queryParams.length + 1}`);
           queryParams.push(stage);
         }
 
-        if (status && status !== "all") {
+        if (status && status !== 'all') {
           whereConditions.push(`els.stage_status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
@@ -9387,24 +8611,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM equipment_lifecycle_stages els
         LEFT JOIN business_records br ON els.business_record_id = br.id
         LEFT JOIN users u ON els.assigned_to = u.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY els.stage_started_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching equipment lifecycle stages:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch equipment lifecycle stages" });
+        console.error('Error fetching equipment lifecycle stages:', error);
+        res.status(500).json({ error: 'Failed to fetch equipment lifecycle stages' });
       }
     },
   );
 
   // Get purchase orders
   app.get(
-    "/api/equipment-lifecycle/purchase-orders",
+    '/api/equipment-lifecycle/purchase-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9426,15 +8648,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching purchase orders:", error);
-        res.status(500).json({ error: "Failed to fetch purchase orders" });
+        console.error('Error fetching purchase orders:', error);
+        res.status(500).json({ error: 'Failed to fetch purchase orders' });
       }
     },
   );
 
   // Create purchase order
   app.post(
-    "/api/equipment-lifecycle/purchase-orders",
+    '/api/equipment-lifecycle/purchase-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9519,15 +8741,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(po);
       } catch (error) {
-        console.error("Error creating purchase order:", error);
-        res.status(500).json({ error: "Failed to create purchase order" });
+        console.error('Error creating purchase order:', error);
+        res.status(500).json({ error: 'Failed to create purchase order' });
       }
     },
   );
 
   // Get delivery schedules
   app.get(
-    "/api/equipment-lifecycle/deliveries",
+    '/api/equipment-lifecycle/deliveries',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9545,15 +8767,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching delivery schedules:", error);
-        res.status(500).json({ error: "Failed to fetch delivery schedules" });
+        console.error('Error fetching delivery schedules:', error);
+        res.status(500).json({ error: 'Failed to fetch delivery schedules' });
       }
     },
   );
 
   // Create delivery schedule
   app.post(
-    "/api/equipment-lifecycle/deliveries",
+    '/api/equipment-lifecycle/deliveries',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9605,15 +8827,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating delivery schedule:", error);
-        res.status(500).json({ error: "Failed to create delivery schedule" });
+        console.error('Error creating delivery schedule:', error);
+        res.status(500).json({ error: 'Failed to create delivery schedule' });
       }
     },
   );
 
   // Get installations
   app.get(
-    "/api/equipment-lifecycle/installations",
+    '/api/equipment-lifecycle/installations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9637,15 +8859,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching installations:", error);
-        res.status(500).json({ error: "Failed to fetch installations" });
+        console.error('Error fetching installations:', error);
+        res.status(500).json({ error: 'Failed to fetch installations' });
       }
     },
   );
 
   // Create installation
   app.post(
-    "/api/equipment-lifecycle/installations",
+    '/api/equipment-lifecycle/installations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9694,15 +8916,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating installation:", error);
-        res.status(500).json({ error: "Failed to create installation" });
+        console.error('Error creating installation:', error);
+        res.status(500).json({ error: 'Failed to create installation' });
       }
     },
   );
 
   // Get asset tracking
   app.get(
-    "/api/equipment-lifecycle/assets",
+    '/api/equipment-lifecycle/assets',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9723,8 +8945,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching asset tracking:", error);
-        res.status(500).json({ error: "Failed to fetch asset tracking" });
+        console.error('Error fetching asset tracking:', error);
+        res.status(500).json({ error: 'Failed to fetch asset tracking' });
       }
     },
   );
@@ -9733,7 +8955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get commission metrics
   app.get(
-    "/api/commission/metrics",
+    '/api/commission/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9756,24 +8978,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.json({
           totalCommissionsPaid: parseFloat(results[0].rows[0].total_paid),
-          pendingCommissions: parseFloat(
-            results[1].rows[0].pending_commissions,
-          ),
+          pendingCommissions: parseFloat(results[1].rows[0].pending_commissions),
           averageCommissionRate: parseFloat(results[2].rows[0].avg_rate),
           topPerformerCommission: parseFloat(results[3].rows[0].top_commission),
           activeDisputes: parseInt(results[4].rows[0].active_disputes),
           quotaAttainment: parseFloat(results[5].rows[0].quota_attainment),
         });
       } catch (error) {
-        console.error("Error fetching commission metrics:", error);
-        res.status(500).json({ error: "Failed to fetch commission metrics" });
+        console.error('Error fetching commission metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch commission metrics' });
       }
     },
   );
 
   // Get commission structures
   app.get(
-    "/api/commission/structures",
+    '/api/commission/structures',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9791,17 +9011,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission structures:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch commission structures" });
+        console.error('Error fetching commission structures:', error);
+        res.status(500).json({ error: 'Failed to fetch commission structures' });
       }
     },
   );
 
   // Create commission structure
   app.post(
-    "/api/commission/structures",
+    '/api/commission/structures',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9849,17 +9067,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating commission structure:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create commission structure" });
+        console.error('Error creating commission structure:', error);
+        res.status(500).json({ error: 'Failed to create commission structure' });
       }
     },
   );
 
   // Get commission calculations
   app.get(
-    "/api/commission/calculations",
+    '/api/commission/calculations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9868,22 +9084,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { period, status } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["cc.tenant_id = $1"];
+        let whereConditions = ['cc.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (period && period !== "all") {
+        if (period && period !== 'all') {
           switch (period) {
-            case "current_month":
+            case 'current_month':
               whereConditions.push(
                 `EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`,
               );
               break;
-            case "last_month":
+            case 'last_month':
               whereConditions.push(
                 `EXTRACT(MONTH FROM cc.calculation_period_start) = EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month') AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month')`,
               );
               break;
-            case "current_quarter":
+            case 'current_quarter':
               whereConditions.push(
                 `EXTRACT(QUARTER FROM cc.calculation_period_start) = EXTRACT(QUARTER FROM CURRENT_DATE) AND EXTRACT(YEAR FROM cc.calculation_period_start) = EXTRACT(YEAR FROM CURRENT_DATE)`,
               );
@@ -9891,10 +9107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        if (status && status !== "all") {
-          whereConditions.push(
-            `cc.payment_status = $${queryParams.length + 1}`,
-          );
+        if (status && status !== 'all') {
+          whereConditions.push(`cc.payment_status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
 
@@ -9906,24 +9120,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM commission_calculations cc
         LEFT JOIN users u ON cc.employee_id = u.id
         LEFT JOIN commission_structures cs ON cc.commission_structure_id = cs.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY cc.created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission calculations:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch commission calculations" });
+        console.error('Error fetching commission calculations:', error);
+        res.status(500).json({ error: 'Failed to fetch commission calculations' });
       }
     },
   );
 
   // Run commission calculations
   app.post(
-    "/api/commission/calculations/run",
+    '/api/commission/calculations/run',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -9935,13 +9147,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Sample commission calculations for demo
         const sampleCalculations = [
           {
-            employee_name: "John Smith",
+            employee_name: 'John Smith',
             total_sales: 125000,
             commission_rate: 0.05,
             commission_amount: 6250,
           },
           {
-            employee_name: "Sarah Johnson",
+            employee_name: 'Sarah Johnson',
             total_sales: 98000,
             commission_rate: 0.045,
             commission_amount: 4410,
@@ -9955,26 +9167,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get active commission structure
         const structureQuery = `SELECT id FROM commission_structures WHERE tenant_id = $1 AND is_active = true LIMIT 1`;
-        const structureResult = await db.$client.query(structureQuery, [
-          tenantId,
-        ]);
+        const structureResult = await db.$client.query(structureQuery, [tenantId]);
         const structureId = structureResult.rows[0]?.id;
 
         if (!structureId) {
-          return res
-            .status(400)
-            .json({ error: "No active commission structure found" });
+          return res.status(400).json({ error: 'No active commission structure found' });
         }
 
         const startDate = new Date();
         startDate.setDate(1); // First day of current month
         const endDate = new Date();
 
-        for (
-          let i = 0;
-          i < Math.min(sampleCalculations.length, users.length);
-          i++
-        ) {
+        for (let i = 0; i < Math.min(sampleCalculations.length, users.length); i++) {
           const calc = sampleCalculations[i];
           const user = users[i];
 
@@ -10004,24 +9208,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         res.status(201).json({
-          message: "Commission calculations completed",
-          calculations_created: Math.min(
-            sampleCalculations.length,
-            users.length,
-          ),
+          message: 'Commission calculations completed',
+          calculations_created: Math.min(sampleCalculations.length, users.length),
         });
       } catch (error) {
-        console.error("Error running commission calculations:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to run commission calculations" });
+        console.error('Error running commission calculations:', error);
+        res.status(500).json({ error: 'Failed to run commission calculations' });
       }
     },
   );
 
   // Get sales quotas
   app.get(
-    "/api/commission/quotas",
+    '/api/commission/quotas',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10042,15 +9241,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching sales quotas:", error);
-        res.status(500).json({ error: "Failed to fetch sales quotas" });
+        console.error('Error fetching sales quotas:', error);
+        res.status(500).json({ error: 'Failed to fetch sales quotas' });
       }
     },
   );
 
   // Create sales quota
   app.post(
-    "/api/commission/quotas",
+    '/api/commission/quotas',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10092,15 +9291,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating sales quota:", error);
-        res.status(500).json({ error: "Failed to create sales quota" });
+        console.error('Error creating sales quota:', error);
+        res.status(500).json({ error: 'Failed to create sales quota' });
       }
     },
   );
 
   // Get commission payments
   app.get(
-    "/api/commission/payments",
+    '/api/commission/payments',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10121,15 +9320,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission payments:", error);
-        res.status(500).json({ error: "Failed to fetch commission payments" });
+        console.error('Error fetching commission payments:', error);
+        res.status(500).json({ error: 'Failed to fetch commission payments' });
       }
     },
   );
 
   // Get commission disputes
   app.get(
-    "/api/commission/disputes",
+    '/api/commission/disputes',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10150,15 +9349,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission disputes:", error);
-        res.status(500).json({ error: "Failed to fetch commission disputes" });
+        console.error('Error fetching commission disputes:', error);
+        res.status(500).json({ error: 'Failed to fetch commission disputes' });
       }
     },
   );
 
   // Create commission dispute
   app.post(
-    "/api/commission/disputes",
+    '/api/commission/disputes',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10177,7 +9376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } = req.body;
 
         const disputeNumber = `DISP-${Date.now()}`;
-        const disputeDate = new Date().toISOString().split("T")[0];
+        const disputeDate = new Date().toISOString().split('T')[0];
 
         const query = `
         INSERT INTO commission_disputes (
@@ -10203,8 +9402,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating commission dispute:", error);
-        res.status(500).json({ error: "Failed to create commission dispute" });
+        console.error('Error creating commission dispute:', error);
+        res.status(500).json({ error: 'Failed to create commission dispute' });
       }
     },
   );
@@ -10213,7 +9412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get monitoring metrics
   app.get(
-    "/api/monitoring/metrics",
+    '/api/monitoring/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10240,20 +9439,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           activeAlerts: parseInt(results[2].rows[0].active_alerts),
           criticalAlerts: parseInt(results[3].rows[0].critical_alerts),
           averageUptime: parseFloat(results[4].rows[0].avg_uptime),
-          devicesRequiringAttention: parseInt(
-            results[5].rows[0].devices_attention,
-          ),
+          devicesRequiringAttention: parseInt(results[5].rows[0].devices_attention),
         });
       } catch (error) {
-        console.error("Error fetching monitoring metrics:", error);
-        res.status(500).json({ error: "Failed to fetch monitoring metrics" });
+        console.error('Error fetching monitoring metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch monitoring metrics' });
       }
     },
   );
 
   // Get IoT devices
   app.get(
-    "/api/monitoring/devices",
+    '/api/monitoring/devices',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10262,18 +9459,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { type, status } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["iot.tenant_id = $1"];
+        let whereConditions = ['iot.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (type && type !== "all") {
+        if (type && type !== 'all') {
           whereConditions.push(`iot.device_type = $${queryParams.length + 1}`);
           queryParams.push(type);
         }
 
-        if (status && status !== "all") {
-          whereConditions.push(
-            `iot.device_status = $${queryParams.length + 1}`,
-          );
+        if (status && status !== 'all') {
+          whereConditions.push(`iot.device_status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
 
@@ -10283,22 +9478,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           br.company_name as customer_name
         FROM iot_devices iot
         LEFT JOIN business_records br ON iot.business_record_id = br.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY iot.created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching IoT devices:", error);
-        res.status(500).json({ error: "Failed to fetch IoT devices" });
+        console.error('Error fetching IoT devices:', error);
+        res.status(500).json({ error: 'Failed to fetch IoT devices' });
       }
     },
   );
 
   // Register IoT device
   app.post(
-    "/api/monitoring/devices",
+    '/api/monitoring/devices',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10351,15 +9546,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error registering IoT device:", error);
-        res.status(500).json({ error: "Failed to register IoT device" });
+        console.error('Error registering IoT device:', error);
+        res.status(500).json({ error: 'Failed to register IoT device' });
       }
     },
   );
 
   // Get equipment status
   app.get(
-    "/api/monitoring/equipment-status",
+    '/api/monitoring/equipment-status',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10380,15 +9575,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching equipment status:", error);
-        res.status(500).json({ error: "Failed to fetch equipment status" });
+        console.error('Error fetching equipment status:', error);
+        res.status(500).json({ error: 'Failed to fetch equipment status' });
       }
     },
   );
 
   // Get predictive alerts
   app.get(
-    "/api/monitoring/alerts",
+    '/api/monitoring/alerts',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10397,10 +9592,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { severity } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["pa.tenant_id = $1"];
+        let whereConditions = ['pa.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (severity && severity !== "all") {
+        if (severity && severity !== 'all') {
           whereConditions.push(`pa.severity = $${queryParams.length + 1}`);
           queryParams.push(severity);
         }
@@ -10413,22 +9608,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM predictive_alerts pa
         LEFT JOIN iot_devices iot ON pa.device_id = iot.device_id
         LEFT JOIN business_records br ON pa.business_record_id = br.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY pa.created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching predictive alerts:", error);
-        res.status(500).json({ error: "Failed to fetch predictive alerts" });
+        console.error('Error fetching predictive alerts:', error);
+        res.status(500).json({ error: 'Failed to fetch predictive alerts' });
       }
     },
   );
 
   // Get performance trends
   app.get(
-    "/api/monitoring/trends",
+    '/api/monitoring/trends',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10449,38 +9644,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching performance trends:", error);
-        res.status(500).json({ error: "Failed to fetch performance trends" });
+        console.error('Error fetching performance trends:', error);
+        res.status(500).json({ error: 'Failed to fetch performance trends' });
       }
     },
   );
 
   // Sync devices (simulate data collection)
-  app.post(
-    "/api/monitoring/sync",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.post('/api/monitoring/sync', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        // Get active devices
-        const devicesQuery = `SELECT * FROM iot_devices WHERE tenant_id = $1 AND monitoring_enabled = true`;
-        const devicesResult = await db.$client.query(devicesQuery, [tenantId]);
-        const devices = devicesResult.rows;
+      // Get active devices
+      const devicesQuery = `SELECT * FROM iot_devices WHERE tenant_id = $1 AND monitoring_enabled = true`;
+      const devicesResult = await db.$client.query(devicesQuery, [tenantId]);
+      const devices = devicesResult.rows;
 
-        let syncedDevices = 0;
+      let syncedDevices = 0;
 
-        for (const device of devices) {
-          // Update device ping time
-          await db.$client.query(
-            `UPDATE iot_devices SET last_ping_time = NOW(), last_data_received = NOW() WHERE id = $1`,
-            [device.id],
-          );
+      for (const device of devices) {
+        // Update device ping time
+        await db.$client.query(
+          `UPDATE iot_devices SET last_ping_time = NOW(), last_data_received = NOW() WHERE id = $1`,
+          [device.id],
+        );
 
-          // Create sample equipment status
-          const statusQuery = `
+        // Create sample equipment status
+        const statusQuery = `
           INSERT INTO equipment_status_monitoring (
             tenant_id, equipment_id, device_id, status_timestamp,
             operational_status, power_status, connectivity_status,
@@ -10489,80 +9679,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `;
 
-          await db.$client.query(statusQuery, [
-            tenantId,
-            device.equipment_id || device.device_id,
-            device.device_id,
-            "running",
-            "on",
-            "connected",
-            Math.floor(Math.random() * 5), // current_job_count
-            Math.floor(Math.random() * 100000) + 50000, // total_page_count
-            Math.floor(Math.random() * 3), // error_count
-            20 + Math.random() * 10, // temperature
-            40 + Math.random() * 20, // humidity
-            95 + Math.random() * 5, // uptime_percentage
-          ]);
+        await db.$client.query(statusQuery, [
+          tenantId,
+          device.equipment_id || device.device_id,
+          device.device_id,
+          'running',
+          'on',
+          'connected',
+          Math.floor(Math.random() * 5), // current_job_count
+          Math.floor(Math.random() * 100000) + 50000, // total_page_count
+          Math.floor(Math.random() * 3), // error_count
+          20 + Math.random() * 10, // temperature
+          40 + Math.random() * 20, // humidity
+          95 + Math.random() * 5, // uptime_percentage
+        ]);
 
-          syncedDevices++;
-        }
-
-        res.status(200).json({
-          message: "Device sync completed",
-          synced_devices: syncedDevices,
-        });
-      } catch (error) {
-        console.error("Error syncing devices:", error);
-        res.status(500).json({ error: "Failed to sync devices" });
+        syncedDevices++;
       }
-    },
-  );
+
+      res.status(200).json({
+        message: 'Device sync completed',
+        synced_devices: syncedDevices,
+      });
+    } catch (error) {
+      console.error('Error syncing devices:', error);
+      res.status(500).json({ error: 'Failed to sync devices' });
+    }
+  });
 
   // ============= MOBILE SERVICE APP ROUTES =============
 
   // Get mobile app metrics
-  app.get(
-    "/api/mobile/metrics",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.get('/api/mobile/metrics', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        const queries = [
-          `SELECT COUNT(*) as active_work_orders FROM mobile_work_orders WHERE tenant_id = $1 AND status IN ('assigned', 'en_route', 'on_site', 'in_progress')`,
-          `SELECT COUNT(DISTINCT technician_id) as technicians_in_field FROM technician_locations WHERE tenant_id = $1 AND recorded_at > NOW() - INTERVAL '1 hour'`,
-          `SELECT COUNT(*) as pending_parts_orders FROM mobile_field_orders WHERE tenant_id = $1 AND status IN ('submitted', 'approved', 'processing')`,
-          `SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (arrival_time - created_at))/60), 0) as avg_response_time FROM mobile_work_orders WHERE tenant_id = $1 AND arrival_time IS NOT NULL`,
-          `SELECT COALESCE(AVG(CASE WHEN status = 'completed' THEN 1.0 ELSE 0.0 END) * 100, 0) as completion_rate FROM mobile_work_orders WHERE tenant_id = $1`,
-          `SELECT COALESCE(AVG(customer_satisfaction_rating), 0) as customer_satisfaction FROM mobile_work_orders WHERE tenant_id = $1 AND customer_satisfaction_rating IS NOT NULL`,
-        ];
+      const queries = [
+        `SELECT COUNT(*) as active_work_orders FROM mobile_work_orders WHERE tenant_id = $1 AND status IN ('assigned', 'en_route', 'on_site', 'in_progress')`,
+        `SELECT COUNT(DISTINCT technician_id) as technicians_in_field FROM technician_locations WHERE tenant_id = $1 AND recorded_at > NOW() - INTERVAL '1 hour'`,
+        `SELECT COUNT(*) as pending_parts_orders FROM mobile_field_orders WHERE tenant_id = $1 AND status IN ('submitted', 'approved', 'processing')`,
+        `SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (arrival_time - created_at))/60), 0) as avg_response_time FROM mobile_work_orders WHERE tenant_id = $1 AND arrival_time IS NOT NULL`,
+        `SELECT COALESCE(AVG(CASE WHEN status = 'completed' THEN 1.0 ELSE 0.0 END) * 100, 0) as completion_rate FROM mobile_work_orders WHERE tenant_id = $1`,
+        `SELECT COALESCE(AVG(customer_satisfaction_rating), 0) as customer_satisfaction FROM mobile_work_orders WHERE tenant_id = $1 AND customer_satisfaction_rating IS NOT NULL`,
+      ];
 
-        const results = await Promise.all(
-          queries.map((query) => db.$client.query(query, [tenantId])),
-        );
+      const results = await Promise.all(
+        queries.map((query) => db.$client.query(query, [tenantId])),
+      );
 
-        res.json({
-          activeWorkOrders: parseInt(results[0].rows[0].active_work_orders),
-          techniciansInField: parseInt(results[1].rows[0].technicians_in_field),
-          pendingPartsOrders: parseInt(results[2].rows[0].pending_parts_orders),
-          averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
-          completionRate: parseFloat(results[4].rows[0].completion_rate),
-          customerSatisfaction: parseFloat(
-            results[5].rows[0].customer_satisfaction,
-          ),
-        });
-      } catch (error) {
-        console.error("Error fetching mobile metrics:", error);
-        res.status(500).json({ error: "Failed to fetch mobile metrics" });
-      }
-    },
-  );
+      res.json({
+        activeWorkOrders: parseInt(results[0].rows[0].active_work_orders),
+        techniciansInField: parseInt(results[1].rows[0].technicians_in_field),
+        pendingPartsOrders: parseInt(results[2].rows[0].pending_parts_orders),
+        averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
+        completionRate: parseFloat(results[4].rows[0].completion_rate),
+        customerSatisfaction: parseFloat(results[5].rows[0].customer_satisfaction),
+      });
+    } catch (error) {
+      console.error('Error fetching mobile metrics:', error);
+      res.status(500).json({ error: 'Failed to fetch mobile metrics' });
+    }
+  });
 
   // Get mobile work orders
   app.get(
-    "/api/mobile/work-orders",
+    '/api/mobile/work-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10571,23 +9752,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { status, priority, technician } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["mwo.tenant_id = $1"];
+        let whereConditions = ['mwo.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (status && status !== "all") {
+        if (status && status !== 'all') {
           whereConditions.push(`mwo.status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
 
-        if (priority && priority !== "all") {
+        if (priority && priority !== 'all') {
           whereConditions.push(`mwo.priority = $${queryParams.length + 1}`);
           queryParams.push(priority);
         }
 
-        if (technician && technician !== "all") {
-          whereConditions.push(
-            `mwo.assigned_technician_id = $${queryParams.length + 1}`,
-          );
+        if (technician && technician !== 'all') {
+          whereConditions.push(`mwo.assigned_technician_id = $${queryParams.length + 1}`);
           queryParams.push(technician);
         }
 
@@ -10599,22 +9778,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM mobile_work_orders mwo
         LEFT JOIN business_records br ON mwo.business_record_id = br.id
         LEFT JOIN users u ON mwo.assigned_technician_id = u.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY mwo.created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching mobile work orders:", error);
-        res.status(500).json({ error: "Failed to fetch mobile work orders" });
+        console.error('Error fetching mobile work orders:', error);
+        res.status(500).json({ error: 'Failed to fetch mobile work orders' });
       }
     },
   );
 
   // Create mobile work order
   app.post(
-    "/api/mobile/work-orders",
+    '/api/mobile/work-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10669,15 +9848,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating mobile work order:", error);
-        res.status(500).json({ error: "Failed to create mobile work order" });
+        console.error('Error creating mobile work order:', error);
+        res.status(500).json({ error: 'Failed to create mobile work order' });
       }
     },
   );
 
   // Get mobile parts inventory
   app.get(
-    "/api/mobile/parts-inventory",
+    '/api/mobile/parts-inventory',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10695,17 +9874,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching mobile parts inventory:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch mobile parts inventory" });
+        console.error('Error fetching mobile parts inventory:', error);
+        res.status(500).json({ error: 'Failed to fetch mobile parts inventory' });
       }
     },
   );
 
   // Get mobile field orders
   app.get(
-    "/api/mobile/field-orders",
+    '/api/mobile/field-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10727,15 +9904,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching mobile field orders:", error);
-        res.status(500).json({ error: "Failed to fetch mobile field orders" });
+        console.error('Error fetching mobile field orders:', error);
+        res.status(500).json({ error: 'Failed to fetch mobile field orders' });
       }
     },
   );
 
   // Create mobile field order
   app.post(
-    "/api/mobile/field-orders",
+    '/api/mobile/field-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10755,7 +9932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } = req.body;
 
         const orderNumber = `FO-${Date.now()}`;
-        const orderDate = new Date().toISOString().split("T")[0];
+        const orderDate = new Date().toISOString().split('T')[0];
 
         // Calculate total
         let subtotal = 0;
@@ -10791,15 +9968,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating mobile field order:", error);
-        res.status(500).json({ error: "Failed to create mobile field order" });
+        console.error('Error creating mobile field order:', error);
+        res.status(500).json({ error: 'Failed to create mobile field order' });
       }
     },
   );
 
   // Get technician locations
   app.get(
-    "/api/mobile/technician-locations",
+    '/api/mobile/technician-locations',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10824,15 +10001,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching technician locations:", error);
-        res.status(500).json({ error: "Failed to fetch technician locations" });
+        console.error('Error fetching technician locations:', error);
+        res.status(500).json({ error: 'Failed to fetch technician locations' });
       }
     },
   );
 
   // Get mobile app sessions
   app.get(
-    "/api/mobile/app-sessions",
+    '/api/mobile/app-sessions',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10853,68 +10030,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching mobile app sessions:", error);
-        res.status(500).json({ error: "Failed to fetch mobile app sessions" });
+        console.error('Error fetching mobile app sessions:', error);
+        res.status(500).json({ error: 'Failed to fetch mobile app sessions' });
       }
     },
   );
 
   // Sync mobile data
-  app.post(
-    "/api/mobile/sync",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.post('/api/mobile/sync', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        // Get active technicians
-        const techniciansQuery = `SELECT id, name FROM users WHERE tenant_id = $1 AND role LIKE '%technician%'`;
-        const techniciansResult = await db.$client.query(techniciansQuery, [
-          tenantId,
-        ]);
-        const technicians = techniciansResult.rows;
+      // Get active technicians
+      const techniciansQuery = `SELECT id, name FROM users WHERE tenant_id = $1 AND role LIKE '%technician%'`;
+      const techniciansResult = await db.$client.query(techniciansQuery, [tenantId]);
+      const technicians = techniciansResult.rows;
 
-        let syncedRecords = 0;
+      let syncedRecords = 0;
 
-        // Create sample technician locations
-        for (const tech of technicians) {
-          const locationQuery = `
+      // Create sample technician locations
+      for (const tech of technicians) {
+        const locationQuery = `
           INSERT INTO technician_locations (
             tenant_id, technician_id, recorded_at, latitude, longitude,
             location_type, device_battery_level
           ) VALUES ($1, $2, NOW(), $3, $4, $5, $6)
         `;
 
-          await db.$client.query(locationQuery, [
-            tenantId,
-            tech.id,
-            40.7128 + (Math.random() - 0.5) * 0.1, // NYC area
-            -74.006 + (Math.random() - 0.5) * 0.1,
-            "customer_site",
-            80 + Math.floor(Math.random() * 20), // 80-100% battery
-          ]);
+        await db.$client.query(locationQuery, [
+          tenantId,
+          tech.id,
+          40.7128 + (Math.random() - 0.5) * 0.1, // NYC area
+          -74.006 + (Math.random() - 0.5) * 0.1,
+          'customer_site',
+          80 + Math.floor(Math.random() * 20), // 80-100% battery
+        ]);
 
-          syncedRecords++;
-        }
-
-        res.status(200).json({
-          message: "Mobile data sync completed",
-          synced_records: syncedRecords,
-        });
-      } catch (error) {
-        console.error("Error syncing mobile data:", error);
-        res.status(500).json({ error: "Failed to sync mobile data" });
+        syncedRecords++;
       }
-    },
-  );
+
+      res.status(200).json({
+        message: 'Mobile data sync completed',
+        synced_records: syncedRecords,
+      });
+    } catch (error) {
+      console.error('Error syncing mobile data:', error);
+      res.status(500).json({ error: 'Failed to sync mobile data' });
+    }
+  });
 
   // ============= SERVICE ANALYTICS ROUTES =============
 
   // Get analytics metrics
   app.get(
-    "/api/analytics/metrics",
+    '/api/analytics/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10938,25 +10107,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           totalServiceCalls: parseInt(results[0].rows[0].total_service_calls),
           averageResponseTime: parseFloat(results[1].rows[0].avg_response_time),
-          customerSatisfaction: parseFloat(
-            results[2].rows[0].customer_satisfaction,
-          ),
+          customerSatisfaction: parseFloat(results[2].rows[0].customer_satisfaction),
           revenueGrowth: parseFloat(results[3].rows[0].revenue_growth),
           utilizationRate: parseFloat(results[4].rows[0].utilization_rate),
-          firstCallResolution: parseFloat(
-            results[5].rows[0].first_call_resolution,
-          ),
+          firstCallResolution: parseFloat(results[5].rows[0].first_call_resolution),
         });
       } catch (error) {
-        console.error("Error fetching analytics metrics:", error);
-        res.status(500).json({ error: "Failed to fetch analytics metrics" });
+        console.error('Error fetching analytics metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch analytics metrics' });
       }
     },
   );
 
   // Get performance metrics
   app.get(
-    "/api/analytics/performance-metrics",
+    '/api/analytics/performance-metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -10965,10 +10130,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { period } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (period && period !== "all") {
+        if (period && period !== 'all') {
           whereConditions.push(`metric_period = $${queryParams.length + 1}`);
           queryParams.push(period);
         }
@@ -10976,7 +10141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const query = `
         SELECT *
         FROM service_performance_metrics
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY metric_date DESC
         LIMIT 20
       `;
@@ -10984,15 +10149,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching performance metrics:", error);
-        res.status(500).json({ error: "Failed to fetch performance metrics" });
+        console.error('Error fetching performance metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch performance metrics' });
       }
     },
   );
 
   // Get technician performance analytics
   app.get(
-    "/api/analytics/technician-performance",
+    '/api/analytics/technician-performance',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11013,20 +10178,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error(
-          "Error fetching technician performance analytics:",
-          error,
-        );
-        res
-          .status(500)
-          .json({ error: "Failed to fetch technician performance analytics" });
+        console.error('Error fetching technician performance analytics:', error);
+        res.status(500).json({ error: 'Failed to fetch technician performance analytics' });
       }
     },
   );
 
   // Get customer service analytics
   app.get(
-    "/api/analytics/customer-service",
+    '/api/analytics/customer-service',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11047,53 +10207,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching customer service analytics:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch customer service analytics" });
+        console.error('Error fetching customer service analytics:', error);
+        res.status(500).json({ error: 'Failed to fetch customer service analytics' });
       }
     },
   );
 
   // Get trend analysis
-  app.get(
-    "/api/analytics/trends",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { category } = req.query;
-        const tenantId = req.user.tenantId;
+  app.get('/api/analytics/trends', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { category } = req.query;
+      const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
-        const queryParams = [tenantId];
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
 
-        if (category && category !== "all") {
-          whereConditions.push(`trend_category = $${queryParams.length + 1}`);
-          queryParams.push(category);
-        }
+      if (category && category !== 'all') {
+        whereConditions.push(`trend_category = $${queryParams.length + 1}`);
+        queryParams.push(category);
+      }
 
-        const query = `
+      const query = `
         SELECT *
         FROM service_trend_analysis
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY analysis_date DESC
         LIMIT 10
       `;
 
-        const result = await db.$client.query(query, queryParams);
-        res.json(result.rows);
-      } catch (error) {
-        console.error("Error fetching trend analysis:", error);
-        res.status(500).json({ error: "Failed to fetch trend analysis" });
-      }
-    },
-  );
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching trend analysis:', error);
+      res.status(500).json({ error: 'Failed to fetch trend analysis' });
+    }
+  });
 
   // Get BI dashboards
   app.get(
-    "/api/analytics/dashboards",
+    '/api/analytics/dashboards',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11102,10 +10254,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { category } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["bid.tenant_id = $1"];
+        let whereConditions = ['bid.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (category && category !== "all") {
+        if (category && category !== 'all') {
           whereConditions.push(`bid.category = $${queryParams.length + 1}`);
           queryParams.push(category);
         }
@@ -11116,22 +10268,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           u.name as owner_name
         FROM business_intelligence_dashboards bid
         LEFT JOIN users u ON bid.owner_id = u.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY bid.is_featured DESC, bid.created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching BI dashboards:", error);
-        res.status(500).json({ error: "Failed to fetch BI dashboards" });
+        console.error('Error fetching BI dashboards:', error);
+        res.status(500).json({ error: 'Failed to fetch BI dashboards' });
       }
     },
   );
 
   // Create BI dashboard
   app.post(
-    "/api/analytics/dashboards",
+    '/api/analytics/dashboards',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11153,8 +10305,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const dashboardConfig = {
           description,
           widgets: [],
-          layout: "grid",
-          theme: "default",
+          layout: 'grid',
+          theme: 'default',
         };
 
         const query = `
@@ -11179,15 +10331,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating BI dashboard:", error);
-        res.status(500).json({ error: "Failed to create BI dashboard" });
+        console.error('Error creating BI dashboard:', error);
+        res.status(500).json({ error: 'Failed to create BI dashboard' });
       }
     },
   );
 
   // Get performance benchmarks
   app.get(
-    "/api/analytics/benchmarks",
+    '/api/analytics/benchmarks',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11205,17 +10357,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching performance benchmarks:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch performance benchmarks" });
+        console.error('Error fetching performance benchmarks:', error);
+        res.status(500).json({ error: 'Failed to fetch performance benchmarks' });
       }
     },
   );
 
   // Create performance benchmark
   app.post(
-    "/api/analytics/benchmarks",
+    '/api/analytics/benchmarks',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11253,22 +10403,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           target_completion_date,
           business_impact,
           investment_required,
-          "stable",
+          'stable',
         ]);
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating performance benchmark:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create performance benchmark" });
+        console.error('Error creating performance benchmark:', error);
+        res.status(500).json({ error: 'Failed to create performance benchmark' });
       }
     },
   );
 
   // Generate analytics reports
   app.post(
-    "/api/analytics/generate-reports",
+    '/api/analytics/generate-reports',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11278,11 +10426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Generate sample performance metrics
         const currentDate = new Date();
-        const startOfMonth = new Date(
-          currentDate.getFullYear(),
-          currentDate.getMonth(),
-          1,
-        );
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
         const metricsQuery = `
         INSERT INTO service_performance_metrics (
@@ -11296,7 +10440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await db.$client.query(metricsQuery, [
           tenantId,
           currentDate,
-          "monthly",
+          'monthly',
           startOfMonth,
           currentDate,
           125,
@@ -11322,34 +10466,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const trends = [
           [
-            "service_volume",
+            'service_volume',
             125,
             118,
             5.93,
-            "up",
+            'up',
             132,
             85,
-            "Service volume continues to grow steadily",
+            'Service volume continues to grow steadily',
           ],
           [
-            "satisfaction",
+            'satisfaction',
             4.3,
             4.1,
             4.88,
-            "up",
+            'up',
             4.4,
             90,
-            "Customer satisfaction improving with recent process changes",
+            'Customer satisfaction improving with recent process changes',
           ],
           [
-            "response_times",
+            'response_times',
             45.5,
             52.3,
             -13.0,
-            "down",
+            'down',
             42,
             88,
-            "Response times improving due to optimized routing",
+            'Response times improving due to optimized routing',
           ],
         ];
 
@@ -11358,7 +10502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tenantId,
             trend[0],
             currentDate,
-            "monthly",
+            'monthly',
             trend[1],
             trend[2],
             trend[3],
@@ -11370,12 +10514,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         res.status(201).json({
-          message: "Analytics reports generated successfully",
+          message: 'Analytics reports generated successfully',
           reports_generated: 1 + trends.length,
         });
       } catch (error) {
-        console.error("Error generating analytics reports:", error);
-        res.status(500).json({ error: "Failed to generate analytics reports" });
+        console.error('Error generating analytics reports:', error);
+        res.status(500).json({ error: 'Failed to generate analytics reports' });
       }
     },
   );
@@ -11384,7 +10528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get automation metrics
   app.get(
-    "/api/automation/metrics",
+    '/api/automation/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11414,15 +10558,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tasksAutomated: parseInt(results[5].rows[0].tasks_automated),
         });
       } catch (error) {
-        console.error("Error fetching automation metrics:", error);
-        res.status(500).json({ error: "Failed to fetch automation metrics" });
+        console.error('Error fetching automation metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch automation metrics' });
       }
     },
   );
 
   // Get workflow templates
   app.get(
-    "/api/automation/workflow-templates",
+    '/api/automation/workflow-templates',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11431,35 +10575,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { category } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (category && category !== "all") {
-          whereConditions.push(
-            `template_category = $${queryParams.length + 1}`,
-          );
+        if (category && category !== 'all') {
+          whereConditions.push(`template_category = $${queryParams.length + 1}`);
           queryParams.push(category);
         }
 
         const query = `
         SELECT *
         FROM workflow_templates
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY is_active DESC, created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching workflow templates:", error);
-        res.status(500).json({ error: "Failed to fetch workflow templates" });
+        console.error('Error fetching workflow templates:', error);
+        res.status(500).json({ error: 'Failed to fetch workflow templates' });
       }
     },
   );
 
   // Create workflow template
   app.post(
-    "/api/automation/workflow-templates",
+    '/api/automation/workflow-templates',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11484,26 +10626,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const workflowSteps = [
           {
             step: 1,
-            name: "Initialize",
-            type: "action",
-            config: { action: "start_workflow" },
+            name: 'Initialize',
+            type: 'action',
+            config: { action: 'start_workflow' },
           },
           {
             step: 2,
-            name: "Process",
-            type: "action",
-            config: { action: "execute_main_logic" },
+            name: 'Process',
+            type: 'action',
+            config: { action: 'execute_main_logic' },
           },
           {
             step: 3,
-            name: "Complete",
-            type: "action",
-            config: { action: "finalize_workflow" },
+            name: 'Complete',
+            type: 'action',
+            config: { action: 'finalize_workflow' },
           },
         ];
 
         const triggerConditions = {
-          events: ["manual_trigger"],
+          events: ['manual_trigger'],
           conditions: [],
         };
 
@@ -11535,15 +10677,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating workflow template:", error);
-        res.status(500).json({ error: "Failed to create workflow template" });
+        console.error('Error creating workflow template:', error);
+        res.status(500).json({ error: 'Failed to create workflow template' });
       }
     },
   );
 
   // Execute workflow template
   app.post(
-    "/api/automation/workflow-templates/:id/execute",
+    '/api/automation/workflow-templates/:id/execute',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11555,13 +10697,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get template
         const templateQuery = `SELECT * FROM workflow_templates WHERE id = $1 AND tenant_id = $2`;
-        const templateResult = await db.$client.query(templateQuery, [
-          id,
-          tenantId,
-        ]);
+        const templateResult = await db.$client.query(templateQuery, [id, tenantId]);
 
         if (templateResult.rows.length === 0) {
-          return res.status(404).json({ error: "Workflow template not found" });
+          return res.status(404).json({ error: 'Workflow template not found' });
         }
 
         const template = templateResult.rows[0];
@@ -11583,22 +10722,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id,
           `${template.template_name} Execution`,
           userId,
-          "manual",
+          'manual',
           steps.length,
-          "pending",
+          'pending',
         ]);
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error executing workflow template:", error);
-        res.status(500).json({ error: "Failed to execute workflow template" });
+        console.error('Error executing workflow template:', error);
+        res.status(500).json({ error: 'Failed to execute workflow template' });
       }
     },
   );
 
   // Get workflow executions
   app.get(
-    "/api/automation/workflow-executions",
+    '/api/automation/workflow-executions',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11607,10 +10746,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { status } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["we.tenant_id = $1"];
+        let whereConditions = ['we.tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (status && status !== "all") {
+        if (status && status !== 'all') {
           whereConditions.push(`we.status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
@@ -11621,22 +10760,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           wt.template_name as workflow_template_name
         FROM workflow_executions we
         LEFT JOIN workflow_templates wt ON we.workflow_template_id = wt.id
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY we.created_at DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching workflow executions:", error);
-        res.status(500).json({ error: "Failed to fetch workflow executions" });
+        console.error('Error fetching workflow executions:', error);
+        res.status(500).json({ error: 'Failed to fetch workflow executions' });
       }
     },
   );
 
   // Control workflow execution
   app.post(
-    "/api/automation/workflow-executions/:id/:action",
+    '/api/automation/workflow-executions/:id/:action',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11650,20 +10789,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let values = [];
 
         switch (action) {
-          case "pause":
-            newStatus = "paused";
-            updateFields.push("paused_at = NOW()");
+          case 'pause':
+            newStatus = 'paused';
+            updateFields.push('paused_at = NOW()');
             break;
-          case "resume":
-            newStatus = "running";
-            updateFields.push("paused_at = NULL");
+          case 'resume':
+            newStatus = 'running';
+            updateFields.push('paused_at = NULL');
             break;
-          case "stop":
-            newStatus = "cancelled";
-            updateFields.push("completed_at = NOW()");
+          case 'stop':
+            newStatus = 'cancelled';
+            updateFields.push('completed_at = NOW()');
             break;
           default:
-            return res.status(400).json({ error: "Invalid action" });
+            return res.status(400).json({ error: 'Invalid action' });
         }
 
         updateFields.push(`status = $${values.length + 2}`);
@@ -11671,7 +10810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const query = `
         UPDATE workflow_executions 
-        SET ${updateFields.join(", ")}, updated_at = NOW()
+        SET ${updateFields.join(', ')}, updated_at = NOW()
         WHERE execution_id = $1 AND tenant_id = $${values.length + 2}
         RETURNING *
       `;
@@ -11679,48 +10818,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [id, ...values, tenantId]);
 
         if (result.rows.length === 0) {
-          return res
-            .status(404)
-            .json({ error: "Workflow execution not found" });
+          return res.status(404).json({ error: 'Workflow execution not found' });
         }
 
         res.json(result.rows[0]);
       } catch (error) {
-        console.error("Error controlling workflow execution:", error);
-        res.status(500).json({ error: "Failed to control workflow execution" });
+        console.error('Error controlling workflow execution:', error);
+        res.status(500).json({ error: 'Failed to control workflow execution' });
       }
     },
   );
 
   // Get automation rules
-  app.get(
-    "/api/automation/rules",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const tenantId = req.user.tenantId;
+  app.get('/api/automation/rules', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
 
-        const query = `
+      const query = `
         SELECT *
         FROM automation_rules
         WHERE tenant_id = $1
         ORDER BY is_active DESC, priority DESC, created_at DESC
       `;
 
-        const result = await db.$client.query(query, [tenantId]);
-        res.json(result.rows);
-      } catch (error) {
-        console.error("Error fetching automation rules:", error);
-        res.status(500).json({ error: "Failed to fetch automation rules" });
-      }
-    },
-  );
+      const result = await db.$client.query(query, [tenantId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching automation rules:', error);
+      res.status(500).json({ error: 'Failed to fetch automation rules' });
+    }
+  });
 
   // Create automation rule
   app.post(
-    "/api/automation/rules",
+    '/api/automation/rules',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11741,9 +10872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } = req.body;
 
         // Create basic rule configuration
-        const triggerEvents = ["entity_created", "entity_updated"];
-        const conditions = { logic: "AND", rules: [] };
-        const actions = [{ type: "notify", target: "admin" }];
+        const triggerEvents = ['entity_created', 'entity_updated'];
+        const conditions = { logic: 'AND', rules: [] };
+        const actions = [{ type: 'notify', target: 'admin' }];
 
         const query = `
         INSERT INTO automation_rules (
@@ -11772,50 +10903,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating automation rule:", error);
-        res.status(500).json({ error: "Failed to create automation rule" });
+        console.error('Error creating automation rule:', error);
+        res.status(500).json({ error: 'Failed to create automation rule' });
       }
     },
   );
 
   // Get automated tasks
-  app.get(
-    "/api/automation/tasks",
-    requireAuth,
-    requireAuth,
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { priority } = req.query;
-        const tenantId = req.user.tenantId;
+  app.get('/api/automation/tasks', requireAuth, requireAuth, requireAuth, async (req: any, res) => {
+    try {
+      const { priority } = req.query;
+      const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
-        const queryParams = [tenantId];
+      let whereConditions = ['tenant_id = $1'];
+      const queryParams = [tenantId];
 
-        if (priority && priority !== "all") {
-          whereConditions.push(`priority = $${queryParams.length + 1}`);
-          queryParams.push(priority);
-        }
+      if (priority && priority !== 'all') {
+        whereConditions.push(`priority = $${queryParams.length + 1}`);
+        queryParams.push(priority);
+      }
 
-        const query = `
+      const query = `
         SELECT *
         FROM automated_tasks
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY urgency_score DESC, created_at DESC
       `;
 
-        const result = await db.$client.query(query, queryParams);
-        res.json(result.rows);
-      } catch (error) {
-        console.error("Error fetching automated tasks:", error);
-        res.status(500).json({ error: "Failed to fetch automated tasks" });
-      }
-    },
-  );
+      const result = await db.$client.query(query, queryParams);
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Error fetching automated tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch automated tasks' });
+    }
+  });
 
   // Create automated task
   app.post(
-    "/api/automation/tasks",
+    '/api/automation/tasks',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11855,13 +10980,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           estimated_duration_minutes,
           due_date,
           assigned_to,
-          "manual_creation",
+          'manual_creation',
         ]);
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating automated task:", error);
-        res.status(500).json({ error: "Failed to create automated task" });
+        console.error('Error creating automated task:', error);
+        res.status(500).json({ error: 'Failed to create automated task' });
       }
     },
   );
@@ -11870,7 +10995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get mobile field metrics
   app.get(
-    "/api/mobile-field/metrics",
+    '/api/mobile-field/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11896,21 +11021,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workOrdersToday: parseInt(results[1].rows[0].work_orders_today),
           completionRate: parseFloat(results[2].rows[0].completion_rate),
           averageResponseTime: parseFloat(results[3].rows[0].avg_response_time),
-          customerSatisfaction: parseFloat(
-            results[4].rows[0].customer_satisfaction,
-          ),
+          customerSatisfaction: parseFloat(results[4].rows[0].customer_satisfaction),
           gpsAccuracy: parseFloat(results[5].rows[0].gps_accuracy),
         });
       } catch (error) {
-        console.error("Error fetching mobile field metrics:", error);
-        res.status(500).json({ error: "Failed to fetch mobile field metrics" });
+        console.error('Error fetching mobile field metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch mobile field metrics' });
       }
     },
   );
 
   // Get field technicians
   app.get(
-    "/api/mobile-field/technicians",
+    '/api/mobile-field/technicians',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11928,15 +11051,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching field technicians:", error);
-        res.status(500).json({ error: "Failed to fetch field technicians" });
+        console.error('Error fetching field technicians:', error);
+        res.status(500).json({ error: 'Failed to fetch field technicians' });
       }
     },
   );
 
   // Create field technician
   app.post(
-    "/api/mobile-field/technicians",
+    '/api/mobile-field/technicians',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -11959,7 +11082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Parse skill categories if provided
         const skillCategoriesArray = skill_categories
-          ? skill_categories.split(",").map((s: string) => s.trim())
+          ? skill_categories.split(',').map((s: string) => s.trim())
           : [];
 
         const query = `
@@ -11987,15 +11110,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating field technician:", error);
-        res.status(500).json({ error: "Failed to create field technician" });
+        console.error('Error creating field technician:', error);
+        res.status(500).json({ error: 'Failed to create field technician' });
       }
     },
   );
 
   // Get field work orders
   app.get(
-    "/api/mobile-field/work-orders",
+    '/api/mobile-field/work-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12004,22 +11127,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { status, technician, priority } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
-        if (status && status !== "all") {
+        if (status && status !== 'all') {
           whereConditions.push(`status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
 
-        if (technician && technician !== "all") {
-          whereConditions.push(
-            `assigned_technician_id = $${queryParams.length + 1}`,
-          );
+        if (technician && technician !== 'all') {
+          whereConditions.push(`assigned_technician_id = $${queryParams.length + 1}`);
           queryParams.push(technician);
         }
 
-        if (priority && priority !== "all") {
+        if (priority && priority !== 'all') {
           whereConditions.push(`priority = $${queryParams.length + 1}`);
           queryParams.push(priority);
         }
@@ -12027,7 +11148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const query = `
         SELECT *
         FROM field_work_orders
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY 
           CASE priority 
             WHEN 'emergency' THEN 1 
@@ -12042,15 +11163,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching field work orders:", error);
-        res.status(500).json({ error: "Failed to fetch field work orders" });
+        console.error('Error fetching field work orders:', error);
+        res.status(500).json({ error: 'Failed to fetch field work orders' });
       }
     },
   );
 
   // Create field work order
   app.post(
-    "/api/mobile-field/work-orders",
+    '/api/mobile-field/work-orders',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12095,7 +11216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workOrderNumber,
           work_order_type,
           priority,
-          "customer-" + Date.now(),
+          'customer-' + Date.now(),
           customer_name,
           JSON.stringify(serviceLocation),
           work_description,
@@ -12108,15 +11229,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating field work order:", error);
-        res.status(500).json({ error: "Failed to create field work order" });
+        console.error('Error creating field work order:', error);
+        res.status(500).json({ error: 'Failed to create field work order' });
       }
     },
   );
 
   // Get voice notes
   app.get(
-    "/api/mobile-field/voice-notes",
+    '/api/mobile-field/voice-notes',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12135,15 +11256,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching voice notes:", error);
-        res.status(500).json({ error: "Failed to fetch voice notes" });
+        console.error('Error fetching voice notes:', error);
+        res.status(500).json({ error: 'Failed to fetch voice notes' });
       }
     },
   );
 
   // Create voice note
   app.post(
-    "/api/mobile-field/voice-notes",
+    '/api/mobile-field/voice-notes',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12162,9 +11283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } = req.body;
 
         // Parse tags if provided
-        const tagsArray = tags
-          ? tags.split(",").map((t: string) => t.trim())
-          : [];
+        const tagsArray = tags ? tags.split(',').map((t: string) => t.trim()) : [];
 
         // Mock audio file URL (in real implementation, this would be uploaded)
         const audioFileUrl = `/audio/voice-note-${Date.now()}.mp3`;
@@ -12192,8 +11311,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating voice note:", error);
-        res.status(500).json({ error: "Failed to create voice note" });
+        console.error('Error creating voice note:', error);
+        res.status(500).json({ error: 'Failed to create voice note' });
       }
     },
   );
@@ -12202,7 +11321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get commission metrics
   app.get(
-    "/api/commission/metrics",
+    '/api/commission/metrics',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12228,21 +11347,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCommissionPending: parseFloat(results[1].rows[0].total_pending),
           averageCommissionRate: parseFloat(results[2].rows[0].avg_rate),
           totalSalesRepresentatives: parseInt(results[3].rows[0].total_reps),
-          totalTransactionsThisMonth: parseInt(
-            results[4].rows[0].transactions_this_month,
-          ),
+          totalTransactionsThisMonth: parseInt(results[4].rows[0].transactions_this_month),
           totalDisputesActive: parseInt(results[5].rows[0].active_disputes),
         });
       } catch (error) {
-        console.error("Error fetching commission metrics:", error);
-        res.status(500).json({ error: "Failed to fetch commission metrics" });
+        console.error('Error fetching commission metrics:', error);
+        res.status(500).json({ error: 'Failed to fetch commission metrics' });
       }
     },
   );
 
   // Get commission structures
   app.get(
-    "/api/commission/structures",
+    '/api/commission/structures',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12260,17 +11377,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission structures:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch commission structures" });
+        console.error('Error fetching commission structures:', error);
+        res.status(500).json({ error: 'Failed to fetch commission structures' });
       }
     },
   );
 
   // Create commission structure
   app.post(
-    "/api/commission/structures",
+    '/api/commission/structures',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12305,7 +11420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tenantId,
           structure_name,
           structure_type,
-          product_category || "all",
+          product_category || 'all',
           base_rate,
           calculation_period,
           payment_schedule,
@@ -12317,17 +11432,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating commission structure:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create commission structure" });
+        console.error('Error creating commission structure:', error);
+        res.status(500).json({ error: 'Failed to create commission structure' });
       }
     },
   );
 
   // Get sales representatives
   app.get(
-    "/api/commission/sales-reps",
+    '/api/commission/sales-reps',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12345,17 +11458,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching sales representatives:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch sales representatives" });
+        console.error('Error fetching sales representatives:', error);
+        res.status(500).json({ error: 'Failed to fetch sales representatives' });
       }
     },
   );
 
   // Create sales representative
   app.post(
-    "/api/commission/sales-reps",
+    '/api/commission/sales-reps',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12394,17 +11505,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating sales representative:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create sales representative" });
+        console.error('Error creating sales representative:', error);
+        res.status(500).json({ error: 'Failed to create sales representative' });
       }
     },
   );
 
   // Get commission transactions
   app.get(
-    "/api/commission/transactions",
+    '/api/commission/transactions',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12413,33 +11522,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { period, status } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
         // Add period filter
-        if (period && period !== "all") {
+        if (period && period !== 'all') {
           switch (period) {
-            case "current_month":
+            case 'current_month':
               whereConditions.push(
                 `DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE)`,
               );
               break;
-            case "last_month":
+            case 'last_month':
               whereConditions.push(
                 `DATE_TRUNC('month', sale_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`,
               );
               break;
-            case "current_quarter":
+            case 'current_quarter':
               whereConditions.push(
                 `DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE)`,
               );
               break;
-            case "last_quarter":
+            case 'last_quarter':
               whereConditions.push(
                 `DATE_TRUNC('quarter', sale_date) = DATE_TRUNC('quarter', CURRENT_DATE - INTERVAL '3 months')`,
               );
               break;
-            case "current_year":
+            case 'current_year':
               whereConditions.push(
                 `DATE_TRUNC('year', sale_date) = DATE_TRUNC('year', CURRENT_DATE)`,
               );
@@ -12447,34 +11556,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        if (status && status !== "all") {
-          whereConditions.push(
-            `commission_status = $${queryParams.length + 1}`,
-          );
+        if (status && status !== 'all') {
+          whereConditions.push(`commission_status = $${queryParams.length + 1}`);
           queryParams.push(status);
         }
 
         const query = `
         SELECT *
         FROM commission_transactions
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY sale_date DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission transactions:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to fetch commission transactions" });
+        console.error('Error fetching commission transactions:', error);
+        res.status(500).json({ error: 'Failed to fetch commission transactions' });
       }
     },
   );
 
   // Create commission transaction
   app.post(
-    "/api/commission/transactions",
+    '/api/commission/transactions',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12494,15 +11599,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get sales rep name
         const repQuery = `SELECT rep_name FROM sales_representatives WHERE id = $1 AND tenant_id = $2`;
-        const repResult = await db.$client.query(repQuery, [
-          sales_rep_id,
-          tenantId,
-        ]);
+        const repResult = await db.$client.query(repQuery, [sales_rep_id, tenantId]);
 
         if (repResult.rows.length === 0) {
-          return res
-            .status(404)
-            .json({ error: "Sales representative not found" });
+          return res.status(404).json({ error: 'Sales representative not found' });
         }
 
         const sales_rep_name = repResult.rows[0].rep_name;
@@ -12542,25 +11642,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE id = $2 AND tenant_id = $3
       `;
 
-        await db.$client.query(updateRepQuery, [
-          sale_amount,
-          sales_rep_id,
-          tenantId,
-        ]);
+        await db.$client.query(updateRepQuery, [sale_amount, sales_rep_id, tenantId]);
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating commission transaction:", error);
-        res
-          .status(500)
-          .json({ error: "Failed to create commission transaction" });
+        console.error('Error creating commission transaction:', error);
+        res.status(500).json({ error: 'Failed to create commission transaction' });
       }
     },
   );
 
   // Get commission payments
   app.get(
-    "/api/commission/payments",
+    '/api/commission/payments',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12569,28 +11663,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { period } = req.query;
         const tenantId = req.user.tenantId;
 
-        let whereConditions = ["tenant_id = $1"];
+        let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
 
         // Add period filter
-        if (period && period !== "all") {
+        if (period && period !== 'all') {
           switch (period) {
-            case "current_month":
+            case 'current_month':
               whereConditions.push(
                 `DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE)`,
               );
               break;
-            case "last_month":
+            case 'last_month':
               whereConditions.push(
                 `DATE_TRUNC('month', payment_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')`,
               );
               break;
-            case "current_quarter":
+            case 'current_quarter':
               whereConditions.push(
                 `DATE_TRUNC('quarter', payment_date) = DATE_TRUNC('quarter', CURRENT_DATE)`,
               );
               break;
-            case "current_year":
+            case 'current_year':
               whereConditions.push(
                 `DATE_TRUNC('year', payment_date) = DATE_TRUNC('year', CURRENT_DATE)`,
               );
@@ -12601,22 +11695,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const query = `
         SELECT *
         FROM commission_payments
-        WHERE ${whereConditions.join(" AND ")}
+        WHERE ${whereConditions.join(' AND ')}
         ORDER BY payment_date DESC
       `;
 
         const result = await db.$client.query(query, queryParams);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission payments:", error);
-        res.status(500).json({ error: "Failed to fetch commission payments" });
+        console.error('Error fetching commission payments:', error);
+        res.status(500).json({ error: 'Failed to fetch commission payments' });
       }
     },
   );
 
   // Get commission disputes
   app.get(
-    "/api/commission/disputes",
+    '/api/commission/disputes',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12646,15 +11740,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await db.$client.query(query, [tenantId]);
         res.json(result.rows);
       } catch (error) {
-        console.error("Error fetching commission disputes:", error);
-        res.status(500).json({ error: "Failed to fetch commission disputes" });
+        console.error('Error fetching commission disputes:', error);
+        res.status(500).json({ error: 'Failed to fetch commission disputes' });
       }
     },
   );
 
   // Create commission dispute
   app.post(
-    "/api/commission/disputes",
+    '/api/commission/disputes',
     requireAuth,
     requireAuth,
     requireAuth,
@@ -12673,20 +11767,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Get sales rep name
         const repQuery = `SELECT rep_name FROM sales_representatives WHERE id = $1 AND tenant_id = $2`;
-        const repResult = await db.$client.query(repQuery, [
-          sales_rep_id,
-          tenantId,
-        ]);
+        const repResult = await db.$client.query(repQuery, [sales_rep_id, tenantId]);
 
         if (repResult.rows.length === 0) {
-          return res
-            .status(404)
-            .json({ error: "Sales representative not found" });
+          return res.status(404).json({ error: 'Sales representative not found' });
         }
 
         const sales_rep_name = repResult.rows[0].rep_name;
         const dispute_number = `DISP-${Date.now()}`;
-        const submitted_date = new Date().toISOString().split("T")[0];
+        const submitted_date = new Date().toISOString().split('T')[0];
 
         const query = `
         INSERT INTO commission_disputes (
@@ -12712,8 +11801,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         res.status(201).json(result.rows[0]);
       } catch (error) {
-        console.error("Error creating commission dispute:", error);
-        res.status(500).json({ error: "Failed to create commission dispute" });
+        console.error('Error creating commission dispute:', error);
+        res.status(500).json({ error: 'Failed to create commission dispute' });
       }
     },
   );
@@ -12726,22 +11815,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .select({ count: sql<number>`count(*)` })
       .from(businessRecords)
       .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.recordType, "customer"),
-        ),
+        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
       );
 
     const customerCount = count[0]?.count || 0;
-    return `CUST-${String(customerCount + 1).padStart(6, "0")}`;
+    return `CUST-${String(customerCount + 1).padStart(6, '0')}`;
   }
 
   // Helper function for tiered billing calculation
-  function calculateTieredAmount(
-    copies: number,
-    rates: any[],
-    baseRate: number,
-  ): number {
+  function calculateTieredAmount(copies: number, rates: any[], baseRate: number): number {
     let totalAmount = 0;
     let remainingCopies = copies;
 
@@ -12751,10 +11833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let tierCopies = 0;
       if (nextRate) {
-        tierCopies = Math.min(
-          remainingCopies,
-          nextRate.minimumVolume - rate.minimumVolume,
-        );
+        tierCopies = Math.min(remainingCopies, nextRate.minimumVolume - rate.minimumVolume);
       } else {
         tierCopies = remainingCopies;
       }
@@ -12778,232 +11857,202 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== BUSINESS LOGIC CONSISTENCY FIXES =====
 
   // 1. Complete Lead-to-Customer Conversion Implementation
-  app.post(
-    "/api/business-records/:id/convert-to-customer",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId, id: userId } = req.user;
-        const { id } = req.params;
-        const { customerNumber, serviceAddress, billingAddress } = req.body;
+  app.post('/api/business-records/:id/convert-to-customer', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const { id } = req.params;
+      const { customerNumber, serviceAddress, billingAddress } = req.body;
 
-        // Get the lead record
-        const lead = await storage.getBusinessRecord(id, tenantId);
-        if (!lead || lead.recordType !== "lead") {
-          return res.status(404).json({ message: "Lead not found" });
-        }
+      // Get the lead record
+      const lead = await storage.getBusinessRecord(id, tenantId);
+      if (!lead || lead.recordType !== 'lead') {
+        return res.status(404).json({ message: 'Lead not found' });
+      }
 
-        // Generate customer number if not provided
-        const generatedCustomerNumber =
-          customerNumber || (await generateCustomerNumber(tenantId));
+      // Generate customer number if not provided
+      const generatedCustomerNumber = customerNumber || (await generateCustomerNumber(tenantId));
 
-        // Update the record to customer status
-        const updatedRecord = await storage.updateBusinessRecord(
-          id,
+      // Update the record to customer status
+      const updatedRecord = await storage.updateBusinessRecord(
+        id,
+        {
+          recordType: 'customer',
+          leadStatus: 'active',
+          customerNumber: generatedCustomerNumber,
+          customerSince: new Date(),
+          convertedBy: userId,
+          serviceAddress: serviceAddress || lead.address,
+          billingAddress: billingAddress || lead.address,
+          probability: 100,
+        },
+        tenantId,
+      );
+
+      // Create customer conversion activity
+      await storage.createBusinessRecordActivity({
+        tenantId,
+        businessRecordId: id,
+        activityType: 'conversion',
+        title: 'Lead Converted to Customer',
+        description: `Lead successfully converted to customer with number ${generatedCustomerNumber}`,
+        userId,
+        activityDate: new Date(),
+      });
+
+      // Auto-create initial service contract if applicable
+      if (lead.estimatedAmount && lead.estimatedAmount > 0) {
+        await storage.createContract({
+          tenantId,
+          customerId: id,
+          contractNumber: `CONTRACT-${generatedCustomerNumber}-${Date.now()}`,
+          type: 'service',
+          status: 'pending',
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+          monthlyValue: (lead.estimatedAmount / 12).toString(),
+          totalValue: lead.estimatedAmount.toString(),
+          billingFrequency: 'monthly',
+          terms: 'Standard service agreement terms',
+        });
+      }
+
+      res.json(updatedRecord);
+    } catch (error) {
+      console.error('Error converting lead to customer:', error);
+      res.status(500).json({ message: 'Failed to convert lead to customer' });
+    }
+  });
+
+  // 2. Business Records Lifecycle Management
+  app.patch('/api/business-records/:id/lifecycle', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const { id } = req.params;
+      const { status, reason, notes } = req.body;
+
+      const updates: any = { leadStatus: status };
+
+      // Handle customer deactivation scenarios
+      if (status === 'churned' || status === 'competitor_switch' || status === 'non_payment') {
+        updates.customerUntil = new Date();
+        updates.churnReason = reason;
+        updates.deactivatedBy = userId;
+
+        // Auto-expire contracts
+        await db
+          .update(contracts)
+          .set({
+            status: 'cancelled',
+            endDate: new Date(),
+          })
+          .where(
+            and(
+              eq(contracts.customerId, id),
+              eq(contracts.tenantId, tenantId),
+              eq(contracts.status, 'active'),
+            ),
+          );
+      }
+
+      const updatedRecord = await storage.updateBusinessRecord(id, updates, tenantId);
+
+      // Log lifecycle change activity
+      await storage.createBusinessRecordActivity({
+        tenantId,
+        businessRecordId: id,
+        activityType: 'status_change',
+        title: `Status Changed to ${status}`,
+        description:
+          notes ||
+          `Business record status updated to ${status}${reason ? ` due to ${reason}` : ''}`,
+        userId,
+        activityDate: new Date(),
+      });
+
+      res.json(updatedRecord);
+    } catch (error) {
+      console.error('Error updating business record lifecycle:', error);
+      res.status(500).json({ message: 'Failed to update business record lifecycle' });
+    }
+  });
+
+  // 3. Equipment Lifecycle Integration with Service Workflows
+  app.post('/api/equipment/:equipmentId/trigger-service', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId, id: userId } = req.user;
+      const { equipmentId } = req.params;
+      const { serviceType, priority = 'medium', description } = req.body;
+
+      // Get equipment details
+      const equipment = await storage.getEquipment(equipmentId, tenantId);
+      if (!equipment) {
+        return res.status(404).json({ message: 'Equipment not found' });
+      }
+
+      // Auto-create service ticket
+      const serviceTicket = await storage.createServiceTicket({
+        tenantId,
+        customerId: equipment.customerId,
+        equipmentId,
+        title: `${serviceType} Service Required`,
+        description:
+          description || `Automated ${serviceType} service request for ${equipment.model}`,
+        priority,
+        status: 'open',
+        requestedBy: userId,
+        category: serviceType === 'maintenance' ? 'maintenance' : 'repair',
+      });
+
+      // Update equipment status if needed
+      if (serviceType === 'maintenance') {
+        await storage.updateEquipment(
+          equipmentId,
           {
-            recordType: "customer",
-            leadStatus: "active",
-            customerNumber: generatedCustomerNumber,
-            customerSince: new Date(),
-            convertedBy: userId,
-            serviceAddress: serviceAddress || lead.address,
-            billingAddress: billingAddress || lead.address,
-            probability: 100,
+            status: 'maintenance_scheduled',
+            lastServiceDate: new Date(),
           },
           tenantId,
         );
+      }
 
-        // Create customer conversion activity
-        await storage.createBusinessRecordActivity({
-          tenantId,
-          businessRecordId: id,
-          activityType: "conversion",
-          title: "Lead Converted to Customer",
-          description: `Lead successfully converted to customer with number ${generatedCustomerNumber}`,
-          userId,
-          activityDate: new Date(),
-        });
-
-        // Auto-create initial service contract if applicable
-        if (lead.estimatedAmount && lead.estimatedAmount > 0) {
-          await storage.createContract({
+      // Create or update equipment lifecycle event
+      try {
+        await db
+          .insert(equipmentLifecycle)
+          .values({
             tenantId,
-            customerId: id,
-            contractNumber: `CONTRACT-${generatedCustomerNumber}-${Date.now()}`,
-            type: "service",
-            status: "pending",
-            startDate: new Date(),
-            endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-            monthlyValue: (lead.estimatedAmount / 12).toString(),
-            totalValue: lead.estimatedAmount.toString(),
-            billingFrequency: "monthly",
-            terms: "Standard service agreement terms",
-          });
-        }
-
-        res.json(updatedRecord);
-      } catch (error) {
-        console.error("Error converting lead to customer:", error);
-        res.status(500).json({ message: "Failed to convert lead to customer" });
-      }
-    },
-  );
-
-  // 2. Business Records Lifecycle Management
-  app.patch(
-    "/api/business-records/:id/lifecycle",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId, id: userId } = req.user;
-        const { id } = req.params;
-        const { status, reason, notes } = req.body;
-
-        const updates: any = { leadStatus: status };
-
-        // Handle customer deactivation scenarios
-        if (
-          status === "churned" ||
-          status === "competitor_switch" ||
-          status === "non_payment"
-        ) {
-          updates.customerUntil = new Date();
-          updates.churnReason = reason;
-          updates.deactivatedBy = userId;
-
-          // Auto-expire contracts
-          await db
-            .update(contracts)
-            .set({
-              status: "cancelled",
-              endDate: new Date(),
-            })
-            .where(
-              and(
-                eq(contracts.customerId, id),
-                eq(contracts.tenantId, tenantId),
-                eq(contracts.status, "active"),
-              ),
-            );
-        }
-
-        const updatedRecord = await storage.updateBusinessRecord(
-          id,
-          updates,
-          tenantId,
-        );
-
-        // Log lifecycle change activity
-        await storage.createBusinessRecordActivity({
-          tenantId,
-          businessRecordId: id,
-          activityType: "status_change",
-          title: `Status Changed to ${status}`,
-          description:
-            notes ||
-            `Business record status updated to ${status}${
-              reason ? ` due to ${reason}` : ""
-            }`,
-          userId,
-          activityDate: new Date(),
-        });
-
-        res.json(updatedRecord);
-      } catch (error) {
-        console.error("Error updating business record lifecycle:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to update business record lifecycle" });
-      }
-    },
-  );
-
-  // 3. Equipment Lifecycle Integration with Service Workflows
-  app.post(
-    "/api/equipment/:equipmentId/trigger-service",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId, id: userId } = req.user;
-        const { equipmentId } = req.params;
-        const { serviceType, priority = "medium", description } = req.body;
-
-        // Get equipment details
-        const equipment = await storage.getEquipment(equipmentId, tenantId);
-        if (!equipment) {
-          return res.status(404).json({ message: "Equipment not found" });
-        }
-
-        // Auto-create service ticket
-        const serviceTicket = await storage.createServiceTicket({
-          tenantId,
-          customerId: equipment.customerId,
-          equipmentId,
-          title: `${serviceType} Service Required`,
-          description:
-            description ||
-            `Automated ${serviceType} service request for ${equipment.model}`,
-          priority,
-          status: "open",
-          requestedBy: userId,
-          category: serviceType === "maintenance" ? "maintenance" : "repair",
-        });
-
-        // Update equipment status if needed
-        if (serviceType === "maintenance") {
-          await storage.updateEquipment(
             equipmentId,
-            {
-              status: "maintenance_scheduled",
+            serialNumber: equipment.serialNumber || `SN-${equipmentId}`,
+            currentStage: 'active',
+            currentLocation: equipment.location || 'customer_site',
+            customerId: equipment.customerId,
+            lastServiceDate: new Date(),
+          })
+          .onConflictDoUpdate({
+            target: equipmentLifecycle.equipmentId,
+            set: {
               lastServiceDate: new Date(),
+              updatedAt: new Date(),
             },
-            tenantId,
-          );
-        }
-
-        // Create or update equipment lifecycle event
-        try {
-          await db
-            .insert(equipmentLifecycle)
-            .values({
-              tenantId,
-              equipmentId,
-              serialNumber: equipment.serialNumber || `SN-${equipmentId}`,
-              currentStage: "active",
-              currentLocation: equipment.location || "customer_site",
-              customerId: equipment.customerId,
-              lastServiceDate: new Date(),
-            })
-            .onConflictDoUpdate({
-              target: equipmentLifecycle.equipmentId,
-              set: {
-                lastServiceDate: new Date(),
-                updatedAt: new Date(),
-              },
-            });
-        } catch (lifecycleError) {
-          // If equipment lifecycle doesn't exist, try to create it
-          console.warn(
-            "Equipment lifecycle insert failed, continuing with service ticket creation",
-          );
-        }
-
-        res.json({
-          serviceTicket,
-          message: "Service request created and equipment lifecycle updated",
-        });
-      } catch (error) {
-        console.error("Error triggering equipment service:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to trigger equipment service" });
+          });
+      } catch (lifecycleError) {
+        // If equipment lifecycle doesn't exist, try to create it
+        console.warn('Equipment lifecycle insert failed, continuing with service ticket creation');
       }
-    },
-  );
+
+      res.json({
+        serviceTicket,
+        message: 'Service request created and equipment lifecycle updated',
+      });
+    } catch (error) {
+      console.error('Error triggering equipment service:', error);
+      res.status(500).json({ message: 'Failed to trigger equipment service' });
+    }
+  });
 
   // 4. Contract Billing Automation Connected to Meter Readings
   app.post(
-    "/api/contracts/:contractId/process-meter-billing",
+    '/api/contracts/:contractId/process-meter-billing',
     requireAuth,
     async (req: any, res) => {
       try {
@@ -13013,7 +12062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get contract details
         const contract = await storage.getContract(contractId, tenantId);
         if (!contract) {
-          return res.status(404).json({ message: "Contract not found" });
+          return res.status(404).json({ message: 'Contract not found' });
         }
 
         // Get unprocessed meter readings for this contract
@@ -13024,7 +12073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             and(
               eq(meterReadings.contractId, contractId),
               eq(meterReadings.tenantId, tenantId),
-              eq(meterReadings.billingStatus, "pending"),
+              eq(meterReadings.billingStatus, 'pending'),
             ),
           )
           .orderBy(desc(meterReadings.readingDate));
@@ -13033,32 +12082,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (const reading of unprocessedReadings) {
           // Get tiered rates for billing calculation
-          const tieredRates =
-            await storage.getContractTieredRatesByContract(contractId);
+          const tieredRates = await storage.getContractTieredRatesByContract(contractId);
 
-          let totalAmount = parseFloat(contract.monthlyBase?.toString() || "0");
+          let totalAmount = parseFloat(contract.monthlyBase?.toString() || '0');
 
           // Calculate black & white copies billing
           if (reading.blackCopies && reading.blackCopies > 0) {
             const blackRates = tieredRates
-              .filter((rate) => rate.colorType === "black")
+              .filter((rate) => rate.colorType === 'black')
               .sort((a, b) => a.minimumVolume - b.minimumVolume);
             totalAmount += calculateTieredAmount(
               reading.blackCopies,
               blackRates,
-              parseFloat(contract.blackRate?.toString() || "0"),
+              parseFloat(contract.blackRate?.toString() || '0'),
             );
           }
 
           // Calculate color copies billing
           if (reading.colorCopies && reading.colorCopies > 0) {
             const colorRates = tieredRates
-              .filter((rate) => rate.colorType === "color")
+              .filter((rate) => rate.colorType === 'color')
               .sort((a, b) => a.minimumVolume - b.minimumVolume);
             totalAmount += calculateTieredAmount(
               reading.colorCopies,
               colorRates,
-              parseFloat(contract.colorRate?.toString() || "0"),
+              parseFloat(contract.colorRate?.toString() || '0'),
             );
           }
 
@@ -13071,11 +12119,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             issueDate: new Date(),
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             totalAmount: totalAmount.toString(),
-            paidAmount: "0",
-            status: "pending",
+            paidAmount: '0',
+            status: 'pending',
             description: `Automated meter billing for ${format(
               new Date(reading.readingDate),
-              "MMMM yyyy",
+              'MMMM yyyy',
             )}`,
           });
 
@@ -13083,7 +12131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateMeterReading(
             reading.id,
             {
-              billingStatus: "processed",
+              billingStatus: 'processed',
               billingAmount: totalAmount.toString(),
               invoiceId: invoice.id,
             },
@@ -13093,12 +12141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           processedInvoices.push(invoice);
 
           // Update customer current balance
-          const customer = await storage.getBusinessRecord(
-            contract.customerId,
-            tenantId,
-          );
-          const newBalance =
-            parseFloat(customer?.currentBalance || "0") + totalAmount;
+          const customer = await storage.getBusinessRecord(contract.customerId, tenantId);
+          const newBalance = parseFloat(customer?.currentBalance || '0') + totalAmount;
           await storage.updateBusinessRecord(
             contract.customerId,
             {
@@ -13112,180 +12156,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({
           message: `Processed ${processedInvoices.length} meter readings for billing`,
           invoices: processedInvoices,
-          totalAmount: processedInvoices.reduce(
-            (sum, inv) => sum + parseFloat(inv.totalAmount),
-            0,
-          ),
+          totalAmount: processedInvoices.reduce((sum, inv) => sum + parseFloat(inv.totalAmount), 0),
         });
       } catch (error) {
-        console.error("Error processing meter billing:", error);
-        res.status(500).json({ message: "Failed to process meter billing" });
+        console.error('Error processing meter billing:', error);
+        res.status(500).json({ message: 'Failed to process meter billing' });
       }
     },
   );
 
   // Security & Compliance routes
-  app.get(
-    "/api/security-compliance/security-dashboard",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId } = req.user;
-        res.json({
-          activeSessions: 12,
-          gdprRequests: 3,
-          securityAlerts: 2,
-          dataAccessEvents: 147,
-          auditLogCount: 1250,
-          lastAuditEntry: new Date().toISOString(),
-          complianceScore: 94,
-          riskLevel: "low",
-        });
-      } catch (error) {
-        console.error("Error fetching security dashboard:", error);
-        res.status(500).json({ message: "Failed to fetch security dashboard" });
-      }
-    },
-  );
+  app.get('/api/security-compliance/security-dashboard', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      res.json({
+        activeSessions: 12,
+        gdprRequests: 3,
+        securityAlerts: 2,
+        dataAccessEvents: 147,
+        auditLogCount: 1250,
+        lastAuditEntry: new Date().toISOString(),
+        complianceScore: 94,
+        riskLevel: 'low',
+      });
+    } catch (error) {
+      console.error('Error fetching security dashboard:', error);
+      res.status(500).json({ message: 'Failed to fetch security dashboard' });
+    }
+  });
 
-  app.get(
-    "/api/security-compliance/audit-logs",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId } = req.user;
-        const { page = 1, limit = 50 } = req.query;
+  app.get('/api/security-compliance/audit-logs', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { page = 1, limit = 50 } = req.query;
 
-        const logs = Array.from(
-          { length: parseInt(limit as string) },
-          (_, i) => ({
-            id: `audit-${i + 1}`,
-            timestamp: new Date(Date.now() - i * 3600000).toISOString(),
-            userId: req.user.id,
-            action: [
-              "LOGIN",
-              "CREATE_CUSTOMER",
-              "UPDATE_CONTRACT",
-              "DELETE_INVOICE",
-            ][i % 4],
-            resource: ["auth", "customers", "contracts", "invoices"][i % 4],
-            severity: ["low", "medium", "high"][i % 3],
-            ipAddress: "192.168.1.100",
-            userAgent: "Mozilla/5.0...",
-            success: Math.random() > 0.1,
-          }),
-        );
+      const logs = Array.from({ length: parseInt(limit as string) }, (_, i) => ({
+        id: `audit-${i + 1}`,
+        timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+        userId: req.user.id,
+        action: ['LOGIN', 'CREATE_CUSTOMER', 'UPDATE_CONTRACT', 'DELETE_INVOICE'][i % 4],
+        resource: ['auth', 'customers', 'contracts', 'invoices'][i % 4],
+        severity: ['low', 'medium', 'high'][i % 3],
+        ipAddress: '192.168.1.100',
+        userAgent: 'Mozilla/5.0...',
+        success: Math.random() > 0.1,
+      }));
 
-        res.json({
-          logs,
-          total: 1250,
-          page: parseInt(page as string),
-          limit: parseInt(limit as string),
-        });
-      } catch (error) {
-        console.error("Error fetching audit logs:", error);
-        res.status(500).json({ message: "Failed to fetch audit logs" });
-      }
-    },
-  );
+      res.json({
+        logs,
+        total: 1250,
+        page: parseInt(page as string),
+        limit: parseInt(limit as string),
+      });
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      res.status(500).json({ message: 'Failed to fetch audit logs' });
+    }
+  });
 
-  app.get(
-    "/api/security-compliance/gdpr-requests",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId } = req.user;
+  app.get('/api/security-compliance/gdpr-requests', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
 
-        const requests = [
-          {
-            id: "gdpr-1",
-            requestType: "access",
-            dataSubject: "john.doe@example.com",
-            status: "pending",
-            submittedAt: new Date(Date.now() - 86400000).toISOString(),
-            dueDate: new Date(Date.now() + 29 * 86400000).toISOString(),
-            description: "Request for all personal data under GDPR Article 15",
-          },
-          {
-            id: "gdpr-2",
-            requestType: "deletion",
-            dataSubject: "jane.smith@example.com",
-            status: "in_progress",
-            submittedAt: new Date(Date.now() - 172800000).toISOString(),
-            dueDate: new Date(Date.now() + 28 * 86400000).toISOString(),
-            description: "Request for data deletion under GDPR Article 17",
-          },
-        ];
+      const requests = [
+        {
+          id: 'gdpr-1',
+          requestType: 'access',
+          dataSubject: 'john.doe@example.com',
+          status: 'pending',
+          submittedAt: new Date(Date.now() - 86400000).toISOString(),
+          dueDate: new Date(Date.now() + 29 * 86400000).toISOString(),
+          description: 'Request for all personal data under GDPR Article 15',
+        },
+        {
+          id: 'gdpr-2',
+          requestType: 'deletion',
+          dataSubject: 'jane.smith@example.com',
+          status: 'in_progress',
+          submittedAt: new Date(Date.now() - 172800000).toISOString(),
+          dueDate: new Date(Date.now() + 28 * 86400000).toISOString(),
+          description: 'Request for data deletion under GDPR Article 17',
+        },
+      ];
 
-        res.json(requests);
-      } catch (error) {
-        console.error("Error fetching GDPR requests:", error);
-        res.status(500).json({ message: "Failed to fetch GDPR requests" });
-      }
-    },
-  );
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching GDPR requests:', error);
+      res.status(500).json({ message: 'Failed to fetch GDPR requests' });
+    }
+  });
 
-  app.get(
-    "/api/security-compliance/security-sessions",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId } = req.user;
+  app.get('/api/security-compliance/security-sessions', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
 
-        const sessions = [
-          {
-            id: "session-1",
-            userId: req.user.id,
-            userEmail: req.user.email,
-            ipAddress: "192.168.1.100",
-            location: "New York, NY",
-            device: "Chrome on Windows",
-            loginTime: new Date(Date.now() - 3600000).toISOString(),
-            lastActivity: new Date(Date.now() - 300000).toISOString(),
-            status: "active",
-            riskScore: "low",
-          },
-        ];
+      const sessions = [
+        {
+          id: 'session-1',
+          userId: req.user.id,
+          userEmail: req.user.email,
+          ipAddress: '192.168.1.100',
+          location: 'New York, NY',
+          device: 'Chrome on Windows',
+          loginTime: new Date(Date.now() - 3600000).toISOString(),
+          lastActivity: new Date(Date.now() - 300000).toISOString(),
+          status: 'active',
+          riskScore: 'low',
+        },
+      ];
 
-        res.json(sessions);
-      } catch (error) {
-        console.error("Error fetching security sessions:", error);
-        res.status(500).json({ message: "Failed to fetch security sessions" });
-      }
-    },
-  );
+      res.json(sessions);
+    } catch (error) {
+      console.error('Error fetching security sessions:', error);
+      res.status(500).json({ message: 'Failed to fetch security sessions' });
+    }
+  });
 
-  app.get(
-    "/api/security-compliance/compliance-settings",
-    requireAuth,
-    async (req: any, res) => {
-      try {
-        const { tenantId } = req.user;
+  app.get('/api/security-compliance/compliance-settings', requireAuth, async (req: any, res) => {
+    try {
+      const { tenantId } = req.user;
 
-        const settings = {
-          gdprResponseDays: 30,
-          sessionTimeoutMinutes: 60,
-          dataRetentionDays: 2555, // 7 years
-          encryptionRequired: true,
-          auditScope: "full",
-          passwordPolicy: {
-            minLength: 12,
-            requireUppercase: true,
-            requireLowercase: true,
-            requireNumbers: true,
-            requireSymbols: true,
-          },
-        };
+      const settings = {
+        gdprResponseDays: 30,
+        sessionTimeoutMinutes: 60,
+        dataRetentionDays: 2555, // 7 years
+        encryptionRequired: true,
+        auditScope: 'full',
+        passwordPolicy: {
+          minLength: 12,
+          requireUppercase: true,
+          requireLowercase: true,
+          requireNumbers: true,
+          requireSymbols: true,
+        },
+      };
 
-        res.json(settings);
-      } catch (error) {
-        console.error("Error fetching compliance settings:", error);
-        res
-          .status(500)
-          .json({ message: "Failed to fetch compliance settings" });
-      }
-    },
-  );
+      res.json(settings);
+    } catch (error) {
+      console.error('Error fetching compliance settings:', error);
+      res.status(500).json({ message: 'Failed to fetch compliance settings' });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

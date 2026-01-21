@@ -1,9 +1,15 @@
-import { ReactNode } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ReactNode } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MobileDialogProps {
   trigger: ReactNode;
@@ -22,18 +28,16 @@ export default function MobileDialog({
   open,
   onOpenChange,
   className,
-  maxHeight = "90vh"
+  maxHeight = '90vh',
 }: MobileDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent 
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent
         className={cn(
-          "w-[95vw] max-w-lg mx-auto p-0 gap-0 overflow-hidden",
+          'w-[95vw] max-w-lg mx-auto p-0 gap-0 overflow-hidden',
           `max-h-[${maxHeight}]`,
-          className
+          className,
         )}
       >
         {title && (
@@ -51,11 +55,9 @@ export default function MobileDialog({
             </div>
           </DialogHeader>
         )}
-        
+
         <ScrollArea className="flex-1 max-h-[calc(90vh-80px)]">
-          <div className="p-4">
-            {children}
-          </div>
+          <div className="p-4">{children}</div>
         </ScrollArea>
       </DialogContent>
     </Dialog>

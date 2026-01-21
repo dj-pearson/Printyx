@@ -76,30 +76,33 @@ router.post('/api/public/calculator/sessions', async (req, res) => {
     const sessionKey = uuidv4();
 
     // Save session to database
-    const [session] = await db.insert(calculatorSessions).values({
-      sessionKey,
-      visitorId: validatedData.visitorId || uuidv4(),
-      deviceCount: validatedData.deviceCount,
-      deviceTypes: validatedData.deviceTypes,
-      fleetAge: validatedData.fleetAge,
-      monthlyPageVolume: validatedData.monthlyPageVolume,
-      colorRatio: validatedData.colorRatio.toString(),
-      monthlySupplieCost: validatedData.monthlySupplieCost?.toString(),
-      monthlyServiceCost: validatedData.monthlyServiceCost?.toString(),
-      monthlyDowntimeHours: validatedData.monthlyDowntimeHours?.toString(),
-      monthlyEnergyCost: validatedData.monthlyEnergyCost?.toString(),
-      employeeCount: validatedData.employeeCount,
-      industry: validatedData.industry,
-      painPoints: validatedData.painPoints,
-      calculatedResults: results,
-      isCompleted: true,
-      completedAt: new Date(),
-      sourceUrl: validatedData.sourceUrl,
-      utmSource: validatedData.utmSource,
-      utmMedium: validatedData.utmMedium,
-      utmCampaign: validatedData.utmCampaign,
-      referrer: validatedData.referrer,
-    }).returning();
+    const [session] = await db
+      .insert(calculatorSessions)
+      .values({
+        sessionKey,
+        visitorId: validatedData.visitorId || uuidv4(),
+        deviceCount: validatedData.deviceCount,
+        deviceTypes: validatedData.deviceTypes,
+        fleetAge: validatedData.fleetAge,
+        monthlyPageVolume: validatedData.monthlyPageVolume,
+        colorRatio: validatedData.colorRatio.toString(),
+        monthlySupplieCost: validatedData.monthlySupplieCost?.toString(),
+        monthlyServiceCost: validatedData.monthlyServiceCost?.toString(),
+        monthlyDowntimeHours: validatedData.monthlyDowntimeHours?.toString(),
+        monthlyEnergyCost: validatedData.monthlyEnergyCost?.toString(),
+        employeeCount: validatedData.employeeCount,
+        industry: validatedData.industry,
+        painPoints: validatedData.painPoints,
+        calculatedResults: results,
+        isCompleted: true,
+        completedAt: new Date(),
+        sourceUrl: validatedData.sourceUrl,
+        utmSource: validatedData.utmSource,
+        utmMedium: validatedData.utmMedium,
+        utmCampaign: validatedData.utmCampaign,
+        referrer: validatedData.referrer,
+      })
+      .returning();
 
     // Track analytics event
     await db.insert(calculatorAnalyticsEvents).values({
@@ -128,7 +131,7 @@ router.post('/api/public/calculator/sessions', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: 'Invalid input data',
-        errors: error.errors
+        errors: error.errors,
       });
     }
 
@@ -161,10 +164,18 @@ router.get('/api/public/calculator/sessions/:sessionKey', async (req, res) => {
       employeeCount: session.employeeCount,
       industry: session.industry,
       painPoints: session.painPoints as string[],
-      monthlySupplieCost: session.monthlySupplieCost ? parseFloat(session.monthlySupplieCost) : undefined,
-      monthlyServiceCost: session.monthlyServiceCost ? parseFloat(session.monthlyServiceCost) : undefined,
-      monthlyDowntimeHours: session.monthlyDowntimeHours ? parseFloat(session.monthlyDowntimeHours) : undefined,
-      monthlyEnergyCost: session.monthlyEnergyCost ? parseFloat(session.monthlyEnergyCost) : undefined,
+      monthlySupplieCost: session.monthlySupplieCost
+        ? parseFloat(session.monthlySupplieCost)
+        : undefined,
+      monthlyServiceCost: session.monthlyServiceCost
+        ? parseFloat(session.monthlyServiceCost)
+        : undefined,
+      monthlyDowntimeHours: session.monthlyDowntimeHours
+        ? parseFloat(session.monthlyDowntimeHours)
+        : undefined,
+      monthlyEnergyCost: session.monthlyEnergyCost
+        ? parseFloat(session.monthlyEnergyCost)
+        : undefined,
     };
 
     const recommendations = generateRecommendations(fleetInputs, session.calculatedResults as any);
@@ -249,21 +260,24 @@ router.post('/api/public/calculator/leads', async (req, res) => {
       const isDealerAccount = validatedData.role === 'copier_dealer';
 
       // Create new lead
-      [lead] = await db.insert(calculatorLeads).values({
-        email: validatedData.email,
-        companyName: validatedData.companyName,
-        fullName: validatedData.fullName,
-        phone: validatedData.phone,
-        role: validatedData.role,
-        wantsQuarterlyUpdates: validatedData.wantsQuarterlyUpdates,
-        isDealerAccount,
-        firstSessionId: session.id,
-        leadScore,
-        leadTemperature,
-        utmSource: session.utmSource || undefined,
-        utmMedium: session.utmMedium || undefined,
-        utmCampaign: session.utmCampaign || undefined,
-      }).returning();
+      [lead] = await db
+        .insert(calculatorLeads)
+        .values({
+          email: validatedData.email,
+          companyName: validatedData.companyName,
+          fullName: validatedData.fullName,
+          phone: validatedData.phone,
+          role: validatedData.role,
+          wantsQuarterlyUpdates: validatedData.wantsQuarterlyUpdates,
+          isDealerAccount,
+          firstSessionId: session.id,
+          leadScore,
+          leadTemperature,
+          utmSource: session.utmSource || undefined,
+          utmMedium: session.utmMedium || undefined,
+          utmCampaign: session.utmCampaign || undefined,
+        })
+        .returning();
 
       // Start email sequence
       await startEmailSequence(lead.id, validatedData.email, leadScore, isDealerAccount);
@@ -304,7 +318,7 @@ router.post('/api/public/calculator/leads', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: 'Invalid input data',
-        errors: error.errors
+        errors: error.errors,
       });
     }
 
@@ -425,20 +439,15 @@ const requireAuth = (req: any, res: any, next: any) => {
 // Get all calculator leads (admin)
 router.get('/api/calculator/leads', async (req: any, res) => {
   try {
-    const {
-      role,
-      isDealer,
-      leadTemperature,
-      limit = 50,
-      offset = 0
-    } = req.query;
+    const { role, isDealer, leadTemperature, limit = 50, offset = 0 } = req.query;
 
     let query = db.select().from(calculatorLeads);
 
     // Apply filters
     const conditions = [];
     if (role) conditions.push(eq(calculatorLeads.role, role));
-    if (isDealer !== undefined) conditions.push(eq(calculatorLeads.isDealerAccount, isDealer === 'true'));
+    if (isDealer !== undefined)
+      conditions.push(eq(calculatorLeads.isDealerAccount, isDealer === 'true'));
     if (leadTemperature) conditions.push(eq(calculatorLeads.leadTemperature, leadTemperature));
 
     if (conditions.length > 0) {
@@ -549,9 +558,7 @@ router.get('/api/calculator/analytics/stats', async (req: any, res) => {
       .from(calculatorSessions);
 
     // Total leads
-    const totalLeads = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(calculatorLeads);
+    const totalLeads = await db.select({ count: sql<number>`count(*)` }).from(calculatorLeads);
 
     // Completion rate
     const completedSessions = await db
@@ -610,7 +617,7 @@ async function startEmailSequence(
   leadId: string,
   email: string,
   leadScore: number,
-  isDealerAccount: boolean
+  isDealerAccount: boolean,
 ): Promise<void> {
   try {
     // Update lead to mark sequence as started
@@ -626,7 +633,7 @@ async function startEmailSequence(
     const day0EmailSent = await sendCalculatorReportEmail(
       email,
       'Company', // Will be replaced with actual company name
-      isDealerAccount
+      isDealerAccount,
     );
 
     await db.insert(emailSequenceTracking).values({
@@ -666,7 +673,7 @@ async function startEmailSequence(
 function getEmailSubjectForDay(day: number, isDealer: boolean): string {
   const subjects: Record<number, { standard: string; dealer: string }> = {
     1: {
-      standard: 'The hidden cost of printer downtime (it\'s worse than you think)',
+      standard: "The hidden cost of printer downtime (it's worse than you think)",
       dealer: 'Sales Tool: Show This Calculator to Your Prospects',
     },
     2: {

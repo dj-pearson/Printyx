@@ -1,25 +1,51 @@
-import { useState } from "react";
-import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, Plus, Save, Download, CheckCircle, Clock, AlertTriangle, 
-  Monitor, Network, Settings, ListTodo, FileText, Edit, Trash2, Calendar
-} from "lucide-react";
-import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { useState } from 'react';
+import { useParams, useLocation } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import {
+  ArrowLeft,
+  Plus,
+  Save,
+  Download,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Monitor,
+  Network,
+  Settings,
+  ListTodo,
+  FileText,
+  Edit,
+  Trash2,
+  Calendar,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 
 interface OnboardingData {
   checklist: any;
@@ -33,7 +59,7 @@ interface OnboardingData {
 export default function OnboardingDetails() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const [isAddEquipmentOpen, setIsAddEquipmentOpen] = useState(false);
   const [isAddSectionOpen, setIsAddSectionOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
@@ -48,113 +74,118 @@ export default function OnboardingDetails() {
 
   // Update checklist mutation
   const updateChecklistMutation = useMutation({
-    mutationFn: (updates: any) => apiRequest(`/api/onboarding/checklists/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    }),
+    mutationFn: (updates: any) =>
+      apiRequest(`/api/onboarding/checklists/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/onboarding/checklists/${id}`] });
       toast({
-        title: "Success",
-        description: "Checklist updated successfully",
+        title: 'Success',
+        description: 'Checklist updated successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update checklist",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to update checklist',
+        variant: 'destructive',
       });
     },
   });
 
   // Add equipment mutation
   const addEquipmentMutation = useMutation({
-    mutationFn: (equipment: any) => apiRequest(`/api/onboarding/checklists/${id}/equipment`, {
-      method: 'POST',
-      body: JSON.stringify(equipment),
-    }),
+    mutationFn: (equipment: any) =>
+      apiRequest(`/api/onboarding/checklists/${id}/equipment`, {
+        method: 'POST',
+        body: JSON.stringify(equipment),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/onboarding/checklists/${id}`] });
       setIsAddEquipmentOpen(false);
       toast({
-        title: "Success",
-        description: "Equipment added successfully",
+        title: 'Success',
+        description: 'Equipment added successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add equipment",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to add equipment',
+        variant: 'destructive',
       });
     },
   });
 
   // Add dynamic section mutation
   const addSectionMutation = useMutation({
-    mutationFn: (section: any) => apiRequest(`/api/onboarding/checklists/${id}/sections`, {
-      method: 'POST',
-      body: JSON.stringify(section),
-    }),
+    mutationFn: (section: any) =>
+      apiRequest(`/api/onboarding/checklists/${id}/sections`, {
+        method: 'POST',
+        body: JSON.stringify(section),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/onboarding/checklists/${id}`] });
       setIsAddSectionOpen(false);
       toast({
-        title: "Success",
-        description: "Section added successfully",
+        title: 'Success',
+        description: 'Section added successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add section",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to add section',
+        variant: 'destructive',
       });
     },
   });
 
   // Add task mutation
   const addTaskMutation = useMutation({
-    mutationFn: (task: any) => apiRequest(`/api/onboarding/checklists/${id}/tasks`, {
-      method: 'POST',
-      body: JSON.stringify(task),
-    }),
+    mutationFn: (task: any) =>
+      apiRequest(`/api/onboarding/checklists/${id}/tasks`, {
+        method: 'POST',
+        body: JSON.stringify(task),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/onboarding/checklists/${id}`] });
       setIsAddTaskOpen(false);
       toast({
-        title: "Success",
-        description: "Task added successfully",
+        title: 'Success',
+        description: 'Task added successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add task",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to add task',
+        variant: 'destructive',
       });
     },
   });
 
   // Generate PDF mutation
   const generatePdfMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/onboarding/checklists/${id}/generate-pdf`, {
-      method: 'POST',
-    }),
+    mutationFn: () =>
+      apiRequest(`/api/onboarding/checklists/${id}/generate-pdf`, {
+        method: 'POST',
+      }),
     onSuccess: (data: { pdfUrl: string }) => {
       queryClient.invalidateQueries({ queryKey: [`/api/onboarding/checklists/${id}`] });
       toast({
-        title: "Success",
-        description: "PDF generated successfully",
+        title: 'Success',
+        description: 'PDF generated successfully',
       });
       window.open(data.pdfUrl, '_blank');
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate PDF",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to generate PDF',
+        variant: 'destructive',
       });
     },
   });
@@ -162,7 +193,7 @@ export default function OnboardingDetails() {
   const handleAddEquipment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const equipment = {
       manufacturer: formData.get('manufacturer') as string,
       model: formData.get('model') as string,
@@ -181,7 +212,7 @@ export default function OnboardingDetails() {
   const handleAddSection = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const section = {
       sectionTitle: formData.get('sectionTitle') as string,
       sectionDescription: formData.get('sectionDescription') as string,
@@ -194,13 +225,13 @@ export default function OnboardingDetails() {
   const handleAddTask = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const task = {
       taskTitle: formData.get('taskTitle') as string,
       taskDescription: formData.get('taskDescription') as string,
       priority: formData.get('priority') as string,
-      assignedTo: formData.get('assignedTo') as string || null,
-      dueDate: formData.get('dueDate') as string || null,
+      assignedTo: (formData.get('assignedTo') as string) || null,
+      dueDate: (formData.get('dueDate') as string) || null,
     };
 
     addTaskMutation.mutate(task);
@@ -230,7 +261,7 @@ export default function OnboardingDetails() {
             <AlertTriangle className="w-12 h-12 mx-auto text-red-500 mb-4" />
             <h3 className="text-lg font-medium mb-2">Error Loading Checklist</h3>
             <p className="text-muted-foreground mb-4">
-              {error instanceof Error ? error.message : "Checklist not found"}
+              {error instanceof Error ? error.message : 'Checklist not found'}
             </p>
             <Button onClick={() => navigate('/onboarding')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -258,16 +289,16 @@ export default function OnboardingDetails() {
   };
 
   const completedTasks = tasks.filter((task: any) => task.status === 'completed').length;
-  const totalProgress = Math.round(((completedTasks / Math.max(tasks.length, 1)) * 100));
+  const totalProgress = Math.round((completedTasks / Math.max(tasks.length, 1)) * 100);
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => navigate('/onboarding')}
             className="min-h-8"
           >
@@ -277,7 +308,8 @@ export default function OnboardingDetails() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold">{checklist.checklistTitle}</h1>
             <p className="text-sm sm:text-base text-muted-foreground">
-              {checklist.customerData?.companyName} • {checklist.installationType?.replace('_', ' ')}
+              {checklist.customerData?.companyName} •{' '}
+              {checklist.installationType?.replace('_', ' ')}
             </p>
           </div>
         </div>
@@ -344,7 +376,9 @@ export default function OnboardingDetails() {
             <CardTitle className="text-sm font-medium">Tasks</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{completedTasks}/{tasks.length}</div>
+            <div className="text-2xl font-bold">
+              {completedTasks}/{tasks.length}
+            </div>
             <p className="text-xs text-muted-foreground">completed</p>
           </CardContent>
         </Card>
@@ -405,10 +439,9 @@ export default function OnboardingDetails() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Scheduled:</span>
                     <span>
-                      {checklist.scheduledInstallDate 
+                      {checklist.scheduledInstallDate
                         ? format(new Date(checklist.scheduledInstallDate), 'MMM dd, yyyy')
-                        : 'TBD'
-                      }
+                        : 'TBD'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -490,11 +523,15 @@ export default function OnboardingDetails() {
                     </div>
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsAddEquipmentOpen(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsAddEquipmentOpen(false)}
+                    >
                       Cancel
                     </Button>
                     <Button type="submit" disabled={addEquipmentMutation.isPending}>
-                      {addEquipmentMutation.isPending ? "Adding..." : "Add Equipment"}
+                      {addEquipmentMutation.isPending ? 'Adding...' : 'Add Equipment'}
                     </Button>
                   </div>
                 </form>
@@ -523,14 +560,16 @@ export default function OnboardingDetails() {
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">{item.manufacturer} {item.model}</CardTitle>
+                        <CardTitle className="text-lg">
+                          {item.manufacturer} {item.model}
+                        </CardTitle>
                         <CardDescription>
                           {item.serialNumber && `S/N: ${item.serialNumber}`}
                           {item.assetTag && ` • Asset: ${item.assetTag}`}
                         </CardDescription>
                       </div>
-                      <Badge variant={item.isInstalled ? "default" : "secondary"}>
-                        {item.isInstalled ? "Installed" : "Pending"}
+                      <Badge variant={item.isInstalled ? 'default' : 'secondary'}>
+                        {item.isInstalled ? 'Installed' : 'Pending'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -540,7 +579,8 @@ export default function OnboardingDetails() {
                         <span className="text-muted-foreground">Location:</span>
                         <span>
                           {[item.buildingLocation, item.roomLocation, item.specificLocation]
-                            .filter(Boolean).join(' • ') || 'Not specified'}
+                            .filter(Boolean)
+                            .join(' • ') || 'Not specified'}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -564,9 +604,7 @@ export default function OnboardingDetails() {
             <CardContent className="text-center py-12">
               <Network className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium mb-2">Network Configuration</h3>
-              <p className="text-muted-foreground">
-                Network configuration features coming soon
-              </p>
+              <p className="text-muted-foreground">Network configuration features coming soon</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -598,11 +636,15 @@ export default function OnboardingDetails() {
                     <Textarea id="sectionDescription" name="sectionDescription" rows={3} />
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setIsAddSectionOpen(false)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsAddSectionOpen(false)}
+                    >
                       Cancel
                     </Button>
                     <Button type="submit" disabled={addSectionMutation.isPending}>
-                      {addSectionMutation.isPending ? "Adding..." : "Add Section"}
+                      {addSectionMutation.isPending ? 'Adding...' : 'Add Section'}
                     </Button>
                   </div>
                 </form>
@@ -636,8 +678,8 @@ export default function OnboardingDetails() {
                           <CardDescription>{section.sectionDescription}</CardDescription>
                         )}
                       </div>
-                      <Badge variant={section.isCompleted ? "default" : "secondary"}>
-                        {section.isCompleted ? "Completed" : "Pending"}
+                      <Badge variant={section.isCompleted ? 'default' : 'secondary'}>
+                        {section.isCompleted ? 'Completed' : 'Pending'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -665,9 +707,7 @@ export default function OnboardingDetails() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Task</DialogTitle>
-                  <DialogDescription>
-                    Create a new task for this installation
-                  </DialogDescription>
+                  <DialogDescription>Create a new task for this installation</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleAddTask} className="space-y-4">
                   <div className="space-y-2">
@@ -700,14 +740,19 @@ export default function OnboardingDetails() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="assignedTo">Assigned To (Optional)</Label>
-                    <Input id="assignedTo" name="assignedTo" placeholder="Technician name" className="min-h-11" />
+                    <Input
+                      id="assignedTo"
+                      name="assignedTo"
+                      placeholder="Technician name"
+                      className="min-h-11"
+                    />
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsAddTaskOpen(false)}>
                       Cancel
                     </Button>
                     <Button type="submit" disabled={addTaskMutation.isPending}>
-                      {addTaskMutation.isPending ? "Adding..." : "Add Task"}
+                      {addTaskMutation.isPending ? 'Adding...' : 'Add Task'}
                     </Button>
                   </div>
                 </form>

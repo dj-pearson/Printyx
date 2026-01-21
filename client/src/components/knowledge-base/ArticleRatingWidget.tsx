@@ -240,7 +240,8 @@ export function ArticleRatingWidget({
         <div className="flex items-center gap-2">
           {renderStars(ratings.average)}
           <span className="text-sm text-gray-600">
-            {ratings.average.toFixed(1)} ({ratings.total} {ratings.total === 1 ? 'rating' : 'ratings'})
+            {ratings.average.toFixed(1)} ({ratings.total}{' '}
+            {ratings.total === 1 ? 'rating' : 'ratings'})
           </span>
         </div>
         <div className="flex gap-2">
@@ -292,7 +293,12 @@ export function ArticleRatingWidget({
                   <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                   <span className="text-sm">{star}</span>
                 </div>
-                <Progress value={getPercentage(ratings.distribution[star as keyof typeof ratings.distribution])} className="flex-1" />
+                <Progress
+                  value={getPercentage(
+                    ratings.distribution[star as keyof typeof ratings.distribution],
+                  )}
+                  className="flex-1"
+                />
                 <span className="text-sm text-gray-600 w-12 text-right">
                   {getPercentage(ratings.distribution[star as keyof typeof ratings.distribution])}%
                 </span>
@@ -400,12 +406,11 @@ export function ArticleRatingWidget({
                       {new Date(review.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  {review.comment && (
-                    <p className="text-sm text-gray-700">{review.comment}</p>
-                  )}
+                  {review.comment && <p className="text-sm text-gray-700">{review.comment}</p>}
                   {review.helpfulCount > 0 && (
                     <div className="text-xs text-gray-500">
-                      {review.helpfulCount} {review.helpfulCount === 1 ? 'person' : 'people'} found this helpful
+                      {review.helpfulCount} {review.helpfulCount === 1 ? 'person' : 'people'} found
+                      this helpful
                     </div>
                   )}
                 </div>

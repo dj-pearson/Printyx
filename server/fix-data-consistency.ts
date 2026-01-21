@@ -14,7 +14,7 @@ import { BusinessRecordsTransformer } from './data-field-mapping';
 // Routes that need hardcoded tenant ID replacement
 export const ROUTES_TO_FIX = [
   'routes-business-records.ts',
-  'routes-demo-scheduling.ts', 
+  'routes-demo-scheduling.ts',
   'routes-sales-forecasting.ts',
   'routes-esignature.ts',
   'routes-preventive-maintenance.ts',
@@ -27,23 +27,23 @@ export const ROUTES_TO_FIX = [
   'routes-business-process-optimization.ts',
   'routes-workflow-automation.ts',
   'routes-incident-response.ts',
-  'routes-security-compliance.ts'
+  'routes-security-compliance.ts',
 ];
 
 // Mock data patterns to replace with real database queries
 export const MOCK_DATA_PATTERNS = {
-  'sampleDemos': 'demoSchedules',
-  'sampleForecasts': 'salesForecasts', 
-  'sampleRequests': 'esignatureRequests',
-  'sampleTemplates': 'esignatureTemplates',
-  'sampleTickets': 'serviceTickets',
-  'sampleAlerts': 'maintenanceAlerts',
-  'sampleCustomers': 'businessRecords',
-  'sampleMetrics': 'performanceMetrics',
-  'sampleDevices': 'iotDevices',
-  'sampleDocuments': 'documentRecords',
-  'sampleWorkflows': 'workflowExecutions',
-  'sampleIncidents': 'incidentRecords'
+  sampleDemos: 'demoSchedules',
+  sampleForecasts: 'salesForecasts',
+  sampleRequests: 'esignatureRequests',
+  sampleTemplates: 'esignatureTemplates',
+  sampleTickets: 'serviceTickets',
+  sampleAlerts: 'maintenanceAlerts',
+  sampleCustomers: 'businessRecords',
+  sampleMetrics: 'performanceMetrics',
+  sampleDevices: 'iotDevices',
+  sampleDocuments: 'documentRecords',
+  sampleWorkflows: 'workflowExecutions',
+  sampleIncidents: 'incidentRecords',
 };
 
 // Frontend-Database field mappings for all major entities
@@ -64,7 +64,7 @@ export const ENTITY_FIELD_MAPPINGS = {
     externalCustomerId: 'external_customer_id',
     externalSystemId: 'external_system_id',
     migrationStatus: 'migration_status',
-    lastSyncDate: 'last_sync_date'
+    lastSyncDate: 'last_sync_date',
   },
   equipment: {
     serialNumber: 'serial_number',
@@ -76,7 +76,7 @@ export const ENTITY_FIELD_MAPPINGS = {
     lastServiceDate: 'last_service_date',
     currentMeterReading: 'current_meter_reading',
     customerId: 'customer_id',
-    locationId: 'location_id'
+    locationId: 'location_id',
   },
   serviceTickets: {
     ticketNumber: 'ticket_number',
@@ -93,8 +93,8 @@ export const ENTITY_FIELD_MAPPINGS = {
     totalCost: 'total_cost',
     customerSatisfaction: 'customer_satisfaction',
     resolutionNotes: 'resolution_notes',
-    followUpRequired: 'follow_up_required'
-  }
+    followUpRequired: 'follow_up_required',
+  },
 };
 
 // Standard route transformation template
@@ -126,27 +126,27 @@ app.get("${routeFunction}", resolveTenant, requireTenant, async (req: TenantRequ
 // Business Records unified lifecycle management
 export const BUSINESS_RECORD_STATUSES = {
   lead: ['new', 'contacted', 'qualified', 'proposal_sent', 'negotiating', 'lost'],
-  customer: ['active', 'inactive', 'churned', 'expired', 'competitor_switch', 'non_payment']
+  customer: ['active', 'inactive', 'churned', 'expired', 'competitor_switch', 'non_payment'],
 };
 
 export function getValidStatusTransitions(currentStatus: string, recordType: 'lead' | 'customer') {
   const transitions: Record<string, string[]> = {
     // Lead statuses
-    'new': ['contacted', 'lost'],
-    'contacted': ['qualified', 'lost'],
-    'qualified': ['proposal_sent', 'lost'],
-    'proposal_sent': ['negotiating', 'active', 'lost'], // active = converted to customer
-    'negotiating': ['active', 'lost'], // active = converted to customer
-    
+    new: ['contacted', 'lost'],
+    contacted: ['qualified', 'lost'],
+    qualified: ['proposal_sent', 'lost'],
+    proposal_sent: ['negotiating', 'active', 'lost'], // active = converted to customer
+    negotiating: ['active', 'lost'], // active = converted to customer
+
     // Customer statuses
-    'active': ['inactive', 'churned', 'expired'],
-    'inactive': ['active', 'churned'],
-    'churned': ['active'], // Can be reactivated
-    'expired': ['active'], // Contract can be renewed
-    'competitor_switch': [], // Terminal state
-    'non_payment': ['active', 'churned'] // Can resolve payment issues
+    active: ['inactive', 'churned', 'expired'],
+    inactive: ['active', 'churned'],
+    churned: ['active'], // Can be reactivated
+    expired: ['active'], // Contract can be renewed
+    competitor_switch: [], // Terminal state
+    non_payment: ['active', 'churned'], // Can resolve payment issues
   };
-  
+
   return transitions[currentStatus] || [];
 }
 
@@ -165,9 +165,9 @@ export const EXTERNAL_SYSTEM_SYNC = {
     Territory: businessRecord.territory,
     CustomerNumber: businessRecord.customer_number,
     ExternalId: businessRecord.external_customer_id,
-    LastSync: new Date().toISOString()
+    LastSync: new Date().toISOString(),
   }),
-  
+
   prepareSalesforceData: (businessRecord: any) => ({
     Name: businessRecord.company_name,
     Type: businessRecord.record_type === 'customer' ? 'Customer' : 'Prospect',
@@ -181,9 +181,9 @@ export const EXTERNAL_SYSTEM_SYNC = {
     NumberOfEmployees: businessRecord.employee_count,
     Rating: businessRecord.customer_rating,
     ExternalId__c: businessRecord.external_customer_id,
-    LastSyncDate__c: new Date().toISOString()
+    LastSyncDate__c: new Date().toISOString(),
   }),
-  
+
   handleIncomingEAutomateData: (eAutomateRecord: any) => ({
     company_name: eAutomateRecord.CompanyName,
     primary_contact_name: eAutomateRecord.ContactName,
@@ -199,8 +199,8 @@ export const EXTERNAL_SYSTEM_SYNC = {
     external_customer_id: eAutomateRecord.ExternalId,
     external_system_id: 'eautomate',
     migration_status: 'synced',
-    last_sync_date: new Date()
-  })
+    last_sync_date: new Date(),
+  }),
 };
 
 // Database query optimization helpers
@@ -220,7 +220,7 @@ export const OPTIMIZED_QUERIES = {
     GROUP BY br.id
     ORDER BY br.created_at DESC
   `,
-  
+
   getLeadConversionPipeline: (tenantId: string) => `
     SELECT 
       sales_stage,
@@ -240,7 +240,7 @@ export const OPTIMIZED_QUERIES = {
         ELSE 6
       END
   `,
-  
+
   getCustomerHealthMetrics: (tenantId: string) => `
     SELECT 
       br.id,
@@ -257,14 +257,14 @@ export const OPTIMIZED_QUERIES = {
     WHERE br.tenant_id = $1 AND br.record_type = 'customer'
     GROUP BY br.id, br.company_name, br.customer_since, br.current_balance, br.last_payment_date
     ORDER BY br.company_name
-  `
+  `,
 };
 
 // Validation helpers for data consistency
 export const DATA_VALIDATION = {
   validateBusinessRecord: (record: any) => {
     const errors: string[] = [];
-    
+
     if (!record.company_name) errors.push('Company name is required');
     if (!record.record_type || !['lead', 'customer'].includes(record.record_type)) {
       errors.push('Valid record type (lead/customer) is required');
@@ -275,18 +275,22 @@ export const DATA_VALIDATION = {
     if (record.primary_contact_email && !isValidEmail(record.primary_contact_email)) {
       errors.push('Valid primary contact email is required');
     }
-    
+
     return errors;
   },
-  
-  validateStatusTransition: (fromStatus: string, toStatus: string, recordType: 'lead' | 'customer') => {
+
+  validateStatusTransition: (
+    fromStatus: string,
+    toStatus: string,
+    recordType: 'lead' | 'customer',
+  ) => {
     const validTransitions = getValidStatusTransitions(fromStatus, recordType);
     return validTransitions.includes(toStatus);
   },
-  
+
   validateLeadToCustomerConversion: (record: any) => {
     const errors: string[] = [];
-    
+
     if (record.record_type !== 'customer') {
       errors.push('Record type must be customer for conversion');
     }
@@ -299,9 +303,9 @@ export const DATA_VALIDATION = {
     if (!record.converted_by) {
       errors.push('Converted by user must be tracked');
     }
-    
+
     return errors;
-  }
+  },
 };
 
 function isValidEmail(email: string): boolean {

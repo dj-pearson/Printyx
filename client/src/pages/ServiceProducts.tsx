@@ -1,26 +1,50 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Settings, Edit3, Tag, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertServiceProductSchema, type ServiceProduct, type InsertServiceProduct } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Settings, Edit3, Tag, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  insertServiceProductSchema,
+  type ServiceProduct,
+  type InsertServiceProduct,
+} from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
 
 export default function ServiceProducts() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedServiceType, setSelectedServiceType] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedServiceType, setSelectedServiceType] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceProduct | null>(null);
 
@@ -40,15 +64,15 @@ export default function ServiceProducts() {
       setDialogOpen(false);
       form.reset();
       toast({
-        title: "Success",
-        description: "Service product created successfully",
+        title: 'Success',
+        description: 'Service product created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create service product",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create service product',
+        variant: 'destructive',
       });
     },
   });
@@ -56,10 +80,10 @@ export default function ServiceProducts() {
   const form = useForm<InsertServiceProduct>({
     resolver: zodResolver(insertServiceProductSchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
-      category: "Service",
+      tenantId: '',
+      productCode: '',
+      productName: '',
+      category: 'Service',
       serviceType: null,
       pricingLevel: null,
       description: null,
@@ -90,23 +114,24 @@ export default function ServiceProducts() {
   };
 
   // Get unique service types from services
-  const serviceTypes = Array.from(new Set(services.map(s => s.serviceType).filter(Boolean)));
+  const serviceTypes = Array.from(new Set(services.map((s) => s.serviceType).filter(Boolean)));
 
   // Filter services by search and service type
-  const filteredServices = services.filter(service => {
-    const matchesSearch = service.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    if (selectedServiceType === "all") return matchesSearch;
-    
+  const filteredServices = services.filter((service) => {
+    const matchesSearch =
+      service.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (selectedServiceType === 'all') return matchesSearch;
+
     const matchesType = service.serviceType === selectedServiceType;
-    
+
     return matchesSearch && matchesType;
   });
 
   const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -122,12 +147,16 @@ export default function ServiceProducts() {
               <CardTitle className="text-lg">{service.productName}</CardTitle>
               <CardDescription>
                 <span className="font-medium">{service.productCode}</span>
-                {service.serviceType && <span className="ml-2 text-muted-foreground">• {service.serviceType}</span>}
+                {service.serviceType && (
+                  <span className="ml-2 text-muted-foreground">• {service.serviceType}</span>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               {service.isActive ? (
-                <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  Active
+                </Badge>
               ) : (
                 <Badge variant="secondary">Inactive</Badge>
               )}
@@ -143,23 +172,21 @@ export default function ServiceProducts() {
           </div>
 
           {service.summary && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {service.summary}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{service.summary}</p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <span className="text-sm font-medium">New Rep Price</span>
               <p className="text-lg font-bold text-green-600">
-                {service.newActive ? formatCurrency(service.newRepPrice) : "Not Set"}
+                {service.newActive ? formatCurrency(service.newRepPrice) : 'Not Set'}
               </p>
             </div>
 
             <div className="space-y-2">
               <span className="text-sm font-medium">Upgrade Price</span>
               <p className="text-lg font-bold text-blue-600">
-                {service.upgradeActive ? formatCurrency(service.upgradeRepPrice) : "Not Set"}
+                {service.upgradeActive ? formatCurrency(service.upgradeRepPrice) : 'Not Set'}
               </p>
             </div>
           </div>
@@ -170,15 +197,19 @@ export default function ServiceProducts() {
             <div className="text-sm text-muted-foreground space-y-1">
               {service.paymentType && <div>Payment: {service.paymentType}</div>}
               <div className="flex gap-2">
-                {service.salesRepCredit && <Badge variant="outline" className="text-xs">Rep Credit</Badge>}
-                {service.funding && <Badge variant="outline" className="text-xs">Funding</Badge>}
+                {service.salesRepCredit && (
+                  <Badge variant="outline" className="text-xs">
+                    Rep Credit
+                  </Badge>
+                )}
+                {service.funding && (
+                  <Badge variant="outline" className="text-xs">
+                    Funding
+                  </Badge>
+                )}
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSelectedService(service)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setSelectedService(service)}>
               <Edit3 className="h-4 w-4 mr-1" />
               View Details
             </Button>
@@ -208,25 +239,29 @@ export default function ServiceProducts() {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: Service</DialogTitle>
-                <DialogDescription>
-                  Create a new service product for your catalog
-                </DialogDescription>
+                <DialogDescription>Create a new service product for your catalog</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Information Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="productName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Name <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="Equipment Service Plan" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Equipment Service Plan"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -244,9 +279,15 @@ export default function ServiceProducts() {
                         name="productCode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Code <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Code <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="SVC-PLAN-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="SVC-PLAN-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -258,7 +299,7 @@ export default function ServiceProducts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Product Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -280,10 +321,7 @@ export default function ServiceProducts() {
                         name="isActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Active</label>
                           </div>
                         )}
@@ -293,10 +331,7 @@ export default function ServiceProducts() {
                         name="availableForAll"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Available for All</label>
                           </div>
                         )}
@@ -306,10 +341,7 @@ export default function ServiceProducts() {
                         name="repostEdit"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Repost Edit</label>
                           </div>
                         )}
@@ -322,10 +354,7 @@ export default function ServiceProducts() {
                         name="salesRepCredit"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Sales Rep Credit</label>
                           </div>
                         )}
@@ -335,10 +364,7 @@ export default function ServiceProducts() {
                         name="funding"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Funding</label>
                           </div>
                         )}
@@ -353,7 +379,11 @@ export default function ServiceProducts() {
                           <FormItem>
                             <FormLabel>Pricing Level</FormLabel>
                             <FormControl>
-                              <Input placeholder="Standard" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Standard"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -365,7 +395,7 @@ export default function ServiceProducts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Service Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -392,7 +422,7 @@ export default function ServiceProducts() {
                   {/* Detail Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Detail</h3>
-                    
+
                     <FormField
                       control={form.control}
                       name="description"
@@ -402,7 +432,7 @@ export default function ServiceProducts() {
                           <FormControl>
                             <Textarea
                               placeholder="Detailed description of the service product..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={4}
                             />
@@ -411,7 +441,7 @@ export default function ServiceProducts() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="summary"
@@ -421,7 +451,7 @@ export default function ServiceProducts() {
                           <FormControl>
                             <Textarea
                               placeholder="Brief summary of the service..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={3}
                             />
@@ -440,7 +470,7 @@ export default function ServiceProducts() {
                           <FormControl>
                             <Textarea
                               placeholder="Additional notes..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={2}
                             />
@@ -457,7 +487,11 @@ export default function ServiceProducts() {
                         <FormItem>
                           <FormLabel>EA Notes</FormLabel>
                           <FormControl>
-                            <Input placeholder="EA specific notes..." value={field.value || ""} onChange={field.onChange} />
+                            <Input
+                              placeholder="EA specific notes..."
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -473,7 +507,7 @@ export default function ServiceProducts() {
                           <FormControl>
                             <Textarea
                               placeholder="Related products and services..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={2}
                             />
@@ -489,17 +523,14 @@ export default function ServiceProducts() {
                   {/* Pricing Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Pricing Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="lease"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Lease</label>
                           </div>
                         )}
@@ -510,7 +541,7 @@ export default function ServiceProducts() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payment Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -538,10 +569,7 @@ export default function ServiceProducts() {
                           name="newActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">New Active</label>
                             </div>
                           )}
@@ -553,12 +581,12 @@ export default function ServiceProducts() {
                             <FormItem>
                               <FormLabel>New Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="99.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="99.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -573,10 +601,7 @@ export default function ServiceProducts() {
                           name="upgradeActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">Upgrade Active</label>
                             </div>
                           )}
@@ -588,12 +613,12 @@ export default function ServiceProducts() {
                             <FormItem>
                               <FormLabel>Upgrade Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="89.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="89.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -610,10 +635,7 @@ export default function ServiceProducts() {
                           name="lexmarkActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">Lexmark Active</label>
                             </div>
                           )}
@@ -625,12 +647,12 @@ export default function ServiceProducts() {
                             <FormItem>
                               <FormLabel>Lexmark Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="79.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="79.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -645,10 +667,7 @@ export default function ServiceProducts() {
                           name="graphicActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">Graphic Active</label>
                             </div>
                           )}
@@ -660,12 +679,12 @@ export default function ServiceProducts() {
                             <FormItem>
                               <FormLabel>Graphic Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="109.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="109.00"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -684,7 +703,7 @@ export default function ServiceProducts() {
                       Save & New
                     </Button>
                     <Button type="submit" disabled={createServiceMutation.isPending}>
-                      {createServiceMutation.isPending ? "Saving..." : "Save"}
+                      {createServiceMutation.isPending ? 'Saving...' : 'Save'}
                     </Button>
                   </div>
                 </form>
@@ -711,8 +730,10 @@ export default function ServiceProducts() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Service Types</SelectItem>
-              {serviceTypes.map(serviceType => (
-                <SelectItem key={serviceType} value={serviceType}>{serviceType}</SelectItem>
+              {serviceTypes.map((serviceType) => (
+                <SelectItem key={serviceType} value={serviceType}>
+                  {serviceType}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -741,12 +762,11 @@ export default function ServiceProducts() {
             <Settings className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Service Products Found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm || selectedServiceType !== "all" 
-                ? "No service products match your current filters. Try adjusting your search criteria."
-                : "Get started by adding your first service product to the catalog."
-              }
+              {searchTerm || selectedServiceType !== 'all'
+                ? 'No service products match your current filters. Try adjusting your search criteria.'
+                : 'Get started by adding your first service product to the catalog.'}
             </p>
-            {!searchTerm && selectedServiceType === "all" && (
+            {!searchTerm && selectedServiceType === 'all' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Service Product
@@ -766,9 +786,7 @@ export default function ServiceProducts() {
           <span>
             {filteredServices.length} of {services.length} service products
           </span>
-          <span>
-            {services.filter(s => s.isActive).length} active products
-          </span>
+          <span>{services.filter((s) => s.isActive).length} active products</span>
         </div>
       </div>
     </MainLayout>

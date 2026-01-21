@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +14,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -29,9 +29,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   GitBranch,
   Plus,
@@ -45,7 +45,7 @@ import {
   Settings,
   Activity,
   TrendingUp,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface AssignmentRule {
   id: string;
@@ -110,7 +110,11 @@ interface RuleFormData {
 }
 
 const ASSIGNMENT_TYPES = [
-  { value: 'territory', label: 'Territory Assignment', description: 'Assign to a specific territory' },
+  {
+    value: 'territory',
+    label: 'Territory Assignment',
+    description: 'Assign to a specific territory',
+  },
   { value: 'user', label: 'User Assignment', description: 'Assign to a specific user' },
   { value: 'round_robin', label: 'Round Robin', description: 'Distribute evenly across users' },
   { value: 'load_balanced', label: 'Load Balanced', description: 'Balance by workload' },
@@ -132,7 +136,7 @@ export default function PlatformAssignmentRules() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AssignmentRule | null>(null);
-  const [selectedTab, setSelectedTab] = useState("all");
+  const [selectedTab, setSelectedTab] = useState('all');
 
   const [formData, setFormData] = useState<RuleFormData>({
     name: '',
@@ -185,8 +189,8 @@ export default function PlatformAssignmentRules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
-        title: "Success",
-        description: "Assignment rule created successfully",
+        title: 'Success',
+        description: 'Assignment rule created successfully',
       });
       setIsDialogOpen(false);
       resetForm();
@@ -207,8 +211,8 @@ export default function PlatformAssignmentRules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
-        title: "Success",
-        description: "Assignment rule updated successfully",
+        title: 'Success',
+        description: 'Assignment rule updated successfully',
       });
       setIsDialogOpen(false);
       resetForm();
@@ -227,8 +231,8 @@ export default function PlatformAssignmentRules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
-        title: "Success",
-        description: "Assignment rule deleted successfully",
+        title: 'Success',
+        description: 'Assignment rule deleted successfully',
       });
     },
   });
@@ -247,8 +251,8 @@ export default function PlatformAssignmentRules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/assignment-rules'] });
       toast({
-        title: "Success",
-        description: "Rule status updated",
+        title: 'Success',
+        description: 'Rule status updated',
       });
     },
   });
@@ -264,7 +268,7 @@ export default function PlatformAssignmentRules() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Test Complete",
+        title: 'Test Complete',
         description: `Rule would match ${data.matchCount} prospect(s)`,
       });
     },
@@ -337,11 +341,36 @@ export default function PlatformAssignmentRules() {
       triggerOn: formData.triggerOn as any,
       minLeadScore: formData.minLeadScore ? parseInt(formData.minLeadScore) : undefined,
       maxLeadScore: formData.maxLeadScore ? parseInt(formData.maxLeadScore) : undefined,
-      leadGrades: formData.leadGrades ? formData.leadGrades.split(',').map(g => g.trim()).filter(Boolean) : undefined,
-      leadTiers: formData.leadTiers ? formData.leadTiers.split(',').map(t => t.trim()).filter(Boolean) : undefined,
-      recordStatuses: formData.recordStatuses ? formData.recordStatuses.split(',').map(s => s.trim()).filter(Boolean) : undefined,
-      regions: formData.regions ? formData.regions.split(',').map(r => r.trim()).filter(Boolean) : undefined,
-      industries: formData.industries ? formData.industries.split(',').map(i => i.trim()).filter(Boolean) : undefined,
+      leadGrades: formData.leadGrades
+        ? formData.leadGrades
+            .split(',')
+            .map((g) => g.trim())
+            .filter(Boolean)
+        : undefined,
+      leadTiers: formData.leadTiers
+        ? formData.leadTiers
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined,
+      recordStatuses: formData.recordStatuses
+        ? formData.recordStatuses
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : undefined,
+      regions: formData.regions
+        ? formData.regions
+            .split(',')
+            .map((r) => r.trim())
+            .filter(Boolean)
+        : undefined,
+      industries: formData.industries
+        ? formData.industries
+            .split(',')
+            .map((i) => i.trim())
+            .filter(Boolean)
+        : undefined,
       companySizeMin: formData.companySizeMin ? parseInt(formData.companySizeMin) : undefined,
       companySizeMax: formData.companySizeMax ? parseInt(formData.companySizeMax) : undefined,
       revenueMin: formData.revenueMin || undefined,
@@ -372,19 +401,21 @@ export default function PlatformAssignmentRules() {
   };
 
   // Filter rules
-  const filteredRules = selectedTab === 'all'
-    ? rules
-    : rules.filter(rule => rule.isActive === (selectedTab === 'active'));
+  const filteredRules =
+    selectedTab === 'all'
+      ? rules
+      : rules.filter((rule) => rule.isActive === (selectedTab === 'active'));
 
   // Calculate stats
   const stats = {
     total: rules.length,
-    active: rules.filter(r => r.isActive).length,
-    inactive: rules.filter(r => !r.isActive).length,
+    active: rules.filter((r) => r.isActive).length,
+    inactive: rules.filter((r) => !r.isActive).length,
     totalAssignments: rules.reduce((sum, r) => sum + (r.totalAssignments || 0), 0),
-    avgExecutionTime: rules.length > 0
-      ? rules.reduce((sum, r) => sum + (r.avgExecutionTime || 0), 0) / rules.length
-      : 0,
+    avgExecutionTime:
+      rules.length > 0
+        ? rules.reduce((sum, r) => sum + (r.avgExecutionTime || 0), 0) / rules.length
+        : 0,
   };
 
   if (isLoading) {
@@ -423,9 +454,7 @@ export default function PlatformAssignmentRules() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Rules
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Rules</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -449,9 +478,7 @@ export default function PlatformAssignmentRules() {
               <span className="text-3xl font-bold">{stats.totalAssignments.toLocaleString()}</span>
               <Users className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              All time
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">All time</p>
           </CardContent>
         </Card>
 
@@ -466,9 +493,7 @@ export default function PlatformAssignmentRules() {
               <span className="text-3xl font-bold">{stats.avgExecutionTime.toFixed(0)}ms</span>
               <Activity className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Per assignment
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Per assignment</p>
           </CardContent>
         </Card>
 
@@ -483,9 +508,7 @@ export default function PlatformAssignmentRules() {
               <span className="text-3xl font-bold">{territories.length}</span>
               <MapPin className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Assignment targets
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Assignment targets</p>
           </CardContent>
         </Card>
       </div>
@@ -540,12 +563,12 @@ export default function PlatformAssignmentRules() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {ASSIGNMENT_TYPES.find(t => t.value === rule.assignmentType)?.label}
+                            {ASSIGNMENT_TYPES.find((t) => t.value === rule.assignmentType)?.label}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">
-                            {TRIGGER_OPTIONS.find(t => t.value === rule.triggerOn)?.label}
+                            {TRIGGER_OPTIONS.find((t) => t.value === rule.triggerOn)?.label}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -599,11 +622,7 @@ export default function PlatformAssignmentRules() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(rule.id)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(rule.id)}>
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </div>
@@ -625,9 +644,7 @@ export default function PlatformAssignmentRules() {
             <DialogTitle>
               {editingRule ? 'Edit Assignment Rule' : 'Create New Assignment Rule'}
             </DialogTitle>
-            <DialogDescription>
-              Configure automated prospect assignment logic
-            </DialogDescription>
+            <DialogDescription>Configure automated prospect assignment logic</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -694,7 +711,9 @@ export default function PlatformAssignmentRules() {
                         <SelectItem key={trigger.value} value={trigger.value}>
                           <div>
                             <div>{trigger.label}</div>
-                            <div className="text-xs text-muted-foreground">{trigger.description}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {trigger.description}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}
@@ -762,7 +781,9 @@ export default function PlatformAssignmentRules() {
                     onChange={(e) => setFormData({ ...formData, leadGrades: e.target.value })}
                     placeholder="e.g., A, B"
                   />
-                  <p className="text-xs text-muted-foreground">Available: {LEAD_GRADES.join(', ')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available: {LEAD_GRADES.join(', ')}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -773,7 +794,9 @@ export default function PlatformAssignmentRules() {
                     onChange={(e) => setFormData({ ...formData, leadTiers: e.target.value })}
                     placeholder="e.g., hot, warm"
                   />
-                  <p className="text-xs text-muted-foreground">Available: {LEAD_TIERS.join(', ')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available: {LEAD_TIERS.join(', ')}
+                  </p>
                 </div>
 
                 <div className="space-y-2 col-span-2">
@@ -784,7 +807,9 @@ export default function PlatformAssignmentRules() {
                     onChange={(e) => setFormData({ ...formData, recordStatuses: e.target.value })}
                     placeholder="e.g., new, qualifying"
                   />
-                  <p className="text-xs text-muted-foreground">Available: {RECORD_STATUSES.join(', ')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available: {RECORD_STATUSES.join(', ')}
+                  </p>
                 </div>
 
                 <div className="space-y-2 col-span-2">
@@ -858,12 +883,14 @@ export default function PlatformAssignmentRules() {
               <h4 className="font-semibold">Assignment Target</h4>
 
               <div className="grid grid-cols-2 gap-4">
-                {(formData.assignmentType === 'territory') && (
+                {formData.assignmentType === 'territory' && (
                   <div className="space-y-2 col-span-2">
                     <Label htmlFor="targetTerritoryId">Target Territory</Label>
                     <Select
                       value={formData.targetTerritoryId}
-                      onValueChange={(value) => setFormData({ ...formData, targetTerritoryId: value })}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, targetTerritoryId: value })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select territory..." />
@@ -879,7 +906,7 @@ export default function PlatformAssignmentRules() {
                   </div>
                 )}
 
-                {(formData.assignmentType === 'user') && (
+                {formData.assignmentType === 'user' && (
                   <div className="space-y-2 col-span-2">
                     <Label htmlFor="targetUserId">Target User</Label>
                     <Select
@@ -900,7 +927,8 @@ export default function PlatformAssignmentRules() {
                   </div>
                 )}
 
-                {(formData.assignmentType === 'round_robin' || formData.assignmentType === 'load_balanced') && (
+                {(formData.assignmentType === 'round_robin' ||
+                  formData.assignmentType === 'load_balanced') && (
                   <div className="col-span-2 p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
                       {formData.assignmentType === 'round_robin'

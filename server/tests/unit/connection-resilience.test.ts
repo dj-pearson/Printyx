@@ -45,12 +45,10 @@ describe('Connection Resilience', () => {
         jitterFactor: 0.3,
       };
 
-      const delays = Array.from({ length: 100 }, () =>
-        calculateBackoffDelay(0, config)
-      );
+      const delays = Array.from({ length: 100 }, () => calculateBackoffDelay(0, config));
 
       // All delays should be within 30% of base delay
-      delays.forEach(delay => {
+      delays.forEach((delay) => {
         expect(delay).toBeGreaterThanOrEqual(700);
         expect(delay).toBeLessThanOrEqual(1300);
       });
@@ -66,7 +64,9 @@ describe('Connection Resilience', () => {
 
     it('should identify retryable PostgreSQL errors', () => {
       expect(isRetryableError({ code: '08006' }, DEFAULT_RETRY_CONFIG)).toBe(true);
-      expect(isRetryableError({ message: 'connection does not exist' }, DEFAULT_RETRY_CONFIG)).toBe(true);
+      expect(isRetryableError({ message: 'connection does not exist' }, DEFAULT_RETRY_CONFIG)).toBe(
+        true,
+      );
     });
 
     it('should identify rate limiting errors', () => {
@@ -116,7 +116,7 @@ describe('Connection Resilience', () => {
       expect(circuitBreaker.getState()).toBe('OPEN');
 
       // Wait for recovery timeout
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      await new Promise((resolve) => setTimeout(resolve, 1100));
 
       // Should now be able to execute
       expect(circuitBreaker.canExecute()).toBe(true);
@@ -128,7 +128,7 @@ describe('Connection Resilience', () => {
       circuitBreaker.recordFailure();
       circuitBreaker.recordFailure();
       circuitBreaker.recordFailure();
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      await new Promise((resolve) => setTimeout(resolve, 1100));
 
       // Successful requests in HALF_OPEN
       circuitBreaker.recordSuccess();
@@ -142,7 +142,7 @@ describe('Connection Resilience', () => {
       circuitBreaker.recordFailure();
       circuitBreaker.recordFailure();
       circuitBreaker.recordFailure();
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      await new Promise((resolve) => setTimeout(resolve, 1100));
       circuitBreaker.canExecute(); // Transition to HALF_OPEN
 
       // Failure in HALF_OPEN
@@ -165,7 +165,7 @@ describe('Connection Resilience', () => {
 
     it('should emit state change events', () => {
       const stateChanges: any[] = [];
-      circuitBreaker.on('stateChange', event => {
+      circuitBreaker.on('stateChange', (event) => {
         stateChanges.push(event);
       });
 
@@ -239,7 +239,7 @@ describe('Connection Resilience', () => {
       await expect(
         retryHandler.execute(async () => {
           throw error;
-        })
+        }),
       ).rejects.toThrow('Connection refused');
     });
 
@@ -251,7 +251,7 @@ describe('Connection Resilience', () => {
         retryHandler.execute(async () => {
           callCount++;
           throw new Error('Validation error');
-        })
+        }),
       ).rejects.toThrow('Validation error');
 
       expect(callCount).toBe(1);
@@ -270,9 +270,7 @@ describe('Connection Resilience', () => {
       // Trip the circuit
       circuitBreaker.recordFailure();
 
-      await expect(
-        retryHandler.execute(async () => 'success')
-      ).rejects.toThrow(CircuitOpenError);
+      await expect(retryHandler.execute(async () => 'success')).rejects.toThrow(CircuitOpenError);
     });
 
     it('should call onRetry callback', async () => {
@@ -298,7 +296,7 @@ describe('Connection Resilience', () => {
           onRetry: (err, attempt, delay) => {
             retryEvents.push({ attempt, delay });
           },
-        }
+        },
       );
 
       expect(retryEvents).toHaveLength(2);

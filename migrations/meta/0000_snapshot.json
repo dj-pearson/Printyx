@@ -1592,23 +1592,17 @@
         "business_records_customer_number_unique": {
           "name": "business_records_customer_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "customer_number"
-          ]
+          "columns": ["customer_number"]
         },
         "business_records_company_display_id_unique": {
           "name": "business_records_company_display_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "company_display_id"
-          ]
+          "columns": ["company_display_id"]
         },
         "business_records_url_slug_unique": {
           "name": "business_records_url_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "url_slug"
-          ]
+          "columns": ["url_slug"]
         }
       },
       "policies": {},
@@ -2813,9 +2807,7 @@
         "commission_disputes_dispute_number_unique": {
           "name": "commission_disputes_dispute_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "dispute_number"
-          ]
+          "columns": ["dispute_number"]
         }
       },
       "policies": {},
@@ -3753,9 +3745,7 @@
         "companies_customer_number_unique": {
           "name": "companies_customer_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "customer_number"
-          ]
+          "columns": ["customer_number"]
         }
       },
       "policies": {},
@@ -4805,12 +4795,8 @@
           "name": "conversion_funnel_tenant_id_tenants_id_fk",
           "tableFrom": "conversion_funnel",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4818,12 +4804,8 @@
           "name": "conversion_funnel_user_id_users_id_fk",
           "tableFrom": "conversion_funnel",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4831,12 +4813,8 @@
           "name": "conversion_funnel_team_id_sales_teams_id_fk",
           "tableFrom": "conversion_funnel",
           "tableTo": "sales_teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5285,12 +5263,8 @@
           "name": "customer_meter_submissions_customer_portal_user_id_customer_portal_access_id_fk",
           "tableFrom": "customer_meter_submissions",
           "tableTo": "customer_portal_access",
-          "columnsFrom": [
-            "customer_portal_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_portal_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5525,12 +5499,8 @@
           "name": "customer_notifications_customer_portal_user_id_customer_portal_access_id_fk",
           "tableFrom": "customer_notifications",
           "tableTo": "customer_portal_access",
-          "columnsFrom": [
-            "customer_portal_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_portal_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5538,12 +5508,8 @@
           "name": "customer_notifications_related_service_request_id_customer_service_requests_id_fk",
           "tableFrom": "customer_notifications",
           "tableTo": "customer_service_requests",
-          "columnsFrom": [
-            "related_service_request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["related_service_request_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5551,12 +5517,8 @@
           "name": "customer_notifications_related_payment_id_customer_payments_id_fk",
           "tableFrom": "customer_notifications",
           "tableTo": "customer_payments",
-          "columnsFrom": [
-            "related_payment_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["related_payment_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5564,12 +5526,8 @@
           "name": "customer_notifications_related_supply_order_id_customer_supply_orders_id_fk",
           "tableFrom": "customer_notifications",
           "tableTo": "customer_supply_orders",
-          "columnsFrom": [
-            "related_supply_order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["related_supply_order_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5937,12 +5895,8 @@
           "name": "customer_payments_customer_portal_user_id_customer_portal_access_id_fk",
           "tableFrom": "customer_payments",
           "tableTo": "customer_portal_access",
-          "columnsFrom": [
-            "customer_portal_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_portal_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5952,9 +5906,7 @@
         "customer_payments_payment_number_unique": {
           "name": "customer_payments_payment_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "payment_number"
-          ]
+          "columns": ["payment_number"]
         }
       },
       "policies": {},
@@ -6162,9 +6114,7 @@
         "customer_portal_access_username_unique": {
           "name": "customer_portal_access_username_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "username"
-          ]
+          "columns": ["username"]
         }
       },
       "policies": {},
@@ -6302,12 +6252,8 @@
           "name": "customer_portal_activity_log_customer_portal_user_id_customer_portal_access_id_fk",
           "tableFrom": "customer_portal_activity_log",
           "tableTo": "customer_portal_access",
-          "columnsFrom": [
-            "customer_portal_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_portal_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6703,12 +6649,8 @@
           "name": "customer_service_requests_customer_portal_user_id_customer_portal_access_id_fk",
           "tableFrom": "customer_service_requests",
           "tableTo": "customer_portal_access",
-          "columnsFrom": [
-            "customer_portal_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_portal_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -6718,9 +6660,7 @@
         "customer_service_requests_request_number_unique": {
           "name": "customer_service_requests_request_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "request_number"
-          ]
+          "columns": ["request_number"]
         }
       },
       "policies": {},
@@ -6849,12 +6789,8 @@
           "name": "customer_supply_order_items_order_id_customer_supply_orders_id_fk",
           "tableFrom": "customer_supply_order_items",
           "tableTo": "customer_supply_orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -7103,12 +7039,8 @@
           "name": "customer_supply_orders_customer_portal_user_id_customer_portal_access_id_fk",
           "tableFrom": "customer_supply_orders",
           "tableTo": "customer_portal_access",
-          "columnsFrom": [
-            "customer_portal_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_portal_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -7118,9 +7050,7 @@
         "customer_supply_orders_order_number_unique": {
           "name": "customer_supply_orders_order_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "order_number"
-          ]
+          "columns": ["order_number"]
         }
       },
       "policies": {},
@@ -8775,12 +8705,8 @@
           "name": "device_metrics_device_id_device_registrations_id_fk",
           "tableFrom": "device_metrics",
           "tableTo": "device_registrations",
-          "columnsFrom": [
-            "device_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["device_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -8788,12 +8714,8 @@
           "name": "device_metrics_integration_id_manufacturer_integrations_id_fk",
           "tableFrom": "device_metrics",
           "tableTo": "manufacturer_integrations",
-          "columnsFrom": [
-            "integration_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["integration_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -8984,12 +8906,8 @@
           "name": "device_registrations_integration_id_manufacturer_integrations_id_fk",
           "tableFrom": "device_registrations",
           "tableTo": "manufacturer_integrations",
-          "columnsFrom": [
-            "integration_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["integration_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -9551,9 +9469,7 @@
         "employees_employee_number_unique": {
           "name": "employees_employee_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "employee_number"
-          ]
+          "columns": ["employee_number"]
         }
       },
       "policies": {},
@@ -11755,9 +11671,7 @@
         "equipment_serial_number_unique": {
           "name": "equipment_serial_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "serial_number"
-          ]
+          "columns": ["serial_number"]
         }
       },
       "policies": {},
@@ -11889,9 +11803,7 @@
         "equipment_lifecycle_equipment_id_unique": {
           "name": "equipment_lifecycle_equipment_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "equipment_id"
-          ]
+          "columns": ["equipment_id"]
         }
       },
       "policies": {},
@@ -13418,12 +13330,8 @@
           "name": "integration_audit_logs_integration_id_manufacturer_integrations_id_fk",
           "tableFrom": "integration_audit_logs",
           "tableTo": "manufacturer_integrations",
-          "columnsFrom": [
-            "integration_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["integration_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -13431,12 +13339,8 @@
           "name": "integration_audit_logs_device_id_device_registrations_id_fk",
           "tableFrom": "integration_audit_logs",
           "tableTo": "device_registrations",
-          "columnsFrom": [
-            "device_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["device_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -13676,9 +13580,7 @@
         "inventory_items_part_number_unique": {
           "name": "inventory_items_part_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "part_number"
-          ]
+          "columns": ["part_number"]
         }
       },
       "policies": {},
@@ -14119,9 +14021,7 @@
         "invoices_invoice_number_unique": {
           "name": "invoices_invoice_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "invoice_number"
-          ]
+          "columns": ["invoice_number"]
         }
       },
       "policies": {},
@@ -14367,12 +14267,8 @@
           "name": "location_history_session_id_mobile_service_sessions_id_fk",
           "tableFrom": "location_history",
           "tableTo": "mobile_service_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -14905,12 +14801,8 @@
           "name": "manager_insights_tenant_id_tenants_id_fk",
           "tableFrom": "manager_insights",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -14918,12 +14810,8 @@
           "name": "manager_insights_manager_id_users_id_fk",
           "tableFrom": "manager_insights",
           "tableTo": "users",
-          "columnsFrom": [
-            "manager_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["manager_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -14931,12 +14819,8 @@
           "name": "manager_insights_team_id_sales_teams_id_fk",
           "tableFrom": "manager_insights",
           "tableTo": "sales_teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -14944,12 +14828,8 @@
           "name": "manager_insights_user_id_users_id_fk",
           "tableFrom": "manager_insights",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -18361,16 +18241,12 @@
         "permissions_name_unique": {
           "name": "permissions_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         },
         "permissions_code_unique": {
           "name": "permissions_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},
@@ -20421,9 +20297,7 @@
         "proposals_proposal_number_unique": {
           "name": "proposals_proposal_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "proposal_number"
-          ]
+          "columns": ["proposal_number"]
         }
       },
       "policies": {},
@@ -22085,9 +21959,7 @@
         "roles_code_unique": {
           "name": "roles_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},
@@ -22644,12 +22516,8 @@
           "name": "sales_metrics_tenant_id_tenants_id_fk",
           "tableFrom": "sales_metrics",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -22657,12 +22525,8 @@
           "name": "sales_metrics_user_id_users_id_fk",
           "tableFrom": "sales_metrics",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -22670,12 +22534,8 @@
           "name": "sales_metrics_team_id_sales_teams_id_fk",
           "tableFrom": "sales_metrics",
           "tableTo": "sales_teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -23007,9 +22867,7 @@
         "security_sessions_session_id_unique": {
           "name": "security_sessions_session_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "session_id"
-          ]
+          "columns": ["session_id"]
         }
       },
       "policies": {},
@@ -23671,9 +23529,7 @@
         "service_calls_service_call_number_unique": {
           "name": "service_calls_service_call_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "service_call_number"
-          ]
+          "columns": ["service_call_number"]
         }
       },
       "policies": {},
@@ -23882,9 +23738,7 @@
         "service_contracts_contract_number_unique": {
           "name": "service_contracts_contract_number_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "contract_number"
-          ]
+          "columns": ["contract_number"]
         }
       },
       "policies": {},
@@ -24122,12 +23976,8 @@
           "name": "service_photos_session_id_mobile_service_sessions_id_fk",
           "tableFrom": "service_photos",
           "tableTo": "mobile_service_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -26498,30 +26348,22 @@
         "tenants_slug_unique": {
           "name": "tenants_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         },
         "tenants_domain_unique": {
           "name": "tenants_domain_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "domain"
-          ]
+          "columns": ["domain"]
         },
         "tenants_subdomain_prefix_unique": {
           "name": "tenants_subdomain_prefix_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "subdomain_prefix"
-          ]
+          "columns": ["subdomain_prefix"]
         },
         "tenants_path_prefix_unique": {
           "name": "tenants_path_prefix_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "path_prefix"
-          ]
+          "columns": ["path_prefix"]
         }
       },
       "policies": {},
@@ -26800,12 +26642,8 @@
           "name": "ticket_parts_requests_session_id_technician_ticket_sessions_id_fk",
           "tableFrom": "ticket_parts_requests",
           "tableTo": "technician_ticket_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -26891,12 +26729,8 @@
           "name": "time_tracking_entries_session_id_mobile_service_sessions_id_fk",
           "tableFrom": "time_tracking_entries",
           "tableTo": "mobile_service_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -27360,9 +27194,7 @@
         "user_settings_user_id_unique": {
           "name": "user_settings_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -27501,9 +27333,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -28241,12 +28071,8 @@
           "name": "workflow_steps_session_id_technician_ticket_sessions_id_fk",
           "tableFrom": "workflow_steps",
           "tableTo": "technician_ticket_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -30050,12 +29876,7 @@
     "public.access_type": {
       "name": "access_type",
       "schema": "public",
-      "values": [
-        "read",
-        "write",
-        "delete",
-        "export"
-      ]
+      "values": ["read", "write", "delete", "export"]
     },
     "public.activity_goal_type": {
       "name": "activity_goal_type",
@@ -30086,14 +29907,7 @@
     "public.analysis_type": {
       "name": "analysis_type",
       "schema": "public",
-      "values": [
-        "diagnostic",
-        "repair",
-        "maintenance",
-        "installation",
-        "inspection",
-        "training"
-      ]
+      "values": ["diagnostic", "repair", "maintenance", "installation", "inspection", "training"]
     },
     "public.audit_category": {
       "name": "audit_category",
@@ -30110,110 +29924,52 @@
     "public.audit_severity": {
       "name": "audit_severity",
       "schema": "public",
-      "values": [
-        "low",
-        "medium",
-        "high",
-        "critical"
-      ]
+      "values": ["low", "medium", "high", "critical"]
     },
     "public.auth_method": {
       "name": "auth_method",
       "schema": "public",
-      "values": [
-        "api_key",
-        "oauth2",
-        "basic_auth",
-        "certificate",
-        "hmac"
-      ]
+      "values": ["api_key", "oauth2", "basic_auth", "certificate", "hmac"]
     },
     "public.calculation_status": {
       "name": "calculation_status",
       "schema": "public",
-      "values": [
-        "draft",
-        "calculated",
-        "approved",
-        "paid",
-        "disputed",
-        "cancelled"
-      ]
+      "values": ["draft", "calculated", "approved", "paid", "disputed", "cancelled"]
     },
     "public.check_in_type": {
       "name": "check_in_type",
       "schema": "public",
-      "values": [
-        "arrival",
-        "departure",
-        "break_start",
-        "break_end"
-      ]
+      "values": ["arrival", "departure", "break_start", "break_end"]
     },
     "public.collection_frequency": {
       "name": "collection_frequency",
       "schema": "public",
-      "values": [
-        "real_time",
-        "hourly",
-        "daily",
-        "weekly",
-        "monthly"
-      ]
+      "values": ["real_time", "hourly", "daily", "weekly", "monthly"]
     },
     "public.contact_method": {
       "name": "contact_method",
       "schema": "public",
-      "values": [
-        "phone",
-        "email",
-        "portal",
-        "chat",
-        "walk_in"
-      ]
+      "values": ["phone", "email", "portal", "chat", "walk_in"]
     },
     "public.customer_portal_status": {
       "name": "customer_portal_status",
       "schema": "public",
-      "values": [
-        "active",
-        "inactive",
-        "suspended",
-        "pending_activation"
-      ]
+      "values": ["active", "inactive", "suspended", "pending_activation"]
     },
     "public.data_classification": {
       "name": "data_classification",
       "schema": "public",
-      "values": [
-        "public",
-        "internal",
-        "confidential",
-        "restricted"
-      ]
+      "values": ["public", "internal", "confidential", "restricted"]
     },
     "public.device_status": {
       "name": "device_status",
       "schema": "public",
-      "values": [
-        "online",
-        "offline",
-        "error",
-        "maintenance",
-        "unknown"
-      ]
+      "values": ["online", "offline", "error", "maintenance", "unknown"]
     },
     "public.dispute_status": {
       "name": "dispute_status",
       "schema": "public",
-      "values": [
-        "submitted",
-        "under_review",
-        "escalated",
-        "resolved",
-        "rejected",
-        "closed"
-      ]
+      "values": ["submitted", "under_review", "escalated", "resolved", "rejected", "closed"]
     },
     "public.dispute_type": {
       "name": "dispute_type",
@@ -30249,14 +30005,7 @@
     "public.field_service_status": {
       "name": "field_service_status",
       "schema": "public",
-      "values": [
-        "scheduled",
-        "en_route",
-        "checked_in",
-        "in_progress",
-        "completed",
-        "cancelled"
-      ]
+      "values": ["scheduled", "en_route", "checked_in", "in_progress", "completed", "cancelled"]
     },
     "public.gdpr_request_type": {
       "name": "gdpr_request_type",
@@ -30273,43 +30022,22 @@
     "public.gdpr_status": {
       "name": "gdpr_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed",
-        "rejected"
-      ]
+      "values": ["pending", "in_progress", "completed", "rejected"]
     },
     "public.goal_period": {
       "name": "goal_period",
       "schema": "public",
-      "values": [
-        "daily",
-        "weekly",
-        "monthly",
-        "quarterly",
-        "yearly"
-      ]
+      "values": ["daily", "weekly", "monthly", "quarterly", "yearly"]
     },
     "public.installation_type": {
       "name": "installation_type",
       "schema": "public",
-      "values": [
-        "new_installation",
-        "replacement",
-        "relocation",
-        "upgrade"
-      ]
+      "values": ["new_installation", "replacement", "relocation", "upgrade"]
     },
     "public.integration_status": {
       "name": "integration_status",
       "schema": "public",
-      "values": [
-        "active",
-        "inactive",
-        "error",
-        "pending"
-      ]
+      "values": ["active", "inactive", "error", "pending"]
     },
     "public.issue_category": {
       "name": "issue_category",
@@ -30330,44 +30058,22 @@
     "public.kit_quality_status": {
       "name": "kit_quality_status",
       "schema": "public",
-      "values": [
-        "pass",
-        "fail",
-        "rework_required",
-        "pending_inspection"
-      ]
+      "values": ["pass", "fail", "rework_required", "pending_inspection"]
     },
     "public.manufacturer": {
       "name": "manufacturer",
       "schema": "public",
-      "values": [
-        "canon",
-        "xerox",
-        "hp",
-        "konica_minolta",
-        "lexmark",
-        "fmaudit",
-        "printanista"
-      ]
+      "values": ["canon", "xerox", "hp", "konica_minolta", "lexmark", "fmaudit", "printanista"]
     },
     "public.meter_submission_method": {
       "name": "meter_submission_method",
       "schema": "public",
-      "values": [
-        "manual_entry",
-        "photo_upload",
-        "email",
-        "automated"
-      ]
+      "values": ["manual_entry", "photo_upload", "email", "automated"]
     },
     "public.network_assignment": {
       "name": "network_assignment",
       "schema": "public",
-      "values": [
-        "static",
-        "dhcp",
-        "reserved_dhcp"
-      ]
+      "values": ["static", "dhcp", "reserved_dhcp"]
     },
     "public.notification_type": {
       "name": "notification_type",
@@ -30384,77 +30090,37 @@
     "public.onboarding_status": {
       "name": "onboarding_status",
       "schema": "public",
-      "values": [
-        "draft",
-        "in_progress",
-        "pending_review",
-        "completed",
-        "on_hold"
-      ]
+      "values": ["draft", "in_progress", "pending_review", "completed", "on_hold"]
     },
     "public.organizational_tier": {
       "name": "organizational_tier",
       "schema": "public",
-      "values": [
-        "platform",
-        "company",
-        "regional",
-        "location"
-      ]
+      "values": ["platform", "company", "regional", "location"]
     },
     "public.parts_order_status": {
       "name": "parts_order_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "ordered",
-        "shipped",
-        "delivered",
-        "installed",
-        "returned"
-      ]
+      "values": ["pending", "ordered", "shipped", "delivered", "installed", "returned"]
     },
     "public.payment_frequency": {
       "name": "payment_frequency",
       "schema": "public",
-      "values": [
-        "weekly",
-        "bi_weekly",
-        "monthly",
-        "quarterly",
-        "annually"
-      ]
+      "values": ["weekly", "bi_weekly", "monthly", "quarterly", "annually"]
     },
     "public.payment_method": {
       "name": "payment_method",
       "schema": "public",
-      "values": [
-        "credit_card",
-        "ach",
-        "wire_transfer",
-        "check",
-        "auto_pay"
-      ]
+      "values": ["credit_card", "ach", "wire_transfer", "check", "auto_pay"]
     },
     "public.payment_status": {
       "name": "payment_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "processing",
-        "completed",
-        "failed",
-        "refunded",
-        "partially_paid"
-      ]
+      "values": ["pending", "processing", "completed", "failed", "refunded", "partially_paid"]
     },
     "public.permission_effect": {
       "name": "permission_effect",
       "schema": "public",
-      "values": [
-        "ALLOW",
-        "DENY"
-      ]
+      "values": ["ALLOW", "DENY"]
     },
     "public.plan_type": {
       "name": "plan_type",
@@ -30471,13 +30137,7 @@
     "public.print_management_system": {
       "name": "print_management_system",
       "schema": "public",
-      "values": [
-        "papercut",
-        "equitrac",
-        "ysoft",
-        "other",
-        "none"
-      ]
+      "values": ["papercut", "equitrac", "ysoft", "other", "none"]
     },
     "public.role_hierarchy_level": {
       "name": "role_hierarchy_level",
@@ -30521,13 +30181,7 @@
     "public.service_request_priority": {
       "name": "service_request_priority",
       "schema": "public",
-      "values": [
-        "low",
-        "normal",
-        "high",
-        "urgent",
-        "emergency"
-      ]
+      "values": ["low", "normal", "high", "urgent", "emergency"]
     },
     "public.service_request_status": {
       "name": "service_request_status",
@@ -30571,24 +30225,12 @@
     "public.ticket_priority": {
       "name": "ticket_priority",
       "schema": "public",
-      "values": [
-        "low",
-        "medium",
-        "high",
-        "urgent",
-        "emergency"
-      ]
+      "values": ["low", "medium", "high", "urgent", "emergency"]
     },
     "public.warehouse_operation_status": {
       "name": "warehouse_operation_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed",
-        "failed",
-        "cancelled"
-      ]
+      "values": ["pending", "in_progress", "completed", "failed", "cancelled"]
     },
     "public.activity_type": {
       "name": "activity_type",
@@ -30605,110 +30247,52 @@
     "public.delivery_method": {
       "name": "delivery_method",
       "schema": "public",
-      "values": [
-        "email",
-        "webhook",
-        "sftp",
-        "download"
-      ]
+      "values": ["email", "webhook", "sftp", "download"]
     },
     "public.display_format": {
       "name": "display_format",
       "schema": "public",
-      "values": [
-        "number",
-        "currency",
-        "percentage",
-        "decimal"
-      ]
+      "values": ["number", "currency", "percentage", "decimal"]
     },
     "public.export_format": {
       "name": "export_format",
       "schema": "public",
-      "values": [
-        "json",
-        "csv",
-        "xlsx",
-        "pdf"
-      ]
+      "values": ["json", "csv", "xlsx", "pdf"]
     },
     "public.organizational_scope": {
       "name": "organizational_scope",
       "schema": "public",
-      "values": [
-        "platform",
-        "company",
-        "regional",
-        "location",
-        "team",
-        "individual"
-      ]
+      "values": ["platform", "company", "regional", "location", "team", "individual"]
     },
     "public.performance_level": {
       "name": "performance_level",
       "schema": "public",
-      "values": [
-        "excellent",
-        "good",
-        "warning",
-        "critical"
-      ]
+      "values": ["excellent", "good", "warning", "critical"]
     },
     "public.report_category": {
       "name": "report_category",
       "schema": "public",
-      "values": [
-        "sales",
-        "service",
-        "finance",
-        "operations",
-        "hr",
-        "it",
-        "compliance",
-        "executive"
-      ]
+      "values": ["sales", "service", "finance", "operations", "hr", "it", "compliance", "executive"]
     },
     "public.report_status": {
       "name": "report_status",
       "schema": "public",
-      "values": [
-        "success",
-        "failed",
-        "running",
-        "timeout",
-        "cancelled"
-      ]
+      "values": ["success", "failed", "running", "timeout", "cancelled"]
     },
     "public.report_visualization": {
       "name": "report_visualization",
       "schema": "public",
-      "values": [
-        "table",
-        "chart",
-        "dashboard",
-        "kpi_widget",
-        "chart_table_combo"
-      ]
+      "values": ["table", "chart", "dashboard", "kpi_widget", "chart_table_combo"]
     },
     "public.target_type": {
       "name": "target_type",
       "schema": "public",
-      "values": [
-        "absolute",
-        "percentage",
-        "ratio"
-      ]
+      "values": ["absolute", "percentage", "ratio"]
     },
     "public.time_period": {
       "name": "time_period",
       "schema": "public",
-      "values": [
-        "daily",
-        "weekly",
-        "monthly",
-        "quarterly",
-        "yearly"
-      ]
+      "values": ["daily", "weekly", "monthly", "quarterly", "yearly"]
     }
   },
   "schemas": {},

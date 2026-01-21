@@ -3,13 +3,7 @@ import { useRBAC, rbacUtils } from '@/lib/rbac';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Shield, 
-  Lock, 
-  AlertTriangle, 
-  ArrowLeft,
-  Mail 
-} from 'lucide-react';
+import { Shield, Lock, AlertTriangle, ArrowLeft, Mail } from 'lucide-react';
 
 interface ProtectedReportRouteProps {
   children: React.ReactNode;
@@ -22,10 +16,10 @@ export default function ProtectedReportRoute({
   children,
   requiredPermission,
   fallbackMessage,
-  showContactAdmin = true
+  showContactAdmin = true,
 }: ProtectedReportRouteProps) {
   const rbac = useRBAC();
-  
+
   // Check if user has the required permission
   const hasAccess = (() => {
     switch (requiredPermission) {
@@ -57,15 +51,16 @@ export default function ProtectedReportRoute({
             </div>
             <CardTitle className="text-xl">Access Restricted</CardTitle>
             <CardDescription>
-              {fallbackMessage || `You don't have permission to access ${requiredPermission} reports`}
+              {fallbackMessage ||
+                `You don't have permission to access ${requiredPermission} reports`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert>
               <Lock className="h-4 w-4" />
               <AlertDescription>
-                This report requires <strong>{requiredPermission}</strong> permissions. 
-                Your current role does not include access to this data.
+                This report requires <strong>{requiredPermission}</strong> permissions. Your current
+                role does not include access to this data.
               </AlertDescription>
             </Alert>
 
@@ -92,18 +87,16 @@ export default function ProtectedReportRoute({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 pt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => window.history.back()}
-                className="flex-1"
-              >
+              <Button variant="outline" onClick={() => window.history.back()} className="flex-1">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Go Back
               </Button>
               {showContactAdmin && (
-                <Button 
+                <Button
                   variant="outline"
-                  onClick={() => window.open('mailto:admin@printyx.com?subject=Report Access Request', '_blank')}
+                  onClick={() =>
+                    window.open('mailto:admin@printyx.com?subject=Report Access Request', '_blank')
+                  }
                   className="flex-1"
                 >
                   <Mail className="h-4 w-4 mr-2" />
@@ -119,12 +112,10 @@ export default function ProtectedReportRoute({
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
               <div>
-                <h3 className="text-sm font-medium text-blue-900 mb-1">
-                  Need Different Reports?
-                </h3>
+                <h3 className="text-sm font-medium text-blue-900 mb-1">Need Different Reports?</h3>
                 <p className="text-xs text-blue-800">
-                  Try accessing reports that match your role permissions, or request 
-                  additional access from your manager.
+                  Try accessing reports that match your role permissions, or request additional
+                  access from your manager.
                 </p>
               </div>
             </div>
@@ -142,11 +133,11 @@ export function withReportProtection<P extends object>(
   options?: {
     fallbackMessage?: string;
     showContactAdmin?: boolean;
-  }
+  },
 ) {
   const ProtectedComponent = (props: P) => {
     return (
-      <ProtectedReportRoute 
+      <ProtectedReportRoute
         requiredPermission={requiredPermission}
         fallbackMessage={options?.fallbackMessage}
         showContactAdmin={options?.showContactAdmin}
@@ -157,14 +148,14 @@ export function withReportProtection<P extends object>(
   };
 
   ProtectedComponent.displayName = `withReportProtection(${Component.displayName || Component.name})`;
-  
+
   return ProtectedComponent;
 }
 
 // Hook for checking multiple permissions at once
 export function useReportPermissions() {
   const rbac = useRBAC();
-  
+
   return {
     sales: rbacUtils.canAccessSalesReports(rbac),
     service: rbacUtils.canAccessServiceReports(rbac),
@@ -173,7 +164,7 @@ export function useReportPermissions() {
     canExport: rbac.hasPermission('reports:*', 'export'),
     canManage: rbac.hasPermission('reports:*', 'create'),
     territories: rbac.getAllowedTerritories(),
-    teamMembers: rbac.getAllowedTeamMembers()
+    teamMembers: rbac.getAllowedTeamMembers(),
   };
 }
 
@@ -185,17 +176,17 @@ interface ConditionalRenderProps {
   fallback?: React.ReactNode;
 }
 
-export function ConditionalRender({ 
-  children, 
-  requiredPermission, 
+export function ConditionalRender({
+  children,
+  requiredPermission,
   action = 'read',
-  fallback = null 
+  fallback = null,
 }: ConditionalRenderProps) {
   const rbac = useRBAC();
-  
+
   if (rbac.hasPermission(requiredPermission, action)) {
     return <>{children}</>;
   }
-  
+
   return <>{fallback}</>;
 }

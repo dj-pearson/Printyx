@@ -12,6 +12,7 @@ This document details the migration from Neon PostgreSQL to self-hosted Supabase
 ## Infrastructure Changes
 
 ### Before (Neon)
+
 - **Database**: Neon serverless PostgreSQL
 - **Authentication**: Replit Auth (OpenID Connect)
 - **Session**: Express session with PostgreSQL store
@@ -19,6 +20,7 @@ This document details the migration from Neon PostgreSQL to self-hosted Supabase
 - **Tenant ID Source**: `req.user.claims.tenantId` or session
 
 ### After (Self-Hosted Supabase)
+
 - **Database**: Self-hosted Supabase PostgreSQL at `209.145.59.219`
 - **Authentication**: Supabase GoTrue (JWT-based)
 - **Session**: JWT tokens + fallback session support
@@ -31,21 +33,23 @@ This document details the migration from Neon PostgreSQL to self-hosted Supabase
 
 ### Supabase Services
 
-| Service | URL/Endpoint | Port |
-|---------|-------------|------|
-| Supabase API | `https://api.printyx.net` | 443 |
-| Edge Functions | `https://functions.printyx.net` | 443 |
-| PostgreSQL Pooler | `209.145.59.219` | 5433 |
-| PostgreSQL Direct | `209.145.59.219` | 5432 |
+| Service           | URL/Endpoint                    | Port |
+| ----------------- | ------------------------------- | ---- |
+| Supabase API      | `https://api.printyx.net`       | 443  |
+| Edge Functions    | `https://functions.printyx.net` | 443  |
+| PostgreSQL Pooler | `209.145.59.219`                | 5433 |
+| PostgreSQL Direct | `209.145.59.219`                | 5432 |
 
 ### Database Connection
 
 **Connection String**:
+
 ```
 postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres
 ```
 
 **Required Environment Variables**:
+
 ```env
 # Database
 DATABASE_URL=postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres
@@ -69,6 +73,7 @@ VITE_SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ### 1. Backend Route Authentication Patterns
 
 #### Old Pattern (Session-based)
+
 ```typescript
 // ❌ OLD - Session only
 const userId = req.session.userId;
@@ -80,6 +85,7 @@ if (!req.session.userId) {
 ```
 
 #### New Pattern (JWT + Session Fallback)
+
 ```typescript
 // ✅ NEW - Supports both JWT and session
 const getUserId = (req: Request): string | undefined => {
@@ -99,6 +105,7 @@ if (!userId) {
 ```
 
 #### Using Auth Helpers
+
 ```typescript
 import { getUserId, getTenantId, isAuthenticated } from '../utils/auth-helpers';
 
@@ -113,19 +120,21 @@ if (!isAuthenticated(req)) {
 ### 2. Frontend Authentication
 
 #### Old Pattern (Replit Auth)
+
 ```typescript
 // ❌ OLD - Replit OIDC
 window.location.href = '/__repl_auth/login';
 ```
 
 #### New Pattern (Supabase Auth)
+
 ```typescript
 // ✅ NEW - Supabase GoTrue
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
 );
 
 // Sign in
@@ -153,15 +162,18 @@ await supabase.auth.signOut();
 ### 3. API Request Headers
 
 #### Frontend API Calls
+
 ```typescript
 // Get current session
-const { data: { session } } = await supabase.auth.getSession();
+const {
+  data: { session },
+} = await supabase.auth.getSession();
 
 // Include token in all API requests
 const response = await fetch('/api/endpoint', {
   headers: {
-    'Authorization': `Bearer ${session?.access_token}`,
-    'x-tenant-id': tenantId,  // Optional: explicit tenant override
+    Authorization: `Bearer ${session?.access_token}`,
+    'x-tenant-id': tenantId, // Optional: explicit tenant override
     'Content-Type': 'application/json',
   },
 });
@@ -170,6 +182,7 @@ const response = await fetch('/api/endpoint', {
 ### 4. Tenant Resolution
 
 Tenants are now resolved in this priority:
+
 1. `x-tenant-id` request header
 2. JWT `app_metadata.tenantId`
 3. Session `tenantId` (fallback)
@@ -180,20 +193,21 @@ Tenants are now resolved in this priority:
 
 ### Core Authentication Files
 
-| File | Status | Changes |
-|------|--------|---------|
-| `server/middleware/supabase-auth.ts` | ✅ Created | JWT validation middleware |
-| `server/utils/auth-helpers.ts` | ✅ Created | Unified auth utility functions |
-| `server/middleware/tenancy.ts` | ✅ Updated | Added x-tenant-id header support |
-| `server/replitAuth.ts` | ✅ Updated | Added Supabase JWT support to isAuthenticated |
-| `client/src/hooks/useSupabaseAuth.ts` | 🔄 Review | Frontend auth hook |
-| `client/src/lib/supabase.ts` | 🔄 Review | Supabase client initialization |
+| File                                  | Status     | Changes                                       |
+| ------------------------------------- | ---------- | --------------------------------------------- |
+| `server/middleware/supabase-auth.ts`  | ✅ Created | JWT validation middleware                     |
+| `server/utils/auth-helpers.ts`        | ✅ Created | Unified auth utility functions                |
+| `server/middleware/tenancy.ts`        | ✅ Updated | Added x-tenant-id header support              |
+| `server/replitAuth.ts`                | ✅ Updated | Added Supabase JWT support to isAuthenticated |
+| `client/src/hooks/useSupabaseAuth.ts` | 🔄 Review  | Frontend auth hook                            |
+| `client/src/lib/supabase.ts`          | 🔄 Review  | Supabase client initialization                |
 
 ### Route Files Fixed
 
 See `docs/ROUTE_MIGRATION_CHECKLIST.md` for complete list.
 
 **Priority Routes Fixed** (Added getUserId helper):
+
 1. ✅ `routes-mobile-technician.ts`
 2. ✅ `routes-knowledge-base.ts`
 3. ✅ `routes-documents.ts`
@@ -212,42 +226,46 @@ See `docs/ROUTE_MIGRATION_CHECKLIST.md` for complete list.
 ### High Priority
 
 #### Backend Routes Needing Auth Pattern Fix
+
 These routes still use old session-only patterns:
 
-| Route File | Issue |
-|------------|-------|
-| `routes-customer-portal.ts` | Uses `req.session` patterns |
-| `routes-customer-numbers.ts` | Uses `req.session` patterns |
-| `routes-admin-workflows.ts` | Uses session pattern |
-| `routes-tenant-onboarding.ts` | Uses session pattern |
-| `routes-enhanced-rbac.ts` | Uses session pattern |
-| `routes-user-lifecycle.ts` | Uses session pattern |
-| `routes-root-admin.ts` | Uses hybrid pattern |
+| Route File                         | Issue                          |
+| ---------------------------------- | ------------------------------ |
+| `routes-customer-portal.ts`        | Uses `req.session` patterns    |
+| `routes-customer-numbers.ts`       | Uses `req.session` patterns    |
+| `routes-admin-workflows.ts`        | Uses session pattern           |
+| `routes-tenant-onboarding.ts`      | Uses session pattern           |
+| `routes-enhanced-rbac.ts`          | Uses session pattern           |
+| `routes-user-lifecycle.ts`         | Uses session pattern           |
+| `routes-root-admin.ts`             | Uses hybrid pattern            |
 | `routes-reporting-architecture.ts` | Uses `isAuthenticated` pattern |
-| `routes-custom-reports.ts` | Uses hybrid pattern |
-| `routes-predictive-analytics.ts` | Uses session pattern |
-| `routes-ai-gpt5.ts` | Uses session pattern |
-| `routes-dashboard-layouts.ts` | Uses hybrid pattern |
-| `routes-csv-import.ts` | Uses hybrid pattern |
-| `routes-proposals.ts` | Uses session pattern |
-| `routes-social-media.ts` | Uses session pattern |
-| `routes-company-ids.ts` | Uses session pattern |
-| `routes-client-monitoring.ts` | Uses session check |
-| `routes-sales-pipeline.ts` | Temporarily disabled |
+| `routes-custom-reports.ts`         | Uses hybrid pattern            |
+| `routes-predictive-analytics.ts`   | Uses session pattern           |
+| `routes-ai-gpt5.ts`                | Uses session pattern           |
+| `routes-dashboard-layouts.ts`      | Uses hybrid pattern            |
+| `routes-csv-import.ts`             | Uses hybrid pattern            |
+| `routes-proposals.ts`              | Uses session pattern           |
+| `routes-social-media.ts`           | Uses session pattern           |
+| `routes-company-ids.ts`            | Uses session pattern           |
+| `routes-client-monitoring.ts`      | Uses session check             |
+| `routes-sales-pipeline.ts`         | Temporarily disabled           |
 
 #### Frontend Changes
-| File | Status | Changes Needed |
-|------|--------|----------------|
-| `client/src/hooks/useAuth.ts` | 🔄 Review | Ensure uses Supabase client |
-| `client/src/App.tsx` | 🔄 Review | Auth provider setup |
-| `client/src/pages/Login.tsx` | 🔄 Review | Supabase sign-in form |
-| `client/src/pages/Signup.tsx` | 🔄 Review | Supabase sign-up with tenant |
+
+| File                            | Status    | Changes Needed                   |
+| ------------------------------- | --------- | -------------------------------- |
+| `client/src/hooks/useAuth.ts`   | 🔄 Review | Ensure uses Supabase client      |
+| `client/src/App.tsx`            | 🔄 Review | Auth provider setup              |
+| `client/src/pages/Login.tsx`    | 🔄 Review | Supabase sign-in form            |
+| `client/src/pages/Signup.tsx`   | 🔄 Review | Supabase sign-up with tenant     |
 | `client/src/lib/queryClient.ts` | 🔄 Review | Add auth headers to all requests |
 
 ### Medium Priority
 
 #### Routes Needing Testing
+
 All routes marked with 🔄 in the checklist need verification:
+
 - CRM routes (lead assignment, customer success, etc.)
 - Inventory routes (warehouse FPY, product pricing, etc.)
 - Service routes (technician management, maintenance, etc.)
@@ -258,6 +276,7 @@ All routes marked with 🔄 in the checklist need verification:
 ### Low Priority
 
 #### Documentation Updates
+
 - [ ] Update API documentation with new auth headers
 - [ ] Update Postman/Insomnia collections
 - [ ] Create user guide for Supabase auth flow
@@ -267,6 +286,7 @@ All routes marked with 🔄 in the checklist need verification:
 ## Testing Checklist
 
 ### Authentication Tests
+
 - [ ] Login with email/password via Supabase
 - [ ] Login persists across page refresh
 - [ ] Logout clears session properly
@@ -275,12 +295,14 @@ All routes marked with 🔄 in the checklist need verification:
 - [ ] Token refresh works correctly
 
 ### API Route Tests
+
 - [ ] CRUD operations work with JWT auth
 - [ ] Tenant isolation works correctly
 - [ ] RBAC permissions enforced
 - [ ] Error responses are correct (401, 403)
 
 ### Database Tests
+
 - [ ] Connection pooler (5433) works
 - [ ] SSL connections work
 - [ ] Transactions work correctly
@@ -293,6 +315,7 @@ All routes marked with 🔄 in the checklist need verification:
 If migration needs to be rolled back:
 
 1. **Environment Variables**:
+
    ```env
    # Revert to Neon
    DATABASE_URL=postgresql://user:pass@neon-host/db
@@ -314,31 +337,37 @@ If migration needs to be rolled back:
 ### Database Connection Issues
 
 **ECONNREFUSED**:
+
 - Verify port is correct (5433 for pooler)
 - Check firewall rules
 - Verify Supabase containers are running
 
 **Connection terminated unexpectedly**:
+
 - Enable SSL: `DB_SSL=true`
 - For self-signed: `DB_SSL_REJECT_UNAUTHORIZED=false`
 
 **ECONNRESET**:
+
 - SSL mismatch - check if server requires SSL
 - Check connection pooler settings
 
 ### Authentication Issues
 
 **401 Unauthorized**:
+
 - Verify JWT token is being sent
 - Check token is not expired
 - Verify SUPABASE_SERVICE_ROLE_KEY is correct
 
 **403 Forbidden**:
+
 - Check tenant is set correctly
 - Verify user has required permissions
 - Check RBAC role assignment
 
 **User not found**:
+
 - Verify user exists in Supabase auth.users
 - Check user email is confirmed
 - Verify user is not banned
@@ -360,6 +389,7 @@ grep -r "req.user.claims.tenantId" server/routes-*.ts
 ### Add getUserId Helper to File
 
 Add this to the top of route files:
+
 ```typescript
 // Helper to get user ID from request (supports Supabase JWT and session)
 const getUserId = (req: Request): string | undefined => {
@@ -388,10 +418,11 @@ node -e "const {Pool}=require('pg');const p=new Pool({connectionString:'postgres
 ## Contact & Support
 
 For migration issues:
+
 - Check server logs: `server/logs/`
 - Database logs: Supabase dashboard
 - Auth issues: Check Supabase Auth logs
 
 ---
 
-*Last Updated: December 15, 2024*
+_Last Updated: December 15, 2024_

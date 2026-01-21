@@ -21,9 +21,12 @@ class MemoryCacheService implements CacheService {
 
   constructor() {
     // Clean up expired entries every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup();
-    }, 5 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanup();
+      },
+      5 * 60 * 1000,
+    );
   }
 
   async get(key: string): Promise<any | null> {
@@ -39,7 +42,7 @@ class MemoryCacheService implements CacheService {
   }
 
   async set(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
-    const expiry = Date.now() + (ttlSeconds * 1000);
+    const expiry = Date.now() + ttlSeconds * 1000;
     this.cache.set(key, { value, expiry });
   }
 
@@ -68,7 +71,7 @@ class MemoryCacheService implements CacheService {
   getStats() {
     return {
       size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      keys: Array.from(this.cache.keys()),
     };
   }
 
@@ -83,7 +86,7 @@ class MemoryCacheService implements CacheService {
 // Redis cache implementation (for future Phase 2)
 class RedisCacheService implements CacheService {
   private redis: any; // Would be Redis client
-  
+
   constructor(redisClient: any) {
     this.redis = redisClient;
   }
@@ -134,7 +137,7 @@ class RedisCacheService implements CacheService {
 
 export class ReportingCacheManager {
   private cache: CacheService;
-  
+
   constructor(cacheService?: CacheService) {
     this.cache = cacheService || new MemoryCacheService();
   }
@@ -145,14 +148,14 @@ export class ReportingCacheManager {
     reportId: string,
     parameters: Record<string, any>,
     data: any[],
-    ttlSeconds?: number
+    ttlSeconds?: number,
   ): Promise<void> {
     const cacheKey = this.generateReportCacheKey(tenantId, reportId, parameters);
     const cacheValue = {
       data,
       cached_at: Date.now(),
       parameters,
-      row_count: data.length
+      row_count: data.length,
     };
 
     // Use report-specific TTL or default based on data sensitivity
@@ -164,19 +167,19 @@ export class ReportingCacheManager {
   async getCachedReportData(
     tenantId: string,
     reportId: string,
-    parameters: Record<string, any>
+    parameters: Record<string, any>,
   ): Promise<{ data: any[]; cached_at: number; cache_hit: boolean } | null> {
     const cacheKey = this.generateReportCacheKey(tenantId, reportId, parameters);
     const cached = await this.cache.get(cacheKey);
-    
+
     if (cached) {
       return {
         data: cached.data,
         cached_at: cached.cached_at,
-        cache_hit: true
+        cache_hit: true,
       };
     }
-    
+
     return null;
   }
 
@@ -187,7 +190,7 @@ export class ReportingCacheManager {
     scope: string,
     scopeId: string,
     value: any,
-    ttlSeconds?: number
+    ttlSeconds?: number,
   ): Promise<void> {
     const cacheKey = this.generateKPICacheKey(tenantId, kpiId, scope, scopeId);
     await this.cache.set(cacheKey, value, ttlSeconds || 300); // 5 minute default for KPIs
@@ -198,7 +201,7 @@ export class ReportingCacheManager {
     tenantId: string,
     kpiId: string,
     scope: string,
-    scopeId: string
+    scopeId: string,
   ): Promise<any | null> {
     const cacheKey = this.generateKPICacheKey(tenantId, kpiId, scope, scopeId);
     return await this.cache.get(cacheKey);
@@ -222,16 +225,19 @@ export class ReportingCacheManager {
   private generateReportCacheKey(
     tenantId: string,
     reportId: string,
-    parameters: Record<string, any>
+    parameters: Record<string, any>,
   ): string {
     // Sort parameters for consistent cache keys
     const sortedParams = Object.keys(parameters)
       .sort()
-      .reduce((result, key) => {
-        result[key] = parameters[key];
-        return result;
-      }, {} as Record<string, any>);
-    
+      .reduce(
+        (result, key) => {
+          result[key] = parameters[key];
+          return result;
+        },
+        {} as Record<string, any>,
+      );
+
     const paramString = JSON.stringify(sortedParams);
     return this.cache.generateKey('report', tenantId, reportId, paramString);
   }
@@ -240,7 +246,7 @@ export class ReportingCacheManager {
     tenantId: string,
     kpiId: string,
     scope: string,
-    scopeId: string
+    scopeId: string,
   ): string {
     return this.cache.generateKey('kpi', tenantId, kpiId, scope, scopeId);
   }
@@ -251,17 +257,17 @@ export class ReportingCacheManager {
     if (reportId.includes('sla') || reportId.includes('real_time')) {
       return 60;
     }
-    
+
     // Financial reports: 5 minutes (more frequent updates needed)
     if (reportId.includes('finance') || reportId.includes('ar_aging')) {
       return 300;
     }
-    
+
     // Performance reports: 15 minutes
     if (reportId.includes('performance') || reportId.includes('productivity')) {
       return 900;
     }
-    
+
     // Default: 5 minutes
     return 300;
   }
@@ -306,18 +312,14 @@ export function reportCacheMiddleware(ttlSeconds?: number) {
 
     const tenantId = req.user?.tenantId;
     const reportId = req.params.id;
-    
+
     if (!tenantId || !reportId) {
       return next();
     }
 
     try {
       // Try to get cached data
-      const cached = await reportingCache.getCachedReportData(
-        tenantId,
-        reportId,
-        req.query
-      );
+      const cached = await reportingCache.getCachedReportData(tenantId, reportId, req.query);
 
       if (cached) {
         // Return cached data with cache indicators
@@ -328,26 +330,22 @@ export function reportCacheMiddleware(ttlSeconds?: number) {
             execution_time_ms: 0,
             cache_hit: true,
             cached_at: new Date(cached.cached_at).toISOString(),
-            data_freshness: new Date(cached.cached_at).toISOString()
-          }
+            data_freshness: new Date(cached.cached_at).toISOString(),
+          },
         });
       }
 
       // If no cache hit, continue to route handler
       // Store original json method to intercept response
       const originalJson = res.json;
-      res.json = function(data: any) {
+      res.json = function (data: any) {
         // Cache the response data if it contains report data
         if (data && data.data && Array.isArray(data.data)) {
-          reportingCache.cacheReportData(
-            tenantId,
-            reportId,
-            req.query,
-            data.data,
-            ttlSeconds
-          ).catch(err => console.error('Cache save error:', err));
+          reportingCache
+            .cacheReportData(tenantId, reportId, req.query, data.data, ttlSeconds)
+            .catch((err) => console.error('Cache save error:', err));
         }
-        
+
         // Call original json method
         return originalJson.call(this, data);
       };

@@ -139,7 +139,7 @@ export function registerHealthRoutes(app: Express): void {
     const systemMetrics = getSystemMetrics();
 
     const memoryPercent = Math.round(
-      (systemMetrics.memoryUsageMB.heapUsed / systemMetrics.memoryUsageMB.heapTotal) * 100
+      (systemMetrics.memoryUsageMB.heapUsed / systemMetrics.memoryUsageMB.heapTotal) * 100,
     );
 
     // Determine memory health status

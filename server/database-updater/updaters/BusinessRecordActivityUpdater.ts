@@ -27,13 +27,13 @@ export interface BusinessRecordActivityData {
 
 export class BusinessRecordActivityUpdater extends BaseUpdater {
   private activityTypes = {
-    'call': 0.35,
-    'email': 0.25,
-    'meeting': 0.15,
-    'demo': 0.10,
-    'proposal': 0.05,
-    'task': 0.05,
-    'note': 0.05,
+    call: 0.35,
+    email: 0.25,
+    meeting: 0.15,
+    demo: 0.1,
+    proposal: 0.05,
+    task: 0.05,
+    note: 0.05,
   };
 
   private callOutcomes = ['answered', 'no_answer', 'busy', 'voicemail'];
@@ -53,7 +53,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
   protected async validateExecution(): Promise<void> {
     // Fetch available business records for this tenant
     this.businessRecordIds = await this.fetchBusinessRecordIds();
-    
+
     if (this.businessRecordIds.length === 0) {
       throw new Error('No business records found for tenant');
     }
@@ -66,10 +66,10 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
    */
   protected async generateData(): Promise<BusinessRecordActivityData[]> {
     const activities: BusinessRecordActivityData[] = [];
-    
+
     // Generate 1-3 activities per execution
     const activityCount = this.randomInRange(1, 3);
-    
+
     for (let i = 0; i < activityCount; i++) {
       const activity = await this.generateSingleActivity();
       activities.push(activity);
@@ -124,7 +124,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
   private async generateSingleActivity(): Promise<BusinessRecordActivityData> {
     const activityType = this.selectFromDistribution(this.activityTypes);
     const businessRecordId = this.randomFromArray(this.businessRecordIds);
-    
+
     // Base activity data
     const activity: BusinessRecordActivityData = {
       id: this.generateUuid(),
@@ -318,7 +318,8 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
       ],
     };
 
-    const typeDescriptions = descriptions[activityType as keyof typeof descriptions] || descriptions.note;
+    const typeDescriptions =
+      descriptions[activityType as keyof typeof descriptions] || descriptions.note;
     return this.randomFromArray(typeDescriptions);
   }
 
@@ -375,7 +376,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
     const minDays = daysOut || this.randomInRange(1, 7);
     const maxDays = minDays + 7;
     const daysToAdd = this.randomInRange(minDays, maxDays);
-    
+
     date.setDate(date.getDate() + daysToAdd);
     return this.generateBusinessHoursDate(daysToAdd);
   }
@@ -399,7 +400,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
         .where(eq(businessRecords.tenantId, this.tenantId))
         .limit(50); // Limit to prevent too much data
 
-      return records.map(record => record.id);
+      return records.map((record) => record.id);
     } catch (error) {
       this.logger.error('Failed to fetch business record IDs', error);
       return [];

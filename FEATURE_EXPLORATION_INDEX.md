@@ -7,7 +7,9 @@ This directory contains comprehensive feature exploration documentation for the 
 ## Documents Included
 
 ### 1. **FEATURE_MAP.md** (Main Document)
+
 Comprehensive 10,000+ word feature mapping document covering:
+
 - All 13 major feature domains
 - Complete feature inventory with page counts
 - Data model relationships and architecture
@@ -23,7 +25,9 @@ Comprehensive 10,000+ word feature mapping document covering:
 **Best for**: In-depth understanding of feature organization, architecture, and relationships
 
 ### 2. **QUICK_REFERENCE.md** (Summary Guide)
+
 Quick reference guide (2,000 words) with:
+
 - Feature inventory by the numbers
 - Visual feature domain map
 - Core data flows
@@ -41,6 +45,7 @@ Quick reference guide (2,000 words) with:
 ## Key Findings Summary
 
 ### Application Scale
+
 - **160+ Pages**: Full-featured enterprise application
 - **75+ API Route Modules**: Specialized endpoint handling
 - **26 Schema Files**: Modular data model organization
@@ -50,37 +55,40 @@ Quick reference guide (2,000 words) with:
 ### Core Architecture Highlights
 
 #### Multi-Tenant Enterprise Platform
+
 - 4-tier organizational hierarchy (Platform → Company → Region → Location)
 - Row-level security (RLS) on all queries
 - Session-based tenant resolution
 - 8-level role hierarchy with permission-based access
 
 #### Three Critical Paths (Tier 1 - Fully Integrated)
+
 1. **Lead → Customer → Service → Billing** (9 steps, seamless conversion)
 2. **Equipment Lifecycle** (Purchase → Delivery → Service → Lease → Billing)
 3. **Service Dispatch** (Ticket → Technician → Field Ops → Completion)
 
 ### Feature Domains (13 Total)
 
-| Domain | Features | Integration Level | Status |
-|--------|----------|------------------|--------|
-| Sales Hub | 17 | Core/High | Fully integrated |
-| Service Hub | 18 | Core/High | Fully integrated |
-| Product Hub | 9 | High | Integrated |
-| Equipment Lifecycle | 6 | Core/High | Integrated |
-| Billing Hub | 11 | Core/High | Integrated |
-| Reports Hub | 10 | Supporting | Well integrated |
-| Task Management | 2 | Supporting | Medium integration |
-| AI Hub | 6+ | Cross-cutting | Growing |
-| Knowledge Base | 1 | Cross-cutting | Standalone |
-| Integrations Hub | 5 | Core | Strategic |
-| System Admin | 9 | Platform | Critical |
-| Customers (Core) | 3 | Central | Central entity |
-| Platform Admin | 18+ | Platform | Critical |
+| Domain              | Features | Integration Level | Status             |
+| ------------------- | -------- | ----------------- | ------------------ |
+| Sales Hub           | 17       | Core/High         | Fully integrated   |
+| Service Hub         | 18       | Core/High         | Fully integrated   |
+| Product Hub         | 9        | High              | Integrated         |
+| Equipment Lifecycle | 6        | Core/High         | Integrated         |
+| Billing Hub         | 11       | Core/High         | Integrated         |
+| Reports Hub         | 10       | Supporting        | Well integrated    |
+| Task Management     | 2        | Supporting        | Medium integration |
+| AI Hub              | 6+       | Cross-cutting     | Growing            |
+| Knowledge Base      | 1        | Cross-cutting     | Standalone         |
+| Integrations Hub    | 5        | Core              | Strategic          |
+| System Admin        | 9        | Platform          | Critical           |
+| Customers (Core)    | 3        | Central           | Central entity     |
+| Platform Admin      | 18+      | Platform          | Critical           |
 
 ### Integration Opportunities
 
 **High Priority** (Would add significant value):
+
 1. Customer Portal ← Service Tickets visibility
 2. Demo Scheduling → Auto-create followup tasks
 3. Commission ← Auto-trigger on deal close
@@ -89,6 +97,7 @@ Quick reference guide (2,000 words) with:
 6. Fleet Monitoring → Inform service dispatch
 
 ### Technology Stack
+
 - **Frontend**: React 18 + TypeScript + Vite + Wouter
 - **Backend**: Express.js + TypeScript
 - **Database**: PostgreSQL (Neon) + Drizzle ORM
@@ -98,6 +107,7 @@ Quick reference guide (2,000 words) with:
 ## Using This Documentation
 
 ### For New Developers
+
 1. Start with QUICK_REFERENCE.md for high-level overview
 2. Review feature domain diagrams
 3. Examine your specific feature in FEATURE_MAP.md
@@ -105,6 +115,7 @@ Quick reference guide (2,000 words) with:
 5. Review related components and schemas
 
 ### For Architecture/Design
+
 1. Review multi-tenant architecture section
 2. Study the data flow diagrams
 3. Analyze integration points
@@ -112,6 +123,7 @@ Quick reference guide (2,000 words) with:
 5. Reference technology stack and development patterns
 
 ### For Feature Integration Work
+
 1. Use Feature Tier Classification to assess impact
 2. Review "Standalone/Weakly Connected Features"
 3. Check "Recommended Feature Connections"
@@ -119,6 +131,7 @@ Quick reference guide (2,000 words) with:
 5. Trace API routes and components
 
 ### For Product/Business Analysis
+
 1. Review all 13 feature domains
 2. Study critical user journeys
 3. Identify gaps in TIER 3-4 features
@@ -134,6 +147,7 @@ Quick reference guide (2,000 words) with:
 ## Key Metrics from Exploration
 
 ### Code Metrics
+
 - Total Pages/Routes: 160+
 - Total API Route Files: 75
 - Main Route File Size: 514 KB (largest single file)
@@ -142,12 +156,14 @@ Quick reference guide (2,000 words) with:
 - Component Directories: 24
 
 ### Database Metrics
+
 - Database Tables: 137
 - Schema Files: 26 specialized schemas
 - Multi-tenant Isolation: Row-level security on all queries
 - User Assignment Levels: 3 (location, customer, tenant)
 
 ### Feature Metrics
+
 - Fully Integrated Features: ~70%
 - Well Integrated Features: ~20%
 - Partially Integrated Features: ~8%

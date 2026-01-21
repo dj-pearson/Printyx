@@ -136,11 +136,7 @@ describe('ReportCacheService', () => {
         { id: 1, name: 'Lead 1', value: 10000 },
         { id: 2, name: 'Lead 2', value: 20000 },
       ];
-      const cacheKey = ReportCacheService.getCacheKey(
-        'SALES_PIPELINE_INDIVIDUAL',
-        {},
-        'user-1'
-      );
+      const cacheKey = ReportCacheService.getCacheKey('SALES_PIPELINE_INDIVIDUAL', {}, 'user-1');
 
       ReportCacheService.set(cacheKey, reportData, 300); // 5 minutes
 
@@ -155,11 +151,7 @@ describe('ReportCacheService', () => {
 
     it('should return null and delete expired cache entries', async () => {
       const reportData = [{ id: 1, name: 'Lead 1' }];
-      const cacheKey = ReportCacheService.getCacheKey(
-        'SALES_PIPELINE_INDIVIDUAL',
-        {},
-        'user-1'
-      );
+      const cacheKey = ReportCacheService.getCacheKey('SALES_PIPELINE_INDIVIDUAL', {}, 'user-1');
 
       // Set cache with 1 second expiration
       ReportCacheService.set(cacheKey, reportData, 1);
@@ -197,7 +189,7 @@ describe('ReportCacheService', () => {
       const key2 = ReportCacheService.getCacheKey(
         'SALES_PIPELINE_INDIVIDUAL',
         { filters: { status: 'active' } },
-        'user-1'
+        'user-1',
       );
       const key3 = ReportCacheService.getCacheKey('SERVICE_CALLS_INDIVIDUAL', {}, 'user-1');
 

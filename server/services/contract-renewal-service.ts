@@ -1,13 +1,13 @@
 import { db } from '../db';
-import { eq, and, lt, gte, desc, sql, between } from "drizzle-orm";
+import { eq, and, lt, gte, desc, sql, between } from 'drizzle-orm';
 import {
   contractRenewalTracking,
   renewalProposals,
   renewalAutomationRules,
   renewalAnalytics,
   renewalCommunicationLog,
-} from "@shared/schema";
-import Anthropic from "@anthropic-ai/sdk";
+} from '@shared/schema';
+import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -23,7 +23,14 @@ interface RenewalAnalysisResult {
   renewalProbability: number;
   churnRiskScore: number;
   renewalRisk: 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-  recommendedAction: 'monitor' | 'send_proposal' | 'schedule_call' | 'offer_incentive' | 'escalate_to_sales' | 'increase_engagement' | 'address_concerns';
+  recommendedAction:
+    | 'monitor'
+    | 'send_proposal'
+    | 'schedule_call'
+    | 'offer_incentive'
+    | 'escalate_to_sales'
+    | 'increase_engagement'
+    | 'address_concerns';
   aiAnalysis: {
     summary: string;
     strengths: string[];
@@ -60,17 +67,17 @@ interface ProposalRecommendations {
  */
 export async function analyzeContractRenewal(
   tenantId: number,
-  contractTrackingId: number
+  contractTrackingId: number,
 ): Promise<RenewalAnalysisResult> {
   const contract = await db.query.contractRenewalTracking.findFirst({
     where: and(
       eq(contractRenewalTracking.id, contractTrackingId),
-      eq(contractRenewalTracking.tenantId, tenantId)
+      eq(contractRenewalTracking.tenantId, tenantId),
     ),
   });
 
   if (!contract) {
-    throw new Error("Contract not found");
+    throw new Error('Contract not found');
   }
 
   // Prepare data for AI analysis
@@ -124,11 +131,11 @@ Format response as JSON:
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2048,
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: analysisPrompt,
         },
       ],
@@ -154,7 +161,7 @@ Format response as JSON:
       confidenceScore: aiResponse.confidenceScore || 70,
     };
   } catch (error) {
-    console.error("AI analysis error:", error);
+    console.error('AI analysis error:', error);
 
     // Fallback to heuristic analysis
     let renewalProbability = 70; // Base probability
@@ -170,7 +177,7 @@ Format response as JSON:
       } else if (contract.satisfactionScore <= 2) {
         renewalProbability -= 20;
         churnRiskScore += 20;
-        riskFactors.push("Low satisfaction score");
+        riskFactors.push('Low satisfaction score');
       }
     }
 
@@ -178,26 +185,26 @@ Format response as JSON:
     if (contract.supportTicketsLast90Days > 10) {
       renewalProbability -= 10;
       churnRiskScore += 10;
-      riskFactors.push("High support ticket volume");
+      riskFactors.push('High support ticket volume');
     }
 
     // Adjust based on escalations
     if (contract.escalationsLast90Days > 2) {
       renewalProbability -= 15;
       churnRiskScore += 15;
-      riskFactors.push("Recent escalations");
+      riskFactors.push('Recent escalations');
     }
 
     // Adjust based on service performance
     if (contract.firstTimeFixRate && parseFloat(contract.firstTimeFixRate.toString()) < 80) {
       renewalProbability -= 10;
       churnRiskScore += 10;
-      riskFactors.push("Low first-time fix rate");
+      riskFactors.push('Low first-time fix rate');
     }
 
     // Identify opportunities
     if (contract.equipmentCount > 5) {
-      opportunityFactors.push("Large equipment fleet - potential for expanded services");
+      opportunityFactors.push('Large equipment fleet - potential for expanded services');
     }
 
     // Ensure bounds
@@ -228,11 +235,11 @@ Format response as JSON:
       renewalRisk,
       recommendedAction,
       aiAnalysis: {
-        summary: "Heuristic analysis based on key metrics",
-        strengths: riskFactors.length === 0 ? ["Stable customer relationship"] : [],
+        summary: 'Heuristic analysis based on key metrics',
+        strengths: riskFactors.length === 0 ? ['Stable customer relationship'] : [],
         concerns: riskFactors,
         opportunities: opportunityFactors,
-        recommendedStrategy: "Review customer engagement and address any concerns before renewal",
+        recommendedStrategy: 'Review customer engagement and address any concerns before renewal',
       },
       riskFactors,
       opportunityFactors,
@@ -247,17 +254,17 @@ Format response as JSON:
 export async function generateRenewalProposal(
   tenantId: number,
   contractTrackingId: number,
-  analysis: RenewalAnalysisResult
+  analysis: RenewalAnalysisResult,
 ): Promise<ProposalRecommendations> {
   const contract = await db.query.contractRenewalTracking.findFirst({
     where: and(
       eq(contractRenewalTracking.id, contractTrackingId),
-      eq(contractRenewalTracking.tenantId, tenantId)
+      eq(contractRenewalTracking.tenantId, tenantId),
     ),
   });
 
   if (!contract) {
-    throw new Error("Contract not found");
+    throw new Error('Contract not found');
   }
 
   const rules = await getRenewalAutomationRules(tenantId);
@@ -315,11 +322,11 @@ Format as JSON:
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2048,
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: pricingPrompt,
         },
       ],
@@ -343,7 +350,7 @@ Format as JSON:
       upsellOpportunities: aiResponse.upsellOpportunities || [],
     };
   } catch (error) {
-    console.error("AI pricing error:", error);
+    console.error('AI pricing error:', error);
 
     // Fallback to rule-based pricing
     let proposedMrr = currentMrr;
@@ -354,17 +361,14 @@ Format as JSON:
     // Apply pricing strategy based on risk
     if (analysis.renewalRisk === 'high' || analysis.renewalRisk === 'very_high') {
       // High risk: offer discount
-      discountPercentage = Math.min(
-        parseFloat(rules.maxDiscountPercent?.toString() || '15'),
-        10
-      );
+      discountPercentage = Math.min(parseFloat(rules.maxDiscountPercent?.toString() || '15'), 10);
       proposedMrr = currentMrr * (1 - discountPercentage / 100);
-      incentiveOffered = "Loyalty discount for continued partnership";
+      incentiveOffered = 'Loyalty discount for continued partnership';
     } else if (analysis.renewalRisk === 'very_low' || analysis.renewalRisk === 'low') {
       // Low risk: can increase price
       const increasePercent = Math.min(
         parseFloat(rules.maxPriceIncreasePercent?.toString() || '5'),
-        3
+        3,
       );
       proposedMrr = currentMrr * (1 + increasePercent / 100);
     }
@@ -377,9 +381,9 @@ Format as JSON:
       incentiveOffered,
       incentiveValue,
       pricingStrategy: {
-        reasoning: "Risk-based pricing strategy",
-        competitivePosition: "Competitive with market rates",
-        valueJustification: "Continued service excellence and reliability",
+        reasoning: 'Risk-based pricing strategy',
+        competitivePosition: 'Competitive with market rates',
+        valueJustification: 'Continued service excellence and reliability',
       },
       upsellOpportunities: [],
     };
@@ -393,17 +397,17 @@ export async function createRenewalProposal(
   tenantId: number,
   contractTrackingId: number,
   analysis: RenewalAnalysisResult,
-  recommendations: ProposalRecommendations
+  recommendations: ProposalRecommendations,
 ): Promise<any> {
   const contract = await db.query.contractRenewalTracking.findFirst({
     where: and(
       eq(contractRenewalTracking.id, contractTrackingId),
-      eq(contractRenewalTracking.tenantId, tenantId)
+      eq(contractRenewalTracking.tenantId, tenantId),
     ),
   });
 
   if (!contract) {
-    throw new Error("Contract not found");
+    throw new Error('Contract not found');
   }
 
   // Generate proposal number
@@ -413,55 +417,68 @@ export async function createRenewalProposal(
   const proposalDate = new Date();
   const expirationDate = new Date(proposalDate.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
   const proposedStartDate = new Date(contract.endDate);
-  const proposedEndDate = new Date(proposedStartDate.getTime() + recommendations.proposedTermMonths * 30 * 24 * 60 * 60 * 1000);
+  const proposedEndDate = new Date(
+    proposedStartDate.getTime() + recommendations.proposedTermMonths * 30 * 24 * 60 * 60 * 1000,
+  );
 
   const discountAmount = contract.monthlyRecurringRevenue
-    ? (parseFloat(contract.monthlyRecurringRevenue.toString()) * recommendations.discountPercentage / 100) * 12
+    ? ((parseFloat(contract.monthlyRecurringRevenue.toString()) *
+        recommendations.discountPercentage) /
+        100) *
+      12
     : 0;
 
   // Create proposal
-  const [proposal] = await db.insert(renewalProposals).values({
-    tenantId,
-    contractRenewalTrackingId: contractTrackingId,
-    contractId: contract.contractId,
-    customerId: contract.customerId,
-    customerName: contract.customerName,
-    proposalNumber,
-    proposalDate,
-    expirationDate,
-    currentMrr: contract.monthlyRecurringRevenue || undefined,
-    currentAcv: contract.annualContractValue || undefined,
-    currentTermMonths: contract.endDate && contract.startDate
-      ? Math.ceil((new Date(contract.endDate).getTime() - new Date(contract.startDate).getTime()) / (30 * 24 * 60 * 60 * 1000))
-      : undefined,
-    proposedMrr: recommendations.proposedMrr.toString(),
-    proposedAcv: recommendations.proposedAcv.toString(),
-    proposedTermMonths: recommendations.proposedTermMonths,
-    proposedStartDate,
-    proposedEndDate,
-    basePrice: contract.monthlyRecurringRevenue || undefined,
-    discountPercentage: recommendations.discountPercentage.toString(),
-    discountAmount: discountAmount.toString(),
-    incentiveOffered: recommendations.incentiveOffered || undefined,
-    incentiveValue: recommendations.incentiveValue.toString(),
-    aiPricingStrategy: recommendations.pricingStrategy as any,
-    competitiveAnalysis: { analysis: "Market-competitive pricing" } as any,
-    valueProposition: analysis.aiAnalysis as any,
-    riskMitigation: { concerns: analysis.riskFactors } as any,
-    baseServicesIncluded: ["Standard service agreement", "Equipment maintenance"] as any,
-    additionalServicesOffered: recommendations.upsellOpportunities as any,
-    upsellValue: recommendations.upsellOpportunities
-      .reduce((sum, opp) => sum + opp.value, 0)
-      .toString(),
-    executiveSummary: `We value your partnership and are pleased to present this renewal proposal for your ${contract.contractType}.`,
-    servicesSummary: "Continued comprehensive service coverage for all equipment.",
-    pricingSummary: `Proposed MRR: $${recommendations.proposedMrr.toFixed(2)} | ACV: $${recommendations.proposedAcv.toFixed(2)}`,
-    status: 'draft',
-    generatedBy: 'ai_autopilot',
-  }).returning();
+  const [proposal] = await db
+    .insert(renewalProposals)
+    .values({
+      tenantId,
+      contractRenewalTrackingId: contractTrackingId,
+      contractId: contract.contractId,
+      customerId: contract.customerId,
+      customerName: contract.customerName,
+      proposalNumber,
+      proposalDate,
+      expirationDate,
+      currentMrr: contract.monthlyRecurringRevenue || undefined,
+      currentAcv: contract.annualContractValue || undefined,
+      currentTermMonths:
+        contract.endDate && contract.startDate
+          ? Math.ceil(
+              (new Date(contract.endDate).getTime() - new Date(contract.startDate).getTime()) /
+                (30 * 24 * 60 * 60 * 1000),
+            )
+          : undefined,
+      proposedMrr: recommendations.proposedMrr.toString(),
+      proposedAcv: recommendations.proposedAcv.toString(),
+      proposedTermMonths: recommendations.proposedTermMonths,
+      proposedStartDate,
+      proposedEndDate,
+      basePrice: contract.monthlyRecurringRevenue || undefined,
+      discountPercentage: recommendations.discountPercentage.toString(),
+      discountAmount: discountAmount.toString(),
+      incentiveOffered: recommendations.incentiveOffered || undefined,
+      incentiveValue: recommendations.incentiveValue.toString(),
+      aiPricingStrategy: recommendations.pricingStrategy as any,
+      competitiveAnalysis: { analysis: 'Market-competitive pricing' } as any,
+      valueProposition: analysis.aiAnalysis as any,
+      riskMitigation: { concerns: analysis.riskFactors } as any,
+      baseServicesIncluded: ['Standard service agreement', 'Equipment maintenance'] as any,
+      additionalServicesOffered: recommendations.upsellOpportunities as any,
+      upsellValue: recommendations.upsellOpportunities
+        .reduce((sum, opp) => sum + opp.value, 0)
+        .toString(),
+      executiveSummary: `We value your partnership and are pleased to present this renewal proposal for your ${contract.contractType}.`,
+      servicesSummary: 'Continued comprehensive service coverage for all equipment.',
+      pricingSummary: `Proposed MRR: $${recommendations.proposedMrr.toFixed(2)} | ACV: $${recommendations.proposedAcv.toFixed(2)}`,
+      status: 'draft',
+      generatedBy: 'ai_autopilot',
+    })
+    .returning();
 
   // Update contract tracking
-  await db.update(contractRenewalTracking)
+  await db
+    .update(contractRenewalTracking)
     .set({
       proposalGenerated: true,
       proposalGeneratedAt: new Date(),
@@ -494,7 +511,7 @@ export async function analyzeExpiringContracts(tenantId: number): Promise<{
       eq(contractRenewalTracking.tenantId, tenantId),
       lt(contractRenewalTracking.daysUntilExpiration, renewalWindowDays),
       gte(contractRenewalTracking.daysUntilExpiration, 0),
-      eq(contractRenewalTracking.status, 'active')
+      eq(contractRenewalTracking.status, 'active'),
     ),
   });
 
@@ -507,7 +524,8 @@ export async function analyzeExpiringContracts(tenantId: number): Promise<{
       const analysis = await analyzeContractRenewal(tenantId, contract.id);
 
       // Update tracking with analysis
-      await db.update(contractRenewalTracking)
+      await db
+        .update(contractRenewalTracking)
         .set({
           renewalProbability: analysis.renewalProbability,
           churnRiskScore: analysis.churnRiskScore,
@@ -565,65 +583,62 @@ export async function getDashboardMetrics(tenantId: number) {
   const rules = await getRenewalAutomationRules(tenantId);
 
   // Count contracts in various states
-  const [
-    activeContracts,
-    expiringSoon,
-    atRisk,
-    proposalsOutstanding,
-  ] = await Promise.all([
+  const [activeContracts, expiringSoon, atRisk, proposalsOutstanding] = await Promise.all([
     db
       .select({ count: sql<number>`count(*)` })
       .from(contractRenewalTracking)
-      .where(and(
-        eq(contractRenewalTracking.tenantId, tenantId),
-        eq(contractRenewalTracking.status, 'active')
-      ))
-      .then(res => res[0]?.count || 0),
+      .where(
+        and(
+          eq(contractRenewalTracking.tenantId, tenantId),
+          eq(contractRenewalTracking.status, 'active'),
+        ),
+      )
+      .then((res) => res[0]?.count || 0),
     db
       .select({ count: sql<number>`count(*)` })
       .from(contractRenewalTracking)
-      .where(and(
-        eq(contractRenewalTracking.tenantId, tenantId),
-        lt(contractRenewalTracking.daysUntilExpiration, rules.renewalWindowDays || 90),
-        gte(contractRenewalTracking.daysUntilExpiration, 0)
-      ))
-      .then(res => res[0]?.count || 0),
+      .where(
+        and(
+          eq(contractRenewalTracking.tenantId, tenantId),
+          lt(contractRenewalTracking.daysUntilExpiration, rules.renewalWindowDays || 90),
+          gte(contractRenewalTracking.daysUntilExpiration, 0),
+        ),
+      )
+      .then((res) => res[0]?.count || 0),
     db
       .select({ count: sql<number>`count(*)` })
       .from(contractRenewalTracking)
-      .where(and(
-        eq(contractRenewalTracking.tenantId, tenantId),
-        sql`renewal_risk IN ('high', 'very_high')`
-      ))
-      .then(res => res[0]?.count || 0),
+      .where(
+        and(
+          eq(contractRenewalTracking.tenantId, tenantId),
+          sql`renewal_risk IN ('high', 'very_high')`,
+        ),
+      )
+      .then((res) => res[0]?.count || 0),
     db
       .select({ count: sql<number>`count(*)` })
       .from(renewalProposals)
-      .where(and(
-        eq(renewalProposals.tenantId, tenantId),
-        sql`status IN ('sent', 'viewed')`
-      ))
-      .then(res => res[0]?.count || 0),
+      .where(and(eq(renewalProposals.tenantId, tenantId), sql`status IN ('sent', 'viewed')`))
+      .then((res) => res[0]?.count || 0),
   ]);
 
   // Get MRR at risk
   const atRiskContracts = await db.query.contractRenewalTracking.findMany({
     where: and(
       eq(contractRenewalTracking.tenantId, tenantId),
-      sql`renewal_risk IN ('high', 'very_high')`
+      sql`renewal_risk IN ('high', 'very_high')`,
     ),
   });
 
-  const mrrAtRisk = atRiskContracts.reduce((sum, c) =>
-    sum + (c.monthlyRecurringRevenue ? parseFloat(c.monthlyRecurringRevenue.toString()) : 0), 0
+  const mrrAtRisk = atRiskContracts.reduce(
+    (sum, c) =>
+      sum + (c.monthlyRecurringRevenue ? parseFloat(c.monthlyRecurringRevenue.toString()) : 0),
+    0,
   );
 
   // Get recent analytics
   const analytics = await db.query.renewalAnalytics.findFirst({
-    where: and(
-      eq(renewalAnalytics.tenantId, tenantId),
-      eq(renewalAnalytics.periodType, 'monthly')
-    ),
+    where: and(eq(renewalAnalytics.tenantId, tenantId), eq(renewalAnalytics.periodType, 'monthly')),
     orderBy: [desc(renewalAnalytics.periodEnd)],
   });
 
@@ -648,7 +663,7 @@ export async function getContractsAtRisk(tenantId: number) {
   return db.query.contractRenewalTracking.findMany({
     where: and(
       eq(contractRenewalTracking.tenantId, tenantId),
-      sql`renewal_risk IN ('high', 'very_high')`
+      sql`renewal_risk IN ('high', 'very_high')`,
     ),
     orderBy: [contractRenewalTracking.churnRiskScore],
     limit: 50,
@@ -663,7 +678,7 @@ export async function getExpiringContracts(tenantId: number, days: number = 90) 
     where: and(
       eq(contractRenewalTracking.tenantId, tenantId),
       lt(contractRenewalTracking.daysUntilExpiration, days),
-      gte(contractRenewalTracking.daysUntilExpiration, 0)
+      gte(contractRenewalTracking.daysUntilExpiration, 0),
     ),
     orderBy: [contractRenewalTracking.daysUntilExpiration],
     limit: 50,
@@ -680,9 +695,12 @@ export async function getRenewalAutomationRules(tenantId: number) {
 
   if (!rules) {
     // Create default rules
-    [rules] = await db.insert(renewalAutomationRules).values({
-      tenantId,
-    }).returning();
+    [rules] = await db
+      .insert(renewalAutomationRules)
+      .values({
+        tenantId,
+      })
+      .returning();
   }
 
   return rules;
@@ -693,7 +711,7 @@ export async function getRenewalAutomationRules(tenantId: number) {
  */
 export async function updateRenewalAutomationRules(
   tenantId: number,
-  updates: Partial<typeof renewalAutomationRules.$inferInsert>
+  updates: Partial<typeof renewalAutomationRules.$inferInsert>,
 ) {
   const existing = await getRenewalAutomationRules(tenantId);
 

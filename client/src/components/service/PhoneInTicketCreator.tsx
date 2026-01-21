@@ -1,19 +1,25 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Building2, 
-  User, 
-  MapPin, 
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Building2,
+  User,
+  MapPin,
   Phone,
   Mail,
   Wrench,
@@ -23,11 +29,11 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle,
-  AlertTriangle
-} from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+  AlertTriangle,
+} from 'lucide-react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 interface PhoneInTicketCreatorProps {
   isOpen: boolean;
@@ -36,18 +42,18 @@ interface PhoneInTicketCreatorProps {
 
 const phoneTicketSchema = z.object({
   // Step 1: Company Selection
-  companyName: z.string().min(1, "Company name is required"),
+  companyName: z.string().min(1, 'Company name is required'),
   companyId: z.string().optional(),
-  
-  // Step 2: Caller Selection  
-  callerName: z.string().min(1, "Caller name is required"),
-  callerPhone: z.string().min(10, "Valid phone number is required"),
-  callerEmail: z.string().email().optional().or(z.literal("")),
+
+  // Step 2: Caller Selection
+  callerName: z.string().min(1, 'Caller name is required'),
+  callerPhone: z.string().min(10, 'Valid phone number is required'),
+  callerEmail: z.string().email().optional().or(z.literal('')),
   callerRole: z.string().optional(),
   contactId: z.string().optional(),
-  
+
   // Step 3: Location & Equipment
-  locationAddress: z.string().min(1, "Location address is required"),
+  locationAddress: z.string().min(1, 'Location address is required'),
   locationBuilding: z.string().optional(),
   locationFloor: z.string().optional(),
   locationRoom: z.string().optional(),
@@ -55,10 +61,21 @@ const phoneTicketSchema = z.object({
   equipmentBrand: z.string().optional(),
   equipmentModel: z.string().optional(),
   equipmentSerial: z.string().optional(),
-  
+
   // Step 4: Issue Details
-  issueCategory: z.enum(['paper_jam', 'print_quality', 'connectivity', 'hardware_failure', 'software_issue', 'toner_cartridge', 'maintenance', 'installation', 'training', 'other']),
-  issueDescription: z.string().min(10, "Please provide a detailed description"),
+  issueCategory: z.enum([
+    'paper_jam',
+    'print_quality',
+    'connectivity',
+    'hardware_failure',
+    'software_issue',
+    'toner_cartridge',
+    'maintenance',
+    'installation',
+    'training',
+    'other',
+  ]),
+  issueDescription: z.string().min(10, 'Please provide a detailed description'),
   priority: z.enum(['low', 'medium', 'high', 'urgent', 'emergency']),
   preferredServiceDate: z.string().optional(),
   notes: z.string().optional(),
@@ -72,61 +89,65 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
-  const [companySearchTerm, setCompanySearchTerm] = useState("");
-  const [contactSearchTerm, setContactSearchTerm] = useState("");
-  const [equipmentSearchTerm, setEquipmentSearchTerm] = useState("");
+  const [companySearchTerm, setCompanySearchTerm] = useState('');
+  const [contactSearchTerm, setContactSearchTerm] = useState('');
+  const [equipmentSearchTerm, setEquipmentSearchTerm] = useState('');
   const [showNewContactForm, setShowNewContactForm] = useState(false);
-  
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const form = useForm<PhoneTicketFormData>({
     resolver: zodResolver(phoneTicketSchema),
     defaultValues: {
-      companyName: "",
-      callerName: "",
-      callerPhone: "",
-      callerEmail: "",
-      callerRole: "",
-      locationAddress: "",
-      locationBuilding: "",
-      locationFloor: "",
-      locationRoom: "",
-      equipmentBrand: "",
-      equipmentModel: "",
-      equipmentSerial: "",
-      issueCategory: "other",
-      issueDescription: "",
-      priority: "medium",
-      preferredServiceDate: "",
-      notes: "",
+      companyName: '',
+      callerName: '',
+      callerPhone: '',
+      callerEmail: '',
+      callerRole: '',
+      locationAddress: '',
+      locationBuilding: '',
+      locationFloor: '',
+      locationRoom: '',
+      equipmentBrand: '',
+      equipmentModel: '',
+      equipmentSerial: '',
+      issueCategory: 'other',
+      issueDescription: '',
+      priority: 'medium',
+      preferredServiceDate: '',
+      notes: '',
       createServiceTicket: false,
     },
   });
 
   // Company search query
   const { data: companies = [], isLoading: companiesLoading } = useQuery({
-    queryKey: ["/api/phone-tickets/search-companies", companySearchTerm],
+    queryKey: ['/api/phone-tickets/search-companies', companySearchTerm],
     enabled: companySearchTerm.length >= 2,
     queryFn: async () => {
-      return await apiRequest(`/api/phone-tickets/search-companies?q=${encodeURIComponent(companySearchTerm)}`);
+      return await apiRequest(
+        `/api/phone-tickets/search-companies?q=${encodeURIComponent(companySearchTerm)}`,
+      );
     },
   });
 
   // Contact search query (when company is selected) - now loads all contacts initially
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
-    queryKey: ["/api/phone-tickets/search-contacts", selectedCompany?.id, contactSearchTerm],
+    queryKey: ['/api/phone-tickets/search-contacts', selectedCompany?.id, contactSearchTerm],
     enabled: !!selectedCompany,
     queryFn: async () => {
       if (!selectedCompany) return [];
       const queryParam = contactSearchTerm ? `?q=${encodeURIComponent(contactSearchTerm)}` : '';
-      return await apiRequest(`/api/phone-tickets/search-contacts/${selectedCompany.id}${queryParam}`);
+      return await apiRequest(
+        `/api/phone-tickets/search-contacts/${selectedCompany.id}${queryParam}`,
+      );
     },
   });
 
   // Equipment query (when company is selected)
   const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
-    queryKey: ["/api/phone-tickets/equipment", selectedCompany?.id, equipmentSearchTerm],
+    queryKey: ['/api/phone-tickets/equipment', selectedCompany?.id, equipmentSearchTerm],
     enabled: !!selectedCompany,
     queryFn: async () => {
       if (!selectedCompany) return [];
@@ -137,15 +158,15 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   // Create phone-in ticket mutation
   const createTicketMutation = useMutation({
     mutationFn: async (data: PhoneTicketFormData) => {
-      return await apiRequest("/api/phone-in-tickets", "POST", {
+      return await apiRequest('/api/phone-in-tickets', 'POST', {
         ...data,
         customerId: selectedCompany?.id,
         customerName: selectedCompany?.companyName || selectedCompany?.name || data.companyName,
         contactId: selectedContact?.id,
         equipmentId: selectedEquipment?.id,
         urgencyLevel: data.priority, // Map priority to urgencyLevel for database
-        contactMethod: "phone", // Required field
-        handledBy: "dispatch", // Required field - could be current user
+        contactMethod: 'phone', // Required field
+        handledBy: 'dispatch', // Required field - could be current user
         createServiceTicket: data.createServiceTicket === true,
       });
     },
@@ -158,22 +179,28 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
         }
       } catch {}
       toast({
-        title: converted ? "Phone-in created and converted" : "Phone-in created",
+        title: converted ? 'Phone-in created and converted' : 'Phone-in created',
         description: (
           <div className="flex items-center justify-between w-full">
-            <span>{converted ? "Ticket converted to service ticket" : "Ticket created successfully"}</span>
+            <span>
+              {converted ? 'Ticket converted to service ticket' : 'Ticket created successfully'}
+            </span>
             {newId && !converted && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={async () => {
                   try {
-                    await apiRequest(`/api/phone-in-tickets/${newId}/convert`, "POST");
-                    toast({ title: "Converted", description: "Converted to service ticket" });
-                    queryClient.invalidateQueries({ queryKey: ["/api/service-tickets"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/phone-in-tickets"] });
+                    await apiRequest(`/api/phone-in-tickets/${newId}/convert`, 'POST');
+                    toast({ title: 'Converted', description: 'Converted to service ticket' });
+                    queryClient.invalidateQueries({ queryKey: ['/api/service-tickets'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/phone-in-tickets'] });
                   } catch {
-                    toast({ title: "Conversion failed", description: "Could not convert ticket", variant: "destructive" });
+                    toast({
+                      title: 'Conversion failed',
+                      description: 'Could not convert ticket',
+                      variant: 'destructive',
+                    });
                   }
                 }}
               >
@@ -183,15 +210,15 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           </div>
         ) as any,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/phone-in-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/phone-in-tickets'] });
       onClose();
       resetForm();
     },
     onError: (error) => {
-      toast({ 
-        title: "Error", 
-        description: error instanceof Error ? error.message : "Failed to create ticket",
-        variant: "destructive"
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create ticket',
+        variant: 'destructive',
       });
     },
   });
@@ -199,12 +226,12 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
   // Create new contact mutation
   const createContactMutation = useMutation({
     mutationFn: async (contactData: any) => {
-      return await apiRequest("/api/contacts", "POST", {
+      return await apiRequest('/api/contacts', 'POST', {
         name: contactData.name,
-        email: contactData.email || "",
+        email: contactData.email || '',
         phone: contactData.phone,
-        role: contactData.role || "user",
-        companyName: selectedCompany?.companyName || selectedCompany?.name || "",
+        role: contactData.role || 'user',
+        companyName: selectedCompany?.companyName || selectedCompany?.name || '',
         businessRecordId: selectedCompany?.id,
         companyId: selectedCompany?.id,
         customerId: selectedCompany?.id,
@@ -212,13 +239,13 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
     },
     onSuccess: (newContact) => {
       setSelectedContact(newContact);
-      form.setValue("callerName", newContact.name);
-      form.setValue("callerPhone", newContact.phone);
-      form.setValue("callerEmail", newContact.email);
-      form.setValue("callerRole", newContact.role);
+      form.setValue('callerName', newContact.name);
+      form.setValue('callerPhone', newContact.phone);
+      form.setValue('callerEmail', newContact.email);
+      form.setValue('callerRole', newContact.role);
       setShowNewContactForm(false);
-      toast({ title: "Success", description: "New contact created successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts/search"] });
+      toast({ title: 'Success', description: 'New contact created successfully' });
+      queryClient.invalidateQueries({ queryKey: ['/api/contacts/search'] });
     },
   });
 
@@ -228,45 +255,45 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
     setSelectedCompany(null);
     setSelectedContact(null);
     setSelectedEquipment(null);
-    setCompanySearchTerm("");
-    setContactSearchTerm("");
-    setEquipmentSearchTerm("");
+    setCompanySearchTerm('');
+    setContactSearchTerm('');
+    setEquipmentSearchTerm('');
     setShowNewContactForm(false);
   };
 
   const handleCompanySelect = (company: any) => {
     setSelectedCompany(company);
-    form.setValue("companyName", company.name);
-    form.setValue("companyId", company.id);
+    form.setValue('companyName', company.name);
+    form.setValue('companyId', company.id);
     // Auto-populate location information from the selected company
-    form.setValue("locationAddress", company.address || "");
+    form.setValue('locationAddress', company.address || '');
     setCompanySearchTerm(company.name);
-    
+
     // Clear previous contact selections when company changes
     setSelectedContact(null);
-    setContactSearchTerm("");
-    form.setValue("callerName", "");
-    form.setValue("callerPhone", "");
-    form.setValue("callerEmail", "");
-    form.setValue("callerRole", "");
+    setContactSearchTerm('');
+    form.setValue('callerName', '');
+    form.setValue('callerPhone', '');
+    form.setValue('callerEmail', '');
+    form.setValue('callerRole', '');
   };
 
   const handleContactSelect = (contact: any) => {
     setSelectedContact(contact);
-    form.setValue("callerName", contact.name);
-    form.setValue("callerPhone", contact.phone);
-    form.setValue("callerEmail", contact.email || "");
-    form.setValue("callerRole", contact.role || "");
-    form.setValue("contactId", contact.id);
+    form.setValue('callerName', contact.name);
+    form.setValue('callerPhone', contact.phone);
+    form.setValue('callerEmail', contact.email || '');
+    form.setValue('callerRole', contact.role || '');
+    form.setValue('contactId', contact.id);
     setContactSearchTerm(contact.name);
   };
 
   const handleEquipmentSelect = (equipmentItem: any) => {
     setSelectedEquipment(equipmentItem);
-    form.setValue("equipmentId", equipmentItem.id);
-    form.setValue("equipmentBrand", equipmentItem.brand);
-    form.setValue("equipmentModel", equipmentItem.model);
-    form.setValue("equipmentSerial", equipmentItem.serialNumber);
+    form.setValue('equipmentId', equipmentItem.id);
+    form.setValue('equipmentBrand', equipmentItem.brand);
+    form.setValue('equipmentModel', equipmentItem.model);
+    form.setValue('equipmentSerial', equipmentItem.serialNumber);
   };
 
   const handleNextStep = () => {
@@ -274,34 +301,50 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
     switch (currentStep) {
       case 1:
         if (!selectedCompany) {
-          toast({ title: "Required", description: "Please select a company first", variant: "destructive" });
+          toast({
+            title: 'Required',
+            description: 'Please select a company first',
+            variant: 'destructive',
+          });
           return;
         }
         break;
       case 2:
-        if (!form.getValues("callerName") || !form.getValues("callerPhone")) {
-          toast({ title: "Required", description: "Please fill in caller information", variant: "destructive" });
+        if (!form.getValues('callerName') || !form.getValues('callerPhone')) {
+          toast({
+            title: 'Required',
+            description: 'Please fill in caller information',
+            variant: 'destructive',
+          });
           return;
         }
         break;
       case 3:
-        if (!form.getValues("locationAddress")) {
-          toast({ title: "Required", description: "Please provide location information", variant: "destructive" });
+        if (!form.getValues('locationAddress')) {
+          toast({
+            title: 'Required',
+            description: 'Please provide location information',
+            variant: 'destructive',
+          });
           return;
         }
         break;
       case 4:
-        if (!form.getValues("issueDescription") || form.getValues("issueDescription").length < 10) {
-          toast({ title: "Required", description: "Please provide a detailed issue description (at least 10 characters)", variant: "destructive" });
+        if (!form.getValues('issueDescription') || form.getValues('issueDescription').length < 10) {
+          toast({
+            title: 'Required',
+            description: 'Please provide a detailed issue description (at least 10 characters)',
+            variant: 'destructive',
+          });
           return;
         }
         break;
     }
-    setCurrentStep(prev => Math.min(prev + 1, 4));
+    setCurrentStep((prev) => Math.min(prev + 1, 4));
   };
 
   const handlePrevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const onSubmit = (data: PhoneTicketFormData) => {
@@ -312,12 +355,16 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
     <div className="flex items-center justify-center mb-6">
       {[1, 2, 3, 4].map((step) => (
         <div key={step} className="flex items-center">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-            ${step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
+            ${step <= currentStep ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'}`}
+          >
             {step < currentStep ? <CheckCircle className="h-4 w-4" /> : step}
           </div>
           {step < 4 && (
-            <div className={`w-12 h-1 mx-2 ${step < currentStep ? 'bg-blue-600' : 'bg-gray-200'}`} />
+            <div
+              className={`w-12 h-1 mx-2 ${step < currentStep ? 'bg-blue-600' : 'bg-gray-200'}`}
+            />
           )}
         </div>
       ))}
@@ -331,9 +378,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <Building2 className="h-5 w-5" />
           Step 1: Select Company
         </CardTitle>
-        <CardDescription>
-          Search and select the company this service call is for
-        </CardDescription>
+        <CardDescription>Search and select the company this service call is for</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -347,7 +392,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             />
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
-          
+
           {companySearchTerm.length >= 2 && (
             <div className="mt-2 border rounded-lg max-h-40 overflow-y-auto">
               {companiesLoading ? (
@@ -380,9 +425,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <div className="mt-2">
               <div className="font-medium">{selectedCompany.name}</div>
               <div className="text-sm text-gray-600">{selectedCompany.address}</div>
-              <div className="text-xs text-gray-500">
-                Location will be auto-populated in Step 3
-              </div>
+              <div className="text-xs text-gray-500">Location will be auto-populated in Step 3</div>
             </div>
           </div>
         )}
@@ -397,9 +440,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <User className="h-5 w-5" />
           Step 2: Caller Information
         </CardTitle>
-        <CardDescription>
-          Select existing contact or create a new one
-        </CardDescription>
+        <CardDescription>Select existing contact or create a new one</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -413,7 +454,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             />
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
-          
+
           {selectedCompany && (
             <div className="mt-2 border rounded-lg max-h-60 overflow-y-auto">
               {contactsLoading ? (
@@ -440,14 +481,18 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                         >
                           <div className="flex items-center gap-2 text-blue-600">
                             <Plus className="h-4 w-4" />
-                            <span className="font-medium">Create new contact: "{contactSearchTerm}"</span>
+                            <span className="font-medium">
+                              Create new contact: "{contactSearchTerm}"
+                            </span>
                           </div>
                         </div>
                       )}
                     </>
                   ) : (
                     <div className="p-3 text-gray-500">
-                      {contactSearchTerm ? `No contacts found for "${contactSearchTerm}"` : "No contacts available"}
+                      {contactSearchTerm
+                        ? `No contacts found for "${contactSearchTerm}"`
+                        : 'No contacts available'}
                       <div
                         className="mt-2 text-blue-600 cursor-pointer hover:underline flex items-center gap-1"
                         onClick={() => setShowNewContactForm(true)}
@@ -474,9 +519,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                 <Controller
                   name="callerName"
                   control={form.control}
-                  render={({ field }) => (
-                    <Input {...field} placeholder="Contact name" />
-                  )}
+                  render={({ field }) => <Input {...field} placeholder="Contact name" />}
                 />
               </div>
               <div>
@@ -484,9 +527,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                 <Controller
                   name="callerPhone"
                   control={form.control}
-                  render={({ field }) => (
-                    <Input {...field} placeholder="Phone number" />
-                  )}
+                  render={({ field }) => <Input {...field} placeholder="Phone number" />}
                 />
               </div>
               <div>
@@ -494,9 +535,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                 <Controller
                   name="callerEmail"
                   control={form.control}
-                  render={({ field }) => (
-                    <Input {...field} placeholder="Email address" />
-                  )}
+                  render={({ field }) => <Input {...field} placeholder="Email address" />}
                 />
               </div>
               <div>
@@ -504,9 +543,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                 <Controller
                   name="callerRole"
                   control={form.control}
-                  render={({ field }) => (
-                    <Input {...field} placeholder="Job title or role" />
-                  )}
+                  render={({ field }) => <Input {...field} placeholder="Job title or role" />}
                 />
               </div>
               <div className="flex gap-2">
@@ -556,9 +593,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <MapPin className="h-5 w-5" />
           Step 3: Location & Equipment
         </CardTitle>
-        <CardDescription>
-          Specify service location and equipment details
-        </CardDescription>
+        <CardDescription>Specify service location and equipment details</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -578,9 +613,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <Controller
               name="locationBuilding"
               control={form.control}
-              render={({ field }) => (
-                <Input {...field} placeholder="Building name/number" />
-              )}
+              render={({ field }) => <Input {...field} placeholder="Building name/number" />}
             />
           </div>
           <div>
@@ -588,9 +621,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <Controller
               name="locationFloor"
               control={form.control}
-              render={({ field }) => (
-                <Input {...field} placeholder="Floor number" />
-              )}
+              render={({ field }) => <Input {...field} placeholder="Floor number" />}
             />
           </div>
           <div>
@@ -598,9 +629,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <Controller
               name="locationRoom"
               control={form.control}
-              render={({ field }) => (
-                <Input {...field} placeholder="Room number" />
-              )}
+              render={({ field }) => <Input {...field} placeholder="Room number" />}
             />
           </div>
         </div>
@@ -616,15 +645,16 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             />
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
-          
+
           {equipment.length > 0 && (
             <div className="mt-2 border rounded-lg max-h-40 overflow-y-auto">
               {equipment
-                .filter((item: any) => 
-                  equipmentSearchTerm === "" ||
-                  item.assetNumber?.toLowerCase().includes(equipmentSearchTerm.toLowerCase()) ||
-                  item.model?.toLowerCase().includes(equipmentSearchTerm.toLowerCase()) ||
-                  item.serialNumber?.toLowerCase().includes(equipmentSearchTerm.toLowerCase())
+                .filter(
+                  (item: any) =>
+                    equipmentSearchTerm === '' ||
+                    item.assetNumber?.toLowerCase().includes(equipmentSearchTerm.toLowerCase()) ||
+                    item.model?.toLowerCase().includes(equipmentSearchTerm.toLowerCase()) ||
+                    item.serialNumber?.toLowerCase().includes(equipmentSearchTerm.toLowerCase()),
                 )
                 .map((item: any) => (
                   <div
@@ -632,7 +662,9 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
                     className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                     onClick={() => handleEquipmentSelect(item)}
                   >
-                    <div className="font-medium">{item.brand} {item.model}</div>
+                    <div className="font-medium">
+                      {item.brand} {item.model}
+                    </div>
                     <div className="text-sm text-gray-600">Asset: {item.assetNumber}</div>
                     <div className="text-xs text-gray-500">Serial: {item.serialNumber}</div>
                   </div>
@@ -648,7 +680,9 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
               <span className="font-medium">Selected Equipment</span>
             </div>
             <div className="mt-2">
-              <div className="font-medium">{selectedEquipment.brand} {selectedEquipment.model}</div>
+              <div className="font-medium">
+                {selectedEquipment.brand} {selectedEquipment.model}
+              </div>
               <div className="text-sm text-gray-600">Asset: {selectedEquipment.assetNumber}</div>
               <div className="text-xs text-gray-500">Serial: {selectedEquipment.serialNumber}</div>
             </div>
@@ -665,9 +699,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <Wrench className="h-5 w-5" />
           Step 4: Issue Details
         </CardTitle>
-        <CardDescription>
-          Describe the issue and set priority
-        </CardDescription>
+        <CardDescription>Describe the issue and set priority</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -703,9 +735,9 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             name="issueDescription"
             control={form.control}
             render={({ field }) => (
-              <Textarea 
-                {...field} 
-                placeholder="Provide detailed description of the issue..." 
+              <Textarea
+                {...field}
+                placeholder="Provide detailed description of the issue..."
                 rows={4}
               />
             )}
@@ -739,9 +771,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
           <Controller
             name="preferredServiceDate"
             control={form.control}
-            render={({ field }) => (
-              <Input {...field} type="date" />
-            )}
+            render={({ field }) => <Input {...field} type="date" />}
           />
         </div>
 
@@ -751,19 +781,15 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             name="notes"
             control={form.control}
             render={({ field }) => (
-              <Textarea 
-                {...field} 
-                placeholder="Any additional information..." 
-                rows={3}
-              />
+              <Textarea {...field} placeholder="Any additional information..." rows={3} />
             )}
           />
         </div>
 
         <div className="flex items-center space-x-2">
           <Checkbox
-            checked={form.watch("createServiceTicket")}
-            onCheckedChange={(val) => form.setValue("createServiceTicket", Boolean(val))}
+            checked={form.watch('createServiceTicket')}
+            onCheckedChange={(val) => form.setValue('createServiceTicket', Boolean(val))}
             id="createServiceTicket"
           />
           <Label htmlFor="createServiceTicket">Create as service ticket now</Label>
@@ -774,21 +800,26 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
 
   const renderCurrentStep = () => {
     switch (currentStep) {
-      case 1: return renderStep1();
-      case 2: return renderStep2();
-      case 3: return renderStep3();
-      case 4: return renderStep4();
-      default: return renderStep1();
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      default:
+        return renderStep1();
     }
   };
 
   return (
     <div className="space-y-6">
       {renderStepIndicator()}
-      
+
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {renderCurrentStep()}
-        
+
         <div className="flex justify-between pt-4">
           <Button
             type="button"
@@ -799,12 +830,9 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
             <ArrowLeft className="h-4 w-4 mr-2" />
             Previous
           </Button>
-          
+
           {currentStep < 4 ? (
-            <Button
-              type="button"
-              onClick={handleNextStep}
-            >
+            <Button type="button" onClick={handleNextStep}>
               Next
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
@@ -814,7 +842,7 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
               disabled={createTicketMutation.isPending}
               className="bg-green-600 hover:bg-green-700"
             >
-              {createTicketMutation.isPending ? "Creating..." : "Create Ticket"}
+              {createTicketMutation.isPending ? 'Creating...' : 'Create Ticket'}
               <CheckCircle className="h-4 w-4 ml-2" />
             </Button>
           )}

@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { CheckCircle2, Clock, AlertCircle, Star } from 'lucide-react';
 
@@ -32,7 +39,7 @@ export default function ServiceCallsList({ calls }: ServiceCallsListProps) {
   // Filter calls by status
   const filteredCalls = useMemo(() => {
     if (filterStatus === 'all') return calls;
-    return calls.filter(call => call.status === filterStatus);
+    return calls.filter((call) => call.status === filterStatus);
   }, [calls, filterStatus]);
 
   // Get priority badge color
@@ -105,21 +112,21 @@ export default function ServiceCallsList({ calls }: ServiceCallsListProps) {
           size="sm"
           onClick={() => setFilterStatus('scheduled')}
         >
-          Scheduled ({calls.filter(c => c.status === 'scheduled').length})
+          Scheduled ({calls.filter((c) => c.status === 'scheduled').length})
         </Button>
         <Button
           variant={filterStatus === 'in_progress' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFilterStatus('in_progress')}
         >
-          In Progress ({calls.filter(c => c.status === 'in_progress').length})
+          In Progress ({calls.filter((c) => c.status === 'in_progress').length})
         </Button>
         <Button
           variant={filterStatus === 'completed' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFilterStatus('completed')}
         >
-          Completed ({calls.filter(c => c.status === 'completed').length})
+          Completed ({calls.filter((c) => c.status === 'completed').length})
         </Button>
       </div>
 
@@ -142,9 +149,7 @@ export default function ServiceCallsList({ calls }: ServiceCallsListProps) {
           <TableBody>
             {filteredCalls.map((call) => (
               <TableRow key={call.ticketId}>
-                <TableCell className="font-medium">
-                  {call.ticketNumber}
-                </TableCell>
+                <TableCell className="font-medium">{call.ticketNumber}</TableCell>
                 <TableCell>
                   <div>
                     <div className="font-medium">{call.customerName}</div>
@@ -158,9 +163,7 @@ export default function ServiceCallsList({ calls }: ServiceCallsListProps) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getPriorityColor(call.priority) as any}>
-                    {call.priority}
-                  </Badge>
+                  <Badge variant={getPriorityColor(call.priority) as any}>{call.priority}</Badge>
                 </TableCell>
                 <TableCell>
                   <Badge variant={getStatusColor(call.status) as any}>
@@ -170,7 +173,9 @@ export default function ServiceCallsList({ calls }: ServiceCallsListProps) {
                 <TableCell>
                   {call.scheduledDate ? (
                     <div>
-                      <div className="text-sm">{format(new Date(call.scheduledDate), 'MMM dd')}</div>
+                      <div className="text-sm">
+                        {format(new Date(call.scheduledDate), 'MMM dd')}
+                      </div>
                       <div className="text-xs text-muted-foreground">
                         {format(new Date(call.scheduledDate), 'h:mm a')}
                       </div>
@@ -207,7 +212,9 @@ export default function ServiceCallsList({ calls }: ServiceCallsListProps) {
                             : 'text-gray-300'
                         }`}
                       />
-                      <span className="text-xs font-medium">{call.customerSatisfaction.toFixed(1)}</span>
+                      <span className="text-xs font-medium">
+                        {call.customerSatisfaction.toFixed(1)}
+                      </span>
                     </div>
                   ) : (
                     <span className="text-muted-foreground text-xs">-</span>

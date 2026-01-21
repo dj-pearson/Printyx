@@ -6,21 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import { Button } from '@/components/ui/button';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Eye, 
-  Brain, 
+import {
+  BarChart3,
+  TrendingUp,
+  Eye,
+  Brain,
   Activity,
   AlertTriangle,
   Target,
   Lightbulb,
-  ArrowRight
+  ArrowRight,
 } from 'lucide-react';
 import PredictiveInsights from '@/components/analytics/PredictiveInsights';
 import AnomalyDetection from '@/components/analytics/AnomalyDetection';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
-import ContextualHelp from "@/components/contextual/ContextualHelp";
+import ContextualHelp from '@/components/contextual/ContextualHelp';
 
 export default function AdvancedAnalytics() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -36,8 +36,8 @@ export default function AdvancedAnalytics() {
         'Sales forecasting with 87% accuracy',
         'Customer churn prediction',
         'Revenue optimization insights',
-        'Service cost reduction recommendations'
-      ]
+        'Service cost reduction recommendations',
+      ],
     },
     {
       id: 'anomaly',
@@ -49,8 +49,8 @@ export default function AdvancedAnalytics() {
         'Automated pattern recognition',
         'Performance deviation alerts',
         'Root cause analysis suggestions',
-        'Historical pattern learning'
-      ]
+        'Historical pattern learning',
+      ],
     },
     {
       id: 'optimization',
@@ -62,8 +62,8 @@ export default function AdvancedAnalytics() {
         'Process efficiency scoring',
         'Resource allocation optimization',
         'Workflow bottleneck identification',
-        'ROI improvement suggestions'
-      ]
+        'ROI improvement suggestions',
+      ],
     },
     {
       id: 'insights',
@@ -75,9 +75,9 @@ export default function AdvancedAnalytics() {
         'Cross-functional analytics',
         'Market trend analysis',
         'Competitive positioning insights',
-        'Strategic planning support'
-      ]
-    }
+        'Strategic planning support',
+      ],
+    },
   ];
 
   const getStatusBadge = (status: string) => {
@@ -94,13 +94,20 @@ export default function AdvancedAnalytics() {
   };
 
   return (
-    <MainLayout title="Advanced Analytics" description="Leverage AI and machine learning for predictive insights and automated detection">
+    <MainLayout
+      title="Advanced Analytics"
+      description="Leverage AI and machine learning for predictive insights and automated detection"
+    >
       <div className="container mx-auto p-6 space-y-6">
         <ContextualHelp page="advanced-analytics" />
         <KpiSummaryBar className="mb-4" />
-        <PageAlerts categories={["business", "performance"]} severities={["medium","high","critical"]} className="-mt-2" />
+        <PageAlerts
+          categories={['business', 'performance']}
+          severities={['medium', 'high', 'critical']}
+          className="-mt-2"
+        />
         {/* Process Help Banner */}
-        <ProcessHelpBanner 
+        <ProcessHelpBanner
           processType="advanced-analytics"
           currentStage="data-analysis"
           nextStage="actionable-insights"
@@ -165,11 +172,19 @@ export default function AdvancedAnalytics() {
                             ))}
                           </ul>
                           {feature.status === 'active' && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="w-full mt-3"
-                              onClick={() => setActiveTab(feature.id === 'predictive' ? 'predictive' : feature.id === 'anomaly' ? 'anomaly' : 'performance')}
+                              onClick={() =>
+                                setActiveTab(
+                                  feature.id === 'predictive'
+                                    ? 'predictive'
+                                    : feature.id === 'anomaly'
+                                      ? 'anomaly'
+                                      : 'performance',
+                                )
+                              }
                             >
                               <ArrowRight className="h-3 w-3 mr-1" />
                               Explore {feature.title}
@@ -203,7 +218,9 @@ export default function AdvancedAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Predictions Made</p>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Predictions Made
+                        </p>
                         <p className="text-2xl font-bold">1,247</p>
                       </div>
                       <TrendingUp className="h-8 w-8 text-green-600" />
@@ -218,7 +235,9 @@ export default function AdvancedAnalytics() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Anomalies Detected</p>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Anomalies Detected
+                        </p>
                         <p className="text-2xl font-bold">23</p>
                       </div>
                       <AlertTriangle className="h-8 w-8 text-amber-600" />
@@ -237,9 +256,7 @@ export default function AdvancedAnalytics() {
                     <Lightbulb className="h-5 w-5" />
                     Coming Soon
                   </CardTitle>
-                  <CardDescription>
-                    Advanced analytics features in development
-                  </CardDescription>
+                  <CardDescription>Advanced analytics features in development</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

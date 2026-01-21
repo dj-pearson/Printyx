@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +14,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -29,9 +29,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import {
   Target,
   Plus,
@@ -43,7 +43,7 @@ import {
   Sparkles,
   Activity,
   AlertCircle,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ScoringRule {
   id: string;
@@ -167,8 +167,8 @@ export default function PlatformLeadScoring() {
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ScoringRule | null>(null);
   const [editingModel, setEditingModel] = useState<ScoringModel | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
 
   const [ruleFormData, setRuleFormData] = useState<RuleFormData>({
     name: '',
@@ -221,8 +221,8 @@ export default function PlatformLeadScoring() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-rules'] });
       toast({
-        title: "Success",
-        description: "Scoring rule created successfully",
+        title: 'Success',
+        description: 'Scoring rule created successfully',
       });
       setIsRuleDialogOpen(false);
       resetRuleForm();
@@ -243,8 +243,8 @@ export default function PlatformLeadScoring() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-rules'] });
       toast({
-        title: "Success",
-        description: "Scoring rule updated successfully",
+        title: 'Success',
+        description: 'Scoring rule updated successfully',
       });
       setIsRuleDialogOpen(false);
       resetRuleForm();
@@ -263,8 +263,8 @@ export default function PlatformLeadScoring() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-rules'] });
       toast({
-        title: "Success",
-        description: "Scoring rule deleted successfully",
+        title: 'Success',
+        description: 'Scoring rule deleted successfully',
       });
     },
   });
@@ -288,7 +288,7 @@ export default function PlatformLeadScoring() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/scoring-models'] });
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Scoring model ${editingModel ? 'updated' : 'created'} successfully`,
       });
       setIsModelDialogOpen(false);
@@ -423,23 +423,22 @@ export default function PlatformLeadScoring() {
   };
 
   // Filter rules by category
-  const filteredRules = selectedCategory === 'all'
-    ? rules
-    : rules.filter(rule => rule.category === selectedCategory);
+  const filteredRules =
+    selectedCategory === 'all' ? rules : rules.filter((rule) => rule.category === selectedCategory);
 
   // Calculate stats
   const stats = {
     totalRules: rules.length,
-    activeRules: rules.filter(r => r.isActive).length,
-    inactiveRules: rules.filter(r => !r.isActive).length,
+    activeRules: rules.filter((r) => r.isActive).length,
+    inactiveRules: rules.filter((r) => !r.isActive).length,
     maxScore: rules.reduce((sum, r) => sum + (r.isActive ? r.scorePoints : 0), 0),
-    avgPointsPerRule: rules.length > 0
-      ? rules.reduce((sum, r) => sum + r.scorePoints, 0) / rules.length
-      : 0,
+    avgPointsPerRule:
+      rules.length > 0 ? rules.reduce((sum, r) => sum + r.scorePoints, 0) / rules.length : 0,
   };
 
   // Get current model
-  const currentModel = models.find(m => m.id === selectedModelId) || models.find(m => m.isDefault);
+  const currentModel =
+    models.find((m) => m.id === selectedModelId) || models.find((m) => m.isDefault);
 
   if (modelsLoading) {
     return (
@@ -506,10 +505,14 @@ export default function PlatformLeadScoring() {
                   <div className="flex items-center gap-2">
                     <span>{model.name}</span>
                     {model.isDefault && (
-                      <Badge variant="secondary" className="ml-2">Default</Badge>
+                      <Badge variant="secondary" className="ml-2">
+                        Default
+                      </Badge>
                     )}
                     {model.isActive && (
-                      <Badge variant="outline" className="ml-2">Active</Badge>
+                      <Badge variant="outline" className="ml-2">
+                        Active
+                      </Badge>
                     )}
                   </div>
                 </SelectItem>
@@ -520,7 +523,9 @@ export default function PlatformLeadScoring() {
           {currentModel && (
             <div className="mt-4 grid grid-cols-3 gap-4">
               <div className="p-4 border rounded-lg">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Grade Thresholds</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">
+                  Grade Thresholds
+                </div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Grade A:</span>
@@ -542,7 +547,9 @@ export default function PlatformLeadScoring() {
               </div>
 
               <div className="p-4 border rounded-lg">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Tier Thresholds</div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">
+                  Tier Thresholds
+                </div>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span>Hot:</span>
@@ -609,9 +616,7 @@ export default function PlatformLeadScoring() {
                   <span className="text-3xl font-bold">{stats.maxScore}</span>
                   <TrendingUp className="h-8 w-8 text-muted-foreground opacity-50" />
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  From active rules
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">From active rules</p>
               </CardContent>
             </Card>
 
@@ -626,9 +631,7 @@ export default function PlatformLeadScoring() {
                   <span className="text-3xl font-bold">{stats.avgPointsPerRule.toFixed(0)}</span>
                   <Sparkles className="h-8 w-8 text-muted-foreground opacity-50" />
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Average scoring weight
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Average scoring weight</p>
               </CardContent>
             </Card>
 
@@ -643,9 +646,7 @@ export default function PlatformLeadScoring() {
                   <span className="text-3xl font-bold">{Object.keys(CATEGORIES).length}</span>
                   <Building2 className="h-8 w-8 text-muted-foreground opacity-50" />
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Available categories
-                </p>
+                <p className="text-sm text-muted-foreground mt-1">Available categories</p>
               </CardContent>
             </Card>
           </div>
@@ -654,14 +655,16 @@ export default function PlatformLeadScoring() {
           <Card>
             <CardHeader>
               <CardTitle>Scoring Rules</CardTitle>
-              <CardDescription>Configure criteria and point values for lead scoring</CardDescription>
+              <CardDescription>
+                Configure criteria and point values for lead scoring
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
                 <TabsList className="mb-4">
                   <TabsTrigger value="all">All ({stats.totalRules})</TabsTrigger>
                   {Object.entries(CATEGORIES).map(([key, config]) => {
-                    const count = rules.filter(r => r.category === key).length;
+                    const count = rules.filter((r) => r.category === key).length;
                     return (
                       <TabsTrigger key={key} value={key}>
                         {config.label} ({count})
@@ -692,7 +695,10 @@ export default function PlatformLeadScoring() {
                       <TableBody>
                         {filteredRules.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            <TableCell
+                              colSpan={7}
+                              className="text-center py-8 text-muted-foreground"
+                            >
                               No scoring rules found. Create your first rule to get started.
                             </TableCell>
                           </TableRow>
@@ -716,9 +722,11 @@ export default function PlatformLeadScoring() {
                               </TableCell>
                               <TableCell>
                                 <div className="text-sm">
-                                  <span className="font-medium">{rule.criteriaField}</span>
-                                  {' '}{rule.operator}{' '}
-                                  <span className="text-muted-foreground">{rule.criteriaValue}</span>
+                                  <span className="font-medium">{rule.criteriaField}</span>{' '}
+                                  {rule.operator}{' '}
+                                  <span className="text-muted-foreground">
+                                    {rule.criteriaValue}
+                                  </span>
                                 </div>
                               </TableCell>
                               <TableCell>
@@ -786,9 +794,7 @@ export default function PlatformLeadScoring() {
             <DialogTitle>
               {editingRule ? 'Edit Scoring Rule' : 'Create New Scoring Rule'}
             </DialogTitle>
-            <DialogDescription>
-              Define criteria and point values for lead scoring
-            </DialogDescription>
+            <DialogDescription>Define criteria and point values for lead scoring</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmitRule} className="space-y-6">
@@ -810,7 +816,9 @@ export default function PlatformLeadScoring() {
                   <Textarea
                     id="description"
                     value={ruleFormData.description}
-                    onChange={(e) => setRuleFormData({ ...ruleFormData, description: e.target.value })}
+                    onChange={(e) =>
+                      setRuleFormData({ ...ruleFormData, description: e.target.value })
+                    }
                     placeholder="Brief description of this rule..."
                     rows={2}
                   />
@@ -820,7 +828,9 @@ export default function PlatformLeadScoring() {
                   <Label htmlFor="category">Category *</Label>
                   <Select
                     value={ruleFormData.category}
-                    onValueChange={(value) => setRuleFormData({ ...ruleFormData, category: value, criteriaField: '' })}
+                    onValueChange={(value) =>
+                      setRuleFormData({ ...ruleFormData, category: value, criteriaField: '' })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -839,17 +849,21 @@ export default function PlatformLeadScoring() {
                   <Label htmlFor="criteriaField">Field *</Label>
                   <Select
                     value={ruleFormData.criteriaField}
-                    onValueChange={(value) => setRuleFormData({ ...ruleFormData, criteriaField: value })}
+                    onValueChange={(value) =>
+                      setRuleFormData({ ...ruleFormData, criteriaField: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select field..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES[ruleFormData.category as keyof typeof CATEGORIES]?.fields.map((field) => (
-                        <SelectItem key={field.value} value={field.value}>
-                          {field.label}
-                        </SelectItem>
-                      ))}
+                      {CATEGORIES[ruleFormData.category as keyof typeof CATEGORIES]?.fields.map(
+                        (field) => (
+                          <SelectItem key={field.value} value={field.value}>
+                            {field.label}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -878,7 +892,9 @@ export default function PlatformLeadScoring() {
                   <Input
                     id="criteriaValue"
                     value={ruleFormData.criteriaValue}
-                    onChange={(e) => setRuleFormData({ ...ruleFormData, criteriaValue: e.target.value })}
+                    onChange={(e) =>
+                      setRuleFormData({ ...ruleFormData, criteriaValue: e.target.value })
+                    }
                     placeholder="e.g., 1000 or Enterprise"
                     required
                   />
@@ -891,7 +907,9 @@ export default function PlatformLeadScoring() {
                     type="number"
                     min="0"
                     value={ruleFormData.scorePoints}
-                    onChange={(e) => setRuleFormData({ ...ruleFormData, scorePoints: e.target.value })}
+                    onChange={(e) =>
+                      setRuleFormData({ ...ruleFormData, scorePoints: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -912,7 +930,9 @@ export default function PlatformLeadScoring() {
                   <Switch
                     id="isActive"
                     checked={ruleFormData.isActive}
-                    onCheckedChange={(checked) => setRuleFormData({ ...ruleFormData, isActive: checked })}
+                    onCheckedChange={(checked) =>
+                      setRuleFormData({ ...ruleFormData, isActive: checked })
+                    }
                   />
                   <Label htmlFor="isActive">Active</Label>
                 </div>
@@ -923,7 +943,10 @@ export default function PlatformLeadScoring() {
               <Button type="button" variant="outline" onClick={() => setIsRuleDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createRuleMutation.isPending || updateRuleMutation.isPending}>
+              <Button
+                type="submit"
+                disabled={createRuleMutation.isPending || updateRuleMutation.isPending}
+              >
                 {editingRule ? 'Update Rule' : 'Create Rule'}
               </Button>
             </DialogFooter>
@@ -938,9 +961,7 @@ export default function PlatformLeadScoring() {
             <DialogTitle>
               {editingModel ? 'Edit Scoring Model' : 'Create New Scoring Model'}
             </DialogTitle>
-            <DialogDescription>
-              Configure scoring model and threshold settings
-            </DialogDescription>
+            <DialogDescription>Configure scoring model and threshold settings</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmitModel} className="space-y-6">
@@ -961,7 +982,9 @@ export default function PlatformLeadScoring() {
                 <Textarea
                   id="modelDescription"
                   value={modelFormData.description}
-                  onChange={(e) => setModelFormData({ ...modelFormData, description: e.target.value })}
+                  onChange={(e) =>
+                    setModelFormData({ ...modelFormData, description: e.target.value })
+                  }
                   placeholder="Brief description..."
                   rows={2}
                 />
@@ -972,7 +995,9 @@ export default function PlatformLeadScoring() {
                   <Switch
                     id="modelActive"
                     checked={modelFormData.isActive}
-                    onCheckedChange={(checked) => setModelFormData({ ...modelFormData, isActive: checked })}
+                    onCheckedChange={(checked) =>
+                      setModelFormData({ ...modelFormData, isActive: checked })
+                    }
                   />
                   <Label htmlFor="modelActive">Active</Label>
                 </div>
@@ -980,7 +1005,9 @@ export default function PlatformLeadScoring() {
                   <Switch
                     id="modelDefault"
                     checked={modelFormData.isDefault}
-                    onCheckedChange={(checked) => setModelFormData({ ...modelFormData, isDefault: checked })}
+                    onCheckedChange={(checked) =>
+                      setModelFormData({ ...modelFormData, isDefault: checked })
+                    }
                   />
                   <Label htmlFor="modelDefault">Default Model</Label>
                 </div>
@@ -996,7 +1023,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.gradeA}
-                      onChange={(e) => setModelFormData({ ...modelFormData, gradeA: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, gradeA: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -1007,7 +1036,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.gradeB}
-                      onChange={(e) => setModelFormData({ ...modelFormData, gradeB: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, gradeB: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -1018,7 +1049,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.gradeC}
-                      onChange={(e) => setModelFormData({ ...modelFormData, gradeC: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, gradeC: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -1029,7 +1062,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.gradeD}
-                      onChange={(e) => setModelFormData({ ...modelFormData, gradeD: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, gradeD: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -1046,7 +1081,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.tierHot}
-                      onChange={(e) => setModelFormData({ ...modelFormData, tierHot: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, tierHot: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -1057,7 +1094,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.tierWarm}
-                      onChange={(e) => setModelFormData({ ...modelFormData, tierWarm: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, tierWarm: e.target.value })
+                      }
                       required
                     />
                   </div>
@@ -1068,7 +1107,9 @@ export default function PlatformLeadScoring() {
                       type="number"
                       min="0"
                       value={modelFormData.tierCold}
-                      onChange={(e) => setModelFormData({ ...modelFormData, tierCold: e.target.value })}
+                      onChange={(e) =>
+                        setModelFormData({ ...modelFormData, tierCold: e.target.value })
+                      }
                       required
                     />
                   </div>

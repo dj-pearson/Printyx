@@ -1,20 +1,20 @@
-import { db } from "./db";
+import { db } from './db';
 import {
   integrationCredentials,
   signatureRequests,
   signatureSigners,
   signatureDocuments,
   signatureAuditLogs,
-} from "@shared/schema";
+} from '@shared/schema';
 
 async function seedSignatureData() {
-  console.log("Starting e-signature data seeding...");
+  console.log('Starting e-signature data seeding...');
 
   try {
     // Get the first tenant for testing
     const tenants = await db.query.tenants.findMany({ limit: 1 });
     if (tenants.length === 0) {
-      console.error("No tenants found. Please seed tenants first.");
+      console.error('No tenants found. Please seed tenants first.');
       return;
     }
     const tenantId = tenants[0].id;
@@ -27,30 +27,30 @@ async function seedSignatureData() {
     });
 
     if (customers.length === 0) {
-      console.error("No customers found. Please seed business records first.");
+      console.error('No customers found. Please seed business records first.');
       return;
     }
 
     // ============================================================================
     // 1. CREATE INTEGRATION CREDENTIALS
     // ============================================================================
-    console.log("\n1. Creating integration credentials...");
+    console.log('\n1. Creating integration credentials...');
 
     const docusignCred = await db
       .insert(integrationCredentials)
       .values({
         tenantId,
-        provider: "docusign",
-        integrationName: "DocuSign Production",
-        status: "active",
-        apiKey: "demo_api_key_12345",
-        accountId: "acc_67890",
+        provider: 'docusign',
+        integrationName: 'DocuSign Production',
+        status: 'active',
+        apiKey: 'demo_api_key_12345',
+        accountId: 'acc_67890',
         sandboxMode: false,
         config: {
-          baseUrl: "https://www.docusign.net/restapi",
-          apiVersion: "v2.1",
+          baseUrl: 'https://www.docusign.net/restapi',
+          apiVersion: 'v2.1',
         },
-        healthStatus: "healthy",
+        healthStatus: 'healthy',
         lastHealthCheck: new Date(),
       })
       .returning();
@@ -59,18 +59,18 @@ async function seedSignatureData() {
       .insert(integrationCredentials)
       .values({
         tenantId,
-        provider: "adobe_sign",
-        integrationName: "Adobe Sign Development",
-        status: "active",
-        apiKey: "demo_adobe_key_54321",
-        accessToken: "demo_access_token",
-        refreshToken: "demo_refresh_token",
+        provider: 'adobe_sign',
+        integrationName: 'Adobe Sign Development',
+        status: 'active',
+        apiKey: 'demo_adobe_key_54321',
+        accessToken: 'demo_access_token',
+        refreshToken: 'demo_refresh_token',
         tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         sandboxMode: true,
         config: {
-          baseUrl: "https://api.na1.adobesign.com/api/rest/v6",
+          baseUrl: 'https://api.na1.adobesign.com/api/rest/v6',
         },
-        healthStatus: "healthy",
+        healthStatus: 'healthy',
         lastHealthCheck: new Date(),
       })
       .returning();
@@ -79,46 +79,46 @@ async function seedSignatureData() {
       .insert(integrationCredentials)
       .values({
         tenantId,
-        provider: "hellosign",
-        integrationName: "HelloSign Testing",
-        status: "inactive",
-        apiKey: "demo_hellosign_key",
+        provider: 'hellosign',
+        integrationName: 'HelloSign Testing',
+        status: 'inactive',
+        apiKey: 'demo_hellosign_key',
         sandboxMode: true,
         config: {
-          baseUrl: "https://api.hellosign.com/v3",
+          baseUrl: 'https://api.hellosign.com/v3',
         },
-        healthStatus: "unknown",
+        healthStatus: 'unknown',
       })
       .returning();
 
     console.log(
-      `  ✓ Created ${docusignCred.length + adobeSignCred.length + hellosignCred.length} integration credentials`
+      `  ✓ Created ${docusignCred.length + adobeSignCred.length + hellosignCred.length} integration credentials`,
     );
 
     // ============================================================================
     // 2. CREATE SIGNATURE REQUESTS
     // ============================================================================
-    console.log("\n2. Creating signature requests...");
+    console.log('\n2. Creating signature requests...');
 
     // Request 1: Active - Awaiting signatures
     const request1 = await db
       .insert(signatureRequests)
       .values({
         tenantId,
-        requestNumber: "SIG-2025-001",
-        title: "Lease Agreement - Canon MFP",
-        description: "3-year equipment lease agreement for Canon imageRUNNER ADVANCE DX C5870i",
+        requestNumber: 'SIG-2025-001',
+        title: 'Lease Agreement - Canon MFP',
+        description: '3-year equipment lease agreement for Canon imageRUNNER ADVANCE DX C5870i',
         customerId: customers[0].id,
         leaseId: null, // Will be linked once created
-        provider: "docusign",
+        provider: 'docusign',
         integrationId: docusignCred[0].id,
-        externalId: "env_docusign_abc123",
-        status: "sent",
+        externalId: 'env_docusign_abc123',
+        status: 'sent',
         sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
         expiresAt: new Date(Date.now() + 27 * 24 * 60 * 60 * 1000), // 27 days from now
-        emailSubject: "Please sign your equipment lease agreement",
+        emailSubject: 'Please sign your equipment lease agreement',
         emailMessage:
-          "Thank you for choosing our copier services. Please review and sign your lease agreement.",
+          'Thank you for choosing our copier services. Please review and sign your lease agreement.',
         reminderEnabled: true,
         reminderDays: 3,
         sequentialSigning: false,
@@ -133,20 +133,20 @@ async function seedSignatureData() {
       .insert(signatureRequests)
       .values({
         tenantId,
-        requestNumber: "SIG-2025-002",
-        title: "Service Contract - Annual Maintenance",
-        description: "Annual maintenance and service contract",
+        requestNumber: 'SIG-2025-002',
+        title: 'Service Contract - Annual Maintenance',
+        description: 'Annual maintenance and service contract',
         customerId: customers[1].id,
         contractId: null,
-        provider: "docusign",
+        provider: 'docusign',
         integrationId: docusignCred[0].id,
-        externalId: "env_docusign_xyz789",
-        status: "completed",
+        externalId: 'env_docusign_xyz789',
+        status: 'completed',
         sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
         completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
         expiresAt: new Date(Date.now() + 23 * 24 * 60 * 60 * 1000),
-        emailSubject: "Service Contract - Your Signature Required",
-        emailMessage: "Please review and sign your annual service contract.",
+        emailSubject: 'Service Contract - Your Signature Required',
+        emailMessage: 'Please review and sign your annual service contract.',
         reminderEnabled: true,
         reminderDays: 3,
         sequentialSigning: false,
@@ -161,16 +161,16 @@ async function seedSignatureData() {
       .insert(signatureRequests)
       .values({
         tenantId,
-        requestNumber: "SIG-2025-003",
-        title: "Equipment Purchase Agreement",
-        description: "Purchase agreement for Ricoh IM C6000",
+        requestNumber: 'SIG-2025-003',
+        title: 'Equipment Purchase Agreement',
+        description: 'Purchase agreement for Ricoh IM C6000',
         customerId: customers[2].id,
-        provider: "adobe_sign",
+        provider: 'adobe_sign',
         integrationId: adobeSignCred[0].id,
-        status: "draft",
+        status: 'draft',
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        emailSubject: "Purchase Agreement - Signature Needed",
-        emailMessage: "Please review and sign the equipment purchase agreement.",
+        emailSubject: 'Purchase Agreement - Signature Needed',
+        emailMessage: 'Please review and sign the equipment purchase agreement.',
         reminderEnabled: true,
         reminderDays: 5,
         sequentialSigning: true,
@@ -185,18 +185,18 @@ async function seedSignatureData() {
       .insert(signatureRequests)
       .values({
         tenantId,
-        requestNumber: "SIG-2025-004",
-        title: "Service Level Agreement - Premium Support",
-        description: "SLA for 24/7 premium support services",
+        requestNumber: 'SIG-2025-004',
+        title: 'Service Level Agreement - Premium Support',
+        description: 'SLA for 24/7 premium support services',
         customerId: customers[0].id,
-        provider: "docusign",
+        provider: 'docusign',
         integrationId: docusignCred[0].id,
-        externalId: "env_docusign_def456",
-        status: "sent",
+        externalId: 'env_docusign_def456',
+        status: 'sent',
         sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000), // 25 days ago
         expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // Expires in 5 days
-        emailSubject: "Service Level Agreement - Urgent Signature Required",
-        emailMessage: "This document will expire soon. Please sign at your earliest convenience.",
+        emailSubject: 'Service Level Agreement - Urgent Signature Required',
+        emailMessage: 'This document will expire soon. Please sign at your earliest convenience.',
         reminderEnabled: true,
         reminderDays: 2,
         sequentialSigning: false,
@@ -211,25 +211,25 @@ async function seedSignatureData() {
       .insert(signatureRequests)
       .values({
         tenantId,
-        requestNumber: "SIG-2025-005",
-        title: "Equipment Upgrade Proposal",
-        description: "Proposal to upgrade existing equipment",
+        requestNumber: 'SIG-2025-005',
+        title: 'Equipment Upgrade Proposal',
+        description: 'Proposal to upgrade existing equipment',
         customerId: customers[1].id,
-        provider: "docusign",
+        provider: 'docusign',
         integrationId: docusignCred[0].id,
-        externalId: "env_docusign_ghi789",
-        status: "declined",
+        externalId: 'env_docusign_ghi789',
+        status: 'declined',
         sentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         expiresAt: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-        emailSubject: "Equipment Upgrade Proposal",
-        emailMessage: "Please review our proposed equipment upgrade plan.",
+        emailSubject: 'Equipment Upgrade Proposal',
+        emailMessage: 'Please review our proposed equipment upgrade plan.',
         reminderEnabled: true,
         reminderDays: 3,
         sequentialSigning: false,
         totalSigners: 1,
         signersCompleted: 0,
         totalDocuments: 1,
-        declinedReason: "Customer decided to extend current lease instead of upgrading",
+        declinedReason: 'Customer decided to extend current lease instead of upgrading',
       })
       .returning();
 
@@ -238,7 +238,7 @@ async function seedSignatureData() {
     // ============================================================================
     // 3. CREATE SIGNATURE SIGNERS
     // ============================================================================
-    console.log("\n3. Creating signature signers...");
+    console.log('\n3. Creating signature signers...');
 
     const signers = [];
 
@@ -251,30 +251,30 @@ async function seedSignatureData() {
             tenantId,
             requestId: request1[0].id,
             signerOrder: 1,
-            signerType: "signer",
-            name: "John Smith",
-            email: "john.smith@acmecorp.com",
-            status: "signed",
+            signerType: 'signer',
+            name: 'John Smith',
+            email: 'john.smith@acmecorp.com',
+            status: 'signed',
             sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
             viewedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
             signedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            signatureMethod: "drawn",
-            ipAddress: "192.168.1.100",
+            signatureMethod: 'drawn',
+            ipAddress: '192.168.1.100',
           },
           {
             tenantId,
             requestId: request1[0].id,
             signerOrder: 2,
-            signerType: "signer",
-            name: "Sarah Johnson",
-            email: "sarah.johnson@acmecorp.com",
-            status: "viewed",
+            signerType: 'signer',
+            name: 'Sarah Johnson',
+            email: 'sarah.johnson@acmecorp.com',
+            status: 'viewed',
             sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
             viewedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-            ipAddress: "192.168.1.101",
+            ipAddress: '192.168.1.101',
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Signers for Request 2 (1 signer, completed)
@@ -286,18 +286,18 @@ async function seedSignatureData() {
             tenantId,
             requestId: request2[0].id,
             signerOrder: 1,
-            signerType: "signer",
-            name: "Michael Brown",
-            email: "mbrown@techstart.io",
-            status: "signed",
+            signerType: 'signer',
+            name: 'Michael Brown',
+            email: 'mbrown@techstart.io',
+            status: 'signed',
             sentAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
             viewedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
             signedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-            signatureMethod: "typed",
-            ipAddress: "10.0.1.50",
+            signatureMethod: 'typed',
+            ipAddress: '10.0.1.50',
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Signers for Request 3 (3 signers, draft so not sent yet)
@@ -309,31 +309,31 @@ async function seedSignatureData() {
             tenantId,
             requestId: request3[0].id,
             signerOrder: 1,
-            signerType: "signer",
-            name: "David Lee",
-            email: "dlee@globalprint.com",
-            status: "pending",
+            signerType: 'signer',
+            name: 'David Lee',
+            email: 'dlee@globalprint.com',
+            status: 'pending',
           },
           {
             tenantId,
             requestId: request3[0].id,
             signerOrder: 2,
-            signerType: "approver",
-            name: "Jennifer Martinez",
-            email: "jmartinez@globalprint.com",
-            status: "pending",
+            signerType: 'approver',
+            name: 'Jennifer Martinez',
+            email: 'jmartinez@globalprint.com',
+            status: 'pending',
           },
           {
             tenantId,
             requestId: request3[0].id,
             signerOrder: 3,
-            signerType: "signer",
-            name: "Robert Chen",
-            email: "rchen@globalprint.com",
-            status: "pending",
+            signerType: 'signer',
+            name: 'Robert Chen',
+            email: 'rchen@globalprint.com',
+            status: 'pending',
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Signers for Request 4 (2 signers, sent but not viewed yet)
@@ -345,24 +345,24 @@ async function seedSignatureData() {
             tenantId,
             requestId: request4[0].id,
             signerOrder: 1,
-            signerType: "signer",
-            name: "Lisa Anderson",
-            email: "landerson@premiumco.biz",
-            status: "sent",
+            signerType: 'signer',
+            name: 'Lisa Anderson',
+            email: 'landerson@premiumco.biz',
+            status: 'sent',
             sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request4[0].id,
             signerOrder: 2,
-            signerType: "signer",
-            name: "Thomas Wilson",
-            email: "twilson@premiumco.biz",
-            status: "sent",
+            signerType: 'signer',
+            name: 'Thomas Wilson',
+            email: 'twilson@premiumco.biz',
+            status: 'sent',
             sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Signers for Request 5 (1 signer, declined)
@@ -374,18 +374,18 @@ async function seedSignatureData() {
             tenantId,
             requestId: request5[0].id,
             signerOrder: 1,
-            signerType: "signer",
-            name: "Patricia Davis",
-            email: "pdavis@techstart.io",
-            status: "declined",
+            signerType: 'signer',
+            name: 'Patricia Davis',
+            email: 'pdavis@techstart.io',
+            status: 'declined',
             sentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
             viewedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
             declinedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
-            declineReason: "Prefer to extend current lease instead",
-            ipAddress: "10.0.1.51",
+            declineReason: 'Prefer to extend current lease instead',
+            ipAddress: '10.0.1.51',
           },
         ])
-        .returning())
+        .returning()),
     );
 
     console.log(`  ✓ Created ${signers.length} signature signers`);
@@ -393,7 +393,7 @@ async function seedSignatureData() {
     // ============================================================================
     // 4. CREATE SIGNATURE DOCUMENTS
     // ============================================================================
-    console.log("\n4. Creating signature documents...");
+    console.log('\n4. Creating signature documents...');
 
     const documents = [];
 
@@ -406,11 +406,11 @@ async function seedSignatureData() {
             tenantId,
             requestId: request1[0].id,
             documentOrder: 1,
-            documentName: "Lease Agreement - Canon MFP.pdf",
-            documentType: "pdf",
-            originalFileUrl: "https://storage.example.com/docs/lease-canon-original.pdf",
+            documentName: 'Lease Agreement - Canon MFP.pdf',
+            documentType: 'pdf',
+            originalFileUrl: 'https://storage.example.com/docs/lease-canon-original.pdf',
             fileSize: 245678,
-            status: "pending",
+            status: 'pending',
             totalFields: 6,
             completedFields: 3,
           },
@@ -418,16 +418,16 @@ async function seedSignatureData() {
             tenantId,
             requestId: request1[0].id,
             documentOrder: 2,
-            documentName: "Service Terms and Conditions.pdf",
-            documentType: "pdf",
-            originalFileUrl: "https://storage.example.com/docs/service-terms-original.pdf",
+            documentName: 'Service Terms and Conditions.pdf',
+            documentType: 'pdf',
+            originalFileUrl: 'https://storage.example.com/docs/service-terms-original.pdf',
             fileSize: 128934,
-            status: "pending",
+            status: 'pending',
             totalFields: 2,
             completedFields: 1,
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Documents for Request 2 (1 document, completed)
@@ -439,18 +439,18 @@ async function seedSignatureData() {
             tenantId,
             requestId: request2[0].id,
             documentOrder: 1,
-            documentName: "Annual Maintenance Contract.pdf",
-            documentType: "pdf",
-            originalFileUrl: "https://storage.example.com/docs/maintenance-contract-original.pdf",
-            signedFileUrl: "https://storage.example.com/docs/maintenance-contract-signed.pdf",
-            certificateUrl: "https://storage.example.com/docs/maintenance-contract-certificate.pdf",
+            documentName: 'Annual Maintenance Contract.pdf',
+            documentType: 'pdf',
+            originalFileUrl: 'https://storage.example.com/docs/maintenance-contract-original.pdf',
+            signedFileUrl: 'https://storage.example.com/docs/maintenance-contract-signed.pdf',
+            certificateUrl: 'https://storage.example.com/docs/maintenance-contract-certificate.pdf',
             fileSize: 189234,
-            status: "completed",
+            status: 'completed',
             totalFields: 4,
             completedFields: 4,
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Documents for Request 3 (1 document, draft)
@@ -462,16 +462,16 @@ async function seedSignatureData() {
             tenantId,
             requestId: request3[0].id,
             documentOrder: 1,
-            documentName: "Equipment Purchase Agreement - Ricoh.pdf",
-            documentType: "pdf",
-            originalFileUrl: "https://storage.example.com/docs/purchase-ricoh-original.pdf",
+            documentName: 'Equipment Purchase Agreement - Ricoh.pdf',
+            documentType: 'pdf',
+            originalFileUrl: 'https://storage.example.com/docs/purchase-ricoh-original.pdf',
             fileSize: 312456,
-            status: "pending",
+            status: 'pending',
             totalFields: 8,
             completedFields: 0,
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Documents for Request 4 (1 document)
@@ -483,16 +483,16 @@ async function seedSignatureData() {
             tenantId,
             requestId: request4[0].id,
             documentOrder: 1,
-            documentName: "Premium Support SLA.pdf",
-            documentType: "pdf",
-            originalFileUrl: "https://storage.example.com/docs/premium-sla-original.pdf",
+            documentName: 'Premium Support SLA.pdf',
+            documentType: 'pdf',
+            originalFileUrl: 'https://storage.example.com/docs/premium-sla-original.pdf',
             fileSize: 156789,
-            status: "pending",
+            status: 'pending',
             totalFields: 5,
             completedFields: 0,
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Documents for Request 5 (1 document, declined)
@@ -504,16 +504,16 @@ async function seedSignatureData() {
             tenantId,
             requestId: request5[0].id,
             documentOrder: 1,
-            documentName: "Equipment Upgrade Proposal.pdf",
-            documentType: "pdf",
-            originalFileUrl: "https://storage.example.com/docs/upgrade-proposal-original.pdf",
+            documentName: 'Equipment Upgrade Proposal.pdf',
+            documentType: 'pdf',
+            originalFileUrl: 'https://storage.example.com/docs/upgrade-proposal-original.pdf',
             fileSize: 278901,
-            status: "pending",
+            status: 'pending',
             totalFields: 3,
             completedFields: 0,
           },
         ])
-        .returning())
+        .returning()),
     );
 
     console.log(`  ✓ Created ${documents.length} signature documents`);
@@ -521,7 +521,7 @@ async function seedSignatureData() {
     // ============================================================================
     // 5. CREATE SIGNATURE AUDIT LOGS
     // ============================================================================
-    console.log("\n5. Creating signature audit logs...");
+    console.log('\n5. Creating signature audit logs...');
 
     const auditLogs = [];
 
@@ -533,72 +533,72 @@ async function seedSignatureData() {
           {
             tenantId,
             requestId: request1[0].id,
-            eventType: "request_created",
-            eventDescription: "Signature request created",
-            actorType: "user",
-            actorName: "Admin User",
-            actorEmail: "admin@printyx.com",
-            ipAddress: "192.168.1.1",
+            eventType: 'request_created',
+            eventDescription: 'Signature request created',
+            actorType: 'user',
+            actorName: 'Admin User',
+            actorEmail: 'admin@printyx.com',
+            ipAddress: '192.168.1.1',
             createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 - 1 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request1[0].id,
-            eventType: "sent",
-            eventDescription: "Signature request sent to signers",
-            actorType: "user",
-            actorName: "Admin User",
-            actorEmail: "admin@printyx.com",
-            ipAddress: "192.168.1.1",
+            eventType: 'sent',
+            eventDescription: 'Signature request sent to signers',
+            actorType: 'user',
+            actorName: 'Admin User',
+            actorEmail: 'admin@printyx.com',
+            ipAddress: '192.168.1.1',
             createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request1[0].id,
             signerId: signers[0].id,
-            eventType: "viewed",
-            eventDescription: "Document viewed by John Smith",
-            actorType: "signer",
-            actorName: "John Smith",
-            actorEmail: "john.smith@acmecorp.com",
-            ipAddress: "192.168.1.100",
+            eventType: 'viewed',
+            eventDescription: 'Document viewed by John Smith',
+            actorType: 'signer',
+            actorName: 'John Smith',
+            actorEmail: 'john.smith@acmecorp.com',
+            ipAddress: '192.168.1.100',
             createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request1[0].id,
             signerId: signers[0].id,
-            eventType: "signed",
-            eventDescription: "Document signed by John Smith",
-            actorType: "signer",
-            actorName: "John Smith",
-            actorEmail: "john.smith@acmecorp.com",
-            ipAddress: "192.168.1.100",
+            eventType: 'signed',
+            eventDescription: 'Document signed by John Smith',
+            actorType: 'signer',
+            actorName: 'John Smith',
+            actorEmail: 'john.smith@acmecorp.com',
+            ipAddress: '192.168.1.100',
             createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request1[0].id,
             signerId: signers[1].id,
-            eventType: "viewed",
-            eventDescription: "Document viewed by Sarah Johnson",
-            actorType: "signer",
-            actorName: "Sarah Johnson",
-            actorEmail: "sarah.johnson@acmecorp.com",
-            ipAddress: "192.168.1.101",
+            eventType: 'viewed',
+            eventDescription: 'Document viewed by Sarah Johnson',
+            actorType: 'signer',
+            actorName: 'Sarah Johnson',
+            actorEmail: 'sarah.johnson@acmecorp.com',
+            ipAddress: '192.168.1.101',
             createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request1[0].id,
-            eventType: "reminder_sent",
-            eventDescription: "Reminder sent to Sarah Johnson",
-            actorType: "system",
-            actorName: "System",
+            eventType: 'reminder_sent',
+            eventDescription: 'Reminder sent to Sarah Johnson',
+            actorType: 'system',
+            actorName: 'System',
             createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Audit logs for Request 2 (Completed)
@@ -609,60 +609,60 @@ async function seedSignatureData() {
           {
             tenantId,
             requestId: request2[0].id,
-            eventType: "request_created",
-            eventDescription: "Signature request created",
-            actorType: "user",
-            actorName: "Admin User",
-            actorEmail: "admin@printyx.com",
-            ipAddress: "192.168.1.1",
+            eventType: 'request_created',
+            eventDescription: 'Signature request created',
+            actorType: 'user',
+            actorName: 'Admin User',
+            actorEmail: 'admin@printyx.com',
+            ipAddress: '192.168.1.1',
             createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 - 1 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request2[0].id,
-            eventType: "sent",
-            eventDescription: "Signature request sent to signers",
-            actorType: "user",
-            actorName: "Admin User",
-            actorEmail: "admin@printyx.com",
-            ipAddress: "192.168.1.1",
+            eventType: 'sent',
+            eventDescription: 'Signature request sent to signers',
+            actorType: 'user',
+            actorName: 'Admin User',
+            actorEmail: 'admin@printyx.com',
+            ipAddress: '192.168.1.1',
             createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request2[0].id,
             signerId: signers[2].id,
-            eventType: "viewed",
-            eventDescription: "Document viewed by Michael Brown",
-            actorType: "signer",
-            actorName: "Michael Brown",
-            actorEmail: "mbrown@techstart.io",
-            ipAddress: "10.0.1.50",
+            eventType: 'viewed',
+            eventDescription: 'Document viewed by Michael Brown',
+            actorType: 'signer',
+            actorName: 'Michael Brown',
+            actorEmail: 'mbrown@techstart.io',
+            ipAddress: '10.0.1.50',
             createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 1 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request2[0].id,
             signerId: signers[2].id,
-            eventType: "signed",
-            eventDescription: "Document signed by Michael Brown",
-            actorType: "signer",
-            actorName: "Michael Brown",
-            actorEmail: "mbrown@techstart.io",
-            ipAddress: "10.0.1.50",
+            eventType: 'signed',
+            eventDescription: 'Document signed by Michael Brown',
+            actorType: 'signer',
+            actorName: 'Michael Brown',
+            actorEmail: 'mbrown@techstart.io',
+            ipAddress: '10.0.1.50',
             createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request2[0].id,
-            eventType: "completed",
-            eventDescription: "All signers have completed signing",
-            actorType: "system",
-            actorName: "System",
+            eventType: 'completed',
+            eventDescription: 'All signers have completed signing',
+            actorType: 'system',
+            actorName: 'System',
             createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
           },
         ])
-        .returning())
+        .returning()),
     );
 
     // Audit logs for Request 5 (Declined)
@@ -673,51 +673,51 @@ async function seedSignatureData() {
           {
             tenantId,
             requestId: request5[0].id,
-            eventType: "request_created",
-            eventDescription: "Signature request created",
-            actorType: "user",
-            actorName: "Admin User",
-            actorEmail: "admin@printyx.com",
-            ipAddress: "192.168.1.1",
+            eventType: 'request_created',
+            eventDescription: 'Signature request created',
+            actorType: 'user',
+            actorName: 'Admin User',
+            actorEmail: 'admin@printyx.com',
+            ipAddress: '192.168.1.1',
             createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000 - 1 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request5[0].id,
-            eventType: "sent",
-            eventDescription: "Signature request sent to signers",
-            actorType: "user",
-            actorName: "Admin User",
-            actorEmail: "admin@printyx.com",
-            ipAddress: "192.168.1.1",
+            eventType: 'sent',
+            eventDescription: 'Signature request sent to signers',
+            actorType: 'user',
+            actorName: 'Admin User',
+            actorEmail: 'admin@printyx.com',
+            ipAddress: '192.168.1.1',
             createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request5[0].id,
             signerId: signers[signers.length - 1].id,
-            eventType: "viewed",
-            eventDescription: "Document viewed by Patricia Davis",
-            actorType: "signer",
-            actorName: "Patricia Davis",
-            actorEmail: "pdavis@techstart.io",
-            ipAddress: "10.0.1.51",
+            eventType: 'viewed',
+            eventDescription: 'Document viewed by Patricia Davis',
+            actorType: 'signer',
+            actorName: 'Patricia Davis',
+            actorEmail: 'pdavis@techstart.io',
+            ipAddress: '10.0.1.51',
             createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
           },
           {
             tenantId,
             requestId: request5[0].id,
             signerId: signers[signers.length - 1].id,
-            eventType: "declined",
-            eventDescription: "Document declined by Patricia Davis",
-            actorType: "signer",
-            actorName: "Patricia Davis",
-            actorEmail: "pdavis@techstart.io",
-            ipAddress: "10.0.1.51",
+            eventType: 'declined',
+            eventDescription: 'Document declined by Patricia Davis',
+            actorType: 'signer',
+            actorName: 'Patricia Davis',
+            actorEmail: 'pdavis@techstart.io',
+            ipAddress: '10.0.1.51',
             createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000),
           },
         ])
-        .returning())
+        .returning()),
     );
 
     console.log(`  ✓ Created ${auditLogs.length} audit log entries`);
@@ -725,16 +725,16 @@ async function seedSignatureData() {
     // ============================================================================
     // SUMMARY
     // ============================================================================
-    console.log("\n✅ E-Signature data seeding completed successfully!");
-    console.log("\nSummary:");
+    console.log('\n✅ E-Signature data seeding completed successfully!');
+    console.log('\nSummary:');
     console.log(`  - Integration Credentials: 3 (DocuSign, Adobe Sign, HelloSign)`);
     console.log(`  - Signature Requests: 5 (draft, sent, completed, declined, expiring soon)`);
     console.log(`  - Signature Signers: ${signers.length}`);
     console.log(`  - Signature Documents: ${documents.length}`);
     console.log(`  - Audit Log Entries: ${auditLogs.length}`);
-    console.log("\n🎉 Ready for testing!");
+    console.log('\n🎉 Ready for testing!');
   } catch (error) {
-    console.error("Error seeding e-signature data:", error);
+    console.error('Error seeding e-signature data:', error);
     throw error;
   }
 }
@@ -744,10 +744,10 @@ export { seedSignatureData };
 // Run the seed function if executed directly
 seedSignatureData()
   .then(() => {
-    console.log("\nSeeding complete. Exiting...");
+    console.log('\nSeeding complete. Exiting...');
     process.exit(0);
   })
   .catch((error) => {
-    console.error("\nSeeding failed:", error);
+    console.error('\nSeeding failed:', error);
     process.exit(1);
   });

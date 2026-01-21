@@ -232,20 +232,12 @@ export default function PrintCostCalculator() {
           {currentStep === 1 && (
             <FleetInformationStep data={formData} onChange={handleDataChange} />
           )}
-          {currentStep === 2 && (
-            <OptionalCostsStep data={formData} onChange={handleDataChange} />
-          )}
-          {currentStep === 3 && (
-            <BusinessContextStep data={formData} onChange={handleDataChange} />
-          )}
+          {currentStep === 2 && <OptionalCostsStep data={formData} onChange={handleDataChange} />}
+          {currentStep === 3 && <BusinessContextStep data={formData} onChange={handleDataChange} />}
 
           {/* Navigation buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 1}
-            >
+            <Button variant="outline" onClick={handleBack} disabled={currentStep === 1}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
@@ -286,7 +278,9 @@ export default function PrintCostCalculator() {
       {/* Trust signals */}
       <div className="mt-8 text-center text-sm text-gray-500">
         <p>✓ Free analysis • ✓ No credit card required • ✓ Instant results</p>
-        <p className="mt-2">Join 892 print managers who've identified an average of $18K in annual savings</p>
+        <p className="mt-2">
+          Join 892 print managers who've identified an average of $18K in annual savings
+        </p>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 ## ⚠️ CRITICAL: Missing Migrations and Hooks
 
 ### Current Status
+
 - ✅ 35 Edge Functions deployed
 - ✅ Schema defined in `shared/schema.ts` (127+ tables)
 - ⚠️ **NO comprehensive migrations in Supabase**
@@ -28,7 +29,7 @@
    - `add-business-records-columns.sql`
    - `fix-tenant-id-camelcase-v2.sql`
    - etc.
-   
+
    These were manually applied patches, not proper migrations!
 
 ### Required Actions
@@ -54,6 +55,7 @@ npm run db:push
 **File to create**: `supabase/migrations/006_create_all_tables.sql`
 
 This should include:
+
 - All table definitions from `shared/schema.ts`
 - All enums
 - All indexes
@@ -101,6 +103,7 @@ psql "postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres" -c "\dt publi
 Based on `shared/schema.ts`, ensure ALL these tables exist:
 
 **Core Tables** (must exist):
+
 - [ ] tenants
 - [ ] users
 - [ ] roles
@@ -110,6 +113,7 @@ Based on `shared/schema.ts`, ensure ALL these tables exist:
 - [ ] user_settings
 
 **Business Tables**:
+
 - [ ] business_records
 - [ ] business_record_activities
 - [ ] lead_contacts
@@ -122,6 +126,7 @@ Based on `shared/schema.ts`, ensure ALL these tables exist:
 - [ ] quote_line_items
 
 **Operations Tables**:
+
 - [ ] service_tickets
 - [ ] service_ticket_updates
 - [ ] equipment
@@ -135,6 +140,7 @@ Based on `shared/schema.ts`, ensure ALL these tables exist:
 - [ ] technician_availability
 
 **Product Tables**:
+
 - [ ] product_models
 - [ ] product_accessories
 - [ ] accessory_model_compatibility
@@ -142,6 +148,7 @@ Based on `shared/schema.ts`, ensure ALL these tables exist:
 - [ ] product_pricing
 
 **Additional Tables**:
+
 - [ ] proposals
 - [ ] proposal_line_items
 - [ ] proposal_sections
@@ -191,12 +198,12 @@ Ensure `drizzle.config.ts` points to Supabase:
 
 ```typescript
 export default {
-  schema: "./shared/schema.ts",
-  out: "./supabase/migrations",
-  dialect: "postgresql",
+  schema: './shared/schema.ts',
+  out: './supabase/migrations',
+  dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || "postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres"
-  }
+    url: process.env.DATABASE_URL || 'postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres',
+  },
 };
 ```
 
@@ -232,11 +239,13 @@ After applying migrations:
 If migrations fail:
 
 1. Restore from backup:
+
 ```bash
 psql DATABASE_URL < backup_before_migration.sql
 ```
 
 2. Re-apply only RLS policies:
+
 ```bash
 psql DATABASE_URL < supabase/migrations/001_rls_policies.sql
 ```
@@ -246,4 +255,3 @@ psql DATABASE_URL < supabase/migrations/001_rls_policies.sql
 **Priority**: HIGH 🔴  
 **Status**: MIGRATION FRAMEWORK READY, NEEDS EXECUTION  
 **Next Step**: Apply migration 005, then verify all tables exist
-

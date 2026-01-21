@@ -25,10 +25,14 @@ export class UpdaterRegistry {
   /**
    * Register a new updater
    */
-  register(name: string, updater: BaseUpdater, options?: {
-    category?: string;
-    description?: string;
-  }): void {
+  register(
+    name: string,
+    updater: BaseUpdater,
+    options?: {
+      category?: string;
+      description?: string;
+    },
+  ): void {
     if (this.updaters.has(name)) {
       this.logger.warn(`Updater ${name} is already registered. Replacing existing updater.`);
     }
@@ -42,7 +46,7 @@ export class UpdaterRegistry {
     };
 
     this.updaters.set(name, entry);
-    
+
     this.logger.info(`Registered updater: ${name}`, {
       category: entry.category,
       description: entry.description,
@@ -77,7 +81,7 @@ export class UpdaterRegistry {
    * Get all registered updaters
    */
   getAll(): BaseUpdater[] {
-    return Array.from(this.updaters.values()).map(entry => entry.updater);
+    return Array.from(this.updaters.values()).map((entry) => entry.updater);
   }
 
   /**
@@ -99,8 +103,8 @@ export class UpdaterRegistry {
    */
   getByCategory(category: string): BaseUpdater[] {
     return Array.from(this.updaters.values())
-      .filter(entry => entry.category === category)
-      .map(entry => entry.updater);
+      .filter((entry) => entry.category === category)
+      .map((entry) => entry.updater);
   }
 
   /**
@@ -128,7 +132,7 @@ export class UpdaterRegistry {
       disabled: 0,
     };
 
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       // Count by category
       const category = entry.category || 'uncategorized';
       categories.set(category, (categories.get(category) || 0) + 1);
@@ -145,7 +149,7 @@ export class UpdaterRegistry {
       totalUpdaters: this.updaters.size,
       categories: Object.fromEntries(categories),
       statusCounts,
-      registrationDates: entries.map(entry => ({
+      registrationDates: entries.map((entry) => ({
         name: entry.name,
         registeredAt: entry.registeredAt,
       })),
@@ -157,8 +161,9 @@ export class UpdaterRegistry {
    */
   async executeAll(): Promise<Map<string, any>> {
     const results = new Map<string, any>();
-    const enabledUpdaters = Array.from(this.updaters.values())
-      .filter(entry => entry.updater.isEnabled());
+    const enabledUpdaters = Array.from(this.updaters.values()).filter((entry) =>
+      entry.updater.isEnabled(),
+    );
 
     this.logger.info(`Executing ${enabledUpdaters.length} enabled updaters`);
 
@@ -166,7 +171,7 @@ export class UpdaterRegistry {
       try {
         const result = await entry.updater.execute();
         results.set(entry.name, result);
-        
+
         this.logger.info(`Executed updater: ${entry.name}`, {
           success: result.success,
           recordsUpdated: result.recordsUpdated,
@@ -178,9 +183,9 @@ export class UpdaterRegistry {
           recordsUpdated: 0,
           executionTime: 0,
         };
-        
+
         results.set(entry.name, errorResult);
-        
+
         this.logger.error(`Failed to execute updater: ${entry.name}`, error);
       }
     }
@@ -223,7 +228,7 @@ export class UpdaterRegistry {
       try {
         const result = await entry.updater.execute();
         results.set(name, result);
-        
+
         this.logger.info(`Executed updater: ${name}`, {
           success: result.success,
           recordsUpdated: result.recordsUpdated,
@@ -235,9 +240,9 @@ export class UpdaterRegistry {
           recordsUpdated: 0,
           executionTime: 0,
         };
-        
+
         results.set(name, errorResult);
-        
+
         this.logger.error(`Failed to execute updater: ${name}`, error);
       }
     }
@@ -297,8 +302,8 @@ export class UpdaterRegistry {
    */
   getDetailedStatus() {
     const entries = Array.from(this.updaters.values());
-    
-    return entries.map(entry => ({
+
+    return entries.map((entry) => ({
       name: entry.name,
       category: entry.category,
       description: entry.description,
@@ -332,7 +337,7 @@ export class UpdaterRegistry {
     for (const entry of this.updaters.values()) {
       entry.updater.resetMetrics();
     }
-    
+
     this.logger.info('Reset metrics for all updaters');
   }
 

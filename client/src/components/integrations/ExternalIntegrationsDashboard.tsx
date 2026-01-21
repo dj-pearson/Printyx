@@ -1,56 +1,68 @@
-import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Settings, 
-  RefreshCw, 
-  CheckCircle, 
-  AlertTriangle, 
+import { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Settings,
+  RefreshCw,
+  CheckCircle,
+  AlertTriangle,
   XCircle,
   Database,
   Users,
   DollarSign,
   Activity,
   Clock,
-  Zap
-} from "lucide-react";
-import { useExternalIntegrations } from "@/hooks/useExternalIntegrations";
-import { useToast } from "@/hooks/use-toast";
+  Zap,
+} from 'lucide-react';
+import { useExternalIntegrations } from '@/hooks/useExternalIntegrations';
+import { useToast } from '@/hooks/use-toast';
 
 export function ExternalIntegrationsDashboard() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const integrations = useExternalIntegrations();
   const { toast } = useToast();
 
   const getHealthColor = (health: string) => {
     switch (health) {
-      case 'healthy': return 'text-green-600';
-      case 'warning': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'healthy':
+        return 'text-green-600';
+      case 'warning':
+        return 'text-yellow-600';
+      case 'error':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
   const getHealthIcon = (health: string) => {
     switch (health) {
-      case 'healthy': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case 'error': return <XCircle className="h-4 w-4 text-red-600" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
+      case 'healthy':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      case 'error':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-600" />;
     }
   };
 
   const handleBulkSync = async () => {
     try {
       await integrations.bulkSync.mutateAsync(['eautomate', 'salesforce', 'quickbooks']);
-      toast({ title: "Bulk sync initiated", description: "All integrations are syncing" });
+      toast({ title: 'Bulk sync initiated', description: 'All integrations are syncing' });
     } catch (error) {
-      toast({ title: "Sync failed", description: "Please check integration settings", variant: "destructive" });
+      toast({
+        title: 'Sync failed',
+        description: 'Please check integration settings',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -61,7 +73,9 @@ export function ExternalIntegrationsDashboard() {
         <h1 className="text-3xl font-bold">External Integrations</h1>
         <div className="flex gap-2">
           <Button onClick={handleBulkSync} disabled={integrations.bulkSync.isPending}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${integrations.bulkSync.isPending ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${integrations.bulkSync.isPending ? 'animate-spin' : ''}`}
+            />
             Sync All
           </Button>
         </div>
@@ -81,27 +95,29 @@ export function ExternalIntegrationsDashboard() {
                 </div>
                 {getHealthIcon(integration.health)}
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Status</span>
-                  <Badge variant={integration.connected ? "default" : "destructive"}>
-                    {integration.connected ? "Connected" : "Disconnected"}
+                  <Badge variant={integration.connected ? 'default' : 'destructive'}>
+                    {integration.connected ? 'Connected' : 'Disconnected'}
                   </Badge>
                 </div>
-                
+
                 <div className="flex justify-between text-sm">
                   <span>Records</span>
                   <span className="font-medium">{integration.recordCount.toLocaleString()}</span>
                 </div>
-                
+
                 <div className="flex justify-between text-sm">
                   <span>Last Sync</span>
                   <span className="text-muted-foreground">
-                    {integration.lastSync ? new Date(integration.lastSync).toLocaleDateString() : 'Never'}
+                    {integration.lastSync
+                      ? new Date(integration.lastSync).toLocaleDateString()
+                      : 'Never'}
                   </span>
                 </div>
-                
+
                 {integration.errorCount > 0 && (
                   <div className="flex justify-between text-sm text-red-600">
                     <span>Errors</span>
@@ -173,7 +189,7 @@ export function ExternalIntegrationsDashboard() {
                         }
                       />
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <Label htmlFor="equipment-sync">Equipment Sync</Label>
                       <Switch
@@ -275,7 +291,7 @@ export function ExternalIntegrationsDashboard() {
                         }
                       />
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <Label htmlFor="account-sync">Account Sync</Label>
                       <Switch
@@ -338,7 +354,13 @@ export function ExternalIntegrationsDashboard() {
 
               <div className="flex gap-2">
                 <Button
-                  onClick={() => integrations.salesforce.triggerSync.mutate(['leads', 'accounts', 'opportunities'])}
+                  onClick={() =>
+                    integrations.salesforce.triggerSync.mutate([
+                      'leads',
+                      'accounts',
+                      'opportunities',
+                    ])
+                  }
                   disabled={integrations.salesforce.triggerSync.isPending}
                 >
                   <Zap className="h-4 w-4 mr-2" />
@@ -371,7 +393,7 @@ export function ExternalIntegrationsDashboard() {
                         }
                       />
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <Label htmlFor="qb-invoice-sync">Invoice Sync</Label>
                       <Switch
@@ -413,7 +435,9 @@ export function ExternalIntegrationsDashboard() {
                         id="qb-auto-reconciliation"
                         checked={integrations.quickBooks.config.data.automaticReconciliation}
                         onCheckedChange={(checked) =>
-                          integrations.quickBooks.updateConfig.mutate({ automaticReconciliation: checked })
+                          integrations.quickBooks.updateConfig.mutate({
+                            automaticReconciliation: checked,
+                          })
                         }
                       />
                     </div>
@@ -424,7 +448,9 @@ export function ExternalIntegrationsDashboard() {
                         id="qb-duplicate-detection"
                         checked={integrations.quickBooks.config.data.duplicateDetection}
                         onCheckedChange={(checked) =>
-                          integrations.quickBooks.updateConfig.mutate({ duplicateDetection: checked })
+                          integrations.quickBooks.updateConfig.mutate({
+                            duplicateDetection: checked,
+                          })
                         }
                       />
                     </div>
@@ -434,7 +460,13 @@ export function ExternalIntegrationsDashboard() {
 
               <div className="flex gap-2">
                 <Button
-                  onClick={() => integrations.quickBooks.triggerSync.mutate(['customers', 'invoices', 'payments'])}
+                  onClick={() =>
+                    integrations.quickBooks.triggerSync.mutate([
+                      'customers',
+                      'invoices',
+                      'payments',
+                    ])
+                  }
                   disabled={integrations.quickBooks.triggerSync.isPending}
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />

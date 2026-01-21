@@ -3,6 +3,7 @@
 ## What This Does
 
 This system prevents database errors by:
+
 1. **Extracting** your database schema from SQL files
 2. **Validating** that your code only uses columns that actually exist
 3. **Suggesting** fixes for typos and missing columns
@@ -16,6 +17,7 @@ npx tsx tools/schema-validation/extract-schema.ts
 ```
 
 **Output:**
+
 - `schema-definition.json` - Complete database schema
 - `schema-types.ts` - TypeScript types for type-safe queries
 
@@ -26,6 +28,7 @@ npx tsx tools/schema-validation/validate-code.ts
 ```
 
 **Output:**
+
 - Console report of all invalid column references
 - Suggestions for fixes
 
@@ -36,6 +39,7 @@ npx tsx tools/schema-validation/generate-report.ts
 ```
 
 **Output:**
+
 - `VALIDATION_REPORT.md` - Comprehensive markdown report
 - Grouped by: invalid column, file, table
 - Top issues highlighted
@@ -70,6 +74,7 @@ This runs both extract and validate in one command.
 The system caught these real issues in your codebase:
 
 ### ❌ Issue: Non-existent Column
+
 ```typescript
 // ❌ BEFORE (from useSupabaseAuth.ts)
 .select('id, email, role, access_scope, is_platform_user')
@@ -83,6 +88,7 @@ The system caught these real issues in your codebase:
 ```
 
 ### ❌ Issue: Wrong Column Name
+
 ```typescript
 // ❌ BEFORE
 .order('customer_since', { ascending: false })
@@ -104,6 +110,7 @@ Based on your latest scan:
 - **211 unique invalid columns**
 
 Top invalid columns:
+
 1. `company_name` - Should use nested `companies.business_name`
 2. `access_scope` - Column doesn't exist
 3. `is_platform_user` - Column doesn't exist
@@ -166,6 +173,7 @@ tools/schema-validation/
 ## Support
 
 See the full README.md for:
+
 - Detailed usage instructions
 - Type-safe query examples
 - CI/CD integration

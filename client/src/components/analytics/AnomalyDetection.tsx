@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  AlertTriangle, 
-  TrendingUp, 
-  TrendingDown, 
-  Clock, 
+import {
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Clock,
   DollarSign,
   Users,
   Wrench,
@@ -17,7 +17,7 @@ import {
   ArrowRight,
   Activity,
   BarChart3,
-  Eye
+  Eye,
 } from 'lucide-react';
 
 interface Anomaly {
@@ -69,9 +69,9 @@ const mockAnomalies: Anomaly[] = [
       'Review recent changes in sales process',
       'Analyze competitor activity',
       'Check lead quality sources',
-      'Schedule sales team training session'
+      'Schedule sales team training session',
     ],
-    drillDownUrl: '/quotes?filter=conversion_analysis'
+    drillDownUrl: '/quotes?filter=conversion_analysis',
   },
   {
     id: '2',
@@ -91,9 +91,9 @@ const mockAnomalies: Anomaly[] = [
       'Immediate capacity assessment needed',
       'Check for equipment recalls or known issues',
       'Consider temporary contractor support',
-      'Escalate to manufacturer technical support'
+      'Escalate to manufacturer technical support',
     ],
-    drillDownUrl: '/service-hub?filter=equipment_type&value=canon_ir_adv'
+    drillDownUrl: '/service-hub?filter=equipment_type&value=canon_ir_adv',
   },
   {
     id: '3',
@@ -113,9 +113,9 @@ const mockAnomalies: Anomaly[] = [
       'Review customer payment terms',
       'Implement proactive collections process',
       'Analyze payment pattern by customer segment',
-      'Consider early payment incentives'
+      'Consider early payment incentives',
     ],
-    drillDownUrl: '/advanced-billing?filter=payment_delays'
+    drillDownUrl: '/advanced-billing?filter=payment_delays',
   },
   {
     id: '4',
@@ -135,9 +135,9 @@ const mockAnomalies: Anomaly[] = [
       'Review demand forecasting accuracy',
       'Implement dynamic reorder points',
       'Consider vendor managed inventory',
-      'Analyze customer usage patterns'
+      'Analyze customer usage patterns',
     ],
-    drillDownUrl: '/supplies?filter=turnover_analysis'
+    drillDownUrl: '/supplies?filter=turnover_analysis',
   },
   {
     id: '5',
@@ -157,10 +157,10 @@ const mockAnomalies: Anomaly[] = [
       'Verify meter reading collection methods',
       'Contact affected customers for validation',
       'Check for equipment malfunctions',
-      'Review seasonal usage patterns'
+      'Review seasonal usage patterns',
     ],
-    drillDownUrl: '/meter-readings?filter=commercial_decline'
-  }
+    drillDownUrl: '/meter-readings?filter=commercial_decline',
+  },
 ];
 
 const mockPatterns: AnomalyPattern[] = [
@@ -173,7 +173,7 @@ const mockPatterns: AnomalyPattern[] = [
     severity: 'low',
     category: 'Sales Behavior',
     pattern: 'Quarterly',
-    predictedNext: '2025-09-30'
+    predictedNext: '2025-09-30',
   },
   {
     id: '2',
@@ -184,7 +184,7 @@ const mockPatterns: AnomalyPattern[] = [
     severity: 'medium',
     category: 'Service Demand',
     pattern: 'Holiday-driven',
-    predictedNext: '2025-09-03'
+    predictedNext: '2025-09-03',
   },
   {
     id: '3',
@@ -195,8 +195,8 @@ const mockPatterns: AnomalyPattern[] = [
     severity: 'high',
     category: 'System Performance',
     pattern: 'Monthly',
-    predictedNext: '2025-09-01'
-  }
+    predictedNext: '2025-09-01',
+  },
 ];
 
 export default function AnomalyDetection() {
@@ -205,34 +205,48 @@ export default function AnomalyDetection() {
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
-      case 'low': return 'default';
-      case 'medium': return 'secondary';
-      case 'high': return 'destructive';
-      case 'critical': return 'destructive';
-      default: return 'outline';
+      case 'low':
+        return 'default';
+      case 'medium':
+        return 'secondary';
+      case 'high':
+        return 'destructive';
+      case 'critical':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case 'high': return <AlertTriangle className="h-4 w-4 text-orange-600" />;
-      case 'medium': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      default: return <AlertTriangle className="h-4 w-4 text-blue-600" />;
+      case 'critical':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      case 'high':
+        return <AlertTriangle className="h-4 w-4 text-orange-600" />;
+      case 'medium':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <AlertTriangle className="h-4 w-4 text-blue-600" />;
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'sales': return <TrendingUp className="h-4 w-4" />;
-      case 'service': return <Wrench className="h-4 w-4" />;
-      case 'financial': return <DollarSign className="h-4 w-4" />;
-      case 'operational': return <Package className="h-4 w-4" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'sales':
+        return <TrendingUp className="h-4 w-4" />;
+      case 'service':
+        return <Wrench className="h-4 w-4" />;
+      case 'financial':
+        return <DollarSign className="h-4 w-4" />;
+      case 'operational':
+        return <Package className="h-4 w-4" />;
+      default:
+        return <Activity className="h-4 w-4" />;
     }
   };
 
-  const filteredAnomalies = mockAnomalies.filter(anomaly => {
+  const filteredAnomalies = mockAnomalies.filter((anomaly) => {
     const severityMatch = selectedSeverity === 'all' || anomaly.severity === selectedSeverity;
     const typeMatch = selectedType === 'all' || anomaly.type === selectedType;
     return severityMatch && typeMatch;
@@ -327,9 +341,7 @@ export default function AnomalyDetection() {
                       {getSeverityIcon(anomaly.severity)}
                       <div>
                         <CardTitle className="text-lg">{anomaly.title}</CardTitle>
-                        <CardDescription className="mt-1">
-                          {anomaly.description}
-                        </CardDescription>
+                        <CardDescription className="mt-1">{anomaly.description}</CardDescription>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -355,7 +367,9 @@ export default function AnomalyDetection() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Deviation</p>
-                      <p className={`font-semibold ${anomaly.deviation > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <p
+                        className={`font-semibold ${anomaly.deviation > 0 ? 'text-red-600' : 'text-green-600'}`}
+                      >
                         {formatDeviation(anomaly.deviation)}
                       </p>
                     </div>
@@ -409,9 +423,7 @@ export default function AnomalyDetection() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{pattern.name}</CardTitle>
-                    <Badge variant={getSeverityBadge(pattern.severity)}>
-                      {pattern.severity}
-                    </Badge>
+                    <Badge variant={getSeverityBadge(pattern.severity)}>{pattern.severity}</Badge>
                   </div>
                   <CardDescription>{pattern.description}</CardDescription>
                 </CardHeader>
@@ -427,16 +439,19 @@ export default function AnomalyDetection() {
                         <p className="font-semibold">{pattern.pattern}</p>
                       </div>
                     </div>
-                    
+
                     <div className="text-sm">
                       <p className="text-muted-foreground">Last Occurrence</p>
-                      <p className="font-semibold">{new Date(pattern.lastOccurrence).toLocaleDateString()}</p>
+                      <p className="font-semibold">
+                        {new Date(pattern.lastOccurrence).toLocaleDateString()}
+                      </p>
                     </div>
-                    
+
                     {pattern.predictedNext && (
                       <div className="p-2 bg-blue-50 rounded border border-blue-200">
                         <p className="text-sm text-blue-800">
-                          <strong>Predicted Next:</strong> {new Date(pattern.predictedNext).toLocaleDateString()}
+                          <strong>Predicted Next:</strong>{' '}
+                          {new Date(pattern.predictedNext).toLocaleDateString()}
                         </p>
                       </div>
                     )}
@@ -467,7 +482,12 @@ export default function AnomalyDetection() {
                         <span className="text-sm">Low sensitivity (±30% deviation)</span>
                       </label>
                       <label className="flex items-center space-x-2">
-                        <input type="radio" name="sales-sensitivity" value="medium" defaultChecked />
+                        <input
+                          type="radio"
+                          name="sales-sensitivity"
+                          value="medium"
+                          defaultChecked
+                        />
                         <span className="text-sm">Medium sensitivity (±20% deviation)</span>
                       </label>
                       <label className="flex items-center space-x-2">
@@ -483,9 +503,7 @@ export default function AnomalyDetection() {
             <Card>
               <CardHeader>
                 <CardTitle>Alert Preferences</CardTitle>
-                <CardDescription>
-                  Choose how and when you want to be notified
-                </CardDescription>
+                <CardDescription>Choose how and when you want to be notified</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">

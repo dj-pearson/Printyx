@@ -1,8 +1,8 @@
-import * as React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import * as React from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,14 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+} from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,11 +30,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   FileText,
   Plus,
@@ -51,9 +45,9 @@ import {
   Star,
   StarOff,
   Clock,
-} from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export interface QuoteTemplate {
   id: string;
@@ -98,7 +92,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
       const existing = localStorage.getItem('quoteTemplates');
       const templates: QuoteTemplate[] = existing ? JSON.parse(existing) : [];
 
-      const index = templates.findIndex(t => t.id === template.id);
+      const index = templates.findIndex((t) => t.id === template.id);
       if (index >= 0) {
         templates[index] = template;
       } else {
@@ -123,7 +117,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
     mutationFn: async (templateId: string) => {
       const existing = localStorage.getItem('quoteTemplates');
       const templates: QuoteTemplate[] = existing ? JSON.parse(existing) : [];
-      const filtered = templates.filter(t => t.id !== templateId);
+      const filtered = templates.filter((t) => t.id !== templateId);
       localStorage.setItem('quoteTemplates', JSON.stringify(filtered));
       return templateId;
     },
@@ -143,7 +137,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
     mutationFn: async (templateId: string) => {
       const existing = localStorage.getItem('quoteTemplates');
       const templates: QuoteTemplate[] = existing ? JSON.parse(existing) : [];
-      const template = templates.find(t => t.id === templateId);
+      const template = templates.find((t) => t.id === templateId);
       if (template) {
         template.isFavorite = !template.isFavorite;
         localStorage.setItem('quoteTemplates', JSON.stringify(templates));
@@ -159,7 +153,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
     // Increment usage count
     const existing = localStorage.getItem('quoteTemplates');
     const templates: QuoteTemplate[] = existing ? JSON.parse(existing) : [];
-    const foundTemplate = templates.find(t => t.id === template.id);
+    const foundTemplate = templates.find((t) => t.id === template.id);
     if (foundTemplate) {
       foundTemplate.usageCount = (foundTemplate.usageCount || 0) + 1;
       localStorage.setItem('quoteTemplates', JSON.stringify(templates));
@@ -226,8 +220,8 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
                   <Card
                     key={template.id}
                     className={cn(
-                      "cursor-pointer transition-all hover:shadow-md",
-                      template.isFavorite && "border-yellow-400 border-2"
+                      'cursor-pointer transition-all hover:shadow-md',
+                      template.isFavorite && 'border-yellow-400 border-2',
                     )}
                   >
                     <CardHeader className="pb-3">
@@ -313,10 +307,7 @@ export function QuoteTemplates({ onApplyTemplate, className }: QuoteTemplatesPro
                           </span>
                         </div>
                       </div>
-                      <Button
-                        className="w-full mt-4"
-                        onClick={() => handleApplyTemplate(template)}
-                      >
+                      <Button className="w-full mt-4" onClick={() => handleApplyTemplate(template)}>
                         Use This Template
                       </Button>
                     </CardContent>

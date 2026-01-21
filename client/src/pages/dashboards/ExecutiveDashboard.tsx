@@ -3,15 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import {
-  RefreshCw,
-  DollarSign,
-  TrendingUp,
-  Users,
-  Target,
-  Percent,
-  Activity,
-} from 'lucide-react';
+import { RefreshCw, DollarSign, TrendingUp, Users, Target, Percent, Activity } from 'lucide-react';
 import { format, startOfQuarter, endOfQuarter } from 'date-fns';
 
 interface DateRange {
@@ -45,9 +37,7 @@ export default function ExecutiveDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Executive Dashboard</h1>
-          <p className="text-muted-foreground">
-            Strategic KPIs and business performance metrics
-          </p>
+          <p className="text-muted-foreground">Strategic KPIs and business performance metrics</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
@@ -69,7 +59,8 @@ export default function ExecutiveDashboard() {
               ${((data?.financial?.totalRevenue || 0) / 1000000).toFixed(2)}M
             </div>
             <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3" /> {data?.financial?.revenueGrowth?.toFixed(1)}% growth
+              <TrendingUp className="inline h-3 w-3" /> {data?.financial?.revenueGrowth?.toFixed(1)}
+              % growth
             </p>
           </CardContent>
         </Card>
@@ -80,9 +71,7 @@ export default function ExecutiveDashboard() {
             <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data?.financial?.grossMargin?.toFixed(1)}%
-            </div>
+            <div className="text-2xl font-bold">{data?.financial?.grossMargin?.toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">
               Net Profit: ${((data?.financial?.netProfit || 0) / 1000000).toFixed(2)}M
             </p>
@@ -99,7 +88,8 @@ export default function ExecutiveDashboard() {
               {data?.operational?.customerCount?.toLocaleString() || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              <TrendingUp className="inline h-3 w-3" /> {data?.operational?.customerGrowth?.toFixed(1)}% growth
+              <TrendingUp className="inline h-3 w-3" />{' '}
+              {data?.operational?.customerGrowth?.toFixed(1)}% growth
             </p>
           </CardContent>
         </Card>
@@ -110,9 +100,7 @@ export default function ExecutiveDashboard() {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {data?.strategic?.ltvCacRatio?.toFixed(1)}x
-            </div>
+            <div className="text-2xl font-bold">{data?.strategic?.ltvCacRatio?.toFixed(1)}x</div>
             <p className="text-xs text-muted-foreground">
               {data?.strategic?.monthsToRecover} months to recover
             </p>
@@ -183,7 +171,9 @@ export default function ExecutiveDashboard() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Gross Margin</span>
-                        <span className="font-medium">{data?.financial?.grossMargin?.toFixed(1)}%</span>
+                        <span className="font-medium">
+                          {data?.financial?.grossMargin?.toFixed(1)}%
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
@@ -196,20 +186,28 @@ export default function ExecutiveDashboard() {
                       <div className="flex justify-between text-sm">
                         <span>Net Margin</span>
                         <span className="font-medium">
-                          {((data?.financial?.netProfit / data?.financial?.totalRevenue) * 100).toFixed(1)}%
+                          {(
+                            (data?.financial?.netProfit / data?.financial?.totalRevenue) *
+                            100
+                          ).toFixed(1)}
+                          %
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${(data?.financial?.netProfit / data?.financial?.totalRevenue) * 100}%` }}
+                          style={{
+                            width: `${(data?.financial?.netProfit / data?.financial?.totalRevenue) * 100}%`,
+                          }}
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Revenue Growth</span>
-                        <span className="font-medium">{data?.financial?.revenueGrowth?.toFixed(1)}%</span>
+                        <span className="font-medium">
+                          {data?.financial?.revenueGrowth?.toFixed(1)}%
+                        </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
@@ -239,15 +237,21 @@ export default function ExecutiveDashboard() {
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-sm">Total Customers</span>
-                      <span className="font-bold">{data?.operational?.customerCount?.toLocaleString()}</span>
+                      <span className="font-bold">
+                        {data?.operational?.customerCount?.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Customer Growth</span>
-                      <span className="font-bold text-green-600">+{data?.operational?.customerGrowth?.toFixed(1)}%</span>
+                      <span className="font-bold text-green-600">
+                        +{data?.operational?.customerGrowth?.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Churn Rate</span>
-                      <span className="font-bold text-red-600">{data?.operational?.customerChurn?.toFixed(1)}%</span>
+                      <span className="font-bold text-red-600">
+                        {data?.operational?.customerChurn?.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
                 )}
@@ -320,7 +324,9 @@ export default function ExecutiveDashboard() {
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm font-medium">LTV / CAC Ratio</span>
-                      <span className="text-lg font-bold text-green-600">{data?.strategic?.ltvCacRatio?.toFixed(1)}x</span>
+                      <span className="text-lg font-bold text-green-600">
+                        {data?.strategic?.ltvCacRatio?.toFixed(1)}x
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm font-medium">Months to Recover CAC</span>
@@ -343,14 +349,18 @@ export default function ExecutiveDashboard() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center p-3 border rounded-lg">
                       <span className="text-sm font-medium">Market Share</span>
-                      <span className="text-lg font-bold">{data?.strategic?.marketShare?.toFixed(1)}%</span>
+                      <span className="text-lg font-bold">
+                        {data?.strategic?.marketShare?.toFixed(1)}%
+                      </span>
                     </div>
                     <div className="p-3 border rounded-lg">
                       <p className="text-sm text-muted-foreground">
-                        Health Status: <span className="font-medium">{data?.insights?.overallHealth}</span>
+                        Health Status:{' '}
+                        <span className="font-medium">{data?.insights?.overallHealth}</span>
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Growth Trajectory: <span className="font-medium">{data?.insights?.growthTrajectory}</span>
+                        Growth Trajectory:{' '}
+                        <span className="font-medium">{data?.insights?.growthTrajectory}</span>
                       </p>
                     </div>
                   </div>
@@ -375,12 +385,20 @@ export default function ExecutiveDashboard() {
                     <div key={kpi.name} className="p-4 border rounded-lg">
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-medium">{kpi.name}</span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          kpi.status === 'green' ? 'bg-green-100 text-green-800' :
-                          kpi.status === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {kpi.status === 'green' ? 'On Track' : kpi.status === 'yellow' ? 'At Risk' : 'Off Track'}
+                        <span
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            kpi.status === 'green'
+                              ? 'bg-green-100 text-green-800'
+                              : kpi.status === 'yellow'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {kpi.status === 'green'
+                            ? 'On Track'
+                            : kpi.status === 'yellow'
+                              ? 'At Risk'
+                              : 'Off Track'}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm mb-2">
@@ -390,9 +408,11 @@ export default function ExecutiveDashboard() {
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${
-                            kpi.status === 'green' ? 'bg-green-600' :
-                            kpi.status === 'yellow' ? 'bg-yellow-600' :
-                            'bg-red-600'
+                            kpi.status === 'green'
+                              ? 'bg-green-600'
+                              : kpi.status === 'yellow'
+                                ? 'bg-yellow-600'
+                                : 'bg-red-600'
                           }`}
                           style={{ width: `${Math.min((kpi.value / kpi.target) * 100, 100)}%` }}
                         />

@@ -66,34 +66,28 @@ flowchart LR
 ### Issues and inconsistencies (top defects)
 
 1. Invoice generation endpoints inconsistent
-
    - `Invoices.tsx` uses POST `/api/invoices/generate`; `MeterBilling.tsx` uses POST `/api/billing/generate-invoices`.
    - Recommendation: standardize on POST `/api/invoices/generate` with optional `source=meter` param; keep `/api/billing/generate-invoices` as deprecated alias.
 
 2. Missing server routes for several UIs
-
    - AR/AP: `/api/accounts-receivable`, `/api/accounts-payable`
    - COA/JE: `/api/chart-of-accounts`, `/api/journal-entries`
    - Customer rollups: `/api/customers/:id/financial-summary|/payments|/aging|/invoices`
    - Implement tenant-scoped CRUD with validation and status transitions.
 
 3. Status and field naming drift across modules
-
    - AR statuses: `pending|sent|partial|paid|overdue` vs CustomerInvoices statuses: `open|partial|paid|overdue|void`.
    - Recommendation: unify invoice status enum: `draft|sent|partial|paid|overdue|void|cancelled`.
 
 4. Payments/cash application missing
-
    - No `/api/payments` to apply payments to invoices, compute balances, and post to GL.
    - Add auto-apply rules and remittance processing; expose on AR UI and customer views.
 
 5. GL control and period close
-
    - JE UI enforces debits=credits (good) but lacks posting states, period locks, and reversal workflow.
    - Add `posted_at`, `period_id`, close/reopen controls; disallow edits/deletes when posted or period closed.
 
 6. QuickBooks integration scope gaps
-
    - Sync for Invoices, Bills, Payments not implemented; only Customers/Items.
    - Add push/pull for Invoices/Bills/Payments, plus webhook handlers for updates.
 
@@ -112,23 +106,19 @@ Principles
 Target UX journey
 
 1. Accounts Receivable
-
    - Unified invoice list (filters: status, customer, contract)
    - Actions: Send, Record Payment, Write-off, Void, Refund
    - Customer 360: Financial summary, aging, payments, contracts, invoices
 
 2. Meter/Contract Billing
-
    - Generate invoices (period selection, preview, exceptions)
    - Post to AR with proper terms and due dates
 
 3. Accounts Payable
-
    - Bills intake (manual/import/QB)
    - Approvals, payment runs, vendor aging
 
 4. GL & Controls
-
    - Chart of Accounts management and JE posting/period close
    - Auto-posting templates for AR/AP events; reversal entries
 
@@ -185,36 +175,30 @@ Control plan
 Unify and implement endpoints (tenant-scoped, RBAC‑guarded)
 
 - Invoices
-
   - GET/POST `/api/invoices`
   - POST `/api/invoices/generate` { source: 'meter'|'manual', contractId?, periodStart?, periodEnd? }
   - PATCH `/api/invoices/:id` (status transitions: draft→sent→partial/paid; →overdue by scheduler; →void)
   - GET `/api/customers/:id/invoices`
 
 - Payments (cash application)
-
   - GET/POST `/api/payments` (payment, method, amount, remittance)
   - POST `/api/payments/apply` { paymentId, allocations: [{ invoiceId, amount }] }
   - Auto-apply endpoint: POST `/api/payments/auto-apply` { customerId, paymentId }
 
 - Accounts Receivable / Payable
-
   - GET/POST/PATCH `/api/accounts-receivable`
   - GET/POST/PATCH `/api/accounts-payable`
   - Aging: GET `/api/customers/:id/aging` and tenant-level `/api/finance/ar/aging`
 
 - Meter Billing
-
   - Replace POST `/api/billing/generate-invoices` with `/api/invoices/generate`; keep alias temporarily
 
 - Chart of Accounts & Journal Entries
-
   - GET/POST/PATCH/DELETE `/api/chart-of-accounts`
   - GET/POST/PATCH/DELETE `/api/journal-entries`; enforce posting rules (`posted_at`, `period_id`)
   - Period control: `/api/gl/periods` (open/close)
 
 - Customer Financials aggregations
-
   - GET `/api/customers/:id/financial-summary|/payments|/contracts` (compose from AR/AP/Invoices/Contracts)
 
 - QuickBooks integration (extend)

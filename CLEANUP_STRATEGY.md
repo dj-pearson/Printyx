@@ -3,7 +3,7 @@
 ## The Problem You Encountered
 
 ```
-ERROR: null value in column "company_id" of relation "company_contacts" 
+ERROR: null value in column "company_id" of relation "company_contacts"
 violates not-null constraint
 ```
 
@@ -21,12 +21,14 @@ Instead of setting invalid values to NULL, we **create placeholder companies** f
 
 **Problem:** Contact has `company_id = "lead-001"` (not a valid UUID)
 
-**Solution:** 
+**Solution:**
+
 - Create a new company based on contact's email domain
 - Name it: "Acme (Migrated from lead-001)"
 - Link contact to this new company
 
 **Example:**
+
 ```sql
 -- Before
 company_contacts: { id: "abc", company_id: "lead-001", email: "john@acme.com" }
@@ -43,11 +45,13 @@ company_contacts: { id: "abc", company_id: "new-uuid", email: "john@acme.com" }
 **Problem:** Contact has valid UUID but company doesn't exist
 
 **Solution:**
+
 - Create the missing company using that exact UUID
 - Name it based on contact's email domain
 - Now the relationship is valid
 
 **Example:**
+
 ```sql
 -- Before
 company_contacts: { company_id: "550e8400-e29b-..." }
@@ -63,6 +67,7 @@ company_contacts: { company_id: "550e8400-e29b-..." }
 ## What the Updated Cleanup Script Does
 
 ### Phase 1: Invalid UUIDs
+
 1. Finds all non-UUID values in foreign key columns
 2. Extracts domain from contact's email
 3. Creates placeholder company with descriptive name
@@ -70,13 +75,16 @@ company_contacts: { company_id: "550e8400-e29b-..." }
 5. Logs the action
 
 ### Phase 2: Orphaned Records
+
 1. Finds valid UUIDs that reference non-existent companies
 2. Creates the missing company using the orphaned UUID
 3. Names it based on contact's email
 4. Logs the action
 
 ### Phase 3: Summary
+
 Shows you:
+
 - How many records were fixed
 - What actions were taken
 - Complete log of all changes
@@ -98,6 +106,7 @@ supabase db execute -f migrations/002_data_cleanup.sql
 ## After Cleanup
 
 ### Immediate Next Step
+
 Run the migration now that data is clean:
 
 ```powershell
@@ -107,9 +116,10 @@ supabase db push
 ### Follow-up Tasks (Optional)
 
 1. **Review Placeholder Companies**
+
    ```sql
-   SELECT * FROM companies 
-   WHERE business_name LIKE '%(Migrated%' 
+   SELECT * FROM companies
+   WHERE business_name LIKE '%(Migrated%'
       OR business_name LIKE '%(Recovered)%';
    ```
 
@@ -119,10 +129,11 @@ supabase db push
    - Fill in missing contact details
 
 3. **Check for Duplicates**
+
    ```sql
-   SELECT business_name, COUNT(*) 
-   FROM companies 
-   GROUP BY business_name 
+   SELECT business_name, COUNT(*)
+   FROM companies
+   GROUP BY business_name
    HAVING COUNT(*) > 1;
    ```
 
@@ -141,12 +152,14 @@ supabase db push
 ## What Changed in the Cleanup Script
 
 ### Old Approach (Didn't Work)
+
 ```sql
 UPDATE company_contacts SET company_id = NULL WHERE id = rec.id;
 -- ❌ FAILS: NOT NULL constraint violation
 ```
 
 ### New Approach (Works)
+
 ```sql
 -- Create placeholder company
 INSERT INTO companies (...) VALUES (...) RETURNING id INTO placeholder_id;

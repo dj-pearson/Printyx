@@ -1,27 +1,47 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Package, Edit3, Tag, DollarSign, Filter, Archive } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSupplySchema, type Supply, type InsertSupply } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import ManagementToolbar from "@/components/product-management/ManagementToolbar";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Package, Edit3, Tag, DollarSign, Filter, Archive } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertSupplySchema, type Supply, type InsertSupply } from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import ManagementToolbar from '@/components/product-management/ManagementToolbar';
 
 export default function Supplies() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
@@ -43,15 +63,15 @@ export default function Supplies() {
       setDialogOpen(false);
       form.reset();
       toast({
-        title: "Success",
-        description: "Supply product created successfully",
+        title: 'Success',
+        description: 'Supply product created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create supply product",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create supply product',
+        variant: 'destructive',
       });
     },
   });
@@ -59,10 +79,10 @@ export default function Supplies() {
   const form = useForm<InsertSupply>({
     resolver: zodResolver(insertSupplySchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
-      productType: "Supplies",
+      tenantId: '',
+      productCode: '',
+      productName: '',
+      productType: 'Supplies',
       dealerComp: null,
       inventory: null,
       inStock: null,
@@ -105,19 +125,22 @@ export default function Supplies() {
     },
     onError: () => {
       toast({ title: 'Error', description: 'Failed to delete supply', variant: 'destructive' });
-    }
+    },
   });
 
   const toggleItemSelection = (id: string) => {
     const copy = new Set(selectedIds);
-    if (copy.has(id)) copy.delete(id); else copy.add(id);
+    if (copy.has(id)) copy.delete(id);
+    else copy.add(id);
     setSelectedIds(copy);
   };
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
     for (const id of ids) {
-      try { await apiRequest(`/api/supplies/${id}`, 'DELETE'); } catch {}
+      try {
+        await apiRequest(`/api/supplies/${id}`, 'DELETE');
+      } catch {}
     }
     queryClient.invalidateQueries({ queryKey: ['/api/supplies'] });
     setSelectedIds(new Set());
@@ -126,23 +149,24 @@ export default function Supplies() {
   };
 
   // Get unique categories from supplies for filtering
-  const categories = Array.from(new Set(supplies.map(s => s.productType).filter(Boolean)));
+  const categories = Array.from(new Set(supplies.map((s) => s.productType).filter(Boolean)));
 
   // Filter supplies by search and category
-  const filteredSupplies = supplies.filter(supply => {
-    const matchesSearch = supply.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         supply.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (supply.summary && supply.summary.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    if (selectedCategory === "all") return matchesSearch;
-    
+  const filteredSupplies = supplies.filter((supply) => {
+    const matchesSearch =
+      supply.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supply.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (supply.summary && supply.summary.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (selectedCategory === 'all') return matchesSearch;
+
     const matchesCategory = supply.productType === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
   const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -156,19 +180,26 @@ export default function Supplies() {
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
               {bulkMode && (
-                <Checkbox checked={selectedIds.has(supply.id)} onCheckedChange={() => toggleItemSelection(supply.id)} />
+                <Checkbox
+                  checked={selectedIds.has(supply.id)}
+                  onCheckedChange={() => toggleItemSelection(supply.id)}
+                />
               )}
               <div className="space-y-1">
-              <CardTitle className="text-lg">{supply.productName}</CardTitle>
-              <CardDescription>
-                <span className="font-medium">{supply.productCode}</span>
-                {supply.dealerComp && <span className="ml-2 text-muted-foreground">• {supply.dealerComp}</span>}
-              </CardDescription>
+                <CardTitle className="text-lg">{supply.productName}</CardTitle>
+                <CardDescription>
+                  <span className="font-medium">{supply.productCode}</span>
+                  {supply.dealerComp && (
+                    <span className="ml-2 text-muted-foreground">• {supply.dealerComp}</span>
+                  )}
+                </CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {supply.isActive ? (
-                <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  Active
+                </Badge>
               ) : (
                 <Badge variant="secondary">Inactive</Badge>
               )}
@@ -189,9 +220,7 @@ export default function Supplies() {
           </div>
 
           {supply.summary && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {supply.summary}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{supply.summary}</p>
           )}
 
           {supply.inventory && (
@@ -209,14 +238,14 @@ export default function Supplies() {
                 <span className="text-sm font-medium">New Price</span>
               </div>
               <p className="text-lg font-bold text-green-600">
-                {supply.newActive ? formatCurrency(supply.newRepPrice) : "Not Set"}
+                {supply.newActive ? formatCurrency(supply.newRepPrice) : 'Not Set'}
               </p>
             </div>
 
             <div className="space-y-2">
               <span className="text-sm font-medium">Upgrade Price</span>
               <p className="text-lg font-bold text-blue-600">
-                {supply.upgradeActive ? formatCurrency(supply.upgradeRepPrice) : "Not Set"}
+                {supply.upgradeActive ? formatCurrency(supply.upgradeRepPrice) : 'Not Set'}
               </p>
             </div>
           </div>
@@ -227,21 +256,25 @@ export default function Supplies() {
             <div className="text-sm text-muted-foreground space-y-1">
               {supply.paymentType && <div>Payment: {supply.paymentType}</div>}
               <div className="flex gap-2">
-                {supply.salesRepCredit && <Badge variant="outline" className="text-xs">Rep Credit</Badge>}
-                {supply.funding && <Badge variant="outline" className="text-xs">Funding</Badge>}
+                {supply.salesRepCredit && (
+                  <Badge variant="outline" className="text-xs">
+                    Rep Credit
+                  </Badge>
+                )}
+                {supply.funding && (
+                  <Badge variant="outline" className="text-xs">
+                    Funding
+                  </Badge>
+                )}
               </div>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setSelectedSupply(supply)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setSelectedSupply(supply)}>
                 <Edit3 className="h-4 w-4 mr-1" />
                 View
               </Button>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 size="sm"
                 onClick={() => deleteSupplyMutation.mutate(supply.id)}
               >
@@ -285,25 +318,29 @@ export default function Supplies() {
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>New Price Book List: Supply</DialogTitle>
-                <DialogDescription>
-                  Create a new supply product for your catalog
-                </DialogDescription>
+                <DialogDescription>Create a new supply product for your catalog</DialogDescription>
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   {/* Information Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="productName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Name <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="Black Toner Cartridge" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Black Toner Cartridge"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -315,7 +352,7 @@ export default function Supplies() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Product Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -342,9 +379,15 @@ export default function Supplies() {
                         name="productCode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Code <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Code <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="SUP-TON-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="SUP-TON-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -362,10 +405,7 @@ export default function Supplies() {
                         name="isActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Active</label>
                           </div>
                         )}
@@ -375,10 +415,7 @@ export default function Supplies() {
                         name="availableForAll"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Available for All</label>
                           </div>
                         )}
@@ -388,10 +425,7 @@ export default function Supplies() {
                         name="repostEdit"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Repost Edit</label>
                           </div>
                         )}
@@ -404,10 +438,7 @@ export default function Supplies() {
                         name="salesRepCredit"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Sales Rep Credit</label>
                           </div>
                         )}
@@ -417,10 +448,7 @@ export default function Supplies() {
                         name="funding"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Funding</label>
                           </div>
                         )}
@@ -435,7 +463,11 @@ export default function Supplies() {
                           <FormItem>
                             <FormLabel>Dealer Comp</FormLabel>
                             <FormControl>
-                              <Input placeholder="Standard" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Standard"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -448,7 +480,11 @@ export default function Supplies() {
                           <FormItem>
                             <FormLabel>Inventory</FormLabel>
                             <FormControl>
-                              <Input placeholder="Main Warehouse" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Main Warehouse"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -461,7 +497,11 @@ export default function Supplies() {
                           <FormItem>
                             <FormLabel>In Stock</FormLabel>
                             <FormControl>
-                              <Input placeholder="50" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="50"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -475,7 +515,7 @@ export default function Supplies() {
                   {/* Detail Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Detail</h3>
-                    
+
                     <FormField
                       control={form.control}
                       name="summary"
@@ -485,7 +525,7 @@ export default function Supplies() {
                           <FormControl>
                             <Textarea
                               placeholder="Brief summary of the supply product..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={3}
                             />
@@ -504,7 +544,7 @@ export default function Supplies() {
                           <FormControl>
                             <Textarea
                               placeholder="Additional notes about the supply..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={2}
                             />
@@ -521,7 +561,11 @@ export default function Supplies() {
                         <FormItem>
                           <FormLabel>EA Notes</FormLabel>
                           <FormControl>
-                            <Input placeholder="EA specific notes..." value={field.value || ""} onChange={field.onChange} />
+                            <Input
+                              placeholder="EA specific notes..."
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -537,7 +581,7 @@ export default function Supplies() {
                           <FormControl>
                             <Textarea
                               placeholder="Related products and compatible equipment..."
-                              value={field.value || ""}
+                              value={field.value || ''}
                               onChange={field.onChange}
                               rows={2}
                             />
@@ -553,17 +597,14 @@ export default function Supplies() {
                   {/* Pricing Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Pricing Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="lease"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Lease</label>
                           </div>
                         )}
@@ -574,7 +615,7 @@ export default function Supplies() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payment Type</FormLabel>
-                            <Select value={field.value || "none"} onValueChange={field.onChange}>
+                            <Select value={field.value || 'none'} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="--None--" />
@@ -602,10 +643,7 @@ export default function Supplies() {
                           name="newActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">New Active</label>
                             </div>
                           )}
@@ -617,12 +655,12 @@ export default function Supplies() {
                             <FormItem>
                               <FormLabel>New Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="89.99" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="89.99"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -637,10 +675,7 @@ export default function Supplies() {
                           name="upgradeActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">Upgrade Active</label>
                             </div>
                           )}
@@ -652,12 +687,12 @@ export default function Supplies() {
                             <FormItem>
                               <FormLabel>Upgrade Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="79.99" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="79.99"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -674,10 +709,7 @@ export default function Supplies() {
                           name="lexmarkActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">Lexmark Active</label>
                             </div>
                           )}
@@ -689,12 +721,12 @@ export default function Supplies() {
                             <FormItem>
                               <FormLabel>Lexmark Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="75.99" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="75.99"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -709,10 +741,7 @@ export default function Supplies() {
                           name="graphicActive"
                           render={({ field }) => (
                             <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                               <label className="text-sm font-medium">Graphic Active</label>
                             </div>
                           )}
@@ -724,12 +753,12 @@ export default function Supplies() {
                             <FormItem>
                               <FormLabel>Graphic Rep Price</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="99.99" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="99.99"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -745,7 +774,7 @@ export default function Supplies() {
                   {/* System Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">System Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -754,7 +783,11 @@ export default function Supplies() {
                           <FormItem>
                             <FormLabel>Price Book ID</FormLabel>
                             <FormControl>
-                              <Input placeholder="PB-SUP-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="PB-SUP-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -767,7 +800,11 @@ export default function Supplies() {
                           <FormItem>
                             <FormLabel>Temp Key</FormLabel>
                             <FormControl>
-                              <Input placeholder="TK-SUP-001" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="TK-SUP-001"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -784,17 +821,17 @@ export default function Supplies() {
                       Save & New
                     </Button>
                     <Button type="submit" disabled={createSupplyMutation.isPending}>
-                      {createSupplyMutation.isPending ? "Saving..." : "Save"}
+                      {createSupplyMutation.isPending ? 'Saving...' : 'Save'}
                     </Button>
                   </div>
                 </form>
               </Form>
             </DialogContent>
           </Dialog>
-      </div>
+        </div>
 
-      {/* Search and Filter Bar */}
-      <div className="flex items-center gap-4">
+        {/* Search and Filter Bar */}
+        <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -811,8 +848,10 @@ export default function Supplies() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Supply Types</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -841,12 +880,11 @@ export default function Supplies() {
             <Package className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Supplies Found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm || selectedCategory !== "all" 
-                ? "No supplies match your current filters. Try adjusting your search criteria."
-                : "Get started by adding your first supply product to the catalog."
-              }
+              {searchTerm || selectedCategory !== 'all'
+                ? 'No supplies match your current filters. Try adjusting your search criteria.'
+                : 'Get started by adding your first supply product to the catalog.'}
             </p>
-            {!searchTerm && selectedCategory === "all" && (
+            {!searchTerm && selectedCategory === 'all' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Supply
@@ -866,9 +904,7 @@ export default function Supplies() {
           <span>
             {filteredSupplies.length} of {supplies.length} supply products
           </span>
-          <span>
-            {supplies.filter(s => s.isActive).length} active supplies
-          </span>
+          <span>{supplies.filter((s) => s.isActive).length} active supplies</span>
         </div>
       </div>
     </MainLayout>

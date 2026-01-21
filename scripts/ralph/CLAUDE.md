@@ -29,31 +29,35 @@ Read these files in this order:
 Follow the acceptance criteria exactly. For this project:
 
 **Always Include Tenant Context:**
+
 ```typescript
 import { getUserId, getTenantId } from '../utils/auth-helpers';
 
 app.get('/api/resource', requireAuth, requireTenant, async (req, res) => {
   const userId = getUserId(req);
   const tenantId = getTenantId(req);
-  
+
   // CRITICAL: Always filter by tenantId!
   const data = await db.query.table.findMany({
-    where: eq(table.tenantId, tenantId)
+    where: eq(table.tenantId, tenantId),
   });
 });
 ```
 
 **Follow Multi-Tenant Rules:**
+
 - Every database query MUST filter by `tenantId`
 - Use `requireAuth` and `requireTenant` middleware on all protected routes
 - Use RBAC middleware `requirePermission` for authorization
 
 **Database Changes:**
+
 - Update schema in `shared/schema.ts` or relevant `shared/*-schema.ts`
 - Run `npm run db:push` to apply changes
 - All new tables must have `tenantId` column with proper index
 
 **Frontend Changes:**
+
 - Use TanStack Query for all server state
 - Use React Hook Form + Zod for forms
 - Use shadcn/ui components from `client/src/components/ui/`
@@ -72,6 +76,7 @@ npm run build          # Production build
 ```
 
 If the story involves UI changes, verify in the browser:
+
 ```bash
 npm run dev
 ```
@@ -101,7 +106,7 @@ Mark the story as complete:
 {
   "id": "story-id",
   "title": "Story Title",
-  "passes": true  // Update this to true
+  "passes": true // Update this to true
 }
 ```
 
@@ -130,6 +135,7 @@ Files Modified:
 Add any patterns, conventions, or gotchas discovered. This is critical for future iterations!
 
 Examples:
+
 - "The settings panel is located in `client/src/pages/Settings.tsx`"
 - "When adding new equipment fields, also update the validation schema in `shared/equipment-schema.ts`"
 - "Service data caching is controlled by `TanStack Query` with 5-minute stale time"
@@ -141,6 +147,7 @@ Once the story is complete, quality checks pass, and memory is updated, your wor
 ## Emergency Procedures
 
 **If you get stuck:**
+
 1. Check `progress.txt` for similar past work
 2. Search codebase for patterns (use grep/semantic search)
 3. Read related test files for examples
@@ -148,11 +155,13 @@ Once the story is complete, quality checks pass, and memory is updated, your wor
 5. Mark story `passes: false` with notes in `prd.json`
 
 **If tests fail:**
+
 - Read the test output carefully
 - Fix the code, don't skip or disable tests
 - If a test is truly wrong, document why in your commit
 
 **If you can't complete the story in one iteration:**
+
 - Document detailed progress in `progress.txt`
 - Update `CLAUDE.md` with what you learned
 - Leave clear notes for the next iteration

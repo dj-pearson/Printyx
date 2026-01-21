@@ -19,6 +19,7 @@ Establish a single source of truth for all product pricing by migrating from sca
 **Problem:** Pricing data is currently stored in **multiple locations** with no clear single source of truth:
 
 #### 1. **productModels Table** (Lines 2788-2810 in shared/schema.ts)
+
 ```typescript
 // Three pricing tiers embedded in product table
 // New Tier
@@ -36,6 +37,7 @@ lexmarkDealerCost, lexmarkRepMarkupPercentage, lexmarkRepCost, ...
 ```
 
 #### 2. **productAccessories Table** (Lines 2833-2855)
+
 ```typescript
 // Similar three-tier structure with different tier names
 // Standard Tier
@@ -52,6 +54,7 @@ upgradeDealerCost, upgradeRepMarkupPercentage, upgradeRepCost, ...
 ```
 
 #### 3. **enhancedProductPricing Table** (product-pricing-schema.ts)
+
 ```typescript
 // NEW unified structure - the target migration schema
 - productId, productType, pricingTier
@@ -65,16 +68,19 @@ upgradeDealerCost, upgradeRepMarkupPercentage, upgradeRepCost, ...
 ### Impact of Current State
 
 ❌ **Data Inconsistency**
+
 - Updates must happen in 2+ places
 - No guarantee of sync between sources
 - Query logic must know which source to trust
 
 ❌ **Maintenance Burden**
+
 - Every pricing feature touches multiple tables
 - Duplicate code for pricing calculations
 - Hard to track pricing history
 
 ❌ **Blocked Features**
+
 - Cannot implement price change approval workflow properly
 - Cannot track pricing history/audit trail
 - Cannot implement time-based pricing (effective dates)
@@ -82,12 +88,15 @@ upgradeDealerCost, upgradeRepMarkupPercentage, upgradeRepCost, ...
 - Cannot implement dynamic pricing rules
 
 ❌ **Code Complexity**
+
 - Queries must LEFT JOIN multiple pricing sources
 - Business logic scattered across multiple files
 - Hard to reason about "which price is correct"
 
 ### Comments in Code
+
 From `product-pricing-schema.ts` line 121:
+
 ```typescript
 // Product Models Enhanced - Extended pricing fields for backward compatibility and transitions
 // These fields will be migrated to enhancedProductPricing table over time
@@ -146,16 +155,19 @@ From `product-pricing-schema.ts` line 121:
 ### Benefits
 
 ✅ **Single Source of Truth**
+
 - ONE table to query for all pricing
 - Consistent data across the application
 - Easy to reason about "where is the price"
 
 ✅ **Audit Trail**
+
 - Track every price change
 - Know who changed it and why
 - Compliance-ready (SOX, PCI DSS)
 
 ✅ **Advanced Features Unlocked**
+
 - ✅ Price change approval workflow
 - ✅ Time-based pricing (effective dates)
 - ✅ Price history tracking
@@ -165,11 +177,13 @@ From `product-pricing-schema.ts` line 121:
 - ✅ Volume-based discounts
 
 ✅ **Better Performance**
+
 - Single query vs. multiple LEFT JOINs
 - Indexed properly for pricing queries
 - Cached pricing calculations
 
 ✅ **Easier Maintenance**
+
 - Update once, reflected everywhere
 - Centralized business logic
 - Clear separation of concerns
@@ -183,6 +197,7 @@ From `product-pricing-schema.ts` line 121:
 **Goal:** Copy all existing pricing data from `productModels` and `productAccessories` to `enhancedProductPricing`
 
 #### Step 1.1: Create Migration Script
+
 **File:** `database/migrations/001_migrate_pricing_data.sql`
 
 ```sql
@@ -386,6 +401,7 @@ COMMIT;
 ```
 
 #### Step 1.2: Add Migration Flag
+
 Add a flag to product tables to track migration status:
 
 ```sql
@@ -406,6 +422,7 @@ WHERE id IN (SELECT DISTINCT product_id FROM enhanced_product_pricing WHERE prod
 **Goal:** Create a single service that encapsulates all pricing logic
 
 #### Step 2.1: Create Pricing Service
+
 **File:** `server/services/product-pricing-service.ts`
 
 ```typescript
@@ -420,7 +437,7 @@ export class ProductPricingService {
   async getProductPricing(
     productId: string,
     productType: 'model' | 'accessory' | 'software' | 'service',
-    pricingTier?: string
+    pricingTier?: string,
   ) {
     const conditions = [
       eq(enhancedProductPricing.productId, productId),
@@ -441,15 +458,12 @@ export class ProductPricingService {
   /**
    * Get all pricing tiers for a product
    */
-  async getAllProductPricingTiers(
-    productId: string,
-    productType: string
-  ) {
+  async getAllProductPricingTiers(productId: string, productType: string) {
     return db.query.enhancedProductPricing.findMany({
       where: and(
         eq(enhancedProductPricing.productId, productId),
         eq(enhancedProductPricing.productType, productType),
-        eq(enhancedProductPricing.isActive, true)
+        eq(enhancedProductPricing.isActive, true),
       ),
     });
   }
@@ -460,7 +474,7 @@ export class ProductPricingService {
   calculateRepCost(
     dealerCost: number,
     markupType: 'percentage' | 'fixed_amount',
-    markupValue: number
+    markupValue: number,
   ): number {
     if (markupType === 'percentage') {
       return dealerCost * (1 + markupValue / 100);
@@ -492,7 +506,7 @@ export class ProductPricingService {
       markupPercentage?: number;
     },
     userId: string,
-    changeReason?: string
+    changeReason?: string,
   ) {
     const updateData = {
       ...updates,
@@ -509,8 +523,8 @@ export class ProductPricingService {
         and(
           eq(enhancedProductPricing.productId, productId),
           eq(enhancedProductPricing.productType, productType),
-          eq(enhancedProductPricing.pricingTier, pricingTier)
-        )
+          eq(enhancedProductPricing.pricingTier, pricingTier),
+        ),
       )
       .returning();
   }
@@ -555,7 +569,7 @@ export class ProductPricingService {
           const newRepCost = this.calculateRepCost(
             parseFloat(record.dealerCost),
             markup.type as 'percentage',
-            markup.value
+            markup.value,
           );
 
           await this.updateProductPricing(
@@ -564,7 +578,7 @@ export class ProductPricingService {
             record.pricingTier || 'new',
             { repCost: newRepCost },
             'system_bulk_update',
-            'Applied default markup'
+            'Applied default markup',
           );
         }
       }
@@ -586,7 +600,7 @@ export class ProductPricingService {
   async validatePriceChange(
     tenantId: string,
     oldPrice: number,
-    newPrice: number
+    newPrice: number,
   ): Promise<{ isValid: boolean; requiresApproval: boolean; reason?: string }> {
     const settings = await db.query.companyPricingSettings.findFirst({
       where: eq(companyPricingSettings.tenantId, tenantId),
@@ -628,6 +642,7 @@ export const productPricingService = new ProductPricingService();
 **Goal:** Update all pricing-related API endpoints to use the new service
 
 #### Files to Update:
+
 1. `server/routes-product-models.ts`
 2. `server/routes-product-pricing.ts`
 3. `server/routes-catalog.ts`
@@ -636,6 +651,7 @@ export const productPricingService = new ProductPricingService();
 #### Example Updates:
 
 **Before (routes-product-models.ts):**
+
 ```typescript
 // OLD: Direct database query
 app.get('/api/product-models/:id/pricing', async (req, res) => {
@@ -661,6 +677,7 @@ app.get('/api/product-models/:id/pricing', async (req, res) => {
 ```
 
 **After:**
+
 ```typescript
 // NEW: Use pricing service
 import { productPricingService } from '../services/product-pricing-service';
@@ -668,19 +685,22 @@ import { productPricingService } from '../services/product-pricing-service';
 app.get('/api/product-models/:id/pricing', async (req, res) => {
   const pricingTiers = await productPricingService.getAllProductPricingTiers(
     req.params.id,
-    'model'
+    'model',
   );
 
   // Transform to expected format
-  const pricing = pricingTiers.reduce((acc, tier) => {
-    acc[tier.pricingTier || 'standard'] = {
-      dealerCost: tier.dealerCost,
-      repCost: tier.repCost,
-      suggestedRetail: tier.suggestedRetailPrice,
-      minimumSalePrice: tier.minimumSalePrice,
-    };
-    return acc;
-  }, {} as Record<string, any>);
+  const pricing = pricingTiers.reduce(
+    (acc, tier) => {
+      acc[tier.pricingTier || 'standard'] = {
+        dealerCost: tier.dealerCost,
+        repCost: tier.repCost,
+        suggestedRetail: tier.suggestedRetailPrice,
+        minimumSalePrice: tier.minimumSalePrice,
+      };
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
 
   res.json(pricing);
 });
@@ -691,19 +711,20 @@ app.get('/api/product-models/:id/pricing', async (req, res) => {
 **Goal:** Maintain dual-read capability during transition
 
 #### Strategy: Read from Both Sources
+
 During the transition period, implement a fallback mechanism:
 
 ```typescript
 async function getProductPricingWithFallback(
   productId: string,
   productType: string,
-  pricingTier: string
+  pricingTier: string,
 ) {
   // Try new pricing table first
   const newPricing = await productPricingService.getProductPricing(
     productId,
     productType,
-    pricingTier
+    pricingTier,
   );
 
   if (newPricing) {
@@ -752,6 +773,7 @@ async function getProductPricingWithFallback(
 **Goal:** Update all frontend components to use new API responses
 
 #### Components to Update:
+
 1. `client/src/pages/ProductHubUnified.tsx` (already using new structure)
 2. `client/src/pages/ProductModels.tsx`
 3. `client/src/pages/EnhancedProductAccessories.tsx`
@@ -761,9 +783,10 @@ async function getProductPricingWithFallback(
 #### Example Update:
 
 **Before:**
+
 ```typescript
 const product = useQuery(['product', id], () =>
-  fetch(`/api/product-models/${id}`).then(r => r.json())
+  fetch(`/api/product-models/${id}`).then((r) => r.json()),
 );
 
 const dealerCost = product.data?.newDealerCost;
@@ -771,9 +794,10 @@ const repCost = product.data?.newRepCost;
 ```
 
 **After:**
+
 ```typescript
 const productPricing = useQuery(['product-pricing', id], () =>
-  fetch(`/api/product-models/${id}/pricing`).then(r => r.json())
+  fetch(`/api/product-models/${id}/pricing`).then((r) => r.json()),
 );
 
 const dealerCost = productPricing.data?.new?.dealerCost;
@@ -785,6 +809,7 @@ const repCost = productPricing.data?.new?.repCost;
 **Goal:** Remove old pricing fields after validation
 
 #### Step 6.1: Mark Fields as Deprecated
+
 Add deprecation warnings to TypeScript types:
 
 ```typescript
@@ -802,6 +827,7 @@ export type ProductModel = {
 ```
 
 #### Step 6.2: Remove Pricing Fields (After 2 weeks validation)
+
 ```sql
 -- Only execute after confirming all code uses new pricing service
 ALTER TABLE product_models
@@ -847,6 +873,7 @@ ALTER TABLE product_accessories
 ## 📋 Implementation Checklist
 
 ### Week 1: Data Migration
+
 - [ ] Create migration script (`001_migrate_pricing_data.sql`)
 - [ ] Test migration on development database
 - [ ] Add migration tracking fields (`pricing_migrated`)
@@ -855,6 +882,7 @@ ALTER TABLE product_accessories
 - [ ] Create rollback script (in case of issues)
 
 ### Week 2: Pricing Service
+
 - [ ] Create `product-pricing-service.ts`
 - [ ] Implement core methods (get, update, calculate)
 - [ ] Add company markup logic
@@ -863,6 +891,7 @@ ALTER TABLE product_accessories
 - [ ] Document service API
 
 ### Week 3: Backend Routes
+
 - [ ] Update `routes-product-models.ts`
 - [ ] Update `routes-product-pricing.ts`
 - [ ] Update `routes-catalog.ts`
@@ -871,6 +900,7 @@ ALTER TABLE product_accessories
 - [ ] Test all pricing endpoints
 
 ### Week 4: Frontend Updates
+
 - [ ] Update ProductHubUnified (if needed)
 - [ ] Update ProductModels page
 - [ ] Update EnhancedProductAccessories
@@ -879,6 +909,7 @@ ALTER TABLE product_accessories
 - [ ] Test all pricing UI flows
 
 ### Week 5: Cleanup
+
 - [ ] Monitor for 2 weeks (no errors from old fields)
 - [ ] Add deprecation warnings to types
 - [ ] Remove pricing fields from schema
@@ -891,27 +922,32 @@ ALTER TABLE product_accessories
 ## ✅ Success Criteria
 
 **Data Migration:**
+
 - ✅ 100% of pricing data migrated to `enhancedProductPricing`
 - ✅ Zero data loss
 - ✅ All tiers preserved (New, Upgrade, Lexmark, Standard)
 - ✅ Audit trail fields populated
 
 **API Updates:**
+
 - ✅ All pricing endpoints use `productPricingService`
 - ✅ No direct queries to old pricing fields
 - ✅ Backward compatibility maintained during transition
 
 **Frontend Updates:**
+
 - ✅ All components use new API structure
 - ✅ No TypeScript errors
 - ✅ UI displays pricing correctly
 
 **Performance:**
+
 - ✅ Pricing queries ≤ 100ms (95th percentile)
 - ✅ No N+1 query issues
 - ✅ Proper indexing on `enhancedProductPricing`
 
 **Validation:**
+
 - ✅ Manual testing of all pricing flows
 - ✅ Automated tests passing
 - ✅ No production errors for 2 weeks
@@ -921,32 +957,27 @@ ALTER TABLE product_accessories
 ## 🔍 Testing Strategy
 
 ### Unit Tests
+
 ```typescript
 describe('ProductPricingService', () => {
   it('calculates rep cost with percentage markup correctly', () => {
     const dealerCost = 100;
     const markup = 13; // 13%
-    const repCost = productPricingService.calculateRepCost(
-      dealerCost,
-      'percentage',
-      markup
-    );
+    const repCost = productPricingService.calculateRepCost(dealerCost, 'percentage', markup);
     expect(repCost).toBe(113);
   });
 
   it('calculates margin percentage correctly', () => {
     const dealerCost = 100;
     const customerPrice = 150;
-    const margin = productPricingService.calculateMarginPercentage(
-      dealerCost,
-      customerPrice
-    );
+    const margin = productPricingService.calculateMarginPercentage(dealerCost, customerPrice);
     expect(margin).toBe(50); // 50% margin
   });
 });
 ```
 
 ### Integration Tests
+
 ```typescript
 describe('Product Pricing API', () => {
   it('returns pricing for all tiers', async () => {
@@ -963,6 +994,7 @@ describe('Product Pricing API', () => {
 ```
 
 ### Data Validation Queries
+
 ```sql
 -- Verify all pricing records migrated
 SELECT
@@ -998,9 +1030,11 @@ WHERE dealer_cost IS NULL
 ## 🚨 Risks & Mitigation
 
 ### Risk 1: Data Loss During Migration
+
 **Probability:** Low
 **Impact:** High
 **Mitigation:**
+
 - Full database backup before migration
 - Migration script uses INSERT (not DELETE)
 - EXISTS clause prevents duplicate inserts
@@ -1008,9 +1042,11 @@ WHERE dealer_cost IS NULL
 - Rollback script prepared
 
 ### Risk 2: Performance Degradation
+
 **Probability:** Medium
 **Impact:** Medium
 **Mitigation:**
+
 - Add indexes on `enhancedProductPricing`:
   - `(product_id, product_type, pricing_tier)`
   - `(tenant_id, product_type)`
@@ -1018,18 +1054,22 @@ WHERE dealer_cost IS NULL
 - Load testing with realistic data volume
 
 ### Risk 3: Breaking Changes
+
 **Probability:** Medium
 **Impact:** High
 **Mitigation:**
+
 - Backward compatibility layer
 - Dual-read strategy during transition
 - Feature flags for new pricing service
 - Gradual rollout (dev → staging → production)
 
 ### Risk 4: Incomplete Code Updates
+
 **Probability:** Medium
 **Impact:** Medium
 **Mitigation:**
+
 - Comprehensive grep for old pricing field usage
 - TypeScript deprecation warnings
 - Code review checklist
@@ -1040,6 +1080,7 @@ WHERE dealer_cost IS NULL
 ## 📈 Monitoring & Rollback
 
 ### Monitoring
+
 ```typescript
 // Add metrics to pricing service
 import { metrics } from '../lib/metrics';
@@ -1066,6 +1107,7 @@ async getProductPricing(...) {
 ```
 
 ### Rollback Plan
+
 If critical issues arise:
 
 1. **Immediate (< 5 min):**
@@ -1113,6 +1155,7 @@ If critical issues arise:
 ## 📚 Documentation Updates
 
 After migration, update:
+
 1. **API Documentation** - New pricing endpoints
 2. **Developer Guide** - How to use pricing service
 3. **Database Schema Docs** - Reflect new structure

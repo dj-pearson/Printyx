@@ -1,11 +1,13 @@
 ## End-to-End Copier Dealer Lean/Six Sigma Playbook (Printyx)
 
 ### Purpose
+
 - Provide a single, connected storyline from marketing lead → sales → order → warehouse build → delivery/installation → onboarding → service lifecycle → billing/renewal.
 - Identify bottlenecks, standardize "Next" actions, forms/pages, KPIs, and quality gates using Lean/Six Sigma.
 - Cross-reference existing Printyx artifacts to avoid duplication and align implementation.
 
 ### Key Cross-References
+
 - COPIER_DEALER_A2Z_ROADMAP.md
 - CRM_AUDIT_AND_LEAN_FLOW.md
 - SERVICE_AUDIT_AND_LEAN_FLOW.md
@@ -43,6 +45,7 @@ flowchart LR
 ## SIPOC Snapshots
 
 ### Sales Funnel (Lead → Close)
+
 - Suppliers: Marketing, SDRs, Web forms, Data providers
 - Inputs: Lead/contact data, product/pricing, availability
 - Process: Qualify → Deal → Activities → Quote → Proposal → Close
@@ -50,6 +53,7 @@ flowchart LR
 - Customers: Sales, Finance, Operations
 
 ### Fulfillment/Install (Order → Go-Live)
+
 - Suppliers: Vendors, Warehouse, Dispatch
 - Inputs: Order, accessories list, site readiness
 - Process: PO → Kitting → Schedule → Install → Train → Onboarding
@@ -57,6 +61,7 @@ flowchart LR
 - Customers: Customer stakeholders, Support, Billing
 
 ### Service Lifecycle (Ops → Support)
+
 - Suppliers: Monitoring, Customer
 - Inputs: Alerts, meter reads, service requests
 - Process: Intake → Dispatch → Field work → Parts → Resolve → CSAT
@@ -69,7 +74,8 @@ flowchart LR
 
 Notes: Routes referenced from `client/src/App.tsx` and navigation from `client/src/components/layout/role-based-sidebar.tsx`.
 
-1) Lead Intake
+1. Lead Intake
+
 - Page: `/leads-management` (Sales & CRM → Leads Management)
 - Key forms: Lead create/edit; data enrichment
 - Default next: "Create Deal" → `/deals-management`
@@ -77,94 +83,109 @@ Notes: Routes referenced from `client/src/App.tsx` and navigation from `client/s
 - Quality gate: Required contact info, source, segment
 - Common wastes: Duplicate entry; fix with enrichment/validation
 
-2) Qualification & Deal Setup
+2. Qualification & Deal Setup
+
 - Page: `/deals-management`, Lead Detail page (`LeadDetail`)
 - Default next: "Create Quote" → `/quotes/new?leadId=...`
 - KPIs: Stage cycle time, SQL rate, scheduled activities per deal
 - Error-proofing: Stage guards (cannot quote without contact + value)
   - Ref: CRM_AUDIT_AND_LEAN_FLOW.md (stage guards, Poka‑yoke)
 
-3) Activity Plan & Demo Scheduling
+3. Activity Plan & Demo Scheduling
+
 - Page: `/demo-scheduling`, CRM activity views (`CRMEnhanced`)
 - Default next: "Generate Quote" → `/quotes/new?dealId=...`
 - KPIs: No-show %, time-to-demo
 - Quality gate: Meeting outcome logged before moving stage
 
-4) Quote Creation
+4. Quote Creation
+
 - Page: `/quotes/new` and `/quotes/:quoteId`
 - Default next: "Create Proposal" → `/proposal-builder?quoteId=...`
 - KPIs: Lead time to quote, discount level vs target margin
 - Error-proofing: Prefill company/contact; approval thresholds on discounts
 - Ref: PROPOSAL_BUILDER_INTEGRATION.md (Create Proposal entry points)
 
-5) Proposal Build & Delivery
+5. Proposal Build & Delivery
+
 - Page: `/proposal-builder`
 - Default next: "Send for eSign" → `/contracts?proposalId=...`
 - KPIs: Proposal acceptance rate/time, content reuse % (templates)
 - Quality gate: Required sections complete; brand profile applied
 - Ref: ADVANCED_PROPOSAL_BUILDER.md, PROPOSAL_BUILDER_DESIGN.md
 
-6) Contract Generation & eSignature
+6. Contract Generation & eSignature
+
 - Page: `/contracts`, `/document-builder`, `/e-signature-integration`
 - Default next: "Book Order" → `/orders/new?contractId=...`
 - KPIs: Time-to-signature, redlines count, approval SLA compliance
 - Error-proofing: Clause library, template locking, signer roles
 
-7) Order Entry
+7. Order Entry
+
 - Page: `/orders` (if dedicated), else via `/contracts` → "Create Order"
 - Default next: "Create Purchase Order" → `/admin/purchase-orders`
 - KPIs: Order accuracy, rework %, cycle time to PO
 - Quality gate: Device/accessory list complete; ship-to confirmed
 
-8) Purchase Order & Vendor ETA
+8. Purchase Order & Vendor ETA
+
 - Page: `/admin/purchase-orders`, `/vendor-management`
 - Default next: "Release to Warehouse" → `/warehouse-operations`
 - KPIs: PO lead time vs planned, backorder rate
 - Error-proofing: Approved vendor catalog; substitutions workflow
 
-9) Warehouse Kitting & Build
+9. Warehouse Kitting & Build
+
 - Page: `/warehouse-operations`, `/equipment-lifecycle`
 - Default next: "Schedule Delivery" → `/onboarding-dashboard` or scheduler
 - KPIs: Build FPY (first-pass yield), kit completeness, WIP aging
 - Quality gate: Accessory checklist, firmware levels, asset tags
 
-10) Delivery Scheduling
+10. Delivery Scheduling
+
 - Page: `/onboarding-dashboard` (or dedicated scheduling)
 - Default next: "Start Install" → `/enhanced-onboarding-form` or `/comprehensive-onboarding-form`
 - KPIs: On-time arrivals, customer readiness pass rate
 - Error-proofing: Pre‑install checklist auto-sent to customer
 
-11) Installation & Training
+11. Installation & Training
+
 - Page: `EnhancedOnboardingForm` (`/enhanced-onboarding-form`), `ComprehensiveOnboardingForm` (`/comprehensive-onboarding-form`)
 - Default next: "Complete Onboarding" → `/onboarding-details/:id` then "Go-Live"
 - KPIs: Install duration vs plan, training completion rate
 - Ref: COMPREHENSIVE_ONBOARDING_CHECKLIST_SYSTEM.md; ENHANCED_ONBOARDING_CHECKLIST_IMPLEMENTATION.md
 
-12) Go‑Live & Handover
+12. Go‑Live & Handover
+
 - Page: `/customer-success-management`
 - Default next: "Enable Monitoring" → `/remote-monitoring` or manufacturer integration
 - KPIs: FPY, early ticket rate (<30 days), CSAT
 - Quality gate: Customer sign‑off captured; docs uploaded
 
-13) Monitoring: Meters & Toner
+13. Monitoring: Meters & Toner
+
 - Page: `/meter-readings`, `/remote-monitoring`, manufacturer integration pages
 - Default next: "Auto‑bill" → `/advanced-billing`
 - KPIs: Meter compliance %, auto‑toner success %, missed meters
 - Error-proofing: Auto reminders; integration health checks
 
-14) Service Intake & Dispatch
+14. Service Intake & Dispatch
+
 - Pages: `/service-hub`, `PhoneInTicketCreator`, `TechnicianTicketWorkflow`
 - Default next: "Dispatch" → Technician app; then "Complete & Bill"
 - KPIs: Response/resolve time (SLA), FTF%, backlog aging
 - Known gaps: SERVICE_AUDIT_AND_LEAN_FLOW.md notes missing endpoints for phone‑in and sessions; implement to close loop
 
-15) Resolution, QA & Billing
+15. Resolution, QA & Billing
+
 - Page: `/service-analytics`, `/advanced-billing`
 - Default next: "CSAT Survey" → capture and log; then "Report KPIs"
 - KPIs: MTTR, parts usage, invoice cycle time, DSO
 - Quality gate: Photos, signatures, parts reconciled; invoice status
 
-16) Renewal / Expansion
+16. Renewal / Expansion
+
 - Page: `/customer-success-management`, `/contracts`
 - Default next: "Refresh Proposal" → `/proposal-builder?customerId=...`
 - KPIs: Retention rate, upsell %, contract profitability trend
@@ -303,11 +324,10 @@ Notes: Routes referenced from `client/src/App.tsx` and navigation from `client/s
 ---
 
 ## Notes & Next Actions
+
 - This is a living document; update as endpoints/pages are implemented.
 - Prioritize closing the service API gaps and wiring "Next" actions.
 - After wiring, enable dashboard tiles to surface SLA/DoD breaches per stage.
-
-
 
 ---
 
@@ -493,6 +513,7 @@ Note: Implement these as URL params and handle at page level to pre‑filter lis
 - Dispute rate: disputed invoices / total invoices
 
 Implementation notes:
+
 - Prefer median over mean for cycle times; compute per tenant and overall.
 - Define filters by period (day/week/month) and role (rep/tech/manager).
 
@@ -518,6 +539,7 @@ Implementation notes:
   - `filter=issuance_delay_gt_24h` → invoice issuance delay breaches
 
 Client behavior:
+
 - Show banner when filter active; provide “Clear Filter” button.
 - Forward relevant params to backend list endpoints.
 
@@ -684,6 +706,7 @@ CREATE INDEX IF NOT EXISTS idx_meter_readings_tenant_date ON meter_readings(tena
 ```
 
 Column audit (add if missing in respective tables):
+
 - billing_invoices: `ticket_id`, `contract_id`, `issuance_delay_hours`, `business_record_id`, `status`, `created_at`
 - purchase_orders: `approved_date`, `expected_date`, `order_date`
 - meter_readings: `bw_meter_reading`, `color_meter_reading`, `reading_date`, `collection_method`, `reading_notes`
@@ -692,29 +715,34 @@ Column audit (add if missing in respective tables):
 
 ## Next Backend Focus (acceptance criteria)
 
-1) Phone-in tickets and list
+1. Phone-in tickets and list
+
 - Endpoints: `GET/POST /api/phone-in-tickets`, `POST /api/phone-in-tickets/:id/convert`
 - AC:
   - Create persists with tenant; optional convert creates service ticket and links ids
   - List returns most recent 100 by tenant; supports converted=true|false
   - Status: Routes mounted (`app.use("/api", enhancedServiceRoutes)`) — implement list query next
 
-2) Technician sessions and workflow
+2. Technician sessions and workflow
+
 - Endpoints: `POST/GET /api/technician-sessions`, `GET /api/technician-sessions/:sessionId/workflow-steps`, `POST /api/technician-sessions/:sessionId/complete-step`
 - AC:
   - Check-in creates session if none open; workflow updates ticket status map; completion writes signatures/photos and closes session
 
-3) Auto-invoice on service completion
+3. Auto-invoice on service completion
+
 - Hook: on POST /service-tickets/:ticketId/complete → create invoice (link ticketId)
 - AC:
   - Invoice created within request; invoice list reflects `ticketId` filter; issuance delay computed/stored
 
-4) Warehouse FPY persistence
+4. Warehouse FPY persistence
+
 - Add tables/fields for kitting checklist and FPY outcome
 - AC:
   - Persist pass/fail per unit; aggregate endpoint for FPY tile and drill-through
 
-5) Reports API (v0) with RBAC/tenancy
+5. Reports API (v0) with RBAC/tenancy
+
 - Endpoint: `GET /api/reports` (as mapped in Page Filter API Contract Map)
 - AC:
   - Returns rows + totals; enforces tenant and role scopes; covers at least `service_sla`, `po_variance`, `meter_missed`

@@ -59,14 +59,17 @@ export interface CalculationResults {
 
 // ==================== Industry Cost Benchmarks ====================
 
-const INDUSTRY_BENCHMARKS: Record<string, {
-  avgCostPerPageBW: number;
-  avgCostPerPageColor: number;
-  avgCostPerEmployee: number;
-  avgUtilizationRate: number;
-  avgDowntimeHoursPerMonth: number;
-  avgDevicePerEmployee: number;
-}> = {
+const INDUSTRY_BENCHMARKS: Record<
+  string,
+  {
+    avgCostPerPageBW: number;
+    avgCostPerPageColor: number;
+    avgCostPerEmployee: number;
+    avgUtilizationRate: number;
+    avgDowntimeHoursPerMonth: number;
+    avgDevicePerEmployee: number;
+  }
+> = {
   healthcare: {
     avgCostPerPageBW: 0.025,
     avgCostPerPageColor: 0.12,
@@ -76,7 +79,7 @@ const INDUSTRY_BENCHMARKS: Record<string, {
     avgDevicePerEmployee: 0.12,
   },
   legal: {
-    avgCostPerPageBW: 0.030,
+    avgCostPerPageBW: 0.03,
     avgCostPerPageColor: 0.15,
     avgCostPerEmployee: 320,
     avgUtilizationRate: 78,
@@ -97,7 +100,7 @@ const INDUSTRY_BENCHMARKS: Record<string, {
     avgCostPerEmployee: 240,
     avgUtilizationRate: 70,
     avgDowntimeHoursPerMonth: 2.8,
-    avgDevicePerEmployee: 0.10,
+    avgDevicePerEmployee: 0.1,
   },
   manufacturing: {
     avgCostPerPageBW: 0.022,
@@ -108,8 +111,8 @@ const INDUSTRY_BENCHMARKS: Record<string, {
     avgDevicePerEmployee: 0.09,
   },
   retail: {
-    avgCostPerPageBW: 0.020,
-    avgCostPerPageColor: 0.10,
+    avgCostPerPageBW: 0.02,
+    avgCostPerPageColor: 0.1,
     avgCostPerEmployee: 85,
     avgUtilizationRate: 55,
     avgDowntimeHoursPerMonth: 4.2,
@@ -153,18 +156,21 @@ const INDUSTRY_BENCHMARKS: Record<string, {
     avgCostPerEmployee: 160,
     avgUtilizationRate: 62,
     avgDowntimeHoursPerMonth: 3.5,
-    avgDevicePerEmployee: 0.10,
+    avgDevicePerEmployee: 0.1,
   },
 };
 
 // ==================== Fleet Age Multipliers ====================
 
-const FLEET_AGE_MULTIPLIERS: Record<string, {
-  serviceCostMultiplier: number;
-  energyCostMultiplier: number;
-  downtimeMultiplier: number;
-  reliabilityScore: number;
-}> = {
+const FLEET_AGE_MULTIPLIERS: Record<
+  string,
+  {
+    serviceCostMultiplier: number;
+    energyCostMultiplier: number;
+    downtimeMultiplier: number;
+    reliabilityScore: number;
+  }
+> = {
   under_2_years: {
     serviceCostMultiplier: 1.0,
     energyCostMultiplier: 1.0,
@@ -193,18 +199,21 @@ const FLEET_AGE_MULTIPLIERS: Record<string, {
 
 // ==================== Device Type Cost Factors ====================
 
-const DEVICE_TYPE_FACTORS: Record<string, {
-  avgSupplyCostPerPage: number;
-  avgServiceCostPerMonth: number;
-  avgEnergyKwhPerMonth: number;
-}> = {
+const DEVICE_TYPE_FACTORS: Record<
+  string,
+  {
+    avgSupplyCostPerPage: number;
+    avgServiceCostPerMonth: number;
+    avgEnergyKwhPerMonth: number;
+  }
+> = {
   desktop_printer: {
     avgSupplyCostPerPage: 0.035,
     avgServiceCostPerMonth: 25,
     avgEnergyKwhPerMonth: 15,
   },
   copier: {
-    avgSupplyCostPerPage: 0.020,
+    avgSupplyCostPerPage: 0.02,
     avgServiceCostPerMonth: 85,
     avgEnergyKwhPerMonth: 45,
   },
@@ -246,7 +255,8 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
   } else {
     // Estimate based on device types and page volume
     const avgSupplyCost = calculateAverageSupplyCost(inputs.deviceTypes);
-    monthlySupplieCost = (monthlyBWPages * avgSupplyCost * 0.6) + (monthlyColorPages * avgSupplyCost * 2.5);
+    monthlySupplieCost =
+      monthlyBWPages * avgSupplyCost * 0.6 + monthlyColorPages * avgSupplyCost * 2.5;
   }
 
   // ==================== Service/Maintenance Costs ====================
@@ -256,7 +266,8 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
   } else {
     // Estimate based on device count, types, and age
     const avgServiceCost = calculateAverageServiceCost(inputs.deviceTypes);
-    monthlyServiceCost = avgServiceCost * inputs.deviceCount * fleetAgeMultiplier.serviceCostMultiplier;
+    monthlyServiceCost =
+      avgServiceCost * inputs.deviceCount * fleetAgeMultiplier.serviceCostMultiplier;
   }
 
   // ==================== Energy Costs ====================
@@ -266,7 +277,11 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
   } else {
     // Estimate based on device types and age
     const avgEnergyKwh = calculateAverageEnergyConsumption(inputs.deviceTypes);
-    monthlyEnergyCost = avgEnergyKwh * inputs.deviceCount * AVERAGE_KWH_COST * fleetAgeMultiplier.energyCostMultiplier;
+    monthlyEnergyCost =
+      avgEnergyKwh *
+      inputs.deviceCount *
+      AVERAGE_KWH_COST *
+      fleetAgeMultiplier.energyCostMultiplier;
   }
 
   // ==================== Downtime Costs ====================
@@ -275,10 +290,14 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
     monthlyDowntimeHours = inputs.monthlyDowntimeHours;
   } else {
     // Estimate based on age and reliability
-    monthlyDowntimeHours = industryBenchmark.avgDowntimeHoursPerMonth * inputs.deviceCount * fleetAgeMultiplier.downtimeMultiplier;
+    monthlyDowntimeHours =
+      industryBenchmark.avgDowntimeHoursPerMonth *
+      inputs.deviceCount *
+      fleetAgeMultiplier.downtimeMultiplier;
   }
 
-  const downtimeCost = monthlyDowntimeHours * AVERAGE_HOURLY_EMPLOYEE_COST * (inputs.employeeCount * 0.15); // 15% of employees affected
+  const downtimeCost =
+    monthlyDowntimeHours * AVERAGE_HOURLY_EMPLOYEE_COST * (inputs.employeeCount * 0.15); // 15% of employees affected
 
   // ==================== Hidden Costs ====================
 
@@ -298,20 +317,28 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Total Costs ====================
 
-  const monthlyTotalCost = monthlySupplieCost + monthlyServiceCost + monthlyEnergyCost + supplyWasteCost + laborCost + downtimeCost;
+  const monthlyTotalCost =
+    monthlySupplieCost +
+    monthlyServiceCost +
+    monthlyEnergyCost +
+    supplyWasteCost +
+    laborCost +
+    downtimeCost;
   const annualTCO = monthlyTotalCost * 12;
 
   // ==================== Cost Per Page ====================
 
-  const costPerPageBW = monthlyTotalCost / (inputs.monthlyPageVolume || 1) * 0.85; // Weighted for B&W
-  const costPerPageColor = monthlyTotalCost / (inputs.monthlyPageVolume || 1) * 1.95; // Weighted for color
+  const costPerPageBW = (monthlyTotalCost / (inputs.monthlyPageVolume || 1)) * 0.85; // Weighted for B&W
+  const costPerPageColor = (monthlyTotalCost / (inputs.monthlyPageVolume || 1)) * 1.95; // Weighted for color
 
   // ==================== Benchmarking ====================
 
   const costPerEmployee = annualTCO / inputs.employeeCount;
   const avgCostPerPage = (costPerPageBW + costPerPageColor) / 2;
-  const industryAvgCostPerPage = (industryBenchmark.avgCostPerPageBW + industryBenchmark.avgCostPerPageColor) / 2;
-  const percentageAboveIndustry = ((avgCostPerPage - industryAvgCostPerPage) / industryAvgCostPerPage) * 100;
+  const industryAvgCostPerPage =
+    (industryBenchmark.avgCostPerPageBW + industryBenchmark.avgCostPerPageColor) / 2;
+  const percentageAboveIndustry =
+    ((avgCostPerPage - industryAvgCostPerPage) / industryAvgCostPerPage) * 100;
 
   // Calculate utilization score
   const pagesPerDevicePerMonth = inputs.monthlyPageVolume / inputs.deviceCount;
@@ -341,15 +368,15 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
   if (inputs.fleetAge === '5_7_years' || inputs.fleetAge === '8_plus_years') {
     // Newer equipment saves on service and energy
     const serviceReduction = monthlyServiceCost * 0.45;
-    const energyReduction = monthlyEnergyCost * 0.30;
+    const energyReduction = monthlyEnergyCost * 0.3;
     upgradeEquipmentSavings = (serviceReduction + energyReduction) * 12;
   }
 
   // Print policies savings (reduce unnecessary printing)
-  const printPoliciesSavings = monthlySupplieCost * 0.20 * 12; // 20% reduction from policies
+  const printPoliciesSavings = monthlySupplieCost * 0.2 * 12; // 20% reduction from policies
 
   // Supply management savings
-  const supplyManagementSavings = supplyWasteCost * 12 + (laborCost * 0.75 * 12);
+  const supplyManagementSavings = supplyWasteCost * 12 + laborCost * 0.75 * 12;
 
   // Managed print services total savings
   const mpsSavings = annualTCO * MANAGED_PRINT_SERVICES_SAVINGS_PERCENT;
@@ -360,7 +387,12 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
     printPolicies: Math.round(printPoliciesSavings),
     supplyManagement: Math.round(supplyManagementSavings),
     managedPrintServices: Math.round(mpsSavings),
-    total: Math.round(consolidationSavings + upgradeEquipmentSavings + printPoliciesSavings + supplyManagementSavings),
+    total: Math.round(
+      consolidationSavings +
+        upgradeEquipmentSavings +
+        printPoliciesSavings +
+        supplyManagementSavings,
+    ),
   };
 
   // ==================== Cost Breakdown ====================
@@ -469,7 +501,10 @@ export function determineLeadTemperature(leadScore: number): 'hot' | 'warm' | 'c
 
 // ==================== Recommendation Generator ====================
 
-export function generateRecommendations(inputs: FleetInputs, results: CalculationResults): Array<{
+export function generateRecommendations(
+  inputs: FleetInputs,
+  results: CalculationResults,
+): Array<{
   title: string;
   description: string;
   savings: number;
@@ -485,7 +520,10 @@ export function generateRecommendations(inputs: FleetInputs, results: Calculatio
   }> = [];
 
   // Consolidation recommendation
-  if (results.benchmarking.utilizationScore < 50 && results.savingsOpportunities.consolidation > 0) {
+  if (
+    results.benchmarking.utilizationScore < 50 &&
+    results.savingsOpportunities.consolidation > 0
+  ) {
     recommendations.push({
       title: 'Consolidate Underutilized Devices',
       description: `Your fleet utilization is only ${results.benchmarking.utilizationScore}%. Consolidating devices can reduce costs without impacting productivity.`,
@@ -501,10 +539,14 @@ export function generateRecommendations(inputs: FleetInputs, results: Calculatio
   }
 
   // Equipment upgrade recommendation
-  if ((inputs.fleetAge === '5_7_years' || inputs.fleetAge === '8_plus_years') && results.savingsOpportunities.upgradeEquipment > 0) {
+  if (
+    (inputs.fleetAge === '5_7_years' || inputs.fleetAge === '8_plus_years') &&
+    results.savingsOpportunities.upgradeEquipment > 0
+  ) {
     recommendations.push({
       title: 'Upgrade Aging Equipment',
-      description: 'Your aging fleet is costing significantly more in service and energy. Modern devices pay for themselves in 18-24 months.',
+      description:
+        'Your aging fleet is costing significantly more in service and energy. Modern devices pay for themselves in 18-24 months.',
       savings: results.savingsOpportunities.upgradeEquipment,
       priority: 'high',
       actionItems: [
@@ -520,7 +562,8 @@ export function generateRecommendations(inputs: FleetInputs, results: Calculatio
   if (results.savingsOpportunities.printPolicies > 5000) {
     recommendations.push({
       title: 'Implement Print Management Policies',
-      description: 'Reduce waste and unnecessary printing with smart policies. Most companies reduce volume by 20-30%.',
+      description:
+        'Reduce waste and unnecessary printing with smart policies. Most companies reduce volume by 20-30%.',
       savings: results.savingsOpportunities.printPolicies,
       priority: 'medium',
       actionItems: [
@@ -536,7 +579,8 @@ export function generateRecommendations(inputs: FleetInputs, results: Calculatio
   if (results.savingsOpportunities.supplyManagement > 3000) {
     recommendations.push({
       title: 'Centralize Supply Management',
-      description: 'Eliminate supply waste and reduce labor costs with automated supply ordering based on actual usage.',
+      description:
+        'Eliminate supply waste and reduce labor costs with automated supply ordering based on actual usage.',
       savings: results.savingsOpportunities.supplyManagement,
       priority: 'medium',
       actionItems: [
@@ -552,7 +596,8 @@ export function generateRecommendations(inputs: FleetInputs, results: Calculatio
   if (inputs.deviceCount >= 10 && results.annualTCO >= 15000) {
     recommendations.push({
       title: 'Evaluate Managed Print Services',
-      description: 'Transfer the burden of print management to experts. Average savings of 25% plus predictable monthly costs.',
+      description:
+        'Transfer the burden of print management to experts. Average savings of 25% plus predictable monthly costs.',
       savings: results.savingsOpportunities.managedPrintServices,
       priority: inputs.painPoints.includes('lack_of_visibility') ? 'high' : 'medium',
       actionItems: [

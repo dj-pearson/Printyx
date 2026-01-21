@@ -17,14 +17,16 @@ router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest
     const tenantId = req.tenantId!;
 
     // Query actual database for demos
-    const demos = await db.select().from(demoSchedules)
+    const demos = await db
+      .select()
+      .from(demoSchedules)
       .where(eq(demoSchedules.tenantId, tenantId))
       .orderBy(desc(demoSchedules.scheduledDate));
 
     res.json(demos);
   } catch (error) {
     console.error('Error fetching demos:', error);
-    
+
     // Fallback to sample data if schema tables don't exist yet
     const sampleDemos = [
       {
@@ -44,10 +46,10 @@ router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest
         preparationCompleted: false,
         demoObjectives: 'Demonstrate color printing capabilities and scan-to-email features',
         proposalAmount: 15000,
-        createdAt: new Date('2025-01-05')
+        createdAt: new Date('2025-01-05'),
       },
       {
-        id: 'demo-2', 
+        id: 'demo-2',
         businessRecordId: 'customer-2',
         customerName: 'XYZ Industries',
         contactPerson: 'Jane Doe',
@@ -63,8 +65,8 @@ router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest
         preparationCompleted: true,
         demoObjectives: 'Show high-volume color printing and finishing options',
         proposalAmount: 25000,
-        createdAt: new Date('2025-01-06')
-      }
+        createdAt: new Date('2025-01-06'),
+      },
     ];
 
     res.json(sampleDemos);
@@ -76,7 +78,7 @@ router.get('/api/demos/customers', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Get real customers from business records
@@ -90,17 +92,15 @@ router.get('/api/demos/customers', async (req: any, res) => {
         addressLine1: businessRecords.addressLine1,
         city: businessRecords.city,
         state: businessRecords.state,
-        zipCode: businessRecords.zipCode
+        zipCode: businessRecords.zipCode,
       })
       .from(businessRecords)
-      .where(and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'customer')
-      ))
+      .where(
+        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+      )
       .orderBy(asc(businessRecords.companyName));
 
     res.json(customers);
-    
   } catch (error) {
     console.error('Error fetching customers for demo:', error);
     res.status(500).json({ message: 'Failed to fetch customers' });
@@ -112,9 +112,9 @@ router.post('/api/demos', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const {
@@ -131,36 +131,36 @@ router.post('/api/demos', async (req: any, res) => {
       demoZipCode,
       demoObjectives,
       customerRequirements,
-      proposalAmount
+      proposalAmount,
     } = req.body;
 
     // Phase 2: Enhanced validation (poka-yoke)
     const validationErrors = [];
-    
-    if (!businessRecordId?.trim()) validationErrors.push("Customer selection is required");
-    if (!scheduledDate) validationErrors.push("Scheduled date is required");
-    if (!scheduledTime) validationErrors.push("Scheduled time is required");
-    if (!demoType?.trim()) validationErrors.push("Demo type is required");
-    
+
+    if (!businessRecordId?.trim()) validationErrors.push('Customer selection is required');
+    if (!scheduledDate) validationErrors.push('Scheduled date is required');
+    if (!scheduledTime) validationErrors.push('Scheduled time is required');
+    if (!demoType?.trim()) validationErrors.push('Demo type is required');
+
     // Business logic validations
     const demoDate = new Date(scheduledDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (demoDate < today) {
-      validationErrors.push("Demo cannot be scheduled in the past");
+      validationErrors.push('Demo cannot be scheduled in the past');
     }
-    
+
     // Weekend scheduling warning (business rule)
     const dayOfWeek = demoDate.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 6) {
-      validationErrors.push("Demos scheduled on weekends require manager approval");
+      validationErrors.push('Demos scheduled on weekends require manager approval');
     }
-    
+
     if (validationErrors.length > 0) {
-      return res.status(400).json({ 
-        error: "Validation failed", 
-        details: validationErrors 
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors,
       });
     }
 
@@ -187,11 +187,10 @@ router.post('/api/demos', async (req: any, res) => {
       customerRequirements,
       proposalAmount,
       createdBy: userId,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
 
     res.status(201).json(newDemo);
-    
   } catch (error) {
     console.error('Error creating demo:', error);
     res.status(500).json({ message: 'Failed to create demo' });
@@ -203,16 +202,15 @@ router.put('/api/demos/:id/status', async (req: any, res) => {
   try {
     const { id } = req.params;
     const { status, confirmationStatus } = req.body;
-    
+
     // For now, return success response until schema is updated
-    res.json({ 
+    res.json({
       message: 'Demo status updated successfully',
       id,
       status,
       confirmationStatus,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
-    
   } catch (error) {
     console.error('Error updating demo status:', error);
     res.status(500).json({ message: 'Failed to update demo status' });
@@ -223,17 +221,18 @@ router.put('/api/demos/:id/status', async (req: any, res) => {
 router.get('/api/demos/:id/checklist', async (req: any, res) => {
   try {
     const { id } = req.params;
-    
+
     // Sample preparation checklist
     const checklist = [
       {
         id: 'prep-1',
         category: 'equipment',
         taskName: 'Prepare demonstration equipment',
-        taskDescription: 'Ensure all equipment is clean, loaded with paper, and functioning properly',
+        taskDescription:
+          'Ensure all equipment is clean, loaded with paper, and functioning properly',
         isCompleted: false,
         priority: 'high',
-        estimatedMinutes: 30
+        estimatedMinutes: 30,
       },
       {
         id: 'prep-2',
@@ -242,7 +241,7 @@ router.get('/api/demos/:id/checklist', async (req: any, res) => {
         taskDescription: 'Collect brochures, spec sheets, and comparison documents',
         isCompleted: false,
         priority: 'medium',
-        estimatedMinutes: 15
+        estimatedMinutes: 15,
       },
       {
         id: 'prep-3',
@@ -252,7 +251,7 @@ router.get('/api/demos/:id/checklist', async (req: any, res) => {
         isCompleted: true,
         priority: 'high',
         estimatedMinutes: 20,
-        completedAt: new Date()
+        completedAt: new Date(),
       },
       {
         id: 'prep-4',
@@ -261,12 +260,11 @@ router.get('/api/demos/:id/checklist', async (req: any, res) => {
         taskDescription: 'Call customer to confirm time, location, and attendees',
         isCompleted: false,
         priority: 'high',
-        estimatedMinutes: 10
-      }
+        estimatedMinutes: 10,
+      },
     ];
-    
+
     res.json(checklist);
-    
   } catch (error) {
     console.error('Error fetching demo checklist:', error);
     res.status(500).json({ message: 'Failed to fetch demo checklist' });
@@ -278,7 +276,7 @@ router.put('/api/demos/:demoId/checklist/:itemId', async (req: any, res) => {
   try {
     const { demoId, itemId } = req.params;
     const { isCompleted } = req.body;
-    
+
     // For now, return success response until schema is updated
     res.json({
       message: 'Checklist item updated successfully',
@@ -286,9 +284,8 @@ router.put('/api/demos/:demoId/checklist/:itemId', async (req: any, res) => {
       itemId,
       isCompleted,
       completedAt: isCompleted ? new Date() : null,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
-    
   } catch (error) {
     console.error('Error updating checklist item:', error);
     res.status(500).json({ message: 'Failed to update checklist item' });
@@ -300,7 +297,7 @@ router.get('/api/demos/equipment-availability', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Sample equipment availability
@@ -313,7 +310,7 @@ router.get('/api/demos/equipment-availability', async (req: any, res) => {
         isAvailable: true,
         equipmentCondition: 'excellent',
         totalDemoCount: 15,
-        lastDemoDate: new Date('2025-01-03')
+        lastDemoDate: new Date('2025-01-03'),
       },
       {
         id: 'eq-2',
@@ -323,7 +320,7 @@ router.get('/api/demos/equipment-availability', async (req: any, res) => {
         isAvailable: true,
         equipmentCondition: 'good',
         totalDemoCount: 22,
-        lastDemoDate: new Date('2025-01-04')
+        lastDemoDate: new Date('2025-01-04'),
       },
       {
         id: 'eq-3',
@@ -333,12 +330,11 @@ router.get('/api/demos/equipment-availability', async (req: any, res) => {
         isAvailable: false,
         equipmentCondition: 'excellent',
         totalDemoCount: 8,
-        lastDemoDate: new Date('2025-01-05')
-      }
+        lastDemoDate: new Date('2025-01-05'),
+      },
     ];
-    
+
     res.json(equipment);
-    
   } catch (error) {
     console.error('Error fetching equipment availability:', error);
     res.status(500).json({ message: 'Failed to fetch equipment availability' });

@@ -10,9 +10,9 @@
  * - Import execution with progress
  */
 
-import { useState, useCallback, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useState, useCallback, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
 import {
   Upload,
   FileSpreadsheet,
@@ -38,11 +38,11 @@ import {
   AlertCircle,
   HelpCircle,
   Zap,
-} from "lucide-react";
+} from 'lucide-react';
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Card,
   CardContent,
@@ -50,14 +50,14 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from "@/components/ui/card";
+} from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -65,7 +65,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -73,88 +73,79 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
 
 // Entity type definitions
 const ENTITY_TYPES = [
   {
-    id: "business_records",
-    name: "Customers & Leads",
-    description: "Import customer and lead records",
+    id: 'business_records',
+    name: 'Customers & Leads',
+    description: 'Import customer and lead records',
     icon: Users,
   },
   {
-    id: "contacts",
-    name: "Contacts",
-    description: "Import contact information",
+    id: 'contacts',
+    name: 'Contacts',
+    description: 'Import contact information',
     icon: Users,
   },
   {
-    id: "products",
-    name: "Products",
-    description: "Import product catalog",
+    id: 'products',
+    name: 'Products',
+    description: 'Import product catalog',
     icon: Package,
   },
   {
-    id: "service_products",
-    name: "Service Products",
-    description: "Import service products and pricing",
+    id: 'service_products',
+    name: 'Service Products',
+    description: 'Import service products and pricing',
     icon: Wrench,
   },
   {
-    id: "inventory",
-    name: "Inventory",
-    description: "Import inventory items",
+    id: 'inventory',
+    name: 'Inventory',
+    description: 'Import inventory items',
     icon: Package,
   },
   {
-    id: "equipment",
-    name: "Equipment",
-    description: "Import equipment records",
+    id: 'equipment',
+    name: 'Equipment',
+    description: 'Import equipment records',
     icon: Building2,
   },
   {
-    id: "opportunities",
-    name: "Opportunities",
-    description: "Import sales opportunities",
+    id: 'opportunities',
+    name: 'Opportunities',
+    description: 'Import sales opportunities',
     icon: FileText,
   },
   {
-    id: "service_tickets",
-    name: "Service Tickets",
-    description: "Import service requests",
+    id: 'service_tickets',
+    name: 'Service Tickets',
+    description: 'Import service requests',
     icon: Wrench,
   },
 ];
 
 // Wizard steps
 const STEPS = [
-  { id: "select-type", title: "Select Type", description: "Choose what to import" },
-  { id: "upload", title: "Upload File", description: "Upload your CSV file" },
-  { id: "mapping", title: "Map Columns", description: "Match columns to fields" },
-  { id: "validation", title: "Validate", description: "Review and fix issues" },
-  { id: "import", title: "Import", description: "Execute the import" },
+  { id: 'select-type', title: 'Select Type', description: 'Choose what to import' },
+  { id: 'upload', title: 'Upload File', description: 'Upload your CSV file' },
+  { id: 'mapping', title: 'Map Columns', description: 'Match columns to fields' },
+  { id: 'validation', title: 'Validate', description: 'Review and fix issues' },
+  { id: 'import', title: 'Import', description: 'Execute the import' },
 ];
 
 interface ColumnMapping {
@@ -178,7 +169,7 @@ interface Duplicate {
   existingRecordId: string;
   existingRecordData: Record<string, any>;
   matchScore: number;
-  resolution: "pending" | "skip" | "merge" | "create_new";
+  resolution: 'pending' | 'skip' | 'merge' | 'create_new';
 }
 
 export default function CSVImportWizard() {
@@ -187,11 +178,11 @@ export default function CSVImportWizard() {
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
-  const [entityType, setEntityType] = useState<string>("");
+  const [entityType, setEntityType] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [useAi, setUseAi] = useState(false);
-  const [duplicateStrategy, setDuplicateStrategy] = useState<string>("prompt");
+  const [duplicateStrategy, setDuplicateStrategy] = useState<string>('prompt');
 
   // Data state
   const [previewData, setPreviewData] = useState<{
@@ -218,18 +209,18 @@ export default function CSVImportWizard() {
 
   // Fetch entity types
   const { data: entityTypes } = useQuery({
-    queryKey: ["/api/import/entity-types"],
+    queryKey: ['/api/import/entity-types'],
     queryFn: async () => {
-      const response = await apiRequest("/api/import/entity-types", "GET");
+      const response = await apiRequest('/api/import/entity-types', 'GET');
       return response;
     },
   });
 
   // Fetch template columns when entity type changes
   const { data: templateColumns, isLoading: isLoadingTemplate } = useQuery({
-    queryKey: ["/api/import/templates", entityType],
+    queryKey: ['/api/import/templates', entityType],
     queryFn: async () => {
-      const response = await apiRequest(`/api/import/templates/${entityType}`, "GET");
+      const response = await apiRequest(`/api/import/templates/${entityType}`, 'GET');
       return response;
     },
     enabled: !!entityType,
@@ -237,9 +228,9 @@ export default function CSVImportWizard() {
 
   // Check AI availability
   const { data: aiStatus } = useQuery({
-    queryKey: ["/api/import/ai/status"],
+    queryKey: ['/api/import/ai/status'],
     queryFn: async () => {
-      const response = await apiRequest("/api/import/ai/status", "GET");
+      const response = await apiRequest('/api/import/ai/status', 'GET');
       return response;
     },
   });
@@ -247,14 +238,14 @@ export default function CSVImportWizard() {
   // Upload file mutation
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/import/upload", {
-        method: "POST",
+      const response = await fetch('/api/import/upload', {
+        method: 'POST',
         body: formData,
-        credentials: "include",
+        credentials: 'include',
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Upload failed");
+        throw new Error(error.message || 'Upload failed');
       }
       return response.json();
     },
@@ -263,15 +254,15 @@ export default function CSVImportWizard() {
       setMappings(data.columnMappings || []);
       setCurrentStep(2); // Go to mapping step
       toast({
-        title: "File uploaded",
+        title: 'File uploaded',
         description: `Found ${data.totalRows} rows. Review column mappings.`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Upload failed",
+        title: 'Upload failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -279,14 +270,14 @@ export default function CSVImportWizard() {
   // Preview mapping mutation
   const previewMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/import/preview-mapping", {
-        method: "POST",
+      const response = await fetch('/api/import/preview-mapping', {
+        method: 'POST',
         body: formData,
-        credentials: "include",
+        credentials: 'include',
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Preview failed");
+        throw new Error(error.message || 'Preview failed');
       }
       return response.json();
     },
@@ -299,29 +290,29 @@ export default function CSVImportWizard() {
   // AI mapping mutation
   const aiMappingMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/import/ai/map-columns", {
-        method: "POST",
+      const response = await fetch('/api/import/ai/map-columns', {
+        method: 'POST',
         body: formData,
-        credentials: "include",
+        credentials: 'include',
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "AI mapping failed");
+        throw new Error(error.message || 'AI mapping failed');
       }
       return response.json();
     },
     onSuccess: (data) => {
       setMappings(data.mappings || []);
       toast({
-        title: "AI mapping complete",
+        title: 'AI mapping complete',
         description: `Mapped ${data.mappings?.length || 0} columns with ${Math.round(data.overallConfidence || 0)}% confidence`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "AI mapping failed",
+        title: 'AI mapping failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -329,7 +320,7 @@ export default function CSVImportWizard() {
   // Update mappings mutation
   const updateMappingsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/import/jobs/${jobId}/mappings`, "PUT", {
+      return await apiRequest(`/api/import/jobs/${jobId}/mappings`, 'PUT', {
         mappings: mappings.map((m) => ({
           sourceColumn: m.sourceColumn,
           targetField: m.targetField,
@@ -339,8 +330,8 @@ export default function CSVImportWizard() {
     },
     onSuccess: () => {
       toast({
-        title: "Mappings saved",
-        description: "Column mappings have been updated",
+        title: 'Mappings saved',
+        description: 'Column mappings have been updated',
       });
     },
   });
@@ -348,7 +339,7 @@ export default function CSVImportWizard() {
   // Validate mutation
   const validateMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/import/jobs/${jobId}/validate`, "POST");
+      return await apiRequest(`/api/import/jobs/${jobId}/validate`, 'POST');
     },
     onSuccess: (data) => {
       setValidationResult({
@@ -363,9 +354,9 @@ export default function CSVImportWizard() {
     },
     onError: (error: any) => {
       toast({
-        title: "Validation failed",
+        title: 'Validation failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -373,19 +364,29 @@ export default function CSVImportWizard() {
   // Fetch duplicates
   const fetchDuplicates = async () => {
     try {
-      const data = await apiRequest(`/api/import/jobs/${jobId}/duplicates`, "GET");
+      const data = await apiRequest(`/api/import/jobs/${jobId}/duplicates`, 'GET');
       setDuplicates(data.duplicates || []);
     } catch (error) {
-      console.error("Failed to fetch duplicates:", error);
+      console.error('Failed to fetch duplicates:', error);
     }
   };
 
   // Resolve duplicate mutation
   const resolveDuplicateMutation = useMutation({
-    mutationFn: async ({ duplicateId, resolution }: { duplicateId: string; resolution: string }) => {
-      return await apiRequest(`/api/import/jobs/${jobId}/duplicates/${duplicateId}/resolve`, "POST", {
-        resolution,
-      });
+    mutationFn: async ({
+      duplicateId,
+      resolution,
+    }: {
+      duplicateId: string;
+      resolution: string;
+    }) => {
+      return await apiRequest(
+        `/api/import/jobs/${jobId}/duplicates/${duplicateId}/resolve`,
+        'POST',
+        {
+          resolution,
+        },
+      );
     },
     onSuccess: () => {
       fetchDuplicates();
@@ -395,13 +396,13 @@ export default function CSVImportWizard() {
   // Resolve all duplicates mutation
   const resolveAllMutation = useMutation({
     mutationFn: async (resolution: string) => {
-      return await apiRequest(`/api/import/jobs/${jobId}/duplicates/resolve-all`, "POST", {
+      return await apiRequest(`/api/import/jobs/${jobId}/duplicates/resolve-all`, 'POST', {
         resolution,
       });
     },
     onSuccess: (data) => {
       toast({
-        title: "Duplicates resolved",
+        title: 'Duplicates resolved',
         description: `${data.count} duplicates resolved`,
       });
       fetchDuplicates();
@@ -411,7 +412,7 @@ export default function CSVImportWizard() {
   // Execute import mutation
   const executeMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/import/jobs/${jobId}/execute`, "POST");
+      return await apiRequest(`/api/import/jobs/${jobId}/execute`, 'POST');
     },
     onSuccess: (data) => {
       setImportResult({
@@ -422,42 +423,45 @@ export default function CSVImportWizard() {
       });
       setImportProgress(100);
       toast({
-        title: "Import complete",
+        title: 'Import complete',
         description: `Successfully imported ${data.imported} records`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Import failed",
+        title: 'Import failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   // Handle file selection
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = e.target.files?.[0];
+      if (selectedFile) {
+        setFile(selectedFile);
 
-      // Auto-preview
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("entityType", entityType);
-      previewMutation.mutate(formData);
-    }
-  }, [entityType]);
+        // Auto-preview
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('entityType', entityType);
+        previewMutation.mutate(formData);
+      }
+    },
+    [entityType],
+  );
 
   // Handle upload
   const handleUpload = useCallback(() => {
     if (!file || !entityType) return;
 
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("entityType", entityType);
-    formData.append("useAiRefinement", String(useAi));
-    formData.append("duplicateStrategy", duplicateStrategy);
+    formData.append('file', file);
+    formData.append('entityType', entityType);
+    formData.append('useAiRefinement', String(useAi));
+    formData.append('duplicateStrategy', duplicateStrategy);
 
     uploadMutation.mutate(formData);
   }, [file, entityType, useAi, duplicateStrategy]);
@@ -467,8 +471,8 @@ export default function CSVImportWizard() {
     if (!file || !entityType) return;
 
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("entityType", entityType);
+    formData.append('file', file);
+    formData.append('entityType', entityType);
 
     aiMappingMutation.mutate(formData);
   }, [file, entityType]);
@@ -477,10 +481,8 @@ export default function CSVImportWizard() {
   const handleMappingChange = useCallback((sourceColumn: string, targetField: string) => {
     setMappings((prev) =>
       prev.map((m) =>
-        m.sourceColumn === sourceColumn
-          ? { ...m, targetField, userConfirmed: true }
-          : m
-      )
+        m.sourceColumn === sourceColumn ? { ...m, targetField, userConfirmed: true } : m,
+      ),
     );
   }, []);
 
@@ -511,7 +513,7 @@ export default function CSVImportWizard() {
   // Download template
   const handleDownloadTemplate = useCallback(() => {
     if (!entityType) return;
-    window.open(`/api/import/templates/${entityType}/download`, "_blank");
+    window.open(`/api/import/templates/${entityType}/download`, '_blank');
   }, [entityType]);
 
   // Check if can proceed
@@ -524,14 +526,17 @@ export default function CSVImportWizard() {
       case 2:
         return mappings.some((m) => m.targetField);
       case 3:
-        return validationResult && validationResult.invalidRows === 0 || duplicates.every((d) => d.resolution !== "pending");
+        return (
+          (validationResult && validationResult.invalidRows === 0) ||
+          duplicates.every((d) => d.resolution !== 'pending')
+        );
       default:
         return false;
     }
   }, [currentStep, entityType, file, mappings, validationResult, duplicates]);
 
   // Calculate pending duplicates
-  const pendingDuplicates = duplicates.filter((d) => d.resolution === "pending").length;
+  const pendingDuplicates = duplicates.filter((d) => d.resolution === 'pending').length;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -540,14 +545,12 @@ export default function CSVImportWizard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
                 <h1 className="text-xl font-semibold">CSV Import Wizard</h1>
-                <p className="text-sm text-muted-foreground">
-                  Import data from CSV files
-                </p>
+                <p className="text-sm text-muted-foreground">Import data from CSV files</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -570,25 +573,21 @@ export default function CSVImportWizard() {
               <div
                 key={step.id}
                 className={cn(
-                  "flex items-center gap-2",
-                  idx < currentStep && "text-primary",
-                  idx === currentStep && "text-primary font-medium",
-                  idx > currentStep && "text-muted-foreground"
+                  'flex items-center gap-2',
+                  idx < currentStep && 'text-primary',
+                  idx === currentStep && 'text-primary font-medium',
+                  idx > currentStep && 'text-muted-foreground',
                 )}
               >
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-sm",
-                    idx < currentStep && "bg-primary text-primary-foreground",
-                    idx === currentStep && "bg-primary text-primary-foreground",
-                    idx > currentStep && "bg-muted text-muted-foreground"
+                    'w-8 h-8 rounded-full flex items-center justify-center text-sm',
+                    idx < currentStep && 'bg-primary text-primary-foreground',
+                    idx === currentStep && 'bg-primary text-primary-foreground',
+                    idx > currentStep && 'bg-muted text-muted-foreground',
                   )}
                 >
-                  {idx < currentStep ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    idx + 1
-                  )}
+                  {idx < currentStep ? <Check className="h-4 w-4" /> : idx + 1}
                 </div>
                 <div className="hidden md:block">
                   <div className="text-sm">{step.title}</div>
@@ -597,8 +596,8 @@ export default function CSVImportWizard() {
                 {idx < STEPS.length - 1 && (
                   <div
                     className={cn(
-                      "hidden md:block h-px w-16 mx-2",
-                      idx < currentStep ? "bg-primary" : "bg-border"
+                      'hidden md:block h-px w-16 mx-2',
+                      idx < currentStep ? 'bg-primary' : 'bg-border',
                     )}
                   />
                 )}
@@ -630,19 +629,19 @@ export default function CSVImportWizard() {
                         key={type.id}
                         onClick={() => setEntityType(type.id)}
                         className={cn(
-                          "cursor-pointer transition-all hover:shadow-md",
-                          isSelected && "ring-2 ring-primary"
+                          'cursor-pointer transition-all hover:shadow-md',
+                          isSelected && 'ring-2 ring-primary',
                         )}
                       >
                         <CardContent className="p-4 text-center">
-                          <Icon className={cn(
-                            "h-8 w-8 mx-auto mb-2",
-                            isSelected ? "text-primary" : "text-muted-foreground"
-                          )} />
+                          <Icon
+                            className={cn(
+                              'h-8 w-8 mx-auto mb-2',
+                              isSelected ? 'text-primary' : 'text-muted-foreground',
+                            )}
+                          />
                           <h3 className="font-medium text-sm">{type.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {type.description}
-                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">{type.description}</p>
                         </CardContent>
                       </Card>
                     );
@@ -667,8 +666,10 @@ export default function CSVImportWizard() {
                 {/* File upload area */}
                 <div
                   className={cn(
-                    "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-                    file ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
+                    'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+                    file
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted-foreground/25 hover:border-primary/50',
                   )}
                 >
                   {file ? (
@@ -714,9 +715,7 @@ export default function CSVImportWizard() {
                       <Label className="flex items-center gap-2">
                         <Sparkles className="h-4 w-4" />
                         AI-Powered Mapping
-                        {!aiStatus?.available && (
-                          <Badge variant="secondary">Premium</Badge>
-                        )}
+                        {!aiStatus?.available && <Badge variant="secondary">Premium</Badge>}
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Use AI to automatically map columns to fields
@@ -782,7 +781,7 @@ export default function CSVImportWizard() {
                             <TableRow key={idx}>
                               {previewData.headers.map((header) => (
                                 <TableCell key={header} className="whitespace-nowrap">
-                                  {row[header] || "—"}
+                                  {row[header] || '—'}
                                 </TableCell>
                               ))}
                             </TableRow>
@@ -840,12 +839,10 @@ export default function CSVImportWizard() {
                       const sampleValue = previewData?.rows?.[0]?.[mapping.sourceColumn];
                       return (
                         <TableRow key={mapping.sourceColumn}>
-                          <TableCell className="font-medium">
-                            {mapping.sourceColumn}
-                          </TableCell>
+                          <TableCell className="font-medium">{mapping.sourceColumn}</TableCell>
                           <TableCell>
                             <Select
-                              value={mapping.targetField || ""}
+                              value={mapping.targetField || ''}
                               onValueChange={(value) =>
                                 handleMappingChange(mapping.sourceColumn, value)
                               }
@@ -858,7 +855,7 @@ export default function CSVImportWizard() {
                                 {templateColumns?.columns?.map((col: any) => (
                                   <SelectItem key={col.dbField} value={col.dbField}>
                                     {col.name}
-                                    {col.required && " *"}
+                                    {col.required && ' *'}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -878,7 +875,7 @@ export default function CSVImportWizard() {
                             )}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                            {sampleValue || "—"}
+                            {sampleValue || '—'}
                           </TableCell>
                         </TableRow>
                       );
@@ -891,8 +888,8 @@ export default function CSVImportWizard() {
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Unmapped Columns</AlertTitle>
                     <AlertDescription>
-                      The following columns were not automatically mapped:{" "}
-                      {previewData.unmappedColumns.join(", ")}
+                      The following columns were not automatically mapped:{' '}
+                      {previewData.unmappedColumns.join(', ')}
                     </AlertDescription>
                   </Alert>
                 )}
@@ -941,9 +938,7 @@ export default function CSVImportWizard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Validation Errors</CardTitle>
-                  <CardDescription>
-                    These rows have issues that need to be fixed
-                  </CardDescription>
+                  <CardDescription>These rows have issues that need to be fixed</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-48">
@@ -985,7 +980,7 @@ export default function CSVImportWizard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => resolveAllMutation.mutate("skip")}
+                        onClick={() => resolveAllMutation.mutate('skip')}
                         disabled={resolveAllMutation.isPending}
                       >
                         Skip All
@@ -993,7 +988,7 @@ export default function CSVImportWizard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => resolveAllMutation.mutate("create_new")}
+                        onClick={() => resolveAllMutation.mutate('create_new')}
                         disabled={resolveAllMutation.isPending}
                       >
                         Create All New
@@ -1007,14 +1002,18 @@ export default function CSVImportWizard() {
                       <div
                         key={dup.id}
                         className={cn(
-                          "p-4 border rounded-lg mb-2",
-                          dup.resolution === "pending" ? "border-yellow-500 bg-yellow-50" : "border-green-500 bg-green-50"
+                          'p-4 border rounded-lg mb-2',
+                          dup.resolution === 'pending'
+                            ? 'border-yellow-500 bg-yellow-50'
+                            : 'border-green-500 bg-green-50',
                         )}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="font-medium">Row {dup.rowNumber}</div>
-                          <Badge variant={dup.resolution === "pending" ? "secondary" : "default"}>
-                            {dup.resolution === "pending" ? `${dup.matchScore}% match` : dup.resolution}
+                          <Badge variant={dup.resolution === 'pending' ? 'secondary' : 'default'}>
+                            {dup.resolution === 'pending'
+                              ? `${dup.matchScore}% match`
+                              : dup.resolution}
                           </Badge>
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1031,26 +1030,41 @@ export default function CSVImportWizard() {
                             </pre>
                           </div>
                         </div>
-                        {dup.resolution === "pending" && (
+                        {dup.resolution === 'pending' && (
                           <div className="flex gap-2 mt-2">
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => resolveDuplicateMutation.mutate({ duplicateId: dup.id, resolution: "skip" })}
+                              onClick={() =>
+                                resolveDuplicateMutation.mutate({
+                                  duplicateId: dup.id,
+                                  resolution: 'skip',
+                                })
+                              }
                             >
                               Skip
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => resolveDuplicateMutation.mutate({ duplicateId: dup.id, resolution: "merge" })}
+                              onClick={() =>
+                                resolveDuplicateMutation.mutate({
+                                  duplicateId: dup.id,
+                                  resolution: 'merge',
+                                })
+                              }
                             >
                               Merge
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => resolveDuplicateMutation.mutate({ duplicateId: dup.id, resolution: "create_new" })}
+                              onClick={() =>
+                                resolveDuplicateMutation.mutate({
+                                  duplicateId: dup.id,
+                                  resolution: 'create_new',
+                                })
+                              }
                             >
                               Create New
                             </Button>
@@ -1070,9 +1084,7 @@ export default function CSVImportWizard() {
           <div className="max-w-xl mx-auto">
             <Card>
               <CardHeader className="text-center">
-                <CardTitle>
-                  {importResult ? "Import Complete" : "Importing Data..."}
-                </CardTitle>
+                <CardTitle>{importResult ? 'Import Complete' : 'Importing Data...'}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <Progress value={importProgress} className="h-3" />
@@ -1118,21 +1130,23 @@ export default function CSVImportWizard() {
                     )}
 
                     <div className="flex justify-center gap-4 pt-4">
-                      <Button variant="outline" onClick={() => navigate("/settings")}>
+                      <Button variant="outline" onClick={() => navigate('/settings')}>
                         Back to Settings
                       </Button>
-                      <Button onClick={() => {
-                        setCurrentStep(0);
-                        setEntityType("");
-                        setFile(null);
-                        setJobId(null);
-                        setPreviewData(null);
-                        setMappings([]);
-                        setValidationResult(null);
-                        setDuplicates([]);
-                        setImportResult(null);
-                        setImportProgress(0);
-                      }}>
+                      <Button
+                        onClick={() => {
+                          setCurrentStep(0);
+                          setEntityType('');
+                          setFile(null);
+                          setJobId(null);
+                          setPreviewData(null);
+                          setMappings([]);
+                          setValidationResult(null);
+                          setDuplicates([]);
+                          setImportResult(null);
+                          setImportProgress(0);
+                        }}
+                      >
                         Import Another File
                       </Button>
                     </div>
@@ -1149,11 +1163,7 @@ export default function CSVImportWizard() {
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 0}
-              >
+              <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
@@ -1164,7 +1174,7 @@ export default function CSVImportWizard() {
                 {(uploadMutation.isPending || validateMutation.isPending) && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
-                {currentStep === STEPS.length - 2 ? "Start Import" : "Next"}
+                {currentStep === STEPS.length - 2 ? 'Start Import' : 'Next'}
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>

@@ -1,13 +1,19 @@
-import { useMemo, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { apiRequest } from "@/lib/queryClient";
+import { useMemo, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Target,
   TrendingUp,
@@ -19,43 +25,45 @@ import {
   LineChart,
   CheckCircle,
   AlertTriangle,
-} from "lucide-react";
-import { useLocation } from "wouter";
+} from 'lucide-react';
+import { useLocation } from 'wouter';
 
 export default function SalesCommandCenter() {
-  const [period, setPeriod] = useState("monthly");
-  const [selectedForecast, setSelectedForecast] = useState<string>("all");
+  const [period, setPeriod] = useState('monthly');
+  const [selectedForecast, setSelectedForecast] = useState<string>('all');
   const [, setLocation] = useLocation();
-  const [ownerScope, setOwnerScope] = useState<string>("all");
+  const [ownerScope, setOwnerScope] = useState<string>('all');
 
   // detect ?me
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("me")) setOwnerScope("me");
+    if (params.has('me')) setOwnerScope('me');
   }, []);
 
   // Users (for potential future filtering)
-  const { data: users = [] } = useQuery({ queryKey: ["/api/users"] });
+  const { data: users = [] } = useQuery({ queryKey: ['/api/users'] });
 
   // Goals
-  const { data: goals = [] } = useQuery({ queryKey: ["/api/crm/goals", ownerScope] });
-  const { data: goalProgress = [] } = useQuery({ queryKey: ["/api/crm/goal-progress", ownerScope] });
+  const { data: goals = [] } = useQuery({ queryKey: ['/api/crm/goals', ownerScope] });
+  const { data: goalProgress = [] } = useQuery({
+    queryKey: ['/api/crm/goal-progress', ownerScope],
+  });
 
   // Forecasts list
   const { data: forecasts = [] } = useQuery({
-    queryKey: ["/api/sales-forecasts"],
-    queryFn: () => fetch("/api/sales-forecasts").then((r) => r.json()),
+    queryKey: ['/api/sales-forecasts'],
+    queryFn: () => fetch('/api/sales-forecasts').then((r) => r.json()),
   });
 
   // Pipeline forecast summary (deals + quotes + proposals)
   const { data: forecastData } = useQuery({
-    queryKey: ["/api/pipeline-forecast", selectedForecast, period, ownerScope],
+    queryKey: ['/api/pipeline-forecast', selectedForecast, period, ownerScope],
     queryFn: () => {
       let url = `/api/pipeline-forecast`;
-      if (selectedForecast && selectedForecast !== "all") url += `/${selectedForecast}`;
+      if (selectedForecast && selectedForecast !== 'all') url += `/${selectedForecast}`;
       const params = new URLSearchParams();
-      params.append("period", period);
-      if (ownerScope === "me") params.append("owner", "me");
+      params.append('period', period);
+      if (ownerScope === 'me') params.append('owner', 'me');
       return fetch(`${url}?${params.toString()}`).then((r) => r.json());
     },
   }) as { data: any };
@@ -69,19 +77,31 @@ export default function SalesCommandCenter() {
     ].reduce((a: number, b: number) => a + b, 0);
     const toGoal = forecastData?.remaining?.toGoalValue ?? null;
     const goalAttainmentPct = forecastData?.goals?.totalValue
-      ? Math.min(100, Math.round(((forecastData.pipeline?.totalValue || 0) / forecastData.goals.totalValue) * 100))
+      ? Math.min(
+          100,
+          Math.round(
+            ((forecastData.pipeline?.totalValue || 0) / forecastData.goals.totalValue) * 100,
+          ),
+        )
       : 0;
 
     return [
-      { title: "Pipeline (Total)", value: `$${total.toLocaleString()}`, icon: Layers },
-      { title: "Weighted Pipeline", value: `$${weighted.toLocaleString()}`, icon: LineChart },
-      { title: "Remaining To Goal", value: toGoal !== null ? `$${Number(toGoal).toLocaleString()}` : "—", icon: Target },
-      { title: "Goal Attainment", value: `${goalAttainmentPct}%`, icon: TrendingUp },
+      { title: 'Pipeline (Total)', value: `$${total.toLocaleString()}`, icon: Layers },
+      { title: 'Weighted Pipeline', value: `$${weighted.toLocaleString()}`, icon: LineChart },
+      {
+        title: 'Remaining To Goal',
+        value: toGoal !== null ? `$${Number(toGoal).toLocaleString()}` : '—',
+        icon: Target,
+      },
+      { title: 'Goal Attainment', value: `${goalAttainmentPct}%`, icon: TrendingUp },
     ];
   }, [forecastData]);
 
   return (
-    <MainLayout title="Sales Command Center" description="Unified KPIs, goals, pipeline, and forecasting for managers and reps">
+    <MainLayout
+      title="Sales Command Center"
+      description="Unified KPIs, goals, pipeline, and forecasting for managers and reps"
+    >
       <div className="space-y-6">
         {/* Filters */}
         <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
@@ -97,7 +117,9 @@ export default function SalesCommandCenter() {
               <SelectContent>
                 <SelectItem value="all">All Pipeline</SelectItem>
                 {forecasts?.map((f: any) => (
-                  <SelectItem key={f.id} value={f.id}>{f.title || f.forecastName}</SelectItem>
+                  <SelectItem key={f.id} value={f.id}>
+                    {f.title || f.forecastName}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -148,7 +170,9 @@ export default function SalesCommandCenter() {
           {/* Goals & Progress */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Target className="h-5 w-5" /> Sales Goals & Progress</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Target className="h-5 w-5" /> Sales Goals & Progress
+              </CardTitle>
               <CardDescription>Track progress against team and individual goals</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -160,11 +184,24 @@ export default function SalesCommandCenter() {
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary">{g.goalType}</Badge>
-                            <span className="font-medium">{g.ownerName || g.assignedToName || "Goal"}</span>
+                            <span className="font-medium">
+                              {g.ownerName || g.assignedToName || 'Goal'}
+                            </span>
                           </div>
-                          <span className="text-sm text-gray-600">Target: {g.targetCount ?? g.targetValue}</span>
+                          <span className="text-sm text-gray-600">
+                            Target: {g.targetCount ?? g.targetValue}
+                          </span>
                         </div>
-                        <Progress value={Math.min(100, Math.round((g.currentCount ?? g.currentValue) / ((g.targetCount ?? g.targetValue) || 1) * 100))} />
+                        <Progress
+                          value={Math.min(
+                            100,
+                            Math.round(
+                              ((g.currentCount ?? g.currentValue) /
+                                ((g.targetCount ?? g.targetValue) || 1)) *
+                                100,
+                            ),
+                          )}
+                        />
                       </div>
                     ))
                   ) : (
@@ -173,8 +210,12 @@ export default function SalesCommandCenter() {
                 </div>
               </ScrollArea>
               <div className="flex gap-2">
-                <Button asChild variant="outline"><a href="/crm-goals-dashboard">Manage Goals</a></Button>
-                <Button asChild variant="ghost"><a href="/sales-pipeline-forecasting">Open Forecasting</a></Button>
+                <Button asChild variant="outline">
+                  <a href="/crm-goals-dashboard">Manage Goals</a>
+                </Button>
+                <Button asChild variant="ghost">
+                  <a href="/sales-pipeline-forecasting">Open Forecasting</a>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -182,14 +223,20 @@ export default function SalesCommandCenter() {
           {/* Pipeline breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5" /> Pipeline Breakdown</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" /> Pipeline Breakdown
+              </CardTitle>
               <CardDescription>Deals, quotes, and proposals snapshot</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {(["deals", "quotes", "proposals"] as const).map((key) => {
-                  const data = forecastData?.pipeline?.breakdown?.[key] || { count: 0, value: 0, weightedValue: 0 };
-                  const labels: any = { deals: "Deals", quotes: "Quotes", proposals: "Proposals" };
+                {(['deals', 'quotes', 'proposals'] as const).map((key) => {
+                  const data = forecastData?.pipeline?.breakdown?.[key] || {
+                    count: 0,
+                    value: 0,
+                    weightedValue: 0,
+                  };
+                  const labels: any = { deals: 'Deals', quotes: 'Quotes', proposals: 'Proposals' };
                   const icons: any = { deals: DollarSign, quotes: FileText, proposals: Users };
                   const Icon = icons[key];
                   return (
@@ -200,17 +247,27 @@ export default function SalesCommandCenter() {
                           <Icon className="h-4 w-4 text-gray-500" />
                         </div>
                         <div className="text-sm text-gray-600">Count: {data.count}</div>
-                        <div className="text-sm text-gray-600">Value: ${Number(data.value).toLocaleString()}</div>
-                        <div className="text-sm text-gray-600">Weighted: ${Number(data.weightedValue).toLocaleString()}</div>
+                        <div className="text-sm text-gray-600">
+                          Value: ${Number(data.value).toLocaleString()}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Weighted: ${Number(data.weightedValue).toLocaleString()}
+                        </div>
                       </CardContent>
                     </Card>
                   );
                 })}
               </div>
               <div className="flex gap-2">
-                <Button asChild variant="outline"><a href="/deals">Manage Deals</a></Button>
-                <Button asChild variant="outline"><a href="/quotes-management">Manage Quotes</a></Button>
-                <Button asChild variant="ghost"><a href="/contracts">Contracts</a></Button>
+                <Button asChild variant="outline">
+                  <a href="/deals">Manage Deals</a>
+                </Button>
+                <Button asChild variant="outline">
+                  <a href="/quotes-management">Manage Quotes</a>
+                </Button>
+                <Button asChild variant="ghost">
+                  <a href="/contracts">Contracts</a>
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -219,7 +276,9 @@ export default function SalesCommandCenter() {
         {/* Recent pipeline list */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5" /> Recent Pipeline Items</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" /> Recent Pipeline Items
+            </CardTitle>
             <CardDescription>Top opportunities in the selected period</CardDescription>
           </CardHeader>
           <CardContent>
@@ -230,17 +289,19 @@ export default function SalesCommandCenter() {
                     <span className="font-medium truncate mr-2">{item.title}</span>
                     <Badge variant="secondary">{item.type}</Badge>
                   </div>
-                  <div className="text-sm text-gray-600 mt-1">Value: ${Number(item.value).toLocaleString()}</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Value: ${Number(item.value).toLocaleString()}
+                  </div>
                   {item.probability !== undefined && (
                     <div className="text-xs text-gray-500">Win Prob: {item.probability}%</div>
                   )}
                   {item.expectedCloseDate && (
-                    <div className="text-xs text-gray-500">Close: {new Date(item.expectedCloseDate).toLocaleDateString()}</div>
+                    <div className="text-xs text-gray-500">
+                      Close: {new Date(item.expectedCloseDate).toLocaleDateString()}
+                    </div>
                   )}
                 </div>
-              )) || (
-                <div className="text-sm text-gray-500">No pipeline items found.</div>
-              )}
+              )) || <div className="text-sm text-gray-500">No pipeline items found.</div>}
             </div>
           </CardContent>
         </Card>
@@ -256,7 +317,9 @@ export default function SalesCommandCenter() {
                 </div>
                 <Target className="h-5 w-5 text-primary" />
               </div>
-              <Button asChild className="mt-3 w-full" variant="outline"><a href="/crm-goals-dashboard">Open Goals Dashboard</a></Button>
+              <Button asChild className="mt-3 w-full" variant="outline">
+                <a href="/crm-goals-dashboard">Open Goals Dashboard</a>
+              </Button>
             </CardContent>
           </Card>
           <Card className="hover:shadow-sm">
@@ -268,7 +331,9 @@ export default function SalesCommandCenter() {
                 </div>
                 <LineChart className="h-5 w-5 text-primary" />
               </div>
-              <Button asChild className="mt-3 w-full" variant="outline"><a href="/sales-pipeline-forecasting">Open Forecasting</a></Button>
+              <Button asChild className="mt-3 w-full" variant="outline">
+                <a href="/sales-pipeline-forecasting">Open Forecasting</a>
+              </Button>
             </CardContent>
           </Card>
           <Card className="hover:shadow-sm">
@@ -280,7 +345,9 @@ export default function SalesCommandCenter() {
                 </div>
                 <Layers className="h-5 w-5 text-primary" />
               </div>
-              <Button asChild className="mt-3 w-full" variant="outline"><a href="/deals">Open Pipeline</a></Button>
+              <Button asChild className="mt-3 w-full" variant="outline">
+                <a href="/deals">Open Pipeline</a>
+              </Button>
             </CardContent>
           </Card>
           <Card className="hover:shadow-sm">
@@ -292,11 +359,13 @@ export default function SalesCommandCenter() {
                 </div>
                 <FileText className="h-5 w-5 text-primary" />
               </div>
-              <Button asChild className="mt-3 w-full" variant="outline"><a href="/contracts">Open Contracts</a></Button>
+              <Button asChild className="mt-3 w-full" variant="outline">
+                <a href="/contracts">Open Contracts</a>
+              </Button>
             </CardContent>
           </Card>
         </div>
       </div>
     </MainLayout>
   );
-} 
+}

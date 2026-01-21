@@ -15,7 +15,7 @@ router.get('/health', async (req, res) => {
   try {
     const response = await ClaudeAIService.generateCompletion({
       messages: [{ role: 'user', content: 'Health check' }],
-      max_tokens: 10
+      max_tokens: 10,
     });
     res.json({ status: 'healthy', ai: 'available', response: response.substring(0, 50) });
   } catch (error) {

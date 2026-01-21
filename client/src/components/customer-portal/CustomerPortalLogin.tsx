@@ -11,7 +11,7 @@ export const CustomerPortalLogin: React.FC = () => {
   const { login } = useCustomerPortal();
   const [formData, setFormData] = useState({
     username: '',
-    password: ''
+    password: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +40,7 @@ export const CustomerPortalLogin: React.FC = () => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     try {
       const response = await fetch('/api/customer-portal/auth/reset-password', {
         method: 'POST',
@@ -51,7 +51,7 @@ export const CustomerPortalLogin: React.FC = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setResetSuccess(true);
         setError('');
@@ -105,7 +105,7 @@ export const CustomerPortalLogin: React.FC = () => {
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="reset-email">Email Address</Label>
                     <Input
@@ -117,7 +117,7 @@ export const CustomerPortalLogin: React.FC = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="flex space-x-2">
                     <Button
                       type="button"
@@ -127,11 +127,7 @@ export const CustomerPortalLogin: React.FC = () => {
                     >
                       Cancel
                     </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1"
-                      disabled={isLoading || !resetEmail}
-                    >
+                    <Button type="submit" className="flex-1" disabled={isLoading || !resetEmail}>
                       {isLoading ? 'Sending...' : 'Send Reset Link'}
                     </Button>
                   </div>
@@ -148,20 +144,14 @@ export const CustomerPortalLogin: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Customer Portal
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to manage your copier services
-          </p>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Customer Portal</h2>
+          <p className="mt-2 text-sm text-gray-600">Sign in to manage your copier services</p>
         </div>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Sign In</CardTitle>
-            <CardDescription>
-              Enter your credentials to access your account
-            </CardDescription>
+            <CardDescription>Enter your credentials to access your account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,7 +161,7 @@ export const CustomerPortalLogin: React.FC = () => {
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="username">Username or Email</Label>
                 <Input
@@ -184,7 +174,7 @@ export const CustomerPortalLogin: React.FC = () => {
                   autoComplete="username"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
@@ -212,7 +202,7 @@ export const CustomerPortalLogin: React.FC = () => {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <Button
                   type="button"
@@ -223,7 +213,7 @@ export const CustomerPortalLogin: React.FC = () => {
                   Forgot your password?
                 </Button>
               </div>
-              
+
               <Button
                 type="submit"
                 className="w-full"
@@ -234,7 +224,7 @@ export const CustomerPortalLogin: React.FC = () => {
             </form>
           </CardContent>
         </Card>
-        
+
         <div className="text-center">
           <p className="text-sm text-gray-600">
             Need access to the customer portal?{' '}

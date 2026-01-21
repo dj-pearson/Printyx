@@ -7,6 +7,7 @@ Ralph is an autonomous development system that runs Claude Code repeatedly to im
 ### 1. Install Prerequisites
 
 **Windows (PowerShell):**
+
 ```powershell
 # Install jq for JSON processing
 winget install jqlang.jq
@@ -16,6 +17,7 @@ npm install -g @anthropic-ai/claude-code
 ```
 
 **macOS/Linux:**
+
 ```bash
 # Install jq
 brew install jq  # macOS
@@ -31,6 +33,7 @@ npm install -g @anthropic-ai/claude-code
 Create a `prd.json` file in your project root (see `prd.json.example` for format) with your user stories.
 
 Each story should have:
+
 - `id`: Unique identifier
 - `title`: Brief description
 - `description`: Detailed description
@@ -42,6 +45,7 @@ Each story should have:
 ### 3. Run Ralph
 
 **Windows (PowerShell):**
+
 ```powershell
 # Run for up to 10 iterations
 .\scripts\ralph\ralph.ps1
@@ -54,6 +58,7 @@ Each story should have:
 ```
 
 **macOS/Linux (Bash):**
+
 ```bash
 # Make executable (first time only)
 chmod +x scripts/ralph/ralph.sh
@@ -71,6 +76,7 @@ chmod +x scripts/ralph/ralph.sh
 ### 4. Monitor Progress
 
 Ralph will:
+
 1. Create a feature branch (from `branchName` in prd.json)
 2. Pick the highest priority story where `passes: false`
 3. Implement that story
@@ -85,6 +91,7 @@ Ralph will:
 ### Fresh Context Each Iteration
 
 Each iteration spawns a **new Claude Code instance** with clean context. Memory persists via:
+
 - **Git history** - All commits from previous iterations
 - **progress.txt** - Learnings and context log
 - **prd.json** - Which stories are complete
@@ -95,12 +102,14 @@ Each iteration spawns a **new Claude Code instance** with clean context. Memory 
 Ralph implements ONE user story per iteration. Each story should be small enough to complete in a single context window.
 
 **Good story size:**
+
 - Add a database column and migration
 - Create a new API endpoint
 - Build a UI component
 - Add a filter to a list
 
 **Too large (split into multiple stories):**
+
 - "Build the entire dashboard"
 - "Add authentication system"
 - "Refactor the API layer"
@@ -108,6 +117,7 @@ Ralph implements ONE user story per iteration. Each story should be small enough
 ### Quality Gates
 
 Before marking a story complete, Ralph runs:
+
 ```bash
 npm run check          # TypeScript validation
 npm run lint           # ESLint
@@ -121,6 +131,7 @@ All checks must pass. Failed checks mean the story stays `passes: false`.
 ### Memory System
 
 **progress.txt** - Append-only log of learnings:
+
 ```
 Iteration 1 - story-001: Add database schema
 Completed: 2025-01-20 14:30
@@ -138,35 +149,39 @@ Files Modified:
 ```
 
 **CLAUDE.md** (project root) - Updated with patterns discovered:
+
 - "The settings panel is in client/src/pages/Settings.tsx"
 - "Equipment fields require validation in shared/equipment-schema.ts"
 - "Service caching uses 5-minute stale time"
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `ralph.ps1` | PowerShell version (Windows) |
-| `ralph.sh` | Bash version (macOS/Linux) |
-| `CLAUDE.md` | Prompt template for each iteration |
-| `README.md` | This file |
-| `prd.json.example` | Example PRD format |
+| File               | Purpose                            |
+| ------------------ | ---------------------------------- |
+| `ralph.ps1`        | PowerShell version (Windows)       |
+| `ralph.sh`         | Bash version (macOS/Linux)         |
+| `CLAUDE.md`        | Prompt template for each iteration |
+| `README.md`        | This file                          |
+| `prd.json.example` | Example PRD format                 |
 
 ## Troubleshooting
 
 ### "jq not found"
 
 **Windows:**
+
 ```powershell
 winget install jqlang.jq
 ```
 
 **macOS:**
+
 ```bash
 brew install jq
 ```
 
 **Linux:**
+
 ```bash
 sudo apt install jq
 ```
@@ -174,6 +189,7 @@ sudo apt install jq
 ### "CLAUDE.md not found"
 
 The prompt file should be in your project root or in `scripts/ralph/`. Copy it:
+
 ```bash
 cp scripts/ralph/CLAUDE.md .
 ```
@@ -181,6 +197,7 @@ cp scripts/ralph/CLAUDE.md .
 ### Stories not completing
 
 Check `progress.txt` for context. Common issues:
+
 - Quality checks failing (TypeScript errors, test failures)
 - Story too large for one iteration
 - Missing dependencies
@@ -207,12 +224,14 @@ rm progress.txt
 ### Write Clear Acceptance Criteria
 
 **Good:**
+
 - "Schema file created in shared/activities-schema.ts"
 - "All endpoints use requireAuth and requireTenant middleware"
 - "Component renders at 375px, 768px, 1024px widths"
 - "npm run test passes with >80% coverage"
 
 **Too vague:**
+
 - "Make it work"
 - "Add the feature"
 - "Fix bugs"
@@ -238,7 +257,7 @@ Use `dependsOn` to ensure correct order:
 {
   "id": "story-002",
   "title": "Create API endpoints",
-  "dependsOn": ["story-001"],  // Must complete schema first
+  "dependsOn": ["story-001"], // Must complete schema first
   "passes": false
 }
 ```
@@ -246,6 +265,7 @@ Use `dependsOn` to ensure correct order:
 ### Keep progress.txt Clean
 
 Append structured notes after each iteration:
+
 - What was implemented
 - What was learned
 - Any gotchas

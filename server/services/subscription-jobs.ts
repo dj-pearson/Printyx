@@ -22,42 +22,54 @@ export class SubscriptionJobs {
 
     // Check trial expirations every hour
     this.intervals.push(
-      setInterval(() => {
-        this.checkTrialExpirations().catch((error) => {
-          console.error('Trial expiration check failed:', error);
-        });
-      }, 60 * 60 * 1000) // 1 hour
+      setInterval(
+        () => {
+          this.checkTrialExpirations().catch((error) => {
+            console.error('Trial expiration check failed:', error);
+          });
+        },
+        60 * 60 * 1000,
+      ), // 1 hour
     );
 
     // Check usage limits every 6 hours
     this.intervals.push(
-      setInterval(() => {
-        this.checkUsageLimits().catch((error) => {
-          console.error('Usage limit check failed:', error);
-        });
-      }, 6 * 60 * 60 * 1000) // 6 hours
+      setInterval(
+        () => {
+          this.checkUsageLimits().catch((error) => {
+            console.error('Usage limit check failed:', error);
+          });
+        },
+        6 * 60 * 60 * 1000,
+      ), // 6 hours
     );
 
     // Create daily snapshots at midnight (run once per day)
     this.intervals.push(
-      setInterval(() => {
-        const now = new Date();
-        // Run at approximately midnight (23:00 - 01:00)
-        if (now.getHours() === 0) {
-          this.createDailySnapshots().catch((error) => {
-            console.error('Daily snapshot creation failed:', error);
-          });
-        }
-      }, 60 * 60 * 1000) // Check every hour
+      setInterval(
+        () => {
+          const now = new Date();
+          // Run at approximately midnight (23:00 - 01:00)
+          if (now.getHours() === 0) {
+            this.createDailySnapshots().catch((error) => {
+              console.error('Daily snapshot creation failed:', error);
+            });
+          }
+        },
+        60 * 60 * 1000,
+      ), // Check every hour
     );
 
     // Recalculate usage every 4 hours
     this.intervals.push(
-      setInterval(() => {
-        this.recalculateUsage().catch((error) => {
-          console.error('Usage recalculation failed:', error);
-        });
-      }, 4 * 60 * 60 * 1000) // 4 hours
+      setInterval(
+        () => {
+          this.recalculateUsage().catch((error) => {
+            console.error('Usage recalculation failed:', error);
+          });
+        },
+        4 * 60 * 60 * 1000,
+      ), // 4 hours
     );
 
     // Run initial checks immediately
@@ -87,10 +99,7 @@ export class SubscriptionJobs {
     try {
       console.log('🔍 Running initial subscription checks...');
 
-      await Promise.all([
-        this.checkTrialExpirations(),
-        this.checkUsageLimits(),
-      ]);
+      await Promise.all([this.checkTrialExpirations(), this.checkUsageLimits()]);
 
       console.log('✅ Initial subscription checks completed');
     } catch (error) {

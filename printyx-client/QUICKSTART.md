@@ -32,20 +32,20 @@ Update these fields:
 ```json
 {
   "client": {
-    "id": "main-office-001",          // Change to match your client name
-    "name": "Main Office Monitor",    // Same as registered name
+    "id": "main-office-001", // Change to match your client name
+    "name": "Main Office Monitor", // Same as registered name
     "version": "1.0.0"
   },
   "api": {
-    "endpoint": "https://your-domain.com",  // Your Printyx URL (without /api/...)
-    "apiKey": "pk_ABC123...",               // Paste the API key from Step 1
-    "tenantId": "1"                         // Will be auto-detected
+    "endpoint": "https://your-domain.com", // Your Printyx URL (without /api/...)
+    "apiKey": "pk_ABC123...", // Paste the API key from Step 1
+    "tenantId": "1" // Will be auto-detected
   },
   "devices": [
     {
-      "ipAddress": "192.168.1.100",   // Your printer IP
+      "ipAddress": "192.168.1.100", // Your printer IP
       "protocol": "snmp",
-      "snmpCommunity": "public",       // Your SNMP community string
+      "snmpCommunity": "public", // Your SNMP community string
       "snmpVersion": "2c"
     }
   ]
@@ -96,11 +96,13 @@ You should see output like:
 ### "Failed to connect to Printyx platform"
 
 **Check:**
+
 - Is the `endpoint` URL correct? (should be `https://your-domain.com` without `/api/...`)
 - Is the API key valid? Try regenerating it in the web UI
 - Can you access the URL in a browser?
 
 **Test manually:**
+
 ```bash
 curl -H "Authorization: Bearer YOUR_API_KEY" \
      -H "X-Tenant-ID: 1" \
@@ -112,12 +114,14 @@ Should return: `{"message":"Heartbeat acknowledged","serverTime":"..."}`
 ### "SNMP connection failed"
 
 **Check:**
+
 - Is SNMP enabled on the printer? (Check printer web interface)
 - Is the community string correct? (default is usually "public")
 - Can you ping the printer? `ping 192.168.1.100`
 - Is SNMP port 161 open? (Check firewall)
 
 **Test manually:**
+
 ```bash
 # If you have snmpwalk installed
 snmpwalk -v2c -c public 192.168.1.100
@@ -126,6 +130,7 @@ snmpwalk -v2c -c public 192.168.1.100
 ### No devices showing in dashboard
 
 **Check:**
+
 - Is the client running? Check logs: `tail -f printyx-client.log`
 - Did you wait 5 minutes? (Initial polling interval)
 - Are there errors in the Activity Log? (Web UI → Monitoring → Monitoring Clients → Click your client)

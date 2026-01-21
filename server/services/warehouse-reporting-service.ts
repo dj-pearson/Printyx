@@ -103,7 +103,7 @@ export class WarehouseReportingService {
    */
   static async getTeamQuickStats(
     userContext: EnhancedUserContext,
-    dateRange?: DateRange
+    dateRange?: DateRange,
   ): Promise<WarehouseTeamQuickStats> {
     // Generate cache key
     const cacheKey = `warehouse-team-quick-stats:${userContext.userId}:${JSON.stringify(dateRange || {})}`;
@@ -130,11 +130,11 @@ export class WarehouseReportingService {
         and(
           eq(warehouseKittingOperations.tenantId, userContext.tenantId),
           sql`${warehouseKittingOperations.assignedTechnician} IN (${sql.raw(
-            accessibleUserIds.map((id) => `'${id}'`).join(',') || "''"
+            accessibleUserIds.map((id) => `'${id}'`).join(',') || "''",
           )})`,
           gte(warehouseKittingOperations.createdAt, dateFrom),
-          lte(warehouseKittingOperations.createdAt, dateTo)
-        )
+          lte(warehouseKittingOperations.createdAt, dateTo),
+        ),
       )
       .orderBy(desc(warehouseKittingOperations.createdAt));
 
@@ -156,17 +156,17 @@ export class WarehouseReportingService {
     const totalMinutes = operations
       .filter((op) => op.totalDurationMinutes)
       .reduce((sum, op) => sum + (op.totalDurationMinutes || 0), 0);
-    const productivity = totalMinutes > 0 ? (completedKits / (totalMinutes / 60)) : 0;
+    const productivity = totalMinutes > 0 ? completedKits / (totalMinutes / 60) : 0;
 
     // Calculate quality score (1-5 scale based on FPY and accuracy)
-    const qualityScore = ((firstPassYield + accuracyRate) / 2) / 20; // Convert to 1-5 scale
+    const qualityScore = (firstPassYield + accuracyRate) / 2 / 20; // Convert to 1-5 scale
 
     // Get team member stats
     const uniqueTechnicians = new Set(operations.map((op) => op.assignedTechnician));
     const activeTechnicians = new Set(
       operations
         .filter((op) => op.operationStatus === 'in_progress' || op.operationStatus === 'completed')
-        .map((op) => op.assignedTechnician)
+        .map((op) => op.assignedTechnician),
     );
 
     // Find top technician (highest FPY rate)
@@ -188,7 +188,7 @@ export class WarehouseReportingService {
           fpyRate: techFPYRate,
           completedKits: techCompleted,
         };
-      })
+      }),
     );
 
     // Sort by FPY rate and get top technician
@@ -207,26 +207,45 @@ export class WarehouseReportingService {
         and(
           eq(warehouseKittingOperations.tenantId, userContext.tenantId),
           sql`${warehouseKittingOperations.assignedTechnician} IN (${sql.raw(
-            accessibleUserIds.map((id) => `'${id}'`).join(',') || "''"
+            accessibleUserIds.map((id) => `'${id}'`).join(',') || "''",
           )})`,
           gte(warehouseKittingOperations.createdAt, previousDateFrom),
-          lte(warehouseKittingOperations.createdAt, dateFrom)
-        )
+          lte(warehouseKittingOperations.createdAt, dateFrom),
+        ),
       );
 
-    const previousCompleted = previousOperations.filter((op) => op.operationStatus === 'completed').length;
+    const previousCompleted = previousOperations.filter(
+      (op) => op.operationStatus === 'completed',
+    ).length;
     const previousFPY = previousOperations.filter((op) => op.firstPassYield).length;
     const previousFPYRate = previousCompleted > 0 ? (previousFPY / previousCompleted) * 100 : 0;
     const previousPassed = previousOperations.filter((op) => op.qualityStatus === 'pass').length;
-    const previousAccuracyRate = previousOperations.length > 0 ? (previousPassed / previousOperations.length) * 100 : 0;
+    const previousAccuracyRate =
+      previousOperations.length > 0 ? (previousPassed / previousOperations.length) * 100 : 0;
     const previousTotalMinutes = previousOperations
       .filter((op) => op.totalDurationMinutes)
       .reduce((sum, op) => sum + (op.totalDurationMinutes || 0), 0);
-    const previousProductivity = previousTotalMinutes > 0 ? (previousCompleted / (previousTotalMinutes / 60)) : 0;
+    const previousProductivity =
+      previousTotalMinutes > 0 ? previousCompleted / (previousTotalMinutes / 60) : 0;
 
-    const fpyTrend = firstPassYield > previousFPYRate + 5 ? 'up' : firstPassYield < previousFPYRate - 5 ? 'down' : 'stable';
-    const accuracyTrend = accuracyRate > previousAccuracyRate + 5 ? 'up' : accuracyRate < previousAccuracyRate - 5 ? 'down' : 'stable';
-    const productivityTrend = productivity > previousProductivity + 0.5 ? 'up' : productivity < previousProductivity - 0.5 ? 'down' : 'stable';
+    const fpyTrend =
+      firstPassYield > previousFPYRate + 5
+        ? 'up'
+        : firstPassYield < previousFPYRate - 5
+          ? 'down'
+          : 'stable';
+    const accuracyTrend =
+      accuracyRate > previousAccuracyRate + 5
+        ? 'up'
+        : accuracyRate < previousAccuracyRate - 5
+          ? 'down'
+          : 'stable';
+    const productivityTrend =
+      productivity > previousProductivity + 0.5
+        ? 'up'
+        : productivity < previousProductivity - 0.5
+          ? 'down'
+          : 'stable';
 
     // Build result
     const result: WarehouseTeamQuickStats = {

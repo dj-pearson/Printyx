@@ -9,6 +9,7 @@ This guide covers the implementation and deployment of the **Deal Desk** approva
 ### Backend (100% Complete)
 
 #### 1. Database Schemas
+
 - **`shared/deal-desk-schema.ts`** - Complete approval workflow data model
   - `approvalRules` - Configurable business rules for when approvals are required
   - `approvalRequests` - Full lifecycle tracking of approval requests
@@ -17,6 +18,7 @@ This guide covers the implementation and deployment of the **Deal Desk** approva
   - `approvalDelegations` - Temporary authority transfer (PTO, busy periods)
 
 #### 2. Business Logic Services
+
 - **`server/services/approval-workflow-service.ts`** - Intelligent routing engine
   - Rule evaluation with complex conditions (AND/OR logic)
   - Dynamic approval chain building based on thresholds
@@ -26,6 +28,7 @@ This guide covers the implementation and deployment of the **Deal Desk** approva
   - Notification hooks (ready for email/SMS/push integration)
 
 #### 3. API Routes
+
 - **`server/routes-deal-desk.ts`** - 20+ REST API endpoints
   - Rules CRUD operations
   - Approval request lifecycle management
@@ -38,6 +41,7 @@ This guide covers the implementation and deployment of the **Deal Desk** approva
 ### Frontend (100% Complete)
 
 #### 1. Main Dashboard
+
 - **`client/src/pages/DealDeskDashboard.tsx`**
   - Real-time approval queue with auto-refresh
   - Dashboard stats cards (my queue, total pending, SLA breached, approval rate)
@@ -48,6 +52,7 @@ This guide covers the implementation and deployment of the **Deal Desk** approva
   - SLA countdown timers with alerts
 
 #### 2. Detail View
+
 - **`client/src/pages/ApprovalRequestDetail.tsx`**
   - Complete pricing breakdown
   - Business justification display
@@ -58,6 +63,7 @@ This guide covers the implementation and deployment of the **Deal Desk** approva
   - Complete audit trail
 
 #### 3. Configuration
+
 - **`client/src/pages/ApprovalRulesConfiguration.tsx`**
   - Visual rule builder
   - Threshold configuration
@@ -77,6 +83,7 @@ npm run db:push
 ```
 
 This will create the following tables:
+
 - `approval_rules`
 - `approval_requests`
 - `approval_comments`
@@ -278,6 +285,7 @@ When building a quote with a discount:
 #### Tracking Status
 
 Navigate to `/deal-desk` to:
+
 - View all your submitted requests
 - See current approval status and who's reviewing
 - Check time remaining until SLA deadline
@@ -310,6 +318,7 @@ Navigate to `/deal-desk` to:
 #### Quick Approval
 
 For simple approvals:
+
 1. From dashboard, click "Approve" or "Reject" on any card
 2. Add comments (optional for approve, required for reject)
 3. Confirm decision
@@ -327,12 +336,14 @@ For simple approvals:
 #### Analytics & Reporting
 
 Dashboard provides key metrics:
+
 - **Total Pending**: All requests in system
 - **SLA Breached**: Requests past deadline
 - **Approval Rate**: % approved in last 30 days
 - **Avg Approval Time**: How fast decisions are made
 
 Query the `discount_analytics` table for deeper insights:
+
 - Approval rates by approver
 - Discount velocity trends
 - Margin protection effectiveness
@@ -405,6 +416,7 @@ const handleStageChange = async (dealId: string, newStage: string) => {
 ### Manual Testing Checklist
 
 #### 1. Rule Configuration
+
 - [ ] Create new approval rule
 - [ ] Edit existing rule
 - [ ] Deactivate/reactivate rule
@@ -412,6 +424,7 @@ const handleStageChange = async (dealId: string, newStage: string) => {
 - [ ] Verify priority ordering works
 
 #### 2. Approval Request Flow
+
 - [ ] Create request that matches a rule
 - [ ] Create request that matches multiple rules
 - [ ] Verify approval chain built correctly
@@ -419,6 +432,7 @@ const handleStageChange = async (dealId: string, newStage: string) => {
 - [ ] Add comments to request
 
 #### 3. Approval Decision
+
 - [ ] Approve a request
 - [ ] Reject a request
 - [ ] Verify next approver notified (sequential chain)
@@ -426,18 +440,21 @@ const handleStageChange = async (dealId: string, newStage: string) => {
 - [ ] Test "any one" approval chain
 
 #### 4. SLA & Escalation
+
 - [ ] Create request with short SLA (e.g., 1 hour)
 - [ ] Wait for SLA to breach
 - [ ] Run SLA check job
 - [ ] Verify escalation triggered
 
 #### 5. Delegation
+
 - [ ] Create delegation
 - [ ] Verify requests route to delegate
 - [ ] Deactivate delegation
 - [ ] Verify requests route back to delegator
 
 #### 6. Analytics
+
 - [ ] Check dashboard stats
 - [ ] Verify approval rate calculation
 - [ ] Check avg approval time
@@ -488,34 +505,42 @@ curl -X POST http://localhost:5000/api/deal-desk/requests/{id}/decision \
 ### Common Issues
 
 #### 1. Approvals not routing correctly
+
 **Symptom**: Request created but no one assigned as approver
 
 **Solution**:
+
 - Check that approval rules have `approvers` array configured
 - Verify `roleName` matches existing roles in system
 - Check rule `isActive` is `true`
 - Verify `priority` and `order` fields set
 
 #### 2. SLA not triggering
+
 **Symptom**: Requests past deadline but not marked as breached
 
 **Solution**:
+
 - Ensure CRON job is running (`checkSLAAndEscalate`)
 - Check `slaDeadline` field is populated on request
 - Verify server timezone matches expected timezone
 
 #### 3. Dashboard not showing pending approvals
+
 **Symptom**: User has requests to approve but "My Queue" is empty
 
 **Solution**:
+
 - Check user ID matches `approverId` in approval chain
 - Verify `currentApprovalLevel` matches user's level in chain
 - Check request `status` is 'pending' or 'in_review'
 
 #### 4. Rules not matching
+
 **Symptom**: Creating request but no rules match
 
 **Solution**:
+
 - Verify threshold value and operator are correct
 - Check `thresholdType` matches field being checked
 - Ensure `conditions` array (if used) has correct field names
@@ -526,6 +551,7 @@ curl -X POST http://localhost:5000/api/deal-desk/requests/{id}/decision \
 ### Database Indexes
 
 The schemas include indexes on:
+
 - `tenantId` (all tables)
 - `status` and `submittedAt` (approvalRequests)
 - `approverId` and `level` (approval chain queries)
@@ -557,6 +583,7 @@ The schemas include indexes on:
 ## Future Enhancements
 
 Potential additions:
+
 1. Mobile push notifications
 2. Slack/Teams integration for approvals
 3. Approval request templates
@@ -569,6 +596,7 @@ Potential additions:
 ## Support
 
 For questions or issues:
+
 1. Check this guide first
 2. Review API route code in `server/routes-deal-desk.ts`
 3. Check service logic in `server/services/approval-workflow-service.ts`

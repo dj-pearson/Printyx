@@ -225,9 +225,7 @@ export default function WorkflowAutomation() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.activeWorkflows}</div>
-              <p className="text-xs text-muted-foreground">
-                Ready to trigger on events
-              </p>
+              <p className="text-xs text-muted-foreground">Ready to trigger on events</p>
             </CardContent>
           </Card>
         </div>
@@ -279,9 +277,7 @@ export default function WorkflowAutomation() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {workflow.category && (
-                        <Badge variant="outline">{workflow.category}</Badge>
-                      )}
+                      {workflow.category && <Badge variant="outline">{workflow.category}</Badge>}
                     </TableCell>
                     <TableCell>{getStatusBadge(workflow.status)}</TableCell>
                     <TableCell>
@@ -291,11 +287,7 @@ export default function WorkflowAutomation() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                        >
+                        <Button variant="ghost" size="sm" asChild>
                           <a href={`/workflows/${workflow.id}`}>
                             <Edit className="w-4 h-4" />
                           </a>
@@ -314,11 +306,7 @@ export default function WorkflowAutomation() {
                           )}
                         </Button>
 
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                        >
+                        <Button variant="ghost" size="sm" asChild>
                           <a href={`/workflows/${workflow.id}/executions`}>
                             <BarChart3 className="w-4 h-4" />
                           </a>

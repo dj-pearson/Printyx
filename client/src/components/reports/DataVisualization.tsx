@@ -1,21 +1,21 @@
-import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  ScatterChart, 
-  Scatter, 
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  ScatterChart,
+  Scatter,
   ComposedChart,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
   ResponsiveContainer,
   RadarChart,
   PolarGrid,
@@ -24,23 +24,38 @@ import {
   Radar,
   FunnelChart,
   Funnel,
-  LabelList
+  LabelList,
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Download, 
-  Maximize2, 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  TrendingUp,
+  TrendingDown,
+  Download,
+  Maximize2,
   Settings,
-  MoreHorizontal
+  MoreHorizontal,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0', '#ffb366', '#a4de6c'];
+const CHART_COLORS = [
+  '#8884d8',
+  '#82ca9d',
+  '#ffc658',
+  '#ff7c7c',
+  '#8dd1e1',
+  '#d084d0',
+  '#ffb366',
+  '#a4de6c',
+];
 
 interface ChartData {
   [key: string]: any;
@@ -70,14 +85,14 @@ interface BaseChartProps {
 }
 
 // Enhanced Line Chart with trends
-export function TrendLineChart({ 
-  data, 
-  config = {}, 
-  className = '', 
-  onExport, 
+export function TrendLineChart({
+  data,
+  config = {},
+  className = '',
+  onExport,
   onMaximize,
   dataKeys,
-  strokeWidth = 2
+  strokeWidth = 2,
 }: BaseChartProps & { dataKeys: string[]; strokeWidth?: number }) {
   const colors = config.colors || CHART_COLORS;
 
@@ -108,12 +123,9 @@ export function TrendLineChart({
         <ResponsiveContainer width="100%" height={config.height || 300}>
           <LineChart data={data}>
             {config.showGrid !== false && <CartesianGrid strokeDasharray="3 3" />}
-            <XAxis 
-              dataKey="name" 
-              tickFormatter={config.formatters?.xAxis}
-            />
+            <XAxis dataKey="name" tickFormatter={config.formatters?.xAxis} />
             <YAxis tickFormatter={config.formatters?.yAxis} />
-            <Tooltip 
+            <Tooltip
               formatter={config.formatters?.tooltip}
               labelFormatter={(label) => config.formatters?.xAxis?.(label) || label}
             />
@@ -145,7 +157,7 @@ export function AreaVolumeChart({
   onExport,
   onMaximize,
   dataKeys,
-  stacked = false
+  stacked = false,
 }: BaseChartProps & { dataKeys: string[]; stacked?: boolean }) {
   const colors = config.colors || CHART_COLORS;
 
@@ -182,7 +194,7 @@ export function AreaVolumeChart({
                 key={key}
                 type="monotone"
                 dataKey={key}
-                stackId={stacked ? "1" : undefined}
+                stackId={stacked ? '1' : undefined}
                 stroke={colors[index % colors.length]}
                 fill={colors[index % colors.length]}
                 fillOpacity={0.6}
@@ -203,7 +215,7 @@ export function ComparisonBarChart({
   onExport,
   onMaximize,
   dataKeys,
-  layout = 'horizontal'
+  layout = 'horizontal',
 }: BaseChartProps & { dataKeys: string[]; layout?: 'horizontal' | 'vertical' }) {
   const colors = config.colors || CHART_COLORS;
 
@@ -258,7 +270,7 @@ export function InsightsPieChart({
   onExport,
   onMaximize,
   dataKey = 'value',
-  nameKey = 'name'
+  nameKey = 'name',
 }: BaseChartProps & { dataKey?: string; nameKey?: string }) {
   const colors = config.colors || CHART_COLORS;
   const total = data.reduce((sum, item) => sum + item[dataKey], 0);
@@ -311,8 +323,8 @@ export function InsightsPieChart({
               const percentage = ((item[dataKey] / total) * 100).toFixed(1);
               return (
                 <div key={index} className="flex items-center gap-3">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
+                  <div
+                    className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: colors[index % colors.length] }}
                   />
                   <div className="flex-1 text-sm">
@@ -339,7 +351,7 @@ export function PerformanceRadarChart({
   onExport,
   onMaximize,
   dataKey = 'value',
-  nameKey = 'subject'
+  nameKey = 'subject',
 }: BaseChartProps & { dataKey?: string; nameKey?: string }) {
   const colors = config.colors || CHART_COLORS;
 
@@ -391,7 +403,7 @@ export function SalesFunnelChart({
   onExport,
   onMaximize,
   dataKey = 'value',
-  nameKey = 'name'
+  nameKey = 'name',
 }: BaseChartProps & { dataKey?: string; nameKey?: string }) {
   const colors = config.colors || CHART_COLORS;
 
@@ -419,11 +431,7 @@ export function SalesFunnelChart({
         <ResponsiveContainer width="100%" height={config.height || 400}>
           <FunnelChart width={730} height={250}>
             <Tooltip />
-            <Funnel
-              dataKey={dataKey}
-              data={data}
-              isAnimationActive={config.animated !== false}
-            >
+            <Funnel dataKey={dataKey} data={data} isAnimationActive={config.animated !== false}>
               <LabelList position="center" fill="#fff" stroke="none" />
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
@@ -447,14 +455,14 @@ interface KPICardProps {
   className?: string;
 }
 
-export function KPICard({ 
-  title, 
-  value, 
-  change, 
-  period = 'vs last period', 
+export function KPICard({
+  title,
+  value,
+  change,
+  period = 'vs last period',
   icon: Icon,
   trend,
-  className = '' 
+  className = '',
 }: KPICardProps) {
   const getTrendIcon = () => {
     if (trend === 'up' || (change && change > 0)) return TrendingUp;
@@ -481,7 +489,8 @@ export function KPICard({
               <div className={`flex items-center text-xs ${getTrendColor()}`}>
                 {TrendIcon && <TrendIcon className="h-3 w-3 mr-1" />}
                 <span>
-                  {change > 0 ? '+' : ''}{change}% {period}
+                  {change > 0 ? '+' : ''}
+                  {change}% {period}
                 </span>
               </div>
             )}
@@ -509,7 +518,7 @@ export const chartExportUtils = {
   exportToCSV: (data: any[], filename: string) => {
     const csv = [
       Object.keys(data[0]).join(','),
-      ...data.map(row => Object.values(row).join(','))
+      ...data.map((row) => Object.values(row).join(',')),
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -518,5 +527,5 @@ export const chartExportUtils = {
     a.href = url;
     a.download = `${filename}.csv`;
     a.click();
-  }
+  },
 };

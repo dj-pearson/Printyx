@@ -24,18 +24,21 @@ Eliminate the monolithic `server/routes.ts` file (15,515 lines, 513KB) by migrat
 ## ✅ Auth Migration Complete (Dec 24, 2025)
 
 **What was done:**
+
 - Enhanced `server/routes.ts` with 3-phase auth middleware:
   1. **Phase 1**: Always try Supabase JWT first (non-blocking)
   2. **Phase 2**: Populate `req.user` for backward compatibility
   3. **Phase 3**: Require authentication using unified helpers
 
 **Impact:**
+
 - ✅ ALL routes now support both Supabase JWT and session auth
 - ✅ Unified auth helpers (`getUserId`, `getTenantId`) work across entire app
 - ✅ No breaking changes - full backward compatibility
 - ✅ Security improved across 225+ routes with ONE change
 
 **Files Modified:**
+
 - `server/routes.ts:651-710` - Enhanced auth middleware stack
 
 ---
@@ -61,28 +64,33 @@ Migrate frequently-used business-critical routes first:
 Group by business domain:
 
 **Commission & Compensation**
+
 ```
 /api/commission/*              → routes-commission.ts (NEW)
 ```
 
 **Customer Success**
+
 ```
 /api/customer-success/*        → routes-customer-success.ts (EXISTS)
 ```
 
 **Analytics & Reporting**
+
 ```
 /api/analytics/*               → routes-analytics.ts (NEW)
 /api/billing/analytics         → routes-billing-analytics.ts (NEW)
 ```
 
 **Catalog Management**
+
 ```
 /api/catalog/*                 → routes-catalog.ts (NEW)
 /api/master-catalog/*          → routes-master-catalog.ts (NEW)
 ```
 
 **Financial Operations**
+
 ```
 /api/accounts-payable/*        → routes-accounts-payable.ts (EXISTS)
 /api/accounts-receivable/*     → routes-accounts-receivable.ts (EXISTS)
@@ -197,16 +205,19 @@ For each migrated route:
 ### **Expected Benefits**
 
 **Performance**:
+
 - 🚀 Faster server startup (smaller routes.ts)
 - 🚀 Better code splitting and lazy loading
 - 🚀 Reduced memory footprint
 
 **Maintainability**:
+
 - 📝 Easier to find routes (organized by domain)
 - 📝 Smaller files = easier to review
 - 📝 Clear separation of concerns
 
 **Security**:
+
 - 🔒 Consistent auth patterns
 - 🔒 Easier to audit
 - 🔒 Better tenant isolation

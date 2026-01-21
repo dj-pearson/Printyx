@@ -7,6 +7,7 @@
 You were experiencing multiple critical errors when trying to create a customer on https://printyx.net/customers?tab=active:
 
 ### 1. Database Relationship Errors
+
 ```
 Error fetching customers: {
   code: "PGRST200",
@@ -22,6 +23,7 @@ Error fetching companies: {
 **Root Cause**: The database was missing foreign key constraints. PostgREST requires explicit foreign key relationships to perform joins with the `!inner` syntax used in the edge function.
 
 ### 2. User Profile Query Error
+
 ```
 column users.role does not exist
 ```
@@ -29,6 +31,7 @@ column users.role does not exist
 **Root Cause**: The frontend was trying to query a non-existent `role` column from the users table. The schema uses `role_id` (FK to roles table) instead.
 
 ### 3. Customer Creation Failure
+
 ```
 POST https://functions.printyx.net/customers 400 (Bad Request)
 ```
@@ -40,12 +43,14 @@ POST https://functions.printyx.net/customers 400 (Bad Request)
 ### 1. Database Migration (`migrations/002_add_foreign_key_constraints.sql`)
 
 **What it does**:
+
 - Converts column types from `character varying` to `uuid` to match primary key types
 - Adds foreign key constraints for referential integrity
 - Creates performance indexes on foreign key columns
 - All operations are idempotent (safe to run multiple times)
 
 **Key changes**:
+
 ```sql
 -- Type conversions
 company_contacts.company_id: character varying → uuid
@@ -65,11 +70,13 @@ leads.contact_id → company_contacts.id (SET NULL)
 ### 2. Updated Customers Edge Function (`supabase/functions/customers/index.ts`)
 
 **What changed**:
+
 - Now accepts **two formats** for customer creation:
   1. **Old format**: With existing `company_id` and `contact_id` (still supported)
   2. **New format**: With inline company/contact data (creates them automatically)
 
 **Example request the frontend sends**:
+
 ```json
 {
   "companyName": "Acme Corp",
@@ -86,6 +93,7 @@ leads.contact_id → company_contacts.id (SET NULL)
 ```
 
 **What the edge function does now**:
+
 1. Checks if `company_id` is provided
 2. If not, creates a new company from the inline data
 3. Creates a primary contact from the inline data
@@ -95,11 +103,13 @@ leads.contact_id → company_contacts.id (SET NULL)
 ### 3. Fixed User Profile Query (`client/src/hooks/useSupabaseAuth.ts`)
 
 **What changed**:
+
 - Removed `role` from the SELECT query (line 171)
 - Now only uses `role_id` to lookup roles via the roles table
 - Properly handles cases where role data is missing
 
 **Before**:
+
 ```typescript
 .select(
   'id, email, first_name, last_name, tenant_id, role, role_id, ...'
@@ -107,6 +117,7 @@ leads.contact_id → company_contacts.id (SET NULL)
 ```
 
 **After**:
+
 ```typescript
 .select(
   'id, email, first_name, last_name, tenant_id, role_id, ...'
@@ -116,12 +127,14 @@ leads.contact_id → company_contacts.id (SET NULL)
 ## Files Modified
 
 ### New Files
+
 - `migrations/002_add_foreign_key_constraints.sql` - Database migration
 - `migrations/002_pre_migration_checks.sql` - Pre-flight checks
 - `CUSTOMER_CREATION_FIX_DEPLOYMENT.md` - Deployment instructions
 - `CUSTOMER_CREATION_FIX_SUMMARY.md` - This file
 
 ### Modified Files
+
 - `supabase/functions/customers/index.ts` - Enhanced to handle form data
 - `client/src/hooks/useSupabaseAuth.ts` - Fixed user profile query
 
@@ -138,12 +151,14 @@ See `CUSTOMER_CREATION_FIX_DEPLOYMENT.md` for detailed deployment instructions.
 ## Benefits
 
 ### Immediate Fixes
+
 - ✅ Customer creation form now works
 - ✅ No more "column users.role does not exist" errors
 - ✅ No more PostgREST relationship errors
 - ✅ Customers list loads properly with company data
 
 ### Long-term Benefits
+
 - ✅ **Data Integrity**: Foreign key constraints prevent orphaned records
 - ✅ **Better Performance**: Indexes speed up joins significantly
 - ✅ **Developer Experience**: PostgREST joins now work as expected
@@ -155,6 +170,7 @@ See `CUSTOMER_CREATION_FIX_DEPLOYMENT.md` for detailed deployment instructions.
 After deployment, test these scenarios:
 
 ### Happy Path
+
 1. Create customer with all fields filled
 2. Create customer with minimal fields (only required)
 3. View customer in list (should show company name)
@@ -162,12 +178,14 @@ After deployment, test these scenarios:
 5. Delete customer
 
 ### Edge Cases
+
 1. Create customer with existing company (by company_id)
 2. Create customer with duplicate email
 3. Create customer with invalid data
 4. Test form validation
 
 ### Data Integrity
+
 1. Delete a company - verify customers are cascade deleted
 2. Delete a contact - verify customer.contact_id is set to NULL (not deleted)
 3. Check that you can't create customer with non-existent company_id
@@ -177,6 +195,7 @@ After deployment, test these scenarios:
 If issues occur, see the "Rollback Plan" section in `CUSTOMER_CREATION_FIX_DEPLOYMENT.md`.
 
 Quick rollback:
+
 1. Revert database migration (SQL provided in deployment guide)
 2. Redeploy previous version of edge function
 3. Redeploy previous version of frontend
@@ -194,6 +213,7 @@ After successful deployment:
 ## Questions?
 
 If you encounter issues:
+
 1. Check the deployment guide for troubleshooting
 2. Review the pre-migration check results
 3. Check Supabase logs for edge function errors
@@ -202,18 +222,21 @@ If you encounter issues:
 
 ## Impact Assessment
 
-### Risk Level: **LOW** 
+### Risk Level: **LOW**
+
 - Changes are backward compatible
 - Migration is idempotent
 - Rollback plan available
 - Pre-flight checks prevent data issues
 
 ### Downtime: **NONE**
+
 - Migration runs quickly (< 1 second)
 - Edge function deployment is instant
 - Frontend deployment depends on your platform
 
 ### Data Loss Risk: **NONE**
+
 - Migration only adds constraints and converts types
 - No data deletion
 - All operations preserve existing data

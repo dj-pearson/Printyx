@@ -18,8 +18,8 @@ async function runCalendarMigration() {
 
     const statements = migrationSQL
       .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      .map((stmt) => stmt.trim())
+      .filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'));
 
     console.log(`📊 Found ${statements.length} SQL statements to execute`);
 
@@ -31,8 +31,10 @@ async function runCalendarMigration() {
           console.log(`⚡ Executing statement ${i + 1}/${statements.length}...`);
           await db.execute(statement);
         } catch (error: any) {
-          if (error.message?.includes('already exists') ||
-              error.message?.includes('duplicate column name')) {
+          if (
+            error.message?.includes('already exists') ||
+            error.message?.includes('duplicate column name')
+          ) {
             console.log(`⚠️  Skipped statement ${i + 1} (already exists)`);
             continue;
           } else {
@@ -48,7 +50,6 @@ async function runCalendarMigration() {
     console.log('1. Visit /calendar-demo to see the new calendar interface');
     console.log('2. Configure external calendar connections (Google/Outlook)');
     console.log('3. Test AI-powered scheduling features');
-
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);
@@ -56,13 +57,15 @@ async function runCalendarMigration() {
 }
 
 if (require.main === module) {
-  runCalendarMigration().then(() => {
-    console.log('Calendar migration script completed');
-    process.exit(0);
-  }).catch((error) => {
-    console.error('Calendar migration script failed:', error);
-    process.exit(1);
-  });
+  runCalendarMigration()
+    .then(() => {
+      console.log('Calendar migration script completed');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Calendar migration script failed:', error);
+      process.exit(1);
+    });
 }
 
 export { runCalendarMigration };

@@ -9,6 +9,7 @@ This directory contains database seeder scripts for populating initial data.
 Seeds the complete Role-Based Access Control (RBAC) system foundation.
 
 **What it seeds:**
+
 - **150+ Granular Permissions** across all modules (sales, service, operations, finance, admin, reporting, audit, platform)
 - **24 Role Templates** covering all 8 hierarchy levels and departments
 - **Role-Permission Mappings** - automatic linking of permissions to roles
@@ -16,18 +17,19 @@ Seeds the complete Role-Based Access Control (RBAC) system foundation.
 
 **Role Templates Included:**
 
-| Level | Role Templates | Count |
-|-------|---------------|-------|
-| **Level 8** (Platform) | Platform Administrator | 1 |
-| **Level 7** (Executive) | CEO, CFO, COO | 3 |
-| **Level 6** (Director) | VP Sales, VP Service, Director Operations, Controller | 4 |
-| **Level 5** (Regional) | Regional Sales Director, Regional Service Manager | 2 |
-| **Level 4** (Manager) | Sales Manager, Service Manager, Operations Manager, Finance Manager, Branch Manager | 5 |
-| **Level 3** (Supervisor) | Sales Supervisor, Service Supervisor, Warehouse Supervisor | 3 |
-| **Level 2** (Team Lead) | Senior Sales Rep, Senior Technician | 2 |
-| **Level 1** (Individual) | Sales Rep, Field Technician, Warehouse Associate, Accounting Clerk | 4 |
+| Level                    | Role Templates                                                                      | Count |
+| ------------------------ | ----------------------------------------------------------------------------------- | ----- |
+| **Level 8** (Platform)   | Platform Administrator                                                              | 1     |
+| **Level 7** (Executive)  | CEO, CFO, COO                                                                       | 3     |
+| **Level 6** (Director)   | VP Sales, VP Service, Director Operations, Controller                               | 4     |
+| **Level 5** (Regional)   | Regional Sales Director, Regional Service Manager                                   | 2     |
+| **Level 4** (Manager)    | Sales Manager, Service Manager, Operations Manager, Finance Manager, Branch Manager | 5     |
+| **Level 3** (Supervisor) | Sales Supervisor, Service Supervisor, Warehouse Supervisor                          | 3     |
+| **Level 2** (Team Lead)  | Senior Sales Rep, Senior Technician                                                 | 2     |
+| **Level 1** (Individual) | Sales Rep, Field Technician, Warehouse Associate, Accounting Clerk                  | 4     |
 
 **Permission Categories:**
+
 - **Sales**: Lead management, opportunities, quotes, customers, territories, commissions (45+ permissions)
 - **Service**: Tickets, equipment, parts, work orders, schedules (30+ permissions)
 - **Operations**: Inventory, warehouse, purchase orders (15+ permissions)
@@ -45,6 +47,7 @@ npm run seed:rbac
 ```
 
 **Output:**
+
 ```
 🌱 Starting RBAC Seeder...
 
@@ -81,12 +84,14 @@ npm run seed:rbac
 
 **Initial Setup:**
 Run once when setting up a new environment (development, staging, production):
+
 ```bash
 npm run seed:rbac
 ```
 
 **After Schema Changes:**
 If you modify the enhanced RBAC schema (`server/enhanced-rbac-schema.ts`), you may need to run migrations first:
+
 ```bash
 npm run db:push
 npm run seed:rbac
@@ -101,6 +106,7 @@ To add new permissions or roles:
 
 1. **Add Permission:**
    Edit `rbac-seeder.ts` and add to `PERMISSION_DEFINITIONS`:
+
    ```typescript
    {
      name: 'My New Permission',
@@ -116,6 +122,7 @@ To add new permissions or roles:
 
 2. **Add Role:**
    Add to `ROLE_TEMPLATES`:
+
    ```typescript
    {
      name: 'My Custom Role',
@@ -143,6 +150,7 @@ To add new permissions or roles:
 Permissions follow this format: `<module>.<resource>.<action>_<scope>`
 
 **Examples:**
+
 - `sales.lead.view_own` - View only leads assigned to me
 - `sales.lead.view_team` - View leads for my team
 - `sales.lead.view_location` - View all leads at my location
@@ -150,6 +158,7 @@ Permissions follow this format: `<module>.<resource>.<action>_<scope>`
 - `finance.payment.process` - Process vendor payments
 
 **Modules:**
+
 - `sales` - Sales and CRM operations
 - `service` - Service dispatch and tickets
 - `operations` - Warehouse and inventory
@@ -160,6 +169,7 @@ Permissions follow this format: `<module>.<resource>.<action>_<scope>`
 - `platform` - Platform-level operations (Printyx staff)
 
 **Scope Levels:**
+
 - `own` - Only data assigned to/owned by the user
 - `team` - User + their direct reports
 - `location` - All data at user's location
@@ -197,20 +207,24 @@ if (await hasPermission(userId, 'sales.lead.delete')) {
 ### Troubleshooting
 
 **Error: "Permission not found"**
+
 - Ensure you've run the seeder: `npm run seed:rbac`
 - Check permission code spelling
 
 **Error: "Role already exists"**
+
 - Normal - seeder skips existing roles
 - If you need to update a role, delete it first or modify the seeder to handle updates
 
 **Error: "Cannot insert duplicate key"**
+
 - Seeder has already run successfully
 - Safe to ignore or check if you need to modify existing data
 
 ### Data Model
 
 **Tables:**
+
 - `permissions` - Granular permission definitions
 - `enhanced_roles` - Role definitions with hierarchy
 - `role_permissions` - Junction table (roles ↔ permissions)
@@ -222,6 +236,7 @@ if (await hasPermission(userId, 'sales.lead.delete')) {
 Seeds 75+ comprehensive report definitions across all departments and hierarchy levels.
 
 **What it seeds:**
+
 - **24 Sales Reports**: Personal pipeline to board-level sales analytics
 - **19 Service Reports**: Technician productivity to executive service dashboards
 - **11 Operations Reports**: Warehouse productivity to supply chain analytics
@@ -231,6 +246,7 @@ Seeds 75+ comprehensive report definitions across all departments and hierarchy 
 - **3 Cross-Department Reports**: Customer 360, employee performance, location performance
 
 **Each report includes:**
+
 - SQL query templates with parameterization
 - Required permissions mapping (integrates with RBAC)
 - Default filters and groupings
@@ -248,10 +264,12 @@ npm run seed:reports
 ```
 
 **Prerequisites:**
+
 - RBAC seeder must be run first: `npm run seed:rbac`
 - Database schema must include reporting tables (from `shared/reporting-schema.ts`)
 
 **Output:**
+
 ```
 🌱 Starting Report Definitions Seeder...
 
@@ -275,21 +293,22 @@ npm run seed:reports
 
 **Report Categories:**
 
-| Category | Count | Access Levels |
-|----------|-------|---------------|
-| **Sales** | 24 | Levels 1-6 |
-| **Service** | 19 | Levels 1-6 |
-| **Operations** | 11 | Levels 1-6 |
-| **Finance** | 10 | Levels 1-6 |
-| **Executive** | 4 | Levels 6-7 |
-| **Platform Admin** | 4 | Level 8 |
-| **Cross-Department** | 3 | Levels 3-4 |
+| Category             | Count | Access Levels |
+| -------------------- | ----- | ------------- |
+| **Sales**            | 24    | Levels 1-6    |
+| **Service**          | 19    | Levels 1-6    |
+| **Operations**       | 11    | Levels 1-6    |
+| **Finance**          | 10    | Levels 1-6    |
+| **Executive**        | 4     | Levels 6-7    |
+| **Platform Admin**   | 4     | Level 8       |
+| **Cross-Department** | 3     | Levels 3-4    |
 
 ## KPI Definitions Seeder (`kpi-seeder.ts`)
 
 Seeds 43 comprehensive Key Performance Indicator (KPI) definitions across all departments and hierarchy levels.
 
 **What it seeds:**
+
 - **11 Sales KPIs**: Personal quota attainment, win rate, pipeline metrics, deal size, sales cycle
 - **8 Service KPIs**: First-time fix rate, CSAT, utilization, SLA compliance, service revenue/margin
 - **6 Operations KPIs**: Inventory accuracy/turns, fill rate, FPY, on-time delivery, warehouse productivity
@@ -298,6 +317,7 @@ Seeds 43 comprehensive Key Performance Indicator (KPI) definitions across all de
 - **5 Platform Admin KPIs**: Uptime, API response time, error rate, MRR, tenant churn
 
 **Each KPI includes:**
+
 - SQL calculation queries with parameterization
 - Target values and thresholds
 - Display formatting (currency, percentage, decimal, number)
@@ -316,10 +336,12 @@ npm run seed:kpis
 ```
 
 **Prerequisites:**
+
 - RBAC seeder must be run first: `npm run seed:rbac`
 - Database schema must include KPI tables (from `shared/reporting-schema.ts`)
 
 **Output:**
+
 ```
 🌱 Starting KPI Definitions Seeder...
 
@@ -343,16 +365,17 @@ npm run seed:kpis
 
 **KPI Categories:**
 
-| Category | Count | Access Levels | Examples |
-|----------|-------|---------------|----------|
-| **Sales** | 11 | Levels 1-7 | Quota attainment, win rate, pipeline value/coverage, deal size, sales cycle |
-| **Service** | 8 | Levels 1-6 | FTF rate, CSAT, utilization, SLA compliance, service revenue/margin |
-| **Operations** | 6 | Levels 3-4 | Inventory accuracy/turns, fill rate, FPY, on-time delivery, productivity |
-| **Finance** | 7 | Levels 6-7 | Revenue growth, margins (gross/operating/EBITDA), DSO, liquidity ratios |
-| **Executive** | 6 | Level 7 | CAC, CLV, CLV:CAC ratio, NPS, employee engagement, retention |
-| **Platform Admin** | 5 | Level 8 | Uptime, API performance, error rate, MRR, tenant churn |
+| Category           | Count | Access Levels | Examples                                                                    |
+| ------------------ | ----- | ------------- | --------------------------------------------------------------------------- |
+| **Sales**          | 11    | Levels 1-7    | Quota attainment, win rate, pipeline value/coverage, deal size, sales cycle |
+| **Service**        | 8     | Levels 1-6    | FTF rate, CSAT, utilization, SLA compliance, service revenue/margin         |
+| **Operations**     | 6     | Levels 3-4    | Inventory accuracy/turns, fill rate, FPY, on-time delivery, productivity    |
+| **Finance**        | 7     | Levels 6-7    | Revenue growth, margins (gross/operating/EBITDA), DSO, liquidity ratios     |
+| **Executive**      | 6     | Level 7       | CAC, CLV, CLV:CAC ratio, NPS, employee engagement, retention                |
+| **Platform Admin** | 5     | Level 8       | Uptime, API performance, error rate, MRR, tenant churn                      |
 
 **Display Formats:**
+
 - **Currency**: `$1,234,567` (prefix: $, decimalPlaces: 0)
 - **Percentage**: `85.5%` (suffix: %, decimalPlaces: 1)
 - **Decimal**: `3.2x` (suffix: x, decimalPlaces: 1)
@@ -360,12 +383,14 @@ npm run seed:kpis
 
 **Color Schemes:**
 KPIs use performance-based color coding:
+
 - 🔴 **Red** (#ff4d4f): Below target / Poor performance
 - 🟡 **Yellow** (#faad14): Near target / Fair performance
 - 🟢 **Green** (#52c41a): On target / Good performance
 - 🔵 **Blue** (#1890ff): Exceeds target / Excellent performance
 
 Some KPIs use inverted color schemes (lower is better):
+
 - Sales Cycle Days: Lower days = Blue (excellent)
 - DSO: Lower days = Blue (excellent)
 - API Response Time: Lower ms = Blue (excellent)
@@ -373,11 +398,13 @@ Some KPIs use inverted color schemes (lower is better):
 
 **Alert Configuration:**
 High-priority KPIs have automated alerts:
+
 - **Critical threshold**: Immediate notification (e.g., Quota < 70%)
 - **Warning threshold**: Proactive notification (e.g., Quota < 85%)
 - **Alert message**: Custom message describing the issue
 
 Examples of high-priority KPIs with alerts:
+
 - Personal Quota Attainment (critical: 70%, warning: 85%)
 - Pipeline Coverage (critical: 2.0x, warning: 2.5x)
 - First-Time Fix Rate (critical: 70%, warning: 80%)

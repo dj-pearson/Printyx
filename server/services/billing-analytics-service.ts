@@ -13,13 +13,7 @@
 
 import { db } from '../db';
 import { eq, and, desc, sql, gte, lte, count, sum, avg } from 'drizzle-orm';
-import {
-  invoices,
-  businessRecords,
-  contracts,
-  meterReadings,
-  type Invoice,
-} from '@shared/schema';
+import { invoices, businessRecords, contracts, meterReadings, type Invoice } from '@shared/schema';
 
 // =============================================================================
 // TYPES & INTERFACES
@@ -97,7 +91,6 @@ export interface PaymentBehaviorAnalysis {
 // =============================================================================
 
 class BillingAnalyticsService {
-
   // ===========================================================================
   // REVENUE FORECASTING
   // ===========================================================================
@@ -105,10 +98,7 @@ class BillingAnalyticsService {
   /**
    * Forecast revenue for upcoming periods using time series analysis
    */
-  async forecastRevenue(
-    tenantId: string,
-    periodsAhead: number = 3
-  ): Promise<RevenueForecast[]> {
+  async forecastRevenue(tenantId: string, periodsAhead: number = 3): Promise<RevenueForecast[]> {
     try {
       // 1. Get historical revenue data (last 12 months)
       const historicalData = await this.getHistoricalRevenue(tenantId, 12);
@@ -135,7 +125,7 @@ class BillingAnalyticsService {
         const seasonalFactor = seasonality[monthIndex] || 1.0;
 
         // Base forecast using trend
-        const baseForecast = trend.intercept + (trend.slope * (historicalData.length + i));
+        const baseForecast = trend.intercept + trend.slope * (historicalData.length + i);
 
         // Apply seasonality
         const forecastedRevenue = Math.max(0, baseForecast * seasonalFactor);
@@ -152,7 +142,7 @@ class BillingAnalyticsService {
         forecasts.push({
           period: this.formatMonth(forecastMonth),
           forecastedRevenue: Math.round(forecastedRevenue),
-          confidence: Math.min(100, Math.max(0, 100 - (i * 10))), // Confidence decreases with time
+          confidence: Math.min(100, Math.max(0, 100 - i * 10)), // Confidence decreases with time
           upperBound: Math.round(forecastedRevenue + marginOfError),
           lowerBound: Math.max(0, Math.round(forecastedRevenue - marginOfError)),
           trend: trendDirection,
@@ -172,7 +162,7 @@ class BillingAnalyticsService {
    */
   private async getHistoricalRevenue(
     tenantId: string,
-    monthsBack: number
+    monthsBack: number,
   ): Promise<{ month: string; revenue: number }[]> {
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - monthsBack);
@@ -187,13 +177,13 @@ class BillingAnalyticsService {
         and(
           eq(invoices.tenantId, tenantId),
           gte(invoices.invoiceDate, startDate),
-          sql`${invoices.invoiceStatus} IN ('paid', 'partial')`
-        )
+          sql`${invoices.invoiceStatus} IN ('paid', 'partial')`,
+        ),
       )
       .groupBy(sql`TO_CHAR(${invoices.invoiceDate}, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(${invoices.invoiceDate}, 'YYYY-MM')`);
 
-    return results.map(r => ({
+    return results.map((r) => ({
       month: r.month,
       revenue: r.revenue || 0,
     }));
@@ -202,9 +192,10 @@ class BillingAnalyticsService {
   /**
    * Calculate linear trend using least squares regression
    */
-  private calculateLinearTrend(
-    data: { month: string; revenue: number }[]
-  ): { slope: number; intercept: number } {
+  private calculateLinearTrend(data: { month: string; revenue: number }[]): {
+    slope: number;
+    intercept: number;
+  } {
     const n = data.length;
     let sumX = 0;
     let sumY = 0;
@@ -230,13 +221,11 @@ class BillingAnalyticsService {
   /**
    * Calculate seasonality factors (monthly multipliers)
    */
-  private calculateSeasonality(
-    data: { month: string; revenue: number }[]
-  ): Record<number, number> {
+  private calculateSeasonality(data: { month: string; revenue: number }[]): Record<number, number> {
     // Group by month of year
     const monthlyRevenue: Record<number, number[]> = {};
 
-    data.forEach(point => {
+    data.forEach((point) => {
       const date = new Date(point.month + '-01');
       const month = date.getMonth();
 
@@ -252,7 +241,8 @@ class BillingAnalyticsService {
 
     for (let month = 0; month < 12; month++) {
       if (monthlyRevenue[month] && monthlyRevenue[month].length > 0) {
-        const avg = monthlyRevenue[month].reduce((sum, val) => sum + val, 0) / monthlyRevenue[month].length;
+        const avg =
+          monthlyRevenue[month].reduce((sum, val) => sum + val, 0) / monthlyRevenue[month].length;
         monthlyAverages[month] = avg / overallAverage;
       } else {
         monthlyAverages[month] = 1.0;
@@ -267,10 +257,10 @@ class BillingAnalyticsService {
    */
   private calculateStandardError(
     data: { month: string; revenue: number }[],
-    trend: { slope: number; intercept: number }
+    trend: { slope: number; intercept: number },
   ): number {
     const residuals = data.map((point, index) => {
-      const predicted = trend.intercept + (trend.slope * (index + 1));
+      const predicted = trend.intercept + trend.slope * (index + 1);
       return point.revenue - predicted;
     });
 
@@ -348,12 +338,7 @@ class BillingAnalyticsService {
       })
       .from(businessRecords)
       .leftJoin(invoices, eq(businessRecords.id, invoices.customerId))
-      .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.status, 'active')
-        )
-      )
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.status, 'active')))
       .groupBy(businessRecords.id, businessRecords.companyName);
 
     return results;
@@ -368,7 +353,7 @@ class BillingAnalyticsService {
     // Factor 1: Inactivity (no recent invoices)
     if (customer.lastInvoiceDate) {
       const daysSinceLastInvoice = Math.floor(
-        (Date.now() - new Date(customer.lastInvoiceDate).getTime()) / (1000 * 60 * 60 * 24)
+        (Date.now() - new Date(customer.lastInvoiceDate).getTime()) / (1000 * 60 * 60 * 24),
       );
 
       let inactivityImpact = 0;
@@ -385,9 +370,8 @@ class BillingAnalyticsService {
     }
 
     // Factor 2: Payment behavior
-    const latePaymentRate = customer.invoiceCount > 0
-      ? (customer.latePaymentCount / customer.invoiceCount) * 100
-      : 0;
+    const latePaymentRate =
+      customer.invoiceCount > 0 ? (customer.latePaymentCount / customer.invoiceCount) * 100 : 0;
 
     let paymentImpact = 10;
     if (latePaymentRate > 50) paymentImpact = -30;
@@ -401,7 +385,8 @@ class BillingAnalyticsService {
     });
 
     // Factor 3: Revenue trend
-    const revenueImpact = customer.totalRevenue > 10000 ? 15 : customer.totalRevenue > 1000 ? 5 : -10;
+    const revenueImpact =
+      customer.totalRevenue > 10000 ? 15 : customer.totalRevenue > 1000 ? 5 : -10;
 
     factors.push({
       factor: 'Revenue Value',
@@ -410,9 +395,14 @@ class BillingAnalyticsService {
     });
 
     // Factor 4: Invoice frequency
-    const invoiceFrequencyImpact = customer.invoiceCount >= 12 ? 15 :
-      customer.invoiceCount >= 6 ? 5 :
-        customer.invoiceCount >= 3 ? 0 : -20;
+    const invoiceFrequencyImpact =
+      customer.invoiceCount >= 12
+        ? 15
+        : customer.invoiceCount >= 6
+          ? 5
+          : customer.invoiceCount >= 3
+            ? 0
+            : -20;
 
     factors.push({
       factor: 'Engagement Level',
@@ -431,7 +421,7 @@ class BillingAnalyticsService {
     let risk = 50;
 
     // Adjust based on factors
-    factors.forEach(factor => {
+    factors.forEach((factor) => {
       risk -= factor.impact; // Negative impact increases risk
     });
 
@@ -442,10 +432,7 @@ class BillingAnalyticsService {
   /**
    * Generate recommendations to reduce churn
    */
-  private generateChurnRecommendations(
-    factors: ChurnFactor[],
-    riskLevel: string
-  ): string[] {
+  private generateChurnRecommendations(factors: ChurnFactor[], riskLevel: string): string[] {
     const recommendations: string[] = [];
 
     if (riskLevel === 'critical' || riskLevel === 'high') {
@@ -454,19 +441,19 @@ class BillingAnalyticsService {
     }
 
     // Check for inactivity
-    const activityFactor = factors.find(f => f.factor === 'Recent Activity');
+    const activityFactor = factors.find((f) => f.factor === 'Recent Activity');
     if (activityFactor && activityFactor.impact < 0) {
       recommendations.push('Re-engage customer with promotional offer or service review');
     }
 
     // Check payment issues
-    const paymentFactor = factors.find(f => f.factor === 'Payment Behavior');
+    const paymentFactor = factors.find((f) => f.factor === 'Payment Behavior');
     if (paymentFactor && paymentFactor.impact < 0) {
       recommendations.push('Discuss payment terms and offer flexible payment options');
     }
 
     // Check engagement
-    const engagementFactor = factors.find(f => f.factor === 'Engagement Level');
+    const engagementFactor = factors.find((f) => f.factor === 'Engagement Level');
     if (engagementFactor && engagementFactor.impact < 0) {
       recommendations.push('Increase touchpoints and provide value-added services');
     }
@@ -487,7 +474,7 @@ class BillingAnalyticsService {
    */
   async calculateLifetimeValue(
     tenantId: string,
-    customerId?: string
+    customerId?: string,
   ): Promise<CustomerLifetimeValue[]> {
     try {
       // Build query conditions
@@ -523,20 +510,24 @@ class BillingAnalyticsService {
 
         // Simple retention probability (based on recent activity)
         const daysSinceLastInvoice = customer.lastInvoiceDate
-          ? Math.floor((Date.now() - new Date(customer.lastInvoiceDate).getTime()) / (1000 * 60 * 60 * 24))
+          ? Math.floor(
+              (Date.now() - new Date(customer.lastInvoiceDate).getTime()) / (1000 * 60 * 60 * 24),
+            )
           : 999;
 
         let retentionProbability = 0.95;
-        if (daysSinceLastInvoice > 180) retentionProbability = 0.10;
-        else if (daysSinceLastInvoice > 90) retentionProbability = 0.50;
+        if (daysSinceLastInvoice > 180) retentionProbability = 0.1;
+        else if (daysSinceLastInvoice > 90) retentionProbability = 0.5;
         else if (daysSinceLastInvoice > 60) retentionProbability = 0.75;
         else if (daysSinceLastInvoice > 30) retentionProbability = 0.85;
 
         // Predicted lifetime value = avg monthly revenue × expected remaining months
         // Expected remaining months = average customer lifespan × retention probability
         const expectedLifetimeMonths = 36; // Assume 3-year average lifespan
-        const expectedRemainingMonths = (expectedLifetimeMonths - customerAge) * retentionProbability;
-        const predictedLifetimeValue = (customer.totalRevenue || 0) + (averageMonthlyRevenue * expectedRemainingMonths);
+        const expectedRemainingMonths =
+          (expectedLifetimeMonths - customerAge) * retentionProbability;
+        const predictedLifetimeValue =
+          (customer.totalRevenue || 0) + averageMonthlyRevenue * expectedRemainingMonths;
 
         lifetimeValues.push({
           customerId: customer.id,

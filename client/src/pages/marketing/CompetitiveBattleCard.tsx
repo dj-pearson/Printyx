@@ -1,122 +1,122 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Printer, Download, ArrowRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, XCircle, Printer, Download, ArrowRight } from 'lucide-react';
 
 const CompetitiveBattleCard = () => {
   const comparisons = [
     {
-      category: "Technical Architecture",
+      category: 'Technical Architecture',
       printyx: [
-        "Cloud-native, built 2024",
-        "React + TypeScript frontend",
-        "PostgreSQL with AI/ML stack",
-        "52 releases per year",
-        "Zero-downtime deployments",
-        "Real-time data sync",
+        'Cloud-native, built 2024',
+        'React + TypeScript frontend',
+        'PostgreSQL with AI/ML stack',
+        '52 releases per year',
+        'Zero-downtime deployments',
+        'Real-time data sync',
       ],
       competitor: [
-        "Monolithic, built early 2000s",
-        "Legacy desktop UI",
-        "Proprietary database",
-        "4 releases per year",
-        "Hours of maintenance downtime",
-        "Manual refresh required",
+        'Monolithic, built early 2000s',
+        'Legacy desktop UI',
+        'Proprietary database',
+        '4 releases per year',
+        'Hours of maintenance downtime',
+        'Manual refresh required',
       ],
     },
     {
-      category: "Predictive Intelligence",
+      category: 'Predictive Intelligence',
       printyx: [
-        "AI-powered failure prediction (80%+ accuracy)",
-        "30 days advance warning",
-        "Component-level predictions",
-        "Automated preventive actions",
-        "30-40% emergency call reduction",
-        "GPU-accelerated ML pipeline",
+        'AI-powered failure prediction (80%+ accuracy)',
+        '30 days advance warning',
+        'Component-level predictions',
+        'Automated preventive actions',
+        '30-40% emergency call reduction',
+        'GPU-accelerated ML pipeline',
       ],
       competitor: [
-        "Reactive service model only",
-        "No failure prediction",
-        "Manual monitoring required",
-        "No AI capabilities",
-        "High emergency call volume",
-        "No ML infrastructure",
+        'Reactive service model only',
+        'No failure prediction',
+        'Manual monitoring required',
+        'No AI capabilities',
+        'High emergency call volume',
+        'No ML infrastructure',
       ],
     },
     {
-      category: "Mobile Experience",
+      category: 'Mobile Experience',
       printyx: [
-        "Offline-first native apps",
-        "Works without connectivity",
-        "Instant sync when online",
-        "Modern, intuitive UI",
-        "90%+ technician satisfaction",
-        "Real-time updates",
+        'Offline-first native apps',
+        'Works without connectivity',
+        'Instant sync when online',
+        'Modern, intuitive UI',
+        '90%+ technician satisfaction',
+        'Real-time updates',
       ],
       competitor: [
-        "Clunky web wrappers",
-        "Requires constant connectivity",
-        "Frequent sync issues",
-        "Outdated interface",
-        "Poor user satisfaction",
-        "Delayed updates",
+        'Clunky web wrappers',
+        'Requires constant connectivity',
+        'Frequent sync issues',
+        'Outdated interface',
+        'Poor user satisfaction',
+        'Delayed updates',
       ],
     },
     {
-      category: "Contract Profitability",
+      category: 'Contract Profitability',
       printyx: [
-        "Real-time margin tracking",
-        "AI-powered cost predictions",
-        "Dynamic pricing recommendations",
-        "Per-contract profitability",
-        "Automatic repricing alerts",
-        "15-25% margin improvement",
+        'Real-time margin tracking',
+        'AI-powered cost predictions',
+        'Dynamic pricing recommendations',
+        'Per-contract profitability',
+        'Automatic repricing alerts',
+        '15-25% margin improvement',
       ],
       competitor: [
-        "No profitability insights",
-        "Manual cost tracking",
-        "Gut-feel pricing",
-        "No contract analytics",
-        "Manual renewal management",
-        "Hidden unprofitable contracts",
+        'No profitability insights',
+        'Manual cost tracking',
+        'Gut-feel pricing',
+        'No contract analytics',
+        'Manual renewal management',
+        'Hidden unprofitable contracts',
       ],
     },
     {
-      category: "Integration Ecosystem",
+      category: 'Integration Ecosystem',
       printyx: [
-        "15+ pre-built integrations",
-        "RESTful API with full docs",
-        "Webhook events",
-        "OAuth 2.0 security",
-        "Growing partner network",
-        "API-first architecture",
+        '15+ pre-built integrations',
+        'RESTful API with full docs',
+        'Webhook events',
+        'OAuth 2.0 security',
+        'Growing partner network',
+        'API-first architecture',
       ],
       competitor: [
-        "Limited integration options",
-        "Custom coding required",
-        "No webhook support",
-        "Outdated authentication",
-        "Closed ecosystem",
-        "API as afterthought",
+        'Limited integration options',
+        'Custom coding required',
+        'No webhook support',
+        'Outdated authentication',
+        'Closed ecosystem',
+        'API as afterthought',
       ],
     },
     {
-      category: "Innovation Velocity",
+      category: 'Innovation Velocity',
       printyx: [
-        "Weekly feature releases",
-        "Customer feedback implemented fast",
-        "Active dealer advisory board",
-        "Modern tech stack enables speed",
-        "Continuous ML improvements",
-        "2-3 year technical lead",
+        'Weekly feature releases',
+        'Customer feedback implemented fast',
+        'Active dealer advisory board',
+        'Modern tech stack enables speed',
+        'Continuous ML improvements',
+        '2-3 year technical lead',
       ],
       competitor: [
-        "Quarterly releases at best",
-        "Slow feature requests (months/years)",
-        "Limited customer input",
-        "Legacy code slows development",
-        "No AI roadmap",
-        "Falling further behind",
+        'Quarterly releases at best',
+        'Slow feature requests (months/years)',
+        'Limited customer input',
+        'Legacy code slows development',
+        'No AI roadmap',
+        'Falling further behind',
       ],
     },
   ];
@@ -142,7 +142,7 @@ const CompetitiveBattleCard = () => {
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="hover:bg-gray-100"
                 >
                   <Printer className="h-6 w-6 text-blue-600 mr-2" />
@@ -150,16 +150,13 @@ const CompetitiveBattleCard = () => {
                 </Button>
               </div>
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={handlePrint}
-                >
+                <Button variant="outline" onClick={handlePrint}>
                   <Download className="h-4 w-4 mr-2" />
                   Print/Save PDF
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                 </Button>
@@ -172,9 +169,7 @@ const CompetitiveBattleCard = () => {
         <div className="max-w-6xl mx-auto p-8">
           {/* Title */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">
-              Competitive Battle Card
-            </h1>
+            <h1 className="text-4xl font-bold text-gray-900 mb-3">Competitive Battle Card</h1>
             <p className="text-xl text-gray-600 mb-2">
               Printyx vs. Legacy Dealer Management Systems
             </p>
@@ -239,7 +234,9 @@ const CompetitiveBattleCard = () => {
                     <div className="p-6 bg-gray-50">
                       <div className="flex items-center gap-2 mb-4">
                         <div className="w-3 h-3 rounded-full bg-red-600"></div>
-                        <span className="font-bold text-red-700">Legacy Systems (e-automate, etc.)</span>
+                        <span className="font-bold text-red-700">
+                          Legacy Systems (e-automate, etc.)
+                        </span>
                       </div>
                       <ul className="space-y-3">
                         {comparison.competitor.map((feature, idx) => (
@@ -264,51 +261,59 @@ const CompetitiveBattleCard = () => {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-bold text-gray-900 mb-2">🎯 Why They Can't Catch Up (2-3 Years)</h4>
+                  <h4 className="font-bold text-gray-900 mb-2">
+                    🎯 Why They Can't Catch Up (2-3 Years)
+                  </h4>
                   <p className="text-gray-700 text-sm">
-                    "Printyx isn't just 'better'—we're built on fundamentally different architecture. Legacy vendors would need
-                    18-24 months to rebuild their database, 12-18 months for ML infrastructure, and 12-18 months for modern
-                    frontend. Total: 2.5-3.5 years minimum. Meanwhile, we ship 52 releases per year."
+                    "Printyx isn't just 'better'—we're built on fundamentally different
+                    architecture. Legacy vendors would need 18-24 months to rebuild their database,
+                    12-18 months for ML infrastructure, and 12-18 months for modern frontend. Total:
+                    2.5-3.5 years minimum. Meanwhile, we ship 52 releases per year."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">💡 Predictive vs. Reactive</h4>
                   <p className="text-gray-700 text-sm">
-                    "With Printyx, you prevent problems instead of reacting to them. 87% probability this fuser fails in 15 days—
-                    schedule maintenance now and save $170. Legacy systems have no AI, so dealers stay in reactive mode forever."
+                    "With Printyx, you prevent problems instead of reacting to them. 87% probability
+                    this fuser fails in 15 days— schedule maintenance now and save $170. Legacy
+                    systems have no AI, so dealers stay in reactive mode forever."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">💰 Hidden Profit in Contracts</h4>
                   <p className="text-gray-700 text-sm">
-                    "Most dealers have 20-30% of contracts underwater without knowing it. Our AI shows exactly which contracts
-                    lose money and predicts future profitability. One dealer found $1.2M in hidden profit opportunities."
+                    "Most dealers have 20-30% of contracts underwater without knowing it. Our AI
+                    shows exactly which contracts lose money and predicts future profitability. One
+                    dealer found $1.2M in hidden profit opportunities."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">📱 Mobile Experience</h4>
                   <p className="text-gray-700 text-sm">
-                    "Our offline-first mobile app works seamlessly without connectivity. Technicians love it (90%+ satisfaction).
-                    Legacy systems have clunky web wrappers that frustrate field teams."
+                    "Our offline-first mobile app works seamlessly without connectivity. Technicians
+                    love it (90%+ satisfaction). Legacy systems have clunky web wrappers that
+                    frustrate field teams."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">🔗 Integration Ecosystem</h4>
                   <p className="text-gray-700 text-sm">
-                    "15+ pre-built integrations with QuickBooks, Salesforce, PrintFleet, and more. Full RESTful API.
-                    Network effects: more dealers = more integrations = more value for everyone."
+                    "15+ pre-built integrations with QuickBooks, Salesforce, PrintFleet, and more.
+                    Full RESTful API. Network effects: more dealers = more integrations = more value
+                    for everyone."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">⚡ Fast ROI</h4>
                   <p className="text-gray-700 text-sm">
-                    "Average payback in 6-7 months through service cost reduction, contract profitability improvements,
-                    and efficiency gains. Dealers see $200K-$800K additional annual profit."
+                    "Average payback in 6-7 months through service cost reduction, contract
+                    profitability improvements, and efficiency gains. Dealers see $200K-$800K
+                    additional annual profit."
                   </p>
                 </div>
               </div>
@@ -323,38 +328,47 @@ const CompetitiveBattleCard = () => {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h4 className="font-bold text-gray-900 mb-2">❓ "We've used e-automate for 15 years"</h4>
+                  <h4 className="font-bold text-gray-900 mb-2">
+                    ❓ "We've used e-automate for 15 years"
+                  </h4>
                   <p className="text-gray-700 text-sm">
-                    <strong>Response:</strong> "That's exactly why switching makes sense now. E-automate served you well when
-                    it was built, but technology has evolved dramatically. Would you run your business on 15-year-old computers?
-                    Migration takes 6-8 weeks with zero data loss. Let's calculate your ROI—you'll likely see payback in under 7 months."
+                    <strong>Response:</strong> "That's exactly why switching makes sense now.
+                    E-automate served you well when it was built, but technology has evolved
+                    dramatically. Would you run your business on 15-year-old computers? Migration
+                    takes 6-8 weeks with zero data loss. Let's calculate your ROI—you'll likely see
+                    payback in under 7 months."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">❓ "Migration sounds risky"</h4>
                   <p className="text-gray-700 text-sm">
-                    <strong>Response:</strong> "We've migrated dozens of dealers from e-automate with 100% data preservation.
-                    Our team handles the entire process: data extraction, validation, import, and team training. Southern Business
-                    Systems completed their migration in 6 weeks with zero downtime. Want to talk to them?"
+                    <strong>Response:</strong> "We've migrated dozens of dealers from e-automate
+                    with 100% data preservation. Our team handles the entire process: data
+                    extraction, validation, import, and team training. Southern Business Systems
+                    completed their migration in 6 weeks with zero downtime. Want to talk to them?"
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="font-bold text-gray-900 mb-2">❓ "What about the learning curve?"</h4>
+                  <h4 className="font-bold text-gray-900 mb-2">
+                    ❓ "What about the learning curve?"
+                  </h4>
                   <p className="text-gray-700 text-sm">
-                    <strong>Response:</strong> "Our modern UI is actually easier to learn than legacy systems. Technicians
-                    rate our mobile app 4.8/5—they prefer it to e-automate. Training takes 2-3 hours vs. days for legacy
-                    platforms. Plus you get dedicated onboarding support for 60 days."
+                    <strong>Response:</strong> "Our modern UI is actually easier to learn than
+                    legacy systems. Technicians rate our mobile app 4.8/5—they prefer it to
+                    e-automate. Training takes 2-3 hours vs. days for legacy platforms. Plus you get
+                    dedicated onboarding support for 60 days."
                   </p>
                 </div>
 
                 <div>
                   <h4 className="font-bold text-gray-900 mb-2">❓ "How much does it cost?"</h4>
                   <p className="text-gray-700 text-sm">
-                    <strong>Response:</strong> "$100/user/month, all-inclusive. No hidden fees, no surprise charges.
-                    Everything you've seen is included. Most dealers save this in service cost reduction alone—the contract
-                    profitability and efficiency gains are pure upside. Let's run your numbers."
+                    <strong>Response:</strong> "$100/user/month, all-inclusive. No hidden fees, no
+                    surprise charges. Everything you've seen is included. Most dealers save this in
+                    service cost reduction alone—the contract profitability and efficiency gains are
+                    pure upside. Let's run your numbers."
                   </p>
                 </div>
               </div>
@@ -381,7 +395,7 @@ const CompetitiveBattleCard = () => {
                 size="lg"
                 variant="outline"
                 className="border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => window.location.href = '/case-studies'}
+                onClick={() => (window.location.href = '/case-studies')}
               >
                 View Case Studies
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -392,7 +406,9 @@ const CompetitiveBattleCard = () => {
           {/* Footer Note */}
           <div className="mt-6 text-center text-sm text-gray-500">
             <p>Last Updated: January 2025 | Internal Sales Resource</p>
-            <p className="mt-1">For customer-facing materials, see: Case Studies, ROI Calculator, Landing Pages</p>
+            <p className="mt-1">
+              For customer-facing materials, see: Case Studies, ROI Calculator, Landing Pages
+            </p>
           </div>
         </div>
       </div>

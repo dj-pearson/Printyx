@@ -1,4 +1,10 @@
-import { BaseManufacturerAdapter, DeviceInfo, MeterReading, CollectionResult, IntegrationConfig } from './base-adapter';
+import {
+  BaseManufacturerAdapter,
+  DeviceInfo,
+  MeterReading,
+  CollectionResult,
+  IntegrationConfig,
+} from './base-adapter';
 
 /**
  * HP PrintOS and Smart Device Services Integration Adapter
@@ -16,15 +22,12 @@ export class HPAdapter extends BaseManufacturerAdapter {
   async testConnection(): Promise<boolean> {
     try {
       this.validateConfig();
-      
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/v1/status`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
-      
+
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/v1/status`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
       return response.ok;
     } catch (error) {
       console.error('HP connection test failed:', error);
@@ -50,26 +53,23 @@ export class HPAdapter extends BaseManufacturerAdapter {
       // HP PrintOS uses HMAC authentication
       const timestamp = new Date().toISOString();
       const signature = this.generateHMACSignature(timestamp);
-      
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/v1/auth/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-hp-hmac-authentication': `${this.config.authCredentials.apiKey}:${signature}`,
-            'x-hp-hmac-date': timestamp
-          },
-          body: JSON.stringify({
-            deviceType: this.config.authCredentials.deviceType || 'printer'
-          })
-        }
-      );
+
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-hp-hmac-authentication': `${this.config.authCredentials.apiKey}:${signature}`,
+          'x-hp-hmac-date': timestamp,
+        },
+        body: JSON.stringify({
+          deviceType: this.config.authCredentials.deviceType || 'printer',
+        }),
+      });
 
       const data = await this.handleApiResponse(response);
       this.sessionId = data.sessionId;
       this.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      
+
       return true;
     } catch (error) {
       console.error('HP HMAC authentication failed:', error);
@@ -81,24 +81,22 @@ export class HPAdapter extends BaseManufacturerAdapter {
     // Simplified HMAC generation - in production, use proper crypto library
     const crypto = require('crypto');
     const message = `POST\n/api/v1/auth/login\n${timestamp}`;
-    return crypto.createHmac('sha256', this.config.authCredentials.apiSecret)
+    return crypto
+      .createHmac('sha256', this.config.authCredentials.apiSecret)
       .update(message)
       .digest('hex');
   }
 
   async discoverDevices(): Promise<DeviceInfo[]> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/v1/devices`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/v1/devices`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
       const data = await this.handleApiResponse(response);
       return this.mapHPDevices(data.devices || data.printers || []);
@@ -109,14 +107,18 @@ export class HPAdapter extends BaseManufacturerAdapter {
   }
 
   private mapHPDevices(devices: any[]): DeviceInfo[] {
-    return devices.map(device => ({
+    return devices.map((device) => ({
       deviceId: device.deviceId || device.id,
       serialNumber: device.serialNumber,
       modelNumber: device.model || device.modelName,
       deviceName: device.name || device.hostname,
       ipAddress: device.ipAddress,
       macAddress: device.macAddress,
-      capabilities: device.capabilities || ['meter_reading', 'status_monitoring', 'supply_monitoring'],
+      capabilities: device.capabilities || [
+        'meter_reading',
+        'status_monitoring',
+        'supply_monitoring',
+      ],
       supportedMetrics: [
         'total_pages_printed',
         'black_pages_printed',
@@ -130,16 +132,16 @@ export class HPAdapter extends BaseManufacturerAdapter {
         'yellow_cartridge_level',
         'photo_cartridge_level',
         'maintenance_kit_remaining',
-        'paper_tray_levels'
-      ]
+        'paper_tray_levels',
+      ],
     }));
   }
 
   async collectDeviceMetrics(deviceId: string): Promise<CollectionResult> {
     const startTime = Date.now();
-    
+
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -150,20 +152,20 @@ export class HPAdapter extends BaseManufacturerAdapter {
           method: 'POST',
           headers: this.getAuthHeaders(),
           body: JSON.stringify({
-            statisticsType: 'usage_and_supplies'
-          })
-        }
+            statisticsType: 'usage_and_supplies',
+          }),
+        },
       );
 
       const data = await this.handleApiResponse(statsResponse);
       const metrics = this.mapHPMetrics(data);
-      
+
       return {
         success: true,
         deviceId,
         metrics,
         rawResponse: data,
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     } catch (error) {
       return {
@@ -171,7 +173,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
         deviceId,
         metrics: [],
         error: error instanceof Error ? error.message : 'Unknown error',
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     }
   }
@@ -191,7 +193,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           numericValue: data.usage.totalPagesPrinted,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { totalPagesPrinted: data.usage.totalPagesPrinted }
+          rawData: { totalPagesPrinted: data.usage.totalPagesPrinted },
         });
       }
 
@@ -204,7 +206,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           numericValue: data.usage.blackPagesPrinted,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { blackPagesPrinted: data.usage.blackPagesPrinted }
+          rawData: { blackPagesPrinted: data.usage.blackPagesPrinted },
         });
       }
 
@@ -217,7 +219,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           numericValue: data.usage.colorPagesPrinted,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { colorPagesPrinted: data.usage.colorPagesPrinted }
+          rawData: { colorPagesPrinted: data.usage.colorPagesPrinted },
         });
       }
 
@@ -230,7 +232,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           numericValue: data.usage.totalPagesCopied,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { totalPagesCopied: data.usage.totalPagesCopied }
+          rawData: { totalPagesCopied: data.usage.totalPagesCopied },
         });
       }
 
@@ -243,7 +245,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           numericValue: data.usage.totalPagesScanned,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { totalPagesScanned: data.usage.totalPagesScanned }
+          rawData: { totalPagesScanned: data.usage.totalPagesScanned },
         });
       }
     }
@@ -252,8 +254,10 @@ export class HPAdapter extends BaseManufacturerAdapter {
     if (data.supplies) {
       data.supplies.forEach((supply: any) => {
         if (supply.type && supply.level !== undefined) {
-          const metricType = `${supply.color || supply.type}_level`.toLowerCase().replace(/\s+/g, '_');
-          
+          const metricType = `${supply.color || supply.type}_level`
+            .toLowerCase()
+            .replace(/\s+/g, '_');
+
           metrics.push({
             metricType,
             metricName: `${supply.name || supply.color || supply.type} Level`,
@@ -261,7 +265,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
             numericValue: supply.level,
             unit: supply.unit || 'percent',
             measurementTimestamp: timestamp,
-            rawData: supply
+            rawData: supply,
           });
         }
       });
@@ -278,7 +282,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
             numericValue: info.level,
             unit: info.unit || 'percent',
             measurementTimestamp: timestamp,
-            rawData: { [color]: info }
+            rawData: { [color]: info },
           });
         }
       });
@@ -292,7 +296,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
         metricCategory: 'status',
         stringValue: data.status.state || 'unknown',
         measurementTimestamp: timestamp,
-        rawData: data.status
+        rawData: data.status,
       });
 
       // Errors and warnings
@@ -303,7 +307,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           metricCategory: 'error',
           jsonValue: data.status.errors,
           measurementTimestamp: timestamp,
-          rawData: { errors: data.status.errors }
+          rawData: { errors: data.status.errors },
         });
       }
 
@@ -314,7 +318,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
           metricCategory: 'error',
           jsonValue: data.status.warnings,
           measurementTimestamp: timestamp,
-          rawData: { warnings: data.status.warnings }
+          rawData: { warnings: data.status.warnings },
         });
       }
     }
@@ -330,7 +334,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
             numericValue: tray.level,
             unit: tray.unit || 'percent',
             measurementTimestamp: timestamp,
-            rawData: tray
+            rawData: tray,
           });
         }
       });
@@ -341,7 +345,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
 
   async getDeviceInfo(deviceId: string): Promise<DeviceInfo | null> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -349,8 +353,8 @@ export class HPAdapter extends BaseManufacturerAdapter {
         `${this.config.apiEndpoint}/api/v1/devices/${deviceId}`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
-        }
+          headers: this.getAuthHeaders(),
+        },
       );
 
       const device = await this.handleApiResponse(response);
@@ -363,7 +367,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
 
   async updateDeviceConfig(deviceId: string, config: any): Promise<boolean> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -372,8 +376,8 @@ export class HPAdapter extends BaseManufacturerAdapter {
         {
           method: 'PUT',
           headers: this.getAuthHeaders(),
-          body: JSON.stringify(config)
-        }
+          body: JSON.stringify(config),
+        },
       );
 
       return response.ok;
@@ -385,8 +389,8 @@ export class HPAdapter extends BaseManufacturerAdapter {
 
   protected getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
     };
 
     if (this.sessionId) {
@@ -407,7 +411,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
     // Clear existing session and re-authenticate
     this.sessionId = undefined;
     this.tokenExpiresAt = undefined;
-    
+
     const success = await this.authenticate();
     if (!success) {
       throw new Error('Re-authentication failed');

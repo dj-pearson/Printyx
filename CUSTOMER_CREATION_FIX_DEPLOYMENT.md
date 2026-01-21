@@ -11,12 +11,15 @@
 ## Files Changed
 
 ### Backend (Edge Functions)
+
 - `supabase/functions/customers/index.ts` - Updated to handle frontend data format
 
 ### Frontend
+
 - `client/src/hooks/useSupabaseAuth.ts` - Fixed user profile query
 
 ### Database
+
 - `migrations/002_add_foreign_key_constraints.sql` - NEW migration file
 
 ## Deployment Steps
@@ -50,6 +53,7 @@ supabase db execute -f migrations/002_data_cleanup.sql
 ```
 
 **What this does:**
+
 - Identifies all non-UUID values (like "lead-001") in foreign key columns
 - Sets them to NULL (safer than deleting records)
 - Logs all changes for your review
@@ -62,6 +66,7 @@ supabase db execute -f migrations/002_data_cleanup.sql
 You need to run the migration on your production database. Choose one of these methods:
 
 #### Option A: Via Supabase CLI (Recommended)
+
 ```powershell
 # Make sure you're in the project directory
 cd C:\Users\dpearson\Documents\Printyx
@@ -74,13 +79,16 @@ supabase db push
 ```
 
 #### Option B: Via Supabase Dashboard
+
 1. Go to https://supabase.com/dashboard/project/your-project/sql
 2. Copy the contents of `migrations/002_add_foreign_key_constraints.sql`
 3. Paste into SQL Editor
 4. Click "Run"
 
 #### Option C: Direct Database Connection
+
 If you have direct database access:
+
 ```powershell
 # Replace with your production database connection string
 psql "postgresql://user:password@host:port/database" -f migrations/002_add_foreign_key_constraints.sql
@@ -130,7 +138,9 @@ npm run build
 ### Database Schema
 
 #### Data Type Conversions
+
 The migration converts the following columns from `character varying` to `uuid` to match the primary key types:
+
 - `company_contacts.company_id`: `character varying` → `uuid`
 - `customers.company_id`: `character varying` → `uuid`
 - `customers.contact_id`: `character varying` → `uuid`
@@ -138,6 +148,7 @@ The migration converts the following columns from `character varying` to `uuid` 
 - `leads.contact_id`: `character varying` → `uuid`
 
 #### Foreign Key Constraints
+
 - Added foreign key constraints:
   - `customers.company_id` → `companies.id` (ON DELETE CASCADE)
   - `customers.contact_id` → `company_contacts.id` (ON DELETE SET NULL)
@@ -146,24 +157,31 @@ The migration converts the following columns from `character varying` to `uuid` 
   - `leads.contact_id` → `company_contacts.id` (ON DELETE SET NULL)
 
 #### Performance Indexes
+
 - Added performance indexes on FK columns for faster joins
 
 ### Customers Edge Function
+
 Before:
+
 - Required `company_id` and `contact_id` to exist
 - Frontend had to create company/contact separately first
 
 After:
+
 - Accepts frontend form data with fields like `companyName`, `primaryContactName`, etc.
 - Automatically creates company and contact if they don't exist
 - Still supports the old format with `company_id` and `contact_id`
 
 ### User Profile Query
+
 Before:
+
 - Tried to select `role` column from users table
 - Column didn't exist, causing 400 errors
 
 After:
+
 - Only selects `role_id` (FK to roles table)
 - Properly handles role lookups via roles table
 

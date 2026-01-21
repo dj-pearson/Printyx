@@ -1,8 +1,8 @@
-import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import * as React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import {
   Drawer,
   DrawerContent,
@@ -10,7 +10,7 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-} from "@/components/ui/drawer";
+} from '@/components/ui/drawer';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 
 /**
  * Responsive Dialog Component
@@ -64,17 +64,10 @@ const ResponsiveDialogContext = React.createContext<{
   isDesktop: true,
 });
 
-export function ResponsiveDialog({
-  open,
-  onOpenChange,
-  children,
-}: ResponsiveDialogProps) {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+export function ResponsiveDialog({ open, onOpenChange, children }: ResponsiveDialogProps) {
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
-  const value = React.useMemo(
-    () => ({ isDesktop }),
-    [isDesktop]
-  );
+  const value = React.useMemo(() => ({ isDesktop }), [isDesktop]);
 
   if (isDesktop) {
     return (
@@ -108,10 +101,7 @@ export function ResponsiveDialogTrigger({
   return <DialogPrimitive.Trigger {...props}>{children}</DialogPrimitive.Trigger>;
 }
 
-export function ResponsiveDialogContent({
-  children,
-  className,
-}: ResponsiveDialogContentProps) {
+export function ResponsiveDialogContent({ children, className }: ResponsiveDialogContentProps) {
   const { isDesktop } = React.useContext(ResponsiveDialogContext);
 
   if (isDesktop) {
@@ -119,16 +109,13 @@ export function ResponsiveDialogContent({
   }
 
   return (
-    <DrawerContent className={cn("max-h-[85vh]", className)}>
+    <DrawerContent className={cn('max-h-[85vh]', className)}>
       <div className="overflow-y-auto">{children}</div>
     </DrawerContent>
   );
 }
 
-export function ResponsiveDialogHeader({
-  children,
-  className,
-}: ResponsiveDialogHeaderProps) {
+export function ResponsiveDialogHeader({ children, className }: ResponsiveDialogHeaderProps) {
   const { isDesktop } = React.useContext(ResponsiveDialogContext);
 
   if (isDesktop) {
@@ -138,10 +125,7 @@ export function ResponsiveDialogHeader({
   return <DrawerHeader className={className}>{children}</DrawerHeader>;
 }
 
-export function ResponsiveDialogTitle({
-  children,
-  className,
-}: ResponsiveDialogTitleProps) {
+export function ResponsiveDialogTitle({ children, className }: ResponsiveDialogTitleProps) {
   const { isDesktop } = React.useContext(ResponsiveDialogContext);
 
   if (isDesktop) {
@@ -164,19 +148,12 @@ export function ResponsiveDialogDescription({
   return <DrawerDescription className={className}>{children}</DrawerDescription>;
 }
 
-export function ResponsiveDialogFooter({
-  children,
-  className,
-}: ResponsiveDialogFooterProps) {
+export function ResponsiveDialogFooter({ children, className }: ResponsiveDialogFooterProps) {
   const { isDesktop } = React.useContext(ResponsiveDialogContext);
 
   if (isDesktop) {
     return <DialogFooter className={className}>{children}</DialogFooter>;
   }
 
-  return (
-    <DrawerFooter className={cn("pt-2", className)}>
-      {children}
-    </DrawerFooter>
-  );
+  return <DrawerFooter className={cn('pt-2', className)}>{children}</DrawerFooter>;
 }

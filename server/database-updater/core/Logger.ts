@@ -75,7 +75,7 @@ export class Logger {
    */
   error(message: string, error?: any): void {
     let errorData;
-    
+
     if (error instanceof Error) {
       errorData = {
         name: error.name,
@@ -120,21 +120,21 @@ export class Logger {
   private logToConsole(entry: LogEntry): void {
     const timestamp = entry.timestamp.toISOString();
     const level = entry.level.toUpperCase().padEnd(5);
-    
+
     // Color codes
     const colors = {
       debug: '\x1b[36m', // Cyan
-      info: '\x1b[32m',  // Green
-      warn: '\x1b[33m',  // Yellow
+      info: '\x1b[32m', // Green
+      warn: '\x1b[33m', // Yellow
       error: '\x1b[31m', // Red
-      reset: '\x1b[0m',  // Reset
+      reset: '\x1b[0m', // Reset
     };
 
     const color = colors[entry.level] || colors.reset;
     const message = `${colors.reset}[${timestamp}] ${color}${level}${colors.reset} ${entry.message}`;
-    
+
     console.log(message);
-    
+
     if (entry.data) {
       console.log('  Data:', entry.data);
     }
@@ -147,7 +147,7 @@ export class Logger {
     try {
       const filename = this.getLogFilename();
       const filepath = path.join(this.options.logDirectory, filename);
-      
+
       // Check file size and rotate if necessary
       if (fs.existsSync(filepath)) {
         const stats = fs.statSync(filepath);
@@ -170,7 +170,7 @@ export class Logger {
     const timestamp = entry.timestamp.toISOString();
     const level = entry.level.toUpperCase().padEnd(5);
     let logLine = `[${timestamp}] ${level} ${entry.message}`;
-    
+
     if (entry.data) {
       try {
         logLine += ` | Data: ${JSON.stringify(entry.data)}`;
@@ -178,7 +178,7 @@ export class Logger {
         logLine += ` | Data: [Circular or non-serializable object]`;
       }
     }
-    
+
     return logLine;
   }
 
@@ -207,7 +207,7 @@ export class Logger {
   private rotateLogFile(filepath: string): void {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const rotatedPath = filepath.replace('.log', `-${timestamp}.log`);
-    
+
     try {
       fs.renameSync(filepath, rotatedPath);
       this.cleanupOldLogFiles();
@@ -221,9 +221,10 @@ export class Logger {
    */
   private cleanupOldLogFiles(): void {
     try {
-      const files = fs.readdirSync(this.options.logDirectory)
-        .filter(file => file.startsWith('database-updater-') && file.endsWith('.log'))
-        .map(file => ({
+      const files = fs
+        .readdirSync(this.options.logDirectory)
+        .filter((file) => file.startsWith('database-updater-') && file.endsWith('.log'))
+        .map((file) => ({
           name: file,
           path: path.join(this.options.logDirectory, file),
           stats: fs.statSync(path.join(this.options.logDirectory, file)),
@@ -265,18 +266,18 @@ export class Logger {
     try {
       const filename = this.getLogFilename();
       const filepath = path.join(this.options.logDirectory, filename);
-      
+
       if (!fs.existsSync(filepath)) {
         return [];
       }
 
       const content = fs.readFileSync(filepath, 'utf8');
       const lines = content.trim().split('\n');
-      
+
       // Get last 'count' lines
       const recentLines = lines.slice(-count);
-      
-      return recentLines.map(line => this.parseLogLine(line)).filter(Boolean) as LogEntry[];
+
+      return recentLines.map((line) => this.parseLogLine(line)).filter(Boolean) as LogEntry[];
     } catch (error) {
       console.error('Failed to read recent logs:', error);
       return [];
@@ -291,11 +292,11 @@ export class Logger {
       // Parse format: [timestamp] LEVEL message | Data: {...}
       const regex = /^\[([^\]]+)\]\s+(\w+)\s+(.+?)(?:\s+\|\s+Data:\s+(.+))?$/;
       const match = line.match(regex);
-      
+
       if (!match) return null;
-      
+
       const [, timestamp, level, message, dataStr] = match;
-      
+
       let data;
       if (dataStr) {
         try {
@@ -304,7 +305,7 @@ export class Logger {
           data = dataStr;
         }
       }
-      
+
       return {
         timestamp: new Date(timestamp),
         level: level.toLowerCase() as LogLevel,
@@ -337,13 +338,13 @@ export class Logger {
    */
   child(prefix: string) {
     const childLogger = new Logger(this.options);
-    
+
     // Override log method to add prefix
     const originalLog = childLogger.log.bind(childLogger);
     childLogger.log = (level: LogLevel, message: string, data?: any) => {
       originalLog(level, `[${prefix}] ${message}`, data);
     };
-    
+
     return childLogger;
   }
 }

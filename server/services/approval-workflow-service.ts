@@ -46,16 +46,13 @@ export class ApprovalWorkflowService {
    */
   static async checkApprovalRequired(
     tenantId: string,
-    context: ApprovalCheckContext
+    context: ApprovalCheckContext,
   ): Promise<{ required: boolean; matchedRules: ApprovalRule[] }> {
     // Get active approval rules for tenant
     const activeRules = await db
       .select()
       .from(approvalRules)
-      .where(and(
-        eq(approvalRules.tenantId, tenantId),
-        eq(approvalRules.isActive, true)
-      ))
+      .where(and(eq(approvalRules.tenantId, tenantId), eq(approvalRules.isActive, true)))
       .orderBy(desc(approvalRules.priority), desc(approvalRules.order));
 
     const matchedRules: ApprovalRule[] = [];
@@ -113,7 +110,7 @@ export class ApprovalWorkflowService {
     const thresholdMet = this.evaluateComparison(
       contextValue,
       Number(thresholdValue),
-      comparisonOperator
+      comparisonOperator,
     );
 
     if (!thresholdMet) {
@@ -155,8 +152,13 @@ export class ApprovalWorkflowService {
    * Evaluate complex conditions with AND/OR logic
    */
   private static evaluateConditions(
-    conditions: Array<{ field: string; operator: string; value: any; logicalOperator?: 'AND' | 'OR' }>,
-    context: ApprovalCheckContext
+    conditions: Array<{
+      field: string;
+      operator: string;
+      value: any;
+      logicalOperator?: 'AND' | 'OR';
+    }>,
+    context: ApprovalCheckContext,
   ): boolean {
     let result = true;
     let currentLogicalOperator: 'AND' | 'OR' = 'AND';
@@ -181,9 +183,10 @@ export class ApprovalWorkflowService {
    */
   private static evaluateSingleCondition(
     condition: { field: string; operator: string; value: any },
-    context: ApprovalCheckContext
+    context: ApprovalCheckContext,
   ): boolean {
-    const contextValue = (context as any)[condition.field] || context.customFields?.[condition.field];
+    const contextValue =
+      (context as any)[condition.field] || context.customFields?.[condition.field];
 
     if (contextValue === undefined) {
       return false;
@@ -212,7 +215,7 @@ export class ApprovalWorkflowService {
    */
   static async buildApprovalChain(
     tenantId: string,
-    matchedRules: ApprovalRule[]
+    matchedRules: ApprovalRule[],
   ): Promise<ApprovalChainMember[]> {
     const approvalChain: ApprovalChainMember[] = [];
     const seenApprovers = new Set<string>();
@@ -245,10 +248,7 @@ export class ApprovalWorkflowService {
             })
             .from(users)
             .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(and(
-              eq(users.tenantId, tenantId),
-              eq(users.roleId, approver.roleId)
-            ))
+            .where(and(eq(users.tenantId, tenantId), eq(users.roleId, approver.roleId)))
             .limit(1);
 
           if (usersWithRole.length > 0) {
@@ -290,13 +290,15 @@ export class ApprovalWorkflowService {
     const [delegation] = await db
       .select()
       .from(approvalDelegations)
-      .where(and(
-        eq(approvalDelegations.tenantId, tenantId),
-        eq(approvalDelegations.delegatorId, delegatorId),
-        eq(approvalDelegations.isActive, true),
-        lte(approvalDelegations.startDate, now),
-        gte(approvalDelegations.endDate, now)
-      ))
+      .where(
+        and(
+          eq(approvalDelegations.tenantId, tenantId),
+          eq(approvalDelegations.delegatorId, delegatorId),
+          eq(approvalDelegations.isActive, true),
+          lte(approvalDelegations.startDate, now),
+          gte(approvalDelegations.endDate, now),
+        ),
+      )
       .limit(1);
 
     return delegation;
@@ -307,29 +309,28 @@ export class ApprovalWorkflowService {
    */
   static async createApprovalRequest(
     requestData: InsertApprovalRequest,
-    matchedRules: ApprovalRule[]
+    matchedRules: ApprovalRule[],
   ): Promise<ApprovalRequest> {
     // Build approval chain
-    const approvalChain = await this.buildApprovalChain(
-      requestData.tenantId,
-      matchedRules
-    );
+    const approvalChain = await this.buildApprovalChain(requestData.tenantId, matchedRules);
 
     // Calculate SLA deadline (use strictest SLA from matched rules)
-    const minSlaHours = Math.min(...matchedRules.map(r => r.slaHours || 24));
+    const minSlaHours = Math.min(...matchedRules.map((r) => r.slaHours || 24));
     const slaDeadline = new Date();
     slaDeadline.setHours(slaDeadline.getHours() + minSlaHours);
 
     // Create activity log entry
-    const activityLog = [{
-      timestamp: new Date().toISOString(),
-      actor: requestData.requestedBy,
-      action: 'created',
-      details: 'Approval request created',
-      metadata: {
-        matchedRules: matchedRules.map(r => r.id),
+    const activityLog = [
+      {
+        timestamp: new Date().toISOString(),
+        actor: requestData.requestedBy,
+        action: 'created',
+        details: 'Approval request created',
+        metadata: {
+          matchedRules: matchedRules.map((r) => r.id),
+        },
       },
-    }];
+    ];
 
     const [approvalRequest] = await db
       .insert(approvalRequests)
@@ -355,7 +356,7 @@ export class ApprovalWorkflowService {
     requestId: string,
     approverId: string,
     decision: 'approve' | 'reject' | 'request_changes',
-    comments?: string
+    comments?: string,
   ): Promise<ApprovalRequest> {
     const [request] = await db
       .select()
@@ -406,7 +407,7 @@ export class ApprovalWorkflowService {
     } else if (decision === 'approve') {
       // Check if all required approvers have approved
       const allApproved = updatedChain.every(
-        (m: ApprovalChainMember) => m.status === 'approved' || m.status === 'skipped'
+        (m: ApprovalChainMember) => m.status === 'approved' || m.status === 'skipped',
       );
 
       if (allApproved) {
@@ -416,9 +417,11 @@ export class ApprovalWorkflowService {
         finalDecisionAt = new Date();
       } else {
         // Move to next level
-        const nextLevel = Math.min(...updatedChain
-          .filter((m: ApprovalChainMember) => m.status === 'pending')
-          .map((m: ApprovalChainMember) => m.level));
+        const nextLevel = Math.min(
+          ...updatedChain
+            .filter((m: ApprovalChainMember) => m.status === 'pending')
+            .map((m: ApprovalChainMember) => m.level),
+        );
 
         newStatus = 'in_review';
 
@@ -474,14 +477,13 @@ export class ApprovalWorkflowService {
     const overdueRequests = await db
       .select()
       .from(approvalRequests)
-      .where(and(
-        or(
-          eq(approvalRequests.status, 'pending'),
-          eq(approvalRequests.status, 'in_review')
+      .where(
+        and(
+          or(eq(approvalRequests.status, 'pending'), eq(approvalRequests.status, 'in_review')),
+          lte(approvalRequests.slaDeadline, now),
+          eq(approvalRequests.slaBreached, false),
         ),
-        lte(approvalRequests.slaDeadline, now),
-        eq(approvalRequests.slaBreached, false)
-      ));
+      );
 
     for (const request of overdueRequests) {
       // Mark as breached
@@ -504,7 +506,7 @@ export class ApprovalWorkflowService {
    */
   private static async notifyApprovers(request: ApprovalRequest, level: number): Promise<void> {
     const approversAtLevel = request.approvalChain.filter(
-      (m: ApprovalChainMember) => m.level === level && m.status === 'pending'
+      (m: ApprovalChainMember) => m.level === level && m.status === 'pending',
     );
 
     // TODO: Integrate with email/notification service
@@ -521,7 +523,9 @@ export class ApprovalWorkflowService {
    */
   private static async notifyOutcome(request: ApprovalRequest): Promise<void> {
     // TODO: Integrate with email/notification service
-    console.log(`Approval request ${request.id} ${request.finalDecision}: notifying ${request.requestedBy}`);
+    console.log(
+      `Approval request ${request.id} ${request.finalDecision}: notifying ${request.requestedBy}`,
+    );
   }
 
   /**
@@ -537,24 +541,23 @@ export class ApprovalWorkflowService {
    */
   static async getPendingApprovalsForUser(
     tenantId: string,
-    userId: string
+    userId: string,
   ): Promise<ApprovalRequest[]> {
     const allRequests = await db
       .select()
       .from(approvalRequests)
-      .where(and(
-        eq(approvalRequests.tenantId, tenantId),
-        or(
-          eq(approvalRequests.status, 'pending'),
-          eq(approvalRequests.status, 'in_review')
-        )
-      ));
+      .where(
+        and(
+          eq(approvalRequests.tenantId, tenantId),
+          or(eq(approvalRequests.status, 'pending'), eq(approvalRequests.status, 'in_review')),
+        ),
+      );
 
     // Filter to requests where user is a pending approver
-    return allRequests.filter(request =>
-      request.approvalChain.some((m: ApprovalChainMember) =>
-        m.approverId === userId && m.status === 'pending'
-      )
+    return allRequests.filter((request) =>
+      request.approvalChain.some(
+        (m: ApprovalChainMember) => m.approverId === userId && m.status === 'pending',
+      ),
     );
   }
 
@@ -566,7 +569,7 @@ export class ApprovalWorkflowService {
     authorId: string,
     authorName: string,
     commentText: string,
-    isInternal: boolean = false
+    isInternal: boolean = false,
   ): Promise<void> {
     await db.insert(approvalComments).values({
       tenantId: '', // Will be set by route handler

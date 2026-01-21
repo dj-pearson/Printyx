@@ -5,18 +5,31 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  FileText, 
-  FileSignature, 
-  Palette, 
-  Eye, 
-  Send, 
+import {
+  FileText,
+  FileSignature,
+  Palette,
+  Eye,
+  Send,
   Plus,
   ArrowLeft,
   Settings,
@@ -38,7 +51,7 @@ import {
   Download,
   Save,
   Copy,
-  Layers
+  Layers,
 } from 'lucide-react';
 import MainLayout from '@/components/layout/main-layout';
 import ProposalVisualBuilder from '@/components/proposal-builder/ProposalVisualBuilder';
@@ -75,15 +88,69 @@ interface ProposalSection {
 }
 
 const sectionTypes = [
-  { type: 'cover_page', title: 'Cover Page', icon: FileText, description: 'Professional cover with logos and customer info', required: true },
-  { type: 'executive_summary', title: 'Executive Summary', icon: Eye, description: 'High-level project overview and benefits', required: false },
-  { type: 'company_intro', title: 'Company Introduction', icon: Users, description: 'About us, history, and credentials', required: false },
-  { type: 'solution_overview', title: 'Solution Overview', icon: Layout, description: 'Detailed solution description and features', required: false },
-  { type: 'pricing', title: 'Investment Summary', icon: DollarSign, description: 'Pricing breakdown and payment terms', required: true },
-  { type: 'guarantees', title: 'Guarantees & Warranties', icon: Award, description: 'Service level agreements and guarantees', required: false },
-  { type: 'team', title: 'Team Introduction', icon: Users, description: 'Key personnel and contact information', required: false },
-  { type: 'terms', title: 'Terms & Conditions', icon: FileText, description: 'Legal terms and contract conditions', required: false },
-  { type: 'next_steps', title: 'Next Steps', icon: Calendar, description: 'Implementation timeline and process', required: false },
+  {
+    type: 'cover_page',
+    title: 'Cover Page',
+    icon: FileText,
+    description: 'Professional cover with logos and customer info',
+    required: true,
+  },
+  {
+    type: 'executive_summary',
+    title: 'Executive Summary',
+    icon: Eye,
+    description: 'High-level project overview and benefits',
+    required: false,
+  },
+  {
+    type: 'company_intro',
+    title: 'Company Introduction',
+    icon: Users,
+    description: 'About us, history, and credentials',
+    required: false,
+  },
+  {
+    type: 'solution_overview',
+    title: 'Solution Overview',
+    icon: Layout,
+    description: 'Detailed solution description and features',
+    required: false,
+  },
+  {
+    type: 'pricing',
+    title: 'Investment Summary',
+    icon: DollarSign,
+    description: 'Pricing breakdown and payment terms',
+    required: true,
+  },
+  {
+    type: 'guarantees',
+    title: 'Guarantees & Warranties',
+    icon: Award,
+    description: 'Service level agreements and guarantees',
+    required: false,
+  },
+  {
+    type: 'team',
+    title: 'Team Introduction',
+    icon: Users,
+    description: 'Key personnel and contact information',
+    required: false,
+  },
+  {
+    type: 'terms',
+    title: 'Terms & Conditions',
+    icon: FileText,
+    description: 'Legal terms and contract conditions',
+    required: false,
+  },
+  {
+    type: 'next_steps',
+    title: 'Next Steps',
+    icon: Calendar,
+    description: 'Implementation timeline and process',
+    required: false,
+  },
 ];
 
 const proposalTemplates: ProposalTemplate[] = [
@@ -106,7 +173,7 @@ const proposalTemplates: ProposalTemplate[] = [
     styling: {
       primaryColor: '#0066CC',
       fontFamily: 'Inter',
-    }
+    },
   },
   {
     id: '2',
@@ -115,8 +182,13 @@ const proposalTemplates: ProposalTemplate[] = [
     description: 'Template for ongoing service and maintenance contracts',
     isDefault: false,
     sections: [
-      sectionTypes[0], sectionTypes[1], sectionTypes[2], 
-      sectionTypes[4], sectionTypes[5], sectionTypes[7], sectionTypes[8]
+      sectionTypes[0],
+      sectionTypes[1],
+      sectionTypes[2],
+      sectionTypes[4],
+      sectionTypes[5],
+      sectionTypes[7],
+      sectionTypes[8],
     ].map((section, index) => ({
       id: `section-${index}`,
       type: section.type,
@@ -130,7 +202,7 @@ const proposalTemplates: ProposalTemplate[] = [
     styling: {
       primaryColor: '#28A745',
       fontFamily: 'Inter',
-    }
+    },
   },
   {
     id: '3',
@@ -151,15 +223,17 @@ const proposalTemplates: ProposalTemplate[] = [
     styling: {
       primaryColor: '#6C5CE7',
       fontFamily: 'Inter',
-    }
-  }
+    },
+  },
 ];
 
 export default function ProposalBuilder() {
   const [, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState<'quote' | 'template' | 'transform' | 'visual' | 'preview'>('quote');
+  const [activeStep, setActiveStep] = useState<
+    'quote' | 'template' | 'transform' | 'visual' | 'preview'
+  >('quote');
   const [agingFilterDays, setAgingFilterDays] = useState<number | null>(null);
 
   // Check for quote ID in URL parameters
@@ -168,7 +242,7 @@ export default function ProposalBuilder() {
     const quoteIdFromUrl = urlParams.get('quoteId');
     const filter = urlParams.get('filter');
     const days = urlParams.get('days');
-    
+
     if (quoteIdFromUrl) {
       setSelectedQuote(quoteIdFromUrl);
       // If quote is pre-selected from URL, skip to template selection
@@ -195,7 +269,7 @@ export default function ProposalBuilder() {
     solutionOverview: '',
     pricingDetails: '',
     termsAndConditions: '',
-    nextSteps: ''
+    nextSteps: '',
   });
 
   // Fetch existing quotes that can be converted to proposals
@@ -214,7 +288,8 @@ export default function ProposalBuilder() {
   const filteredAndSortedQuotes = (quotes || [])
     .filter((quote: any) => {
       if (!searchTerm) return true;
-      const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId)?.name || 'Unknown';
+      const customer =
+        businessRecords?.find((br: any) => br.id === quote.businessRecordId)?.name || 'Unknown';
       return (
         quote.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         quote.proposalNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -231,7 +306,7 @@ export default function ProposalBuilder() {
     })
     .sort((a: any, b: any) => {
       let aValue, bValue;
-      
+
       switch (sortBy) {
         case 'name':
           aValue = a.title || '';
@@ -252,7 +327,7 @@ export default function ProposalBuilder() {
         default:
           return 0;
       }
-      
+
       if (sortOrder === 'asc') {
         return aValue > bValue ? 1 : -1;
       } else {
@@ -312,22 +387,24 @@ export default function ProposalBuilder() {
           },
         });
         const validationResult = await validation.json();
-        
+
         if (!validationResult.valid) {
           // Show error toast with validation issues
-          console.error("Proposal validation failed:", validationResult.errors);
-          alert(`Cannot create contract. Please fix the following issues:\n${validationResult.errors.join('\n')}`);
+          console.error('Proposal validation failed:', validationResult.errors);
+          alert(
+            `Cannot create contract. Please fix the following issues:\n${validationResult.errors.join('\n')}`,
+          );
           return;
         }
-        
-        console.log("Proposal validation passed, proceeding to contracts...");
+
+        console.log('Proposal validation passed, proceeding to contracts...');
       } catch (error) {
-        console.error("DoD validation error:", error);
-        alert("Unable to validate proposal. Please try again.");
+        console.error('DoD validation error:', error);
+        alert('Unable to validate proposal. Please try again.');
         return;
       }
     }
-    
+
     // Proceed to Contracts/eSign step after building proposal
     const params = new URLSearchParams();
     if (selectedQuote) params.set('quoteId', selectedQuote);
@@ -337,26 +414,28 @@ export default function ProposalBuilder() {
   };
 
   return (
-    <MainLayout 
-      title="Proposal Builder" 
+    <MainLayout
+      title="Proposal Builder"
       description="Create professional, customized proposals with templates and branding"
     >
       <div className="space-y-6">
         {/* Process Help Banner */}
-        <ProcessHelpBanner 
+        <ProcessHelpBanner
           processType="quote-to-proposal"
           currentStage="documentation"
           nextStage="legal-review"
           estimatedTime="1-2 hours"
         />
-        
+
         {agingFilterDays != null && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
             <span>Showing proposals aging greater than {agingFilterDays} days</span>
-            <Button variant="outline" size="sm" onClick={() => setLocation('/proposal-builder')}>Clear Filter</Button>
+            <Button variant="outline" size="sm" onClick={() => setLocation('/proposal-builder')}>
+              Clear Filter
+            </Button>
           </div>
         )}
-        
+
         {/* DoD Validation Banner */}
         {selectedQuote && activeStep === 'preview' && (
           <DoDValidationBanner
@@ -385,12 +464,17 @@ export default function ProposalBuilder() {
                 {selectedQuote && (
                   <>
                     <ArrowLeft className="h-3 w-3 rotate-180" />
-                    <span className="truncate max-w-[200px]">Quote #{(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}</span>
+                    <span className="truncate max-w-[200px]">
+                      Quote #
+                      {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
+                    </span>
                   </>
                 )}
               </div>
               <h1 className="text-xl sm:text-2xl font-bold">Proposal Builder</h1>
-              <p className="text-sm sm:text-base text-muted-foreground">Create professional proposals with customizable templates</p>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Create professional proposals with customizable templates
+              </p>
             </div>
           </div>
 
@@ -398,7 +482,9 @@ export default function ProposalBuilder() {
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               {selectedQuote && (
                 <Badge variant="outline" className="text-xs truncate max-w-[200px]">
-                  Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber || selectedQuote}
+                  Quote:{' '}
+                  {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber ||
+                    selectedQuote}
                 </Badge>
               )}
               {selectedTemplate && (
@@ -435,22 +521,33 @@ export default function ProposalBuilder() {
             ].map((step, index) => {
               const Icon = step.icon;
               const isActive = step.key === activeStep;
-              const isCompleted = ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(activeStep) >
-                                ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(step.key);
+              const isCompleted =
+                ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(activeStep) >
+                ['quote', 'template', 'transform', 'visual', 'preview'].indexOf(step.key);
 
               return (
                 <div key={step.key} className="flex items-center">
-                  <div className={`flex items-center gap-2 ${isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      isActive ? 'bg-primary text-white' :
-                      isCompleted ? 'bg-green-600 text-white' :
-                      'bg-muted'
-                    }`}>
+                  <div
+                    className={`flex items-center gap-2 ${isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-muted-foreground'}`}
+                  >
+                    <div
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        isActive
+                          ? 'bg-primary text-white'
+                          : isCompleted
+                            ? 'bg-green-600 text-white'
+                            : 'bg-muted'
+                      }`}
+                    >
                       <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
-                    <span className="font-medium text-xs sm:text-sm whitespace-nowrap">{step.label}</span>
+                    <span className="font-medium text-xs sm:text-sm whitespace-nowrap">
+                      {step.label}
+                    </span>
                   </div>
-                  {index < 4 && <div className="w-4 sm:w-8 h-px bg-border ml-2 sm:ml-4 flex-shrink-0" />}
+                  {index < 4 && (
+                    <div className="w-4 sm:w-8 h-px bg-border ml-2 sm:ml-4 flex-shrink-0" />
+                  )}
                 </div>
               );
             })}
@@ -477,10 +574,7 @@ export default function ProposalBuilder() {
             <span className="hidden sm:inline">Visual Builder</span>
             <span className="sm:hidden">Builder</span>
           </Button>
-          <Button
-            variant="outline"
-            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
-          >
+          <Button variant="outline" className="touch-manipulation active:scale-[0.98] min-h-[44px]">
             <Copy className="h-4 w-4 mr-2" />
             Templates
           </Button>
@@ -503,10 +597,9 @@ export default function ProposalBuilder() {
             <div className="text-center">
               <h2 className="text-xl font-semibold">Select a Quote to Convert</h2>
               <p className="text-muted-foreground">
-                {selectedQuote ? 
-                  'You can change your quote selection or continue with the pre-selected quote' :
-                  'Choose an existing quote to transform into a professional proposal'
-                }
+                {selectedQuote
+                  ? 'You can change your quote selection or continue with the pre-selected quote'
+                  : 'Choose an existing quote to transform into a professional proposal'}
               </p>
             </div>
 
@@ -541,7 +634,11 @@ export default function ProposalBuilder() {
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                   className="touch-manipulation active:scale-[0.98] min-h-[44px] min-w-[44px]"
                 >
-                  {sortOrder === 'asc' ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+                  {sortOrder === 'asc' ? (
+                    <SortAsc className="h-4 w-4" />
+                  ) : (
+                    <SortDesc className="h-4 w-4" />
+                  )}
                 </Button>
 
                 <div className="flex border rounded ml-auto">
@@ -574,44 +671,55 @@ export default function ProposalBuilder() {
               viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {filteredAndSortedQuotes.map((quote: any) => {
-                    const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
+                    const customer = businessRecords?.find(
+                      (br: any) => br.id === quote.businessRecordId,
+                    );
                     return (
-                    <Card
-                      key={quote.id}
-                      className={`cursor-pointer transition-all hover:shadow-lg touch-manipulation active:scale-[0.98] ${
-                        selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
-                      }`}
-                      onClick={() => handleQuoteSelect(quote.id)}
-                    >
-                      <CardHeader className="pb-3 p-4 sm:p-6">
-                        <div className="flex items-center justify-between gap-2">
-                          <CardTitle className="text-base sm:text-lg truncate">{quote.proposalNumber}</CardTitle>
-                          <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'} className="text-xs flex-shrink-0">
-                            {quote.status}
-                          </Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 sm:p-6 pt-0">
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="text-base sm:text-lg font-semibold text-primary break-words">{quote.title}</h3>
-                            <p className="text-sm text-muted-foreground break-words">
-                              Customer: {customer?.name || 'Unknown Customer'}
-                            </p>
+                      <Card
+                        key={quote.id}
+                        className={`cursor-pointer transition-all hover:shadow-lg touch-manipulation active:scale-[0.98] ${
+                          selectedQuote === quote.id ? 'ring-2 ring-primary' : ''
+                        }`}
+                        onClick={() => handleQuoteSelect(quote.id)}
+                      >
+                        <CardHeader className="pb-3 p-4 sm:p-6">
+                          <div className="flex items-center justify-between gap-2">
+                            <CardTitle className="text-base sm:text-lg truncate">
+                              {quote.proposalNumber}
+                            </CardTitle>
+                            <Badge
+                              variant={quote.status === 'sent' ? 'default' : 'secondary'}
+                              className="text-xs flex-shrink-0"
+                            >
+                              {quote.status}
+                            </Badge>
                           </div>
+                        </CardHeader>
+                        <CardContent className="p-4 sm:p-6 pt-0">
+                          <div className="space-y-3">
+                            <div>
+                              <h3 className="text-base sm:text-lg font-semibold text-primary break-words">
+                                {quote.title}
+                              </h3>
+                              <p className="text-sm text-muted-foreground break-words">
+                                Customer: {customer?.name || 'Unknown Customer'}
+                              </p>
+                            </div>
 
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Total Amount:</span>
-                            <span className="font-semibold text-base sm:text-lg">${quote.totalAmount}</span>
-                          </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Total Amount:</span>
+                              <span className="font-semibold text-base sm:text-lg">
+                                ${quote.totalAmount}
+                              </span>
+                            </div>
 
-                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                            <Calendar className="h-4 w-4 flex-shrink-0" />
-                            <span>Created {new Date(quote.createdAt).toLocaleDateString()}</span>
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4 flex-shrink-0" />
+                              <span>Created {new Date(quote.createdAt).toLocaleDateString()}</span>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                        </CardContent>
+                      </Card>
                     );
                   })}
                 </div>
@@ -632,23 +740,38 @@ export default function ProposalBuilder() {
                       </TableHeader>
                       <TableBody>
                         {filteredAndSortedQuotes.map((quote: any) => {
-                          const customer = businessRecords?.find((br: any) => br.id === quote.businessRecordId);
+                          const customer = businessRecords?.find(
+                            (br: any) => br.id === quote.businessRecordId,
+                          );
                           return (
                             <TableRow
                               key={quote.id}
                               className={`cursor-pointer touch-manipulation ${selectedQuote === quote.id ? 'bg-primary/10' : ''}`}
                               onClick={() => handleQuoteSelect(quote.id)}
                             >
-                              <TableCell className="font-medium whitespace-nowrap">{quote.proposalNumber}</TableCell>
-                              <TableCell className="font-semibold text-primary">{quote.title}</TableCell>
-                              <TableCell className="whitespace-nowrap">{customer?.name || 'Unknown Customer'}</TableCell>
-                              <TableCell className="font-semibold whitespace-nowrap">${quote.totalAmount}</TableCell>
+                              <TableCell className="font-medium whitespace-nowrap">
+                                {quote.proposalNumber}
+                              </TableCell>
+                              <TableCell className="font-semibold text-primary">
+                                {quote.title}
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {customer?.name || 'Unknown Customer'}
+                              </TableCell>
+                              <TableCell className="font-semibold whitespace-nowrap">
+                                ${quote.totalAmount}
+                              </TableCell>
                               <TableCell>
-                                <Badge variant={quote.status === 'sent' ? 'default' : 'secondary'} className="text-xs">
+                                <Badge
+                                  variant={quote.status === 'sent' ? 'default' : 'secondary'}
+                                  className="text-xs"
+                                >
                                   {quote.status}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="whitespace-nowrap">{new Date(quote.createdAt).toLocaleDateString()}</TableCell>
+                              <TableCell className="whitespace-nowrap">
+                                {new Date(quote.createdAt).toLocaleDateString()}
+                              </TableCell>
                               <TableCell>
                                 <Button
                                   size="sm"
@@ -679,7 +802,8 @@ export default function ProposalBuilder() {
                     </div>
                     <h3 className="text-lg font-semibold">No Quotes Available</h3>
                     <p className="text-muted-foreground max-w-md mx-auto">
-                      You need to create a quote first before building a proposal. Quotes contain the pricing and product information that form the foundation of your proposal.
+                      You need to create a quote first before building a proposal. Quotes contain
+                      the pricing and product information that form the foundation of your proposal.
                     </p>
                     <Button onClick={() => setLocation('/quotes/new')}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -704,11 +828,12 @@ export default function ProposalBuilder() {
                       <CheckCircle className="h-5 w-5 text-blue-600" />
                       <div>
                         <h4 className="font-medium text-blue-900">
-                          Selected Quote: {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
+                          Selected Quote:{' '}
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
                         </h4>
                         <p className="text-sm text-blue-700">
-                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.title} - 
-                          ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.title} - $
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
                         </p>
                       </div>
                     </div>
@@ -720,7 +845,7 @@ export default function ProposalBuilder() {
                 </CardContent>
               </Card>
             )}
-            
+
             <div className="text-center">
               <h2 className="text-xl font-semibold">Choose a Proposal Template</h2>
               <p className="text-muted-foreground">
@@ -739,9 +864,13 @@ export default function ProposalBuilder() {
                 >
                   <CardHeader className="pb-3 p-4 sm:p-6">
                     <div className="flex items-center justify-between gap-2">
-                      <CardTitle className="text-base sm:text-lg break-words">{template.name}</CardTitle>
+                      <CardTitle className="text-base sm:text-lg break-words">
+                        {template.name}
+                      </CardTitle>
                       {template.isDefault && (
-                        <Badge variant="secondary" className="text-xs flex-shrink-0">Default</Badge>
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">
+                          Default
+                        </Badge>
                       )}
                     </div>
                     <Badge variant="outline" className="w-fit text-xs">
@@ -810,7 +939,8 @@ export default function ProposalBuilder() {
             <div className="text-center">
               <h2 className="text-xl font-semibold">Transform Quote to Proposal</h2>
               <p className="text-muted-foreground">
-                Convert your quote data into a professional proposal with intelligent content generation
+                Convert your quote data into a professional proposal with intelligent content
+                generation
               </p>
             </div>
 
@@ -857,11 +987,15 @@ export default function ProposalBuilder() {
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-sm">Category:</span>
-                      <span className="font-medium text-sm truncate">{selectedTemplate.category}</span>
+                      <span className="font-medium text-sm truncate">
+                        {selectedTemplate.category}
+                      </span>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-sm">Sections:</span>
-                      <span className="font-medium text-sm">{selectedTemplate.sections.length}</span>
+                      <span className="font-medium text-sm">
+                        {selectedTemplate.sections.length}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -879,21 +1013,27 @@ export default function ProposalBuilder() {
                     <CheckCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <div>
                       <h4 className="font-medium text-sm sm:text-base">Auto-populate pricing</h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Import all line items and totals</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Import all line items and totals
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 border rounded-lg bg-green-50">
                     <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <div>
                       <h4 className="font-medium text-sm sm:text-base">Generate content</h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground">AI-written sections and descriptions</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        AI-written sections and descriptions
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start sm:items-center gap-3 p-3 sm:p-4 border rounded-lg bg-purple-50">
                     <CheckCircle className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                     <div>
                       <h4 className="font-medium text-sm sm:text-base">Brand consistency</h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Apply your brand styling automatically</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Apply your brand styling automatically
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -939,17 +1079,23 @@ export default function ProposalBuilder() {
                   <div className="p-4 border rounded-lg text-center">
                     <Layers className="h-8 w-8 mx-auto mb-2 text-primary" />
                     <h4 className="font-medium text-sm sm:text-base">Drag & Drop Sections</h4>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Reorder sections with intuitive drag-and-drop</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Reorder sections with intuitive drag-and-drop
+                    </p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
                     <Type className="h-8 w-8 mx-auto mb-2 text-primary" />
                     <h4 className="font-medium text-sm sm:text-base">Rich Text Editor</h4>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Professional formatting with real-time preview</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Professional formatting with real-time preview
+                    </p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
                     <Palette className="h-8 w-8 mx-auto mb-2 text-primary" />
                     <h4 className="font-medium text-sm sm:text-base">Brand Customization</h4>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Apply colors, fonts, and styling to match your brand</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Apply colors, fonts, and styling to match your brand
+                    </p>
                   </div>
                 </div>
 
@@ -992,7 +1138,12 @@ export default function ProposalBuilder() {
             <div className="text-center">
               <h2 className="text-xl font-semibold">Preview Your Proposal</h2>
               <p className="text-muted-foreground">
-                Review your proposal before sending to {businessRecords?.find((br: any) => br.id === (quotes || []).find((q: any) => q.id === selectedQuote)?.businessRecordId)?.name || 'the customer'}
+                Review your proposal before sending to{' '}
+                {businessRecords?.find(
+                  (br: any) =>
+                    br.id ===
+                    (quotes || []).find((q: any) => q.id === selectedQuote)?.businessRecordId,
+                )?.name || 'the customer'}
               </p>
             </div>
 
@@ -1024,19 +1175,32 @@ export default function ProposalBuilder() {
                   {/* Quote Information */}
                   {selectedQuote && (
                     <div className="bg-muted/50 p-4 rounded-lg">
-                      <h3 className="font-semibold mb-2 text-sm sm:text-base">Source Quote Information</h3>
+                      <h3 className="font-semibold mb-2 text-sm sm:text-base">
+                        Source Quote Information
+                      </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
                         <div className="break-words">
-                          <span className="text-muted-foreground">Quote:</span> {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
+                          <span className="text-muted-foreground">Quote:</span>{' '}
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.proposalNumber}
                         </div>
                         <div className="break-words">
-                          <span className="text-muted-foreground">Quote Name:</span> {(quotes || []).find((q: any) => q.id === selectedQuote)?.title}
+                          <span className="text-muted-foreground">Quote Name:</span>{' '}
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.title}
                         </div>
                         <div className="break-words">
-                          <span className="text-muted-foreground">Customer:</span> {businessRecords?.find((br: any) => br.id === (quotes || []).find((q: any) => q.id === selectedQuote)?.businessRecordId)?.name}
+                          <span className="text-muted-foreground">Customer:</span>{' '}
+                          {
+                            businessRecords?.find(
+                              (br: any) =>
+                                br.id ===
+                                (quotes || []).find((q: any) => q.id === selectedQuote)
+                                  ?.businessRecordId,
+                            )?.name
+                          }
                         </div>
                         <div className="break-words">
-                          <span className="text-muted-foreground">Amount:</span> ${(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
+                          <span className="text-muted-foreground">Amount:</span> $
+                          {(quotes || []).find((q: any) => q.id === selectedQuote)?.totalAmount}
                         </div>
                       </div>
                     </div>
@@ -1044,12 +1208,15 @@ export default function ProposalBuilder() {
 
                   {/* Content Sections */}
                   {selectedTemplate.sections
-                    .filter(section => section.isVisible)
+                    .filter((section) => section.isVisible)
                     .map((section) => {
                       const Icon = section.icon;
-                      const fieldKey = section.title.toLowerCase().replace(/\s+/g, '').replace(/&/g, 'And') as keyof typeof proposalContent;
+                      const fieldKey = section.title
+                        .toLowerCase()
+                        .replace(/\s+/g, '')
+                        .replace(/&/g, 'And') as keyof typeof proposalContent;
                       const content = proposalContent[fieldKey];
-                      
+
                       return (
                         <div key={section.id} className="border-l-4 border-primary/20 pl-4">
                           <div className="flex items-center gap-2 mb-2">
@@ -1109,10 +1276,7 @@ export default function ProposalBuilder() {
       {/* Brand Manager Dialog */}
       <Dialog open={showBrandManager} onOpenChange={setShowBrandManager}>
         <DialogContent className="max-w-full max-h-full w-full h-full sm:w-screen sm:h-screen p-0 m-0">
-          <BrandManager
-            onSave={handleSaveBrand}
-            onClose={() => setShowBrandManager(false)}
-          />
+          <BrandManager onSave={handleSaveBrand} onClose={() => setShowBrandManager(false)} />
         </DialogContent>
       </Dialog>
 
@@ -1120,7 +1284,9 @@ export default function ProposalBuilder() {
       <Dialog open={showVisualBuilder} onOpenChange={setShowVisualBuilder}>
         <DialogContent className="max-w-full max-h-full w-full h-full sm:w-screen sm:h-screen p-0 m-0">
           <ProposalVisualBuilder
-            quoteData={selectedQuote ? (quotes || []).find((q: any) => q.id === selectedQuote) : undefined}
+            quoteData={
+              selectedQuote ? (quotes || []).find((q: any) => q.id === selectedQuote) : undefined
+            }
             onSave={handleSaveProposal}
             onPreview={() => console.log('Preview')}
           />

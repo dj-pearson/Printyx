@@ -22,6 +22,7 @@ The **Task & Approval Workflow System** is a comprehensive automation framework 
 #### 1. **Database Schema** (`shared/workflow-automation-schema.ts`)
 
 **Core Tables:**
+
 - `workflows` - Workflow definitions with status (draft/active/paused)
 - `workflowTriggers` - Event triggers that start workflows
 - `workflowStepsAutomation` - Individual workflow steps (actions)
@@ -30,10 +31,12 @@ The **Task & Approval Workflow System** is a comprehensive automation framework 
 - `workflowEventRegistry` - Catalog of available business events
 
 **New Tables (Added in This Implementation):**
+
 - `assignmentGroups` - Groups for task assignment (e.g., "Purchasing Team", "Sales Managers")
 - `workflowApprovals` - Approval requests with deadlines and responses
 
 **Action Types:**
+
 - `create_task` - Create a task assigned to user or group
 - `require_approval` / `wait_for_approval` - Request approval and pause workflow
 - `send_notification` - Send in-app notification
@@ -59,11 +62,12 @@ await emitWorkflowEvent(
     monthlyValue: contract.monthlyValue,
     equipmentIds: ['equip-1', 'equip-2'],
   },
-  userId
+  userId,
 );
 ```
 
 **Pre-Configured Events (17 total):**
+
 - **Contracts**: `contract.signed`, `contract.renewed`, `contract.expiring`
 - **Sales**: `quote.submitted`, `quote.approved`, `quote.low_margin`
 - **CRM**: `customer.created`, `lead.converted`
@@ -76,6 +80,7 @@ await emitWorkflowEvent(
 Executes workflow steps in sequence:
 
 **Features:**
+
 - Context variable interpolation: `{{customerName}}`, `{{orderNumber}}`, etc.
 - Task creation with user/group assignment
 - Approval request handling with pause/resume
@@ -86,6 +91,7 @@ Executes workflow steps in sequence:
 #### 4. **API Endpoints** (`server/routes/workflow-automation-routes.ts`)
 
 **Workflows:**
+
 - `GET /api/workflows` - List all workflows
 - `POST /api/workflows` - Create workflow
 - `PUT /api/workflows/:id` - Update workflow
@@ -93,18 +99,21 @@ Executes workflow steps in sequence:
 - `POST /api/workflows/:id/execute` - Manually trigger workflow
 
 **Assignment Groups:**
+
 - `GET /api/assignment-groups` - List groups
 - `POST /api/assignment-groups` - Create group
 - `PUT /api/assignment-groups/:id` - Update group
 - `DELETE /api/assignment-groups/:id` - Delete group
 
 **Approvals:**
+
 - `GET /api/approvals` - Get user's pending approvals
 - `GET /api/approvals/:id` - Get specific approval
 - `POST /api/approvals/:id/respond` - Approve or reject
 - `GET /api/approvals/execution/:executionId` - Get all approvals for workflow
 
 **Event Registry:**
+
 - `GET /api/workflow-events` - Get all available events with schemas
 
 ---
@@ -116,12 +125,14 @@ Executes workflow steps in sequence:
 Admin page for managing workflows:
 
 **Features:**
+
 - Dashboard with workflow stats (total, active, success rate, executions)
 - Workflow list table with status badges
 - Quick actions: Edit, Pause/Activate, View Executions, Delete
 - Delete confirmation dialogs
 
 **Stats Displayed:**
+
 - Total Workflows / Active / Paused / Draft
 - Total Executions / Running / Successful / Failed
 - Success Rate percentage
@@ -131,12 +142,14 @@ Admin page for managing workflows:
 Admin page for managing assignment groups:
 
 **Features:**
+
 - Create groups by type: Role, Department, Team, Custom
 - Add/remove members with checkbox selection
 - Edit group details and membership
 - Delete groups with validation
 
 **Group Types:**
+
 - **Role** - Job roles (e.g., "Sales Managers", "Technicians")
 - **Department** - Organizational departments (e.g., "Accounting", "Purchasing")
 - **Team** - Project teams (e.g., "Installation Team")
@@ -147,6 +160,7 @@ Admin page for managing assignment groups:
 User page for task inbox:
 
 **Features:**
+
 - Dashboard showing: Overdue / Due Today / Upcoming / Completed
 - Filter by status: Active, To Do, In Progress, Review, Completed
 - Filter by priority: Urgent, High, Medium, Low
@@ -155,6 +169,7 @@ User page for task inbox:
 - One-click task completion
 
 **Task Details Display:**
+
 - Title and description
 - Priority and status badges
 - Due date with countdown
@@ -165,6 +180,7 @@ User page for task inbox:
 User page for approval inbox:
 
 **Features:**
+
 - Dashboard showing: Pending / Overdue / Approved / Rejected
 - Filter tabs: Pending / All / Responded
 - Approve/Reject buttons with comment field
@@ -172,6 +188,7 @@ User page for approval inbox:
 - Response history tracking
 
 **Approval Details Display:**
+
 - Approval message (interpolated from workflow)
 - Context data (quote details, contract info, etc.)
 - Due date with overdue indicators
@@ -186,12 +203,14 @@ User page for approval inbox:
 **Scenario:** When a contract is signed, automatically create tasks for purchasing, accounting, and service departments.
 
 **Setup:**
+
 1. **Create Assignment Groups:**
    - "Purchasing Team" (type: Department)
    - "Accounting Department" (type: Department)
    - "Service Managers" (type: Role)
 
 2. **Create Workflow** (via API or future UI):
+
    ```json
    {
      "name": "Contract Signed - Multi-Department Tasks",
@@ -253,11 +272,12 @@ User page for approval inbox:
        monthlyValue: contract.monthlyValue,
        equipmentIds: contract.equipmentIds,
      },
-     userId
+     userId,
    );
    ```
 
 **Result:**
+
 - 3 tasks automatically created
 - Purchasing Team sees: "Order equipment for Acme Corp" (due in 24 hours)
 - Accounting sees: "Set up billing for Acme Corp" (due in 48 hours)
@@ -268,11 +288,13 @@ User page for approval inbox:
 **Scenario:** When a quote is submitted with low margin (yellow/red zone), require sales manager approval before sending to customer.
 
 **Setup:**
+
 1. **Create Assignment Group:**
    - "Sales Managers" (type: Role)
    - Add all sales managers as members
 
 2. **Create Workflow**:
+
    ```json
    {
      "name": "Low Margin Quote Approval",
@@ -316,6 +338,7 @@ User page for approval inbox:
    ```
 
 3. **Emit Event** (in your quote submission code):
+
    ```typescript
    const marginColor = calculateMarginColor(quote.margin);
 
@@ -334,12 +357,13 @@ User page for approval inbox:
          marginColor,
          createdBy: userId,
        },
-       userId
+       userId,
      );
    }
    ```
 
 **Result:**
+
 - Sales Managers see approval request in "My Approvals" inbox
 - Request shows: "Quote Q-2025-002 for Tech Solutions has 4.3% margin (red zone). Total: $35,000. Approve to proceed?"
 - If manager approves: Task created for sales rep to send quote
@@ -350,6 +374,7 @@ User page for approval inbox:
 ## 📊 Workflow Context & Variable Interpolation
 
 All workflow steps have access to the **context data** from the triggering event. You can use `{{variableName}}` syntax to inject values into:
+
 - Task titles and descriptions
 - Approval messages
 - Email subjects and bodies
@@ -358,6 +383,7 @@ All workflow steps have access to the **context data** from the triggering event
 **Example:**
 
 **Trigger Event:**
+
 ```typescript
 {
   orderNumber: "ORD-2025-001",
@@ -369,6 +395,7 @@ All workflow steps have access to the **context data** from the triggering event
 ```
 
 **Task Configuration:**
+
 ```json
 {
   "title": "Follow up on order {{orderNumber}} for {{customerName}}",
@@ -377,6 +404,7 @@ All workflow steps have access to the **context data** from the triggering event
 ```
 
 **Rendered Task:**
+
 ```
 Title: "Follow up on order ORD-2025-001 for Acme Corp"
 Description: "Order total: $45000. Delivered on 2025-02-15. Products: Printer A,Printer B"
@@ -397,17 +425,19 @@ import { emitWorkflowEvent, WorkflowEvents } from './services/workflow-event-ser
 ### 2. Emit Events at Key Points
 
 #### Contract Signing
+
 ```typescript
 // In your contract signing handler
 await emitWorkflowEvent(
   WorkflowEvents.CONTRACT_SIGNED,
   tenantId,
   { contractId, customerId, customerName, monthlyValue, equipmentIds },
-  userId
+  userId,
 );
 ```
 
 #### Quote Submission
+
 ```typescript
 // In your quote submission handler
 await emitWorkflowEvent(
@@ -429,24 +459,26 @@ if (marginColor === 'yellow' || marginColor === 'red') {
 ```
 
 #### Service Call Completion
+
 ```typescript
 // In your service call completion handler
 await emitWorkflowEvent(
   WorkflowEvents.SERVICE_CALL_COMPLETED,
   tenantId,
   { serviceCallId, customerId, technicianId, completedAt, resolutionNotes },
-  userId
+  userId,
 );
 ```
 
 #### Invoice Overdue
+
 ```typescript
 // In your scheduled job checking overdue invoices
 await emitWorkflowEvent(
   WorkflowEvents.INVOICE_OVERDUE,
   tenantId,
   { invoiceId, invoiceNumber, customerId, customerName, daysOverdue },
-  'system'
+  'system',
 );
 ```
 
@@ -471,6 +503,7 @@ import MyApprovals from './pages/my-approvals';
 ```
 
 **Navigation Menu Suggestions:**
+
 - **Settings** → "Workflows" (WorkflowAutomation)
 - **Settings** → "Assignment Groups" (AssignmentGroups)
 - **Dashboard/My Work** → "My Tasks" (MyTasks)
@@ -537,6 +570,7 @@ import MyApprovals from './pages/my-approvals';
 ### Workflows Not Triggering
 
 **Check:**
+
 1. Is workflow status "active"?
 2. Is the event being emitted correctly?
 3. Do the trigger conditions match the event payload?
@@ -545,6 +579,7 @@ import MyApprovals from './pages/my-approvals';
 ### Tasks Not Appearing
 
 **Check:**
+
 1. Is the user in the assigned group?
 2. Was the task created successfully (check database)?
 3. Is the assignedTo field populated?
@@ -553,6 +588,7 @@ import MyApprovals from './pages/my-approvals';
 ### Approvals Not Showing
 
 **Check:**
+
 1. Is the user in the assigned group?
 2. Is the approval status "pending"?
 3. Check the assignedToUserId and assignedToGroupId fields
@@ -565,27 +601,35 @@ import MyApprovals from './pages/my-approvals';
 ### Key Tables
 
 **workflows**
+
 - `id`, `name`, `description`, `category`, `status`, `tenantId`
 
 **workflowTriggers**
+
 - `id`, `workflowId`, `type`, `eventName`, `enabled`
 
 **workflowStepsAutomation**
+
 - `id`, `workflowId`, `name`, `actionType`, `config`, `orderIndex`
 
 **workflowExecutions**
+
 - `id`, `workflowId`, `tenantId`, `status`, `context`, `result`, `error`
 
 **workflowExecutionSteps**
+
 - `id`, `executionId`, `stepId`, `status`, `input`, `output`, `error`
 
 **assignmentGroups**
+
 - `id`, `tenantId`, `name`, `type`, `members`, `isActive`
 
 **workflowApprovals**
+
 - `id`, `executionId`, `assignedToUserId`, `assignedToGroupId`, `status`, `contextData`, `dueDate`
 
 **tasks** (existing table, enhanced for workflows)
+
 - `id`, `tenantId`, `title`, `description`, `status`, `priority`, `assignedTo`, `dueDate`
 - `customFields.workflowExecutionId` - Links task to workflow
 - `customFields.workflowContext` - Context data from workflow
@@ -602,6 +646,7 @@ You now have a **complete task and approval workflow automation system** ready t
 ✅ **Developers** to emit events from business logic
 
 The system is designed to be:
+
 - **Flexible** - Every dealer can configure their unique processes
 - **Powerful** - Supports complex multi-step workflows with approvals
 - **User-Friendly** - Zero-code configuration via UI

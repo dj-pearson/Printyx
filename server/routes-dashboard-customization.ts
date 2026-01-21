@@ -8,7 +8,12 @@
 import { Router, Request, Response } from 'express';
 import { db } from './db';
 import { eq, and, or } from 'drizzle-orm';
-import { dashboardLayouts, userDashboardPreferences, dashboardWidgets, dashboardSnapshots } from '@shared/schema-dashboard';
+import {
+  dashboardLayouts,
+  userDashboardPreferences,
+  dashboardWidgets,
+  dashboardSnapshots,
+} from '@shared/schema-dashboard';
 // Supabase authentication middleware and helpers
 import { protectedRoute } from './middleware/supabase-auth';
 import { getUserId, getTenantId, getRoleId } from './utils/auth-helpers';
@@ -17,7 +22,7 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 const router = Router();
@@ -41,7 +46,7 @@ router.get('/widgets', async (req: Request, res: Response) => {
     const widgets = await query;
 
     // Filter by role if applicable
-    const filtered = widgets.filter(widget => {
+    const filtered = widgets.filter((widget) => {
       if (!widget.applicableRoles || widget.applicableRoles.length === 0) return true;
       if (userRole && Array.isArray(widget.applicableRoles)) {
         return (widget.applicableRoles as string[]).includes(userRole);
@@ -78,11 +83,8 @@ router.get('/layouts', async (req: Request, res: Response) => {
       .where(
         and(
           eq(dashboardLayouts.tenantId, tenantId),
-          or(
-            eq(dashboardLayouts.userId, userId),
-            eq(dashboardLayouts.roleId, roleId || '')
-          )
-        )
+          or(eq(dashboardLayouts.userId, userId), eq(dashboardLayouts.roleId, roleId || '')),
+        ),
       );
 
     res.json({ data: layouts });
@@ -100,7 +102,7 @@ router.get('/layout/:layoutId', async (req: Request, res: Response) => {
   try {
     const { layoutId } = req.params;
     const tenantId = getTenantId(req);
-    
+
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
@@ -108,12 +110,7 @@ router.get('/layout/:layoutId', async (req: Request, res: Response) => {
     const layout = await db
       .select()
       .from(dashboardLayouts)
-      .where(
-        and(
-          eq(dashboardLayouts.id, layoutId),
-          eq(dashboardLayouts.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenantId, tenantId)))
       .limit(1);
 
     if (!layout.length) {
@@ -136,7 +133,7 @@ router.post('/layout', async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const tenantId = getTenantId(req);
     const { name, description, widgets, columns = 12, isDefault = false, roleId } = req.body;
-    
+
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
     }
@@ -145,17 +142,20 @@ router.post('/layout', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const layout = await db.insert(dashboardLayouts).values({
-      name,
-      description,
-      tenantId,
-      userId,
-      roleId,
-      widgets: widgets || [],
-      columns,
-      isDefault,
-      isUserCustom: !roleId,
-    }).returning();
+    const layout = await db
+      .insert(dashboardLayouts)
+      .values({
+        name,
+        description,
+        tenantId,
+        userId,
+        roleId,
+        widgets: widgets || [],
+        columns,
+        isDefault,
+        isUserCustom: !roleId,
+      })
+      .returning();
 
     res.status(201).json({ data: layout[0] });
   } catch (error) {
@@ -174,7 +174,7 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
     const userId = getUserId(req);
     const tenantId = getTenantId(req);
     const { name, description, widgets, columns } = req.body;
-    
+
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
@@ -190,12 +190,7 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
     const layout = await db
       .select()
       .from(dashboardLayouts)
-      .where(
-        and(
-          eq(dashboardLayouts.id, layoutId),
-          eq(dashboardLayouts.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenantId, tenantId)))
       .limit(1);
 
     if (!layout.length) {
@@ -223,16 +218,11 @@ router.delete('/layout/:layoutId', async (req: Request, res: Response) => {
   try {
     const { layoutId } = req.params;
     const tenantId = getTenantId(req);
-    
+
     await db
       .delete(dashboardLayouts)
-      .where(
-        and(
-          eq(dashboardLayouts.id, layoutId),
-          eq(dashboardLayouts.tenantId, tenantId)
-        )
-      );
-    
+      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenantId, tenantId)));
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting layout:', error);
@@ -259,8 +249,8 @@ router.get('/preferences', async (req: Request, res: Response) => {
       .where(
         and(
           eq(userDashboardPreferences.userId, userId),
-          eq(userDashboardPreferences.tenantId, tenantId)
-        )
+          eq(userDashboardPreferences.tenantId, tenantId),
+        ),
       )
       .limit(1);
 
@@ -291,7 +281,15 @@ router.patch('/preferences', async (req: Request, res: Response) => {
   try {
     const userId = getUserId(req);
     const tenantId = getTenantId(req);
-    const { activeLayoutId, refreshInterval, theme, showGridLines, compactMode, globalFilters, widgetStates } = req.body;
+    const {
+      activeLayoutId,
+      refreshInterval,
+      theme,
+      showGridLines,
+      compactMode,
+      globalFilters,
+      widgetStates,
+    } = req.body;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -313,8 +311,8 @@ router.patch('/preferences', async (req: Request, res: Response) => {
       .where(
         and(
           eq(userDashboardPreferences.userId, userId),
-          eq(userDashboardPreferences.tenantId, tenantId)
-        )
+          eq(userDashboardPreferences.tenantId, tenantId),
+        ),
       )
       .returning();
 
@@ -387,12 +385,7 @@ router.get('/snapshots/:layoutId', async (req: Request, res: Response) => {
     const snapshots = await db
       .select()
       .from(dashboardSnapshots)
-      .where(
-        and(
-          eq(dashboardSnapshots.layoutId, layoutId),
-          eq(dashboardSnapshots.userId, userId)
-        )
-      );
+      .where(and(eq(dashboardSnapshots.layoutId, layoutId), eq(dashboardSnapshots.userId, userId)));
 
     res.json({ data: snapshots });
   } catch (error) {

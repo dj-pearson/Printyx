@@ -34,7 +34,11 @@ interface TransitionHistoryItem {
 }
 
 export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionHistoryProps) {
-  const { data: transitions = [], isLoading, error } = useQuery<TransitionHistoryItem[]>({
+  const {
+    data: transitions = [],
+    isLoading,
+    error,
+  } = useQuery<TransitionHistoryItem[]>({
     queryKey: [`/api/equipment-lifecycle/${equipmentId}/transitions`],
     enabled: !!equipmentId,
   });
@@ -42,7 +46,7 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
   const formatStageName = (stage: string) => {
     return stage
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
 
@@ -108,9 +112,7 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load transition history. Please try again.
-        </AlertDescription>
+        <AlertDescription>Failed to load transition history. Please try again.</AlertDescription>
       </Alert>
     );
   }
@@ -140,7 +142,8 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
       <CardHeader>
         <CardTitle>Transition History</CardTitle>
         <CardDescription>
-          Complete audit trail of {transitions.length} lifecycle transition{transitions.length !== 1 ? 's' : ''}
+          Complete audit trail of {transitions.length} lifecycle transition
+          {transitions.length !== 1 ? 's' : ''}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -152,22 +155,32 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
             <div key={transition.id} className="relative flex items-start gap-4">
               {/* Timeline node */}
               <div className="relative z-10 flex-shrink-0">
-                <div className={`
+                <div
+                  className={`
                   flex items-center justify-center h-10 w-10 rounded-full border-4 border-background
-                  ${transition.status === 'completed' ? 'bg-green-100' :
-                    transition.status === 'rolled_back' ? 'bg-orange-100' :
-                    transition.status === 'failed' ? 'bg-red-100' : 'bg-blue-100'}
-                `}>
+                  ${
+                    transition.status === 'completed'
+                      ? 'bg-green-100'
+                      : transition.status === 'rolled_back'
+                        ? 'bg-orange-100'
+                        : transition.status === 'failed'
+                          ? 'bg-red-100'
+                          : 'bg-blue-100'
+                  }
+                `}
+                >
                   {getStatusIcon(transition.status, transition.isRollback || false)}
                 </div>
               </div>
 
               {/* Timeline content */}
               <div className="flex-1 pb-6">
-                <div className={`
+                <div
+                  className={`
                   rounded-lg border p-4 shadow-sm
                   ${transition.status === 'rolled_back' ? 'bg-orange-50 border-orange-200' : 'bg-card'}
-                `}>
+                `}
+                >
                   {/* Transition header */}
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -186,7 +199,10 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
                       </Badge>
 
                       {transition.isRollback && (
-                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                        <Badge
+                          variant="outline"
+                          className="bg-orange-50 text-orange-700 border-orange-300"
+                        >
                           Rollback
                         </Badge>
                       )}
@@ -209,7 +225,9 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
                     {transition.triggeredBy && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <User className="h-3.5 w-3.5" />
-                        <span>Triggered by User ID: {transition.triggeredBy.substring(0, 8)}...</span>
+                        <span>
+                          Triggered by User ID: {transition.triggeredBy.substring(0, 8)}...
+                        </span>
                       </div>
                     )}
 
@@ -234,43 +252,45 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
                   {/* Validation information */}
                   {(transition.validationsPassed || transition.validationsFailed) && (
                     <div className="mt-3 pt-3 border-t space-y-1">
-                      {transition.validationsPassed && Array.isArray(transition.validationsPassed) &&
-                       transition.validationsPassed.length > 0 && (
-                        <div className="flex items-start gap-2 text-sm">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">
-                              Validations Passed ({transition.validationsPassed.length})
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {transition.validationsPassed.map((validation: any, i: number) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {validation.name?.replace(/_/g, ' ')}
-                                </Badge>
-                              ))}
+                      {transition.validationsPassed &&
+                        Array.isArray(transition.validationsPassed) &&
+                        transition.validationsPassed.length > 0 && (
+                          <div className="flex items-start gap-2 text-sm">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">
+                                Validations Passed ({transition.validationsPassed.length})
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {transition.validationsPassed.map((validation: any, i: number) => (
+                                  <Badge key={i} variant="secondary" className="text-xs">
+                                    {validation.name?.replace(/_/g, ' ')}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {transition.validationsFailed && Array.isArray(transition.validationsFailed) &&
-                       transition.validationsFailed.length > 0 && (
-                        <div className="flex items-start gap-2 text-sm mt-2">
-                          <AlertCircle className="h-3.5 w-3.5 text-red-600 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">
-                              Validations Failed ({transition.validationsFailed.length})
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {transition.validationsFailed.map((validation: any, i: number) => (
-                                <Badge key={i} variant="destructive" className="text-xs">
-                                  {validation.name?.replace(/_/g, ' ')}
-                                </Badge>
-                              ))}
+                      {transition.validationsFailed &&
+                        Array.isArray(transition.validationsFailed) &&
+                        transition.validationsFailed.length > 0 && (
+                          <div className="flex items-start gap-2 text-sm mt-2">
+                            <AlertCircle className="h-3.5 w-3.5 text-red-600 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">
+                                Validations Failed ({transition.validationsFailed.length})
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {transition.validationsFailed.map((validation: any, i: number) => (
+                                  <Badge key={i} variant="destructive" className="text-xs">
+                                    {validation.name?.replace(/_/g, ' ')}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
                   )}
 
@@ -280,9 +300,13 @@ export function EquipmentTransitionHistory({ equipmentId }: EquipmentTransitionH
                       <span className="text-xs text-muted-foreground">Status</span>
                       <Badge
                         variant={
-                          transition.status === 'completed' ? 'default' :
-                          transition.status === 'rolled_back' ? 'secondary' :
-                          transition.status === 'failed' ? 'destructive' : 'outline'
+                          transition.status === 'completed'
+                            ? 'default'
+                            : transition.status === 'rolled_back'
+                              ? 'secondary'
+                              : transition.status === 'failed'
+                                ? 'destructive'
+                                : 'outline'
                         }
                         className="text-xs"
                       >

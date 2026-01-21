@@ -3,6 +3,7 @@
 This guide will help you set up your `.env` file for local development with Supabase.
 
 > **Note:** Printyx uses a **self-hosted Supabase** instance. Production uses:
+>
 > - **API URL:** `https://api.printyx.net`
 > - **Functions URL:** `https://functions.printyx.net`
 > - **Database:** `209.145.59.219:5433` (Supavisor pooler)
@@ -110,6 +111,7 @@ VITE_APP_VERSION=1.0.0
 ### 1. **Supabase Dashboard → Settings → API**
 
 You'll find:
+
 - **Project URL** → Use for `VITE_SUPABASE_URL`
 - **anon public key** → Use for `VITE_SUPABASE_ANON_KEY`
 - **JWT Secret** → Use for `SUPABASE_JWT_SECRET`
@@ -117,27 +119,32 @@ You'll find:
 ### 2. **Database Connection String**
 
 #### Option A: From Supabase Dashboard
+
 1. Go to **Settings → Database**
 2. Look for **Connection string** section
 3. Select **Connection Pooling** (Session mode recommended)
 4. Copy the URI and paste it as `DATABASE_URL`
 
 Example format (self-hosted Printyx):
+
 ```
 postgresql://postgres:[YOUR-PASSWORD]@209.145.59.219:5433/postgres
 ```
 
 Example format (cloud Supabase):
+
 ```
 postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
 
 #### Option B: Construct it manually
+
 ```
 postgresql://postgres.[PROJECT-REF]:[PASSWORD]@[HOST]:5432/postgres
 ```
 
 **Important:** Make sure to:
+
 - Use the **pooler** endpoint (not direct connection) for better performance
 - Include your actual database password (not [YOUR-PASSWORD])
 - Set `DB_SSL=true` for Supabase
@@ -166,12 +173,14 @@ VITE_AUTH_MODE=supabase
 Only add these if you're testing specific features:
 
 ### AI Features
+
 ```bash
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ### QuickBooks Integration
+
 ```bash
 QUICKBOOKS_CLIENT_ID=
 QUICKBOOKS_CLIENT_SECRET=
@@ -179,6 +188,7 @@ QUICKBOOKS_REDIRECT_URI=http://localhost:5000/api/integrations/quickbooks/callba
 ```
 
 ### Other Integrations
+
 ```bash
 # Google
 GOOGLE_CLIENT_ID=
@@ -212,6 +222,7 @@ TWILIO_PHONE_NUMBER=
 After creating your `.env` file:
 
 1. **Start the development server:**
+
    ```bash
    npm run dev
    ```
@@ -223,7 +234,7 @@ After creating your `.env` file:
    - Backend API should be at `http://localhost:5000`
 
 3. **Test database connection:**
-   - Visit `http://localhost:5000/health` 
+   - Visit `http://localhost:5000/health`
    - Should return JSON with database status
 
 4. **Test authentication:**
@@ -235,25 +246,30 @@ After creating your `.env` file:
 ## Troubleshooting
 
 ### "Database configuration incomplete"
+
 - Make sure `DATABASE_URL` is set correctly
 - Check that it starts with `postgresql://`
 - Verify your password is correct
 
 ### "SUPABASE_JWT_SECRET environment variable is not set"
+
 - Go to Supabase Dashboard → Settings → API
 - Copy the **JWT Secret** (under "JWT Settings")
 - Paste it into your `.env` file
 
 ### "Failed to fetch" or CORS errors
+
 - Make sure `VITE_SUPABASE_URL` matches your actual Supabase project URL
 - Set `VITE_USE_SUPABASE_PROXY=false` for local development
 - Restart your dev server after changing `.env`
 
 ### SSL Certificate Errors
+
 - Set `DB_SSL_REJECT_UNAUTHORIZED=false` in your `.env`
 - This is safe for development with Supabase's self-signed certs
 
 ### Frontend can't connect to backend
+
 - Verify backend is running on `http://localhost:5000`
 - Verify frontend is running on `http://localhost:5173`
 - Check `VITE_API_BASE_URL` is empty or not set (for relative URLs)
@@ -263,6 +279,7 @@ After creating your `.env` file:
 ## Security Notes
 
 ⚠️ **IMPORTANT:**
+
 - Never commit `.env` files to git
 - `.env` is already in `.gitignore` by default
 - Use different credentials for development and production
@@ -276,11 +293,13 @@ After creating your `.env` file:
 If you need to generate secure keys:
 
 ### Session Secret (any random string)
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 ### Encryption Key (32-byte hex)
+
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```

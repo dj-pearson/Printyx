@@ -11,7 +11,13 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
   Video,
@@ -42,7 +48,7 @@ import {
   Share,
   Copy,
   Volume2,
-  VolumeX
+  VolumeX,
 } from 'lucide-react';
 
 interface MeetingRecording {
@@ -90,7 +96,7 @@ export default function MeetingTranscription() {
       transcriptionProgress: 100,
       aiConfidence: 94,
       highlights: 12,
-      actionItems: 6
+      actionItems: 6,
     },
     {
       id: '2',
@@ -102,7 +108,7 @@ export default function MeetingTranscription() {
       transcriptionProgress: 78,
       aiConfidence: 0,
       highlights: 0,
-      actionItems: 0
+      actionItems: 0,
     },
     {
       id: '3',
@@ -114,8 +120,8 @@ export default function MeetingTranscription() {
       aiConfidence: 91,
       transcriptionProgress: 100,
       highlights: 18,
-      actionItems: 9
-    }
+      actionItems: 9,
+    },
   ]);
 
   const [transcriptionSegments] = useState<TranscriptionSegment[]>([
@@ -123,17 +129,19 @@ export default function MeetingTranscription() {
       id: '1',
       speaker: 'John Smith',
       timestamp: '00:02:15',
-      content: 'We need to prioritize the Q1 sales targets and ensure our team has the right resources.',
+      content:
+        'We need to prioritize the Q1 sales targets and ensure our team has the right resources.',
       confidence: 96,
-      isHighlight: true
+      isHighlight: true,
     },
     {
       id: '2',
       speaker: 'Sarah Johnson',
       timestamp: '00:03:42',
-      content: 'I agree. The current lead conversion rate is at 23%, which is below our target of 30%.',
+      content:
+        'I agree. The current lead conversion rate is at 23%, which is below our target of 30%.',
       confidence: 94,
-      isHighlight: false
+      isHighlight: false,
     },
     {
       id: '3',
@@ -141,8 +149,8 @@ export default function MeetingTranscription() {
       timestamp: '00:05:18',
       content: 'We should implement the new CRM workflow by next week to improve tracking.',
       confidence: 92,
-      isHighlight: true
-    }
+      isHighlight: true,
+    },
   ]);
 
   const [actionItems] = useState<ActionItem[]>([
@@ -152,7 +160,7 @@ export default function MeetingTranscription() {
       assignee: 'Mike Davis',
       dueDate: '2025-01-22',
       priority: 'high',
-      status: 'pending'
+      status: 'pending',
     },
     {
       id: '2',
@@ -160,7 +168,7 @@ export default function MeetingTranscription() {
       assignee: 'John Smith',
       dueDate: '2025-01-18',
       priority: 'medium',
-      status: 'in_progress'
+      status: 'in_progress',
     },
     {
       id: '3',
@@ -168,8 +176,8 @@ export default function MeetingTranscription() {
       assignee: 'Sarah Johnson',
       dueDate: '2025-01-20',
       priority: 'high',
-      status: 'pending'
-    }
+      status: 'pending',
+    },
   ]);
 
   const [stats] = useState({
@@ -178,7 +186,7 @@ export default function MeetingTranscription() {
     aiAccuracy: 93,
     actionItemsGenerated: 234,
     timesSaved: 78,
-    participantsTracked: 156
+    participantsTracked: 156,
   });
 
   const toggleRecording = () => {
@@ -212,37 +220,35 @@ export default function MeetingTranscription() {
   };
 
   return (
-    <MainLayout 
-      title="Meeting Transcription" 
+    <MainLayout
+      title="Meeting Transcription"
       description="AI-powered meeting recording, transcription, and intelligent note generation"
     >
       {/* Action buttons */}
       <div className="flex justify-end gap-3 mb-6">
-          <Button
-            onClick={toggleRecording}
-            className={`flex items-center gap-2 ${
-              isRecording 
-                ? 'bg-red-600 hover:bg-red-700' 
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {isRecording ? (
-              <>
-                <Square className="h-4 w-4" />
-                Stop Recording
-              </>
-            ) : (
-              <>
-                <Video className="h-4 w-4" />
-                Start Recording
-              </>
-            )}
-          </Button>
-          <Button variant="outline" className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Upload Recording
-          </Button>
-        </div>
+        <Button
+          onClick={toggleRecording}
+          className={`flex items-center gap-2 ${
+            isRecording ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+        >
+          {isRecording ? (
+            <>
+              <Square className="h-4 w-4" />
+              Stop Recording
+            </>
+          ) : (
+            <>
+              <Video className="h-4 w-4" />
+              Start Recording
+            </>
+          )}
+        </Button>
+        <Button variant="outline" className="flex items-center gap-2">
+          <Upload className="h-4 w-4" />
+          Upload Recording
+        </Button>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
@@ -352,10 +358,7 @@ export default function MeetingTranscription() {
                   </CardDescription>
                 </div>
                 <div className="flex gap-3">
-                  <Input
-                    placeholder="Search recordings..."
-                    className="w-64"
-                  />
+                  <Input placeholder="Search recordings..." className="w-64" />
                   <Button variant="outline" size="sm">
                     <Filter className="h-4 w-4" />
                   </Button>
@@ -437,7 +440,9 @@ export default function MeetingTranscription() {
                 <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium">Live Recording - Sales Team Weekly Standup</span>
+                    <span className="text-sm font-medium">
+                      Live Recording - Sales Team Weekly Standup
+                    </span>
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-gray-600">45:32</span>
@@ -455,8 +460,8 @@ export default function MeetingTranscription() {
                     <div
                       key={segment.id}
                       className={`p-4 rounded-lg border-l-4 ${
-                        segment.isHighlight 
-                          ? 'border-yellow-400 bg-yellow-50' 
+                        segment.isHighlight
+                          ? 'border-yellow-400 bg-yellow-50'
                           : 'border-gray-200 bg-white'
                       }`}
                     >
@@ -472,7 +477,9 @@ export default function MeetingTranscription() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500">{segment.confidence}% confidence</span>
+                          <span className="text-xs text-gray-500">
+                            {segment.confidence}% confidence
+                          </span>
                           <Button variant="ghost" size="sm">
                             <Copy className="h-4 w-4" />
                           </Button>
@@ -498,33 +505,35 @@ export default function MeetingTranscription() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {transcriptionSegments.filter(s => s.isHighlight).map((highlight) => (
-                  <div key={highlight.id} className="p-4 border rounded-lg bg-yellow-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <Star className="h-5 w-5 text-yellow-600" />
-                        <span className="font-semibold text-gray-900">{highlight.speaker}</span>
-                        <span className="text-sm text-gray-500">{highlight.timestamp}</span>
+                {transcriptionSegments
+                  .filter((s) => s.isHighlight)
+                  .map((highlight) => (
+                    <div key={highlight.id} className="p-4 border rounded-lg bg-yellow-50">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <Star className="h-5 w-5 text-yellow-600" />
+                          <span className="font-semibold text-gray-900">{highlight.speaker}</span>
+                          <span className="text-sm text-gray-500">{highlight.timestamp}</span>
+                        </div>
+                        <Badge className="bg-yellow-100 text-yellow-800">High Priority</Badge>
                       </div>
-                      <Badge className="bg-yellow-100 text-yellow-800">High Priority</Badge>
+                      <p className="text-gray-700 mb-3">{highlight.content}</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <MessageSquare className="h-4 w-4" />
+                          Add Note
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <CheckCircle className="h-4 w-4" />
+                          Create Action
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Share className="h-4 w-4" />
+                          Share
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-gray-700 mb-3">{highlight.content}</p>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <MessageSquare className="h-4 w-4" />
-                        Add Note
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <CheckCircle className="h-4 w-4" />
-                        Create Action
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Share className="h-4 w-4" />
-                        Share
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>
@@ -575,13 +584,13 @@ export default function MeetingTranscription() {
                         <Calendar className="h-4 w-4" />
                         Due: {item.dueDate}
                       </span>
-                      <Badge 
+                      <Badge
                         className={
-                          item.status === 'completed' 
+                          item.status === 'completed'
                             ? 'bg-green-100 text-green-800'
                             : item.status === 'in_progress'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
                         }
                       >
                         {item.status.replace('_', ' ')}

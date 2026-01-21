@@ -99,7 +99,7 @@ router.get('/summary', requireAdmin, async (req: Request, res: Response) => {
  */
 router.get(
   '/category/:categorySlug',
-  
+
   requireAdmin,
   async (req: Request, res: Response) => {
     try {
@@ -109,8 +109,8 @@ router.get(
       const report = await ContentGapAnalysisService.generateAnalysis(tenantId);
 
       // Filter gaps for this category
-      const categoryGaps = report.gaps.filter(gap =>
-        gap.category.toLowerCase().replace(/_/g, '-') === categorySlug.toLowerCase()
+      const categoryGaps = report.gaps.filter(
+        (gap) => gap.category.toLowerCase().replace(/_/g, '-') === categorySlug.toLowerCase(),
       );
 
       const categoryHealth = report.categoryHealth[categorySlug] || {
@@ -133,7 +133,7 @@ router.get(
         message: 'Failed to analyze category content gaps',
       });
     }
-  }
+  },
 );
 
 /**
@@ -147,10 +147,10 @@ router.get('/priorities', requireAdmin, async (req: Request, res: Response) => {
     const report = await ContentGapAnalysisService.generateAnalysis(tenantId);
 
     const byPriority = {
-      critical: report.gaps.filter(g => g.priority === 'critical'),
-      high: report.gaps.filter(g => g.priority === 'high'),
-      medium: report.gaps.filter(g => g.priority === 'medium'),
-      low: report.gaps.filter(g => g.priority === 'low'),
+      critical: report.gaps.filter((g) => g.priority === 'critical'),
+      high: report.gaps.filter((g) => g.priority === 'high'),
+      medium: report.gaps.filter((g) => g.priority === 'medium'),
+      low: report.gaps.filter((g) => g.priority === 'low'),
     };
 
     res.json({

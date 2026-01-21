@@ -18,23 +18,24 @@ A comprehensive administrative toolset for the Printyx Knowledge Base system has
 
 **17 New Endpoints:**
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/dashboard` | GET | Dashboard statistics |
-| `/articles/bulk-update` | POST | Update multiple articles |
-| `/articles/bulk-delete` | DELETE | Delete multiple articles |
-| `/feedback/pending` | GET | Get pending feedback |
-| `/feedback/:id/resolve` | PUT | Resolve feedback |
-| `/ai-queue` | GET | Get AI generation queue |
-| `/ai-queue/:id/retry` | POST | Retry failed generation |
-| `/articles/:id/versions` | GET | Get version history |
-| `/articles/:id/restore-version` | POST | Restore previous version |
-| `/import` | POST | Import articles (JSON/CSV) |
-| `/export` | GET | Export articles |
-| `/analytics/detailed` | GET | Detailed analytics |
-| `/categories/reorder` | POST | Reorder categories |
+| Endpoint                        | Method | Purpose                    |
+| ------------------------------- | ------ | -------------------------- |
+| `/dashboard`                    | GET    | Dashboard statistics       |
+| `/articles/bulk-update`         | POST   | Update multiple articles   |
+| `/articles/bulk-delete`         | DELETE | Delete multiple articles   |
+| `/feedback/pending`             | GET    | Get pending feedback       |
+| `/feedback/:id/resolve`         | PUT    | Resolve feedback           |
+| `/ai-queue`                     | GET    | Get AI generation queue    |
+| `/ai-queue/:id/retry`           | POST   | Retry failed generation    |
+| `/articles/:id/versions`        | GET    | Get version history        |
+| `/articles/:id/restore-version` | POST   | Restore previous version   |
+| `/import`                       | POST   | Import articles (JSON/CSV) |
+| `/export`                       | GET    | Export articles            |
+| `/analytics/detailed`           | GET    | Detailed analytics         |
+| `/categories/reorder`           | POST   | Reorder categories         |
 
 **Key Features:**
+
 - ✅ Comprehensive dashboard stats (articles, views, feedback, AI queue)
 - ✅ Bulk operations for efficiency
 - ✅ Feedback resolution workflow
@@ -124,6 +125,7 @@ npm run kb:export -- \
 - 🏷️ **Auto-tagging**: Based on source and type
 
 **Content Extraction:**
+
 - Headers (H1-H6 with hierarchy)
 - Paragraphs and blockquotes
 - Lists (bullet and numbered)
@@ -133,6 +135,7 @@ npm run kb:export -- \
 - Source URL and capture timestamp
 
 **Right-Click Menu:**
+
 - "Capture to Printyx KB" (selection)
 - "Capture entire page to Printyx KB"
 
@@ -169,6 +172,7 @@ KnowledgeBaseAdminDashboard
 ```
 
 **Features:**
+
 - Real-time statistics with TanStack Query
 - Bulk selection and operations
 - Feedback resolution workflow
@@ -306,6 +310,7 @@ http://localhost:5173/admin/knowledge-base-admin-dashboard
 All admin tools work with the existing Knowledge Base schema:
 
 **Core Tables:**
+
 - `knowledge_categories` - Categories
 - `knowledge_articles` - Articles
 - `article_versions` - Version history
@@ -370,21 +375,23 @@ All Knowledge Base admin routes enforce strict role-based access control:
 
 **Access Levels:**
 
-| Role Level | Role Name | KB Admin Access |
-|-----------|-----------|-----------------|
-| **Level 7+** | **Root/Platform Admin** | ✅ Full access including destructive operations |
-| **Level 5-6** | **System Admin** | ✅ Dashboard, feedback, AI queue, bulk updates |
-| **Level 3-4** | **Manager/Director** | ⚠️ Read-only analytics only |
-| **Level 1-2** | **Standard User** | ❌ No admin access |
+| Role Level    | Role Name               | KB Admin Access                                 |
+| ------------- | ----------------------- | ----------------------------------------------- |
+| **Level 7+**  | **Root/Platform Admin** | ✅ Full access including destructive operations |
+| **Level 5-6** | **System Admin**        | ✅ Dashboard, feedback, AI queue, bulk updates  |
+| **Level 3-4** | **Manager/Director**    | ⚠️ Read-only analytics only                     |
+| **Level 1-2** | **Standard User**       | ❌ No admin access                              |
 
 **Endpoint Protection:**
 
 **Root Admin Only (Level 7+):**
+
 - `DELETE /articles/bulk-delete` - Permanent data deletion
 - `POST /import` - Bulk article import
 - `GET /export` - Export sensitive data
 
 **System Admin (Level 5+):**
+
 - `GET /dashboard` - View statistics
 - `POST /articles/bulk-update` - Modify articles
 - `GET /feedback/pending` - View feedback
@@ -396,49 +403,57 @@ All Knowledge Base admin routes enforce strict role-based access control:
 - `POST /categories/reorder` - Manage categories
 
 **Manager (Level 3+):**
+
 - `GET /analytics/detailed` - View analytics (read-only)
 
 ### Multi-Layer Security
 
 **Layer 1: Authentication**
+
 ```typescript
-requireAuth  // Session validation
+requireAuth; // Session validation
 ```
 
 **Layer 2: Authorization**
+
 ```typescript
-requireRootAdmin     // Level 7+ check
-requireSystemAdmin   // Level 5+ check
-requireManager       // Level 3+ check
+requireRootAdmin; // Level 7+ check
+requireSystemAdmin; // Level 5+ check
+requireManager; // Level 3+ check
 ```
 
 **Layer 3: Tenant Isolation**
+
 ```typescript
 // All queries scoped to tenant
-where: eq(table.tenantId, req.tenantId)
+where: eq(table.tenantId, req.tenantId);
 ```
 
 **Layer 4: Audit Logging**
+
 ```typescript
 // All admin actions logged
-audit.log({userId, roleLevel, action, timestamp})
+audit.log({ userId, roleLevel, action, timestamp });
 ```
 
 ### Error Responses
 
 **401 Unauthorized:**
+
 ```json
-{"message": "Authentication required"}
+{ "message": "Authentication required" }
 ```
 
 **403 Forbidden (Insufficient Role):**
+
 ```json
-{"message": "Access denied - Requires level 5 or higher"}
+{ "message": "Access denied - Requires level 5 or higher" }
 ```
 
 **403 Forbidden (Root Admin Required):**
+
 ```json
-{"message": "Root admin access required - insufficient privileges"}
+{ "message": "Root admin access required - insufficient privileges" }
 ```
 
 ### Data Protection
@@ -470,6 +485,7 @@ audit.log({userId, roleLevel, action, timestamp})
 ### Security Documentation
 
 See `docs/KB_ADMIN_RBAC_SECURITY.md` for complete security documentation including:
+
 - Detailed RBAC matrix
 - Authentication flow
 - Testing procedures
@@ -601,12 +617,14 @@ npm run kb -- search --tenant demo-tenant --query "billing"
 ### Immediate
 
 1. **Configure Environment Variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with KB settings
    ```
 
 2. **Test CLI Tool**
+
    ```bash
    npm run kb:stats -- --tenant your-tenant-id
    ```

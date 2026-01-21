@@ -4,14 +4,14 @@ import { RouteAssignment, InsertRouteAssignment } from '@shared/gps-tracking-sch
 // Haversine formula for accurate distance calculation
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3; // Earth's radius in meters
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-    Math.cos(φ1) * Math.cos(φ2) *
-    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
@@ -86,7 +86,7 @@ export class RouteOptimizationService {
   private optimizeNearestNeighbor(
     startLocation: { lat: number; lng: number },
     waypoints: Waypoint[],
-    endLocation?: { lat: number; lng: number }
+    endLocation?: { lat: number; lng: number },
   ): Waypoint[] {
     if (waypoints.length <= 1) return waypoints;
 
@@ -104,7 +104,7 @@ export class RouteOptimizationService {
           currentLocation.lat,
           currentLocation.lng,
           remaining[i].lat,
-          remaining[i].lng
+          remaining[i].lng,
         );
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -128,13 +128,13 @@ export class RouteOptimizationService {
    */
   private optimizePriorityBased(
     startLocation: { lat: number; lng: number },
-    waypoints: Waypoint[]
+    waypoints: Waypoint[],
   ): Waypoint[] {
     if (waypoints.length <= 1) return waypoints;
 
     // Group waypoints by priority
     const priorityGroups = new Map<number, Waypoint[]>();
-    waypoints.forEach(wp => {
+    waypoints.forEach((wp) => {
       const priority = wp.priority || 5; // Default to lowest priority
       if (!priorityGroups.has(priority)) {
         priorityGroups.set(priority, []);
@@ -154,7 +154,7 @@ export class RouteOptimizationService {
       const optimizedGroup = this.optimizeNearestNeighbor(currentLocation, group);
 
       // Update sequences
-      optimizedGroup.forEach(wp => {
+      optimizedGroup.forEach((wp) => {
         wp.sequence = optimized.length + 1;
         optimized.push(wp);
       });
@@ -176,17 +176,17 @@ export class RouteOptimizationService {
   private optimizeTimeWindow(
     startLocation: { lat: number; lng: number },
     waypoints: Waypoint[],
-    routeStartTime: Date
+    routeStartTime: Date,
   ): Waypoint[] {
     if (waypoints.length <= 1) return waypoints;
 
     // Separate stops with and without time windows
-    const withTimeWindows = waypoints.filter(wp => wp.scheduledTime);
-    const withoutTimeWindows = waypoints.filter(wp => !wp.scheduledTime);
+    const withTimeWindows = waypoints.filter((wp) => wp.scheduledTime);
+    const withoutTimeWindows = waypoints.filter((wp) => !wp.scheduledTime);
 
     // Sort time-windowed stops by scheduled time
-    withTimeWindows.sort((a, b) =>
-      new Date(a.scheduledTime!).getTime() - new Date(b.scheduledTime!).getTime()
+    withTimeWindows.sort(
+      (a, b) => new Date(a.scheduledTime!).getTime() - new Date(b.scheduledTime!).getTime(),
     );
 
     const optimized: Waypoint[] = [];
@@ -203,21 +203,28 @@ export class RouteOptimizationService {
 
         // Calculate travel time to time-windowed stop
         const travelDistance = calculateDistance(
-          currentLocation.lat, currentLocation.lng,
-          nextTW.lat, nextTW.lng
+          currentLocation.lat,
+          currentLocation.lng,
+          nextTW.lat,
+          nextTW.lng,
         );
-        const travelTimeMinutes = (travelDistance / AVERAGE_SPEED_MS) / 60;
+        const travelTimeMinutes = travelDistance / AVERAGE_SPEED_MS / 60;
         const arrivalTime = new Date(currentTime.getTime() + travelTimeMinutes * 60000);
 
         // If we can fit a non-time-windowed stop before the time window
-        if (withoutTimeWindows.length > 0 && arrivalTime.getTime() + 30 * 60000 < twTime.getTime()) {
+        if (
+          withoutTimeWindows.length > 0 &&
+          arrivalTime.getTime() + 30 * 60000 < twTime.getTime()
+        ) {
           // Find nearest non-time-windowed stop
           let nearestIndex = 0;
           let nearestDistance = Infinity;
           for (let i = 0; i < withoutTimeWindows.length; i++) {
             const distance = calculateDistance(
-              currentLocation.lat, currentLocation.lng,
-              withoutTimeWindows[i].lat, withoutTimeWindows[i].lng
+              currentLocation.lat,
+              currentLocation.lng,
+              withoutTimeWindows[i].lat,
+              withoutTimeWindows[i].lng,
             );
             if (distance < nearestDistance) {
               nearestDistance = distance;
@@ -226,7 +233,7 @@ export class RouteOptimizationService {
           }
 
           const stop = withoutTimeWindows.splice(nearestIndex, 1)[0];
-          const stopTravelTime = (nearestDistance / AVERAGE_SPEED_MS) / 60;
+          const stopTravelTime = nearestDistance / AVERAGE_SPEED_MS / 60;
           stop.sequence = optimized.length + 1;
           stop.estimatedArrival = new Date(currentTime.getTime() + stopTravelTime * 60000);
           const serviceTime = stop.serviceTimeMinutes || DEFAULT_SERVICE_TIME_MINUTES;
@@ -240,7 +247,9 @@ export class RouteOptimizationService {
           nextTW.sequence = optimized.length + 1;
           nextTW.estimatedArrival = arrivalTime.getTime() < twTime.getTime() ? twTime : arrivalTime;
           const serviceTime = nextTW.serviceTimeMinutes || DEFAULT_SERVICE_TIME_MINUTES;
-          nextTW.estimatedDeparture = new Date(nextTW.estimatedArrival.getTime() + serviceTime * 60000);
+          nextTW.estimatedDeparture = new Date(
+            nextTW.estimatedArrival.getTime() + serviceTime * 60000,
+          );
           optimized.push(nextTW);
 
           currentLocation = { lat: nextTW.lat, lng: nextTW.lng };
@@ -250,12 +259,14 @@ export class RouteOptimizationService {
       } else {
         // No more time-windowed stops, optimize remaining with nearest neighbor
         const remaining = this.optimizeNearestNeighbor(currentLocation, withoutTimeWindows);
-        remaining.forEach(stop => {
+        remaining.forEach((stop) => {
           const travelDistance = calculateDistance(
-            currentLocation.lat, currentLocation.lng,
-            stop.lat, stop.lng
+            currentLocation.lat,
+            currentLocation.lng,
+            stop.lat,
+            stop.lng,
           );
-          const travelTimeMinutes = (travelDistance / AVERAGE_SPEED_MS) / 60;
+          const travelTimeMinutes = travelDistance / AVERAGE_SPEED_MS / 60;
           stop.sequence = optimized.length + 1;
           stop.estimatedArrival = new Date(currentTime.getTime() + travelTimeMinutes * 60000);
           const serviceTime = stop.serviceTimeMinutes || DEFAULT_SERVICE_TIME_MINUTES;
@@ -278,15 +289,17 @@ export class RouteOptimizationService {
   private optimizeBalanced(
     startLocation: { lat: number; lng: number },
     waypoints: Waypoint[],
-    routeStartTime: Date
+    routeStartTime: Date,
   ): Waypoint[] {
     if (waypoints.length <= 1) return waypoints;
 
     // Score each waypoint based on multiple factors
-    const scoredWaypoints = waypoints.map(wp => {
+    const scoredWaypoints = waypoints.map((wp) => {
       const distanceFromStart = calculateDistance(
-        startLocation.lat, startLocation.lng,
-        wp.lat, wp.lng
+        startLocation.lat,
+        startLocation.lng,
+        wp.lat,
+        wp.lng,
       );
 
       // Priority score (1 is highest, so invert)
@@ -296,7 +309,8 @@ export class RouteOptimizationService {
       let timeScore = 0;
       if (wp.scheduledTime) {
         const scheduledTime = new Date(wp.scheduledTime);
-        const hoursUntilScheduled = (scheduledTime.getTime() - routeStartTime.getTime()) / (1000 * 60 * 60);
+        const hoursUntilScheduled =
+          (scheduledTime.getTime() - routeStartTime.getTime()) / (1000 * 60 * 60);
         timeScore = Math.max(0, 10 - hoursUntilScheduled); // More urgent = higher score
       }
 
@@ -307,7 +321,7 @@ export class RouteOptimizationService {
       return {
         waypoint: wp,
         score: priorityScore * 2 + timeScore * 3 + distanceScore * 1, // Weighted scoring
-        distanceFromStart
+        distanceFromStart,
       };
     });
 
@@ -322,10 +336,12 @@ export class RouteOptimizationService {
     for (const scored of scoredWaypoints) {
       const wp = scored.waypoint;
       const travelDistance = calculateDistance(
-        currentLocation.lat, currentLocation.lng,
-        wp.lat, wp.lng
+        currentLocation.lat,
+        currentLocation.lng,
+        wp.lat,
+        wp.lng,
       );
-      const travelTimeMinutes = (travelDistance / AVERAGE_SPEED_MS) / 60;
+      const travelTimeMinutes = travelDistance / AVERAGE_SPEED_MS / 60;
 
       wp.sequence = optimized.length + 1;
       wp.estimatedArrival = new Date(currentTime.getTime() + travelTimeMinutes * 60000);
@@ -346,23 +362,22 @@ export class RouteOptimizationService {
   private calculateTotalDistance(
     startLocation: { lat: number; lng: number },
     waypoints: Waypoint[],
-    endLocation?: { lat: number; lng: number }
+    endLocation?: { lat: number; lng: number },
   ): number {
     let totalDistance = 0;
     let currentLocation = startLocation;
 
     for (const wp of waypoints) {
-      totalDistance += calculateDistance(
-        currentLocation.lat, currentLocation.lng,
-        wp.lat, wp.lng
-      );
+      totalDistance += calculateDistance(currentLocation.lat, currentLocation.lng, wp.lat, wp.lng);
       currentLocation = { lat: wp.lat, lng: wp.lng };
     }
 
     if (endLocation) {
       totalDistance += calculateDistance(
-        currentLocation.lat, currentLocation.lng,
-        endLocation.lat, endLocation.lng
+        currentLocation.lat,
+        currentLocation.lng,
+        endLocation.lat,
+        endLocation.lng,
       );
     }
 
@@ -375,14 +390,14 @@ export class RouteOptimizationService {
   private calculateEstimatedDuration(
     startLocation: { lat: number; lng: number },
     waypoints: Waypoint[],
-    endLocation?: { lat: number; lng: number }
+    endLocation?: { lat: number; lng: number },
   ): number {
     const totalDistance = this.calculateTotalDistance(startLocation, waypoints, endLocation);
-    const travelTimeMinutes = (totalDistance / AVERAGE_SPEED_MS) / 60;
+    const travelTimeMinutes = totalDistance / AVERAGE_SPEED_MS / 60;
 
     const totalServiceTime = waypoints.reduce(
       (sum, wp) => sum + (wp.serviceTimeMinutes || DEFAULT_SERVICE_TIME_MINUTES),
-      0
+      0,
     );
 
     return Math.round(travelTimeMinutes + totalServiceTime);
@@ -399,12 +414,12 @@ export class RouteOptimizationService {
     const originalDistance = this.calculateTotalDistance(
       input.startLocation,
       input.waypoints,
-      input.endLocation
+      input.endLocation,
     );
     const originalDuration = this.calculateEstimatedDuration(
       input.startLocation,
       input.waypoints,
-      input.endLocation
+      input.endLocation,
     );
 
     // Apply optimization algorithm
@@ -418,14 +433,14 @@ export class RouteOptimizationService {
         optimizedWaypoints = this.optimizeTimeWindow(
           input.startLocation,
           input.waypoints,
-          routeStartTime
+          routeStartTime,
         );
         break;
       case 'balanced':
         optimizedWaypoints = this.optimizeBalanced(
           input.startLocation,
           input.waypoints,
-          routeStartTime
+          routeStartTime,
         );
         break;
       case 'nearest_neighbor':
@@ -433,7 +448,7 @@ export class RouteOptimizationService {
         optimizedWaypoints = this.optimizeNearestNeighbor(
           input.startLocation,
           input.waypoints,
-          input.endLocation
+          input.endLocation,
         );
     }
 
@@ -446,20 +461,19 @@ export class RouteOptimizationService {
     const optimizedDistance = this.calculateTotalDistance(
       input.startLocation,
       optimizedWaypoints,
-      input.endLocation
+      input.endLocation,
     );
     const optimizedDuration = this.calculateEstimatedDuration(
       input.startLocation,
       optimizedWaypoints,
-      input.endLocation
+      input.endLocation,
     );
 
     // Calculate savings
     const distanceSaved = originalDistance - optimizedDistance;
     const timeSaved = originalDuration - optimizedDuration;
-    const percentageImprovement = originalDistance > 0
-      ? Math.round((distanceSaved / originalDistance) * 100)
-      : 0;
+    const percentageImprovement =
+      originalDistance > 0 ? Math.round((distanceSaved / originalDistance) * 100) : 0;
 
     return {
       waypoints: optimizedWaypoints,
@@ -469,15 +483,18 @@ export class RouteOptimizationService {
       savings: {
         distanceSavedMeters: Math.round(distanceSaved),
         timeSavedMinutes: Math.round(timeSaved),
-        percentageImprovement: Math.max(0, percentageImprovement)
-      }
+        percentageImprovement: Math.max(0, percentageImprovement),
+      },
     };
   }
 
   /**
    * Create an optimized route assignment
    */
-  async createOptimizedRoute(input: RouteOptimizationInput, routeName: string): Promise<RouteAssignment> {
+  async createOptimizedRoute(
+    input: RouteOptimizationInput,
+    routeName: string,
+  ): Promise<RouteAssignment> {
     const optimized = await this.optimizeRoute(input);
 
     const routeData: InsertRouteAssignment = {
@@ -494,7 +511,7 @@ export class RouteOptimizationService {
       totalDistance: String(optimized.totalDistance),
       estimatedDuration: optimized.estimatedDuration,
       startLocation: input.startLocation,
-      endLocation: input.endLocation || null
+      endLocation: input.endLocation || null,
     };
 
     return await storage.createRouteAssignment(routeData);
@@ -506,13 +523,16 @@ export class RouteOptimizationService {
   async reoptimizeRoute(
     routeId: string,
     tenantId: string,
-    algorithm?: 'nearest_neighbor' | 'priority_based' | 'time_window' | 'balanced'
+    algorithm?: 'nearest_neighbor' | 'priority_based' | 'time_window' | 'balanced',
   ): Promise<OptimizedRoute | null> {
     const route = await storage.getRouteAssignment(routeId, tenantId);
     if (!route) return null;
 
-    const waypoints = (route.waypoints as Waypoint[]).filter(wp => wp.status !== 'completed');
-    const startLocation = route.startLocation as { lat: number; lng: number } || { lat: 0, lng: 0 };
+    const waypoints = (route.waypoints as Waypoint[]).filter((wp) => wp.status !== 'completed');
+    const startLocation = (route.startLocation as { lat: number; lng: number }) || {
+      lat: 0,
+      lng: 0,
+    };
     const endLocation = route.endLocation as { lat: number; lng: number } | undefined;
 
     const optimized = await this.optimizeRoute({
@@ -521,7 +541,7 @@ export class RouteOptimizationService {
       startLocation,
       endLocation,
       waypoints,
-      algorithm: algorithm || (route.optimizationAlgorithm as any) || 'nearest_neighbor'
+      algorithm: algorithm || (route.optimizationAlgorithm as any) || 'nearest_neighbor',
     });
 
     // Update the route with optimized waypoints
@@ -530,7 +550,7 @@ export class RouteOptimizationService {
       totalDistance: String(optimized.totalDistance),
       estimatedDuration: optimized.estimatedDuration,
       optimizedRoute: true,
-      optimizationAlgorithm: optimized.optimizationAlgorithm
+      optimizationAlgorithm: optimized.optimizationAlgorithm,
     });
 
     return optimized;
@@ -543,12 +563,12 @@ export class RouteOptimizationService {
     technicianId: string,
     tenantId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<RouteAnalytics> {
     const routes = await storage.getRouteAssignments(tenantId, { technicianId });
 
     // Filter routes within date range
-    const filteredRoutes = routes.filter(route => {
+    const filteredRoutes = routes.filter((route) => {
       const routeDate = new Date(route.routeDate);
       return routeDate >= startDate && routeDate <= endDate;
     });
@@ -568,7 +588,8 @@ export class RouteOptimizationService {
 
       // Check if route was on time
       if (route.actualDuration && route.estimatedDuration) {
-        if (route.actualDuration <= route.estimatedDuration * 1.1) { // Within 10% of estimate
+        if (route.actualDuration <= route.estimatedDuration * 1.1) {
+          // Within 10% of estimate
           onTimeCount++;
         }
       }
@@ -593,9 +614,9 @@ export class RouteOptimizationService {
 
     // Calculate efficiency score (0-100)
     const avgActualDuration = totalDuration / (filteredRoutes.length || 1);
-    const avgEstimatedDuration = filteredRoutes.reduce(
-      (sum, r) => sum + (r.estimatedDuration || 0), 0
-    ) / (filteredRoutes.length || 1);
+    const avgEstimatedDuration =
+      filteredRoutes.reduce((sum, r) => sum + (r.estimatedDuration || 0), 0) /
+      (filteredRoutes.length || 1);
     const efficiencyRatio = avgEstimatedDuration > 0 ? avgActualDuration / avgEstimatedDuration : 1;
     const efficiencyScore = Math.max(0, Math.min(100, Math.round((1 / efficiencyRatio) * 100)));
 
@@ -618,21 +639,16 @@ export class RouteOptimizationService {
       totalStops,
       totalDistance: Math.round(totalDistance),
       totalDuration,
-      averageStopsPerRoute: filteredRoutes.length > 0
-        ? Math.round(totalStops / filteredRoutes.length * 10) / 10
-        : 0,
-      averageDistancePerRoute: filteredRoutes.length > 0
-        ? Math.round(totalDistance / filteredRoutes.length)
-        : 0,
-      averageTimePerStop: totalStops > 0
-        ? Math.round(totalDuration / totalStops)
-        : 0,
-      onTimePercentage: filteredRoutes.length > 0
-        ? Math.round((onTimeCount / filteredRoutes.length) * 100)
-        : 0,
+      averageStopsPerRoute:
+        filteredRoutes.length > 0 ? Math.round((totalStops / filteredRoutes.length) * 10) / 10 : 0,
+      averageDistancePerRoute:
+        filteredRoutes.length > 0 ? Math.round(totalDistance / filteredRoutes.length) : 0,
+      averageTimePerStop: totalStops > 0 ? Math.round(totalDuration / totalStops) : 0,
+      onTimePercentage:
+        filteredRoutes.length > 0 ? Math.round((onTimeCount / filteredRoutes.length) * 100) : 0,
       routeEfficiencyScore: efficiencyScore,
       mostVisitedAreas: sortedAreas,
-      peakHours: sortedHours
+      peakHours: sortedHours,
     };
   }
 
@@ -643,7 +659,7 @@ export class RouteOptimizationService {
     tenantId: string,
     technicianIds: string[],
     waypoints: Waypoint[],
-    baseLocations: Map<string, { lat: number; lng: number }>
+    baseLocations: Map<string, { lat: number; lng: number }>,
   ): Promise<Map<string, OptimizedRoute>> {
     const results = new Map<string, OptimizedRoute>();
 
@@ -653,7 +669,7 @@ export class RouteOptimizationService {
 
     // Cluster waypoints by geographic proximity to technician base locations
     const waypointAssignments = new Map<string, Waypoint[]>();
-    technicianIds.forEach(id => waypointAssignments.set(id, []));
+    technicianIds.forEach((id) => waypointAssignments.set(id, []));
 
     for (const wp of waypoints) {
       let nearestTechId = technicianIds[0];
@@ -663,10 +679,7 @@ export class RouteOptimizationService {
         const baseLocation = baseLocations.get(techId);
         if (!baseLocation) continue;
 
-        const distance = calculateDistance(
-          baseLocation.lat, baseLocation.lng,
-          wp.lat, wp.lng
-        );
+        const distance = calculateDistance(baseLocation.lat, baseLocation.lng, wp.lat, wp.lng);
 
         if (distance < nearestDistance) {
           nearestDistance = distance;
@@ -688,7 +701,7 @@ export class RouteOptimizationService {
           technicianId: techId,
           startLocation: baseLocation,
           waypoints: assignedWaypoints,
-          algorithm: 'balanced'
+          algorithm: 'balanced',
         });
         results.set(techId, optimized);
       }

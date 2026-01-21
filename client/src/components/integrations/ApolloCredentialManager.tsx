@@ -6,12 +6,29 @@ import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { Key, CheckCircle, XCircle, AlertCircle, Eye, EyeOff, Loader2, ExternalLink } from 'lucide-react';
+import {
+  Key,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  ExternalLink,
+} from 'lucide-react';
 
 // Schema for Apollo API key form
 const apolloKeySchema = z.object({
@@ -82,8 +99,10 @@ export function ApolloCredentialManager() {
   // Verify mutation
   const verifyMutation = useMutation({
     mutationFn: async (apiKey?: string) => {
-      return await apiRequest<VerifyResponse>('/api/apollo/credentials/verify', 'POST', 
-        apiKey ? { apiKey } : {}
+      return await apiRequest<VerifyResponse>(
+        '/api/apollo/credentials/verify',
+        'POST',
+        apiKey ? { apiKey } : {},
       );
     },
     onSuccess: (data) => {
@@ -184,20 +203,27 @@ export function ApolloCredentialManager() {
             <CardTitle>Apollo.io API Configuration</CardTitle>
           </div>
           {credentialStatus?.configured && (
-            <Badge variant={credentialStatus.status === 'active' ? 'default' : 'secondary'} data-testid="apollo-status-badge">
+            <Badge
+              variant={credentialStatus.status === 'active' ? 'default' : 'secondary'}
+              data-testid="apollo-status-badge"
+            >
               {credentialStatus.status === 'active' ? (
-                <><CheckCircle className="h-3 w-3 mr-1" /> Configured</>
+                <>
+                  <CheckCircle className="h-3 w-3 mr-1" /> Configured
+                </>
               ) : (
-                <><AlertCircle className="h-3 w-3 mr-1" /> {credentialStatus.status}</>
+                <>
+                  <AlertCircle className="h-3 w-3 mr-1" /> {credentialStatus.status}
+                </>
               )}
             </Badge>
           )}
         </div>
         <CardDescription>
-          Configure your company's Apollo.io API key to enable lead enrichment features. 
-          <a 
-            href="https://app.apollo.io/#/settings/integrations/api" 
-            target="_blank" 
+          Configure your company's Apollo.io API key to enable lead enrichment features.
+          <a
+            href="https://app.apollo.io/#/settings/integrations/api"
+            target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center ml-1 text-primary hover:underline"
           >
@@ -230,16 +256,24 @@ export function ApolloCredentialManager() {
                   data-testid="button-verify-current"
                 >
                   {isVerifying ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verifying...</>
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verifying...
+                    </>
                   ) : (
-                    <><CheckCircle className="h-4 w-4 mr-2" /> Test Connection</>
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" /> Test Connection
+                    </>
                   )}
                 </Button>
                 <Button
                   variant="destructive"
                   size="sm"
                   onClick={() => {
-                    if (confirm('Are you sure you want to remove your Apollo.io API key? This will disable lead enrichment features.')) {
+                    if (
+                      confirm(
+                        'Are you sure you want to remove your Apollo.io API key? This will disable lead enrichment features.',
+                      )
+                    ) {
                       deleteMutation.mutate();
                     }
                   }}
@@ -247,7 +281,9 @@ export function ApolloCredentialManager() {
                   data-testid="button-delete"
                 >
                   {deleteMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Removing...</>
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Removing...
+                    </>
                   ) : (
                     'Remove Key'
                   )}
@@ -257,7 +293,10 @@ export function ApolloCredentialManager() {
 
             {/* Verification Result */}
             {verifyResult && (
-              <Alert variant={verifyResult.valid ? 'default' : 'destructive'} data-testid="verify-result">
+              <Alert
+                variant={verifyResult.valid ? 'default' : 'destructive'}
+                data-testid="verify-result"
+              >
                 {verifyResult.valid ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
@@ -265,10 +304,9 @@ export function ApolloCredentialManager() {
                 )}
                 <AlertTitle>{verifyResult.valid ? 'Success' : 'Failed'}</AlertTitle>
                 <AlertDescription>
-                  {verifyResult.valid 
+                  {verifyResult.valid
                     ? `API key is valid (responded in ${verifyResult.responseTimeMs}ms)`
-                    : verifyResult.error
-                  }
+                    : verifyResult.error}
                 </AlertDescription>
               </Alert>
             )}
@@ -280,7 +318,7 @@ export function ApolloCredentialManager() {
           <h3 className="font-medium">
             {credentialStatus?.configured ? 'Update API Key' : 'Add API Key'}
           </h3>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
               <FormField
@@ -314,7 +352,8 @@ export function ApolloCredentialManager() {
                       </div>
                     </FormControl>
                     <FormDescription>
-                      Your API key will be encrypted and stored securely. Only your company has access to this key.
+                      Your API key will be encrypted and stored securely. Only your company has
+                      access to this key.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -330,20 +369,24 @@ export function ApolloCredentialManager() {
                   data-testid="button-verify-new"
                 >
                   {isVerifying ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verifying...</>
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Verifying...
+                    </>
                   ) : (
-                    <><CheckCircle className="h-4 w-4 mr-2" /> Verify</>
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" /> Verify
+                    </>
                   )}
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={saveMutation.isPending}
-                  data-testid="button-save"
-                >
+                <Button type="submit" disabled={saveMutation.isPending} data-testid="button-save">
                   {saveMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
+                    </>
                   ) : (
-                    <><Key className="h-4 w-4 mr-2" /> Save API Key</>
+                    <>
+                      <Key className="h-4 w-4 mr-2" /> Save API Key
+                    </>
                   )}
                 </Button>
               </div>

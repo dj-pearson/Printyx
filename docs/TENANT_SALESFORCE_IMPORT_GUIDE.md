@@ -10,7 +10,7 @@ Simple 3-step process to import your Salesforce customers into Printyx.
 2. Select report type: **"Businesses & Contacts"** (or "Accounts & Contacts")
 3. Add these columns:
    - Business Name
-   - Business ID  
+   - Business ID
    - Business Record Type
    - Website
    - Industry
@@ -108,11 +108,13 @@ Done! Your Salesforce customers are now in Printyx.
 If your Salesforce export has multiple rows per company (one per contact), you have 2 options:
 
 ### Option 1: Import One Contact Per Company
+
 - Sort by company name
 - Use Excel: **Data → Remove Duplicates** → Select "Business ID" column
 - This keeps the first contact for each company
 
 ### Option 2: Import All Contacts Separately
+
 1. **First import**: Remove duplicates and import companies
 2. **Second import**: Go to **Import Contacts** and upload all contacts
    - Map `Business ID` → `company_id`
@@ -123,15 +125,19 @@ If your Salesforce export has multiple rows per company (one per contact), you h
 ## Common Issues
 
 ### Issue: "tenant_id required"
+
 **Solution**: This is automatically added during import - you don't need to add it to your CSV.
 
 ### Issue: "Duplicate companies detected"
+
 **Solution**: The import wizard will show you duplicates and let you choose:
+
 - Skip duplicates
 - Update existing
 - Create new records
 
 ### Issue: "Multiple contacts per company"
+
 **Solution**: See "Handling Multiple Contacts" section above.
 
 ---
@@ -147,6 +153,7 @@ This template has the correct Printyx header names. Just paste your Salesforce d
 ## Support
 
 Need help? Contact Printyx support or check the full documentation at:
+
 - Printyx Knowledge Base → Imports → Salesforce
 
 ---

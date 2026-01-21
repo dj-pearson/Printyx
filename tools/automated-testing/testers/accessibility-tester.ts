@@ -21,9 +21,7 @@ interface A11yRule {
   helpUrl: string;
   impact: 'critical' | 'serious' | 'moderate' | 'minor';
   tags: string[];
-  check: (
-    page: Page,
-  ) => Promise<{
+  check: (page: Page) => Promise<{
     pass: boolean;
     nodes: { html: string; target: string[]; failureSummary?: string }[];
   }>;

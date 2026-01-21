@@ -1,17 +1,11 @@
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -19,21 +13,21 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Building2,
   User,
@@ -54,25 +48,25 @@ import {
   Router,
   Monitor,
   HardDrive,
-} from "lucide-react";
+} from 'lucide-react';
 
 // Enhanced onboarding schema with auto-population and machine replacement
 const onboardingSchema = z.object({
   // Basic Information - Auto-populated from business_records
-  checklistTitle: z.string().min(1, "Checklist title is required"),
+  checklistTitle: z.string().min(1, 'Checklist title is required'),
   businessRecordId: z.string().optional(), // Link to business_records table
   quoteId: z.string().optional(), // Link to quotes table
   orderId: z.string().optional(), // Link to orders table
 
   customerData: z.object({
-    companyName: z.string().min(1, "Company name is required"),
-    primaryContact: z.string().min(1, "Primary contact is required"),
-    phone: z.string().min(1, "Phone number is required"),
-    email: z.string().email("Valid email is required"),
-    address: z.string().min(1, "Address is required"),
-    city: z.string().min(1, "City is required"),
-    state: z.string().min(1, "State is required"),
-    zipCode: z.string().min(1, "ZIP code is required"),
+    companyName: z.string().min(1, 'Company name is required'),
+    primaryContact: z.string().min(1, 'Primary contact is required'),
+    phone: z.string().min(1, 'Phone number is required'),
+    email: z.string().email('Valid email is required'),
+    address: z.string().min(1, 'Address is required'),
+    city: z.string().min(1, 'City is required'),
+    state: z.string().min(1, 'State is required'),
+    zipCode: z.string().min(1, 'ZIP code is required'),
     accountManager: z.string().optional(),
     customerNumber: z.string().optional(),
     industry: z.string().optional(),
@@ -80,44 +74,30 @@ const onboardingSchema = z.object({
 
   // Site Information
   siteInformation: z.object({
-    installationAddress: z.string().min(1, "Installation address is required"),
-    contactPerson: z.string().min(1, "Contact person is required"),
-    phoneNumber: z.string().min(1, "Phone number is required"),
+    installationAddress: z.string().min(1, 'Installation address is required'),
+    contactPerson: z.string().min(1, 'Contact person is required'),
+    phoneNumber: z.string().min(1, 'Phone number is required'),
     accessInstructions: z.string().optional(),
-    buildingType: z.enum([
-      "office",
-      "warehouse",
-      "retail",
-      "medical",
-      "educational",
-      "other",
-    ]),
+    buildingType: z.enum(['office', 'warehouse', 'retail', 'medical', 'educational', 'other']),
     floorsPlan: z.string().optional(),
     specialRequirements: z.string().optional(),
   }),
 
   // Scheduling
-  scheduledInstallDate: z.string().min(1, "Scheduled install date is required"),
-  preferredTimeSlot: z.enum(["morning", "afternoon", "evening", "all_day"]),
-  estimatedDuration: z.string().min(1, "Estimated duration is required"),
+  scheduledInstallDate: z.string().min(1, 'Scheduled install date is required'),
+  preferredTimeSlot: z.enum(['morning', 'afternoon', 'evening', 'all_day']),
+  estimatedDuration: z.string().min(1, 'Estimated duration is required'),
 
   // Equipment Details with Machine Replacement Tracking
   equipment: z
     .array(
       z.object({
-        equipmentType: z.enum([
-          "printer",
-          "copier",
-          "scanner",
-          "fax",
-          "mfp",
-          "other",
-        ]),
-        manufacturer: z.string().min(1, "Manufacturer is required"),
-        model: z.string().min(1, "Model is required"),
-        serialNumber: z.string().min(1, "Serial number is required"),
+        equipmentType: z.enum(['printer', 'copier', 'scanner', 'fax', 'mfp', 'other']),
+        manufacturer: z.string().min(1, 'Manufacturer is required'),
+        model: z.string().min(1, 'Model is required'),
+        serialNumber: z.string().min(1, 'Serial number is required'),
         macAddress: z.string().optional(),
-        location: z.string().min(1, "Location is required"),
+        location: z.string().min(1, 'Location is required'),
         features: z.array(z.string()).default([]),
         accessories: z.array(z.string()).default([]),
 
@@ -151,14 +131,14 @@ const onboardingSchema = z.object({
             networkSegment: z.string().optional(),
           })
           .optional(),
-      })
+      }),
     )
-    .min(1, "At least one equipment item is required"),
+    .min(1, 'At least one equipment item is required'),
 
   // Enhanced Network Configuration for Complex Setups
   networkConfig: z.object({
-    networkType: z.enum(["wired", "wireless", "both"]),
-    ipAssignment: z.enum(["static", "dhcp", "reserved"]),
+    networkType: z.enum(['wired', 'wireless', 'both']),
+    ipAssignment: z.enum(['static', 'dhcp', 'reserved']),
     staticIpAddress: z.string().optional(),
     subnetMask: z.string().optional(),
     gateway: z.string().optional(),
@@ -182,18 +162,16 @@ const onboardingSchema = z.object({
 
   // Enhanced Print Management for Papercut Integration
   printManagement: z.object({
-    system: z
-      .enum(["papercut", "equitrac", "ysoft", "other", "none"])
-      .default("none"),
+    system: z.enum(['papercut', 'equitrac', 'ysoft', 'other', 'none']).default('none'),
     systemVersion: z.string().optional(),
     serverAddress: z.string().optional(),
-    authenticationType: z.enum(["ldap", "local", "sso"]).optional(),
+    authenticationType: z.enum(['ldap', 'local', 'sso']).optional(),
 
     driverInstallation: z.boolean().default(false),
     queueSetup: z.boolean().default(false),
     queueName: z.string().optional(),
     costCenter: z.string().optional(),
-    deviceType: z.enum(["printer", "mfp", "copier"]).optional(),
+    deviceType: z.enum(['printer', 'mfp', 'copier']).optional(),
     capabilities: z.array(z.string()).default([]),
 
     userPermissions: z.string().optional(),
@@ -242,36 +220,24 @@ const onboardingSchema = z.object({
   dynamicSections: z
     .array(
       z.object({
-        sectionTitle: z.string().min(1, "Section title is required"),
-        sectionType: z.enum([
-          "installation",
-          "training",
-          "maintenance",
-          "configuration",
-          "other",
-        ]),
+        sectionTitle: z.string().min(1, 'Section title is required'),
+        sectionType: z.enum(['installation', 'training', 'maintenance', 'configuration', 'other']),
         fields: z
           .array(
             z.object({
-              fieldName: z.string().min(1, "Field name is required"),
-              fieldType: z.enum([
-                "text",
-                "textarea",
-                "checkbox",
-                "select",
-                "date",
-              ]),
+              fieldName: z.string().min(1, 'Field name is required'),
+              fieldType: z.enum(['text', 'textarea', 'checkbox', 'select', 'date']),
               fieldValue: z.string().optional(),
               isRequired: z.boolean().default(false),
               options: z.array(z.string()).default([]),
-            })
+            }),
           )
           .default([]),
         completed: z.boolean().default(false),
         completedBy: z.string().optional(),
         completedAt: z.string().optional(),
         notes: z.string().optional(),
-      })
+      }),
     )
     .default([]),
 
@@ -292,11 +258,11 @@ export default function ComprehensiveOnboardingForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [equipmentItems, setEquipmentItems] = useState([
     {
-      equipmentType: "printer" as const,
-      manufacturer: "",
-      model: "",
-      serialNumber: "",
-      location: "",
+      equipmentType: 'printer' as const,
+      manufacturer: '',
+      model: '',
+      serialNumber: '',
+      location: '',
       features: [],
       accessories: [],
     },
@@ -307,33 +273,33 @@ export default function ComprehensiveOnboardingForm() {
   const form = useForm<OnboardingFormData>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      checklistTitle: "",
+      checklistTitle: '',
       customerData: {
-        companyName: "",
-        primaryContact: "",
-        phone: "",
-        email: "",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
+        companyName: '',
+        primaryContact: '',
+        phone: '',
+        email: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
       },
       siteInformation: {
-        installationAddress: "",
-        contactPerson: "",
-        phoneNumber: "",
-        accessInstructions: "",
-        buildingType: "office",
-        floorsPlan: "",
-        specialRequirements: "",
+        installationAddress: '',
+        contactPerson: '',
+        phoneNumber: '',
+        accessInstructions: '',
+        buildingType: 'office',
+        floorsPlan: '',
+        specialRequirements: '',
       },
-      scheduledInstallDate: "",
-      preferredTimeSlot: "morning",
-      estimatedDuration: "",
+      scheduledInstallDate: '',
+      preferredTimeSlot: 'morning',
+      estimatedDuration: '',
       equipment: equipmentItems,
       networkConfig: {
-        networkType: "wired",
-        ipAssignment: "dhcp",
+        networkType: 'wired',
+        ipAssignment: 'dhcp',
       },
       printManagement: {
         driverInstallation: false,
@@ -355,25 +321,25 @@ export default function ComprehensiveOnboardingForm() {
 
   const createChecklistMutation = useMutation({
     mutationFn: (data: OnboardingFormData) =>
-      apiRequest("/api/onboarding/checklists", {
-        method: "POST",
+      apiRequest('/api/onboarding/checklists', {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
       toast({
-        title: "Success",
-        description: "Onboarding checklist created successfully",
+        title: 'Success',
+        description: 'Onboarding checklist created successfully',
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/onboarding/checklists"],
+        queryKey: ['/api/onboarding/checklists'],
       });
-      setLocation("/onboarding");
+      setLocation('/onboarding');
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create checklist",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create checklist',
+        variant: 'destructive',
       });
     },
   });
@@ -384,47 +350,47 @@ export default function ComprehensiveOnboardingForm() {
 
   const addEquipmentItem = () => {
     const newItem = {
-      equipmentType: "printer" as const,
-      manufacturer: "",
-      model: "",
-      serialNumber: "",
-      location: "",
+      equipmentType: 'printer' as const,
+      manufacturer: '',
+      model: '',
+      serialNumber: '',
+      location: '',
       features: [],
       accessories: [],
     };
     setEquipmentItems([...equipmentItems, newItem]);
-    form.setValue("equipment", [...equipmentItems, newItem]);
+    form.setValue('equipment', [...equipmentItems, newItem]);
   };
 
   const removeEquipmentItem = (index: number) => {
     const updatedItems = equipmentItems.filter((_, i) => i !== index);
     setEquipmentItems(updatedItems);
-    form.setValue("equipment", updatedItems);
+    form.setValue('equipment', updatedItems);
   };
 
   const addDynamicSection = () => {
     const newSection = {
-      sectionTitle: "",
-      sectionType: "installation" as const,
+      sectionTitle: '',
+      sectionType: 'installation' as const,
       fields: [],
       completed: false,
-      notes: "",
+      notes: '',
     };
     const updatedSections = [...dynamicSections, newSection];
     setDynamicSections(updatedSections);
-    form.setValue("dynamicSections", updatedSections);
+    form.setValue('dynamicSections', updatedSections);
   };
 
   const steps = [
-    { number: 1, title: "Basic Information", icon: Building2 },
-    { number: 2, title: "Site Details", icon: MapPin },
-    { number: 3, title: "Scheduling", icon: Calendar },
-    { number: 4, title: "Equipment", icon: Printer },
-    { number: 5, title: "Network Setup", icon: Network },
-    { number: 6, title: "Print Management", icon: Settings },
-    { number: 7, title: "Security", icon: Shield },
-    { number: 8, title: "Custom Sections", icon: Plus },
-    { number: 9, title: "Additional Services", icon: CheckCircle },
+    { number: 1, title: 'Basic Information', icon: Building2 },
+    { number: 2, title: 'Site Details', icon: MapPin },
+    { number: 3, title: 'Scheduling', icon: Calendar },
+    { number: 4, title: 'Equipment', icon: Printer },
+    { number: 5, title: 'Network Setup', icon: Network },
+    { number: 6, title: 'Print Management', icon: Settings },
+    { number: 7, title: 'Security', icon: Shield },
+    { number: 8, title: 'Custom Sections', icon: Plus },
+    { number: 9, title: 'Additional Services', icon: CheckCircle },
   ];
 
   const renderStepContent = () => {
@@ -468,10 +434,7 @@ export default function ComprehensiveOnboardingForm() {
                   <FormItem>
                     <FormLabel>Primary Contact</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Enter primary contact name"
-                        {...field}
-                      />
+                      <Input placeholder="Enter primary contact name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -501,11 +464,7 @@ export default function ComprehensiveOnboardingForm() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="Enter email address"
-                        {...field}
-                      />
+                      <Input type="email" placeholder="Enter email address" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -583,10 +542,7 @@ export default function ComprehensiveOnboardingForm() {
                 <FormItem>
                   <FormLabel>Installation Address</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Enter installation address"
-                      {...field}
-                    />
+                    <Input placeholder="Enter installation address" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -601,10 +557,7 @@ export default function ComprehensiveOnboardingForm() {
                   <FormItem>
                     <FormLabel>On-site Contact Person</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Enter contact person name"
-                        {...field}
-                      />
+                      <Input placeholder="Enter contact person name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -632,10 +585,7 @@ export default function ComprehensiveOnboardingForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Building Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select building type" />
@@ -715,25 +665,16 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Preferred Time Slot</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select time slot" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="morning">
-                          Morning (8 AM - 12 PM)
-                        </SelectItem>
-                        <SelectItem value="afternoon">
-                          Afternoon (12 PM - 5 PM)
-                        </SelectItem>
-                        <SelectItem value="evening">
-                          Evening (5 PM - 8 PM)
-                        </SelectItem>
+                        <SelectItem value="morning">Morning (8 AM - 12 PM)</SelectItem>
+                        <SelectItem value="afternoon">Afternoon (12 PM - 5 PM)</SelectItem>
+                        <SelectItem value="evening">Evening (5 PM - 8 PM)</SelectItem>
                         <SelectItem value="all_day">All Day</SelectItem>
                       </SelectContent>
                     </Select>
@@ -764,12 +705,7 @@ export default function ComprehensiveOnboardingForm() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Equipment Details</h3>
-              <Button
-                type="button"
-                onClick={addEquipmentItem}
-                variant="outline"
-                size="sm"
-              >
+              <Button type="button" onClick={addEquipmentItem} variant="outline" size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Equipment
               </Button>
@@ -779,9 +715,7 @@ export default function ComprehensiveOnboardingForm() {
               <Card key={index}>
                 <CardHeader>
                   <div className="flex justify-between items-center">
-                    <CardTitle className="text-base">
-                      Equipment #{index + 1}
-                    </CardTitle>
+                    <CardTitle className="text-base">Equipment #{index + 1}</CardTitle>
                     {equipmentItems.length > 1 && (
                       <Button
                         type="button"
@@ -802,10 +736,7 @@ export default function ComprehensiveOnboardingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Equipment Type</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select type" />
@@ -816,9 +747,7 @@ export default function ComprehensiveOnboardingForm() {
                               <SelectItem value="copier">Copier</SelectItem>
                               <SelectItem value="scanner">Scanner</SelectItem>
                               <SelectItem value="fax">Fax</SelectItem>
-                              <SelectItem value="mfp">
-                                Multi-Function Printer
-                              </SelectItem>
+                              <SelectItem value="mfp">Multi-Function Printer</SelectItem>
                               <SelectItem value="other">Other</SelectItem>
                             </SelectContent>
                           </Select>
@@ -834,10 +763,7 @@ export default function ComprehensiveOnboardingForm() {
                         <FormItem>
                           <FormLabel>Manufacturer</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="e.g., Canon, HP, Xerox"
-                              {...field}
-                            />
+                            <Input placeholder="e.g., Canon, HP, Xerox" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -853,10 +779,7 @@ export default function ComprehensiveOnboardingForm() {
                         <FormItem>
                           <FormLabel>Model</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Enter model number"
-                              {...field}
-                            />
+                            <Input placeholder="Enter model number" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -870,10 +793,7 @@ export default function ComprehensiveOnboardingForm() {
                         <FormItem>
                           <FormLabel>Serial Number</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Enter serial number"
-                              {...field}
-                            />
+                            <Input placeholder="Enter serial number" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -888,10 +808,7 @@ export default function ComprehensiveOnboardingForm() {
                       <FormItem>
                         <FormLabel>Installation Location</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="e.g., Main Office, Floor 2 Copy Room"
-                            {...field}
-                          />
+                          <Input placeholder="e.g., Main Office, Floor 2 Copy Room" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -915,10 +832,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Network Type</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select network type" />
@@ -941,10 +855,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>IP Assignment</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select IP assignment" />
@@ -961,7 +872,7 @@ export default function ComprehensiveOnboardingForm() {
               />
             </div>
 
-            {form.watch("networkConfig.ipAssignment") === "static" && (
+            {form.watch('networkConfig.ipAssignment') === 'static' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -1012,10 +923,7 @@ export default function ComprehensiveOnboardingForm() {
                     <FormItem>
                       <FormLabel>DNS Servers</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="e.g., 8.8.8.8, 8.8.4.4"
-                          {...field}
-                        />
+                        <Input placeholder="e.g., 8.8.8.8, 8.8.4.4" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1024,8 +932,8 @@ export default function ComprehensiveOnboardingForm() {
               </div>
             )}
 
-            {(form.watch("networkConfig.networkType") === "wireless" ||
-              form.watch("networkConfig.networkType") === "both") && (
+            {(form.watch('networkConfig.networkType') === 'wireless' ||
+              form.watch('networkConfig.networkType') === 'both') && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -1034,10 +942,7 @@ export default function ComprehensiveOnboardingForm() {
                     <FormItem>
                       <FormLabel>Wireless SSID</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Enter WiFi network name"
-                          {...field}
-                        />
+                        <Input placeholder="Enter WiFi network name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1051,11 +956,7 @@ export default function ComprehensiveOnboardingForm() {
                     <FormItem>
                       <FormLabel>Wireless Password</FormLabel>
                       <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="Enter WiFi password"
-                          {...field}
-                        />
+                        <Input type="password" placeholder="Enter WiFi password" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1078,10 +979,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>Driver Installation Required</FormLabel>
@@ -1096,10 +994,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>Print Queue Setup Required</FormLabel>
@@ -1116,10 +1011,7 @@ export default function ComprehensiveOnboardingForm() {
                 <FormItem>
                   <FormLabel>User Permissions</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Define user access levels and permissions"
-                      {...field}
-                    />
+                    <Textarea placeholder="Define user access levels and permissions" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1157,10 +1049,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>User Authentication Required</FormLabel>
@@ -1175,10 +1064,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>Enable Audit Logging</FormLabel>
@@ -1193,10 +1079,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>Secure Print Release</FormLabel>
@@ -1213,10 +1096,7 @@ export default function ComprehensiveOnboardingForm() {
                 <FormItem>
                   <FormLabel>Access Codes</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Enter access codes if required"
-                      {...field}
-                    />
+                    <Input placeholder="Enter access codes if required" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1230,10 +1110,7 @@ export default function ComprehensiveOnboardingForm() {
                 <FormItem>
                   <FormLabel>Department Codes</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Enter department-specific codes"
-                      {...field}
-                    />
+                    <Textarea placeholder="Enter department-specific codes" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1247,12 +1124,7 @@ export default function ComprehensiveOnboardingForm() {
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold">Custom Sections</h3>
-              <Button
-                type="button"
-                onClick={addDynamicSection}
-                variant="outline"
-                size="sm"
-              >
+              <Button type="button" onClick={addDynamicSection} variant="outline" size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Section
               </Button>
@@ -1261,17 +1133,13 @@ export default function ComprehensiveOnboardingForm() {
             {dynamicSections.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No custom sections added yet.</p>
-                <p className="text-sm">
-                  Add sections for additional installation requirements.
-                </p>
+                <p className="text-sm">Add sections for additional installation requirements.</p>
               </div>
             ) : (
               dynamicSections.map((section, index) => (
                 <Card key={index}>
                   <CardHeader>
-                    <CardTitle className="text-base">
-                      Custom Section #{index + 1}
-                    </CardTitle>
+                    <CardTitle className="text-base">Custom Section #{index + 1}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1282,10 +1150,7 @@ export default function ComprehensiveOnboardingForm() {
                           <FormItem>
                             <FormLabel>Section Title</FormLabel>
                             <FormControl>
-                              <Input
-                                placeholder="Enter section title"
-                                {...field}
-                              />
+                              <Input placeholder="Enter section title" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1298,28 +1163,17 @@ export default function ComprehensiveOnboardingForm() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Section Type</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="installation">
-                                  Installation
-                                </SelectItem>
-                                <SelectItem value="training">
-                                  Training
-                                </SelectItem>
-                                <SelectItem value="maintenance">
-                                  Maintenance
-                                </SelectItem>
-                                <SelectItem value="configuration">
-                                  Configuration
-                                </SelectItem>
+                                <SelectItem value="installation">Installation</SelectItem>
+                                <SelectItem value="training">Training</SelectItem>
+                                <SelectItem value="maintenance">Maintenance</SelectItem>
+                                <SelectItem value="configuration">Configuration</SelectItem>
                                 <SelectItem value="other">Other</SelectItem>
                               </SelectContent>
                             </Select>
@@ -1364,10 +1218,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>User Training Required</FormLabel>
@@ -1382,10 +1233,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>Maintenance Contract</FormLabel>
@@ -1400,10 +1248,7 @@ export default function ComprehensiveOnboardingForm() {
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>Follow-up Required</FormLabel>
@@ -1420,17 +1265,14 @@ export default function ComprehensiveOnboardingForm() {
                 <FormItem>
                   <FormLabel>Support Package</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Specify support package details"
-                      {...field}
-                    />
+                    <Input placeholder="Specify support package details" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {form.watch("additionalServices.followUpRequired") && (
+            {form.watch('additionalServices.followUpRequired') && (
               <FormField
                 control={form.control}
                 name="additionalServices.followUpDate"
@@ -1456,12 +1298,9 @@ export default function ComprehensiveOnboardingForm() {
   return (
     <div className="container mx-auto py-6 px-4 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
-          Comprehensive Onboarding Checklist
-        </h1>
+        <h1 className="text-3xl font-bold mb-2">Comprehensive Onboarding Checklist</h1>
         <p className="text-muted-foreground">
-          Create a detailed installation and onboarding checklist for client
-          equipment deployment
+          Create a detailed installation and onboarding checklist for client equipment deployment
         </p>
       </div>
 
@@ -1473,10 +1312,10 @@ export default function ComprehensiveOnboardingForm() {
               key={step.number}
               className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm ${
                 currentStep === step.number
-                  ? "bg-primary text-primary-foreground"
+                  ? 'bg-primary text-primary-foreground'
                   : currentStep > step.number
-                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                  : "bg-muted text-muted-foreground"
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-muted text-muted-foreground'
               }`}
             >
               <step.icon className="h-4 w-4" />
@@ -1501,18 +1340,14 @@ export default function ComprehensiveOnboardingForm() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 {(() => {
-                  const currentStepData = steps.find(
-                    (s) => s.number === currentStep
-                  );
+                  const currentStepData = steps.find((s) => s.number === currentStep);
                   if (currentStepData?.icon) {
                     const IconComponent = currentStepData.icon;
                     return <IconComponent className="h-5 w-5" />;
                   }
                   return null;
                 })()}
-                <span>
-                  {steps.find((s) => s.number === currentStep)?.title}
-                </span>
+                <span>{steps.find((s) => s.number === currentStep)?.title}</span>
               </CardTitle>
               <CardDescription>
                 Step {currentStep} of {steps.length}
@@ -1536,9 +1371,7 @@ export default function ComprehensiveOnboardingForm() {
               {currentStep < steps.length ? (
                 <Button
                   type="button"
-                  onClick={() =>
-                    setCurrentStep(Math.min(steps.length, currentStep + 1))
-                  }
+                  onClick={() => setCurrentStep(Math.min(steps.length, currentStep + 1))}
                 >
                   Next
                 </Button>

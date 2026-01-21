@@ -190,7 +190,8 @@ export async function trackContentView(params: {
       : 'desktop';
 
     // Get browser info
-    const browser = navigator.userAgent.match(/(chrome|firefox|safari|edge)/i)?.[0]?.toLowerCase() || 'other';
+    const browser =
+      navigator.userAgent.match(/(chrome|firefox|safari|edge)/i)?.[0]?.toLowerCase() || 'other';
 
     // Check if from AI platform
     const referrer = document.referrer.toLowerCase();

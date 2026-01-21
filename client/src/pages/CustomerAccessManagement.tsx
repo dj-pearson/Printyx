@@ -1,16 +1,10 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MainLayout } from "@/components/layout/main-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -18,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -26,16 +20,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Shield,
   Users,
@@ -47,9 +41,9 @@ import {
   Edit,
   Trash2,
   Search,
-} from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+} from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface CustomerAccess {
   id: string;
@@ -58,7 +52,7 @@ interface CustomerAccess {
   userEmail: string;
   customerId: string;
   customerName: string;
-  accessLevel: "view" | "edit" | "admin";
+  accessLevel: 'view' | 'edit' | 'admin';
   permissions: string[];
   assignedBy: string;
   assignedDate: Date;
@@ -75,67 +69,67 @@ interface Role {
 
 const getAccessLevelColor = (level: string) => {
   switch (level) {
-    case "view":
-      return "bg-blue-100 text-blue-800";
-    case "edit":
-      return "bg-yellow-100 text-yellow-800";
-    case "admin":
-      return "bg-red-100 text-red-800";
+    case 'view':
+      return 'bg-blue-100 text-blue-800';
+    case 'edit':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'admin':
+      return 'bg-red-100 text-red-800';
     default:
-      return "bg-gray-100 text-gray-800";
+      return 'bg-gray-100 text-gray-800';
   }
 };
 
 export default function CustomerAccessManagement() {
-  const [selectedTab, setSelectedTab] = useState("access-assignments");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTab, setSelectedTab] = useState('access-assignments');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   // Fetch customer access assignments
   const { data: accessAssignments, isLoading: isLoadingAccess } = useQuery({
-    queryKey: ["/api/customer-access"],
+    queryKey: ['/api/customer-access'],
     enabled: true,
   });
 
   // Fetch available users
   const { data: users, isLoading: isLoadingUsers } = useQuery({
-    queryKey: ["/api/users"],
+    queryKey: ['/api/users'],
     enabled: true,
   });
 
   // Fetch available customers
   const { data: customers, isLoading: isLoadingCustomers } = useQuery({
-    queryKey: ["/api/customers"],
+    queryKey: ['/api/customers'],
     enabled: true,
   });
 
   // Fetch roles
   const { data: roles, isLoading: isLoadingRoles } = useQuery({
-    queryKey: ["/api/roles"],
+    queryKey: ['/api/roles'],
     enabled: true,
   });
 
   const createAccessMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest("/api/customer-access", {
-        method: "POST",
+      apiRequest('/api/customer-access', {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-access"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-access'] });
       setIsCreateDialogOpen(false);
       toast({
-        title: "Success",
-        description: "Customer access assigned successfully",
+        title: 'Success',
+        description: 'Customer access assigned successfully',
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to assign customer access",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to assign customer access',
+        variant: 'destructive',
       });
     },
   });
@@ -143,20 +137,20 @@ export default function CustomerAccessManagement() {
   const revokeAccessMutation = useMutation({
     mutationFn: (accessId: string) =>
       apiRequest(`/api/customer-access/${accessId}`, {
-        method: "DELETE",
+        method: 'DELETE',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-access"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-access'] });
       toast({
-        title: "Success",
-        description: "Customer access revoked successfully",
+        title: 'Success',
+        description: 'Customer access revoked successfully',
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to revoke customer access",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to revoke customer access',
+        variant: 'destructive',
       });
     },
   });
@@ -165,7 +159,7 @@ export default function CustomerAccessManagement() {
     accessAssignments?.filter(
       (access: CustomerAccess) =>
         access.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        access.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+        access.customerName.toLowerCase().includes(searchTerm.toLowerCase()),
     ) || [];
 
   return (
@@ -174,14 +168,9 @@ export default function CustomerAccessManagement() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Customer Access Management</h1>
-            <p className="text-gray-600">
-              Manage user access to customer data and permissions
-            </p>
+            <p className="text-gray-600">Manage user access to customer data and permissions</p>
           </div>
-          <Dialog
-            open={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-          >
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -191,9 +180,7 @@ export default function CustomerAccessManagement() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Assign Customer Access</DialogTitle>
-                <DialogDescription>
-                  Grant a user access to specific customer data
-                </DialogDescription>
+                <DialogDescription>Grant a user access to specific customer data</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -239,9 +226,7 @@ export default function CustomerAccessManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={() => createAccessMutation.mutate({})}>
-                  Assign Access
-                </Button>
+                <Button onClick={() => createAccessMutation.mutate({})}>Assign Access</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -249,9 +234,7 @@ export default function CustomerAccessManagement() {
 
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList>
-            <TabsTrigger value="access-assignments">
-              Access Assignments
-            </TabsTrigger>
+            <TabsTrigger value="access-assignments">Access Assignments</TabsTrigger>
             <TabsTrigger value="role-permissions">Role Permissions</TabsTrigger>
             <TabsTrigger value="audit-log">Audit Log</TabsTrigger>
           </TabsList>
@@ -263,9 +246,7 @@ export default function CustomerAccessManagement() {
                   <UserCheck className="h-5 w-5" />
                   Customer Access Assignments
                 </CardTitle>
-                <CardDescription>
-                  Manage individual user access to customer data
-                </CardDescription>
+                <CardDescription>Manage individual user access to customer data</CardDescription>
                 <div className="flex items-center gap-2">
                   <Search className="h-4 w-4" />
                   <Input
@@ -307,21 +288,13 @@ export default function CustomerAccessManagement() {
                         <TableRow key={access.id}>
                           <TableCell>
                             <div>
-                              <div className="font-medium">
-                                {access.userName}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {access.userEmail}
-                              </div>
+                              <div className="font-medium">{access.userName}</div>
+                              <div className="text-sm text-gray-500">{access.userEmail}</div>
                             </div>
                           </TableCell>
                           <TableCell>{access.customerName}</TableCell>
                           <TableCell>
-                            <Badge
-                              className={getAccessLevelColor(
-                                access.accessLevel
-                              )}
-                            >
+                            <Badge className={getAccessLevelColor(access.accessLevel)}>
                               {access.accessLevel}
                             </Badge>
                           </TableCell>
@@ -330,12 +303,8 @@ export default function CustomerAccessManagement() {
                             {new Date(access.assignedDate).toLocaleDateString()}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant={
-                                access.isActive ? "default" : "secondary"
-                              }
-                            >
-                              {access.isActive ? "Active" : "Inactive"}
+                            <Badge variant={access.isActive ? 'default' : 'secondary'}>
+                              {access.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -349,7 +318,7 @@ export default function CustomerAccessManagement() {
                                 onClick={() => {
                                   if (
                                     confirm(
-                                      `Revoke access for ${access.userName} to ${access.customerName}?`
+                                      `Revoke access for ${access.userName} to ${access.customerName}?`,
                                     )
                                   ) {
                                     revokeAccessMutation.mutate(access.id);
@@ -376,9 +345,7 @@ export default function CustomerAccessManagement() {
                   <Shield className="h-5 w-5" />
                   Role-Based Permissions
                 </CardTitle>
-                <CardDescription>
-                  Configure access permissions by user role
-                </CardDescription>
+                <CardDescription>Configure access permissions by user role</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -395,21 +362,14 @@ export default function CustomerAccessManagement() {
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-3 gap-4">
-                            {Object.entries(role.permissions || {}).map(
-                              ([permission, enabled]) => (
-                                <div
-                                  key={permission}
-                                  className="flex items-center justify-between"
-                                >
-                                  <span className="text-sm">{permission}</span>
-                                  <Badge
-                                    variant={enabled ? "default" : "secondary"}
-                                  >
-                                    {enabled ? "Enabled" : "Disabled"}
-                                  </Badge>
-                                </div>
-                              )
-                            )}
+                            {Object.entries(role.permissions || {}).map(([permission, enabled]) => (
+                              <div key={permission} className="flex items-center justify-between">
+                                <span className="text-sm">{permission}</span>
+                                <Badge variant={enabled ? 'default' : 'secondary'}>
+                                  {enabled ? 'Enabled' : 'Disabled'}
+                                </Badge>
+                              </div>
+                            ))}
                           </div>
                         </CardContent>
                       </Card>
@@ -427,9 +387,7 @@ export default function CustomerAccessManagement() {
                   <Key className="h-5 w-5" />
                   Access Audit Log
                 </CardTitle>
-                <CardDescription>
-                  Track all customer access changes and activities
-                </CardDescription>
+                <CardDescription>Track all customer access changes and activities</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8 text-gray-500">

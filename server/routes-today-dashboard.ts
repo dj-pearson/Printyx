@@ -102,9 +102,9 @@ export function registerTodayDashboardRoutes(app: Router) {
             gte(leadScoreCalculations.totalScore, 70), // High-scoring leads (70+)
             or(
               eq(leadScoreCalculations.qualificationStatus, 'qualified'),
-              eq(leadScoreCalculations.qualificationStatus, 'hot')
-            )
-          )
+              eq(leadScoreCalculations.qualificationStatus, 'hot'),
+            ),
+          ),
         )
         .orderBy(desc(leadScoreCalculations.totalScore))
         .limit(10);

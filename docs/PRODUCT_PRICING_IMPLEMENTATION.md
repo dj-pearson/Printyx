@@ -13,12 +13,14 @@ This document details the comprehensive three-tier pricing system implemented fo
 ### Pricing Tiers
 
 #### Tier 1: Dealer Cost
+
 - **Definition**: The hard cost to the dealer for acquiring the product
 - **Fluctuation**: Changes as supplier costs change
 - **Editable By**: Admins and above only
 - **Visible To**: Managers and above (configurable)
 
 #### Tier 2: Rep Cost
+
 - **Definition**: Dealer Cost + Company Markup Percentage
 - **Default Markup**: 13% (configurable per company)
 - **Calculation**: `repCost = dealerCost * (1 + markupPercentage / 100)`
@@ -30,6 +32,7 @@ This document details the comprehensive three-tier pricing system implemented fo
 - **Visible To**: Sales reps and above
 
 #### Tier 3: Customer Price
+
 - **Definition**: Final price shown to customer
 - **Set By**: Sales reps (may require manager approval)
 - **Constraints**:
@@ -39,28 +42,30 @@ This document details the comprehensive three-tier pricing system implemented fo
 
 ### Role-Based Visibility
 
-| Role | Can See Dealer Cost | Can See Rep Cost | Can See Customer Price | Can Edit Dealer Cost | Can Edit Customer Price |
-|------|---------------------|------------------|------------------------|----------------------|-------------------------|
-| Platform Admin | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Super Admin | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Admin | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Manager | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Sales Rep | ❌* | ✅ | ✅ | ❌ | ✅** |
-| Support | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Read-Only | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Guest | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Role           | Can See Dealer Cost | Can See Rep Cost | Can See Customer Price | Can Edit Dealer Cost | Can Edit Customer Price |
+| -------------- | ------------------- | ---------------- | ---------------------- | -------------------- | ----------------------- |
+| Platform Admin | ✅                  | ✅               | ✅                     | ✅                   | ✅                      |
+| Super Admin    | ✅                  | ✅               | ✅                     | ✅                   | ✅                      |
+| Admin          | ✅                  | ✅               | ✅                     | ✅                   | ✅                      |
+| Manager        | ✅                  | ✅               | ✅                     | ❌                   | ✅                      |
+| Sales Rep      | ❌\*                | ✅               | ✅                     | ❌                   | ✅\*\*                  |
+| Support        | ❌                  | ❌               | ✅                     | ❌                   | ❌                      |
+| Read-Only      | ❌                  | ❌               | ✅                     | ❌                   | ❌                      |
+| Guest          | ❌                  | ❌               | ✅                     | ❌                   | ❌                      |
 
-*Configurable via company settings: `showDealerCostToReps`
-**Subject to approval workflow based on company settings
+\*Configurable via company settings: `showDealerCostToReps`
+\*\*Subject to approval workflow based on company settings
 
 ### Approval Workflow
 
 Sales reps may need approval when:
+
 1. **Always Required**: `requireApprovalForPriceEdit = true` in company settings
 2. **Threshold-Based**: Discount from rep cost exceeds `autoApprovalThreshold` (default 10%)
 3. **Minimum Margin**: Customer price results in margin below `minMarginPercentage` (default 5%)
 
 Approval process:
+
 1. Rep submits price change request with reason
 2. Manager receives notification
 3. Manager approves or rejects with notes
@@ -178,6 +183,7 @@ Approval process:
 
 **Route Registration:**
 Added to `server/routes.ts`:
+
 ```typescript
 import { registerProductPricingRoutes } from './routes-product-pricing';
 // ...
@@ -187,19 +193,21 @@ registerProductPricingRoutes(app);
 ### Configuration
 
 **Drizzle Config Updated:**
+
 ```typescript
 // drizzle.config.ts
 schema: [
-  "./shared/schema.ts",
-  "./shared/product-pricing-schema.ts",  // Added
-  "./server/sales-forecasting-schema.ts",
-  "./shared/reporting-schema.ts"
-]
+  './shared/schema.ts',
+  './shared/product-pricing-schema.ts', // Added
+  './server/sales-forecasting-schema.ts',
+  './shared/reporting-schema.ts',
+];
 ```
 
 ## Default Company Pricing Settings
 
 When a tenant is created, default settings are:
+
 ```typescript
 {
   defaultMarkupPercentage: 13.00,
@@ -219,12 +227,14 @@ When a tenant is created, default settings are:
 ## Migration Path
 
 ### Phase 1: Schema Deployment (CURRENT)
+
 - ✅ New pricing tables created
 - ✅ Existing tables extended with new pricing fields
 - ✅ Legacy fields maintained for backward compatibility
 - ⏳ Run database migration: `npm run db:push`
 
 ### Phase 2: Backend Services (COMPLETE)
+
 - ✅ Pricing service with calculations and RBAC
 - ✅ API routes for pricing management
 - ✅ Approval workflow endpoints
@@ -233,9 +243,11 @@ When a tenant is created, default settings are:
 ### Phase 3: Frontend UI (PENDING - Next Steps)
 
 #### 3.1: Company Pricing Settings Page (New)
+
 **Location:** `client/src/pages/PricingSettings.tsx`
 
 **Features Needed:**
+
 - Default markup percentage configuration
 - Category-specific markup overrides
 - Sales rep permissions toggle
@@ -244,6 +256,7 @@ When a tenant is created, default settings are:
 - Notification preferences
 
 **Implementation Guide:**
+
 ```typescript
 // Fetch settings
 const { data: settings } = useQuery({
@@ -258,10 +271,13 @@ const updateMutation = useMutation({
 ```
 
 #### 3.2: Product Models Page Updates
+
 **Location:** `client/src/pages/ProductModels.tsx`
 
 **Changes Needed:**
+
 1. Fetch pricing visibility for current user:
+
 ```typescript
 const { data: visibility } = useQuery({
   queryKey: ['/api/pricing/visibility'],
@@ -269,6 +285,7 @@ const { data: visibility } = useQuery({
 ```
 
 2. Update pricing form fields to show three tiers:
+
 ```typescript
 // For each tier (new, upgrade, lexmark):
 {visibility?.showDealerCost && (
@@ -280,6 +297,7 @@ const { data: visibility } = useQuery({
 ```
 
 3. Add real-time rep cost calculation:
+
 ```typescript
 const calculateRepCost = async (dealerCost) => {
   const result = await apiRequest('/api/pricing/calculate-rep-cost', 'POST', {
@@ -292,6 +310,7 @@ const calculateRepCost = async (dealerCost) => {
 ```
 
 4. Filter displayed pricing in product cards based on role:
+
 ```typescript
 {visibility?.showDealerCost && (
   <div>Dealer: {formatCurrency(model.newDealerCost)}</div>
@@ -302,30 +321,32 @@ const calculateRepCost = async (dealerCost) => {
 ```
 
 #### 3.3: Product Accessories Page Updates
+
 **Location:** `client/src/pages/ProductAccessories.tsx`
 
 **Changes:** Same pattern as Product Models page
+
 - Three-tier pricing for each tier (standard, new, upgrade)
 - Role-based visibility
 - Real-time calculations
 
 #### 3.4: Quote Builder Updates
+
 **Location:** `client/src/pages/QuoteBuilderPage.tsx`
 
 **Changes Needed:**
+
 1. Show rep cost when adding products (if user can see it)
 2. Calculate customer price with margin display
 3. Show approval warning if discount exceeds threshold
 4. Submit for approval if needed
 
 **Implementation:**
+
 ```typescript
 // Check if approval needed
 const needsApproval = async (lineItem) => {
-  const discountPercentage = calculateDiscountPercentage(
-    lineItem.repCost,
-    lineItem.customerPrice
-  );
+  const discountPercentage = calculateDiscountPercentage(lineItem.repCost, lineItem.customerPrice);
 
   if (discountPercentage > settings.autoApprovalThreshold) {
     // Show approval dialog
@@ -347,18 +368,22 @@ const submitQuote = async () => {
 ```
 
 #### 3.5: Quote Proposal View Updates
+
 **Location:** `client/src/pages/QuoteView.tsx`, `client/src/pages/QuoteProposalGeneration.tsx`
 
 **Changes:**
+
 - Customers see ONLY customer price
 - Sales reps see rep cost and customer price
 - Managers see all three tiers
 - Show margin calculations for managers
 
 #### 3.6: Sales Manager Reports (New)
+
 **Location:** `client/src/pages/MarginAnalysisReport.tsx`
 
 **Features:**
+
 - Filter by date range, sales rep, quote status
 - Show all quotes with margin breakdown
 - Line-by-line margin analysis
@@ -366,6 +391,7 @@ const submitQuote = async () => {
 - Dashboard widgets showing margin trends
 
 **Implementation:**
+
 ```typescript
 const { data: report } = useQuery({
   queryKey: ['/api/pricing/margin-report', filters],
@@ -379,9 +405,11 @@ const exportReport = async () => {
 ```
 
 #### 3.7: Price Approval Workflow UI (New)
+
 **Location:** `client/src/pages/PriceApprovals.tsx`
 
 **Features:**
+
 - List pending approvals (for managers)
 - Show pricing impact (original vs requested)
 - Margin impact analysis
@@ -389,6 +417,7 @@ const exportReport = async () => {
 - Notification system
 
 **Implementation:**
+
 ```typescript
 const { data: pending } = useQuery({
   queryKey: ['/api/pricing/approvals/pending'],
@@ -406,6 +435,7 @@ const approveMutation = useMutation({
 ## Testing Checklist
 
 ### Backend Testing
+
 - [ ] Company pricing settings CRUD
 - [ ] Pricing visibility by role
 - [ ] Rep cost calculation (blanket, per-category, per-product)
@@ -416,6 +446,7 @@ const approveMutation = useMutation({
 - [ ] Bulk dealer cost updates
 
 ### Frontend Testing
+
 - [ ] Pricing settings page (admin only)
 - [ ] Product models page - three-tier pricing
 - [ ] Product accessories page - three-tier pricing
@@ -426,6 +457,7 @@ const approveMutation = useMutation({
 - [ ] Role-based visibility (test with different roles)
 
 ### Integration Testing
+
 - [ ] Dealer cost change recalculates rep cost
 - [ ] Markup % change recalculates rep cost
 - [ ] Customer price validates minimum margin
@@ -437,13 +469,15 @@ const approveMutation = useMutation({
 ## Example Workflows
 
 ### Workflow 1: Admin Updates Dealer Cost
+
 1. Admin navigates to Product Models
 2. Edits product, updates dealer cost (e.g., $5000 → $5500)
-3. System auto-calculates new rep cost: $5500 * 1.13 = $6215
+3. System auto-calculates new rep cost: $5500 \* 1.13 = $6215
 4. Admin saves changes
 5. All quotes using this product show updated pricing
 
 ### Workflow 2: Sales Rep Creates Quote with Discount
+
 1. Sales rep creates quote
 2. Adds product with rep cost of $6215
 3. Sets customer price to $6500 (4.6% margin from rep cost)
@@ -451,6 +485,7 @@ const approveMutation = useMutation({
 5. Quote can be sent immediately
 
 ### Workflow 3: Sales Rep Requests Large Discount
+
 1. Sales rep creates quote
 2. Adds product with rep cost of $6215
 3. Sets customer price to $5500 (11.5% discount from rep cost)
@@ -464,6 +499,7 @@ const approveMutation = useMutation({
 11. Rep can now send quote
 
 ### Workflow 4: Manager Reviews Margin Report
+
 1. Manager navigates to Margin Report
 2. Filters: Last 30 days, All reps
 3. Views summary:
@@ -484,6 +520,7 @@ npm run db:push
 ```
 
 This will:
+
 1. Create new pricing tables
 2. Add new columns to product models and accessories
 3. Preserve existing data
@@ -494,6 +531,7 @@ This will:
 ## API Usage Examples
 
 ### Get Pricing Visibility for Current User
+
 ```javascript
 GET /api/pricing/visibility
 
@@ -512,6 +550,7 @@ Response:
 ```
 
 ### Calculate Rep Cost
+
 ```javascript
 POST /api/pricing/calculate-rep-cost
 {
@@ -529,6 +568,7 @@ Response:
 ```
 
 ### Update Product Pricing
+
 ```javascript
 PATCH /api/product-models/{id}/pricing
 {
@@ -548,6 +588,7 @@ Response: (filtered by role)
 ```
 
 ### Request Price Approval
+
 ```javascript
 POST /api/pricing/request-approval
 {
@@ -569,6 +610,7 @@ Response:
 ```
 
 ### Get Margin Report
+
 ```javascript
 GET /api/pricing/margin-report?startDate=2025-10-01&endDate=2025-11-21&salesRepId=rep-123
 
@@ -595,6 +637,7 @@ Response:
 ## Next Steps
 
 1. **Deploy Schema Changes:**
+
    ```bash
    npm run db:push
    ```
@@ -623,6 +666,7 @@ Response:
 ## Support
 
 For questions or issues with this implementation:
+
 1. Check API endpoints with `/api/pricing/*` routes
 2. Review pricing service logic in `server/services/pricing-service.ts`
 3. Verify RBAC permissions match business requirements
@@ -631,6 +675,7 @@ For questions or issues with this implementation:
 ## Summary
 
 This implementation provides a robust, role-based three-tier pricing system with:
+
 - ✅ Flexible markup configuration (company-wide, per-category, per-product)
 - ✅ Role-based visibility and permissions
 - ✅ Approval workflows for discount management

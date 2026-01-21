@@ -3,6 +3,7 @@
 ## Feature Inventory Summary
 
 ### By the Numbers
+
 - **160+ Pages**: Application screens and routes
 - **75+ Route Files**: Specialized API endpoint modules
 - **26 Schema Files**: Feature-specific data models
@@ -62,6 +63,7 @@
 ## Core Data Flows
 
 ### Most Connected Path: Lead → Customer → Service → Billing
+
 ```
 Lead Management
     ↓
@@ -95,6 +97,7 @@ Financial Reporting & Forecasting
 ## Feature Tier Classification
 
 ### TIER 1: Core/Highly Integrated (Critical Path)
+
 - **CRM Pipeline** - Lead → Customer → Quote → Contract → Invoice
 - **Equipment Lifecycle** - Purchase → Delivery → Service → Lease → Billing
 - **Service Dispatch** - Ticket → Technician → Field ops → Completion
@@ -102,6 +105,7 @@ Financial Reporting & Forecasting
 - **Mobile Field Ops** - Dispatch → Navigation → Documentation → Completion
 
 ### TIER 2: Well Integrated (Supporting)
+
 - Sales Pipeline & Forecasting
 - Preventive Maintenance Automation
 - Meter Readings (Usage Tracking)
@@ -109,6 +113,7 @@ Financial Reporting & Forecasting
 - Service Analytics
 
 ### TIER 3: Partially Integrated (Standalone)
+
 - Onboarding Checklists (Could integrate with CSM)
 - Demo Scheduling (Weak lead linkage)
 - Fleet Monitoring (Limited dispatch integration)
@@ -116,6 +121,7 @@ Financial Reporting & Forecasting
 - Pricing Management (Not auto-synced to quotes)
 
 ### TIER 4: Standalone/Low Integration
+
 - Social Media Generator
 - Customer Number Settings
 - Knowledge Base (Read-only)
@@ -127,6 +133,7 @@ Financial Reporting & Forecasting
 ## API Architecture Overview
 
 ### Route Organization
+
 ```
 Main Routes File: routes.ts (514 KB - largest file)
 ├── Specialized Modules (70+ files)
@@ -157,6 +164,7 @@ Main Routes File: routes.ts (514 KB - largest file)
 ## Feature Strengths & Gaps
 
 ### Strengths
+
 ✓ Unified Lead-to-Customer conversion with data preservation
 ✓ Comprehensive equipment lifecycle tracking
 ✓ Mobile-first field operations with GPS/location
@@ -168,6 +176,7 @@ Main Routes File: routes.ts (514 KB - largest file)
 ✓ Mobile-optimized responsive design
 
 ### Opportunities for Integration
+
 ▸ Customer Portal ← Service Tickets visibility
 ▸ Demo Scheduling → Auto-create followup tasks
 ▸ Commission ← Auto-trigger on deal close
@@ -182,6 +191,7 @@ Main Routes File: routes.ts (514 KB - largest file)
 ## Component Organization
 
 ### Frontend Components by Feature
+
 ```
 client/src/components/
 ├── dashboard/          - Modular dashboard components
@@ -208,22 +218,26 @@ client/src/components/
 ## Database Schema Summary
 
 ### Business Core Schemas
+
 - **schema.ts** - Main: users, tenants, companies, leads, customers, equipment, services, billing
 - **equipment-schema.ts** - Equipment lifecycle, deliveries, installations, certifications
 - **service-analysis-schema.ts** - Service calls, parts orders, analysis types
 - **mobile-service-schema.ts** - Field sessions, time tracking, location history
 
 ### Sales/CRM Schemas
+
 - **lead-scoring-schema.ts** - Lead enrichment, Apollo integration
 - **quote-proposal-schema.ts** - Quotes, proposals, line items
 - **apollo-schema.ts** - Apollo.io data model
 
 ### Finance Schemas
+
 - **advanced-billing-schema.ts** - Complex billing rules, tiered rates
 - **commission-schema.ts** - Commission plans, calculations, disputes
 - **quickbooks-schema.ts** - QBO integration mappings
 
 ### Platform Schemas
+
 - **security-schema.ts** - Access controls, audit logs
 - **auth-schema.ts** - Authentication, sessions, MFA
 - **customer-success-schema.ts** - CSM health scores, usage
@@ -234,6 +248,7 @@ client/src/components/
 ## Key Statistics
 
 ### Page/Route Count
+
 - Total Pages: 160+
 - Total Route Files: 75+
 - Main Route File Lines: ~6,000+
@@ -241,11 +256,13 @@ client/src/components/
 - Average Page Size: ~30KB
 
 ### Database
+
 - Total Tables: 137
 - Largest: businessRecords (lead/customer unified model)
 - Key Relationships: Tenant → Company → BusinessRecord → Activities/Contacts/Equipment
 
 ### User Journey Complexity
+
 - Lead → Customer → Billing: 9 major steps
 - Equipment Lifecycle: 6 major stages
 - Service Dispatch: 6 operational phases
@@ -256,6 +273,7 @@ client/src/components/
 ## Development Patterns
 
 ### API Endpoint Patterns
+
 ```
 /api/customers              - Customer CRUD
 /api/leads                  - Lead CRUD & conversion
@@ -271,6 +289,7 @@ client/src/components/
 ```
 
 ### Component Patterns
+
 - React hooks + TanStack Query (formerly React Query)
 - Form validation with Zod schemas
 - Responsive design with Tailwind CSS
@@ -279,6 +298,7 @@ client/src/components/
 - Real-time updates via WebSocket
 
 ### Schema Patterns
+
 - Drizzle ORM with PostgreSQL
 - Zod validation schemas
 - Type-safe with TypeScript
@@ -290,13 +310,15 @@ client/src/components/
 ## Recommended Next Steps for Understanding
 
 ### For Feature Deep Dive:
+
 1. Pick a feature domain (e.g., Sales Hub)
 2. Examine route file (routes-crm-goals.ts)
 3. Review component structure (components/dashboard, components/leads)
 4. Check schema definitions (schema.ts for leads/customers)
-5. Trace API integration in hooks (hooks/useCRM*)
+5. Trace API integration in hooks (hooks/useCRM\*)
 
 ### For Integration Work:
+
 1. Identify source and target features
 2. Find relevant route files
 3. Check shared data models
@@ -304,10 +326,10 @@ client/src/components/
 5. Add cross-module hooks (useCrossModuleIntegration)
 
 ### For New Feature Development:
+
 1. Create feature-specific schema file
 2. Add route file in server/
 3. Register routes in routes.ts
 4. Create page component in client/src/pages/
 5. Add navigation items in RoleAwareCollapsibleSidebar
 6. Create component sub-directory if complex
-

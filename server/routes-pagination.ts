@@ -22,17 +22,20 @@ const MAX_PAGE_SIZE = 100;
 
 function parsePaginationParams(query: PaginationQuery) {
   const page = Math.max(1, parseInt(query.page || '1'));
-  const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(query.limit || DEFAULT_PAGE_SIZE.toString())));
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, parseInt(query.limit || DEFAULT_PAGE_SIZE.toString())),
+  );
   const offset = (page - 1) * limit;
   const sortBy = query.sortBy || 'createdAt';
   const sortDirection = query.sortDirection === 'asc' ? asc : desc;
-  
+
   return { page, limit, offset, sortBy, sortDirection, search: query.search };
 }
 
 function createPaginatedResponse<T>(data: T[], totalCount: number, page: number, limit: number) {
   const totalPages = Math.ceil(totalCount / limit);
-  
+
   return {
     data,
     pagination: {
@@ -54,14 +57,14 @@ export async function getPaginatedBusinessRecords(req: TenantRequest, res: Respo
 
     // Build where conditions
     const conditions = [eq(businessRecords.tenantId, tenantId)];
-    
+
     if (search) {
       conditions.push(
         or(
           ilike(businessRecords.companyName, `%${search}%`),
           ilike(businessRecords.primaryContactName, `%${search}%`),
-          ilike(businessRecords.primaryContactEmail, `%${search}%`)
-        )!
+          ilike(businessRecords.primaryContactEmail, `%${search}%`),
+        )!,
       );
     }
 
@@ -89,7 +92,11 @@ export async function getPaginatedBusinessRecords(req: TenantRequest, res: Respo
       .select()
       .from(businessRecords)
       .where(whereClause)
-      .orderBy(sortDirection(businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt))
+      .orderBy(
+        sortDirection(
+          businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt,
+        ),
+      )
       .limit(limit)
       .offset(offset);
 
@@ -107,13 +114,13 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
     const conditions = [eq(serviceTickets.tenantId, tenantId)];
-    
+
     if (search) {
       conditions.push(
         or(
           ilike(serviceTickets.ticketNumber, `%${search}%`),
-          ilike(serviceTickets.issueDescription, `%${search}%`)
-        )!
+          ilike(serviceTickets.issueDescription, `%${search}%`),
+        )!,
       );
     }
 
@@ -135,7 +142,11 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
       .select()
       .from(serviceTickets)
       .where(whereClause)
-      .orderBy(sortDirection(serviceTickets[sortBy as keyof typeof serviceTickets] || serviceTickets.createdAt))
+      .orderBy(
+        sortDirection(
+          serviceTickets[sortBy as keyof typeof serviceTickets] || serviceTickets.createdAt,
+        ),
+      )
       .limit(limit)
       .offset(offset);
 
@@ -153,14 +164,14 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
     const conditions = [eq(inventoryItems.tenantId, tenantId)];
-    
+
     if (search) {
       conditions.push(
         or(
           ilike(inventoryItems.itemName, `%${search}%`),
           ilike(inventoryItems.sku, `%${search}%`),
-          ilike(inventoryItems.description, `%${search}%`)
-        )!
+          ilike(inventoryItems.description, `%${search}%`),
+        )!,
       );
     }
 
@@ -182,7 +193,11 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
       .select()
       .from(inventoryItems)
       .where(whereClause)
-      .orderBy(sortDirection(inventoryItems[sortBy as keyof typeof inventoryItems] || inventoryItems.createdAt))
+      .orderBy(
+        sortDirection(
+          inventoryItems[sortBy as keyof typeof inventoryItems] || inventoryItems.createdAt,
+        ),
+      )
       .limit(limit)
       .offset(offset);
 
@@ -200,13 +215,13 @@ export async function getPaginatedInvoices(req: TenantRequest, res: Response) {
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
     const conditions = [eq(invoices.tenantId, tenantId)];
-    
+
     if (search) {
       conditions.push(
         or(
           ilike(invoices.invoiceNumber, `%${search}%`),
-          ilike(invoices.description, `%${search}%`)
-        )!
+          ilike(invoices.description, `%${search}%`),
+        )!,
       );
     }
 

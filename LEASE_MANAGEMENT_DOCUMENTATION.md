@@ -1,6 +1,7 @@
 # Lease Management System - Complete Documentation
 
 ## Overview
+
 The Lease Management System is a comprehensive solution for managing equipment leases throughout their entire lifecycle, from creation through disposition. This represents **40-60% of MPS (Managed Print Services) revenue** and is critical business infrastructure.
 
 ## Architecture
@@ -8,9 +9,11 @@ The Lease Management System is a comprehensive solution for managing equipment l
 ### Database Schema (4 Tables)
 
 #### 1. `leases` Table
+
 **Purpose:** Core lease records with complete financial and contractual information
 
 **Key Fields:**
+
 - **Identification:** `lease_number`, `lease_name`, `customer_id`
 - **Financial:** `total_amount`, `monthly_payment`, `term`, `residual_value`, `buyout_amount`
 - **Dates:** `start_date`, `end_date`, `first_payment_date`, `last_payment_date`
@@ -19,42 +22,51 @@ The Lease Management System is a comprehensive solution for managing equipment l
 - **Configuration:** `auto_pay_enabled`, `renewal_option`, `early_termination_allowed`
 
 **Indexes:**
+
 - `(tenant_id, lease_number)` - Unique constraint
 - `(tenant_id, customer_id)` - Customer lookups
 - `(tenant_id, status)` - Status filtering
 - `(end_date)` - Expiration tracking
 
 #### 2. `lease_payments` Table
+
 **Purpose:** Complete payment schedule and transaction history
 
 **Key Fields:**
+
 - **Schedule:** `payment_number`, `scheduled_date`, `scheduled_amount`
 - **Status:** `status` (scheduled, completed, failed, late, waived)
 - **Transaction:** `paid_date`, `paid_amount`, `transaction_id`, `payment_method`
 - **Tracking:** `late_fee_charged`, `grace_period_applied`
 
 **Indexes:**
+
 - `(tenant_id, lease_id, payment_number)` - Unique payment identification
 - `(tenant_id, status, scheduled_date)` - Upcoming/overdue queries
 - `(scheduled_date)` - Date-based filtering
 
 #### 3. `lease_renewals` Table
+
 **Purpose:** Track renewal offers, customer responses, and renewal outcomes
 
 **Key Fields:**
+
 - **Offer:** `renewal_offered`, `renewal_offer_date`, `renewal_deadline`
 - **Terms:** `renewal_term`, `renewal_monthly_payment`, `renewal_changes`
 - **Response:** `customer_response` (pending, accepted, declined, countered)
 - **Outcome:** `new_lease_id`, `renewal_notes`
 
 **Indexes:**
+
 - `(tenant_id, lease_id)` - One renewal per lease
 - `(tenant_id, renewal_deadline)` - Deadline tracking
 
 #### 4. `lease_dispositions` Table
+
 **Purpose:** End-of-lease actions and equipment disposition
 
 **Key Fields:**
+
 - **Action:** `action` (return, purchase, upgrade, renew)
 - **Status:** `final_status`, `completion_date`
 - **Return:** `equipment_picked_up`, `pickup_date`, `return_condition`
@@ -62,6 +74,7 @@ The Lease Management System is a comprehensive solution for managing equipment l
 - **Upgrade:** `upgrade_quote_id`, `new_lease_id`
 
 **Indexes:**
+
 - `(tenant_id, lease_id)` - One disposition per lease
 - `(action_date)` - Timeline tracking
 
@@ -70,6 +83,7 @@ The Lease Management System is a comprehensive solution for managing equipment l
 **File:** `server/storage.ts`
 
 #### Lease Operations
+
 ```typescript
 getLeases(tenantId: string): Promise<Lease[]>
 getLease(id: string, tenantId: string): Promise<Lease | undefined>
@@ -81,6 +95,7 @@ deleteLease(id: string, tenantId: string): Promise<void>
 ```
 
 #### Payment Operations
+
 ```typescript
 getLeasePayments(leaseId: string, tenantId: string): Promise<LeasePayment[]>
 getLeasePayment(id: string, tenantId: string): Promise<LeasePayment | undefined>
@@ -92,6 +107,7 @@ deleteLeasePayment(id: string, tenantId: string): Promise<void>
 ```
 
 #### Renewal Operations
+
 ```typescript
 getLeaseRenewals(tenantId: string): Promise<LeaseRenewal[]>
 getLeaseRenewal(id: string, tenantId: string): Promise<LeaseRenewal | undefined>
@@ -103,6 +119,7 @@ deleteLeaseRenewal(id: string, tenantId: string): Promise<void>
 ```
 
 #### Disposition Operations
+
 ```typescript
 getLeaseDispositions(tenantId: string): Promise<LeaseDisposition[]>
 getLeaseDisposition(id: string, tenantId: string): Promise<LeaseDisposition | undefined>
@@ -117,6 +134,7 @@ deleteLeaseDisposition(id: string, tenantId: string): Promise<void>
 **File:** `server/routes/lease-routes.ts`
 
 #### CRUD Endpoints
+
 ```
 GET    /api/leases                        - Get all leases for tenant
 GET    /api/leases/:id                    - Get single lease by ID
@@ -128,6 +146,7 @@ DELETE /api/leases/:id                    - Delete lease
 ```
 
 #### Payment Endpoints
+
 ```
 GET    /api/leases/:leaseId/payments      - Get payments for lease
 GET    /api/lease-payments/upcoming       - Get upcoming payments (?days=30)
@@ -139,6 +158,7 @@ POST   /api/lease-payments/:id/process    - Process payment
 ```
 
 #### Renewal Endpoints
+
 ```
 GET    /api/lease-renewals                - Get all renewals
 GET    /api/leases/:leaseId/renewal       - Get renewal by lease
@@ -150,6 +170,7 @@ POST   /api/leases/:id/initiate-renewal   - Initiate renewal process
 ```
 
 #### Disposition Endpoints
+
 ```
 GET    /api/lease-dispositions            - Get all dispositions
 GET    /api/leases/:leaseId/disposition   - Get disposition by lease
@@ -160,6 +181,7 @@ POST   /api/leases/:id/complete-disposition - Complete disposition
 ```
 
 #### Lifecycle Automation Endpoints
+
 ```
 POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedule
 ```
@@ -167,24 +189,29 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 ### UI Components
 
 #### 1. Lease List Page (`/leases`)
+
 **File:** `client/src/pages/Leases.tsx`
 
 **Features:**
+
 - **Dashboard Stats:** Active leases, pending renewals, monthly revenue, expired leases
 - **Search & Filter:** Text search by name/number, filter by status (all, active, pending_renewal, expired)
 - **Data Table:** Displays lease info with sortable columns
 - **Quick Actions:** View lease details, create new lease
 
 **Key Metrics Displayed:**
+
 - Total active leases and their combined value
 - Pending renewal count requiring action
 - Monthly recurring revenue from active leases
 - Expired leases needing disposition
 
 #### 2. Lease Detail Page (`/leases/:id`)
+
 **File:** `client/src/pages/LeaseDetail.tsx`
 
 **Tabs:**
+
 1. **Overview Tab:**
    - Lease details (type, payment health, dates)
    - Financial summary (residual value, buyout amount)
@@ -203,14 +230,17 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
    - Related documentation
 
 **Actions:**
+
 - Edit lease details
 - Initiate renewal process
 - Process individual payments
 
 #### 3. Lease Form Page (`/leases/new` & `/leases/:id/edit`)
+
 **File:** `client/src/pages/LeaseForm.tsx`
 
 **Form Sections:**
+
 1. **Basic Information:**
    - Lease name and number
    - Customer selection
@@ -234,6 +264,7 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
    - Notes and special terms
 
 **Validation:**
+
 - All required fields enforced via Zod schema
 - Customer must be selected
 - Financial amounts must be valid
@@ -244,11 +275,11 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 **File:** `server/seed-lease-data.ts`
 
 **Seeded Data:**
+
 - **5 Leases** representing different lifecycle states:
   - 2 Active leases with ongoing payments
   - 1 Pending renewal lease (near end of term)
   - 2 Expired leases requiring disposition
-  
 - **98 Payment Records:**
   - Completed payments (past transactions)
   - Scheduled payments (upcoming obligations)
@@ -315,6 +346,7 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 ### Existing Systems
 
 **Connected to:**
+
 - **Business Records:** Lease creation requires valid customer ID
 - **Proposals:** Accepted proposals can generate leases (future)
 - **Contracts:** Leases link to service contracts
@@ -322,6 +354,7 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 - **Equipment:** Leases track equipment IDs
 
 **Future Integrations:**
+
 - **E-Signature:** Electronic lease agreement signing
 - **Payment Gateway:** Automated payment processing
 - **Accounting:** GL posting and revenue recognition
@@ -330,17 +363,20 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 ## Business Rules
 
 ### Payment Health Scoring
+
 - **Good:** All payments on time, no missed payments
 - **Warning:** 1-2 late payments, grace period used
 - **Critical:** 3+ missed payments, significant arrears
 
 ### Renewal Timeline
+
 - **180 days before end:** Initial renewal notification
 - **90 days before end:** Second renewal reminder
 - **30 days before end:** Final renewal deadline
 - **Lease end date:** Automatic disposition if no renewal
 
 ### Lease Types Explained
+
 - **FMV (Fair Market Value):** Customer pays FMV at end to purchase
 - **$1 Buyout:** Ownership transfers for $1 at term end
 - **10% Buyout:** Purchase for 10% of original value
@@ -351,16 +387,19 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 ## Technical Specifications
 
 ### Security
+
 - **Tenant Isolation:** All queries filtered by `tenant_id`
 - **Authorization:** User must be authenticated to access endpoints
 - **Audit Trail:** `created_by` and `updated_by` fields track changes
 
 ### Performance
+
 - **Indexes:** Optimized for common query patterns (customer, status, dates)
 - **Pagination:** Large lease lists support pagination (future)
 - **Caching:** React Query caches API responses client-side
 
 ### Data Validation
+
 - **Backend:** Zod schemas validate all API inputs
 - **Frontend:** React Hook Form with Zod resolver validates forms
 - **Database:** PostgreSQL constraints enforce data integrity
@@ -377,6 +416,7 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 6. **Search:** Test search by lease name and number
 
 ### Data Integrity Checks
+
 - Verify payment totals match lease `total_paid`
 - Confirm payment count matches `payments_completed`
 - Check renewal deadlines calculated correctly
@@ -385,6 +425,7 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 ## Future Enhancements
 
 ### Phase 2 Features
+
 - **Payment Gateway Integration:** Stripe/Authorize.net for automated processing
 - **Email Notifications:** Automated payment reminders and renewal notices
 - **Customer Portal:** Self-service lease viewing and payment
@@ -392,6 +433,7 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 - **Bulk Operations:** Mass payment processing, bulk renewals
 
 ### Phase 3 Features
+
 - **E-Signature Integration:** DocuSign/HelloSign for lease agreements
 - **Accounting Integration:** QuickBooks GL posting
 - **Advanced Analytics:** Churn prediction, renewal probability
@@ -415,19 +457,19 @@ POST   /api/leases/:id/generate-payment-schedule - Auto-generate payment schedul
 
 ```sql
 -- Find leases expiring in next 30 days
-SELECT * FROM leases 
+SELECT * FROM leases
 WHERE end_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
 AND status = 'active';
 
 -- Get payment health summary
-SELECT payment_health, COUNT(*) 
-FROM leases 
+SELECT payment_health, COUNT(*)
+FROM leases
 WHERE status = 'active'
 GROUP BY payment_health;
 
 -- Find overdue payments
 SELECT * FROM lease_payments
-WHERE status = 'scheduled' 
+WHERE status = 'scheduled'
 AND scheduled_date < NOW();
 ```
 

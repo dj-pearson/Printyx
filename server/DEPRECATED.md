@@ -10,6 +10,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 ### Edge Functions Overview (35 total)
 
 #### Core Functions (7)
+
 - `/me` - User profile and authentication
 - `/users` - User management
 - `/tasks` - Task management
@@ -19,6 +20,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 - `/activities` - Business record activities
 
 #### Operations Functions (6)
+
 - `/service-tickets` - Service ticket management
 - `/equipment` - Equipment/asset management
 - `/meter-readings` - Equipment meter readings
@@ -27,6 +29,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 - `/technicians` - Field service technician management
 
 #### Sales Functions (8)
+
 - `/deals` - Sales deals management
 - `/opportunities` - Salesforce-style opportunities
 - `/pipeline` - Sales pipeline configuration
@@ -37,6 +40,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 - `/proposals` - Comprehensive proposal management
 
 #### Support Functions (8)
+
 - `/contacts` - Contact management (lead/customer)
 - `/teams` - Team management
 - `/roles` - Role and permission management
@@ -47,6 +51,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 - `/onboarding` - Customer onboarding workflows
 
 #### Analytics Functions (5)
+
 - `/reports` - Business reports (executive, KPI, insights)
 - `/analytics` - Analytics metrics and charts
 - `/dashboard` - Dashboard data aggregation
@@ -54,6 +59,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 - `/exports` - Data export (CSV, JSON)
 
 #### Leasing Functions (1)
+
 - `/leases` - Equipment leasing management
 
 ### Next Steps
@@ -73,6 +79,7 @@ All API routes in this directory have been successfully migrated to Supabase Edg
 ### Old Route Files to Archive
 
 Major route files that have been migrated:
+
 - `routes-business-records.ts` → `/business-records`
 - `routes-customers.ts` → `/customers`
 - `routes-contacts.ts` → `/contacts`
@@ -107,4 +114,3 @@ Major route files that have been migrated:
 **Migration completed by**: AI Assistant  
 **Edge Functions URL**: `https://functions.printyx.net`  
 **API URL**: `https://api.printyx.net` (Supabase)
-

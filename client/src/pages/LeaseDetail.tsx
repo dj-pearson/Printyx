@@ -1,10 +1,10 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute, useLocation, Link } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useRoute, useLocation, Link } from 'wouter';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -12,9 +12,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+} from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import {
   ArrowLeft,
   Calendar,
@@ -25,7 +25,7 @@ import {
   AlertCircle,
   CheckCircle,
   Edit,
-} from "lucide-react";
+} from 'lucide-react';
 
 type Lease = {
   id: string;
@@ -62,7 +62,7 @@ type LeasePayment = {
 };
 
 export default function LeaseDetail() {
-  const [, params] = useRoute("/leases/:id");
+  const [, params] = useRoute('/leases/:id');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const leaseId = params?.id;
@@ -80,22 +80,22 @@ export default function LeaseDetail() {
   const processPaymentMutation = useMutation({
     mutationFn: async (paymentId: string) => {
       return await apiRequest(`/api/lease-payments/${paymentId}/process`, {
-        method: "POST",
+        method: 'POST',
       });
     },
     onSuccess: () => {
       toast({
-        title: "Payment Processed",
-        description: "Payment has been successfully processed",
+        title: 'Payment Processed',
+        description: 'Payment has been successfully processed',
       });
       queryClient.invalidateQueries({ queryKey: [`/api/leases/${leaseId}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/leases/${leaseId}/payments`] });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to process payment",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to process payment',
+        variant: 'destructive',
       });
     },
   });
@@ -103,7 +103,7 @@ export default function LeaseDetail() {
   const initiateRenewalMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest(`/api/leases/${leaseId}/initiate-renewal`, {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify({
           renewalTerm: lease?.term,
           renewalMonthlyPayment: lease?.monthlyPayment,
@@ -112,16 +112,16 @@ export default function LeaseDetail() {
     },
     onSuccess: () => {
       toast({
-        title: "Renewal Initiated",
-        description: "Lease renewal has been initiated",
+        title: 'Renewal Initiated',
+        description: 'Lease renewal has been initiated',
       });
       queryClient.invalidateQueries({ queryKey: [`/api/leases/${leaseId}`] });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to initiate renewal",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to initiate renewal',
+        variant: 'destructive',
       });
     },
   });
@@ -135,47 +135,58 @@ export default function LeaseDetail() {
   }
 
   const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(parseFloat(amount));
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      active: { label: "Active", variant: "default" },
-      pending: { label: "Pending", variant: "secondary" },
-      pending_renewal: { label: "Pending Renewal", variant: "outline" },
-      renewed: { label: "Renewed", variant: "default" },
-      expired: { label: "Expired", variant: "destructive" },
-      terminated: { label: "Terminated", variant: "destructive" },
-      defaulted: { label: "Defaulted", variant: "destructive" },
+    const statusConfig: Record<
+      string,
+      { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }
+    > = {
+      active: { label: 'Active', variant: 'default' },
+      pending: { label: 'Pending', variant: 'secondary' },
+      pending_renewal: { label: 'Pending Renewal', variant: 'outline' },
+      renewed: { label: 'Renewed', variant: 'default' },
+      expired: { label: 'Expired', variant: 'destructive' },
+      terminated: { label: 'Terminated', variant: 'destructive' },
+      defaulted: { label: 'Defaulted', variant: 'destructive' },
     };
 
-    const config = statusConfig[status] || { label: status, variant: "secondary" as const };
+    const config = statusConfig[status] || { label: status, variant: 'secondary' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getPaymentStatusBadge = (status: string) => {
-    if (status === "completed") {
-      return <Badge variant="default"><CheckCircle className="h-3 w-3 mr-1" /> Paid</Badge>;
+    if (status === 'completed') {
+      return (
+        <Badge variant="default">
+          <CheckCircle className="h-3 w-3 mr-1" /> Paid
+        </Badge>
+      );
     }
-    if (status === "scheduled") {
+    if (status === 'scheduled') {
       return <Badge variant="outline">Scheduled</Badge>;
     }
-    return <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" /> {status}</Badge>;
+    return (
+      <Badge variant="destructive">
+        <AlertCircle className="h-3 w-3 mr-1" /> {status}
+      </Badge>
+    );
   };
 
-  const completedPayments = payments.filter((p) => p.status === "completed");
-  const upcomingPayments = payments.filter((p) => p.status === "scheduled");
+  const completedPayments = payments.filter((p) => p.status === 'completed');
+  const upcomingPayments = payments.filter((p) => p.status === 'scheduled');
   const progressPercentage = (lease.paymentsCompleted / lease.term) * 100;
 
   return (
@@ -207,7 +218,7 @@ export default function LeaseDetail() {
               Edit
             </Button>
           </Link>
-          {lease.status === "active" && (
+          {lease.status === 'active' && (
             <Button
               onClick={() => initiateRenewalMutation.mutate()}
               disabled={initiateRenewalMutation.isPending}
@@ -254,7 +265,9 @@ export default function LeaseDetail() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{lease.paymentsCompleted} / {lease.term}</div>
+            <div className="text-2xl font-bold">
+              {lease.paymentsCompleted} / {lease.term}
+            </div>
             <div className="w-full bg-secondary rounded-full h-2 mt-2">
               <div
                 className="bg-primary h-2 rounded-full"
@@ -272,7 +285,8 @@ export default function LeaseDetail() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(lease.totalPaid)}</div>
             <p className="text-xs text-muted-foreground">
-              {((parseFloat(lease.totalPaid) / parseFloat(lease.totalAmount)) * 100).toFixed(1)}% of total
+              {((parseFloat(lease.totalPaid) / parseFloat(lease.totalAmount)) * 100).toFixed(1)}% of
+              total
             </p>
           </CardContent>
         </Card>
@@ -281,11 +295,15 @@ export default function LeaseDetail() {
       {/* Tabs */}
       <Tabs defaultValue="overview" data-testid="tabs-lease-detail">
         <TabsList>
-          <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview" data-testid="tab-overview">
+            Overview
+          </TabsTrigger>
           <TabsTrigger value="payments" data-testid="tab-payments">
             Payments ({payments.length})
           </TabsTrigger>
-          <TabsTrigger value="documents" data-testid="tab-documents">Documents</TabsTrigger>
+          <TabsTrigger value="documents" data-testid="tab-documents">
+            Documents
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -326,7 +344,7 @@ export default function LeaseDetail() {
                 )}
                 <div>
                   <div className="text-sm font-medium text-muted-foreground">Auto-Pay</div>
-                  <div className="mt-1">{lease.autoPayEnabled ? "Enabled" : "Disabled"}</div>
+                  <div className="mt-1">{lease.autoPayEnabled ? 'Enabled' : 'Disabled'}</div>
                 </div>
               </div>
 
@@ -380,13 +398,13 @@ export default function LeaseDetail() {
                           <TableCell>{formatCurrency(payment.scheduledAmount)}</TableCell>
                           <TableCell>{getPaymentStatusBadge(payment.status)}</TableCell>
                           <TableCell>
-                            {payment.paidDate ? formatDate(payment.paidDate) : "-"}
+                            {payment.paidDate ? formatDate(payment.paidDate) : '-'}
                           </TableCell>
                           <TableCell className="font-mono text-xs">
-                            {payment.transactionId || "-"}
+                            {payment.transactionId || '-'}
                           </TableCell>
                           <TableCell>
-                            {payment.status === "scheduled" && (
+                            {payment.status === 'scheduled' && (
                               <Button
                                 variant="ghost"
                                 size="sm"

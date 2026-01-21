@@ -3,12 +3,14 @@
 ## [2.0.0] - 2026-01-07
 
 ### Fixed
+
 - **URL Configuration Bug**: Fixed critical bug where preset configurations were overriding the user-specified `--url` parameter
   - Previously: `Object.assign(config, presetConfig)` was overwriting the baseUrl after it was set
   - Now: Preset is applied first, then URL is set, ensuring user's URL always takes precedence
   - **Impact**: Tests can now correctly connect to any URL specified by the user
 
 ### Changed
+
 - **CLI Command**: Updated from `npx ts-node` to `npx tsx` for better ES module support
   - Old: `npx ts-node src/tools/automated-testing/cli.ts`
   - New: `npx tsx tools/automated-testing/cli.ts`
@@ -19,6 +21,7 @@
   - New: `tools/automated-testing/`
 
 ### Improved
+
 - **README.md**: Completely overhauled with:
   - Clear prerequisites section
   - Step-by-step quick start guide
@@ -34,6 +37,7 @@
   - Playwright browsers not installed
 
 ### Troubleshooting Added
+
 - EBUSY errors (node processes locking files)
 - Missing Playwright browsers
 - Connection refused errors
@@ -43,6 +47,7 @@
 ## [1.0.0] - 2025-12-22
 
 ### Added
+
 - Initial release
 - Dynamic page discovery and crawling
 - Form, button, and link testing

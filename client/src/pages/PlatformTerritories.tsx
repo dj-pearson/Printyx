@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +14,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -29,8 +29,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   MapPin,
   Plus,
@@ -42,7 +42,7 @@ import {
   DollarSign,
   Globe,
   Filter,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface Territory {
   id: string;
@@ -119,8 +119,8 @@ export default function PlatformTerritories() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTerritory, setEditingTerritory] = useState<Territory | null>(null);
-  const [selectedTab, setSelectedTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTab, setSelectedTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState<TerritoryFormData>({
     name: '',
@@ -160,17 +160,17 @@ export default function PlatformTerritories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/territories'] });
       toast({
-        title: "Success",
-        description: "Territory created successfully",
+        title: 'Success',
+        description: 'Territory created successfully',
       });
       setIsDialogOpen(false);
       resetForm();
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: 'Error',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -189,17 +189,17 @@ export default function PlatformTerritories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/territories'] });
       toast({
-        title: "Success",
-        description: "Territory updated successfully",
+        title: 'Success',
+        description: 'Territory updated successfully',
       });
       setIsDialogOpen(false);
       resetForm();
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: 'Error',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -216,15 +216,15 @@ export default function PlatformTerritories() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/territories'] });
       toast({
-        title: "Success",
-        description: "Territory deleted successfully",
+        title: 'Success',
+        description: 'Territory deleted successfully',
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
+        title: 'Error',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -276,8 +276,18 @@ export default function PlatformTerritories() {
       description: formData.description || undefined,
       status: formData.status,
       assignedManagerId: formData.assignedManagerId || undefined,
-      regions: formData.regions ? formData.regions.split(',').map(r => r.trim()).filter(Boolean) : [],
-      industries: formData.industries ? formData.industries.split(',').map(i => i.trim()).filter(Boolean) : [],
+      regions: formData.regions
+        ? formData.regions
+            .split(',')
+            .map((r) => r.trim())
+            .filter(Boolean)
+        : [],
+      industries: formData.industries
+        ? formData.industries
+            .split(',')
+            .map((i) => i.trim())
+            .filter(Boolean)
+        : [],
       companySizeMin: formData.companySizeMin ? parseInt(formData.companySizeMin) : undefined,
       companySizeMax: formData.companySizeMax ? parseInt(formData.companySizeMax) : undefined,
       revenueMin: formData.revenueMin || undefined,
@@ -299,8 +309,9 @@ export default function PlatformTerritories() {
   };
 
   // Filter territories
-  const filteredTerritories = territories.filter(territory => {
-    const matchesSearch = territory.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredTerritories = territories.filter((territory) => {
+    const matchesSearch =
+      territory.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       territory.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTab = selectedTab === 'all' || territory.status === selectedTab;
     return matchesSearch && matchesTab;
@@ -309,13 +320,14 @@ export default function PlatformTerritories() {
   // Calculate stats
   const stats = {
     total: territories.length,
-    active: territories.filter(t => t.status === 'active').length,
-    inactive: territories.filter(t => t.status === 'inactive').length,
+    active: territories.filter((t) => t.status === 'active').length,
+    inactive: territories.filter((t) => t.status === 'inactive').length,
     totalProspects: territories.reduce((sum, t) => sum + (t.totalProspects || 0), 0),
     totalTenants: territories.reduce((sum, t) => sum + (t.totalTenants || 0), 0),
-    avgConversion: territories.length > 0
-      ? territories.reduce((sum, t) => sum + (t.conversionRate || 0), 0) / territories.length
-      : 0,
+    avgConversion:
+      territories.length > 0
+        ? territories.reduce((sum, t) => sum + (t.conversionRate || 0), 0) / territories.length
+        : 0,
   };
 
   if (isLoading) {
@@ -380,9 +392,7 @@ export default function PlatformTerritories() {
               <span className="text-3xl font-bold">{stats.totalProspects.toLocaleString()}</span>
               <Building2 className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Across all territories
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Across all territories</p>
           </CardContent>
         </Card>
 
@@ -397,9 +407,7 @@ export default function PlatformTerritories() {
               <span className="text-3xl font-bold">{stats.totalTenants.toLocaleString()}</span>
               <Users className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Active customers
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Active customers</p>
           </CardContent>
         </Card>
 
@@ -414,9 +422,7 @@ export default function PlatformTerritories() {
               <span className="text-3xl font-bold">{stats.avgConversion.toFixed(1)}%</span>
               <TrendingUp className="h-8 w-8 text-muted-foreground opacity-50" />
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Prospect to tenant
-            </p>
+            <p className="text-sm text-muted-foreground mt-1">Prospect to tenant</p>
           </CardContent>
         </Card>
       </div>
@@ -513,7 +519,9 @@ export default function PlatformTerritories() {
                         <TableCell>{territory.totalTenants?.toLocaleString() || 0}</TableCell>
                         <TableCell>
                           {territory.conversionRate ? (
-                            <span className="font-medium">{territory.conversionRate.toFixed(1)}%</span>
+                            <span className="font-medium">
+                              {territory.conversionRate.toFixed(1)}%
+                            </span>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
@@ -553,9 +561,7 @@ export default function PlatformTerritories() {
             <DialogTitle>
               {editingTerritory ? 'Edit Territory' : 'Create New Territory'}
             </DialogTitle>
-            <DialogDescription>
-              Configure territory coverage and assignment rules
-            </DialogDescription>
+            <DialogDescription>Configure territory coverage and assignment rules</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -637,9 +643,7 @@ export default function PlatformTerritories() {
                     }
                     placeholder="1 (highest)"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Lower numbers = higher priority
-                  </p>
+                  <p className="text-xs text-muted-foreground">Lower numbers = higher priority</p>
                 </div>
               </div>
             </div>
@@ -656,9 +660,7 @@ export default function PlatformTerritories() {
                   onChange={(e) => setFormData({ ...formData, regions: e.target.value })}
                   placeholder="e.g., North America - East, Europe - West"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Available: {REGIONS.join(', ')}
-                </p>
+                <p className="text-xs text-muted-foreground">Available: {REGIONS.join(', ')}</p>
               </div>
 
               <div className="space-y-2">
@@ -669,9 +671,7 @@ export default function PlatformTerritories() {
                   onChange={(e) => setFormData({ ...formData, industries: e.target.value })}
                   placeholder="e.g., Technology, Healthcare, Finance"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Available: {INDUSTRIES.join(', ')}
-                </p>
+                <p className="text-xs text-muted-foreground">Available: {INDUSTRIES.join(', ')}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -682,9 +682,7 @@ export default function PlatformTerritories() {
                     type="number"
                     min="1"
                     value={formData.companySizeMin}
-                    onChange={(e) =>
-                      setFormData({ ...formData, companySizeMin: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, companySizeMin: e.target.value })}
                     placeholder="e.g., 100"
                   />
                 </div>
@@ -695,9 +693,7 @@ export default function PlatformTerritories() {
                     type="number"
                     min="1"
                     value={formData.companySizeMax}
-                    onChange={(e) =>
-                      setFormData({ ...formData, companySizeMax: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, companySizeMax: e.target.value })}
                     placeholder="e.g., 10000"
                   />
                 </div>

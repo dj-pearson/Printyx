@@ -1,6 +1,10 @@
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
-import { routeOptimizationService, Waypoint, RouteOptimizationInput } from '../services/route-optimization-service';
+import {
+  routeOptimizationService,
+  Waypoint,
+  RouteOptimizationInput,
+} from '../services/route-optimization-service';
 
 const router = express.Router();
 
@@ -114,7 +118,9 @@ router.post('/routes/:id/reoptimize', async (req: Request, res: Response) => {
 
   try {
     const reoptimizeSchema = z.object({
-      algorithm: z.enum(['nearest_neighbor', 'priority_based', 'time_window', 'balanced']).optional(),
+      algorithm: z
+        .enum(['nearest_neighbor', 'priority_based', 'time_window', 'balanced'])
+        .optional(),
     });
 
     const { algorithm } = reoptimizeSchema.parse(req.body);
@@ -122,7 +128,7 @@ router.post('/routes/:id/reoptimize', async (req: Request, res: Response) => {
     const optimized = await routeOptimizationService.reoptimizeRoute(
       req.params.id,
       user.tenantId,
-      algorithm
+      algorithm,
     );
 
     if (!optimized) {
@@ -157,7 +163,7 @@ router.get('/technicians/:id/analytics', async (req: Request, res: Response) => 
       req.params.id,
       user.tenantId,
       new Date(startDate as string),
-      new Date(endDate as string)
+      new Date(endDate as string),
     );
 
     res.json(analytics);
@@ -192,7 +198,7 @@ router.post('/multi-technician', async (req: Request, res: Response) => {
       user.tenantId,
       data.technicianIds,
       data.waypoints as Waypoint[],
-      baseLocationsMap
+      baseLocationsMap,
     );
 
     // Convert Map to object for JSON response

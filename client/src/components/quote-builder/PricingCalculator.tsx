@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -17,16 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Separator,
-} from '@/components/ui/separator';
-import {
-  Calculator,
-  DollarSign,
-  Percent,
-  TrendingUp,
-  Info,
-} from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Calculator, DollarSign, Percent, TrendingUp, Info } from 'lucide-react';
 
 interface LineItem {
   id?: string;
@@ -83,16 +69,18 @@ export default function PricingCalculator({
   }, [initialDiscountAmount, initialDiscountPercentage, initialTaxAmount]);
 
   // Calculate totals
-  const itemsSubtotal = lineItems.reduce((sum, item) => sum + (parseFloat(item.totalPrice.toString()) || 0), 0);
-  const discountValue = discountType === 'percentage' 
-    ? (itemsSubtotal * discountPercentage / 100)
-    : discountAmount;
+  const itemsSubtotal = lineItems.reduce(
+    (sum, item) => sum + (parseFloat(item.totalPrice.toString()) || 0),
+    0,
+  );
+  const discountValue =
+    discountType === 'percentage' ? (itemsSubtotal * discountPercentage) / 100 : discountAmount;
   const afterDiscountTotal = itemsSubtotal - discountValue;
-  const taxValue = taxAmount > 0 ? taxAmount : (afterDiscountTotal * taxRate / 100);
+  const taxValue = taxAmount > 0 ? taxAmount : (afterDiscountTotal * taxRate) / 100;
   const finalTotal = afterDiscountTotal + taxValue;
 
   // Calculate overall margin
-  const totalCost = lineItems.reduce((sum, item) => sum + ((item.unitCost || 0) * item.quantity), 0);
+  const totalCost = lineItems.reduce((sum, item) => sum + (item.unitCost || 0) * item.quantity, 0);
   const overallMargin = totalCost > 0 ? ((finalTotal - totalCost) / finalTotal) * 100 : 0;
 
   const handleDiscountAmountChange = (value: number) => {
@@ -172,22 +160,23 @@ export default function PricingCalculator({
           <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
             <div className="space-y-2">
               {lineItems.map((item, index) => (
-                <div key={item.id || index} className="flex justify-between items-start sm:items-center gap-2 text-xs sm:text-sm">
+                <div
+                  key={item.id || index}
+                  className="flex justify-between items-start sm:items-center gap-2 text-xs sm:text-sm"
+                >
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
                     <Badge variant="outline" className="text-xs shrink-0">
                       {item.lineNumber}
                     </Badge>
-                    <span className={`${item.isSubline ? 'text-muted-foreground pl-4' : ''} line-clamp-1`}>
+                    <span
+                      className={`${item.isSubline ? 'text-muted-foreground pl-4' : ''} line-clamp-1`}
+                    >
                       {item.isSubline && '↳ '}
                       {item.productName}
                     </span>
-                    <span className="text-muted-foreground shrink-0">
-                      (Qty: {item.quantity})
-                    </span>
+                    <span className="text-muted-foreground shrink-0">(Qty: {item.quantity})</span>
                   </div>
-                  <span className="font-medium shrink-0">
-                    {formatCurrency(item.totalPrice)}
-                  </span>
+                  <span className="font-medium shrink-0">{formatCurrency(item.totalPrice)}</span>
                 </div>
               ))}
             </div>
@@ -228,7 +217,10 @@ export default function PricingCalculator({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label className="text-sm">Type</Label>
-              <Select value={discountType} onValueChange={(value: 'amount' | 'percentage') => setDiscountType(value)}>
+              <Select
+                value={discountType}
+                onValueChange={(value: 'amount' | 'percentage') => setDiscountType(value)}
+              >
                 <SelectTrigger className="min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -280,10 +272,13 @@ export default function PricingCalculator({
 
             <div className="space-y-2">
               <Label className="text-sm">Value</Label>
-              <div className={`p-3 bg-muted rounded border text-center font-medium min-h-[44px] flex items-center justify-center ${
-                discountPercentage < 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {discountPercentage < 0 ? '+' : '-'}{formatCurrency(Math.abs(discountValue))}
+              <div
+                className={`p-3 bg-muted rounded border text-center font-medium min-h-[44px] flex items-center justify-center ${
+                  discountPercentage < 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {discountPercentage < 0 ? '+' : '-'}
+                {formatCurrency(Math.abs(discountValue))}
               </div>
             </div>
           </div>
@@ -348,14 +343,18 @@ export default function PricingCalculator({
               </div>
 
               {discountValue !== 0 && (
-                <div className={`flex justify-between items-center text-xs sm:text-sm ${
-                  discountPercentage < 0 ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <div
+                  className={`flex justify-between items-center text-xs sm:text-sm ${
+                    discountPercentage < 0 ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
                   <span>
-                    {discountPercentage < 0 ? 'Markup' : 'Discount'} ({formatPercentage(Math.abs(discountPercentage))}):
+                    {discountPercentage < 0 ? 'Markup' : 'Discount'} (
+                    {formatPercentage(Math.abs(discountPercentage))}):
                   </span>
                   <span>
-                    {discountPercentage < 0 ? '+' : '-'}{formatCurrency(Math.abs(discountValue))}
+                    {discountPercentage < 0 ? '+' : '-'}
+                    {formatCurrency(Math.abs(discountValue))}
                   </span>
                 </div>
               )}
@@ -411,7 +410,9 @@ export default function PricingCalculator({
                 </div>
                 <div>
                   <div className="text-xs sm:text-sm text-muted-foreground">Gross Margin</div>
-                  <div className={`text-sm sm:text-lg font-semibold ${overallMargin >= 20 ? 'text-green-600' : overallMargin >= 10 ? 'text-yellow-600' : 'text-red-600'}`}>
+                  <div
+                    className={`text-sm sm:text-lg font-semibold ${overallMargin >= 20 ? 'text-green-600' : overallMargin >= 10 ? 'text-yellow-600' : 'text-red-600'}`}
+                  >
                     {formatPercentage(overallMargin)}
                   </div>
                 </div>
@@ -422,9 +423,15 @@ export default function PricingCalculator({
                   <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   <div>
                     <div className="font-medium">Margin Guidelines:</div>
-                    <div>• <span className="text-green-600">Good:</span> 20%+ margin</div>
-                    <div>• <span className="text-yellow-600">Acceptable:</span> 10-20% margin</div>
-                    <div>• <span className="text-red-600">Low:</span> &lt;10% margin</div>
+                    <div>
+                      • <span className="text-green-600">Good:</span> 20%+ margin
+                    </div>
+                    <div>
+                      • <span className="text-yellow-600">Acceptable:</span> 10-20% margin
+                    </div>
+                    <div>
+                      • <span className="text-red-600">Low:</span> &lt;10% margin
+                    </div>
                   </div>
                 </div>
               </div>

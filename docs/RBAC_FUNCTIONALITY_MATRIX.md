@@ -28,6 +28,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 1: Sales Representative / BDR
 
 **Module Access:**
+
 - ✅ Leads (own only)
 - ✅ Opportunities (own only)
 - ✅ Quotes (own only)
@@ -41,6 +42,7 @@ This document defines **specific functionality access** for each role level acro
 **Specific Functions:**
 
 **Lead Management:**
+
 - ✅ Create new leads
 - ✅ Edit own leads
 - ✅ View own leads
@@ -53,6 +55,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Bulk operations
 
 **Opportunity Management:**
+
 - ✅ Create opportunities from own leads
 - ✅ Edit own opportunities
 - ✅ View own pipeline
@@ -65,6 +68,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Override pricing
 
 **Quote/Proposal Generation:**
+
 - ✅ Create quotes from own opportunities
 - ✅ Edit draft quotes (own)
 - ✅ Add products/services to quotes
@@ -78,6 +82,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Delete submitted quotes
 
 **Customer Management:**
+
 - ✅ View own customer accounts
 - ✅ Update customer contact info (own accounts)
 - ✅ Add customer notes (own accounts)
@@ -89,6 +94,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ View all customers
 
 **Activity Tracking:**
+
 - ✅ Log calls, meetings, emails (own)
 - ✅ Schedule follow-ups (own)
 - ✅ View own activity history
@@ -98,6 +104,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Bulk activity logging
 
 **Reporting/Analytics:**
+
 - ✅ View own sales dashboard
 - ✅ View own pipeline health
 - ✅ View own quota attainment
@@ -110,6 +117,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Schedule reports
 
 **Territory:**
+
 - ✅ View own territory assignment
 - ✅ View own territory accounts
 - ❌ Request territory changes
@@ -123,29 +131,35 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 1, PLUS:**
 
 **Lead Management:**
+
 - ✅ View team leads (read-only)
 - ✅ Assist with lead assignment (suggest to supervisor)
 - ✅ Mentor junior reps on lead qualification
 
 **Opportunity Management:**
+
 - ✅ View team pipeline (for coaching)
 - ✅ Assist with deal strategy
 
 **Quote/Proposal:**
+
 - ✅ Review quotes for junior reps (before submission)
 - ✅ Suggest pricing adjustments
 
 **Reporting:**
+
 - ✅ View team performance comparison
 - ✅ Export own reports (PDF, Excel)
 - ✅ View team activity leaderboard
 - ✅ View mentee performance metrics
 
 **Territory:**
+
 - ✅ View team territory coverage
 - ✅ Suggest territory optimizations
 
 **Special Functions:**
+
 - ✅ Train new sales reps
 - ✅ Provide deal coaching
 - ✅ Escalate complex opportunities to supervisor
@@ -157,6 +171,7 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 2, PLUS:**
 
 **Lead Management:**
+
 - ✅ View all location leads
 - ✅ Assign leads to team members
 - ✅ Bulk import leads
@@ -165,6 +180,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Set lead scoring rules (with manager approval)
 
 **Opportunity Management:**
+
 - ✅ View team opportunities
 - ✅ Reassign opportunities
 - ✅ Override opportunity stages (with reason)
@@ -172,17 +188,20 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Approve deal strategies
 
 **Quote/Proposal:**
+
 - ✅ Approve quotes up to $25K
 - ✅ Apply discount up to 10% (own authority)
 - ✅ Review all team quotes
 - ✅ Modify quote templates
 
 **Customer Management:**
+
 - ✅ Approve new customer creation
 - ✅ View all location customers
 - ✅ Assign account ownership
 
 **Reporting:**
+
 - ✅ View team sales reports
 - ✅ Schedule automated reports (team metrics)
 - ✅ Create custom team dashboards
@@ -192,11 +211,13 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Coaching reports (call quality, conversion rates)
 
 **Territory:**
+
 - ✅ View location territory assignments
 - ✅ Propose territory changes
 - ✅ View territory performance metrics
 
 **Management Functions:**
+
 - ✅ Set team goals
 - ✅ Approve time-off requests (team)
 - ✅ Conduct performance reviews (with manager)
@@ -210,6 +231,7 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 3, PLUS:**
 
 **Lead Management:**
+
 - ✅ View all location leads across teams
 - ✅ Configure lead assignment rules
 - ✅ Manage lead sources
@@ -217,6 +239,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Bulk operations (location-wide)
 
 **Opportunity Management:**
+
 - ✅ View all location opportunities
 - ✅ Forecast location sales
 - ✅ Manage sales stages
@@ -224,6 +247,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Override lost opportunities (re-open with approval)
 
 **Quote/Proposal:**
+
 - ✅ Approve quotes up to $100K
 - ✅ Apply discounts up to 20%
 - ✅ Create quote templates
@@ -231,6 +255,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Approve custom pricing requests
 
 **Customer Management:**
+
 - ✅ Create customer accounts
 - ✅ Merge customer records
 - ✅ View all location customers
@@ -238,6 +263,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Assign strategic accounts
 
 **Reporting:**
+
 - ✅ View location sales reports (all metrics)
 - ✅ View regional sales summary (read-only)
 - ✅ Create location forecasts
@@ -249,6 +275,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ View conversion funnel
 
 **Territory:**
+
 - ✅ Manage location territories
 - ✅ Assign territories to reps
 - ✅ View territory coverage maps
@@ -256,11 +283,13 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Propose territory changes (regional level)
 
 **Commission:**
+
 - ✅ View team commission reports
 - ✅ Approve commission exceptions
 - ✅ Review commission disputes
 
 **Management Functions:**
+
 - ✅ Hire sales reps (with director approval)
 - ✅ Terminate sales reps (with HR + director)
 - ✅ Set location sales goals
@@ -276,30 +305,35 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 4, PLUS:**
 
 **Lead Management:**
+
 - ✅ View regional leads (all locations)
 - ✅ Redistribute leads across locations
 - ✅ Analyze regional lead sources
 - ✅ Set regional lead SLAs
 
 **Opportunity Management:**
+
 - ✅ View regional pipeline
 - ✅ Forecast regional sales
 - ✅ Manage regional sales campaigns
 - ✅ Strategic deal involvement (enterprise)
 
 **Quote/Proposal:**
+
 - ✅ Approve quotes up to $500K
 - ✅ Apply discounts up to 30% (with justification)
 - ✅ Create regional pricing programs
 - ✅ Approve special pricing arrangements
 
 **Customer Management:**
+
 - ✅ View regional customers
 - ✅ Manage enterprise accounts (multi-location)
 - ✅ Assign national accounts
 - ✅ Review customer profitability (regional)
 
 **Reporting:**
+
 - ✅ View regional sales reports (comprehensive)
 - ✅ View company sales summary (read-only)
 - ✅ Create regional forecasts
@@ -310,17 +344,20 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Competitive analysis
 
 **Territory:**
+
 - ✅ Manage regional territories
 - ✅ Optimize territory coverage (regional)
 - ✅ Balance workloads across locations
 - ✅ Expand into new territories
 
 **Commission:**
+
 - ✅ View regional commission reports
 - ✅ Approve regional commission exceptions
 - ✅ Review commission structure effectiveness
 
 **Strategic Functions:**
+
 - ✅ Set regional sales strategy
 - ✅ Manage regional budget
 - ✅ Hire/fire sales managers (with VP approval)
@@ -336,12 +373,14 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 5, PLUS:**
 
 **Lead Management:**
+
 - ✅ View company-wide leads
 - ✅ Configure global lead processes
 - ✅ Set company lead strategy
 - ✅ Approve lead management software/tools
 
 **Opportunity Management:**
+
 - ✅ View company-wide pipeline
 - ✅ Forecast company sales
 - ✅ Set company sales strategy
@@ -349,6 +388,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Manage sales methodology
 
 **Quote/Proposal:**
+
 - ✅ Approve quotes of any value
 - ✅ Set company pricing strategy
 - ✅ Approve discounts > 30%
@@ -356,12 +396,14 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Negotiate enterprise agreements
 
 **Customer Management:**
+
 - ✅ View all company customers
 - ✅ Manage strategic/national accounts
 - ✅ Customer portfolio analysis
 - ✅ Set customer success strategy
 
 **Reporting:**
+
 - ✅ View all company sales reports
 - ✅ Company-wide forecasting
 - ✅ Executive sales dashboards
@@ -374,18 +416,21 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Sales channel performance
 
 **Territory:**
+
 - ✅ Design company territory structure
 - ✅ Approve territory changes (all levels)
 - ✅ National territory strategy
 - ✅ Market expansion planning
 
 **Commission:**
+
 - ✅ Design commission structure
 - ✅ Approve commission plans
 - ✅ Review company-wide commission expense
 - ✅ Approve large commission payouts
 
 **Strategic Functions:**
+
 - ✅ Set company sales goals
 - ✅ Manage sales department budget
 - ✅ Hire/fire regional directors
@@ -405,6 +450,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 1: Field Service Technician
 
 **Module Access:**
+
 - ✅ Service Tickets (assigned only)
 - ✅ Work Orders (assigned only)
 - ✅ Equipment (assigned customers)
@@ -417,6 +463,7 @@ This document defines **specific functionality access** for each role level acro
 **Specific Functions:**
 
 **Ticket Management:**
+
 - ✅ View assigned tickets
 - ✅ Update ticket status (in progress, completed)
 - ✅ Add notes to tickets
@@ -431,6 +478,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ View team tickets
 
 **Work Order Management:**
+
 - ✅ View assigned work orders
 - ✅ Update work order progress
 - ✅ Complete checklists/tasks
@@ -440,6 +488,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Modify work order scope
 
 **Equipment/Installation:**
+
 - ✅ View equipment details (assigned customers)
 - ✅ Record meter readings
 - ✅ Update equipment status
@@ -452,6 +501,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Advanced configuration
 
 **Parts Management:**
+
 - ✅ View parts catalog
 - ✅ Request parts from warehouse
 - ✅ Record parts used on tickets
@@ -463,6 +513,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Approve parts requisitions
 
 **Schedule Management:**
+
 - ✅ View own schedule
 - ✅ Check in/check out of appointments
 - ✅ View appointment details
@@ -473,6 +524,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Assign appointments
 
 **Mobile Functions:**
+
 - ✅ Mobile app access
 - ✅ GPS check-in at customer sites
 - ✅ Offline ticket updates
@@ -482,6 +534,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Emergency contact access
 
 **Customer Interaction:**
+
 - ✅ View customer contact info (assigned only)
 - ✅ Call customers (from ticket)
 - ✅ Send appointment reminders
@@ -491,6 +544,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ View customer billing
 
 **Reporting/Analytics:**
+
 - ✅ View own productivity dashboard
 - ✅ View own ticket completion rate
 - ✅ View own customer satisfaction scores
@@ -507,31 +561,37 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 1, PLUS:**
 
 **Ticket Management:**
+
 - ✅ View team tickets (for workload balancing)
 - ✅ Assist with complex tickets
 - ✅ Escalate tickets to supervisor
 - ✅ Mentor junior techs on tickets
 
 **Equipment:**
+
 - ✅ Advanced equipment configuration
 - ✅ Troubleshoot complex issues
 - ✅ Equipment remote access (approved devices)
 - ✅ Train customers on equipment
 
 **Parts:**
+
 - ✅ View parts costs (for efficiency)
 - ✅ Suggest parts alternatives
 
 **Schedule:**
+
 - ✅ View team schedules (read-only)
 - ✅ Suggest schedule optimizations
 
 **Reporting:**
+
 - ✅ View team performance comparison
 - ✅ View mentee productivity
 - ✅ Export own reports
 
 **Special Functions:**
+
 - ✅ Train new technicians
 - ✅ Lead complex installations
 - ✅ Quality assurance for junior tech work
@@ -544,6 +604,7 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 2, PLUS:**
 
 **Ticket Management:**
+
 - ✅ View all location tickets
 - ✅ Assign tickets to technicians
 - ✅ Reassign tickets
@@ -555,6 +616,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Void tickets (with reason)
 
 **Dispatch:**
+
 - ✅ Manage daily dispatch
 - ✅ Optimize routes
 - ✅ Handle emergency calls
@@ -562,6 +624,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Adjust schedules in real-time
 
 **Work Orders:**
+
 - ✅ Create work orders
 - ✅ Assign work orders
 - ✅ Review completed work orders
@@ -569,6 +632,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Manage preventive maintenance schedules
 
 **Equipment:**
+
 - ✅ View all location equipment
 - ✅ Register new equipment
 - ✅ Assign equipment to customers
@@ -576,18 +640,21 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Approve remote access requests
 
 **Parts:**
+
 - ✅ Approve parts requisitions (< $500)
 - ✅ View team parts usage
 - ✅ Track parts costs per ticket
 - ✅ Identify parts abuse/waste
 
 **Customer Management:**
+
 - ✅ View location service customers
 - ✅ Update service agreements
 - ✅ Handle customer complaints (first level)
 - ✅ Schedule service calls
 
 **Reporting:**
+
 - ✅ View team service reports
 - ✅ Schedule automated reports (team)
 - ✅ Track team SLA compliance
@@ -597,6 +664,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Parts efficiency (team)
 
 **Management:**
+
 - ✅ Conduct daily huddles
 - ✅ Approve time-off requests (team)
 - ✅ Review timesheets
@@ -611,6 +679,7 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 3, PLUS:**
 
 **Ticket Management:**
+
 - ✅ View all location tickets (all teams)
 - ✅ Configure ticket workflows
 - ✅ Set SLA rules
@@ -619,6 +688,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Warranty vs. billable determination
 
 **Dispatch:**
+
 - ✅ Manage location dispatch operations
 - ✅ Configure dispatch rules
 - ✅ Territory assignment for service
@@ -626,12 +696,14 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Overtime approval
 
 **Work Orders:**
+
 - ✅ Approve high-value work orders
 - ✅ Configure work order templates
 - ✅ Preventive maintenance program design
 - ✅ Service contract management
 
 **Equipment:**
+
 - ✅ View all location equipment
 - ✅ Equipment profitability analysis
 - ✅ Fleet health monitoring
@@ -639,6 +711,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Decommission equipment
 
 **Parts:**
+
 - ✅ Approve parts orders (location)
 - ✅ Manage location parts inventory
 - ✅ Parts cost analysis
@@ -647,6 +720,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Approve parts returns
 
 **Customer Management:**
+
 - ✅ View all location customers (service view)
 - ✅ Service contract creation/renewal
 - ✅ Handle escalated complaints
@@ -654,6 +728,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Customer profitability (service)
 
 **Reporting:**
+
 - ✅ View location service reports (all metrics)
 - ✅ Regional service summary (read-only)
 - ✅ SLA compliance reports
@@ -666,12 +741,14 @@ This document defines **specific functionality access** for each role level acro
 - ✅ First-time fix rates
 
 **Financial:**
+
 - ✅ View location service P&L
 - ✅ Manage service budget
 - ✅ Technician labor cost analysis
 - ✅ Service revenue forecasting
 
 **Management:**
+
 - ✅ Hire technicians (with approval)
 - ✅ Terminate technicians (with HR)
 - ✅ Set location service goals
@@ -688,35 +765,41 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 4, PLUS:**
 
 **Ticket Management:**
+
 - ✅ View regional tickets
 - ✅ Regional SLA management
 - ✅ Cross-location ticket assignment
 - ✅ Regional escalation handling
 
 **Dispatch:**
+
 - ✅ Regional dispatch coordination
 - ✅ Cross-location resource sharing
 - ✅ Regional capacity planning
 - ✅ Disaster recovery dispatch
 
 **Equipment:**
+
 - ✅ View regional equipment fleet
 - ✅ Regional equipment strategy
 - ✅ Fleet optimization (regional)
 - ✅ Manufacturer relationships (regional)
 
 **Parts:**
+
 - ✅ Regional parts strategy
 - ✅ Consolidated parts ordering
 - ✅ Regional inventory optimization
 - ✅ Parts vendor negotiations (regional)
 
 **Customer Management:**
+
 - ✅ Regional service accounts
 - ✅ Multi-location service agreements
 - ✅ Regional customer satisfaction programs
 
 **Reporting:**
+
 - ✅ Regional service reports (comprehensive)
 - ✅ Company service summary (read-only)
 - ✅ Location comparison (regional)
@@ -727,11 +810,13 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Technician performance (regional)
 
 **Financial:**
+
 - ✅ Regional service P&L
 - ✅ Regional service budget
 - ✅ Service profitability analysis (regional)
 
 **Strategic:**
+
 - ✅ Hire/fire service managers (with VP)
 - ✅ Set regional service strategy
 - ✅ Regional training programs
@@ -745,34 +830,40 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 5, PLUS:**
 
 **Ticket Management:**
+
 - ✅ Company-wide ticket visibility
 - ✅ Set company SLA standards
 - ✅ Service methodology design
 - ✅ Escalation policy design
 
 **Dispatch:**
+
 - ✅ Company-wide dispatch strategy
 - ✅ Dispatch software selection
 - ✅ National resource allocation
 
 **Equipment:**
+
 - ✅ Company-wide equipment strategy
 - ✅ Equipment portfolio planning
 - ✅ Manufacturer partnerships (national)
 - ✅ Equipment investment decisions
 
 **Parts:**
+
 - ✅ Company parts strategy
 - ✅ National parts contracts
 - ✅ Parts inventory policy
 - ✅ Make-vs-buy decisions
 
 **Customer Management:**
+
 - ✅ National service accounts
 - ✅ Service pricing strategy
 - ✅ Customer satisfaction program design
 
 **Reporting:**
+
 - ✅ Company-wide service reports
 - ✅ Executive service dashboards
 - ✅ Board-level reporting
@@ -783,12 +874,14 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Customer retention (service impact)
 
 **Financial:**
+
 - ✅ Service department budget
 - ✅ Service P&L (company)
 - ✅ Service pricing policy
 - ✅ Investment analysis (equipment, training)
 
 **Strategic:**
+
 - ✅ Service department structure design
 - ✅ Hire/fire regional service managers
 - ✅ Service strategy and vision
@@ -806,6 +899,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 1: Warehouse Associate / Inventory Specialist
 
 **Module Access:**
+
 - ✅ Inventory (view + basic transactions)
 - ✅ Receiving
 - ✅ Picking/Shipping
@@ -817,6 +911,7 @@ This document defines **specific functionality access** for each role level acro
 **Specific Functions:**
 
 **Receiving:**
+
 - ✅ Receive shipments
 - ✅ Scan/count received items
 - ✅ Verify packing slips
@@ -827,6 +922,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Return goods to vendor
 
 **Inventory:**
+
 - ✅ View inventory levels
 - ✅ Perform cycle counts (assigned)
 - ✅ Update bin locations
@@ -838,6 +934,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Transfer inventory between locations
 
 **Picking/Shipping:**
+
 - ✅ Pick orders
 - ✅ Pack orders
 - ✅ Print shipping labels
@@ -849,6 +946,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Process returns
 
 **Kitting:**
+
 - ✅ View kitting tasks
 - ✅ Assemble kits
 - ✅ Scan kit components
@@ -858,6 +956,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Modify kit BOMs
 
 **Delivery (if applicable):**
+
 - ✅ Load delivery truck
 - ✅ Execute delivery route
 - ✅ Obtain delivery signatures
@@ -865,6 +964,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Modify delivery schedule
 
 **Reporting:**
+
 - ✅ View own productivity metrics
 - ✅ View own accuracy rates
 - ❌ Export reports
@@ -877,16 +977,19 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 1, PLUS:**
 
 **Inventory:**
+
 - ✅ Minor inventory adjustments (with reason)
 - ✅ Lead cycle count teams
 - ✅ Investigate inventory discrepancies
 
 **Operations:**
+
 - ✅ Train new associates
 - ✅ Quality checks
 - ✅ Suggest process improvements
 
 **Reporting:**
+
 - ✅ View team productivity comparison
 - ✅ Export own reports
 
@@ -897,12 +1000,14 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 2, PLUS:**
 
 **Receiving:**
+
 - ✅ Approve receipts
 - ✅ Handle receipt discrepancies
 - ✅ Initiate vendor returns
 - ✅ Manage receiving schedule
 
 **Inventory:**
+
 - ✅ Approve inventory adjustments
 - ✅ Manage cycle count program
 - ✅ Investigate major discrepancies
@@ -911,22 +1016,26 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Set min/max levels (with manager approval)
 
 **Picking/Shipping:**
+
 - ✅ Approve shipments
 - ✅ Process returns
 - ✅ Handle shipping issues
 - ✅ Manage pick queue
 
 **Kitting:**
+
 - ✅ Create new kits
 - ✅ Modify kit BOMs (with manager)
 - ✅ Set kitting schedules
 
 **FPY (First Pass Yield):**
+
 - ✅ Track FPY metrics
 - ✅ Investigate FPY failures
 - ✅ Report FPY to manager
 
 **Reporting:**
+
 - ✅ Team productivity reports
 - ✅ Inventory accuracy reports
 - ✅ Receiving/shipping metrics
@@ -934,6 +1043,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Schedule automated reports
 
 **Management:**
+
 - ✅ Assign daily tasks
 - ✅ Manage team schedules
 - ✅ Approve time-off (team)
@@ -948,12 +1058,14 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 3, PLUS:**
 
 **Purchase Orders:**
+
 - ✅ Create purchase orders (< $10K)
 - ✅ Approve purchase orders (< $5K)
 - ✅ Manage PO workflow
 - ✅ Track open POs
 
 **Inventory:**
+
 - ✅ View all location inventory
 - ✅ Inter-location transfers
 - ✅ Create new inventory items
@@ -964,27 +1076,32 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Obsolete inventory management
 
 **Vendors:**
+
 - ✅ Manage vendor relationships (location)
 - ✅ Negotiate pricing (location)
 - ✅ Vendor performance tracking
 - ✅ Approve new vendors (with director)
 
 **Shipping:**
+
 - ✅ Arrange freight
 - ✅ Negotiate shipping rates (location)
 - ✅ Manage carrier relationships
 
 **Logistics:**
+
 - ✅ Route planning
 - ✅ Fleet management (location)
 - ✅ Delivery schedule optimization
 
 **FPY:**
+
 - ✅ Manage FPY program
 - ✅ Set FPY targets
 - ✅ FPY improvement initiatives
 
 **Reporting:**
+
 - ✅ Location inventory reports (all)
 - ✅ Regional inventory summary (read-only)
 - ✅ Inventory turns
@@ -996,11 +1113,13 @@ This document defines **specific functionality access** for each role level acro
 - ✅ On-time delivery rates
 
 **Financial:**
+
 - ✅ Warehouse budget management
 - ✅ Labor cost tracking
 - ✅ Inventory valuation (location)
 
 **Management:**
+
 - ✅ Hire warehouse staff (with director)
 - ✅ Conduct performance reviews
 - ✅ Set location warehouse goals
@@ -1015,32 +1134,38 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 4, PLUS:**
 
 **Purchase Orders:**
+
 - ✅ Approve POs up to $50K
 - ✅ Consolidated regional purchasing
 - ✅ Strategic vendor relationships (regional)
 
 **Inventory:**
+
 - ✅ View regional inventory
 - ✅ Regional inventory strategy
 - ✅ Cross-location optimization
 - ✅ Regional parts consolidation
 
 **Logistics:**
+
 - ✅ Regional logistics optimization
 - ✅ Cross-location deliveries
 - ✅ Regional fleet management
 
 **Reporting:**
+
 - ✅ Regional operations reports
 - ✅ Company operations summary (read-only)
 - ✅ Location comparison (regional)
 - ✅ Regional efficiency metrics
 
 **Financial:**
+
 - ✅ Regional operations budget
 - ✅ Regional P&L impact
 
 **Strategic:**
+
 - ✅ Hire/fire operations managers (with COO)
 - ✅ Regional process standardization
 - ✅ Approve expenses (< $25K)
@@ -1052,21 +1177,25 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 5, PLUS:**
 
 **Purchase Orders:**
+
 - ✅ Approve POs of any value
 - ✅ Set company purchasing policy
 - ✅ National vendor contracts
 
 **Inventory:**
+
 - ✅ Company-wide inventory visibility
 - ✅ Inventory strategy (company)
 - ✅ Investment in inventory optimization tools
 
 **Logistics:**
+
 - ✅ Company-wide logistics strategy
 - ✅ Fleet strategy (company)
 - ✅ National logistics contracts
 
 **Reporting:**
+
 - ✅ Company-wide operations reports
 - ✅ Executive operations dashboard
 - ✅ Board-level reporting
@@ -1074,11 +1203,13 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Operational efficiency (company)
 
 **Financial:**
+
 - ✅ Operations department budget
 - ✅ Operations P&L
 - ✅ Capital expenditure planning
 
 **Strategic:**
+
 - ✅ Operations structure design
 - ✅ Hire/fire regional operations managers
 - ✅ Operations strategy and vision
@@ -1094,6 +1225,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 1: Accounting Clerk / AR/AP Specialist
 
 **Module Access:**
+
 - ✅ Invoices (data entry)
 - ✅ Bills (data entry)
 - ✅ Payments (recording)
@@ -1105,6 +1237,7 @@ This document defines **specific functionality access** for each role level acro
 **Specific Functions:**
 
 **Accounts Receivable:**
+
 - ✅ Create invoices (from approved orders)
 - ✅ Record customer payments
 - ✅ Apply payments to invoices
@@ -1116,6 +1249,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Adjust customer credit limits
 
 **Accounts Payable:**
+
 - ✅ Enter vendor bills
 - ✅ Match bills to POs
 - ✅ Code expenses to GL accounts
@@ -1127,6 +1261,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Create vendors
 
 **General Ledger:**
+
 - ✅ Enter basic journal entries (with approval)
 - ✅ View GL accounts (assigned)
 - ❌ Post journal entries
@@ -1134,6 +1269,7 @@ This document defines **specific functionality access** for each role level acro
 - ❌ Modify COA
 
 **Reporting:**
+
 - ✅ View own transaction log
 - ✅ View own productivity metrics
 - ❌ Export reports
@@ -1146,19 +1282,23 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 1, PLUS:**
 
 **AR/AP:**
+
 - ✅ Approve minor adjustments
 - ✅ Handle customer inquiries
 - ✅ Review and correct junior staff work
 
 **General Ledger:**
+
 - ✅ Post standard journal entries
 - ✅ Prepare reconciliations (assigned accounts)
 
 **Reporting:**
+
 - ✅ Export own reports
 - ✅ Assist with month-end close
 
 **Special:**
+
 - ✅ Train new accounting clerks
 - ✅ Review procedures
 
@@ -1169,6 +1309,7 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 2, PLUS:**
 
 **Accounts Receivable:**
+
 - ✅ Void invoices (with reason)
 - ✅ Approve customer refunds (< $1K)
 - ✅ Adjust invoices
@@ -1176,6 +1317,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Customer credit hold decisions
 
 **Accounts Payable:**
+
 - ✅ Approve bills for payment (< $5K)
 - ✅ Process payment batches
 - ✅ Create vendors
@@ -1183,17 +1325,20 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Approve expense reports (< $1K)
 
 **General Ledger:**
+
 - ✅ Post complex journal entries
 - ✅ Reconcile bank accounts
 - ✅ Reconcile sub-ledgers
 - ✅ Review team entries
 
 **Reporting:**
+
 - ✅ Generate basic financial reports
 - ✅ Team productivity reports
 - ✅ Process efficiency metrics
 
 **Management:**
+
 - ✅ Assign daily tasks (team)
 - ✅ Review team work
 - ✅ Approve time-off (team)
@@ -1206,18 +1351,21 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 3, PLUS:**
 
 **Accounts Receivable:**
+
 - ✅ Write off bad debt (< $10K, with approval)
 - ✅ Adjust customer credit limits
 - ✅ AR process design (location)
 - ✅ Collections strategy
 
 **Accounts Payable:**
+
 - ✅ Approve bills for payment (< $50K)
 - ✅ Void payments (with investigation)
 - ✅ AP process design (location)
 - ✅ Vendor terms negotiation
 
 **General Ledger:**
+
 - ✅ Manage full chart of accounts
 - ✅ Post all journal entries
 - ✅ Close monthly periods
@@ -1225,17 +1373,20 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Prepare financial statements (location)
 
 **Cash Management:**
+
 - ✅ Bank reconciliation
 - ✅ Cash flow management (location)
 - ✅ Approve check runs
 
 **Billing:**
+
 - ✅ Manage billing process
 - ✅ Meter billing oversight
 - ✅ Contract billing
 - ✅ Revenue recognition decisions
 
 **Reporting:**
+
 - ✅ Financial statements (location)
 - ✅ Budget vs actual (location)
 - ✅ AR/AP aging analysis
@@ -1244,15 +1395,18 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Department profitability
 
 **Financial Planning:**
+
 - ✅ Location budgeting
 - ✅ Forecasting (location)
 
 **Compliance:**
+
 - ✅ Tax compliance (location)
 - ✅ Audit support
 - ✅ Internal controls monitoring
 
 **Management:**
+
 - ✅ Hire accounting staff (with director)
 - ✅ Conduct performance reviews
 - ✅ Set location finance goals
@@ -1265,22 +1419,26 @@ This document defines **specific functionality access** for each role level acro
 **Everything from Level 4, PLUS:**
 
 **Accounts Receivable:**
+
 - ✅ Write off bad debt (any amount)
 - ✅ Set credit policies (company)
 - ✅ Customer credit analysis
 
 **Accounts Payable:**
+
 - ✅ Approve payments (any amount)
 - ✅ Set payment terms policies
 - ✅ Vendor relationship strategy
 
 **General Ledger:**
+
 - ✅ Company-wide COA management
 - ✅ Consolidations (multi-location)
 - ✅ Close annual periods
 - ✅ Manage accounting policies
 
 **Financial Reporting:**
+
 - ✅ Consolidated financial statements
 - ✅ Executive financial dashboards
 - ✅ Board-level financial reports
@@ -1289,6 +1447,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Management reports (comprehensive)
 
 **Cash Management:**
+
 - ✅ Company-wide cash management
 - ✅ Banking relationships
 - ✅ Investment decisions
@@ -1296,6 +1455,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Credit facility management
 
 **Financial Planning:**
+
 - ✅ Company budget
 - ✅ Multi-year financial planning
 - ✅ Capital planning
@@ -1303,6 +1463,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Scenario analysis
 
 **Tax & Compliance:**
+
 - ✅ Tax strategy
 - ✅ Audit oversight
 - ✅ Regulatory compliance
@@ -1310,6 +1471,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Risk management
 
 **Strategic Finance:**
+
 - ✅ M&A financial analysis
 - ✅ Financing strategy
 - ✅ Profitability analysis (all dimensions)
@@ -1317,6 +1479,7 @@ This document defines **specific functionality access** for each role level acro
 - ✅ Capital allocation
 
 **Management:**
+
 - ✅ Finance department budget
 - ✅ Hire/fire finance managers
 - ✅ Finance team structure
@@ -1330,6 +1493,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 1: HR Coordinator
 
 **Functions:**
+
 - ✅ Employee onboarding administration
 - ✅ Maintain employee files
 - ✅ Process new hire paperwork
@@ -1345,6 +1509,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 2-3: HR Generalist / Recruiter
 
 **Additional Functions:**
+
 - ✅ Full-cycle recruiting
 - ✅ Conduct interviews
 - ✅ Employee relations (first level)
@@ -1359,6 +1524,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 4: HR Manager
 
 **Additional Functions:**
+
 - ✅ Complex employee relations
 - ✅ Investigations
 - ✅ Disciplinary actions
@@ -1374,6 +1540,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 6-7: CHRO / Director of HR
 
 **Additional Functions:**
+
 - ✅ HR strategy
 - ✅ Compensation and benefits design
 - ✅ Talent management
@@ -1392,6 +1559,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 1: Help Desk Technician
 
 **Functions:**
+
 - ✅ Answer support tickets
 - ✅ Password resets
 - ✅ Basic troubleshooting
@@ -1408,6 +1576,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 2-3: Senior Help Desk / System Administrator
 
 **Additional Functions:**
+
 - ✅ Advanced troubleshooting
 - ✅ Server administration
 - ✅ Network troubleshooting
@@ -1421,6 +1590,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 4: IT Manager
 
 **Additional Functions:**
+
 - ✅ IT budget (location)
 - ✅ Vendor management
 - ✅ Project management
@@ -1434,6 +1604,7 @@ This document defines **specific functionality access** for each role level acro
 ### Level 6-7: CTO / Director of IT
 
 **Additional Functions:**
+
 - ✅ IT strategy
 - ✅ Technology roadmap
 - ✅ Enterprise architecture
@@ -1451,6 +1622,7 @@ This document defines **specific functionality access** for each role level acro
 ### CEO / President
 
 **Unique Functions:**
+
 - ✅ View all company data (all departments, all locations)
 - ✅ Company-wide strategic planning
 - ✅ Board reporting
@@ -1466,6 +1638,7 @@ This document defines **specific functionality access** for each role level acro
 ### CFO
 
 **Unique Functions:**
+
 - ✅ All financial data (sensitive)
 - ✅ Capital structure decisions
 - ✅ Financial risk management
@@ -1479,6 +1652,7 @@ This document defines **specific functionality access** for each role level acro
 ### COO
 
 **Unique Functions:**
+
 - ✅ All operational data
 - ✅ Cross-departmental operations
 - ✅ Process optimization (company-wide)
@@ -1495,6 +1669,7 @@ This document defines **specific functionality access** for each role level acro
 ### Platform Administrator (Printyx Staff)
 
 **Unique Functions:**
+
 - ✅ Access all tenant data
 - ✅ View system-wide metrics
 - ✅ Tenant provisioning

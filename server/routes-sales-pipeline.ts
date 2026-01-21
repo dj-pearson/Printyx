@@ -15,17 +15,17 @@ const pipelineOpportunitySchema = z.object({
   probability: z.number().min(0).max(100),
   expected_close_date: z.string(),
   lead_source: z.string().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
 const stageUpdateSchema = z.object({
   stage: z.string(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
 const activityLogSchema = z.object({
   activity_type: z.string(),
-  notes: z.string()
+  notes: z.string(),
 });
 
 // Pipeline Stages Configuration
@@ -38,11 +38,10 @@ const PIPELINE_STAGES = [
   { id: 'proposal_sent', name: 'Proposal Sent', order: 6 },
   { id: 'negotiation', name: 'Negotiation', order: 7 },
   { id: 'closed_won', name: 'Closed Won', order: 8 },
-  { id: 'closed_lost', name: 'Closed Lost', order: 9 }
+  { id: 'closed_lost', name: 'Closed Lost', order: 9 },
 ];
 
 export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: any) {
-  
   // Get all pipeline opportunities
   app.get('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
@@ -100,8 +99,10 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       query += ` ORDER BY br.updated_at DESC`;
 
-      const result = await db.execute(sql.raw(query.replace(/\$(\d+)/g, (match, num) => `'${params[parseInt(num) - 1]}'`)));
-      
+      const result = await db.execute(
+        sql.raw(query.replace(/\$(\d+)/g, (match, num) => `'${params[parseInt(num) - 1]}'`)),
+      );
+
       // Transform the results to match the expected format
       const opportunities = result.rows.map((row: any) => ({
         id: row.id,
@@ -119,7 +120,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         days_in_stage: parseInt(row.days_in_stage) || 0,
         created_at: row.created_at,
         notes: row.notes || '',
-        lead_source: row.lead_source || 'Unknown'
+        lead_source: row.lead_source || 'Unknown',
       }));
 
       res.json(opportunities);
@@ -130,19 +131,21 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   });
 
   // Update opportunity stage
-  app.patch('/api/sales-pipeline/opportunities/:id/stage', async (req: TenantRequest, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { stage, notes } = stageUpdateSchema.parse(req.body);
-      const tenantId = req.user?.tenantId;
-      const userId = req.user?.id;
+  app.patch(
+    '/api/sales-pipeline/opportunities/:id/stage',
+    async (req: TenantRequest, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { stage, notes } = stageUpdateSchema.parse(req.body);
+        const tenantId = req.user?.tenantId;
+        const userId = req.user?.id;
 
-      if (!tenantId || !userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
+        if (!tenantId || !userId) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
 
-      // Update the business record
-      const updateQuery = `
+        // Update the business record
+        const updateQuery = `
         UPDATE business_records 
         SET 
           status = $1,
@@ -153,16 +156,26 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         RETURNING *
       `;
 
-      const notesText = notes ? `\n[${new Date().toISOString()}] Stage moved to ${stage}: ${notes}` : '';
-      
-      const result = await db.execute(sql.raw(updateQuery.replace('$1', `'${stage}'`).replace('$2', `'${notesText}'`).replace('$3', `'${id}'`).replace('$4', `'${tenantId}'`)));
+        const notesText = notes
+          ? `\n[${new Date().toISOString()}] Stage moved to ${stage}: ${notes}`
+          : '';
 
-      if (result.rows.length === 0) {
-        return res.status(404).json({ message: 'Opportunity not found' });
-      }
+        const result = await db.execute(
+          sql.raw(
+            updateQuery
+              .replace('$1', `'${stage}'`)
+              .replace('$2', `'${notesText}'`)
+              .replace('$3', `'${id}'`)
+              .replace('$4', `'${tenantId}'`),
+          ),
+        );
 
-      // Log the stage change activity
-      const activityQuery = `
+        if (result.rows.length === 0) {
+          return res.status(404).json({ message: 'Opportunity not found' });
+        }
+
+        // Log the stage change activity
+        const activityQuery = `
         INSERT INTO business_record_activities (
           business_record_id,
           activity_type,
@@ -174,29 +187,45 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
-      await db.execute(sql.raw(activityQuery.replace('$1', `'${id}'`).replace('$2', `'stage_change'`).replace('$3', `'Stage changed to ${PIPELINE_STAGES.find(s => s.id === stage)?.name || stage}'`).replace('$4', `'${notes || `Moved to ${stage} stage`}'`).replace('$5', `'${userId}'`).replace('$6', `'${tenantId}'`)));
+        await db.execute(
+          sql.raw(
+            activityQuery
+              .replace('$1', `'${id}'`)
+              .replace('$2', `'stage_change'`)
+              .replace(
+                '$3',
+                `'Stage changed to ${PIPELINE_STAGES.find((s) => s.id === stage)?.name || stage}'`,
+              )
+              .replace('$4', `'${notes || `Moved to ${stage} stage`}'`)
+              .replace('$5', `'${userId}'`)
+              .replace('$6', `'${tenantId}'`),
+          ),
+        );
 
-      res.json({ success: true, opportunity: result.rows[0] });
-    } catch (error) {
-      console.error('Error updating opportunity stage:', error);
-      res.status(500).json({ message: 'Failed to update opportunity stage' });
-    }
-  });
+        res.json({ success: true, opportunity: result.rows[0] });
+      } catch (error) {
+        console.error('Error updating opportunity stage:', error);
+        res.status(500).json({ message: 'Failed to update opportunity stage' });
+      }
+    },
+  );
 
   // Log activity for opportunity
-  app.post('/api/sales-pipeline/opportunities/:id/activity', async (req: TenantRequest, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { activity_type, notes } = activityLogSchema.parse(req.body);
-      const tenantId = req.user?.tenantId;
-      const userId = req.user?.id;
+  app.post(
+    '/api/sales-pipeline/opportunities/:id/activity',
+    async (req: TenantRequest, res: Response) => {
+      try {
+        const { id } = req.params;
+        const { activity_type, notes } = activityLogSchema.parse(req.body);
+        const tenantId = req.user?.tenantId;
+        const userId = req.user?.id;
 
-      if (!tenantId || !userId) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
+        if (!tenantId || !userId) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
 
-      // Log the activity
-      const activityQuery = `
+        // Log the activity
+        const activityQuery = `
         INSERT INTO business_record_activities (
           business_record_id,
           activity_type,
@@ -208,30 +237,33 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
       `;
 
-      await db.execute(sql.raw(activityQuery, [
-        id,
-        activity_type,
-        `${activity_type.charAt(0).toUpperCase() + activity_type.slice(1)} Activity`,
-        notes,
-        userId,
-        tenantId
-      ]));
+        await db.execute(
+          sql.raw(activityQuery, [
+            id,
+            activity_type,
+            `${activity_type.charAt(0).toUpperCase() + activity_type.slice(1)} Activity`,
+            notes,
+            userId,
+            tenantId,
+          ]),
+        );
 
-      // Update last contact date on the business record
-      const updateQuery = `
+        // Update last contact date on the business record
+        const updateQuery = `
         UPDATE business_records 
         SET last_contact_date = NOW(), updated_at = NOW()
         WHERE id = $1 AND tenant_id = $2
       `;
 
-      await db.execute(sql.raw(updateQuery, [id, tenantId]));
+        await db.execute(sql.raw(updateQuery, [id, tenantId]));
 
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Error logging activity:', error);
-      res.status(500).json({ message: 'Failed to log activity' });
-    }
-  });
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error logging activity:', error);
+        res.status(500).json({ message: 'Failed to log activity' });
+      }
+    },
+  );
 
   // Get sales rep metrics
   app.get('/api/sales-pipeline/rep-metrics', async (req: TenantRequest, res: Response) => {
@@ -316,8 +348,10 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         ORDER BY rs.rep_name
       `;
 
-      const result = await db.execute(sql.raw(metricsQuery.replace('$1', `'${tenantId}'`).replace('$2', `'${tenantId}'`)));
-      
+      const result = await db.execute(
+        sql.raw(metricsQuery.replace('$1', `'${tenantId}'`).replace('$2', `'${tenantId}'`)),
+      );
+
       const metrics = result.rows.map((row: any) => ({
         rep_id: row.rep_id,
         rep_name: row.rep_name,
@@ -334,7 +368,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         avg_sales_cycle: parseFloat(row.avg_sales_cycle) || 30,
         goal_achievement: parseFloat(row.goal_achievement) || 0,
         activity_score: parseInt(row.activity_score) || 0,
-        last_activity: row.last_activity || 'No recent activity'
+        last_activity: row.last_activity || 'No recent activity',
       }));
 
       res.json(metrics);
@@ -410,7 +444,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       `;
 
       const result = await db.execute(sql.raw(summaryQuery, [tenantId, tenantId]));
-      
+
       if (result.rows.length === 0) {
         return res.json({
           totalValue: 0,
@@ -420,7 +454,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
           conversionRate: 0,
           avgSalesCycle: 30,
           growthRate: 0,
-          goalAchievement: 0
+          goalAchievement: 0,
         });
       }
 
@@ -433,7 +467,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         conversionRate: parseFloat(summary.conversion_rate) || 0,
         avgSalesCycle: parseFloat(summary.avg_sales_cycle) || 30,
         growthRate: parseFloat(summary.growth_rate) || 0,
-        goalAchievement: parseFloat(summary.goal_achievement) || 0
+        goalAchievement: parseFloat(summary.goal_achievement) || 0,
       });
     } catch (error) {
       console.error('Error fetching pipeline summary:', error);
@@ -474,22 +508,24 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         RETURNING *
       `;
 
-      const result = await db.execute(sql.raw(insertQuery, [
-        tenantId,
-        'lead',
-        data.company_name,
-        data.contact_name,
-        data.contact_email,
-        data.contact_phone || null,
-        data.stage,
-        data.estimated_value,
-        data.probability,
-        data.expected_close_date,
-        data.lead_source || 'Manual Entry',
-        userId, // Assign to creator by default
-        userId,
-        data.notes || ''
-      ]));
+      const result = await db.execute(
+        sql.raw(insertQuery, [
+          tenantId,
+          'lead',
+          data.company_name,
+          data.contact_name,
+          data.contact_email,
+          data.contact_phone || null,
+          data.stage,
+          data.estimated_value,
+          data.probability,
+          data.expected_close_date,
+          data.lead_source || 'Manual Entry',
+          userId, // Assign to creator by default
+          userId,
+          data.notes || '',
+        ]),
+      );
 
       res.status(201).json({ success: true, opportunity: result.rows[0] });
     } catch (error) {

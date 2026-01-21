@@ -41,7 +41,7 @@ class APIClient {
           // TODO: Trigger logout
         }
         return Promise.reject(error);
-      }
+      },
     );
   }
 
@@ -104,7 +104,7 @@ class APIClient {
       timeSpent?: number;
       latitude?: number;
       longitude?: number;
-    }
+    },
   ) {
     const response = await this.client.post(`/mobile/tickets/${id}/complete`, data);
     return response.data;

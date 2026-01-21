@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -94,7 +87,7 @@ export default function ProfileScreen() {
           onPress={() =>
             Alert.alert(
               'Printyx Technician',
-              'Version 1.0.0\n\nCopyright © 2025 Printyx\nAll rights reserved.'
+              'Version 1.0.0\n\nCopyright © 2025 Printyx\nAll rights reserved.',
             )
           }
         />

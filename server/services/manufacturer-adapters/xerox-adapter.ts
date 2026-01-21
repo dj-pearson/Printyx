@@ -1,4 +1,10 @@
-import { BaseManufacturerAdapter, DeviceInfo, MeterReading, CollectionResult, IntegrationConfig } from './base-adapter';
+import {
+  BaseManufacturerAdapter,
+  DeviceInfo,
+  MeterReading,
+  CollectionResult,
+  IntegrationConfig,
+} from './base-adapter';
 
 /**
  * Xerox ConnectKey and Workplace Cloud Integration Adapter
@@ -15,15 +21,12 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
   async testConnection(): Promise<boolean> {
     try {
       this.validateConfig();
-      
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/v1/health`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
-      
+
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/v1/health`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
       return response.ok;
     } catch (error) {
       console.error('Xerox connection test failed:', error);
@@ -48,26 +51,23 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
   private async authenticateOAuth2(): Promise<boolean> {
     try {
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/oauth/token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            grant_type: 'client_credentials',
-            client_id: this.config.authCredentials.clientId,
-            client_secret: this.config.authCredentials.clientSecret,
-            scope: 'device:read meter:read'
-          }).toString()
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/oauth/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'client_credentials',
+          client_id: this.config.authCredentials.clientId,
+          client_secret: this.config.authCredentials.clientSecret,
+          scope: 'device:read meter:read',
+        }).toString(),
+      });
 
       const data = await this.handleApiResponse(response);
       this.accessToken = data.access_token;
-      this.tokenExpiresAt = new Date(Date.now() + (data.expires_in * 1000));
-      
+      this.tokenExpiresAt = new Date(Date.now() + data.expires_in * 1000);
+
       return true;
     } catch (error) {
       console.error('Xerox OAuth2 authentication failed:', error);
@@ -84,17 +84,14 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
   async discoverDevices(): Promise<DeviceInfo[]> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/v1/devices`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/v1/devices`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
       const data = await this.handleApiResponse(response);
       return this.mapXeroxDevices(data.devices || data.printers || []);
@@ -105,14 +102,18 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
   }
 
   private mapXeroxDevices(devices: any[]): DeviceInfo[] {
-    return devices.map(device => ({
+    return devices.map((device) => ({
       deviceId: device.deviceId || device.id || device.serialNumber,
       serialNumber: device.serialNumber,
       modelNumber: device.model || device.modelName,
       deviceName: device.name || device.displayName,
       ipAddress: device.ipAddress || device.networkAddress,
       macAddress: device.macAddress,
-      capabilities: device.capabilities || ['meter_reading', 'status_monitoring', 'supply_monitoring'],
+      capabilities: device.capabilities || [
+        'meter_reading',
+        'status_monitoring',
+        'supply_monitoring',
+      ],
       supportedMetrics: [
         'total_impressions',
         'black_impressions',
@@ -129,51 +130,45 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
         'waste_toner_level',
         'drum_black_remaining',
         'drum_color_remaining',
-        'fuser_remaining'
-      ]
+        'fuser_remaining',
+      ],
     }));
   }
 
   async collectDeviceMetrics(deviceId: string): Promise<CollectionResult> {
     const startTime = Date.now();
-    
+
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
       // Collect both meter data and supply levels
       const [meterResponse, supplyResponse] = await Promise.all([
-        this.makeHttpRequest(
-          `${this.config.apiEndpoint}/v1/devices/${deviceId}/meters`,
-          {
-            method: 'GET',
-            headers: this.getAuthHeaders()
-          }
-        ),
-        this.makeHttpRequest(
-          `${this.config.apiEndpoint}/v1/devices/${deviceId}/supplies`,
-          {
-            method: 'GET',
-            headers: this.getAuthHeaders()
-          }
-        )
+        this.makeHttpRequest(`${this.config.apiEndpoint}/v1/devices/${deviceId}/meters`, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        }),
+        this.makeHttpRequest(`${this.config.apiEndpoint}/v1/devices/${deviceId}/supplies`, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        }),
       ]);
 
       const meterData = await this.handleApiResponse(meterResponse);
       const supplyData = await this.handleApiResponse(supplyResponse);
-      
+
       const metrics = [
         ...this.mapXeroxMeterData(meterData),
-        ...this.mapXeroxSupplyData(supplyData)
+        ...this.mapXeroxSupplyData(supplyData),
       ];
-      
+
       return {
         success: true,
         deviceId,
         metrics,
         rawResponse: { meters: meterData, supplies: supplyData },
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     } catch (error) {
       return {
@@ -181,7 +176,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
         deviceId,
         metrics: [],
         error: error instanceof Error ? error.message : 'Unknown error',
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     }
   }
@@ -192,7 +187,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
     if (data.meters || data.counters) {
       const meters = data.meters || data.counters;
-      
+
       // Total impressions
       if (meters.totalImpressions !== undefined) {
         metrics.push({
@@ -202,7 +197,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.totalImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { totalImpressions: meters.totalImpressions }
+          rawData: { totalImpressions: meters.totalImpressions },
         });
       }
 
@@ -215,7 +210,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.blackImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { blackImpressions: meters.blackImpressions }
+          rawData: { blackImpressions: meters.blackImpressions },
         });
       }
 
@@ -228,7 +223,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.colorImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { colorImpressions: meters.colorImpressions }
+          rawData: { colorImpressions: meters.colorImpressions },
         });
       }
 
@@ -241,7 +236,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.scanImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { scanImpressions: meters.scanImpressions }
+          rawData: { scanImpressions: meters.scanImpressions },
         });
       }
 
@@ -254,7 +249,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.faxImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { faxImpressions: meters.faxImpressions }
+          rawData: { faxImpressions: meters.faxImpressions },
         });
       }
 
@@ -267,7 +262,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.duplexImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { duplexImpressions: meters.duplexImpressions }
+          rawData: { duplexImpressions: meters.duplexImpressions },
         });
       }
 
@@ -279,7 +274,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
           numericValue: meters.simplexImpressions,
           unit: 'impressions',
           measurementTimestamp: timestamp,
-          rawData: { simplexImpressions: meters.simplexImpressions }
+          rawData: { simplexImpressions: meters.simplexImpressions },
         });
       }
     }
@@ -293,11 +288,11 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
     if (data.supplies || data.consumables) {
       const supplies = data.supplies || data.consumables;
-      
+
       supplies.forEach((supply: any) => {
         if (supply.type && supply.level !== undefined) {
           const metricType = `${supply.color || supply.type}_level`.toLowerCase();
-          
+
           metrics.push({
             metricType,
             metricName: `${supply.name || supply.color || supply.type} Level`,
@@ -305,7 +300,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
             numericValue: supply.level,
             unit: supply.unit || 'percent',
             measurementTimestamp: timestamp,
-            rawData: supply
+            rawData: supply,
           });
         }
       });
@@ -322,7 +317,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
             numericValue: level,
             unit: 'percent',
             measurementTimestamp: timestamp,
-            rawData: { [color]: level }
+            rawData: { [color]: level },
           });
         }
       });
@@ -333,7 +328,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
   async getDeviceInfo(deviceId: string): Promise<DeviceInfo | null> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -341,8 +336,8 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
         `${this.config.apiEndpoint}/v1/devices/${deviceId}`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
-        }
+          headers: this.getAuthHeaders(),
+        },
       );
 
       const device = await this.handleApiResponse(response);
@@ -355,7 +350,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
   async updateDeviceConfig(deviceId: string, config: any): Promise<boolean> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -364,8 +359,8 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
         {
           method: 'PUT',
           headers: this.getAuthHeaders(),
-          body: JSON.stringify(config)
-        }
+          body: JSON.stringify(config),
+        },
       );
 
       return response.ok;
@@ -377,8 +372,8 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
   protected getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'X-Xerox-API-Version': this.config.apiVersion || '1.0'
+      Accept: 'application/json',
+      'X-Xerox-API-Version': this.config.apiVersion || '1.0',
     };
 
     if (this.accessToken) {
@@ -396,7 +391,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
     // Clear existing token and re-authenticate
     this.accessToken = undefined;
     this.tokenExpiresAt = undefined;
-    
+
     const success = await this.authenticate();
     if (!success) {
       throw new Error('Re-authentication failed');

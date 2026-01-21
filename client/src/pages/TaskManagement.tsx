@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MainLayout } from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -12,14 +12,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,18 +27,18 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 import {
   Plus,
   ChevronRight,
@@ -74,35 +74,32 @@ import {
   Share,
   Download,
   Settings,
-} from "lucide-react";
-import { format, isAfter, isBefore, isToday } from "date-fns";
+} from 'lucide-react';
+import { format, isAfter, isBefore, isToday } from 'date-fns';
 import {
   InlineStatusSelect,
   InlinePrioritySelect,
   InlineAssigneeSelect,
   InlineDatePicker,
   getDueDateStatus,
-} from "@/components/tasks/InlineEditors";
-import {
-  CreateTaskDialog,
-  CreateProjectDialog,
-} from "@/components/tasks/TaskDialogs";
-import { TaskBoardView } from "@/components/tasks/TaskBoardView";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/tasks/InlineEditors';
+import { CreateTaskDialog, CreateProjectDialog } from '@/components/tasks/TaskDialogs';
+import { TaskBoardView } from '@/components/tasks/TaskBoardView';
+import { Skeleton } from '@/components/ui/skeleton';
 // import { FixedSizeList as VirtualList, ListChildComponentProps } from "react-window";
-import { apiRequest } from "@/lib/queryClient";
-import ContextualHelp from "@/components/contextual/ContextualHelp";
-import PageAlerts from "@/components/contextual/PageAlerts";
-import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
-import MobileFAB from "@/components/layout/MobileFAB";
+import { apiRequest } from '@/lib/queryClient';
+import ContextualHelp from '@/components/contextual/ContextualHelp';
+import PageAlerts from '@/components/contextual/PageAlerts';
+import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
+import MobileFAB from '@/components/layout/MobileFAB';
 
 // Enhanced interfaces for advanced task management functionality
 interface Task {
   id: string;
   title: string;
   description?: string;
-  status: "todo" | "in_progress" | "review" | "completed" | "cancelled";
-  priority: "low" | "medium" | "high" | "urgent";
+  status: 'todo' | 'in_progress' | 'review' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   assignedTo?: string;
   assignedToName?: string;
   assignedToAvatar?: string;
@@ -133,7 +130,7 @@ interface Project {
   id: string;
   name: string;
   description?: string;
-  status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
+  status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled';
   projectManager?: string;
   projectManagerName?: string;
   customerId?: string;
@@ -161,10 +158,10 @@ interface WorkflowStage {
 }
 
 interface ViewConfig {
-  type: "list" | "board" | "gantt" | "calendar";
-  groupBy: "status" | "assignee" | "priority" | "dueDate" | "project";
-  sortBy: "dueDate" | "priority" | "status" | "created" | "updated";
-  sortOrder: "asc" | "desc";
+  type: 'list' | 'board' | 'gantt' | 'calendar';
+  groupBy: 'status' | 'assignee' | 'priority' | 'dueDate' | 'project';
+  sortBy: 'dueDate' | 'priority' | 'status' | 'created' | 'updated';
+  sortOrder: 'asc' | 'desc';
   filters: {
     status: string[];
     priority: string[];
@@ -176,73 +173,73 @@ interface ViewConfig {
 
 const priorityConfig = {
   urgent: {
-    label: "Urgent",
-    color: "bg-red-500",
-    icon: "🔥",
-    bgColor: "bg-red-50 text-red-700 border-red-200",
+    label: 'Urgent',
+    color: 'bg-red-500',
+    icon: '🔥',
+    bgColor: 'bg-red-50 text-red-700 border-red-200',
   },
   high: {
-    label: "High",
-    color: "bg-orange-500",
-    icon: "⚡",
-    bgColor: "bg-orange-50 text-orange-700 border-orange-200",
+    label: 'High',
+    color: 'bg-orange-500',
+    icon: '⚡',
+    bgColor: 'bg-orange-50 text-orange-700 border-orange-200',
   },
   medium: {
-    label: "Medium",
-    color: "bg-yellow-500",
-    icon: "📌",
-    bgColor: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    label: 'Medium',
+    color: 'bg-yellow-500',
+    icon: '📌',
+    bgColor: 'bg-yellow-50 text-yellow-700 border-yellow-200',
   },
   low: {
-    label: "Low",
-    color: "bg-green-500",
-    icon: "📋",
-    bgColor: "bg-green-50 text-green-700 border-green-200",
+    label: 'Low',
+    color: 'bg-green-500',
+    icon: '📋',
+    bgColor: 'bg-green-50 text-green-700 border-green-200',
   },
 };
 
 const statusConfig = {
-  todo: { label: "To Do", color: "bg-gray-100 text-gray-800", icon: Square },
+  todo: { label: 'To Do', color: 'bg-gray-100 text-gray-800', icon: Square },
   in_progress: {
-    label: "In Progress",
-    color: "bg-blue-100 text-blue-800",
+    label: 'In Progress',
+    color: 'bg-blue-100 text-blue-800',
     icon: Play,
   },
   review: {
-    label: "Review",
-    color: "bg-purple-100 text-purple-800",
+    label: 'Review',
+    color: 'bg-purple-100 text-purple-800',
     icon: Eye,
   },
   completed: {
-    label: "Completed",
-    color: "bg-green-100 text-green-800",
+    label: 'Completed',
+    color: 'bg-green-100 text-green-800',
     icon: CheckSquare,
   },
   cancelled: {
-    label: "Cancelled",
-    color: "bg-red-100 text-red-800",
+    label: 'Cancelled',
+    color: 'bg-red-100 text-red-800',
     icon: Square,
   },
 };
 
 export default function TaskManagement() {
   const [view, setView] = useState<ViewConfig>({
-    type: "list",
-    groupBy: "status",
-    sortBy: "dueDate",
-    sortOrder: "asc",
+    type: 'list',
+    groupBy: 'status',
+    sortBy: 'dueDate',
+    sortOrder: 'asc',
     filters: {
       status: [],
       priority: [],
       assignee: [],
       tags: [],
-      dueDate: "",
+      dueDate: '',
     },
   });
 
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [expandedTasks, setExpandedTasks] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<string | null>(null);
@@ -252,9 +249,13 @@ export default function TaskManagement() {
   const queryClient = useQueryClient();
 
   // Fetch tasks using basic endpoint (fallback from enhanced)
-  const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
-    queryKey: ["/api/tasks"],
-    queryFn: async () => apiRequest("/api/tasks"),
+  const {
+    data: tasks = [],
+    isLoading: tasksLoading,
+    error: tasksError,
+  } = useQuery<Task[]>({
+    queryKey: ['/api/tasks'],
+    queryFn: async () => apiRequest('/api/tasks'),
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -262,11 +263,13 @@ export default function TaskManagement() {
   });
 
   // Fetch projects using basic endpoint
-  const { data: projects = [], isLoading: projectsLoading, error: projectsError } = useQuery<
-    Project[]
-  >({
-    queryKey: ["/api/projects"],
-    queryFn: async () => apiRequest("/api/projects"),
+  const {
+    data: projects = [],
+    isLoading: projectsLoading,
+    error: projectsError,
+  } = useQuery<Project[]>({
+    queryKey: ['/api/projects'],
+    queryFn: async () => apiRequest('/api/projects'),
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000,
@@ -274,9 +277,13 @@ export default function TaskManagement() {
   });
 
   // Fetch team members for assignment (simplified)
-  const { data: teamMembers = [], isLoading: teamLoading, error: teamError } = useQuery({
-    queryKey: ["/api/users"],
-    queryFn: async () => apiRequest("/api/users"),
+  const {
+    data: teamMembers = [],
+    isLoading: teamLoading,
+    error: teamError,
+  } = useQuery({
+    queryKey: ['/api/users'],
+    queryFn: async () => apiRequest('/api/users'),
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     staleTime: 5 * 60 * 1000,
@@ -285,11 +292,10 @@ export default function TaskManagement() {
 
   // Create task mutation
   const createTaskMutation = useMutation({
-    mutationFn: async (data: Partial<Task>) =>
-      apiRequest("/api/tasks", "POST", data),
+    mutationFn: async (data: Partial<Task>) => apiRequest('/api/tasks', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      toast({ title: "Success", description: "Task created successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      toast({ title: 'Success', description: 'Task created successfully' });
       setIsCreateTaskOpen(false);
     },
   });
@@ -297,9 +303,9 @@ export default function TaskManagement() {
   // Update task mutation
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Task> }) =>
-      apiRequest(`/api/tasks/${id}`, "PATCH", data),
+      apiRequest(`/api/tasks/${id}`, 'PATCH', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       setEditingTask(null);
       setEditingField(null);
     },
@@ -340,11 +346,11 @@ export default function TaskManagement() {
                 <p className="text-gray-600 mb-4">
                   There was an issue loading your task data. Please try refreshing the page.
                 </p>
-                <Button 
+                <Button
                   onClick={() => {
-                    queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+                    queryClient.invalidateQueries({ queryKey: ['/api/users'] });
                   }}
                 >
                   Retry
@@ -360,26 +366,17 @@ export default function TaskManagement() {
   // Filter and search tasks
   const filteredTasks = tasks.filter((task) => {
     // Search filter
-    if (
-      searchTerm &&
-      !task.title.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
+    if (searchTerm && !task.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
 
     // Status filter
-    if (
-      view.filters.status.length > 0 &&
-      !view.filters.status.includes(task.status)
-    ) {
+    if (view.filters.status.length > 0 && !view.filters.status.includes(task.status)) {
       return false;
     }
 
     // Priority filter
-    if (
-      view.filters.priority.length > 0 &&
-      !view.filters.priority.includes(task.priority)
-    ) {
+    if (view.filters.priority.length > 0 && !view.filters.priority.includes(task.priority)) {
       return false;
     }
 
@@ -398,26 +395,20 @@ export default function TaskManagement() {
   const groupedTasks = groupTasksBy(filteredTasks, view.groupBy);
 
   // Sort tasks within groups
-  const sortedGroupedTasks = Object.entries(groupedTasks).map(
-    ([group, tasks]) => [
-      group,
-      sortTasks(tasks as Task[], view.sortBy, view.sortOrder),
-    ]
-  );
+  const sortedGroupedTasks = Object.entries(groupedTasks).map(([group, tasks]) => [
+    group,
+    sortTasks(tasks as Task[], view.sortBy, view.sortOrder),
+  ]);
 
   const toggleTaskExpansion = (taskId: string) => {
     setExpandedTasks((prev) =>
-      prev.includes(taskId)
-        ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId]
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId],
     );
   };
 
   const toggleTaskSelection = (taskId: string) => {
     setSelectedTasks((prev) =>
-      prev.includes(taskId)
-        ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId]
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId],
     );
   };
 
@@ -433,22 +424,22 @@ export default function TaskManagement() {
     const due = new Date(dueDate);
     const now = new Date();
 
-    if (isToday(due)) return "today";
-    if (isBefore(due, now)) return "overdue";
-    if (isBefore(due, new Date(now.getTime() + 24 * 60 * 60 * 1000)))
-      return "tomorrow";
-    return "upcoming";
+    if (isToday(due)) return 'today';
+    if (isBefore(due, now)) return 'overdue';
+    if (isBefore(due, new Date(now.getTime() + 24 * 60 * 60 * 1000))) return 'tomorrow';
+    return 'upcoming';
   };
 
   return (
-    <MainLayout
-      title="Task Management"
-      description="Advanced project and task management"
-    >
+    <MainLayout title="Task Management" description="Advanced project and task management">
       <div className="space-y-6">
         <ContextualHelp page="task-management" />
         <KpiSummaryBar className="mb-4" />
-        <PageAlerts categories={["business","performance"]} severities={["high","critical"]} className="-mt-2" />
+        <PageAlerts
+          categories={['business', 'performance']}
+          severities={['high', 'critical']}
+          className="-mt-2"
+        />
         {/* Header with Actions - Mobile optimized */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center space-x-3">
@@ -501,31 +492,27 @@ export default function TaskManagement() {
                 {/* View Type Toggle - Touch friendly */}
                 <div className="flex rounded-lg border p-1">
                   <Button
-                    variant={view.type === "list" ? "default" : "ghost"}
+                    variant={view.type === 'list' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() => setView((prev) => ({ ...prev, type: "list" }))}
+                    onClick={() => setView((prev) => ({ ...prev, type: 'list' }))}
                     className="touch-manipulation min-h-[44px] min-w-[44px]"
                     title="List View"
                   >
                     <List className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={view.type === "board" ? "default" : "ghost"}
+                    variant={view.type === 'board' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() =>
-                      setView((prev) => ({ ...prev, type: "board" }))
-                    }
+                    onClick={() => setView((prev) => ({ ...prev, type: 'board' }))}
                     className="touch-manipulation min-h-[44px] min-w-[44px]"
                     title="Board View"
                   >
                     <Kanban className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={view.type === "gantt" ? "default" : "ghost"}
+                    variant={view.type === 'gantt' ? 'default' : 'ghost'}
                     size="sm"
-                    onClick={() =>
-                      setView((prev) => ({ ...prev, type: "gantt" }))
-                    }
+                    onClick={() => setView((prev) => ({ ...prev, type: 'gantt' }))}
                     className="touch-manipulation min-h-[44px] min-w-[44px]"
                     title="Gantt View"
                   >
@@ -536,9 +523,7 @@ export default function TaskManagement() {
                 {/* Filters - Responsive width */}
                 <Select
                   value={view.groupBy}
-                  onValueChange={(value) =>
-                    setView((prev) => ({ ...prev, groupBy: value as any }))
-                  }
+                  onValueChange={(value) => setView((prev) => ({ ...prev, groupBy: value as any }))}
                 >
                   <SelectTrigger className="w-[140px] sm:w-[160px] h-11 touch-manipulation">
                     <SelectValue />
@@ -586,9 +571,7 @@ export default function TaskManagement() {
                         key={status}
                         className="flex items-center space-x-2 min-h-[44px] touch-manipulation"
                         onClick={() => {
-                          const newFilters = view.filters.status.includes(
-                            status
-                          )
+                          const newFilters = view.filters.status.includes(status)
                             ? view.filters.status.filter((s) => s !== status)
                             : [...view.filters.status, status];
                           setView((prev) => ({
@@ -614,7 +597,7 @@ export default function TaskManagement() {
         </Card>
 
         {/* Task Views */}
-        {view.type === "list" && (
+        {view.type === 'list' && (
           <TaskListView
             groupedTasks={sortedGroupedTasks}
             expandedTasks={expandedTasks}
@@ -636,7 +619,7 @@ export default function TaskManagement() {
           />
         )}
 
-        {view.type === "board" && (
+        {view.type === 'board' && (
           <TaskBoardView
             groupedTasks={sortedGroupedTasks}
             onInlineEdit={handleInlineEdit}
@@ -659,7 +642,7 @@ export default function TaskManagement() {
           open={isCreateProjectOpen}
           onOpenChange={setIsCreateProjectOpen}
           teamMembers={teamMembers}
-          onSubmit={(data) => console.log("Create project:", data)}
+          onSubmit={(data) => console.log('Create project:', data)}
           isLoading={false}
         />
       </div>
@@ -739,7 +722,6 @@ function TaskListView({
                       onEditEnd={onEditEnd}
                     />
                   ))}
-                
                 </TableBody>
               </Table>
             </div>
@@ -813,25 +795,21 @@ function TaskRow({
         {/* Task Title */}
         <TableCell>
           <div className="flex items-center space-x-2">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                priorityConfig[task.priority].color
-              }`}
-            />
-            {isEditing && editingField === "title" ? (
+            <div className={`w-3 h-3 rounded-full ${priorityConfig[task.priority].color}`} />
+            {isEditing && editingField === 'title' ? (
               <Input
                 defaultValue={task.title}
                 autoFocus
                 onBlur={(e) => {
-                  onInlineEdit(task.id, "title", e.target.value);
+                  onInlineEdit(task.id, 'title', e.target.value);
                   onEditEnd();
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    onInlineEdit(task.id, "title", e.currentTarget.value);
+                  if (e.key === 'Enter') {
+                    onInlineEdit(task.id, 'title', e.currentTarget.value);
                     onEditEnd();
                   }
-                  if (e.key === "Escape") {
+                  if (e.key === 'Escape') {
                     onEditEnd();
                   }
                 }}
@@ -840,7 +818,7 @@ function TaskRow({
             ) : (
               <span
                 className="font-medium cursor-pointer hover:text-blue-600"
-                onClick={() => onEditStart(task.id, "title")}
+                onClick={() => onEditStart(task.id, 'title')}
               >
                 {task.title}
               </span>
@@ -864,7 +842,7 @@ function TaskRow({
         <TableCell>
           <InlineStatusSelect
             value={task.status}
-            onChange={(value) => onInlineEdit(task.id, "status", value)}
+            onChange={(value) => onInlineEdit(task.id, 'status', value)}
           />
         </TableCell>
 
@@ -872,7 +850,7 @@ function TaskRow({
         <TableCell>
           <InlinePrioritySelect
             value={task.priority}
-            onChange={(value) => onInlineEdit(task.id, "priority", value)}
+            onChange={(value) => onInlineEdit(task.id, 'priority', value)}
           />
         </TableCell>
 
@@ -881,7 +859,7 @@ function TaskRow({
           <InlineAssigneeSelect
             value={task.assignedTo}
             teamMembers={teamMembers}
-            onChange={(value) => onInlineEdit(task.id, "assignedTo", value)}
+            onChange={(value) => onInlineEdit(task.id, 'assignedTo', value)}
           />
         </TableCell>
 
@@ -890,20 +868,15 @@ function TaskRow({
           <InlineDatePicker
             value={task.dueDate}
             status={dueDateStatus}
-            onChange={(value) => onInlineEdit(task.id, "dueDate", value)}
+            onChange={(value) => onInlineEdit(task.id, 'dueDate', value)}
           />
         </TableCell>
 
         {/* Progress */}
         <TableCell>
           <div className="flex items-center space-x-2">
-            <Progress
-              value={task.completionPercentage}
-              className="flex-1 h-2"
-            />
-            <span className="text-xs text-gray-500 w-8">
-              {task.completionPercentage}%
-            </span>
+            <Progress value={task.completionPercentage} className="flex-1 h-2" />
+            <span className="text-xs text-gray-500 w-8">{task.completionPercentage}%</span>
           </div>
         </TableCell>
 
@@ -975,42 +948,31 @@ function TaskRow({
               <TableCell>
                 <InlineStatusSelect
                   value={subtask.status}
-                  onChange={(value) =>
-                    onInlineEdit(subtask.id, "status", value)
-                  }
+                  onChange={(value) => onInlineEdit(subtask.id, 'status', value)}
                 />
               </TableCell>
               <TableCell>
                 <InlinePrioritySelect
                   value={subtask.priority}
-                  onChange={(value) =>
-                    onInlineEdit(subtask.id, "priority", value)
-                  }
+                  onChange={(value) => onInlineEdit(subtask.id, 'priority', value)}
                 />
               </TableCell>
               <TableCell>
                 <InlineAssigneeSelect
                   value={subtask.assignedTo}
                   teamMembers={teamMembers}
-                  onChange={(value) =>
-                    onInlineEdit(subtask.id, "assignedTo", value)
-                  }
+                  onChange={(value) => onInlineEdit(subtask.id, 'assignedTo', value)}
                 />
               </TableCell>
               <TableCell>
                 <InlineDatePicker
                   value={subtask.dueDate}
                   status={getDueDateStatus(subtask.dueDate)}
-                  onChange={(value) =>
-                    onInlineEdit(subtask.id, "dueDate", value)
-                  }
+                  onChange={(value) => onInlineEdit(subtask.id, 'dueDate', value)}
                 />
               </TableCell>
               <TableCell>
-                <Progress
-                  value={subtask.completionPercentage}
-                  className="h-2"
-                />
+                <Progress value={subtask.completionPercentage} className="h-2" />
               </TableCell>
               <TableCell>
                 <div className="flex items-center text-sm text-gray-600">
@@ -1029,43 +991,46 @@ function TaskRow({
 
 // Helper functions
 function groupTasksBy(tasks: Task[], groupBy: string): Record<string, Task[]> {
-  return tasks.reduce((acc, task) => {
-    let key = "Ungrouped";
+  return tasks.reduce(
+    (acc, task) => {
+      let key = 'Ungrouped';
 
-    switch (groupBy) {
-      case "status":
-        key = statusConfig[task.status]?.label || task.status;
-        break;
-      case "priority":
-        key = priorityConfig[task.priority]?.label || task.priority;
-        break;
-      case "assignee":
-        key = task.assignedToName || "Unassigned";
-        break;
-      case "project":
-        key = task.projectName || "No Project";
-        break;
-      case "dueDate":
-        if (!task.dueDate) {
-          key = "No Due Date";
-        } else {
-          const status = getDueDateStatus(task.dueDate);
-          key =
-            status === "overdue"
-              ? "Overdue"
-              : status === "today"
-              ? "Due Today"
-              : status === "tomorrow"
-              ? "Due Tomorrow"
-              : "Upcoming";
-        }
-        break;
-    }
+      switch (groupBy) {
+        case 'status':
+          key = statusConfig[task.status]?.label || task.status;
+          break;
+        case 'priority':
+          key = priorityConfig[task.priority]?.label || task.priority;
+          break;
+        case 'assignee':
+          key = task.assignedToName || 'Unassigned';
+          break;
+        case 'project':
+          key = task.projectName || 'No Project';
+          break;
+        case 'dueDate':
+          if (!task.dueDate) {
+            key = 'No Due Date';
+          } else {
+            const status = getDueDateStatus(task.dueDate);
+            key =
+              status === 'overdue'
+                ? 'Overdue'
+                : status === 'today'
+                  ? 'Due Today'
+                  : status === 'tomorrow'
+                    ? 'Due Tomorrow'
+                    : 'Upcoming';
+          }
+          break;
+      }
 
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(task);
-    return acc;
-  }, {} as Record<string, Task[]>);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(task);
+      return acc;
+    },
+    {} as Record<string, Task[]>,
+  );
 }
 
 function sortTasks(tasks: Task[], sortBy: string, sortOrder: string): Task[] {
@@ -1073,16 +1038,16 @@ function sortTasks(tasks: Task[], sortBy: string, sortOrder: string): Task[] {
     let comparison = 0;
 
     switch (sortBy) {
-      case "dueDate":
-        const aDate = a.dueDate ? new Date(a.dueDate) : new Date("9999-12-31");
-        const bDate = b.dueDate ? new Date(b.dueDate) : new Date("9999-12-31");
+      case 'dueDate':
+        const aDate = a.dueDate ? new Date(a.dueDate) : new Date('9999-12-31');
+        const bDate = b.dueDate ? new Date(b.dueDate) : new Date('9999-12-31');
         comparison = aDate.getTime() - bDate.getTime();
         break;
-      case "priority":
+      case 'priority':
         const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
         comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
         break;
-      case "status":
+      case 'status':
         const statusOrder = {
           todo: 0,
           in_progress: 1,
@@ -1092,16 +1057,14 @@ function sortTasks(tasks: Task[], sortBy: string, sortOrder: string): Task[] {
         };
         comparison = statusOrder[a.status] - statusOrder[b.status];
         break;
-      case "created":
-        comparison =
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case 'created':
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         break;
-      case "updated":
-        comparison =
-          new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+      case 'updated':
+        comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
         break;
     }
 
-    return sortOrder === "desc" ? -comparison : comparison;
+    return sortOrder === 'desc' ? -comparison : comparison;
   });
 }

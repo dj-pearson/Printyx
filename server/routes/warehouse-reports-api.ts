@@ -40,15 +40,15 @@ router.get(
     try {
       const { dateFrom, dateTo } = req.query;
 
-      const dateRange = dateFrom && dateTo ? {
-        dateFrom: new Date(dateFrom as string),
-        dateTo: new Date(dateTo as string),
-      } : undefined;
+      const dateRange =
+        dateFrom && dateTo
+          ? {
+              dateFrom: new Date(dateFrom as string),
+              dateTo: new Date(dateTo as string),
+            }
+          : undefined;
 
-      const stats = await WarehouseReportingService.getTeamQuickStats(
-        req.user!,
-        dateRange
-      );
+      const stats = await WarehouseReportingService.getTeamQuickStats(req.user!, dateRange);
 
       res.json(stats);
     } catch (error) {
@@ -58,7 +58,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -86,7 +86,7 @@ router.post(
       console.error('Error invalidating cache:', error);
       res.status(500).json({ message: 'Failed to invalidate cache' });
     }
-  }
+  },
 );
 
 // =====================================================================

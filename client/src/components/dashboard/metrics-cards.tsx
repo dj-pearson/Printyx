@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, FileText, AlertTriangle, Clock } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent } from '@/components/ui/card';
+import { DollarSign, FileText, AlertTriangle, Clock } from 'lucide-react';
 
 export default function MetricsCards() {
   const { data: metrics, isLoading } = useQuery({
@@ -9,40 +9,40 @@ export default function MetricsCards() {
 
   const metricCards = [
     {
-      title: "Monthly Revenue",
-      value: metrics ? `$${metrics.monthlyRevenue.toLocaleString()}` : "$0",
-      change: "+12.5%",
-      changeType: "positive",
+      title: 'Monthly Revenue',
+      value: metrics ? `$${metrics.monthlyRevenue.toLocaleString()}` : '$0',
+      change: '+12.5%',
+      changeType: 'positive',
       icon: DollarSign,
-      bgColor: "bg-green-50",
-      iconColor: "text-green-600",
+      bgColor: 'bg-green-50',
+      iconColor: 'text-green-600',
     },
     {
-      title: "Active Contracts",
-      value: metrics ? metrics.activeContracts.toString() : "0",
-      change: "+8.2%",
-      changeType: "positive",
+      title: 'Active Contracts',
+      value: metrics ? metrics.activeContracts.toString() : '0',
+      change: '+8.2%',
+      changeType: 'positive',
       icon: FileText,
-      bgColor: "bg-primary/10",
-      iconColor: "text-primary",
+      bgColor: 'bg-primary/10',
+      iconColor: 'text-primary',
     },
     {
-      title: "Open Tickets",
-      value: metrics ? metrics.openTickets.toString() : "0",
-      change: "-15.3%",
-      changeType: "negative",
+      title: 'Open Tickets',
+      value: metrics ? metrics.openTickets.toString() : '0',
+      change: '-15.3%',
+      changeType: 'negative',
       icon: AlertTriangle,
-      bgColor: "bg-orange-50",
-      iconColor: "text-orange-600",
+      bgColor: 'bg-orange-50',
+      iconColor: 'text-orange-600',
     },
     {
-      title: "Avg Response Time",
-      value: metrics ? `${metrics.avgResponseTime}h` : "0h",
-      change: "-20.1%",
-      changeType: "positive",
+      title: 'Avg Response Time',
+      value: metrics ? `${metrics.avgResponseTime}h` : '0h',
+      change: '-20.1%',
+      changeType: 'positive',
       icon: Clock,
-      bgColor: "bg-primary/10",
-      iconColor: "text-primary",
+      bgColor: 'bg-primary/10',
+      iconColor: 'text-primary',
     },
   ];
 
@@ -76,18 +76,26 @@ export default function MetricsCards() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{metric.title}</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{metric.value}</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">
+                    {metric.title}
+                  </p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">
+                    {metric.value}
+                  </p>
                   <div className="flex items-center mt-1 sm:mt-2">
-                    <span className={`text-xs sm:text-sm font-medium ${
-                      metric.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <span
+                      className={`text-xs sm:text-sm font-medium ${
+                        metric.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
                       {metric.change}
                     </span>
                     <span className="text-xs sm:text-sm text-gray-500 ml-1">vs last month</span>
                   </div>
                 </div>
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 ${metric.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                <div
+                  className={`w-10 h-10 sm:w-12 sm:h-12 ${metric.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}
+                >
                   <Icon className={`h-5 w-5 sm:h-6 sm:w-6 ${metric.iconColor}`} />
                 </div>
               </div>

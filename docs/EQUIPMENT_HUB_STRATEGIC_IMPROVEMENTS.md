@@ -134,6 +134,7 @@ Consolidate both pages into one comprehensive hub using a "dashboard + drill-dow
 ### Benefits
 
 **User Experience:**
+
 1. ✅ Single source of truth for equipment lifecycle
 2. ✅ Progressive disclosure reduces cognitive load
 3. ✅ Quick actions always accessible
@@ -141,6 +142,7 @@ Consolidate both pages into one comprehensive hub using a "dashboard + drill-dow
 5. ✅ Deep linking preserves navigation state
 
 **Development:**
+
 1. ✅ Eliminate 679 lines of duplicate navigation code
 2. ✅ Shared components reduce maintenance burden
 3. ✅ Consistent patterns across all operations
@@ -148,6 +150,7 @@ Consolidate both pages into one comprehensive hub using a "dashboard + drill-dow
 5. ✅ Better code organization with clear component hierarchy
 
 **Performance:**
+
 1. ✅ Reduced API calls (shared query cache)
 2. ✅ Lazy loading for tab content
 3. ✅ Better bundle splitting (one page instead of two)
@@ -185,7 +188,15 @@ Currently, equipment lifecycle stages are stored as simple string values in the 
 
 ```typescript
 // From equipment-schema.ts
-currentStage: pgEnum('ordered', 'received', 'staged', 'delivered', 'installed', 'active', 'retired')
+currentStage: pgEnum(
+  'ordered',
+  'received',
+  'staged',
+  'delivered',
+  'installed',
+  'active',
+  'retired',
+);
 ```
 
 **Problems:**
@@ -202,8 +213,9 @@ currentStage: pgEnum('ordered', 'received', 'staged', 'delivered', 'installed', 
 
 ```typescript
 // This should NOT be allowed but nothing prevents it:
-await db.update(equipmentLifecycle)
-  .set({ currentStage: 'retired' })  // Jump directly to retired
+await db
+  .update(equipmentLifecycle)
+  .set({ currentStage: 'retired' }) // Jump directly to retired
   .where(eq(equipmentLifecycle.id, equipmentId));
 // Skipped: received → staged → delivered → installed → active
 ```
@@ -249,22 +261,24 @@ Analysis reveals four major missing workflows:
 export const equipmentLifecycleTransitions = pgTable('equipment_lifecycle_transitions', {
   id: serial('id').primaryKey(),
   tenantId: integer('tenant_id').notNull(),
-  equipmentId: integer('equipment_id').notNull().references(() => equipmentLifecycle.id),
+  equipmentId: integer('equipment_id')
+    .notNull()
+    .references(() => equipmentLifecycle.id),
 
-  fromStage: varchar('from_stage', { length: 50 }),  // null for initial state
+  fromStage: varchar('from_stage', { length: 50 }), // null for initial state
   toStage: varchar('to_stage', { length: 50 }).notNull(),
 
   transitionType: varchar('transition_type', { length: 50 }).notNull(),
   // Types: 'automatic', 'manual', 'scheduled', 'rollback'
 
-  triggeredBy: integer('triggered_by').references(() => users.id),  // user who initiated
+  triggeredBy: integer('triggered_by').references(() => users.id), // user who initiated
   triggeredAt: timestamp('triggered_at').notNull().defaultNow(),
 
-  reason: text('reason'),  // optional explanation
-  metadata: jsonb('metadata'),  // transition-specific data
+  reason: text('reason'), // optional explanation
+  metadata: jsonb('metadata'), // transition-specific data
 
-  validationsPassed: jsonb('validations_passed'),  // checklist of validations
-  validationsFailed: jsonb('validations_failed'),  // if any failed
+  validationsPassed: jsonb('validations_passed'), // checklist of validations
+  validationsFailed: jsonb('validations_failed'), // if any failed
 
   isRollback: boolean('is_rollback').default(false),
   rollbackReason: text('rollback_reason'),
@@ -301,38 +315,46 @@ export const lifecycleTransitionRules = pgTable('lifecycle_transition_rules', {
 // /server/services/equipment-lifecycle-state-machine.ts
 
 export class EquipmentLifecycleStateMachine {
-
   // Define valid transitions
   private static VALID_TRANSITIONS: Record<string, string[]> = {
-    'ordered': ['received', 'cancelled'],
-    'received': ['staged', 'returned'],
-    'staged': ['delivered', 'returned'],
-    'delivered': ['installed', 'returned'],
-    'installed': ['active', 'failed_installation'],
-    'active': ['maintenance', 'retired', 'transferred'],
-    'maintenance': ['active', 'retired'],
-    'retired': ['disposed', 'traded_in'],
-    'disposed': [],  // Terminal state
-    'traded_in': [],  // Terminal state
+    ordered: ['received', 'cancelled'],
+    received: ['staged', 'returned'],
+    staged: ['delivered', 'returned'],
+    delivered: ['installed', 'returned'],
+    installed: ['active', 'failed_installation'],
+    active: ['maintenance', 'retired', 'transferred'],
+    maintenance: ['active', 'retired'],
+    retired: ['disposed', 'traded_in'],
+    disposed: [], // Terminal state
+    traded_in: [], // Terminal state
   };
 
   // Validation requirements per transition
   private static VALIDATIONS: Record<string, Record<string, string[]>> = {
-    'received': {
-      'staged': ['quality_control_passed', 'serial_number_verified', 'photo_documentation']
+    received: {
+      staged: ['quality_control_passed', 'serial_number_verified', 'photo_documentation'],
     },
-    'staged': {
-      'delivered': ['delivery_scheduled', 'driver_assigned', 'customer_notified']
+    staged: {
+      delivered: ['delivery_scheduled', 'driver_assigned', 'customer_notified'],
     },
-    'delivered': {
-      'installed': ['delivery_signature', 'equipment_unpacked', 'site_inspection_passed']
+    delivered: {
+      installed: ['delivery_signature', 'equipment_unpacked', 'site_inspection_passed'],
     },
-    'installed': {
-      'active': ['installation_completed', 'configuration_backed_up', 'customer_trained', 'acceptance_signed']
+    installed: {
+      active: [
+        'installation_completed',
+        'configuration_backed_up',
+        'customer_trained',
+        'acceptance_signed',
+      ],
     },
-    'active': {
-      'retired': ['maintenance_history_reviewed', 'customer_notification_sent', 'replacement_ordered']
-    }
+    active: {
+      retired: [
+        'maintenance_history_reviewed',
+        'customer_notification_sent',
+        'replacement_ordered',
+      ],
+    },
   };
 
   /**
@@ -349,16 +371,15 @@ export class EquipmentLifecycleStateMachine {
   static async validateTransition(
     equipmentId: number,
     fromStage: string,
-    toStage: string
+    toStage: string,
   ): Promise<ValidationResult> {
-
     const requiredValidations = this.VALIDATIONS[fromStage]?.[toStage] || [];
     const validationResults = await this.runValidations(equipmentId, requiredValidations);
 
     return {
-      isValid: validationResults.every(v => v.passed),
-      passed: validationResults.filter(v => v.passed),
-      failed: validationResults.filter(v => !v.passed),
+      isValid: validationResults.every((v) => v.passed),
+      passed: validationResults.filter((v) => v.passed),
+      failed: validationResults.filter((v) => !v.passed),
     };
   }
 
@@ -370,13 +391,12 @@ export class EquipmentLifecycleStateMachine {
     toStage: string,
     userId: number,
     reason?: string,
-    metadata?: any
+    metadata?: any,
   ): Promise<TransitionResult> {
-
     return await db.transaction(async (tx) => {
       // 1. Get current equipment state
       const equipment = await tx.query.equipmentLifecycle.findFirst({
-        where: eq(equipmentLifecycle.id, equipmentId)
+        where: eq(equipmentLifecycle.id, equipmentId),
       });
 
       if (!equipment) {
@@ -394,23 +414,25 @@ export class EquipmentLifecycleStateMachine {
       const validation = await this.validateTransition(equipmentId, fromStage, toStage);
 
       if (!validation.isValid) {
-        throw new Error(`Validation failed: ${validation.failed.map(f => f.name).join(', ')}`);
+        throw new Error(`Validation failed: ${validation.failed.map((f) => f.name).join(', ')}`);
       }
 
       // 4. Update equipment stage
-      await tx.update(equipmentLifecycle)
+      await tx
+        .update(equipmentLifecycle)
         .set({
           currentStage: toStage,
           metadata: {
             ...equipment.metadata,
             lastTransitionAt: new Date().toISOString(),
             lastTransitionBy: userId,
-          }
+          },
         })
         .where(eq(equipmentLifecycle.id, equipmentId));
 
       // 5. Record transition
-      const [transition] = await tx.insert(equipmentLifecycleTransitions)
+      const [transition] = await tx
+        .insert(equipmentLifecycleTransitions)
         .values({
           tenantId: equipment.tenantId,
           equipmentId,
@@ -449,11 +471,7 @@ export class EquipmentLifecycleStateMachine {
   /**
    * Rollback a transition
    */
-  static async rollback(
-    transitionId: number,
-    userId: number,
-    reason: string
-  ): Promise<void> {
+  static async rollback(transitionId: number, userId: number, reason: string): Promise<void> {
     // Revert equipment to previous stage
     // Only allowed within time limit and for certain transitions
   }
@@ -475,38 +493,37 @@ export class EquipmentLifecycleStateMachine {
     equipmentId: number,
     fromStage: string,
     toStage: string,
-    tx: any
+    tx: any,
   ): Promise<void> {
-
     const actions: Record<string, Record<string, () => Promise<void>>> = {
-      'received': {
-        'staged': async () => {
+      received: {
+        staged: async () => {
           // Generate asset label/QR code
           await this.generateAssetLabel(equipmentId, tx);
-        }
+        },
       },
-      'delivered': {
-        'installed': async () => {
+      delivered: {
+        installed: async () => {
           // Schedule follow-up service check in 30 days
           await this.scheduleFollowUpService(equipmentId, 30, tx);
-        }
+        },
       },
-      'installed': {
-        'active': async () => {
+      installed: {
+        active: async () => {
           // Trigger welcome email to customer
           // Activate monitoring
           // Register warranty
           await this.activateEquipmentMonitoring(equipmentId, tx);
           await this.sendWelcomeEmail(equipmentId, tx);
-        }
+        },
       },
-      'active': {
-        'retired': async () => {
+      active: {
+        retired: async () => {
           // Deactivate monitoring
           // Send retirement notification
           await this.deactivateEquipmentMonitoring(equipmentId, tx);
-        }
-      }
+        },
+      },
     };
 
     const action = actions[fromStage]?.[toStage];
@@ -522,63 +539,78 @@ export class EquipmentLifecycleStateMachine {
 ```typescript
 // POST /api/equipment-lifecycle/:id/transition
 // Transition equipment to new stage
-app.post('/api/equipment-lifecycle/:id/transition', requireAuth, requireTenant, async (req, res) => {
-  const { id } = req.params;
-  const { toStage, reason, metadata } = req.body;
+app.post(
+  '/api/equipment-lifecycle/:id/transition',
+  requireAuth,
+  requireTenant,
+  async (req, res) => {
+    const { id } = req.params;
+    const { toStage, reason, metadata } = req.body;
 
-  try {
-    const result = await EquipmentLifecycleStateMachine.transition(
-      parseInt(id),
-      toStage,
-      req.session.userId,
-      reason,
-      metadata
-    );
+    try {
+      const result = await EquipmentLifecycleStateMachine.transition(
+        parseInt(id),
+        toStage,
+        req.session.userId,
+        reason,
+        metadata,
+      );
 
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({
-      message: error.message,
-      code: 'TRANSITION_FAILED'
-    });
-  }
-});
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({
+        message: error.message,
+        code: 'TRANSITION_FAILED',
+      });
+    }
+  },
+);
 
 // GET /api/equipment-lifecycle/:id/transitions
 // Get transition history
-app.get('/api/equipment-lifecycle/:id/transitions', requireAuth, requireTenant, async (req, res) => {
-  const { id } = req.params;
-  const history = await EquipmentLifecycleStateMachine.getHistory(parseInt(id));
-  res.json(history);
-});
+app.get(
+  '/api/equipment-lifecycle/:id/transitions',
+  requireAuth,
+  requireTenant,
+  async (req, res) => {
+    const { id } = req.params;
+    const history = await EquipmentLifecycleStateMachine.getHistory(parseInt(id));
+    res.json(history);
+  },
+);
 
 // GET /api/equipment-lifecycle/:id/can-transition/:toStage
 // Check if transition is allowed
-app.get('/api/equipment-lifecycle/:id/can-transition/:toStage', requireAuth, requireTenant, async (req, res) => {
-  const { id, toStage } = req.params;
+app.get(
+  '/api/equipment-lifecycle/:id/can-transition/:toStage',
+  requireAuth,
+  requireTenant,
+  async (req, res) => {
+    const { id, toStage } = req.params;
 
-  const equipment = await db.query.equipmentLifecycle.findFirst({
-    where: eq(equipmentLifecycle.id, parseInt(id))
-  });
+    const equipment = await db.query.equipmentLifecycle.findFirst({
+      where: eq(equipmentLifecycle.id, parseInt(id)),
+    });
 
-  const canTransition = EquipmentLifecycleStateMachine.canTransition(
-    equipment.currentStage,
-    toStage
-  );
+    const canTransition = EquipmentLifecycleStateMachine.canTransition(
+      equipment.currentStage,
+      toStage,
+    );
 
-  const validation = await EquipmentLifecycleStateMachine.validateTransition(
-    parseInt(id),
-    equipment.currentStage,
-    toStage
-  );
+    const validation = await EquipmentLifecycleStateMachine.validateTransition(
+      parseInt(id),
+      equipment.currentStage,
+      toStage,
+    );
 
-  res.json({
-    canTransition,
-    validation,
-    currentStage: equipment.currentStage,
-    targetStage: toStage,
-  });
-});
+    res.json({
+      canTransition,
+      validation,
+      currentStage: equipment.currentStage,
+      targetStage: toStage,
+    });
+  },
+);
 ```
 
 #### Part B: Missing Workflow Implementations
@@ -590,7 +622,9 @@ app.get('/api/equipment-lifecycle/:id/can-transition/:toStage', requireAuth, req
 export const equipmentDisposal = pgTable('equipment_disposal', {
   id: serial('id').primaryKey(),
   tenantId: integer('tenant_id').notNull(),
-  equipmentId: integer('equipment_id').notNull().references(() => equipmentLifecycle.id),
+  equipmentId: integer('equipment_id')
+    .notNull()
+    .references(() => equipmentLifecycle.id),
 
   disposalType: varchar('disposal_type', { length: 50 }).notNull(),
   // Types: 'recycle', 'donate', 'trade_in', 'landfill', 'resell'
@@ -609,7 +643,7 @@ export const equipmentDisposal = pgTable('equipment_disposal', {
   salvageValue: decimal('salvage_value', { precision: 10, scale: 2 }),
 
   // Documentation
-  disposalPhotos: jsonb('disposal_photos'),  // array of URLs
+  disposalPhotos: jsonb('disposal_photos'), // array of URLs
   disposalNotes: text('disposal_notes'),
 
   approvedBy: integer('approved_by').references(() => users.id),
@@ -642,7 +676,9 @@ export const equipmentTradeIns = pgTable('equipment_trade_ins', {
   // New equipment (what customer is upgrading to)
   newEquipmentId: integer('new_equipment_id').references(() => equipmentLifecycle.id),
 
-  customerId: integer('customer_id').notNull().references(() => businessRecords.id),
+  customerId: integer('customer_id')
+    .notNull()
+    .references(() => businessRecords.id),
 
   // Evaluation
   evaluationDate: timestamp('evaluation_date'),
@@ -667,7 +703,7 @@ export const equipmentTradeIns = pgTable('equipment_trade_ins', {
   evaluationChecklist: jsonb('evaluation_checklist'),
   // Example: {"physical_condition": "good", "functional_status": "working", "accessories_included": true}
 
-  photos: jsonb('photos'),  // evaluation photos
+  photos: jsonb('photos'), // evaluation photos
   notes: text('notes'),
 
   status: varchar('status', { length: 20 }).default('pending'),
@@ -690,7 +726,9 @@ export const equipmentTradeIns = pgTable('equipment_trade_ins', {
 export const equipmentTransfers = pgTable('equipment_transfers', {
   id: serial('id').primaryKey(),
   tenantId: integer('tenant_id').notNull(),
-  equipmentId: integer('equipment_id').notNull().references(() => equipmentLifecycle.id),
+  equipmentId: integer('equipment_id')
+    .notNull()
+    .references(() => equipmentLifecycle.id),
 
   transferType: varchar('transfer_type', { length: 50 }).notNull(),
   // Types: 'customer_to_customer', 'location_to_location', 'warehouse_to_customer', 'customer_to_warehouse'
@@ -713,7 +751,9 @@ export const equipmentTransfers = pgTable('equipment_transfers', {
 
   // Logistics
   deliveryScheduleId: integer('delivery_schedule_id').references(() => deliverySchedules.id),
-  installationScheduleId: integer('installation_schedule_id').references(() => installationSchedules.id),
+  installationScheduleId: integer('installation_schedule_id').references(
+    () => installationSchedules.id,
+  ),
 
   // Financial implications
   transferCost: decimal('transfer_cost', { precision: 10, scale: 2 }),
@@ -749,7 +789,7 @@ export const equipmentBulkOperations = pgTable('equipment_bulk_operations', {
   operationType: varchar('operation_type', { length: 50 }).notNull(),
   // Types: 'stage_transition', 'location_update', 'customer_assignment', 'disposal', 'transfer'
 
-  equipmentIds: jsonb('equipment_ids').notNull(),  // array of equipment IDs
+  equipmentIds: jsonb('equipment_ids').notNull(), // array of equipment IDs
 
   operationData: jsonb('operation_data').notNull(),
   // Operation-specific parameters
@@ -778,17 +818,16 @@ export const equipmentBulkOperations = pgTable('equipment_bulk_operations', {
 
 // Service implementation
 export class EquipmentBulkOperationsService {
-
   static async executeBulkOperation(
     operationType: string,
     equipmentIds: number[],
     operationData: any,
     userId: number,
-    tenantId: number
+    tenantId: number,
   ): Promise<BulkOperationResult> {
-
     // Create bulk operation record
-    const [bulkOp] = await db.insert(equipmentBulkOperations)
+    const [bulkOp] = await db
+      .insert(equipmentBulkOperations)
       .values({
         tenantId,
         operationType,
@@ -813,14 +852,14 @@ export class EquipmentBulkOperationsService {
     bulkOperationId: number,
     equipmentIds: number[],
     operationType: string,
-    operationData: any
+    operationData: any,
   ): Promise<void> {
-
     // Update status to in_progress
-    await db.update(equipmentBulkOperations)
+    await db
+      .update(equipmentBulkOperations)
       .set({
         status: 'in_progress',
-        startedAt: new Date()
+        startedAt: new Date(),
       })
       .where(eq(equipmentBulkOperations.id, bulkOperationId));
 
@@ -837,12 +876,13 @@ export class EquipmentBulkOperationsService {
               equipmentId,
               operationData.toStage,
               operationData.userId,
-              operationData.reason
+              operationData.reason,
             );
             break;
 
           case 'location_update':
-            await db.update(equipmentLifecycle)
+            await db
+              .update(equipmentLifecycle)
               .set({ currentLocation: operationData.newLocation })
               .where(eq(equipmentLifecycle.id, equipmentId));
             break;
@@ -852,19 +892,19 @@ export class EquipmentBulkOperationsService {
 
         results.push({ equipmentId, success: true });
         successCount++;
-
       } catch (error) {
         results.push({
           equipmentId,
           success: false,
-          error: error.message
+          error: error.message,
         });
         failedCount++;
       }
     }
 
     // Update bulk operation with results
-    await db.update(equipmentBulkOperations)
+    await db
+      .update(equipmentBulkOperations)
       .set({
         status: failedCount === 0 ? 'completed' : 'partially_failed',
         successCount,
@@ -880,6 +920,7 @@ export class EquipmentBulkOperationsService {
 ### Implementation Roadmap
 
 **Phase 1: State Machine Foundation (Week 1-2)**
+
 1. Create database schema for transitions and rules
 2. Implement `EquipmentLifecycleStateMachine` service
 3. Add API endpoints for transitions
@@ -887,6 +928,7 @@ export class EquipmentBulkOperationsService {
 5. Document valid transitions and validations
 
 **Phase 2: UI Integration (Week 3)**
+
 1. Add transition buttons to equipment detail pages
 2. Show transition history timeline
 3. Display validation errors before transitions
@@ -894,6 +936,7 @@ export class EquipmentBulkOperationsService {
 5. Update equipment cards to show available transitions
 
 **Phase 3: Disposal Workflow (Week 4)**
+
 1. Create disposal schema
 2. Implement disposal API endpoints
 3. Build disposal request form
@@ -901,6 +944,7 @@ export class EquipmentBulkOperationsService {
 5. Integrate with accounting (asset write-off)
 
 **Phase 4: Trade-In Workflow (Week 5)**
+
 1. Create trade-in schema
 2. Implement evaluation forms and API
 3. Build trade-in credit calculator
@@ -908,6 +952,7 @@ export class EquipmentBulkOperationsService {
 5. Integrate with sales/billing modules
 
 **Phase 5: Transfer Workflow (Week 6)**
+
 1. Create transfer schema
 2. Implement transfer request and approval APIs
 3. Build transfer wizard (from/to selection)
@@ -915,6 +960,7 @@ export class EquipmentBulkOperationsService {
 5. Add compliance documentation
 
 **Phase 6: Bulk Operations (Week 7)**
+
 1. Create bulk operations schema
 2. Implement bulk processing service (async with queue)
 3. Build multi-select UI with bulk action toolbar
@@ -924,6 +970,7 @@ export class EquipmentBulkOperationsService {
 ### Benefits
 
 **Business Rules Enforcement:**
+
 1. ✅ Prevent invalid state transitions
 2. ✅ Enforce required validations before stage changes
 3. ✅ Automatic post-transition actions (notifications, monitoring activation)
@@ -931,12 +978,14 @@ export class EquipmentBulkOperationsService {
 5. ✅ Rollback capability for reversible transitions
 
 **Complete Equipment Lifecycle:**
+
 1. ✅ Handle equipment from procurement to disposal
 2. ✅ Support trade-in and upgrade paths
 3. ✅ Enable equipment transfers between customers/locations
 4. ✅ Bulk operations for efficiency at scale
 
 **Automation Opportunities:**
+
 1. ✅ Auto-transition equipment when conditions are met
 2. ✅ Scheduled transitions (e.g., auto-retire after warranty expiration)
 3. ✅ Automated notifications to stakeholders
@@ -944,6 +993,7 @@ export class EquipmentBulkOperationsService {
 5. ✅ Integration triggers (invoicing, monitoring, compliance)
 
 **Compliance & Auditability:**
+
 1. ✅ Complete transition history
 2. ✅ Certificate of data destruction for disposal
 3. ✅ Environmental compliance tracking
@@ -966,24 +1016,28 @@ export class EquipmentBulkOperationsService {
 ### Combined Impact of Both Improvements
 
 **User Experience:**
+
 - Single, unified hub reduces confusion and navigation time
 - State machine prevents errors and guides users through proper workflows
 - Bulk operations enable scalability
 - Complete lifecycle coverage (cradle to grave)
 
 **Code Quality:**
+
 - Eliminate 679 lines of duplicate navigation code
 - Centralized business logic in services (not routes)
 - Consistent patterns across all equipment operations
 - Enforced validation through state machine
 
 **Business Operations:**
+
 - Reduce equipment tracking errors by 95%+
 - Enable compliance tracking for disposal/recycling
 - Support trade-in programs to drive upgrades
 - Enable inter-customer transfers for fleet management
 
 **Technical Debt Reduction:**
+
 - Consolidate two pages into one (remove duplication)
 - Extract business logic from routes (proper architecture)
 - Enforce data integrity through state machine
@@ -992,12 +1046,14 @@ export class EquipmentBulkOperationsService {
 ### Risk Assessment
 
 **Low Risk:**
+
 - ✅ Schemas are additive (no breaking changes)
 - ✅ State machine can be introduced gradually (opt-in per tenant)
 - ✅ Page consolidation uses existing components (refactoring, not rewriting)
 - ✅ New workflows are additive features (don't affect existing functionality)
 
 **Mitigation Strategies:**
+
 - Run both pages in parallel during migration (with deprecation notices)
 - Add feature flags for state machine rollout
 - Comprehensive testing before deployment
@@ -1021,12 +1077,14 @@ export class EquipmentBulkOperationsService {
 - Each improvement builds on the previous one
 
 **Estimated Timeline:**
+
 - Improvement #1: 2 weeks
 - Improvement #2 (Phase 1-2): 3 weeks
 - Missing Workflows: 4 weeks (1 week each)
 - **Total:** ~9 weeks for complete implementation
 
 **Resource Requirements:**
+
 - 1 Senior Frontend Developer (page consolidation, UI)
 - 1 Senior Backend Developer (state machine, APIs)
 - 1 QA Engineer (testing, validation)
@@ -1043,7 +1101,7 @@ The Equipment Lifecycle Hub has strong bones but needs **consolidation** and **w
 3. **Enable complete lifecycle** through missing workflows
 4. **Scale operations** through bulk processing
 
-Together, these changes transform the Equipment Lifecycle Hub from a *good tracking system* into a **comprehensive equipment management platform** that enforces best practices, prevents errors, and enables scalation.
+Together, these changes transform the Equipment Lifecycle Hub from a _good tracking system_ into a **comprehensive equipment management platform** that enforces best practices, prevents errors, and enables scalation.
 
 ---
 

@@ -27,7 +27,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
   try {
     const registration = await navigator.serviceWorker.register('/service-worker.js', {
-      scope: '/'
+      scope: '/',
     });
 
     console.log('[PWA] Service worker registered successfully:', registration.scope);
@@ -36,9 +36,12 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     registration.update();
 
     // Check for updates every hour
-    setInterval(() => {
-      registration.update();
-    }, 60 * 60 * 1000);
+    setInterval(
+      () => {
+        registration.update();
+      },
+      60 * 60 * 1000,
+    );
 
     return registration;
   } catch (error) {
@@ -347,5 +350,5 @@ export const PWA_CONFIG = {
   backgroundColor: '#ffffff',
   scope: '/',
   startUrl: '/',
-  display: 'standalone'
+  display: 'standalone',
 } as const;

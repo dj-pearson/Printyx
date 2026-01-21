@@ -1,5 +1,17 @@
 import { useMemo } from 'react';
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { Package, DollarSign, TrendingUp } from 'lucide-react';
 
@@ -37,16 +49,27 @@ interface PartsUsageChartProps {
   metrics?: PartsUsageMetrics;
 }
 
-const COLORS = ['#3b82f6', '#8b5cf6', '#22c55e', '#f59e0b', '#ec4899', '#14b8a6', '#f97316', '#06b6d4'];
+const COLORS = [
+  '#3b82f6',
+  '#8b5cf6',
+  '#22c55e',
+  '#f59e0b',
+  '#ec4899',
+  '#14b8a6',
+  '#f97316',
+  '#06b6d4',
+];
 
 export default function PartsUsageChart({ parts, summary, metrics }: PartsUsageChartProps) {
   // Top 10 parts by cost
   const topPartsData = useMemo(() => {
-    return summary?.topParts?.slice(0, 10).map(part => ({
-      name: `${part.partNumber}`,
-      cost: part.cost,
-      quantity: part.quantity,
-    })) || [];
+    return (
+      summary?.topParts?.slice(0, 10).map((part) => ({
+        name: `${part.partNumber}`,
+        cost: part.cost,
+        quantity: part.quantity,
+      })) || []
+    );
   }, [summary]);
 
   // Cost by category for pie chart
@@ -100,7 +123,9 @@ export default function PartsUsageChart({ parts, summary, metrics }: PartsUsageC
         <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
           <div className="flex items-center gap-2 mb-2">
             <Package className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Total Parts</span>
+            <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              Total Parts
+            </span>
           </div>
           <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
             {summary?.totalParts || 0}
@@ -113,7 +138,9 @@ export default function PartsUsageChart({ parts, summary, metrics }: PartsUsageC
         <div className="bg-green-50 dark:bg-green-950 rounded-lg p-4 border border-green-200 dark:border-green-800">
           <div className="flex items-center gap-2 mb-2">
             <DollarSign className="h-4 w-4 text-green-600" />
-            <span className="text-sm font-medium text-green-900 dark:text-green-100">Total Cost</span>
+            <span className="text-sm font-medium text-green-900 dark:text-green-100">
+              Total Cost
+            </span>
           </div>
           <div className="text-2xl font-bold text-green-700 dark:text-green-300">
             ${(summary?.totalCost || 0).toLocaleString()}
@@ -126,7 +153,9 @@ export default function PartsUsageChart({ parts, summary, metrics }: PartsUsageC
         <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-900 dark:text-purple-100">Billable %</span>
+            <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
+              Billable %
+            </span>
           </div>
           <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
             {metrics?.billablePercentage?.toFixed(0) || 0}%

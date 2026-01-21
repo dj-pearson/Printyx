@@ -3,16 +3,8 @@
   "name": "Printyx Knowledge Capture",
   "version": "1.0.0",
   "description": "Capture web content and save it to your Printyx knowledge base",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "contextMenus",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://*.printyx.net/*",
-    "http://localhost:5000/*"
-  ],
+  "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
+  "host_permissions": ["https://*.printyx.net/*", "http://localhost:5000/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

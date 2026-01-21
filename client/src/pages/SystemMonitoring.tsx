@@ -1,19 +1,26 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Monitor, 
-  Server, 
-  Activity, 
-  Database, 
-  Wifi, 
-  AlertTriangle, 
-  CheckCircle, 
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Monitor,
+  Server,
+  Activity,
+  Database,
+  Wifi,
+  AlertTriangle,
+  CheckCircle,
   RefreshCw,
   TrendingUp,
   TrendingDown,
@@ -22,10 +29,10 @@ import {
   Globe,
   HardDrive,
   Cpu,
-  MemoryStick
-} from "lucide-react";
-import { format } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
+  MemoryStick,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
 
 interface SystemMetric {
   name: string;
@@ -55,100 +62,100 @@ interface AlertItem {
 
 export default function SystemMonitoring() {
   const { toast } = useToast();
-  const [selectedTab, setSelectedTab] = useState("overview");
-  
+  const [selectedTab, setSelectedTab] = useState('overview');
+
   // Mock data for demonstration
   const systemMetrics: SystemMetric[] = [
     {
-      name: "CPU Usage",
+      name: 'CPU Usage',
       value: 23.5,
-      unit: "%",
-      status: "good",
-      trend: "stable",
-      lastUpdated: new Date().toISOString()
+      unit: '%',
+      status: 'good',
+      trend: 'stable',
+      lastUpdated: new Date().toISOString(),
     },
     {
-      name: "Memory Usage",
+      name: 'Memory Usage',
       value: 68.2,
-      unit: "%",
-      status: "warning",
-      trend: "up",
-      lastUpdated: new Date().toISOString()
+      unit: '%',
+      status: 'warning',
+      trend: 'up',
+      lastUpdated: new Date().toISOString(),
     },
     {
-      name: "Disk Usage",
+      name: 'Disk Usage',
       value: 45.8,
-      unit: "%",
-      status: "good",
-      trend: "stable",
-      lastUpdated: new Date().toISOString()
+      unit: '%',
+      status: 'good',
+      trend: 'stable',
+      lastUpdated: new Date().toISOString(),
     },
     {
-      name: "Network I/O",
+      name: 'Network I/O',
       value: 234.7,
-      unit: "MB/s",
-      status: "good",
-      trend: "down",
-      lastUpdated: new Date().toISOString()
-    }
+      unit: 'MB/s',
+      status: 'good',
+      trend: 'down',
+      lastUpdated: new Date().toISOString(),
+    },
   ];
 
   const serviceStatuses: ServiceStatus[] = [
     {
-      name: "Web Application",
-      status: "online",
+      name: 'Web Application',
+      status: 'online',
       uptime: 99.98,
       responseTime: 234,
-      lastCheck: new Date(Date.now() - 30000).toISOString()
+      lastCheck: new Date(Date.now() - 30000).toISOString(),
     },
     {
-      name: "Database",
-      status: "online",
+      name: 'Database',
+      status: 'online',
       uptime: 99.95,
       responseTime: 45,
-      lastCheck: new Date(Date.now() - 30000).toISOString()
+      lastCheck: new Date(Date.now() - 30000).toISOString(),
     },
     {
-      name: "API Gateway",
-      status: "online",
+      name: 'API Gateway',
+      status: 'online',
       uptime: 99.99,
       responseTime: 123,
-      lastCheck: new Date(Date.now() - 30000).toISOString()
+      lastCheck: new Date(Date.now() - 30000).toISOString(),
     },
     {
-      name: "Background Jobs",
-      status: "degraded",
+      name: 'Background Jobs',
+      status: 'degraded',
       uptime: 97.5,
       responseTime: 567,
-      lastCheck: new Date(Date.now() - 30000).toISOString()
-    }
+      lastCheck: new Date(Date.now() - 30000).toISOString(),
+    },
   ];
 
   const alerts: AlertItem[] = [
     {
-      id: "alert-001",
-      type: "performance",
-      severity: "medium",
-      message: "Memory usage above 65% threshold",
+      id: 'alert-001',
+      type: 'performance',
+      severity: 'medium',
+      message: 'Memory usage above 65% threshold',
       timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-      resolved: false
+      resolved: false,
     },
     {
-      id: "alert-002",
-      type: "service",
-      severity: "high",
-      message: "Background job processing degraded",
+      id: 'alert-002',
+      type: 'service',
+      severity: 'high',
+      message: 'Background job processing degraded',
       timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      resolved: false
+      resolved: false,
     },
     {
-      id: "alert-003",
-      type: "security",
-      severity: "low",
-      message: "Multiple failed login attempts detected",
+      id: 'alert-003',
+      type: 'security',
+      severity: 'low',
+      message: 'Multiple failed login attempts detected',
       timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-      resolved: true
-    }
+      resolved: true,
+    },
   ];
 
   const getStatusColor = (status: string) => {
@@ -249,15 +256,14 @@ export default function SystemMonitoring() {
                           <p className="text-sm font-medium text-gray-600">{metric.name}</p>
                           <div className="flex items-center space-x-2">
                             <p className="text-2xl font-bold">
-                              {metric.value}{metric.unit}
+                              {metric.value}
+                              {metric.unit}
                             </p>
                             {getTrendIcon(metric.trend)}
                           </div>
                         </div>
                       </div>
-                      <Badge className={getStatusColor(metric.status)}>
-                        {metric.status}
-                      </Badge>
+                      <Badge className={getStatusColor(metric.status)}>{metric.status}</Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -275,12 +281,20 @@ export default function SystemMonitoring() {
                 <CardContent>
                   <div className="space-y-3">
                     {serviceStatuses.map((service, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg border"
+                      >
                         <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${
-                            service.status === 'online' ? 'bg-green-500' :
-                            service.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
-                          }`} />
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              service.status === 'online'
+                                ? 'bg-green-500'
+                                : service.status === 'degraded'
+                                  ? 'bg-yellow-500'
+                                  : 'bg-red-500'
+                            }`}
+                          />
                           <div>
                             <p className="font-medium">{service.name}</p>
                             <p className="text-sm text-gray-500">
@@ -288,9 +302,7 @@ export default function SystemMonitoring() {
                             </p>
                           </div>
                         </div>
-                        <Badge className={getStatusColor(service.status)}>
-                          {service.status}
-                        </Badge>
+                        <Badge className={getStatusColor(service.status)}>{service.status}</Badge>
                       </div>
                     ))}
                   </div>
@@ -307,7 +319,10 @@ export default function SystemMonitoring() {
                 <CardContent>
                   <div className="space-y-3">
                     {alerts.slice(0, 5).map((alert) => (
-                      <div key={alert.id} className="flex items-start space-x-3 p-3 rounded-lg border">
+                      <div
+                        key={alert.id}
+                        className="flex items-start space-x-3 p-3 rounded-lg border"
+                      >
                         <div className="mt-1">
                           {alert.resolved ? (
                             <CheckCircle className="w-4 h-4 text-green-600" />
@@ -345,33 +360,35 @@ export default function SystemMonitoring() {
                         {getMetricIcon(metric.name)}
                         <span>{metric.name}</span>
                       </div>
-                      <Badge className={getStatusColor(metric.status)}>
-                        {metric.status}
-                      </Badge>
+                      <Badge className={getStatusColor(metric.status)}>{metric.status}</Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-3xl font-bold">
-                          {metric.value}{metric.unit}
+                          {metric.value}
+                          {metric.unit}
                         </span>
                         <div className="flex items-center space-x-1">
                           {getTrendIcon(metric.trend)}
                           <span className="text-sm text-gray-500 capitalize">{metric.trend}</span>
                         </div>
                       </div>
-                      
+
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className={`h-2 rounded-full ${
-                            metric.status === 'good' ? 'bg-green-600' :
-                            metric.status === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
+                            metric.status === 'good'
+                              ? 'bg-green-600'
+                              : metric.status === 'warning'
+                                ? 'bg-yellow-600'
+                                : 'bg-red-600'
                           }`}
                           style={{ width: `${Math.min(metric.value, 100)}%` }}
                         />
                       </div>
-                      
+
                       <p className="text-xs text-gray-500">
                         Last updated: {format(new Date(metric.lastUpdated), 'HH:mm:ss')}
                       </p>
@@ -408,23 +425,24 @@ export default function SystemMonitoring() {
                       <TableRow key={index}>
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <div className={`w-3 h-3 rounded-full ${
-                              service.status === 'online' ? 'bg-green-500' :
-                              service.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
-                            }`} />
+                            <div
+                              className={`w-3 h-3 rounded-full ${
+                                service.status === 'online'
+                                  ? 'bg-green-500'
+                                  : service.status === 'degraded'
+                                    ? 'bg-yellow-500'
+                                    : 'bg-red-500'
+                              }`}
+                            />
                             <span className="font-medium">{service.name}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(service.status)}>
-                            {service.status}
-                          </Badge>
+                          <Badge className={getStatusColor(service.status)}>{service.status}</Badge>
                         </TableCell>
                         <TableCell>{service.uptime}%</TableCell>
                         <TableCell>{service.responseTime}ms</TableCell>
-                        <TableCell>
-                          {format(new Date(service.lastCheck), 'HH:mm:ss')}
-                        </TableCell>
+                        <TableCell>{format(new Date(service.lastCheck), 'HH:mm:ss')}</TableCell>
                         <TableCell>
                           <div className="flex items-center space-x-2">
                             <Button size="sm" variant="outline">
@@ -463,9 +481,7 @@ export default function SystemMonitoring() {
                               <Badge className={getSeverityColor(alert.severity)}>
                                 {alert.severity}
                               </Badge>
-                              <Badge variant="outline">
-                                {alert.type}
-                              </Badge>
+                              <Badge variant="outline">{alert.type}</Badge>
                               {alert.resolved && (
                                 <Badge variant="outline" className="bg-green-50 text-green-700">
                                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -482,7 +498,9 @@ export default function SystemMonitoring() {
                         {!alert.resolved && (
                           <div className="mt-3 flex space-x-2">
                             <Button size="sm">Acknowledge</Button>
-                            <Button size="sm" variant="outline">View Details</Button>
+                            <Button size="sm" variant="outline">
+                              View Details
+                            </Button>
                           </div>
                         )}
                       </CardContent>

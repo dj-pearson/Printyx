@@ -5,12 +5,16 @@ import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface DoDEnforcementButtonProps {
   recordId: string;
-  validationType: 'quote-to-proposal' | 'proposal-to-contract' | 'po-to-warehouse' | 'service-completion';
+  validationType:
+    | 'quote-to-proposal'
+    | 'proposal-to-contract'
+    | 'po-to-warehouse'
+    | 'service-completion';
   onValidClick: () => void;
   children: React.ReactNode;
   disabled?: boolean;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   className?: string;
 }
 
@@ -20,11 +24,13 @@ export default function DoDEnforcementButton({
   onValidClick,
   children,
   disabled = false,
-  variant = "default",
-  size = "default",
-  className = ""
+  variant = 'default',
+  size = 'default',
+  className = '',
 }: DoDEnforcementButtonProps) {
-  const [validationState, setValidationState] = useState<'idle' | 'checking' | 'passed' | 'failed'>('idle');
+  const [validationState, setValidationState] = useState<'idle' | 'checking' | 'passed' | 'failed'>(
+    'idle',
+  );
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const handleClick = async () => {
@@ -34,14 +40,14 @@ export default function DoDEnforcementButton({
     }
 
     setValidationState('checking');
-    
+
     try {
       const response = await fetch(`/api/validate/${validationType}/${recordId}`, {
         headers: {
           'x-tenant-id': localStorage.getItem('currentTenantId') || '',
         },
       });
-      
+
       const result = await response.json();
 
       if (result.valid) {
@@ -55,11 +61,12 @@ export default function DoDEnforcementButton({
       } else {
         setValidationState('failed');
         setValidationErrors(result.errors || ['Validation failed']);
-        
+
         // Show validation errors in alert
-        const errorMessage = result.errors?.join('\n') || 'Please complete all required fields before proceeding.';
+        const errorMessage =
+          result.errors?.join('\n') || 'Please complete all required fields before proceeding.';
         alert(`Cannot proceed:\n\n${errorMessage}`);
-        
+
         // Reset state after showing error
         setTimeout(() => setValidationState('idle'), 2000);
       }
@@ -112,7 +119,7 @@ export default function DoDEnforcementButton({
       >
         {getButtonContent()}
       </Button>
-      
+
       {validationState === 'failed' && validationErrors.length > 0 && (
         <div className="text-xs text-red-600 max-w-xs">
           <Badge variant="destructive" className="text-xs">

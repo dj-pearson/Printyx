@@ -13,5 +13,3 @@ type Story = StoryObj<typeof Button>;
 export const Default: Story = {};
 export const Outline: Story = { args: { variant: 'outline' } };
 export const Destructive: Story = { args: { variant: 'destructive' } };
-
-

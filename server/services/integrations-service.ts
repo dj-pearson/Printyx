@@ -125,7 +125,7 @@ export class IntegrationsService {
     lastSyncedAt?: Date,
   ): Promise<any[]> {
     try {
-      const query = "select * from Invoice";
+      const query = 'select * from Invoice';
       const response = await fetch(
         `https://quickbooks.api.intuit.com/v2/company/${realmId}/query?query=${encodeURIComponent(query)}`,
         {
@@ -241,7 +241,7 @@ export class IntegrationsService {
       const response = await fetch('https://api.zoominfo.com/v2/company/search', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          Authorization: `Bearer ${credentials.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),
@@ -260,7 +260,7 @@ export class IntegrationsService {
       const response = await fetch('https://api.zoominfo.com/v2/company/search', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -284,7 +284,7 @@ export class IntegrationsService {
     try {
       const response = await fetch('https://api.stripe.com/v1/account', {
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          Authorization: `Bearer ${credentials.apiKey}`,
         },
       });
       return response.ok;
@@ -296,10 +296,15 @@ export class IntegrationsService {
   // TWILIO - SMS Notifications
   private static async testTwilioConnection(credentials: any): Promise<boolean> {
     try {
-      const auth = Buffer.from(`${credentials.accountSid}:${credentials.authToken}`).toString('base64');
-      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${credentials.accountSid}`, {
-        headers: { 'Authorization': `Basic ${auth}` },
-      });
+      const auth = Buffer.from(`${credentials.accountSid}:${credentials.authToken}`).toString(
+        'base64',
+      );
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${credentials.accountSid}`,
+        {
+          headers: { Authorization: `Basic ${auth}` },
+        },
+      );
       return response.ok;
     } catch {
       return false;
@@ -312,7 +317,7 @@ export class IntegrationsService {
       const response = await fetch('https://api.sendgrid.com/v3/mail/validate', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          Authorization: `Bearer ${credentials.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email: credentials.fromEmail }),
@@ -328,7 +333,7 @@ export class IntegrationsService {
     try {
       const auth = Buffer.from(`${credentials.clientId}:${credentials.apiKey}`).toString('base64');
       const response = await fetch(`${credentials.apiUrl}/v4_6_release/system/info`, {
-        headers: { 'Authorization': `Basic ${auth}` },
+        headers: { Authorization: `Basic ${auth}` },
       });
       return response.ok;
     } catch {
@@ -352,7 +357,7 @@ export class IntegrationsService {
   private static async testPrintFleetConnection(credentials: any): Promise<boolean> {
     try {
       const response = await fetch('https://api.printfleet.com/api/v1/devices', {
-        headers: { 'Authorization': `Bearer ${credentials.apiKey}` },
+        headers: { Authorization: `Bearer ${credentials.apiKey}` },
       });
       return response.ok || response.status === 401;
     } catch {
@@ -386,7 +391,7 @@ export class IntegrationsService {
   private static async testSlackConnection(credentials: any): Promise<boolean> {
     try {
       const response = await fetch('https://slack.com/api/auth.test', {
-        headers: { 'Authorization': `Bearer ${credentials.botToken}` },
+        headers: { Authorization: `Bearer ${credentials.botToken}` },
       });
       const data = await response.json();
       return data.ok;
@@ -399,7 +404,7 @@ export class IntegrationsService {
   private static async testMailchimpConnection(credentials: any): Promise<boolean> {
     try {
       const response = await fetch('https://us1.api.mailchimp.com/3.0/', {
-        headers: { 'Authorization': `Bearer ${credentials.apiKey}` },
+        headers: { Authorization: `Bearer ${credentials.apiKey}` },
       });
       return response.ok;
     } catch {
@@ -410,7 +415,9 @@ export class IntegrationsService {
   // SEND SMS via Twilio
   static async sendSMS(credentials: any, toNumber: string, message: string): Promise<boolean> {
     try {
-      const auth = Buffer.from(`${credentials.accountSid}:${credentials.authToken}`).toString('base64');
+      const auth = Buffer.from(`${credentials.accountSid}:${credentials.authToken}`).toString(
+        'base64',
+      );
       const params = new URLSearchParams({
         From: credentials.phoneNumber,
         To: toNumber,
@@ -422,7 +429,7 @@ export class IntegrationsService {
         {
           method: 'POST',
           headers: {
-            'Authorization': `Basic ${auth}`,
+            Authorization: `Basic ${auth}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
           body: params.toString(),
@@ -446,7 +453,7 @@ export class IntegrationsService {
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${credentials.apiKey}`,
+          Authorization: `Bearer ${credentials.apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -468,7 +475,7 @@ export class IntegrationsService {
     try {
       const response = await fetch('https://api.e-automate.com/api/v1/equipment?include=meters', {
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
           'Content-Type': 'application/json',
         },
       });

@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -17,7 +11,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useRequiredAccessories, addRequiredAccessoriesToQuote, getRequiredAccessoriesInfo } from '@/lib/useRequiredAccessories';
+import {
+  useRequiredAccessories,
+  addRequiredAccessoriesToQuote,
+  getRequiredAccessoriesInfo,
+} from '@/lib/useRequiredAccessories';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info, Zap } from 'lucide-react';
 import {
@@ -66,7 +64,14 @@ import {
 } from 'lucide-react';
 import ProductTypeSelector from './ProductTypeSelector';
 
-type ProductType = 'product_models' | 'product_accessories' | 'professional_services' | 'service_products' | 'software_products' | 'supplies' | 'managed_services';
+type ProductType =
+  | 'product_models'
+  | 'product_accessories'
+  | 'professional_services'
+  | 'service_products'
+  | 'software_products'
+  | 'supplies'
+  | 'managed_services';
 
 interface LineItem {
   id?: string;
@@ -130,9 +135,10 @@ export default function LineItemManager({
 
   const handleProductSelect = async (product: any) => {
     // Ensure product name is not empty or undefined
-    const productName = product.productName || product.name || product.description || 'Unnamed Product';
+    const productName =
+      product.productName || product.name || product.description || 'Unnamed Product';
     const productCode = product.productCode || product.code || product.sku || '';
-    
+
     const newItem: Omit<LineItem, 'lineNumber'> = {
       isSubline: !!parentProductForAccessory,
       parentLineId: parentProductForAccessory,
@@ -167,7 +173,7 @@ export default function LineItemManager({
           const response = await fetch(`/api/product-accessories?codes=${requiredCodes.join(',')}`);
           if (response.ok) {
             const requiredAccessories = await response.json();
-            
+
             // Add each required accessory as a line item
             requiredAccessories.forEach((accessory: any) => {
               const accessoryItem: Omit<LineItem, 'lineNumber'> = {
@@ -279,18 +285,25 @@ export default function LineItemManager({
   };
 
   // Group items by main products and their accessories
-  const groupedItems = lineItems.reduce((acc, item, index) => {
-    if (!item.isSubline) {
-      acc.push({
-        item,
-        index,
-        sublines: lineItems
-          .map((subItem, subIndex) => ({ item: subItem, index: subIndex }))
-          .filter(sub => sub.item.parentLineId === item.productId),
-      });
-    }
-    return acc;
-  }, [] as Array<{ item: LineItem; index: number; sublines: Array<{ item: LineItem; index: number }> }>);
+  const groupedItems = lineItems.reduce(
+    (acc, item, index) => {
+      if (!item.isSubline) {
+        acc.push({
+          item,
+          index,
+          sublines: lineItems
+            .map((subItem, subIndex) => ({ item: subItem, index: subIndex }))
+            .filter((sub) => sub.item.parentLineId === item.productId),
+        });
+      }
+      return acc;
+    },
+    [] as Array<{
+      item: LineItem;
+      index: number;
+      sublines: Array<{ item: LineItem; index: number }>;
+    }>,
+  );
 
   return (
     <Card>
@@ -318,10 +331,9 @@ export default function LineItemManager({
                   {parentProductForAccessory ? 'Add Accessory' : 'Add Product'}
                 </DialogTitle>
                 <DialogDescription>
-                  {parentProductForAccessory 
+                  {parentProductForAccessory
                     ? 'Select an accessory for the selected product'
-                    : 'Select a product or service to add to the quote'
-                  }
+                    : 'Select a product or service to add to the quote'}
                 </DialogDescription>
               </DialogHeader>
               <ProductTypeSelector
@@ -353,467 +365,516 @@ export default function LineItemManager({
           <div className="space-y-4">
             {groupedItems.map(({ item: mainItem, index: mainIndex, sublines }) => {
               // Calculate total for this line including sublines
-              const lineTotal = mainItem.totalPrice + sublines.reduce((sum, sub) => sum + sub.item.totalPrice, 0);
-              
+              const lineTotal =
+                mainItem.totalPrice + sublines.reduce((sum, sub) => sum + sub.item.totalPrice, 0);
+
               return (
-              <div key={mainItem.id || mainIndex} className="border rounded-lg overflow-hidden">
-                {/* Main Item with darker background to show it's the total line */}
-                <div className="p-3 sm:p-4 bg-slate-100 dark:bg-slate-800">
-                  {/* Mobile Layout */}
-                  <div className="block sm:hidden space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <Badge variant="outline" className="flex items-center gap-1 shrink-0">
-                          <Hash className="h-3 w-3" />
-                          {mainItem.lineNumber}
-                        </Badge>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {getProductTypeIcon(mainItem.productType)}
-                            <Badge variant="secondary" className="text-xs">
-                              {productTypeLabels[mainItem.productType]}
-                            </Badge>
-                          </div>
-                          <div className="font-semibold text-sm line-clamp-2">{mainItem.productName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {mainItem.productCode}
+                <div key={mainItem.id || mainIndex} className="border rounded-lg overflow-hidden">
+                  {/* Main Item with darker background to show it's the total line */}
+                  <div className="p-3 sm:p-4 bg-slate-100 dark:bg-slate-800">
+                    {/* Mobile Layout */}
+                    <div className="block sm:hidden space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <Badge variant="outline" className="flex items-center gap-1 shrink-0">
+                            <Hash className="h-3 w-3" />
+                            {mainItem.lineNumber}
+                          </Badge>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              {getProductTypeIcon(mainItem.productType)}
+                              <Badge variant="secondary" className="text-xs">
+                                {productTypeLabels[mainItem.productType]}
+                              </Badge>
+                            </div>
+                            <div className="font-semibold text-sm line-clamp-2">
+                              {mainItem.productName}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {mainItem.productCode}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditItem(mainIndex)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Details
-                          </DropdownMenuItem>
-                          {mainItem.productType === 'product_models' && (
-                            <DropdownMenuItem onClick={() => handleAddAccessory(mainIndex)}>
-                              <Wrench className="h-4 w-4 mr-2" />
-                              Add Accessory
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditItem(mainIndex)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Details
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Item
+                            {mainItem.productType === 'product_models' && (
+                              <DropdownMenuItem onClick={() => handleAddAccessory(mainIndex)}>
+                                <Wrench className="h-4 w-4 mr-2" />
+                                Add Accessory
                               </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Line Item</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this item? This action cannot be undone.
-                                  {sublines.length > 0 && (
-                                    <span className="block mt-2 text-orange-600">
-                                      This will also delete {sublines.length} associated accessory/accessories.
-                                    </span>
-                                  )}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => onDeleteItem(mainIndex)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                            )}
+                            <DropdownMenuSeparator />
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Item
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Line Item</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this item? This action cannot be
+                                    undone.
+                                    {sublines.length > 0 && (
+                                      <span className="block mt-2 text-orange-600">
+                                        This will also delete {sublines.length} associated
+                                        accessory/accessories.
+                                      </span>
+                                    )}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => onDeleteItem(mainIndex)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
 
-                    {/* Quantity and Price Controls - Mobile */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-16">Quantity:</span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 w-9 p-0 active:scale-[0.95]"
-                            onClick={() => handleQuantityChange(mainIndex, Math.max(1, mainItem.quantity - 1))}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
+                      {/* Quantity and Price Controls - Mobile */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-16">Quantity:</span>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 w-9 p-0 active:scale-[0.95]"
+                              onClick={() =>
+                                handleQuantityChange(mainIndex, Math.max(1, mainItem.quantity - 1))
+                              }
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={mainItem.quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(mainIndex, parseInt(e.target.value) || 1)
+                              }
+                              className="w-16 h-9 text-center"
+                              min="1"
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 w-9 p-0 active:scale-[0.95]"
+                              onClick={() => handleQuantityChange(mainIndex, mainItem.quantity + 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-16">Unit Price:</span>
                           <Input
                             type="number"
-                            value={mainItem.quantity}
-                            onChange={(e) => handleQuantityChange(mainIndex, parseInt(e.target.value) || 1)}
-                            className="w-16 h-9 text-center"
-                            min="1"
+                            value={mainItem.unitPrice}
+                            onChange={(e) =>
+                              handlePriceChange(mainIndex, parseFloat(e.target.value) || 0)
+                            }
+                            className="flex-1 h-9"
+                            step="0.01"
                           />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-9 w-9 p-0 active:scale-[0.95]"
-                            onClick={() => handleQuantityChange(mainIndex, mainItem.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-16">Unit Price:</span>
-                        <Input
-                          type="number"
-                          value={mainItem.unitPrice}
-                          onChange={(e) => handlePriceChange(mainIndex, parseFloat(e.target.value) || 0)}
-                          className="flex-1 h-9"
-                          step="0.01"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 border-t">
-                        <span className="text-sm font-medium">Line Total:</span>
-                        <span className="text-lg font-bold">{formatCurrency(lineTotal)}</span>
-                      </div>
-                      {mainItem.msrp && mainItem.msrp !== mainItem.unitPrice && (
-                        <div className="text-xs text-muted-foreground text-right">
-                          MSRP: {formatCurrency(mainItem.msrp)}
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="text-sm font-medium">Line Total:</span>
+                          <span className="text-lg font-bold">{formatCurrency(lineTotal)}</span>
                         </div>
-                      )}
-                    </div>
-
-                    {mainItem.productType === 'product_models' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddAccessory(mainIndex)}
-                        className="w-full text-blue-600 hover:text-blue-700 min-h-[44px]"
-                      >
-                        <Wrench className="h-4 w-4 mr-2" />
-                        Add Accessory
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Desktop Layout */}
-                  <div className="hidden sm:flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <Hash className="h-3 w-3" />
-                        {mainItem.lineNumber}
-                      </Badge>
-                      <div className="flex items-center gap-2">
-                        {getProductTypeIcon(mainItem.productType)}
-                        <Badge variant="secondary">
-                          {productTypeLabels[mainItem.productType]}
-                        </Badge>
+                        {mainItem.msrp && mainItem.msrp !== mainItem.unitPrice && (
+                          <div className="text-xs text-muted-foreground text-right">
+                            MSRP: {formatCurrency(mainItem.msrp)}
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <div className="font-semibold">{mainItem.productName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {mainItem.productCode}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
+
                       {mainItem.productType === 'product_models' && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleAddAccessory(mainIndex)}
-                          className="text-blue-600 hover:text-blue-700 min-h-[44px]"
+                          className="w-full text-blue-600 hover:text-blue-700 min-h-[44px]"
                         >
-                          <Wrench className="h-4 w-4 mr-1" />
+                          <Wrench className="h-4 w-4 mr-2" />
                           Add Accessory
                         </Button>
                       )}
-                      <div className="text-right">
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            value={mainItem.quantity}
-                            onChange={(e) => handleQuantityChange(mainIndex, parseInt(e.target.value) || 1)}
-                            className="w-16 h-9 min-h-[44px]"
-                            min="1"
-                          />
-                          <span className="text-sm text-muted-foreground">×</span>
-                          <Input
-                            type="number"
-                            value={mainItem.unitPrice}
-                            onChange={(e) => handlePriceChange(mainIndex, parseFloat(e.target.value) || 0)}
-                            className="w-24 h-9 min-h-[44px]"
-                            step="0.01"
-                          />
-                          <span className="text-sm text-muted-foreground">=</span>
-                          <div className="font-bold text-lg w-24 text-right">
-                            {formatCurrency(lineTotal)}
+                    </div>
+
+                    {/* Desktop Layout */}
+                    <div className="hidden sm:flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Hash className="h-3 w-3" />
+                          {mainItem.lineNumber}
+                        </Badge>
+                        <div className="flex items-center gap-2">
+                          {getProductTypeIcon(mainItem.productType)}
+                          <Badge variant="secondary">
+                            {productTypeLabels[mainItem.productType]}
+                          </Badge>
+                        </div>
+                        <div>
+                          <div className="font-semibold">{mainItem.productName}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {mainItem.productCode}
                           </div>
                         </div>
-                        {mainItem.msrp && mainItem.msrp !== mainItem.unitPrice && (
-                          <div className="text-xs text-muted-foreground">
-                            MSRP: {formatCurrency(mainItem.msrp)}
-                          </div>
-                        )}
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
+                      <div className="flex items-center gap-2">
+                        {mainItem.productType === 'product_models' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddAccessory(mainIndex)}
+                            className="text-blue-600 hover:text-blue-700 min-h-[44px]"
+                          >
+                            <Wrench className="h-4 w-4 mr-1" />
+                            Add Accessory
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => handleEditItem(mainIndex)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Details
-                          </DropdownMenuItem>
-                          {mainItem.productType === 'product_models' && (
-                            <DropdownMenuItem onClick={() => handleAddAccessory(mainIndex)}>
-                              <Wrench className="h-4 w-4 mr-2" />
-                              Add Accessory
-                            </DropdownMenuItem>
+                        )}
+                        <div className="text-right">
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={mainItem.quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(mainIndex, parseInt(e.target.value) || 1)
+                              }
+                              className="w-16 h-9 min-h-[44px]"
+                              min="1"
+                            />
+                            <span className="text-sm text-muted-foreground">×</span>
+                            <Input
+                              type="number"
+                              value={mainItem.unitPrice}
+                              onChange={(e) =>
+                                handlePriceChange(mainIndex, parseFloat(e.target.value) || 0)
+                              }
+                              className="w-24 h-9 min-h-[44px]"
+                              step="0.01"
+                            />
+                            <span className="text-sm text-muted-foreground">=</span>
+                            <div className="font-bold text-lg w-24 text-right">
+                              {formatCurrency(lineTotal)}
+                            </div>
+                          </div>
+                          {mainItem.msrp && mainItem.msrp !== mainItem.unitPrice && (
+                            <div className="text-xs text-muted-foreground">
+                              MSRP: {formatCurrency(mainItem.msrp)}
+                            </div>
                           )}
-                          <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete Item
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEditItem(mainIndex)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Details
+                            </DropdownMenuItem>
+                            {mainItem.productType === 'product_models' && (
+                              <DropdownMenuItem onClick={() => handleAddAccessory(mainIndex)}>
+                                <Wrench className="h-4 w-4 mr-2" />
+                                Add Accessory
                               </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Line Item</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this item? This action cannot be undone.
-                                  {sublines.length > 0 && (
-                                    <span className="block mt-2 text-orange-600">
-                                      This will also delete {sublines.length} associated accessory/accessories.
-                                    </span>
-                                  )}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => onDeleteItem(mainIndex)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                            <DropdownMenuSeparator />
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Item
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Line Item</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this item? This action cannot be
+                                    undone.
+                                    {sublines.length > 0 && (
+                                      <span className="block mt-2 text-orange-600">
+                                        This will also delete {sublines.length} associated
+                                        accessory/accessories.
+                                      </span>
+                                    )}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => onDeleteItem(mainIndex)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Sublines (Accessories) */}
-                {sublines.length > 0 && (
-                  <div className="border-t">
-                    {sublines.map(({ item: subItem, index: subIndex }) => (
-                      <div key={subItem.id || subIndex} className="p-3 sm:p-4 sm:pl-8 bg-muted/10 border-t border-dashed">
-                        {/* Mobile Subline Layout */}
-                        <div className="block sm:hidden space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-start gap-2 flex-1 min-w-0">
-                              <MoveDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  {getProductTypeIcon(subItem.productType)}
-                                  <Badge variant="outline" className="text-xs">
-                                    {productTypeLabels[subItem.productType]}
-                                  </Badge>
+                  {/* Sublines (Accessories) */}
+                  {sublines.length > 0 && (
+                    <div className="border-t">
+                      {sublines.map(({ item: subItem, index: subIndex }) => (
+                        <div
+                          key={subItem.id || subIndex}
+                          className="p-3 sm:p-4 sm:pl-8 bg-muted/10 border-t border-dashed"
+                        >
+                          {/* Mobile Subline Layout */}
+                          <div className="block sm:hidden space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2 flex-1 min-w-0">
+                                <MoveDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {getProductTypeIcon(subItem.productType)}
+                                    <Badge variant="outline" className="text-xs">
+                                      {productTypeLabels[subItem.productType]}
+                                    </Badge>
+                                  </div>
+                                  <div className="font-medium text-sm line-clamp-2">
+                                    {subItem.productName}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {subItem.productCode}
+                                  </div>
                                 </div>
-                                <div className="font-medium text-sm line-clamp-2">{subItem.productName}</div>
-                                <div className="text-xs text-muted-foreground">
+                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 shrink-0"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditItem(subIndex)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Accessory</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete this accessory? This
+                                          action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => onDeleteItem(subIndex)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+
+                            <div className="space-y-2 pl-6">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground w-16">
+                                  Quantity:
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 active:scale-[0.95]"
+                                    onClick={() =>
+                                      handleQuantityChange(
+                                        subIndex,
+                                        Math.max(1, subItem.quantity - 1),
+                                      )
+                                    }
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    value={subItem.quantity}
+                                    onChange={(e) =>
+                                      handleQuantityChange(subIndex, parseInt(e.target.value) || 1)
+                                    }
+                                    className="w-16 h-9 text-center"
+                                    min="1"
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 w-9 p-0 active:scale-[0.95]"
+                                    onClick={() =>
+                                      handleQuantityChange(subIndex, subItem.quantity + 1)
+                                    }
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground w-16">
+                                  Unit Price:
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={subItem.unitPrice}
+                                  onChange={(e) =>
+                                    handlePriceChange(subIndex, parseFloat(e.target.value) || 0)
+                                  }
+                                  className="flex-1 h-9"
+                                  step="0.01"
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2 border-t">
+                                <span className="text-sm font-medium">Total:</span>
+                                <span className="font-semibold">
+                                  {formatCurrency(subItem.totalPrice)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Desktop Subline Layout */}
+                          <div className="hidden sm:flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <MoveDown className="h-4 w-4" />
+                                {getProductTypeIcon(subItem.productType)}
+                                <Badge variant="outline" size="sm">
+                                  {productTypeLabels[subItem.productType]}
+                                </Badge>
+                              </div>
+                              <div>
+                                <div className="font-medium">{subItem.productName}</div>
+                                <div className="text-sm text-muted-foreground">
                                   {subItem.productCode}
                                 </div>
                               </div>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditItem(subIndex)}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit Details
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Accessory</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this accessory? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => onDeleteItem(subIndex)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          <div className="space-y-2 pl-6">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground w-16">Quantity:</span>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-9 w-9 p-0 active:scale-[0.95]"
-                                  onClick={() => handleQuantityChange(subIndex, Math.max(1, subItem.quantity - 1))}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <Input
-                                  type="number"
-                                  value={subItem.quantity}
-                                  onChange={(e) => handleQuantityChange(subIndex, parseInt(e.target.value) || 1)}
-                                  className="w-16 h-9 text-center"
-                                  min="1"
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-9 w-9 p-0 active:scale-[0.95]"
-                                  onClick={() => handleQuantityChange(subIndex, subItem.quantity + 1)}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground w-16">Unit Price:</span>
-                              <Input
-                                type="number"
-                                value={subItem.unitPrice}
-                                onChange={(e) => handlePriceChange(subIndex, parseFloat(e.target.value) || 0)}
-                                className="flex-1 h-9"
-                                step="0.01"
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-between pt-2 border-t">
-                              <span className="text-sm font-medium">Total:</span>
-                              <span className="font-semibold">{formatCurrency(subItem.totalPrice)}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Desktop Subline Layout */}
-                        <div className="hidden sm:flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <MoveDown className="h-4 w-4" />
-                              {getProductTypeIcon(subItem.productType)}
-                              <Badge variant="outline" size="sm">
-                                {productTypeLabels[subItem.productType]}
-                              </Badge>
-                            </div>
-                            <div>
-                              <div className="font-medium">{subItem.productName}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {subItem.productCode}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-right">
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  type="number"
-                                  value={subItem.quantity}
-                                  onChange={(e) => handleQuantityChange(subIndex, parseInt(e.target.value) || 1)}
-                                  className="w-16 h-9 min-h-[44px]"
-                                  min="1"
-                                />
-                                <span className="text-sm text-muted-foreground">×</span>
-                                <Input
-                                  type="number"
-                                  value={subItem.unitPrice}
-                                  onChange={(e) => handlePriceChange(subIndex, parseFloat(e.target.value) || 0)}
-                                  className="w-24 h-9 min-h-[44px]"
-                                  step="0.01"
-                                />
-                                <span className="text-sm text-muted-foreground">=</span>
-                                <div className="font-medium w-20 text-right">
-                                  {formatCurrency(subItem.totalPrice)}
+                              <div className="text-right">
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    value={subItem.quantity}
+                                    onChange={(e) =>
+                                      handleQuantityChange(subIndex, parseInt(e.target.value) || 1)
+                                    }
+                                    className="w-16 h-9 min-h-[44px]"
+                                    min="1"
+                                  />
+                                  <span className="text-sm text-muted-foreground">×</span>
+                                  <Input
+                                    type="number"
+                                    value={subItem.unitPrice}
+                                    onChange={(e) =>
+                                      handlePriceChange(subIndex, parseFloat(e.target.value) || 0)
+                                    }
+                                    className="w-24 h-9 min-h-[44px]"
+                                    step="0.01"
+                                  />
+                                  <span className="text-sm text-muted-foreground">=</span>
+                                  <div className="font-medium w-20 text-right">
+                                    {formatCurrency(subItem.totalPrice)}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditItem(subIndex)}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit Details
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Accessory</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this accessory? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => onDeleteItem(subIndex)}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditItem(subIndex)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <Trash2 className="h-4 w-4 mr-2" />
                                         Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Accessory</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete this accessory? This
+                                          action cannot be undone.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => onDeleteItem(subIndex)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
             })}
           </div>
         )}
@@ -823,9 +884,7 @@ export default function LineItemManager({
           <DialogContent className="w-[95vw] sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Line Item</DialogTitle>
-              <DialogDescription>
-                Modify the details for this line item
-              </DialogDescription>
+              <DialogDescription>Modify the details for this line item</DialogDescription>
             </DialogHeader>
             {editingItem && (
               <div className="space-y-4">
@@ -835,10 +894,12 @@ export default function LineItemManager({
                     <Input
                       type="number"
                       value={editingItem.quantity}
-                      onChange={(e) => setEditingItem({
-                        ...editingItem,
-                        quantity: parseInt(e.target.value) || 1
-                      })}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem,
+                          quantity: parseInt(e.target.value) || 1,
+                        })
+                      }
                       min="1"
                       className="min-h-[44px]"
                     />
@@ -848,10 +909,12 @@ export default function LineItemManager({
                     <Input
                       type="number"
                       value={editingItem.unitPrice}
-                      onChange={(e) => setEditingItem({
-                        ...editingItem,
-                        unitPrice: parseFloat(e.target.value) || 0
-                      })}
+                      onChange={(e) =>
+                        setEditingItem({
+                          ...editingItem,
+                          unitPrice: parseFloat(e.target.value) || 0,
+                        })
+                      }
                       step="0.01"
                       className="min-h-[44px]"
                     />
@@ -861,10 +924,12 @@ export default function LineItemManager({
                   <label className="text-sm font-medium">Notes</label>
                   <Input
                     value={editingItem.notes || ''}
-                    onChange={(e) => setEditingItem({
-                      ...editingItem,
-                      notes: e.target.value
-                    })}
+                    onChange={(e) =>
+                      setEditingItem({
+                        ...editingItem,
+                        notes: e.target.value,
+                      })
+                    }
                     placeholder="Additional notes for this item..."
                     className="min-h-[44px]"
                   />

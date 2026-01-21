@@ -67,7 +67,7 @@ export class ApiKeyService {
   async createApiKey(
     tenantId: string,
     userId: string,
-    request: CreateApiKeyRequest
+    request: CreateApiKeyRequest,
   ): Promise<GeneratedApiKey> {
     // Generate secure random key
     const keyBytes = randomBytes(this.keyLength);
@@ -133,10 +133,7 @@ export class ApiKeyService {
   /**
    * Validate an API key
    */
-  async validateApiKey(
-    key: string,
-    clientIp?: string
-  ): Promise<ApiKeyValidationResult> {
+  async validateApiKey(key: string, clientIp?: string): Promise<ApiKeyValidationResult> {
     if (!key || key.length < 20) {
       return { valid: false, error: 'Invalid API key format', errorCode: 'INVALID_KEY' };
     }
@@ -168,8 +165,10 @@ export class ApiKeyService {
     const storedHash = Buffer.from(apiKey.keyHash, 'hex');
     const computedHashBuffer = Buffer.from(computedHash, 'hex');
 
-    if (storedHash.length !== computedHashBuffer.length ||
-        !timingSafeEqual(storedHash, computedHashBuffer)) {
+    if (
+      storedHash.length !== computedHashBuffer.length ||
+      !timingSafeEqual(storedHash, computedHashBuffer)
+    ) {
       return { valid: false, error: 'Invalid API key', errorCode: 'INVALID_KEY' };
     }
 
@@ -210,7 +209,7 @@ export class ApiKeyService {
       .set({
         lastUsedAt: new Date(),
         lastUsedIp: clientIp,
-        usageCount: ((parseInt(apiKey.usageCount || '0', 10) + 1).toString()),
+        usageCount: (parseInt(apiKey.usageCount || '0', 10) + 1).toString(),
         updatedAt: new Date(),
       })
       .where(eq(apiKeys.id, apiKey.id));
@@ -248,7 +247,8 @@ export class ApiKeyService {
     const mask = parseInt(bits, 10);
 
     const ipNum = (ipParts[0] << 24) + (ipParts[1] << 16) + (ipParts[2] << 8) + ipParts[3];
-    const rangeNum = (rangeParts[0] << 24) + (rangeParts[1] << 16) + (rangeParts[2] << 8) + rangeParts[3];
+    const rangeNum =
+      (rangeParts[0] << 24) + (rangeParts[1] << 16) + (rangeParts[2] << 8) + rangeParts[3];
     const maskNum = -1 << (32 - mask);
 
     return (ipNum & maskNum) === (rangeNum & maskNum);
@@ -258,19 +258,14 @@ export class ApiKeyService {
    * Hash an API key with salt
    */
   private hashKey(key: string, salt: string): string {
-    return createHmac('sha256', salt)
-      .update(key)
-      .digest('hex');
+    return createHmac('sha256', salt).update(key).digest('hex');
   }
 
   /**
    * Check rate limits for an API key
    */
   async checkRateLimit(apiKeyId: string): Promise<RateLimitResult> {
-    const [apiKey] = await db
-      .select()
-      .from(apiKeys)
-      .where(eq(apiKeys.id, apiKeyId));
+    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.id, apiKeyId));
 
     if (!apiKey) {
       return {
@@ -318,7 +313,7 @@ export class ApiKeyService {
    */
   private async getOrCreateRateLimitBuckets(
     apiKeyId: string,
-    now: Date
+    now: Date,
   ): Promise<{
     minute: { id: string; count: number; end: Date };
     hour: { id: string; count: number; end: Date };
@@ -336,24 +331,26 @@ export class ApiKeyService {
         and(
           eq(apiKeyRateLimits.apiKeyId, apiKeyId),
           or(
-            and(eq(apiKeyRateLimits.bucketType, 'minute'), eq(apiKeyRateLimits.bucketKey, minuteKey)),
+            and(
+              eq(apiKeyRateLimits.bucketType, 'minute'),
+              eq(apiKeyRateLimits.bucketKey, minuteKey),
+            ),
             and(eq(apiKeyRateLimits.bucketType, 'hour'), eq(apiKeyRateLimits.bucketKey, hourKey)),
-            and(eq(apiKeyRateLimits.bucketType, 'day'), eq(apiKeyRateLimits.bucketKey, dayKey))
-          )
-        )
+            and(eq(apiKeyRateLimits.bucketType, 'day'), eq(apiKeyRateLimits.bucketKey, dayKey)),
+          ),
+        ),
       );
 
-    const bucketMap = new Map(
-      existingBuckets.map(b => [`${b.bucketType}:${b.bucketKey}`, b])
-    );
+    const bucketMap = new Map(existingBuckets.map((b) => [`${b.bucketType}:${b.bucketKey}`, b]));
 
     // Create missing buckets
-    const minuteBucket = bucketMap.get(`minute:${minuteKey}`) ||
-      await this.createBucket(apiKeyId, 'minute', minuteKey, now);
-    const hourBucket = bucketMap.get(`hour:${hourKey}`) ||
-      await this.createBucket(apiKeyId, 'hour', hourKey, now);
-    const dayBucket = bucketMap.get(`day:${dayKey}`) ||
-      await this.createBucket(apiKeyId, 'day', dayKey, now);
+    const minuteBucket =
+      bucketMap.get(`minute:${minuteKey}`) ||
+      (await this.createBucket(apiKeyId, 'minute', minuteKey, now));
+    const hourBucket =
+      bucketMap.get(`hour:${hourKey}`) || (await this.createBucket(apiKeyId, 'hour', hourKey, now));
+    const dayBucket =
+      bucketMap.get(`day:${dayKey}`) || (await this.createBucket(apiKeyId, 'day', dayKey, now));
 
     return {
       minute: {
@@ -381,7 +378,7 @@ export class ApiKeyService {
     apiKeyId: string,
     type: string,
     key: string,
-    now: Date
+    now: Date,
   ): Promise<{ id: string; requestCount: number; bucketEnd: Date }> {
     const { start, end } = this.getBucketBounds(now, type);
 
@@ -397,7 +394,11 @@ export class ApiKeyService {
           bucketEnd: end,
         })
         .onConflictDoUpdate({
-          target: [apiKeyRateLimits.apiKeyId, apiKeyRateLimits.bucketType, apiKeyRateLimits.bucketKey],
+          target: [
+            apiKeyRateLimits.apiKeyId,
+            apiKeyRateLimits.bucketType,
+            apiKeyRateLimits.bucketKey,
+          ],
           set: { updatedAt: new Date() },
         })
         .returning();
@@ -412,8 +413,8 @@ export class ApiKeyService {
           and(
             eq(apiKeyRateLimits.apiKeyId, apiKeyId),
             eq(apiKeyRateLimits.bucketType, type),
-            eq(apiKeyRateLimits.bucketKey, key)
-          )
+            eq(apiKeyRateLimits.bucketKey, key),
+          ),
         );
 
       return existing || { id: '', requestCount: 0, bucketEnd: end };
@@ -425,7 +426,7 @@ export class ApiKeyService {
    */
   private async incrementRateLimitCounters(
     apiKeyId: string,
-    buckets: { minute: { id: string }; hour: { id: string }; day: { id: string } }
+    buckets: { minute: { id: string }; hour: { id: string }; day: { id: string } },
   ): Promise<void> {
     await Promise.all([
       db
@@ -520,7 +521,7 @@ export class ApiKeyService {
       statusCode: number;
       responseTimeMs: number;
       errorMessage?: string;
-    }
+    },
   ): Promise<void> {
     await db.insert(apiKeyUsageLogs).values({
       apiKeyId,
@@ -545,12 +546,7 @@ export class ApiKeyService {
     const [apiKey] = await db
       .select()
       .from(apiKeys)
-      .where(
-        and(
-          eq(apiKeys.id, id),
-          eq(apiKeys.tenantId, tenantId)
-        )
-      );
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)));
 
     return apiKey || null;
   }
@@ -565,7 +561,7 @@ export class ApiKeyService {
       keyType?: string;
       limit?: number;
       offset?: number;
-    } = {}
+    } = {},
   ): Promise<{ keys: ApiKey[]; total: number }> {
     const conditions = [eq(apiKeys.tenantId, tenantId)];
 
@@ -600,7 +596,7 @@ export class ApiKeyService {
     id: string,
     tenantId: string,
     userId: string,
-    updates: UpdateApiKeyRequest
+    updates: UpdateApiKeyRequest,
   ): Promise<ApiKey | null> {
     const [apiKey] = await db
       .update(apiKeys)
@@ -609,12 +605,7 @@ export class ApiKeyService {
         expiresAt: updates.expiresAt ? new Date(updates.expiresAt) : undefined,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(apiKeys.id, id),
-          eq(apiKeys.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)))
       .returning();
 
     return apiKey || null;
@@ -627,7 +618,7 @@ export class ApiKeyService {
     id: string,
     tenantId: string,
     userId: string,
-    reason?: string
+    reason?: string,
   ): Promise<boolean> {
     const result = await db
       .update(apiKeys)
@@ -639,12 +630,7 @@ export class ApiKeyService {
         revokedReason: reason,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(apiKeys.id, id),
-          eq(apiKeys.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)))
       .returning({ id: apiKeys.id });
 
     return result.length > 0;
@@ -660,7 +646,7 @@ export class ApiKeyService {
     options: {
       gracePeriodHours?: number;
       reason?: string;
-    } = {}
+    } = {},
   ): Promise<GeneratedApiKey | null> {
     const oldKey = await this.getApiKey(id, tenantId);
     if (!oldKey) {
@@ -687,9 +673,7 @@ export class ApiKeyService {
 
     // Calculate grace period
     const gracePeriodHours = options.gracePeriodHours ?? 24;
-    const gracePeriodEndsAt = new Date(
-      Date.now() + gracePeriodHours * 60 * 60 * 1000
-    );
+    const gracePeriodEndsAt = new Date(Date.now() + gracePeriodHours * 60 * 60 * 1000);
 
     // Log the rotation
     await db.insert(apiKeyRotations).values({
@@ -725,12 +709,7 @@ export class ApiKeyService {
   async deleteApiKey(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(apiKeys)
-      .where(
-        and(
-          eq(apiKeys.id, id),
-          eq(apiKeys.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)))
       .returning({ id: apiKeys.id });
 
     return result.length > 0;
@@ -745,7 +724,7 @@ export class ApiKeyService {
     options: {
       startDate?: Date;
       endDate?: Date;
-    } = {}
+    } = {},
   ): Promise<{
     totalRequests: number;
     successfulRequests: number;
@@ -765,19 +744,19 @@ export class ApiKeyService {
           eq(apiKeyUsageLogs.apiKeyId, apiKeyId),
           eq(apiKeyUsageLogs.tenantId, tenantId),
           gte(apiKeyUsageLogs.timestamp, startDate),
-          lte(apiKeyUsageLogs.timestamp, endDate)
-        )
+          lte(apiKeyUsageLogs.timestamp, endDate),
+        ),
       );
 
     const totalRequests = logs.length;
-    const successfulRequests = logs.filter(l => l.statusCode && l.statusCode < 400).length;
+    const successfulRequests = logs.filter((l) => l.statusCode && l.statusCode < 400).length;
     const failedRequests = totalRequests - successfulRequests;
-    const avgResponseTime = logs.reduce((sum, l) => sum + (l.responseTimeMs || 0), 0) /
-      (totalRequests || 1);
+    const avgResponseTime =
+      logs.reduce((sum, l) => sum + (l.responseTimeMs || 0), 0) / (totalRequests || 1);
 
     // Group by path
     const pathCounts = new Map<string, number>();
-    logs.forEach(l => {
+    logs.forEach((l) => {
       pathCounts.set(l.path, (pathCounts.get(l.path) || 0) + 1);
     });
     const topPaths = Array.from(pathCounts.entries())
@@ -787,7 +766,7 @@ export class ApiKeyService {
 
     // Group by hour
     const hourCounts = new Map<string, number>();
-    logs.forEach(l => {
+    logs.forEach((l) => {
       const hour = l.timestamp.toISOString().slice(0, 13);
       hourCounts.set(hour, (hourCounts.get(hour) || 0) + 1);
     });
@@ -832,8 +811,8 @@ export class ApiKeyService {
         and(
           eq(apiKeys.status, 'active'),
           eq(apiKeys.neverExpires, false),
-          lte(apiKeys.expiresAt, new Date())
-        )
+          lte(apiKeys.expiresAt, new Date()),
+        ),
       )
       .returning({ id: apiKeys.id });
 

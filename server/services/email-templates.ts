@@ -173,7 +173,11 @@ This email was sent to ${data.userEmail}
   /**
    * Email Verification
    */
-  static emailVerification(data: EmailTemplateData & { verificationToken: string }): { subject: string; html: string; text: string } {
+  static emailVerification(data: EmailTemplateData & { verificationToken: string }): {
+    subject: string;
+    html: string;
+    text: string;
+  } {
     const verifyUrl = `${this.baseUrl}/verify-email?token=${data.verificationToken}`;
 
     return {
@@ -253,12 +257,16 @@ This email was sent to ${data.userEmail}
 
               <p>Welcome to Printyx - the unified platform for copier dealers! Your account has been created successfully.</p>
 
-              ${data.trialDays ? `
+              ${
+                data.trialDays
+                  ? `
                 <div style="background: #dbeafe; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
                   <h2 style="margin: 0 0 10px 0; color: #1e40af;">Your ${data.trialDays}-Day Free Trial Has Started!</h2>
                   <p style="margin: 0; color: #1e3a8a;">No credit card required. Full access to all features.</p>
                 </div>
-              ` : ''}
+              `
+                  : ''
+              }
 
               <h3>What's Next?</h3>
               <ul>

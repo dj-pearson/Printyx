@@ -21,6 +21,7 @@ npx tsx tools/schema-validation/extract-schema.ts
 ```
 
 This will:
+
 - Scan all SQL files in `migrations/`, `database/`, and `supabase/migrations/`
 - Extract table and column definitions
 - Generate `schema-definition.json` and `schema-types.ts`
@@ -34,6 +35,7 @@ npx tsx tools/schema-validation/validate-code.ts
 ```
 
 This will:
+
 - Scan all `.ts`, `.tsx`, `.js`, `.jsx` files in your codebase
 - Check for invalid column references
 - Provide suggestions for misspelled columns
@@ -116,14 +118,10 @@ The validator catches these common issues:
 
 ```typescript
 // ❌ Invalid - column doesn't exist
-const { data } = await supabase
-  .from('users')
-  .select('id, email, access_scope');  // access_scope doesn't exist!
+const { data } = await supabase.from('users').select('id, email, access_scope'); // access_scope doesn't exist!
 
 // ✅ Valid
-const { data } = await supabase
-  .from('users')
-  .select('id, email, role_id');
+const { data } = await supabase.from('users').select('id, email, role_id');
 
 // ⚠️ Suggestion provided
 // Invalid column 'is_platform_user'
@@ -193,6 +191,7 @@ const migrationsDirs = [
 The validator detects column references in:
 
 1. **Supabase queries**
+
    ```typescript
    .select('column1, column2')
    .insert({ column1: value })
@@ -200,10 +199,11 @@ The validator detects column references in:
    ```
 
 2. **Property access**
+
    ```typescript
-   user.column_name
-   customer?.column_name
-   data.column_name
+   user.column_name;
+   customer?.column_name;
+   data.column_name;
    ```
 
 3. **Object destructuring**
@@ -220,11 +220,13 @@ The validator detects column references in:
 ## Workflow
 
 1. **After schema changes:**
+
    ```bash
    npm run extract-schema
    ```
 
 2. **Before committing code:**
+
    ```bash
    npm run validate-schema
    ```
@@ -243,6 +245,7 @@ The validator detects column references in:
 ## Examples
 
 See the issues we've fixed in this session:
+
 - ❌ `users.access_scope` - Column doesn't exist
 - ❌ `users.is_platform_user` - Column doesn't exist
 - ❌ `users.role` - Column doesn't exist (uses `role_id` FK)

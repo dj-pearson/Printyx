@@ -30,7 +30,7 @@ export class WhiteLabelService {
    */
   async upsertConfig(
     tenantId: string,
-    data: InsertWhiteLabelConfig | UpdateWhiteLabelConfig
+    data: InsertWhiteLabelConfig | UpdateWhiteLabelConfig,
   ): Promise<WhiteLabelConfig> {
     const existing = await this.getConfig(tenantId);
 
@@ -79,10 +79,7 @@ export class WhiteLabelService {
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(whiteLabelConfig.tenantId, tenantId),
-          eq(whiteLabelConfig.customDomain, domain)
-        )
+        and(eq(whiteLabelConfig.tenantId, tenantId), eq(whiteLabelConfig.customDomain, domain)),
       );
 
     return true;
@@ -103,13 +100,13 @@ export class WhiteLabelService {
    */
   async getEmailTemplate(
     tenantId: string,
-    templateKey: string
+    templateKey: string,
   ): Promise<WhiteLabelEmailTemplate | null> {
     const template = await db.query.whiteLabelEmailTemplates.findFirst({
       where: and(
         eq(whiteLabelEmailTemplates.tenantId, tenantId),
         eq(whiteLabelEmailTemplates.templateKey, templateKey),
-        eq(whiteLabelEmailTemplates.isActive, true)
+        eq(whiteLabelEmailTemplates.isActive, true),
       ),
     });
 
@@ -122,12 +119,12 @@ export class WhiteLabelService {
   async upsertEmailTemplate(
     tenantId: string,
     templateKey: string,
-    data: InsertWhiteLabelEmailTemplate | UpdateWhiteLabelEmailTemplate
+    data: InsertWhiteLabelEmailTemplate | UpdateWhiteLabelEmailTemplate,
   ): Promise<WhiteLabelEmailTemplate> {
     const existing = await db.query.whiteLabelEmailTemplates.findFirst({
       where: and(
         eq(whiteLabelEmailTemplates.tenantId, tenantId),
-        eq(whiteLabelEmailTemplates.templateKey, templateKey)
+        eq(whiteLabelEmailTemplates.templateKey, templateKey),
       ),
     });
 
@@ -142,8 +139,8 @@ export class WhiteLabelService {
         .where(
           and(
             eq(whiteLabelEmailTemplates.tenantId, tenantId),
-            eq(whiteLabelEmailTemplates.templateKey, templateKey)
-          )
+            eq(whiteLabelEmailTemplates.templateKey, templateKey),
+          ),
         )
         .returning();
 
@@ -172,8 +169,8 @@ export class WhiteLabelService {
       .where(
         and(
           eq(whiteLabelEmailTemplates.id, templateId),
-          eq(whiteLabelEmailTemplates.tenantId, tenantId)
-        )
+          eq(whiteLabelEmailTemplates.tenantId, tenantId),
+        ),
       );
 
     return true;
@@ -216,13 +213,18 @@ export class WhiteLabelService {
           </ul>
           <p>We'll contact you within {{responseTime}} hours to schedule service.</p>
         `,
-        textBody: 'Service request #{{requestNumber}} confirmed. We will respond within {{responseTime}} hours.',
+        textBody:
+          'Service request #{{requestNumber}} confirmed. We will respond within {{responseTime}} hours.',
         availableVariables: [
           { name: 'customerName', description: 'Customer name', example: 'John Doe' },
           { name: 'requestNumber', description: 'Service request number', example: 'SR-12345' },
           { name: 'priority', description: 'Request priority', example: 'High' },
           { name: 'equipmentModel', description: 'Equipment model', example: 'Canon imageRUNNER' },
-          { name: 'issueDescription', description: 'Issue description', example: 'Paper jam error' },
+          {
+            name: 'issueDescription',
+            description: 'Issue description',
+            example: 'Paper jam error',
+          },
           { name: 'responseTime', description: 'Expected response time', example: '4' },
         ],
         isActive: true,
@@ -246,18 +248,23 @@ export class WhiteLabelService {
             <li>Invoice Number: {{invoiceNumber}}</li>
             <li>Invoice Date: {{invoiceDate}}</li>
             <li>Due Date: {{dueDate}}</li>
-            <li>Amount Due: ${{amountDue}}</li>
+            <li>Amount Due: ${{ amountDue }}</li>
           </ul>
           <p><a href="{{invoiceUrl}}" style="background-color: {{colorPrimary}}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Invoice</a></p>
         `,
-        textBody: 'Invoice #{{invoiceNumber}} is ready. Amount: ${{amountDue}}. Due: {{dueDate}}. View: {{invoiceUrl}}',
+        textBody:
+          'Invoice #{{invoiceNumber}} is ready. Amount: ${{amountDue}}. Due: {{dueDate}}. View: {{invoiceUrl}}',
         availableVariables: [
           { name: 'customerName', description: 'Customer name', example: 'John Doe' },
           { name: 'invoiceNumber', description: 'Invoice number', example: 'INV-2024-001' },
           { name: 'invoiceDate', description: 'Invoice date', example: 'Jan 15, 2024' },
           { name: 'dueDate', description: 'Payment due date', example: 'Feb 15, 2024' },
           { name: 'amountDue', description: 'Amount due', example: '1,250.00' },
-          { name: 'invoiceUrl', description: 'Link to view invoice', example: 'https://portal.example.com/invoices/123' },
+          {
+            name: 'invoiceUrl',
+            description: 'Link to view invoice',
+            example: 'https://portal.example.com/invoices/123',
+          },
         ],
         isActive: true,
         isDefault: true,
@@ -280,14 +287,19 @@ export class WhiteLabelService {
           <p>Would you like to order a replacement?</p>
           <p><a href="{{orderUrl}}" style="background-color: {{colorPrimary}}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Order Now</a></p>
         `,
-        textBody: '{{supplyType}} low on {{equipmentModel}} ({{currentLevel}}%). Order: {{orderUrl}}',
+        textBody:
+          '{{supplyType}} low on {{equipmentModel}} ({{currentLevel}}%). Order: {{orderUrl}}',
         availableVariables: [
           { name: 'customerName', description: 'Customer name', example: 'John Doe' },
           { name: 'equipmentModel', description: 'Equipment model', example: 'Canon imageRUNNER' },
           { name: 'serialNumber', description: 'Equipment serial number', example: 'ABC123456' },
           { name: 'supplyType', description: 'Supply type', example: 'Black Toner' },
           { name: 'currentLevel', description: 'Current supply level %', example: '12' },
-          { name: 'orderUrl', description: 'Link to order supplies', example: 'https://portal.example.com/supplies/order' },
+          {
+            name: 'orderUrl',
+            description: 'Link to order supplies',
+            example: 'https://portal.example.com/supplies/order',
+          },
         ],
         isActive: true,
         isDefault: true,
@@ -316,10 +328,15 @@ export class WhiteLabelService {
           <p><a href="{{portalUrl}}" style="background-color: {{colorPrimary}}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Access Your Portal</a></p>
           <p>Need help? Contact us at {{supportEmail}} or {{supportPhone}}</p>
         `,
-        textBody: 'Welcome to {{companyName}} portal! Access: {{portalUrl}}. Support: {{supportEmail}}',
+        textBody:
+          'Welcome to {{companyName}} portal! Access: {{portalUrl}}. Support: {{supportEmail}}',
         availableVariables: [
           { name: 'customerName', description: 'Customer name', example: 'John Doe' },
-          { name: 'portalUrl', description: 'Portal login URL', example: 'https://portal.example.com' },
+          {
+            name: 'portalUrl',
+            description: 'Portal login URL',
+            example: 'https://portal.example.com',
+          },
           { name: 'supportEmail', description: 'Support email', example: 'support@example.com' },
           { name: 'supportPhone', description: 'Support phone', example: '(555) 123-4567' },
         ],
@@ -350,15 +367,24 @@ export class WhiteLabelService {
           <p>Please ensure someone is available to provide access to the equipment.</p>
           <p>Need to reschedule? <a href="{{rescheduleUrl}}">Click here</a></p>
         `,
-        textBody: 'Maintenance scheduled for {{scheduledDate}} at {{scheduledTime}}. Reschedule: {{rescheduleUrl}}',
+        textBody:
+          'Maintenance scheduled for {{scheduledDate}} at {{scheduledTime}}. Reschedule: {{rescheduleUrl}}',
         availableVariables: [
           { name: 'customerName', description: 'Customer name', example: 'John Doe' },
           { name: 'equipmentModel', description: 'Equipment model', example: 'Canon imageRUNNER' },
           { name: 'scheduledDate', description: 'Scheduled date', example: 'Jan 20, 2024' },
           { name: 'scheduledTime', description: 'Scheduled time', example: '2:00 PM' },
           { name: 'technicianName', description: 'Technician name', example: 'Mike Johnson' },
-          { name: 'serviceType', description: 'Type of service', example: 'Preventive Maintenance' },
-          { name: 'rescheduleUrl', description: 'Link to reschedule', example: 'https://portal.example.com/reschedule/123' },
+          {
+            name: 'serviceType',
+            description: 'Type of service',
+            example: 'Preventive Maintenance',
+          },
+          {
+            name: 'rescheduleUrl',
+            description: 'Link to reschedule',
+            example: 'https://portal.example.com/reschedule/123',
+          },
         ],
         isActive: true,
         isDefault: true,
@@ -436,7 +462,7 @@ ${config.customCss || ''}
   renderEmailTemplate(
     template: WhiteLabelEmailTemplate,
     variables: Record<string, string>,
-    config: WhiteLabelConfig
+    config: WhiteLabelConfig,
   ): { subject: string; htmlBody: string; textBody: string } {
     let subject = template.subject;
     let htmlBody = template.htmlBody;
@@ -472,7 +498,7 @@ ${config.customCss || ''}
   private wrapEmailWithHeaderFooter(
     body: string,
     template: WhiteLabelEmailTemplate,
-    config: WhiteLabelConfig
+    config: WhiteLabelConfig,
   ): string {
     const header = template.customHeader || this.generateDefaultHeader(config);
     const footer = template.customFooter || this.generateDefaultFooter(config);

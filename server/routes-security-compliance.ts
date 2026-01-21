@@ -6,33 +6,29 @@
 import { Router, type Request, type Response } from 'express';
 import { eq, desc, and, gte, lte, like, or, sql } from 'drizzle-orm';
 import { db } from './db';
-import { 
-  auditLogs, 
-  dataAccessLogs, 
-  gdprRequests, 
-  securitySessions, 
+import {
+  auditLogs,
+  dataAccessLogs,
+  gdprRequests,
+  securitySessions,
   complianceSettings,
   insertGdprRequestSchema,
-  insertComplianceSettingsSchema 
+  insertComplianceSettingsSchema,
 } from '../shared/security-schema';
-import { 
-  createGDPRRequest, 
-  processDataSubjectAccess, 
+import {
+  createGDPRRequest,
+  processDataSubjectAccess,
   logAuditEvent,
   auditLogMiddleware,
   dataAccessLogMiddleware,
   sessionTimeoutMiddleware,
   sanitizeForAudit,
-  maskSensitiveData 
+  maskSensitiveData,
 } from './security-compliance';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { requireRole } from './rbac-middleware';
 // Enhanced RBAC Integration
-import {
-  enhanceUserContext,
-  requireLevel,
-  ROLE_LEVELS
-} from './middleware/rbac-route-helper';
+import { enhanceUserContext, requireLevel, ROLE_LEVELS } from './middleware/rbac-route-helper';
 
 const router = Router();
 
@@ -46,21 +42,22 @@ router.use(enhanceUserContext);
 // ============= AUDIT LOGS ENDPOINTS =============
 
 // Get audit logs with filtering and pagination
-router.get('/audit-logs', 
+router.get(
+  '/audit-logs',
   requireRole(['admin', 'compliance_officer']),
   auditLogMiddleware('VIEW_AUDIT_LOGS', 'audit_logs', 'high', 'security'),
   async (req: TenantRequest, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        startDate, 
-        endDate, 
-        userId, 
-        action, 
-        resource, 
+      const {
+        page = 1,
+        limit = 50,
+        startDate,
+        endDate,
+        userId,
+        action,
+        resource,
         severity,
-        category 
+        category,
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
@@ -91,19 +88,21 @@ router.get('/audit-logs',
       const whereClause = and(...conditions);
 
       const [logs, [{ count }]] = await Promise.all([
-        db.select()
+        db
+          .select()
           .from(auditLogs)
           .where(whereClause)
           .orderBy(desc(auditLogs.timestamp))
           .limit(Number(limit))
           .offset(offset),
-        db.select({ count: sql`count(*)` })
+        db
+          .select({ count: sql`count(*)` })
           .from(auditLogs)
-          .where(whereClause)
+          .where(whereClause),
       ]);
 
       // Mask sensitive data in audit logs for display
-      const maskedLogs = logs.map(log => ({
+      const maskedLogs = logs.map((log) => ({
         ...log,
         oldValues: log.oldValues ? sanitizeForAudit(log.oldValues) : null,
         newValues: log.newValues ? sanitizeForAudit(log.newValues) : null,
@@ -122,11 +121,12 @@ router.get('/audit-logs',
       console.error('Error fetching audit logs:', error);
       res.status(500).json({ message: 'Failed to fetch audit logs' });
     }
-  }
+  },
 );
 
 // Get audit statistics
-router.get('/audit-logs/stats',
+router.get(
+  '/audit-logs/stats',
   requireRole(['admin', 'compliance_officer']),
   async (req: TenantRequest, res) => {
     try {
@@ -138,15 +138,10 @@ router.get('/audit-logs/stats',
         .select({
           category: auditLogs.category,
           severity: auditLogs.severity,
-          count: sql`count(*)`
+          count: sql`count(*)`,
         })
         .from(auditLogs)
-        .where(
-          and(
-            eq(auditLogs.tenantId, req.tenantId!),
-            gte(auditLogs.timestamp, startDate)
-          )
-        )
+        .where(and(eq(auditLogs.tenantId, req.tenantId!), gte(auditLogs.timestamp, startDate)))
         .groupBy(auditLogs.category, auditLogs.severity);
 
       res.json({ stats });
@@ -154,26 +149,27 @@ router.get('/audit-logs/stats',
       console.error('Error fetching audit stats:', error);
       res.status(500).json({ message: 'Failed to fetch audit statistics' });
     }
-  }
+  },
 );
 
 // ============= DATA ACCESS LOGS ENDPOINTS =============
 
 // Get data access logs
-router.get('/data-access-logs',
+router.get(
+  '/data-access-logs',
   requireRole(['admin', 'compliance_officer']),
   dataAccessLogMiddleware('data_access_logs', 'confidential'),
   async (req: TenantRequest, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        startDate, 
-        endDate, 
-        userId, 
+      const {
+        page = 1,
+        limit = 50,
+        startDate,
+        endDate,
+        userId,
         resource,
         accessType,
-        classification 
+        classification,
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
@@ -201,15 +197,17 @@ router.get('/data-access-logs',
       const whereClause = and(...conditions);
 
       const [logs, [{ count }]] = await Promise.all([
-        db.select()
+        db
+          .select()
           .from(dataAccessLogs)
           .where(whereClause)
           .orderBy(desc(dataAccessLogs.accessedAt))
           .limit(Number(limit))
           .offset(offset),
-        db.select({ count: sql`count(*)` })
+        db
+          .select({ count: sql`count(*)` })
           .from(dataAccessLogs)
-          .where(whereClause)
+          .where(whereClause),
       ]);
 
       res.json({
@@ -225,13 +223,14 @@ router.get('/data-access-logs',
       console.error('Error fetching data access logs:', error);
       res.status(500).json({ message: 'Failed to fetch data access logs' });
     }
-  }
+  },
 );
 
 // ============= GDPR REQUESTS ENDPOINTS =============
 
 // Get GDPR requests
-router.get('/gdpr-requests',
+router.get(
+  '/gdpr-requests',
   requireRole(['admin', 'compliance_officer', 'legal']),
   auditLogMiddleware('VIEW_GDPR_REQUESTS', 'gdpr_requests', 'medium', 'data_access'),
   async (req: TenantRequest, res) => {
@@ -250,15 +249,17 @@ router.get('/gdpr-requests',
       const whereClause = and(...conditions);
 
       const [requests, [{ count }]] = await Promise.all([
-        db.select()
+        db
+          .select()
           .from(gdprRequests)
           .where(whereClause)
           .orderBy(desc(gdprRequests.createdAt))
           .limit(Number(limit))
           .offset(offset),
-        db.select({ count: sql`count(*)` })
+        db
+          .select({ count: sql`count(*)` })
           .from(gdprRequests)
-          .where(whereClause)
+          .where(whereClause),
       ]);
 
       res.json({
@@ -274,11 +275,12 @@ router.get('/gdpr-requests',
       console.error('Error fetching GDPR requests:', error);
       res.status(500).json({ message: 'Failed to fetch GDPR requests' });
     }
-  }
+  },
 );
 
 // Create GDPR request
-router.post('/gdpr-requests',
+router.post(
+  '/gdpr-requests',
   requireRole(['admin', 'compliance_officer', 'legal', 'manager']),
   auditLogMiddleware('CREATE_GDPR_REQUEST', 'gdpr_requests', 'high', 'data_access'),
   async (req: TenantRequest, res) => {
@@ -292,31 +294,29 @@ router.post('/gdpr-requests',
 
       const requestId = await createGDPRRequest(requestData);
 
-      res.status(201).json({ 
+      res.status(201).json({
         message: 'GDPR request created successfully',
-        requestId 
+        requestId,
       });
     } catch (error) {
       console.error('Error creating GDPR request:', error);
       res.status(500).json({ message: 'Failed to create GDPR request' });
     }
-  }
+  },
 );
 
 // Process data subject access request
-router.post('/gdpr-requests/:id/process-access',
+router.post(
+  '/gdpr-requests/:id/process-access',
   requireRole(['admin', 'compliance_officer']),
   auditLogMiddleware('PROCESS_GDPR_ACCESS', 'gdpr_requests', 'high', 'data_access'),
   async (req: TenantRequest, res) => {
     try {
       const requestId = req.params.id;
-      
+
       // Get the request details
       const request = await db.query.gdprRequests.findFirst({
-        where: and(
-          eq(gdprRequests.id, requestId),
-          eq(gdprRequests.tenantId, req.tenantId!)
-        )
+        where: and(eq(gdprRequests.id, requestId), eq(gdprRequests.tenantId, req.tenantId!)),
       });
 
       if (!request) {
@@ -331,7 +331,8 @@ router.post('/gdpr-requests/:id/process-access',
       const personalData = await processDataSubjectAccess(req.tenantId!, request.subjectId);
 
       // Update request status
-      await db.update(gdprRequests)
+      await db
+        .update(gdprRequests)
         .set({
           status: 'completed',
           completionDate: new Date(),
@@ -350,13 +351,14 @@ router.post('/gdpr-requests/:id/process-access',
       console.error('Error processing GDPR access request:', error);
       res.status(500).json({ message: 'Failed to process data access request' });
     }
-  }
+  },
 );
 
 // ============= SECURITY SESSIONS ENDPOINTS =============
 
 // Get active sessions
-router.get('/security-sessions',
+router.get(
+  '/security-sessions',
   requireRole(['admin', 'security_officer']),
   async (req: TenantRequest, res) => {
     try {
@@ -364,7 +366,7 @@ router.get('/security-sessions',
       const offset = (Number(page) - 1) * Number(limit);
       const conditions = [
         eq(securitySessions.tenantId, req.tenantId!),
-        eq(securitySessions.isActive, true)
+        eq(securitySessions.isActive, true),
       ];
 
       if (userId) {
@@ -374,15 +376,17 @@ router.get('/security-sessions',
       const whereClause = and(...conditions);
 
       const [sessions, [{ count }]] = await Promise.all([
-        db.select()
+        db
+          .select()
           .from(securitySessions)
           .where(whereClause)
           .orderBy(desc(securitySessions.lastActivity))
           .limit(Number(limit))
           .offset(offset),
-        db.select({ count: sql`count(*)` })
+        db
+          .select({ count: sql`count(*)` })
           .from(securitySessions)
-          .where(whereClause)
+          .where(whereClause),
       ]);
 
       res.json({
@@ -398,11 +402,12 @@ router.get('/security-sessions',
       console.error('Error fetching security sessions:', error);
       res.status(500).json({ message: 'Failed to fetch security sessions' });
     }
-  }
+  },
 );
 
 // Terminate session
-router.post('/security-sessions/:sessionId/terminate',
+router.post(
+  '/security-sessions/:sessionId/terminate',
   requireRole(['admin', 'security_officer']),
   auditLogMiddleware('TERMINATE_SESSION', 'security_sessions', 'medium', 'security'),
   async (req: TenantRequest, res) => {
@@ -410,7 +415,8 @@ router.post('/security-sessions/:sessionId/terminate',
       const { sessionId } = req.params;
       const { reason = 'admin' } = req.body;
 
-      await db.update(securitySessions)
+      await db
+        .update(securitySessions)
         .set({
           isActive: false,
           terminatedAt: new Date(),
@@ -420,8 +426,8 @@ router.post('/security-sessions/:sessionId/terminate',
         .where(
           and(
             eq(securitySessions.sessionId, sessionId),
-            eq(securitySessions.tenantId, req.tenantId!)
-          )
+            eq(securitySessions.tenantId, req.tenantId!),
+          ),
         );
 
       res.json({ message: 'Session terminated successfully' });
@@ -429,18 +435,19 @@ router.post('/security-sessions/:sessionId/terminate',
       console.error('Error terminating session:', error);
       res.status(500).json({ message: 'Failed to terminate session' });
     }
-  }
+  },
 );
 
 // ============= COMPLIANCE SETTINGS ENDPOINTS =============
 
 // Get compliance settings
-router.get('/compliance-settings',
+router.get(
+  '/compliance-settings',
   requireRole(['admin', 'compliance_officer']),
   async (req: TenantRequest, res) => {
     try {
       const settings = await db.query.complianceSettings.findFirst({
-        where: eq(complianceSettings.tenantId, req.tenantId!)
+        where: eq(complianceSettings.tenantId, req.tenantId!),
       });
 
       if (!settings) {
@@ -461,11 +468,12 @@ router.get('/compliance-settings',
       console.error('Error fetching compliance settings:', error);
       res.status(500).json({ message: 'Failed to fetch compliance settings' });
     }
-  }
+  },
 );
 
 // Update compliance settings
-router.put('/compliance-settings',
+router.put(
+  '/compliance-settings',
   requireRole(['admin', 'compliance_officer']),
   auditLogMiddleware('UPDATE_COMPLIANCE_SETTINGS', 'compliance_settings', 'high', 'system'),
   async (req: TenantRequest, res) => {
@@ -477,11 +485,12 @@ router.put('/compliance-settings',
 
       // Check if settings exist
       const existingSettings = await db.query.complianceSettings.findFirst({
-        where: eq(complianceSettings.tenantId, req.tenantId!)
+        where: eq(complianceSettings.tenantId, req.tenantId!),
       });
 
       if (existingSettings) {
-        await db.update(complianceSettings)
+        await db
+          .update(complianceSettings)
           .set({ ...settingsData, updatedAt: new Date() })
           .where(eq(complianceSettings.tenantId, req.tenantId!));
       } else {
@@ -493,13 +502,14 @@ router.put('/compliance-settings',
       console.error('Error updating compliance settings:', error);
       res.status(500).json({ message: 'Failed to update compliance settings' });
     }
-  }
+  },
 );
 
 // ============= SECURITY DASHBOARD ENDPOINTS =============
 
 // Get security dashboard data
-router.get('/security-dashboard',
+router.get(
+  '/security-dashboard',
   requireRole(['admin', 'security_officer', 'compliance_officer']),
   async (req: TenantRequest, res) => {
     try {
@@ -507,71 +517,62 @@ router.get('/security-dashboard',
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - Number(days));
 
-      const [
-        auditStats,
-        accessStats,
-        sessionStats,
-        gdprStats,
-        securityAlerts
-      ] = await Promise.all([
+      const [auditStats, accessStats, sessionStats, gdprStats, securityAlerts] = await Promise.all([
         // Audit log statistics
-        db.select({
-          category: auditLogs.category,
-          count: sql`count(*)`
-        })
-        .from(auditLogs)
-        .where(
-          and(
-            eq(auditLogs.tenantId, req.tenantId!),
-            gte(auditLogs.timestamp, startDate)
-          )
-        )
-        .groupBy(auditLogs.category),
+        db
+          .select({
+            category: auditLogs.category,
+            count: sql`count(*)`,
+          })
+          .from(auditLogs)
+          .where(and(eq(auditLogs.tenantId, req.tenantId!), gte(auditLogs.timestamp, startDate)))
+          .groupBy(auditLogs.category),
 
         // Data access statistics
-        db.select({
-          accessType: dataAccessLogs.accessType,
-          count: sql`count(*)`
-        })
-        .from(dataAccessLogs)
-        .where(
-          and(
-            eq(dataAccessLogs.tenantId, req.tenantId!),
-            gte(dataAccessLogs.accessedAt, startDate)
-          )
-        )
-        .groupBy(dataAccessLogs.accessType),
-
-        // Active sessions count
-        db.select({ count: sql`count(*)` })
-          .from(securitySessions)
+        db
+          .select({
+            accessType: dataAccessLogs.accessType,
+            count: sql`count(*)`,
+          })
+          .from(dataAccessLogs)
           .where(
             and(
-              eq(securitySessions.tenantId, req.tenantId!),
-              eq(securitySessions.isActive, true)
-            )
+              eq(dataAccessLogs.tenantId, req.tenantId!),
+              gte(dataAccessLogs.accessedAt, startDate),
+            ),
+          )
+          .groupBy(dataAccessLogs.accessType),
+
+        // Active sessions count
+        db
+          .select({ count: sql`count(*)` })
+          .from(securitySessions)
+          .where(
+            and(eq(securitySessions.tenantId, req.tenantId!), eq(securitySessions.isActive, true)),
           ),
 
         // GDPR requests statistics
-        db.select({
-          status: gdprRequests.status,
-          count: sql`count(*)`
-        })
-        .from(gdprRequests)
-        .where(eq(gdprRequests.tenantId, req.tenantId!))
-        .groupBy(gdprRequests.status),
+        db
+          .select({
+            status: gdprRequests.status,
+            count: sql`count(*)`,
+          })
+          .from(gdprRequests)
+          .where(eq(gdprRequests.tenantId, req.tenantId!))
+          .groupBy(gdprRequests.status),
 
         // Security alerts (suspicious activities)
-        db.select()
+        db
+          .select()
           .from(dataAccessLogs)
           .where(
             and(
               eq(dataAccessLogs.tenantId, req.tenantId!),
               eq(dataAccessLogs.suspiciousActivity, true),
-              gte(dataAccessLogs.accessedAt, startDate)
-            )
+              gte(dataAccessLogs.accessedAt, startDate),
+            ),
           )
-          .limit(10)
+          .limit(10),
       ]);
 
       res.json({
@@ -586,7 +587,7 @@ router.get('/security-dashboard',
       console.error('Error fetching security dashboard:', error);
       res.status(500).json({ message: 'Failed to fetch security dashboard data' });
     }
-  }
+  },
 );
 
 export default router;

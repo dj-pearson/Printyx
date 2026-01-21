@@ -150,13 +150,13 @@ export function EquipmentDisposalDialog({
 
         // Invalidate relevant queries
         queryClient.invalidateQueries({
-          queryKey: [`/api/equipment-lifecycle/${equipmentId}`]
+          queryKey: [`/api/equipment-lifecycle/${equipmentId}`],
         });
         queryClient.invalidateQueries({
-          queryKey: ['/api/equipment-lifecycle/stages']
+          queryKey: ['/api/equipment-lifecycle/stages'],
         });
         queryClient.invalidateQueries({
-          queryKey: ['/api/equipment-disposal']
+          queryKey: ['/api/equipment-disposal'],
         });
 
         onDisposalComplete?.();
@@ -233,7 +233,8 @@ export function EquipmentDisposalDialog({
           <DialogDescription>
             {equipmentDetails && (
               <span className="font-medium">
-                {equipmentDetails.brand} {equipmentDetails.model} (S/N: {equipmentDetails.serialNumber})
+                {equipmentDetails.brand} {equipmentDetails.model} (S/N:{' '}
+                {equipmentDetails.serialNumber})
               </span>
             )}
           </DialogDescription>
@@ -247,7 +248,9 @@ export function EquipmentDisposalDialog({
           </div>
           <Progress value={getProgressPercentage()} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span className={currentStep === 1 ? 'font-medium text-primary' : ''}>Disposal Type</span>
+            <span className={currentStep === 1 ? 'font-medium text-primary' : ''}>
+              Disposal Type
+            </span>
             <span className={currentStep === 2 ? 'font-medium text-primary' : ''}>Data Wipe</span>
             <span className={currentStep === 3 ? 'font-medium text-primary' : ''}>Vendor</span>
             <span className={currentStep === 4 ? 'font-medium text-primary' : ''}>Confirm</span>
@@ -262,7 +265,8 @@ export function EquipmentDisposalDialog({
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    Disposal is irreversible. Ensure all data has been backed up and customer approval obtained.
+                    Disposal is irreversible. Ensure all data has been backed up and customer
+                    approval obtained.
                   </AlertDescription>
                 </Alert>
 
@@ -362,7 +366,8 @@ export function EquipmentDisposalDialog({
                 <Alert>
                   <HardDrive className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Data Security Requirement:</strong> All data must be securely wiped before disposal to comply with data protection regulations.
+                    <strong>Data Security Requirement:</strong> All data must be securely wiped
+                    before disposal to comply with data protection regulations.
                   </AlertDescription>
                 </Alert>
 
@@ -382,7 +387,9 @@ export function EquipmentDisposalDialog({
                           <SelectItem value="software">Software-based Secure Erase</SelectItem>
                           <SelectItem value="degausser">Degausser (Magnetic)</SelectItem>
                           <SelectItem value="physical">Physical Destruction (Shredding)</SelectItem>
-                          <SelectItem value="certified_service">Certified Service Provider</SelectItem>
+                          <SelectItem value="certified_service">
+                            Certified Service Provider
+                          </SelectItem>
                           <SelectItem value="none">No Hard Drive Present</SelectItem>
                         </SelectContent>
                       </Select>
@@ -437,10 +444,7 @@ export function EquipmentDisposalDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-muted">
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel className="font-medium">
@@ -545,15 +549,10 @@ export function EquipmentDisposalDialog({
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Environmental compliance verified
-                        </FormLabel>
+                        <FormLabel>Environmental compliance verified</FormLabel>
                         <FormDescription>
                           Vendor meets environmental disposal standards (EPA, ISO 14001, etc.)
                         </FormDescription>
@@ -570,7 +569,8 @@ export function EquipmentDisposalDialog({
                 <Alert>
                   <CheckCircle2 className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Review and Confirm:</strong> Please review all disposal details before submission
+                    <strong>Review and Confirm:</strong> Please review all disposal details before
+                    submission
                   </AlertDescription>
                 </Alert>
 
@@ -593,7 +593,9 @@ export function EquipmentDisposalDialog({
                     {form.getValues('estimatedCost') && form.getValues('estimatedCost')! > 0 && (
                       <>
                         <span className="text-muted-foreground">Estimated Cost:</span>
-                        <span className="font-medium">${form.getValues('estimatedCost')?.toFixed(2)}</span>
+                        <span className="font-medium">
+                          ${form.getValues('estimatedCost')?.toFixed(2)}
+                        </span>
                       </>
                     )}
                   </div>

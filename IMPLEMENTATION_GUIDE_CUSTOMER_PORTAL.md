@@ -10,6 +10,7 @@
 ## Overview
 
 Transform the standalone Customer Portal into an integrated self-service hub where customers can:
+
 - View and submit service tickets
 - Track equipment status and meter readings
 - Access invoices and payment history
@@ -23,19 +24,23 @@ Transform the standalone Customer Portal into an integrated self-service hub whe
 ### Existing Customer Portal Files
 
 **Frontend:**
+
 - `client/src/pages/CustomerSelfServicePortal.tsx` - Main portal page
 - `client/src/components/customer-portal/` - Portal components (if exists)
 
 **Backend:**
+
 - `server/routes-customer-portal.ts` - Portal API routes (likely minimal)
 - `shared/customer-portal-schema.ts` - Portal data models
 
 **Current Capabilities:**
+
 - Basic customer information display
 - Minimal self-service features
 - No integration with core systems
 
 **Gaps:**
+
 - ❌ No service ticket visibility
 - ❌ No equipment status
 - ❌ No invoice access
@@ -63,10 +68,7 @@ router.get('/tickets', requireAuth, async (req, res) => {
     const customer = await db
       .select()
       .from(customers)
-      .where(and(
-        eq(customers.userId, userId),
-        eq(customers.tenantId, tenantId)
-      ))
+      .where(and(eq(customers.userId, userId), eq(customers.tenantId, tenantId)))
       .limit(1);
 
     if (!customer.length) {
@@ -93,10 +95,7 @@ router.get('/tickets', requireAuth, async (req, res) => {
       .from(serviceTickets)
       .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
       .leftJoin(equipment, eq(serviceTickets.equipmentId, equipment.id))
-      .where(and(
-        eq(serviceTickets.customerId, customerId),
-        eq(serviceTickets.tenantId, tenantId)
-      ))
+      .where(and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenantId, tenantId)))
       .orderBy(desc(serviceTickets.createdAt))
       .limit(100);
 
@@ -125,10 +124,7 @@ router.post('/tickets', requireAuth, async (req, res) => {
     const customer = await db
       .select()
       .from(customers)
-      .where(and(
-        eq(customers.userId, userId),
-        eq(customers.tenantId, tenantId)
-      ))
+      .where(and(eq(customers.userId, userId), eq(customers.tenantId, tenantId)))
       .limit(1);
 
     if (!customer.length) {
@@ -179,10 +175,7 @@ router.get('/equipment', requireAuth, async (req, res) => {
     const customer = await db
       .select()
       .from(customers)
-      .where(and(
-        eq(customers.userId, userId),
-        eq(customers.tenantId, tenantId)
-      ))
+      .where(and(eq(customers.userId, userId), eq(customers.tenantId, tenantId)))
       .limit(1);
 
     if (!customer.length) {
@@ -215,13 +208,10 @@ router.get('/equipment', requireAuth, async (req, res) => {
             WHERE equipment_id = ${equipment.id}
             ORDER BY reading_date DESC
             LIMIT 1
-          )`
-        )
+          )`,
+        ),
       )
-      .where(and(
-        eq(equipment.customerId, customer[0].id),
-        eq(equipment.tenantId, tenantId)
-      ))
+      .where(and(eq(equipment.customerId, customer[0].id), eq(equipment.tenantId, tenantId)))
       .orderBy(equipment.name);
 
     res.json(equipmentList);
@@ -244,20 +234,19 @@ router.get('/equipment/:id/history', requireAuth, async (req, res) => {
     const customer = await db
       .select()
       .from(customers)
-      .where(and(
-        eq(customers.userId, userId),
-        eq(customers.tenantId, tenantId)
-      ))
+      .where(and(eq(customers.userId, userId), eq(customers.tenantId, tenantId)))
       .limit(1);
 
     const equipmentRecord = await db
       .select()
       .from(equipment)
-      .where(and(
-        eq(equipment.id, parseInt(id)),
-        eq(equipment.customerId, customer[0].id),
-        eq(equipment.tenantId, tenantId)
-      ))
+      .where(
+        and(
+          eq(equipment.id, parseInt(id)),
+          eq(equipment.customerId, customer[0].id),
+          eq(equipment.tenantId, tenantId),
+        ),
+      )
       .limit(1);
 
     if (!equipmentRecord.length) {
@@ -278,10 +267,9 @@ router.get('/equipment/:id/history', requireAuth, async (req, res) => {
       })
       .from(serviceTickets)
       .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
-      .where(and(
-        eq(serviceTickets.equipmentId, parseInt(id)),
-        eq(serviceTickets.tenantId, tenantId)
-      ))
+      .where(
+        and(eq(serviceTickets.equipmentId, parseInt(id)), eq(serviceTickets.tenantId, tenantId)),
+      )
       .orderBy(desc(serviceTickets.createdAt))
       .limit(50);
 
@@ -307,10 +295,7 @@ router.get('/invoices', requireAuth, async (req, res) => {
     const customer = await db
       .select()
       .from(customers)
-      .where(and(
-        eq(customers.userId, userId),
-        eq(customers.tenantId, tenantId)
-      ))
+      .where(and(eq(customers.userId, userId), eq(customers.tenantId, tenantId)))
       .limit(1);
 
     if (!customer.length) {
@@ -329,10 +314,7 @@ router.get('/invoices', requireAuth, async (req, res) => {
         pdfUrl: invoices.pdfUrl,
       })
       .from(invoices)
-      .where(and(
-        eq(invoices.customerId, customer[0].id),
-        eq(invoices.tenantId, tenantId)
-      ))
+      .where(and(eq(invoices.customerId, customer[0].id), eq(invoices.tenantId, tenantId)))
       .orderBy(desc(invoices.invoiceDate))
       .limit(100);
 
@@ -354,10 +336,7 @@ router.get('/payment-methods', requireAuth, async (req, res) => {
     const customer = await db
       .select()
       .from(customers)
-      .where(and(
-        eq(customers.userId, userId),
-        eq(customers.tenantId, tenantId)
-      ))
+      .where(and(eq(customers.userId, userId), eq(customers.tenantId, tenantId)))
       .limit(1);
 
     if (!customer.length) {
@@ -374,10 +353,12 @@ router.get('/payment-methods', requireAuth, async (req, res) => {
         expiryYear: subscriptionPaymentMethods.expiryYear,
       })
       .from(subscriptionPaymentMethods)
-      .where(and(
-        eq(subscriptionPaymentMethods.customerId, customer[0].id),
-        eq(subscriptionPaymentMethods.tenantId, tenantId)
-      ));
+      .where(
+        and(
+          eq(subscriptionPaymentMethods.customerId, customer[0].id),
+          eq(subscriptionPaymentMethods.tenantId, tenantId),
+        ),
+      );
 
     res.json(paymentMethods);
   } catch (error) {
@@ -414,17 +395,19 @@ router.get('/knowledge-base/search', requireAuth, async (req, res) => {
       .from(knowledgeBaseArticles)
       .leftJoin(
         knowledgeBaseCategories,
-        eq(knowledgeBaseArticles.categoryId, knowledgeBaseCategories.id)
+        eq(knowledgeBaseArticles.categoryId, knowledgeBaseCategories.id),
       )
-      .where(and(
-        eq(knowledgeBaseArticles.tenantId, tenantId),
-        eq(knowledgeBaseArticles.isPublished, true),
-        eq(knowledgeBaseArticles.isCustomerVisible, true), // Only customer-accessible
-        or(
-          sql`${knowledgeBaseArticles.title} ILIKE ${'%' + q + '%'}`,
-          sql`${knowledgeBaseArticles.content} ILIKE ${'%' + q + '%'}`
-        )
-      ))
+      .where(
+        and(
+          eq(knowledgeBaseArticles.tenantId, tenantId),
+          eq(knowledgeBaseArticles.isPublished, true),
+          eq(knowledgeBaseArticles.isCustomerVisible, true), // Only customer-accessible
+          or(
+            sql`${knowledgeBaseArticles.title} ILIKE ${'%' + q + '%'}`,
+            sql`${knowledgeBaseArticles.content} ILIKE ${'%' + q + '%'}`,
+          ),
+        ),
+      )
       .limit(20);
 
     res.json(articles);
@@ -783,9 +766,7 @@ describe('Customer Portal API', () => {
     });
 
     it('should return 401 for unauthenticated request', async () => {
-      await request(app)
-        .get('/api/customer-portal/tickets')
-        .expect(401);
+      await request(app).get('/api/customer-portal/tickets').expect(401);
     });
 
     it('should only return tickets for the authenticated customer', async () => {
@@ -946,6 +927,7 @@ test.describe('Customer Portal', () => {
    - Add customer-level filtering on top of tenant filtering
 
 3. **Data visibility rules**
+
    ```typescript
    // Only show customer's own data
    WHERE customerId = (SELECT id FROM customers WHERE userId = req.user.id)
@@ -1011,6 +993,7 @@ CREATE INDEX idx_meter_readings_equipment ON meter_readings(equipment_id, readin
 ## Deployment Checklist
 
 ### Pre-Launch
+
 - [ ] All API endpoints tested with customer accounts
 - [ ] E2E tests passing
 - [ ] Security review completed
@@ -1021,6 +1004,7 @@ CREATE INDEX idx_meter_readings_equipment ON meter_readings(equipment_id, readin
 - [ ] Help documentation updated
 
 ### Beta Launch
+
 - [ ] Select 5-10 friendly customers for beta
 - [ ] Set up monitoring/analytics
 - [ ] Create feedback collection mechanism
@@ -1028,6 +1012,7 @@ CREATE INDEX idx_meter_readings_equipment ON meter_readings(equipment_id, readin
 - [ ] Prepare rollback plan
 
 ### Full Launch
+
 - [ ] Announce to all customers via email
 - [ ] Update marketing materials
 - [ ] Monitor support ticket volume
@@ -1039,17 +1024,20 @@ CREATE INDEX idx_meter_readings_equipment ON meter_readings(equipment_id, readin
 ## Success Metrics
 
 ### Week 1 Post-Launch
+
 - Portal login rate: Target 30%+ of customers
 - Feature usage: Tickets (50%), Equipment (70%), Billing (40%)
 - Support ticket reduction: Baseline measurement
 
 ### Month 1 Post-Launch
+
 - Portal adoption: Target 60%+ of customers
 - Self-service ticket creation: Target 40%+ of all tickets
 - Support ticket reduction: Target -20%
 - CSAT score: Target 8.0+ / 10
 
 ### Month 3 Post-Launch
+
 - Portal adoption: Target 80%+ of customers
 - Self-service rate: Target 60%+ of customer interactions
 - Support ticket reduction: Target -35%
@@ -1062,16 +1050,19 @@ CREATE INDEX idx_meter_readings_equipment ON meter_readings(equipment_id, readin
 ### Common Issues
 
 **Issue: Customer can't see their tickets**
+
 - Verify customer record exists for this user
 - Check `customerId` is correctly set on tickets
 - Verify tenant ID matches
 
 **Issue: Equipment not showing**
+
 - Check equipment records have correct `customerId`
 - Verify customer owns this equipment
 - Check for data visibility filters
 
 **Issue: Performance slow with many customers**
+
 - Review database indexes
 - Enable query result caching
 - Implement pagination for large lists

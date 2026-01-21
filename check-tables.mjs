@@ -5,7 +5,7 @@ const { Pool } = pg;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 try {
@@ -19,7 +19,7 @@ try {
 
   console.log('Total tables in database:', result.rows.length);
   console.log('Tables:');
-  result.rows.forEach(r => console.log(`  - ${r.table_name}`));
+  result.rows.forEach((r) => console.log(`  - ${r.table_name}`));
 } catch (err) {
   console.error('Error:', err.message);
 } finally {
