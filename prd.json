@@ -62,11 +62,14 @@
         "database-exports/complete-with-schema.sql",
         "NEON_MIGRATION_STATUS.md",
         "tools/migrate-neon-to-supabase.ps1",
-        "deployment/restore-schema-remote.sh"
+        "deployment/restore-schema-remote.sh",
+        "scripts/verify-database-migration.mjs"
       ],
       "passes": false,
       "priority": 1,
-      "severity": "critical"
+      "severity": "critical",
+      "verificationAttempt": "2026-01-21",
+      "notes": "BLOCKED: Database connection failed (ECONNRESET to 209.145.59.219:5433). Created scripts/verify-database-migration.mjs verification script. Based on Jan 16 schema-definition.json, 177/181 tables are missing. URGENT_MIGRATION_PLAN.md exists but no evidence of execution. Next steps: (1) Establish DB connectivity, (2) Run node scripts/verify-database-migration.mjs, (3) If tables missing, execute URGENT_MIGRATION_PLAN.md"
     },
     {
       "id": "DB-002",
@@ -169,10 +172,16 @@
         "Add unit tests for tenant validation",
         "Document the validation logic in security documentation"
       ],
-      "files": ["server/middleware/tenancy.ts", "server/utils/auth-helpers.ts"],
-      "passes": false,
+      "files": [
+        "server/middleware/tenancy.ts",
+        "server/utils/auth-helpers.ts",
+        "server/tests/unit/tenancy-middleware.test.ts"
+      ],
+      "passes": true,
       "priority": 1,
-      "severity": "critical"
+      "severity": "critical",
+      "completedAt": "2026-01-21",
+      "resolution": "Added validateTenantHeader() function that validates x-tenant-id header against user JWT tenant. Returns 403 for mismatches. Platform admins can access any tenant. Security logging added. 13 unit tests."
     },
     {
       "id": "AUTH-002",
