@@ -300,11 +300,14 @@
       ],
       "files": [
         "server/middleware/enhanced-rbac-middleware.ts",
-        "server/services/audit-archival-service.ts"
+        "server/services/audit-archival-service.ts",
+        "server/routes-root-admin.ts",
+        "server/tests/unit/rbac-audit-logging.test.ts"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 3,
-      "severity": "medium"
+      "severity": "medium",
+      "notes": "Added logAdminBypass() function, logs all 4 bypass locations (PERMISSION, ALL_PERMISSIONS, ANY_PERMISSION, APPROVAL). Added 3 admin endpoints for viewing audit logs with filtering. 14 unit tests. 7-year retention via existing audit-archival-service."
     },
     {
       "id": "AUTH-007",

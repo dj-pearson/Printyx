@@ -304,3 +304,67 @@ import { requireAuth } from '../auth-setup';
 
 ---
 
+## Iteration 7 - AUTH-006: Add Audit Logging for Admin Bypass Actions
+**Started**: 2026-01-21 17:45 CST
+**Completed**: 2026-01-21 18:15 CST
+**Status**: COMPLETE
+
+### What Was Done:
+1. Analyzed enhanced-rbac-middleware.ts - Found 4 bypass locations without logging
+2. Added `logAdminBypass()` function for comprehensive audit logging
+3. Updated all 4 permission bypass locations to call audit logging
+4. Added `rbacAuditLog` schema import for proper Drizzle ORM usage
+5. Created 3 admin API endpoints for viewing audit logs
+6. Leveraged existing 7-year retention policy in audit-archival-service.ts
+7. Created 14 unit tests
+8. All tests pass
+
+### Security Implementation:
+- **Bypass Locations Logged**:
+  1. `requirePermission` - Single/multiple permission checks
+  2. `requireAllPermissions` - All permissions required
+  3. `requireAnyPermission` - Any permission required
+  4. `requireApproval` - Approval workflow bypass
+
+- **Audit Log Entry Contains**:
+  - eventType: 'ADMIN_BYPASS'
+  - bypassType: PERMISSION | ALL_PERMISSIONS | ANY_PERMISSION | APPROVAL
+  - requiredPermissions: Array of bypassed permissions
+  - userId, tenantId, roleCode, roleLevel
+  - route, method, ipAddress, userAgent
+  - requestId, sessionId, timestamp
+
+### Admin API Endpoints:
+| Endpoint | Purpose |
+|----------|---------|
+| GET /root-admin/rbac-audit-logs | List audit logs with filtering |
+| GET /root-admin/rbac-audit-logs/stats | Event type counts, admin bypass metrics |
+| GET /root-admin/rbac-audit-logs/admin-bypass | Admin bypass events only |
+
+### Retention Policy:
+- Uses existing audit-archival-service.ts with DEFAULT_RETENTION_YEARS = 7
+- Supports encryption, compression, legal hold
+- Archive jobs for scheduled archival
+
+### Files Created:
+- server/tests/unit/rbac-audit-logging.test.ts - 14 comprehensive tests
+
+### Files Modified:
+- server/middleware/enhanced-rbac-middleware.ts - Added logAdminBypass(), audit logging
+- server/routes-root-admin.ts - Added 3 RBAC audit log endpoints
+- prd.json - Marked AUTH-006 as passes: true
+
+### Test Coverage:
+- requirePermission middleware bypass logging (4 tests)
+- requireAllPermissions middleware bypass logging (1 test)
+- requireApproval middleware bypass logging (1 test)
+- Audit log entry structure (2 tests)
+- Security scenarios (3 tests)
+- Edge cases (3 tests)
+
+### Story Status:
+- AUTH-006: **COMPLETE**
+- passes: true
+
+---
+
