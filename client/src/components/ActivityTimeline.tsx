@@ -59,6 +59,17 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
       console.log('🔍 ActivityTimeline - Fetching activities for company:', businessRecordId);
       const data = await apiRequest(`/api/companies/${businessRecordId}/activities`);
       console.log('🔍 ActivityTimeline - Fetched activities:', data);
+
+      // Log first activity for debugging date issues
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('🔍 ActivityTimeline - First activity dates:', {
+          createdAt: data[0].createdAt,
+          scheduledDate: data[0].scheduledDate,
+          dueDate: data[0].dueDate,
+          followUpDate: data[0].followUpDate,
+        });
+      }
+
       return Array.isArray(data) ? data : [];
     },
     enabled: !!businessRecordId, // Only run query if businessRecordId is defined
@@ -113,8 +124,30 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     }
   };
 
-  const formatActivityTime = (dateString: string) => {
+  // Safe date formatter that handles null/invalid dates
+  const safeFormatDate = (
+    dateString: string | null | undefined,
+    formatString: string,
+  ): string | null => {
+    if (!dateString) return null;
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return format(date, formatString);
+  };
+
+  const formatActivityTime = (dateString: string | null | undefined) => {
+    // Handle invalid or missing dates
+    if (!dateString) {
+      return { distance: 'Unknown time', formatted: 'No date' };
+    }
+
+    const date = new Date(dateString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return { distance: 'Invalid date', formatted: 'Invalid date' };
+    }
+
     const now = new Date();
     const distance = formatDistance(date, now, { addSuffix: true });
     const formatted = format(date, 'MMM d, yyyy p');
@@ -252,9 +285,9 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                           <Calendar className="h-3 w-3" />
                           <span>
                             {activity.scheduledDate &&
-                              format(new Date(activity.scheduledDate), 'MMM d, yyyy p')}
+                              safeFormatDate(activity.scheduledDate, 'MMM d, yyyy p')}
                             {activity.dueDate &&
-                              `Due: ${format(new Date(activity.dueDate), 'MMM d, yyyy')}`}
+                              ` Due: ${safeFormatDate(activity.dueDate, 'MMM d, yyyy')}`}
                           </span>
                         </div>
                       )}
@@ -277,14 +310,15 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                       )}
 
                       {/* Follow-up Date */}
-                      {activity.followUpDate && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Calendar className="h-3 w-3 text-blue-500" />
-                          <span className="text-blue-600">
-                            Follow-up: {format(new Date(activity.followUpDate), 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                      )}
+                      {activity.followUpDate &&
+                        safeFormatDate(activity.followUpDate, 'MMM d, yyyy') && (
+                          <div className="flex items-center space-x-2 text-sm">
+                            <Calendar className="h-3 w-3 text-blue-500" />
+                            <span className="text-blue-600">
+                              Follow-up: {safeFormatDate(activity.followUpDate, 'MMM d, yyyy')}
+                            </span>
+                          </div>
+                        )}
                     </div>
 
                     {/* Created by */}
