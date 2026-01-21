@@ -1,5 +1,5 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -14,9 +14,29 @@ import {
   Calendar,
   ArrowRight,
   ExternalLink,
+  Edit2,
+  Trash2,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format, formatDistance } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface Activity {
   id: string;
@@ -48,6 +68,11 @@ interface ActivityTimelineProps {
 export function ActivityTimeline({ businessRecordId, className }: ActivityTimelineProps) {
   console.log('🔍 ActivityTimeline - businessRecordId:', businessRecordId);
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
+
   const {
     data: activities,
     isLoading,
@@ -74,6 +99,52 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     },
     enabled: !!businessRecordId, // Only run query if businessRecordId is defined
   });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (activityId: string) => {
+      await apiRequest(`/api/activities/${activityId}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Activity deleted',
+        description: 'The activity has been successfully deleted.',
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/companies/${businessRecordId}/activities`],
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete activity',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleDeleteClick = (activityId: string) => {
+    setActivityToDelete(activityId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (activityToDelete) {
+      deleteMutation.mutate(activityToDelete);
+      setDeleteDialogOpen(false);
+      setActivityToDelete(null);
+    }
+  };
+
+  const handleEditClick = (activityId: string) => {
+    // TODO: Open edit dialog
+    toast({
+      title: 'Edit Activity',
+      description: 'Edit dialog coming soon!',
+    });
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -243,8 +314,34 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs text-gray-500" title={formatted}>
-                        {distance}
+                      <div className="flex items-center space-x-2">
+                        <div className="text-xs text-gray-500" title={formatted}>
+                          {distance}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-gray-100"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditClick(activity.id)}>
+                              <Edit2 className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(activity.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
 
@@ -337,6 +434,27 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
           </div>
         );
       })}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Activity</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this activity? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setActivityToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
