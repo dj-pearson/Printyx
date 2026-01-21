@@ -415,7 +415,6 @@ export default async function handler(req: Request) {
                         email: contactEmail || null,
                         phone: phone || null,
                         is_primary_contact: true,
-                        created_by: job.userId,
                       });
 
                     if (!contactInsertError) {
@@ -606,7 +605,6 @@ export default async function handler(req: Request) {
                         email: mappedData.primaryContactEmail || mappedData.email || null,
                         phone: phone || null,
                         is_primary_contact: true,
-                        created_by: job.userId,
                       });
                     }
                   }
