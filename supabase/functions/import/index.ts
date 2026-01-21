@@ -394,8 +394,6 @@ export default async function handler(req: Request) {
                     const { error: customerInsertError } = await admin.from('customers').insert({
                       tenant_id: job.tenantId,
                       company_id: existingCompany.id,
-                      status: 'active',
-                      created_by: job.userId,
                     });
 
                     if (!customerInsertError) {
@@ -612,8 +610,6 @@ export default async function handler(req: Request) {
                     const { error: customerError } = await admin.from('customers').insert({
                       tenant_id: job.tenantId,
                       company_id: newCompany.id,
-                      status: 'active',
-                      created_by: job.userId,
                     });
 
                     if (customerError) {
