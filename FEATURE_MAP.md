@@ -1,6 +1,7 @@
 # PRINTYX APPLICATION - COMPREHENSIVE FEATURE MAP
 
 ## Executive Summary
+
 Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Product) management platform with 160+ pages and 75+ specialized API route files. The application is organized into 13 major feature domains with cross-cutting integrations for billing, analytics, AI capabilities, and workflow automation.
 
 ---
@@ -8,8 +9,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ## 1. MAIN FEATURE DOMAINS (13 Major Hubs)
 
 ### 1.1 SALES HUB
+
 **Navigation Path**: `/crm` (Platform: "Sales Hub")
 **Primary Pages**:
+
 - CRM Dashboard (`/crm`) - Central CRM interface
 - Leads Management (`/leads-management`) - Lead pipeline management
 - Lead Enrichment (`/data-enrichment`) - Third-party data enrichment (Apollo.io, ZoomInfo)
@@ -29,6 +32,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Commission Management (`/commission-management`) - Commission calculations
 
 **Related Tables**:
+
 - leads, customers, businessRecords
 - opportunities, deals, dealStages, dealActivities
 - quotes, quoteLineItems
@@ -38,6 +42,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - leadContacts, customerContacts
 
 **Key Integrations**:
+
 - Quote → Proposal conversion
 - Lead enrichment (Apollo, ZoomInfo)
 - Salesforce integration
@@ -47,8 +52,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.2 SERVICE HUB
+
 **Navigation Path**: `/service-hub` (Platform: "Service Hub")
 **Primary Pages**:
+
 - Service Hub (`/service-hub`) - Service dashboard
 - Onboarding Checklists (`/onboarding`) - Equipment onboarding
 - Service Dispatch (`/service-dispatch-optimization`) - Technician dispatch
@@ -69,6 +76,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Manufacturer Integration (`/manufacturer-integration`) - Device integration
 
 **Related Tables**:
+
 - serviceTickets, serviceTicketUpdates
 - technicians, technicianAvailability, technicianCertifications
 - equipment, equipmentLifecycle
@@ -79,6 +87,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - complianceDocuments, deliverySchedules, installationSchedules
 
 **Key Integrations**:
+
 - Mobile field operations (GPS, location history)
 - Meter readings for billing
 - Equipment lifecycle tracking
@@ -89,8 +98,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.3 PRODUCT HUB
+
 **Navigation Path**: `/product-hub` (Platform: "Product Hub")
 **Primary Pages**:
+
 - Product Hub (`/product-hub`) - Product directory
 - Product Catalog (`/product-catalog`) - Master product catalog
 - Product Models (`/product-models`) - Equipment model management
@@ -102,6 +113,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Service Products (`/service-products`) - Service-related products
 
 **Related Tables**:
+
 - enhancedProducts, productModels
 - productAccessories, accessoryModelCompatibility
 - masterProductModels
@@ -109,6 +121,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Professional/Software/Service product types
 
 **Key Integrations**:
+
 - Quote builder (product selection for quotes)
 - Pricing management
 - Equipment lifecycle (model specifications)
@@ -118,8 +131,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.4 EQUIPMENT LIFECYCLE HUB
+
 **Navigation Path**: `/equipment-lifecycle` (Platform: "Equipment Lifecycle")
 **Primary Pages**:
+
 - Equipment Lifecycle (`/equipment-lifecycle`) - Full lifecycle view
 - Purchase Orders (`/purchase-orders`) - PO management
 - PO Optimization (`/purchase-orders-optimization`) - PO analytics
@@ -128,6 +143,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Equipment Management (`/equipment-lifecycle-management`) - Equipment details
 
 **Related Tables**:
+
 - equipment, equipmentLifecycle
 - purchaseOrders, purchaseOrderItems
 - inventoryItems
@@ -135,6 +151,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - deliverySchedules, installationSchedules
 
 **Key Integrations**:
+
 - Warehouse stock levels
 - Purchase order creation from quotes
 - Delivery and installation scheduling
@@ -144,8 +161,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.5 BILLING HUB
+
 **Navigation Path**: `/billing-hub` (Platform: "Billing Hub")
 **Primary Pages**:
+
 - Billing Hub (`/billing`) - Billing dashboard
 - Leases (`/leases`) - Equipment leases
 - Chart of Accounts (`/chart-of-accounts`) - GL accounts
@@ -159,6 +178,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Financial Forecasting (`/financial-forecasting`) - Revenue forecasting
 
 **Related Tables**:
+
 - invoices, invoiceLineItems
 - leases, leasePayments, leaseRenewals, leaseDispositions
 - meterReadings (for usage-based billing)
@@ -168,6 +188,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - billingHistory, subscriptionPaymentMethods
 
 **Key Integrations**:
+
 - Meter readings → Usage billing
 - Lease contracts → Monthly billing
 - Contracts with tiered rates
@@ -177,8 +198,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.6 REPORTS HUB
+
 **Navigation Path**: `/reports` (Platform: "Reports")
 **Primary Pages**:
+
 - Reports Hub (`/reports`) - Report directory
 - Performance Monitoring (`/performance-monitoring`) - System performance
 - Advanced Reporting (`/advanced-reporting`) - Custom reports
@@ -191,6 +214,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Sales Performance Analytics (`/sales-performance-analytics`) - Sales metrics
 
 **Related Tables**:
+
 - activityReports
 - goalProgress, salesMetrics
 - conversionFunnel
@@ -198,6 +222,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Reporting definitions and schemas
 
 **Key Integrations**:
+
 - Cross-module data aggregation
 - Dashboard service (unified metrics)
 - Real-time KPI updates
@@ -206,16 +231,20 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.7 TASK MANAGEMENT HUB
+
 **Navigation Path**: `/tasks` (Platform: "Task Management")
 **Primary Pages**:
+
 - Advanced Tasks (`/task-management`) - Full-featured task management
 - Basic Tasks (`/basic-task-management`) - Simple task list
 
 **Related Tables**:
+
 - Tasks (from task-schema.ts)
 - Task assignments, dependencies
 
 **Key Integrations**:
+
 - Cross-module task creation
 - Workflow automation triggers
 - Mobile task updates
@@ -224,8 +253,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.8 AI HUB (Always Available)
+
 **Navigation Path**: `/ai-hub` (Platform: "AI Hub")
 **Primary Pages**:
+
 - AI Employees (`/ai-employees`) - AI agent management
 - Calendar Integration (`/calendar`) - AI calendar sync
 - Meeting Transcription (`/meeting-transcription`) - Meeting recordings
@@ -234,6 +265,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Conversation AI Dashboard (`/conversational-ai-dashboard`) - Chatbot
 
 **Related Features**:
+
 - AI Analytics Dashboard (reports)
 - GPT-5 Dashboard (advanced AI)
 - AI Documentation Dashboard
@@ -241,6 +273,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Meeting Transcription Dashboard
 
 **Key Integrations**:
+
 - Knowledge base integration
 - Calendar/scheduling APIs
 - Meeting platforms (Zoom, Teams)
@@ -249,16 +282,20 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.9 KNOWLEDGE BASE (Always Available)
+
 **Navigation Path**: `/knowledge-base`
 **Primary Pages**:
+
 - Knowledge Base (`/knowledge-base`) - Article repository
 - Articles (`/knowledge-base/article/:slug`) - Individual articles
 - Categories (`/knowledge-base/category/:slug`) - Article categories
 
 **Related Tables**:
+
 - Knowledge base schema (articles, categories, revisions)
 
 **Key Integrations**:
+
 - AI search integration
 - Employee training
 - Customer portal access
@@ -266,8 +303,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.10 INTEGRATIONS HUB
+
 **Navigation Path**: `/integration-hub` (Platform: "Integrations")
 **Primary Pages**:
+
 - Integration Hub (`/integration-hub`) - Integration dashboard
 - QuickBooks Integration (`/quickbooks-integration`) - Accounting sync
 - ERP Integration (`/erp-integration`) - ERP system sync
@@ -275,6 +314,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - System Integrations (`/system-integrations`) - General integrations
 
 **Key Integrations**:
+
 - Salesforce CRM
 - QuickBooks accounting
 - E-Signature (DocuSign)
@@ -285,8 +325,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.11 SYSTEM ADMINISTRATION
+
 **Navigation Path**: `/workflow-automation` (Platform: "System Administration")
 **Primary Pages**:
+
 - SEO Management (`/seo`) - SEO settings
 - Workflow Automation (`/workflow-automation`) - Custom workflows
 - Business Process Optimization (`/business-process-optimization`) - Process design
@@ -298,11 +340,13 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Customer Number Settings (`/customer-number-settings`) - ID generation
 
 **Related Tables**:
+
 - workflowAutomation schema
 - securitySchema (audit logs, access controls)
 - documentManagement schema
 
 **Key Integrations**:
+
 - Tenant configuration
 - Role-based access control (RBAC)
 - Audit logging
@@ -311,18 +355,22 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.12 CUSTOMERS (Core)
+
 **Navigation Path**: `/customers`
 **Primary Pages**:
+
 - Customers (`/customers`) - Customer list
 - Customer Detail (`/customers/:slug`) - Customer profile
 - Customer Portal (`/customer-self-service-portal`) - Self-service portal
 
 **Related Tables**:
+
 - customers (alias for businessRecords)
 - customerContacts, customerRelatedRecords
 - customerActivities
 
 **Key Integrations**:
+
 - Unified customer view
 - 4-tier organizational structure
 - Cross-module customer context
@@ -330,8 +378,10 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ---
 
 ### 1.13 PLATFORM ADMIN (Admin-Only)
+
 **Navigation Path**: `/admin/` or `canAccessAllTenants` role
 **Primary Pages**:
+
 - Root Admin Dashboard (`/root-admin-dashboard`) - Platform overview
 - Root Admin Security (`/admin/root-admin-security`) - Security audit
 - System Security (`/admin/system-security`) - System security
@@ -352,12 +402,14 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 - Mobile Optimization (`/mobile-optimization`) - Mobile settings
 
 **Related Tables**:
+
 - tenants, regions, locations, teams
 - users, roles, rolePermissions
 - userLocationAssignments, userCustomerAssignments
 - sessions, mfaBackupCodes, mfaAuditLogs
 
 **Key Integrations**:
+
 - Multi-tenant isolation
 - Row-level security (RLS)
 - User provisioning
@@ -368,6 +420,7 @@ Printyx is an enterprise-grade, multi-tenant printing/MFP (Managed Functional Pr
 ## 2. DATA MODEL RELATIONSHIPS
 
 ### 2.1 Core Business Entities
+
 ```
 Tenant (Platform)
   ├── Company (Business Unit)
@@ -403,12 +456,14 @@ Tenant (Platform)
 ```
 
 ### 2.2 Multi-Tenant Architecture
+
 - **4-Tier Organization**: Platform → Company → Region → Location
 - **Row-Level Security (RLS)**: All queries filtered by `tenantId`
 - **Session Management**: PostgreSQL sessions with tenant context
 - **User Assignments**: User → Location/Customer assignments
 
 ### 2.3 Lead-to-Customer Conversion Pipeline
+
 ```
 Lead (BusinessRecord with type='lead')
   ├── Activities (interactions)
@@ -433,66 +488,80 @@ Data Loss Prevention:
 ## 3. FEATURE ISOLATION & STANDALONE FEATURES
 
 ### 3.1 Well-Connected Features (High Integration)
-**Lead → Customer → Service → Billing**: 
+
+**Lead → Customer → Service → Billing**:
+
 - Lead enrichment → Lead conversion → Customer equipment setup → Service dispatch → Meter-based billing
 - Integrations: CRM Goals, Data Enrichment, Onboarding, Service Analytics, Financial Forecasting
 
 **Quote → Proposal → Contract → Invoice**:
+
 - Quote creation → Proposal generation → Contract → Invoice generation
 - Integrations: Quote builder, Proposal builder, Document builder, Pricing management
 
 **Equipment → Service → Lease → Billing**:
+
 - Equipment acquisition → Service contracts → Lease terms → Monthly billing
 - Integrations: Equipment lifecycle, Service dispatch, Lease management, Advanced billing
 
 ### 3.2 Standalone/Weakly Connected Features
 
 **Onboarding Checklists** (`/onboarding`):
+
 - Currently standalone checklist management
 - Could integrate with: Equipment setup, Customer success tracking, Service dispatch
 - Missing: Connection to customer success metrics, automated checklist triggers
 
 **Customer Portal** (`/customer-self-service-portal`):
+
 - Self-service portal for customers
 - Missing: Deep integration with service tickets, invoice visibility, equipment status
 - Opportunity: Could show meter readings, pending tasks, contact information
 
 **Knowledge Base** (`/knowledge-base`):
+
 - Documentation repository
 - Missing: Usage analytics, integration with support workflows, AI relevance ranking
 - Opportunity: Could be recommended in help contexts, integrated with tasks
 
 **Commission Management** (`/commission-management`):
+
 - Commission calculations
 - Missing: Direct link to sales pipeline, deal closure tracking
 - Opportunity: Could auto-calculate based on deal closure or invoice payment
 
 **Manufacturer Integration** (`/manufacturer-integration`):
+
 - Device data sync from manufacturers
 - Missing: Automation of equipment updates, real-time device sync
 - Opportunity: Could trigger preventive maintenance, warranty tracking
 
 **Social Media Generator** (`/social-media-generator`):
+
 - Content generation for social media
 - Minimal integration with other features
 - Opportunity: Could draw from sales metrics, case studies, customer success stories
 
 **Demo Scheduling** (`/demo-scheduling`):
+
 - Calendar-based demo scheduling
 - Missing: Integration with leads/opportunities, follow-up automation
 - Opportunity: Could auto-create follow-up tasks, link to quotes
 
 **Pricing Management** (`/pricing-management`):
+
 - Product/service pricing configuration
 - Missing: Direct integration with quote builder pricing logic
 - Opportunity: Could auto-update quote defaults, track price history
 
 **Customer Number Settings** (`/customer-number-settings`):
+
 - Customer ID generation rules
 - Standalone configuration feature
 - Missing: Integration with bulk customer import
 
 **Fleet Monitoring Dashboard** (`/fleet-monitoring`):
+
 - Vehicle fleet overview
 - Missing: Integration with technician dispatch, route optimization
 - Opportunity: Could inform service dispatch optimization
@@ -502,6 +571,7 @@ Data Loss Prevention:
 ## 4. CRITICAL USER JOURNEYS
 
 ### Journey 1: Lead to Billing (Complete Sales-Service-Billing Cycle)
+
 ```
 1. Lead Import/Enrichment
    └─→ /leads-management → /data-enrichment (Apollo, ZoomInfo)
@@ -552,6 +622,7 @@ Data Loss Prevention:
 ```
 
 ### Journey 2: Equipment Lifecycle Management
+
 ```
 1. Equipment Planning
    └─→ /product-hub → /product-models
@@ -588,6 +659,7 @@ Data Loss Prevention:
 ```
 
 ### Journey 3: Service Dispatch & Field Operations
+
 ```
 1. Ticket Creation
    └─→ /service-hub
@@ -630,6 +702,7 @@ Data Loss Prevention:
 ```
 
 ### Journey 4: Sales Pipeline to Commission
+
 ```
 1. Opportunity Management
    └─→ /opportunities → /sales-pipeline
@@ -666,6 +739,7 @@ Data Loss Prevention:
 ## 5. CROSS-CUTTING CONCERNS & INTEGRATIONS
 
 ### 5.1 Authentication & Authorization
+
 - **Auth System**: Replit Auth with OpenID Connect
 - **Multi-Tenant Isolation**: Session-based tenant resolution
 - **RBAC**: 8-level role hierarchy with permission-based access
@@ -675,11 +749,13 @@ Data Loss Prevention:
   - Protected routes: All CRM, Service, Billing, Reports features
 
 ### 5.2 Real-Time & Notifications
+
 - **WebSocket Integration**: Real-time data updates
 - **System Alert Bell**: Notifications for critical events
 - **Subscription Banner**: Subscription status notifications
 
 ### 5.3 Mobile-First Design
+
 - **Mobile-Optimized Pages**:
   - Mobile Field Operations (`/mobile-field-operations`)
   - Mobile Service App (`/mobile-service-app`)
@@ -688,35 +764,44 @@ Data Loss Prevention:
 - **Components**: MobileFAB, MobileNavigationDrawer, responsive design
 
 ### 5.4 External Integrations
+
 **CRM/Sales**:
+
 - Salesforce (full 2-way sync)
 - Apollo.io (lead enrichment)
 - ZoomInfo (data enrichment)
 
 **Accounting**:
+
 - QuickBooks (invoice sync, GL integration)
 - Stripe (payment processing)
 
 **Documents**:
+
 - DocuSign/e-Signature integration
 - Document builder for templates
 
 **Devices/Manufacturers**:
+
 - Manufacturer APIs for device data
 - Remote monitoring capabilities
 
 **Workflow**:
+
 - Zapier/webhooks (potential)
 - Custom workflow triggers
 
 ### 5.5 Analytics & Reporting
+
 **Cross-Module Analytics**:
+
 - Dashboard Service for unified metrics
 - Real-time KPI updates
 - Custom reporting definitions
 - Historical trend analysis
 
 **Reporting Channels**:
+
 - Executive Dashboard
 - Financial Intelligence
 - Predictive Analytics (ML-based)
@@ -724,13 +809,16 @@ Data Loss Prevention:
 - Sales Performance
 
 ### 5.6 Billing & Payments
+
 **Billing Types**:
+
 - Usage-based (meter billing)
 - Time-based (monthly leases)
 - Tiered rates (volume discounts)
 - Advanced billing rules
 
 **Payment Processing**:
+
 - Stripe integration
 - Payment method management
 - Billing address tracking
@@ -785,23 +873,27 @@ Advanced Features:
 ## 7. FEATURE COMPLETENESS ASSESSMENT
 
 ### Fully Integrated (90%+)
+
 - CRM Pipeline (Lead → Customer → Quote → Invoice)
 - Equipment Lifecycle (Purchase → Delivery → Service → Lease → Billing)
 - Service Dispatch (Ticket → Technician → Field ops → Completion)
 
 ### Well Integrated (70-89%)
+
 - Sales Pipeline (Opportunities → Deals → Commission)
 - Billing Operations (Invoices → AR/AP → GL)
 - Preventive Maintenance (Scheduling → Dispatch → Analytics)
 - Mobile Field Operations (Dispatch → Navigation → Documentation)
 
 ### Partially Integrated (40-69%)
+
 - Onboarding (Checklist creation but weak link to CSM)
 - Fleet Monitoring (Overview but limited dispatch integration)
 - Demo Scheduling (Standalone, weak lead linkage)
 - Pricing Management (Config only, not auto-linked to quotes)
 
 ### Standalone (< 40%)
+
 - Social Media Generator
 - Customer Number Settings
 - Knowledge Base (Read-only, limited context integration)
@@ -871,6 +963,7 @@ Advanced Features:
 ## 9. TECHNOLOGY STACK SUMMARY
 
 ### Frontend
+
 - **Framework**: React 18 + TypeScript + Vite
 - **Routing**: Wouter (lightweight)
 - **State Management**: TanStack Query (React Query)
@@ -879,6 +972,7 @@ Advanced Features:
 - **Visualization**: Charts (chart.js, recharts)
 
 ### Backend
+
 - **Server**: Express.js + TypeScript
 - **Database**: PostgreSQL (Neon serverless)
 - **ORM**: Drizzle ORM
@@ -888,6 +982,7 @@ Advanced Features:
 - **Security**: CSRF protection, rate limiting
 
 ### Integrations
+
 - Salesforce API
 - QuickBooks Online API
 - Stripe Payment Processing
@@ -896,6 +991,7 @@ Advanced Features:
 - Manufacturer Device APIs
 
 ### DevOps
+
 - Environment: Replit
 - Database: Neon PostgreSQL
 - Builds: Vite (frontend), esbuild (server)
@@ -906,33 +1002,32 @@ Advanced Features:
 
 ## 10. SUMMARY TABLE: ALL FEATURES
 
-| Feature | Domain | Integration Level | Primary Purpose | Key Tables |
-|---------|--------|------------------|-----------------|------------|
-| CRM Dashboard | Sales | Core | Central sales hub | Leads, customers, opportunities |
-| Leads Management | Sales | High | Pipeline management | Leads, activities, contacts |
-| Sales Pipeline | Sales | High | Visual pipeline tracking | Opportunities, deals |
-| Quotes & Proposals | Sales | High | Quote generation | Quotes, line items, templates |
-| Contracts | Sales | High | Contract management | Contracts, tiered rates |
-| Service Hub | Service | Core | Service dashboard | Tickets, technicians, equipment |
-| Service Dispatch | Service | High | Technician assignment | Service tickets, technicians |
-| Mobile Field Ops | Service | High | Field execution | Mobile sessions, location history |
-| Meter Readings | Billing | High | Usage tracking | Meter readings, equipment |
-| Equipment Lifecycle | Equipment | High | Full asset tracking | Equipment, leases, service contracts |
-| Warehouse Operations | Equipment | High | Inventory management | Inventory items, purchase orders |
-| Billing Hub | Billing | High | Billing dashboard | Invoices, leases, AR/AP |
-| Advanced Billing | Billing | Medium | Complex billing rules | Billing rules, tiered rates |
-| Financial Forecasting | Billing | Medium | Revenue forecasting | Historical billing, contracts |
-| Reports Hub | Analytics | High | Report generation | Activity reports, metrics |
-| Advanced Analytics | Analytics | High | Business analytics | All data sources |
-| Task Management | Operations | Medium | Task tracking | Tasks, assignments |
-| Workflow Automation | Operations | Low | Process automation | Workflow definitions |
-| AI Hub | AI | Medium | AI-powered features | Various integrations |
-| Integration Hub | Platform | High | Third-party integrations | Salesforce, QBO, Stripe, etc. |
-| Platform Admin | Admin | High | Multi-tenant management | Tenants, users, roles |
+| Feature               | Domain     | Integration Level | Primary Purpose          | Key Tables                           |
+| --------------------- | ---------- | ----------------- | ------------------------ | ------------------------------------ |
+| CRM Dashboard         | Sales      | Core              | Central sales hub        | Leads, customers, opportunities      |
+| Leads Management      | Sales      | High              | Pipeline management      | Leads, activities, contacts          |
+| Sales Pipeline        | Sales      | High              | Visual pipeline tracking | Opportunities, deals                 |
+| Quotes & Proposals    | Sales      | High              | Quote generation         | Quotes, line items, templates        |
+| Contracts             | Sales      | High              | Contract management      | Contracts, tiered rates              |
+| Service Hub           | Service    | Core              | Service dashboard        | Tickets, technicians, equipment      |
+| Service Dispatch      | Service    | High              | Technician assignment    | Service tickets, technicians         |
+| Mobile Field Ops      | Service    | High              | Field execution          | Mobile sessions, location history    |
+| Meter Readings        | Billing    | High              | Usage tracking           | Meter readings, equipment            |
+| Equipment Lifecycle   | Equipment  | High              | Full asset tracking      | Equipment, leases, service contracts |
+| Warehouse Operations  | Equipment  | High              | Inventory management     | Inventory items, purchase orders     |
+| Billing Hub           | Billing    | High              | Billing dashboard        | Invoices, leases, AR/AP              |
+| Advanced Billing      | Billing    | Medium            | Complex billing rules    | Billing rules, tiered rates          |
+| Financial Forecasting | Billing    | Medium            | Revenue forecasting      | Historical billing, contracts        |
+| Reports Hub           | Analytics  | High              | Report generation        | Activity reports, metrics            |
+| Advanced Analytics    | Analytics  | High              | Business analytics       | All data sources                     |
+| Task Management       | Operations | Medium            | Task tracking            | Tasks, assignments                   |
+| Workflow Automation   | Operations | Low               | Process automation       | Workflow definitions                 |
+| AI Hub                | AI         | Medium            | AI-powered features      | Various integrations                 |
+| Integration Hub       | Platform   | High              | Third-party integrations | Salesforce, QBO, Stripe, etc.        |
+| Platform Admin        | Admin      | High              | Multi-tenant management  | Tenants, users, roles                |
 
 ---
 
 ## CONCLUSION
 
 Printyx is a highly sophisticated, enterprise-grade platform with excellent integration between core features (Lead→Customer→Service→Billing) and supporting capabilities. The modular architecture with 75+ specialized route files and 26 schema files enables flexible feature development. Key opportunities exist to strengthen connections between secondary features (Onboarding, Portal, Knowledge Base) and the core workflows, particularly in the customer success and field operations areas.
-

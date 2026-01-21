@@ -3,6 +3,7 @@
 ## Problem We're Solving
 
 Your API returns **nested data** from Supabase:
+
 ```typescript
 {
   id: "xxx",
@@ -17,6 +18,7 @@ Your API returns **nested data** from Supabase:
 ```
 
 But your components expect **flat data**:
+
 ```typescript
 {
   id: "xxx",
@@ -44,6 +46,7 @@ We created a transformation layer at:
 ### In List Pages (customers.tsx)
 
 **Before:**
+
 ```typescript
 const enriched = useMemo(() => {
   return customers.map((c: any) => {
@@ -55,14 +58,15 @@ const enriched = useMemo(() => {
 ```
 
 **After (Manual Transformation):**
+
 ```typescript
 const enriched = useMemo(() => {
   return (customers as any[]).map((c) => {
     const companyData = c.companies || {};
-    const contactData = Array.isArray(c.company_contacts) 
-      ? c.company_contacts[0] 
+    const contactData = Array.isArray(c.company_contacts)
+      ? c.company_contacts[0]
       : c.company_contacts || {};
-    
+
     return {
       ...c,
       companyName: companyData.business_name || `Customer ${c.id.slice(0, 8)}`,
@@ -78,6 +82,7 @@ const enriched = useMemo(() => {
 ```
 
 **After (Using Transformer - Recommended):**
+
 ```typescript
 import { transformCustomers } from '@/lib/transformers/customer-transformer';
 
@@ -89,29 +94,31 @@ const enriched = useMemo(() => {
 ### In Detail Pages (CustomerDetail.tsx)
 
 **Before:**
+
 ```typescript
 const customer = useMemo(() => {
   if (!customerData) return null;
-  
+
   const companyName = customerData.companies?.business_name;
   const email = customerData.companies?.email;
   // ... lots of manual extraction
-  
+
   return { ...customerData, companyName, email, ... };
 }, [customerData]);
 ```
 
 **After (Manual):**
+
 ```typescript
 const customer = useMemo(() => {
   if (!customerData) return null;
-  
+
   const data = Array.isArray(customerData) ? customerData[0] : customerData;
   const companyData = data.companies || {};
   const contactData = Array.isArray(data.company_contacts)
     ? data.company_contacts[0]
     : data.company_contacts || {};
-  
+
   return {
     ...data,
     companyName: companyData.business_name,
@@ -125,6 +132,7 @@ const customer = useMemo(() => {
 ```
 
 **After (Using Transformer - Recommended):**
+
 ```typescript
 import { transformCustomer } from '@/lib/transformers/customer-transformer';
 
@@ -138,51 +146,55 @@ const customer = useMemo(() => {
 ## 📋 Common Patterns
 
 ### Pattern 1: Nested Company Name
+
 ```typescript
 // ❌ OLD (causes validation error)
-customer.company_name
+customer.company_name;
 
 // ❌ OLD (nested access)
-customer.companies?.business_name
+customer.companies?.business_name;
 
 // ✅ NEW (after transformation)
-customer.companyName
+customer.companyName;
 ```
 
 ### Pattern 2: Primary Contact
+
 ```typescript
 // ❌ OLD
-customer.company_contacts?.[0]?.email
-customer.company_contacts?.find(c => c.is_primary)?.email
+customer.company_contacts?.[0]?.email;
+customer.company_contacts?.find((c) => c.is_primary)?.email;
 
 // ✅ NEW
-customer.primaryContactEmail
-customer.primaryContactName
-customer.primaryContactPhone
+customer.primaryContactEmail;
+customer.primaryContactName;
+customer.primaryContactPhone;
 ```
 
 ### Pattern 3: Address Fields
+
 ```typescript
 // ❌ OLD
-customer.companies?.billing_city
-customer.companies?.billing_state
+customer.companies?.billing_city;
+customer.companies?.billing_state;
 
 // ✅ NEW
-customer.city
-customer.state
-customer.location // Combined "City, State"
+customer.city;
+customer.state;
+customer.location; // Combined "City, State"
 ```
 
 ### Pattern 4: Customer Since
+
 ```typescript
 // ❌ OLD (wrong table!)
-customer.customer_since
+customer.customer_since;
 
 // ❌ OLD (nested)
-customer.companies?.customer_since
+customer.companies?.customer_since;
 
 // ✅ NEW
-customer.customerSince
+customer.customerSince;
 ```
 
 ## 🎯 Files Already Updated
@@ -193,6 +205,7 @@ customer.customerSince
 ## 📝 Files That Need Updating
 
 ### High Priority
+
 These files likely have similar nested data issues:
 
 1. `client/src/pages/LeadsManagement.tsx`
@@ -206,14 +219,16 @@ These files likely have similar nested data issues:
 For each file:
 
 1. **Find the data fetching**:
+
    ```typescript
    const { data: customers } = useQuery({ queryKey: ['/api/customers'] });
    ```
 
 2. **Add transformation**:
+
    ```typescript
    import { transformCustomers } from '@/lib/transformers/customer-transformer';
-   
+
    const enriched = useMemo(() => {
      return transformCustomers(customers || []);
    }, [customers]);
@@ -234,20 +249,21 @@ If you need additional fields:
 3. All components automatically get the new field
 
 **Example:**
+
 ```typescript
 export interface FlatCustomer {
   // ... existing fields
-  
+
   // Add new field
   totalRevenue: number | null;
 }
 
 export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
   // ... existing code
-  
+
   return {
     // ... existing fields
-    
+
     // Add transformation
     totalRevenue: raw.total_revenue || null,
   };
@@ -257,6 +273,7 @@ export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
 ## 🎯 Expected Impact
 
 After applying to all files:
+
 - **~200 validation issues fixed** (nested access patterns)
 - **Cleaner component code** (no manual extraction)
 - **Type-safe** (TypeScript autocomplete works)
@@ -291,6 +308,7 @@ Follow the same pattern as `customer-transformer.ts`!
 ## 🎉 Success Metrics
 
 After full migration:
+
 - ✅ Zero nested access (`customer.companies.field`) in components
 - ✅ All data is flat and predictable
 - ✅ TypeScript autocomplete works everywhere

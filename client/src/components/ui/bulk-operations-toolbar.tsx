@@ -1,5 +1,5 @@
-import * as React from "react";
-import { Button } from "@/components/ui/button";
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog';
 import {
   Trash2,
   Download,
@@ -28,15 +28,15 @@ import {
   Tag,
   Mail,
   FileText,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface BulkAction {
   id: string;
   label: string;
   icon: React.ElementType;
   onClick: (selectedIds: string[]) => void | Promise<void>;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
   requiresConfirmation?: boolean;
   confirmationTitle?: string;
   confirmationDescription?: string;
@@ -92,34 +92,24 @@ export function BulkOperationsToolbar({
     <>
       <div
         className={cn(
-          "fixed bottom-0 left-0 right-0 z-50 border-t bg-background shadow-lg transition-transform duration-200",
-          "md:sticky md:top-0 md:bottom-auto md:border-b md:border-t-0",
-          className
+          'fixed bottom-0 left-0 right-0 z-50 border-t bg-background shadow-lg transition-transform duration-200',
+          'md:sticky md:top-0 md:bottom-auto md:border-b md:border-t-0',
+          className,
         )}
       >
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-4">
             {/* Selection Info */}
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClearSelection}
-                className="h-8 w-8 p-0"
-              >
+              <Button variant="ghost" size="sm" onClick={onClearSelection} className="h-8 w-8 p-0">
                 <X className="h-4 w-4" />
               </Button>
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                <span className="text-sm font-medium">
-                  {selectedCount} selected
-                </span>
+                <span className="text-sm font-medium">{selectedCount} selected</span>
                 {onSelectAll && selectedCount < totalCount && (
                   <>
                     <span className="hidden sm:inline text-muted-foreground">•</span>
-                    <button
-                      onClick={onSelectAll}
-                      className="text-sm text-primary hover:underline"
-                    >
+                    <button onClick={onSelectAll} className="text-sm text-primary hover:underline">
                       Select all {totalCount}
                     </button>
                   </>
@@ -134,7 +124,7 @@ export function BulkOperationsToolbar({
                 return (
                   <Button
                     key={action.id}
-                    variant={action.variant === "destructive" ? "destructive" : "outline"}
+                    variant={action.variant === 'destructive' ? 'destructive' : 'outline'}
                     size="sm"
                     onClick={() => handleActionClick(action)}
                     className="hidden sm:flex"
@@ -162,7 +152,7 @@ export function BulkOperationsToolbar({
                       <DropdownMenuItem
                         key={action.id}
                         onClick={() => handleActionClick(action)}
-                        className={action.variant === "destructive" ? "text-destructive" : ""}
+                        className={action.variant === 'destructive' ? 'text-destructive' : ''}
                       >
                         <Icon className="h-4 w-4 mr-2" />
                         {action.label}
@@ -190,7 +180,7 @@ export function BulkOperationsToolbar({
                         <DropdownMenuItem
                           key={action.id}
                           onClick={() => handleActionClick(action)}
-                          className={action.variant === "destructive" ? "text-destructive" : ""}
+                          className={action.variant === 'destructive' ? 'text-destructive' : ''}
                         >
                           <Icon className="h-4 w-4 mr-2" />
                           {action.label}
@@ -210,7 +200,7 @@ export function BulkOperationsToolbar({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pendingAction?.confirmationTitle || "Confirm Action"}
+              {pendingAction?.confirmationTitle || 'Confirm Action'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingAction?.confirmationDescription ||
@@ -222,9 +212,9 @@ export function BulkOperationsToolbar({
             <AlertDialogAction
               onClick={handleConfirmAction}
               className={
-                pendingAction?.variant === "destructive"
-                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  : ""
+                pendingAction?.variant === 'destructive'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : ''
               }
             >
               Continue

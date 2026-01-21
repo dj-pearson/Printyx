@@ -1,26 +1,26 @@
-import { useState } from "react";
-import MainLayout from "@/components/layout/main-layout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalIntegrationsDashboard } from "@/components/integrations/ExternalIntegrationsDashboard";
-import { CrossModuleIntegration } from "@/components/CrossModuleIntegration";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Settings, 
-  RefreshCw, 
-  Database, 
-  Users, 
+import { useState } from 'react';
+import MainLayout from '@/components/layout/main-layout';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExternalIntegrationsDashboard } from '@/components/integrations/ExternalIntegrationsDashboard';
+import { CrossModuleIntegration } from '@/components/CrossModuleIntegration';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Settings,
+  RefreshCw,
+  Database,
+  Users,
   DollarSign,
   GitBranch,
   Activity,
   Zap,
   CheckCircle,
-  AlertTriangle
-} from "lucide-react";
+  AlertTriangle,
+} from 'lucide-react';
 
 export default function Integrations() {
-  const [activeTab, setActiveTab] = useState("external");
+  const [activeTab, setActiveTab] = useState('external');
 
   return (
     <MainLayout>
@@ -120,10 +120,10 @@ export default function Integrations() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-6">
-                    Monitor and manage automated workflows between Customer Records, Service Dispatch, 
-                    Inventory Management, and Billing Systems.
+                    Monitor and manage automated workflows between Customer Records, Service
+                    Dispatch, Inventory Management, and Billing Systems.
                   </p>
-                  
+
                   <CrossModuleIntegration className="mt-6" />
                 </CardContent>
               </Card>
@@ -146,13 +146,13 @@ export default function Integrations() {
                 <div className="text-sm text-gray-600">Overall Success Rate</div>
                 <div className="text-xs text-gray-500 mt-1">Last 30 days</div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600 mb-2">1.8s</div>
                 <div className="text-sm text-gray-600">Avg Response Time</div>
                 <div className="text-xs text-gray-500 mt-1">All endpoints</div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-3xl font-bold text-purple-600 mb-2">99.2%</div>
                 <div className="text-sm text-gray-600">System Uptime</div>

@@ -159,7 +159,7 @@ class ReportCache {
       return;
     }
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -177,7 +177,7 @@ export class ServiceManagerReportingService {
    */
   static async getRegionalServiceCallOverview(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalServiceCallOverview> {
     const cacheKey = `regional-service-calls:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalServiceCallOverview>(cacheKey);
@@ -200,9 +200,10 @@ export class ServiceManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Get service calls by region, priority, and status
     const result = await db.execute(sql`
@@ -222,7 +223,7 @@ export class ServiceManagerReportingService {
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
         AND sc.tenant_id = ${userContext.tenantId}
         ${dateFilter}
-      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
         AND r.tenant_id = ${userContext.tenantId}
       GROUP BY r.id, r.name, sc.priority, sc.status
       ORDER BY r.name, CASE sc.priority
@@ -247,9 +248,16 @@ export class ServiceManagerReportingService {
     }));
 
     // Aggregate by priority across all regions
-    const priorityMap = new Map<string, { totalCalls: number; regionCount: number; totalDuration: number }>();
-    serviceCalls.forEach(sc => {
-      const existing = priorityMap.get(sc.priority) || { totalCalls: 0, regionCount: 0, totalDuration: 0 };
+    const priorityMap = new Map<
+      string,
+      { totalCalls: number; regionCount: number; totalDuration: number }
+    >();
+    serviceCalls.forEach((sc) => {
+      const existing = priorityMap.get(sc.priority) || {
+        totalCalls: 0,
+        regionCount: 0,
+        totalDuration: 0,
+      };
       existing.totalCalls += sc.callCount;
       existing.totalDuration += sc.avgDuration * sc.callCount;
       existing.regionCount += 1;
@@ -259,17 +267,20 @@ export class ServiceManagerReportingService {
     const aggregated = Array.from(priorityMap.entries()).map(([priority, data]) => ({
       priority,
       totalCalls: data.totalCalls,
-      avgCallsPerRegion: Math.round(data.totalCalls / data.regionCount * 100) / 100,
+      avgCallsPerRegion: Math.round((data.totalCalls / data.regionCount) * 100) / 100,
       avgDuration: Math.round((data.totalDuration / data.totalCalls) * 100) / 100,
     }));
 
     const totalCalls = serviceCalls.reduce((sum, sc) => sum + sc.callCount, 0);
-    const totalFTF = serviceCalls.reduce((sum, sc) => sum + (sc.firstTimeFixRate * sc.callCount / 100), 0);
-    const totalSat = serviceCalls.reduce((sum, sc) => sum + (sc.avgSatisfaction * sc.callCount), 0);
-    const totalDuration = serviceCalls.reduce((sum, sc) => sum + (sc.avgDuration * sc.callCount), 0);
+    const totalFTF = serviceCalls.reduce(
+      (sum, sc) => sum + (sc.firstTimeFixRate * sc.callCount) / 100,
+      0,
+    );
+    const totalSat = serviceCalls.reduce((sum, sc) => sum + sc.avgSatisfaction * sc.callCount, 0);
+    const totalDuration = serviceCalls.reduce((sum, sc) => sum + sc.avgDuration * sc.callCount, 0);
 
     const summary = {
-      totalRegions: new Set(serviceCalls.map(sc => sc.regionId)).size,
+      totalRegions: new Set(serviceCalls.map((sc) => sc.regionId)).size,
       totalCalls,
       avgFirstTimeFixRate: totalCalls > 0 ? Math.round((totalFTF / totalCalls) * 100) / 100 : 0,
       avgSatisfaction: totalCalls > 0 ? Math.round((totalSat / totalCalls) * 100) / 100 : 0,
@@ -286,7 +297,7 @@ export class ServiceManagerReportingService {
    */
   static async getRegionalServicePerformanceMetrics(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalServicePerformanceMetrics> {
     const cacheKey = `regional-service-performance:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalServicePerformanceMetrics>(cacheKey);
@@ -308,9 +319,10 @@ export class ServiceManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       WITH regional_metrics AS (
@@ -335,7 +347,7 @@ export class ServiceManagerReportingService {
         LEFT JOIN time_entries te ON te.user_id = u.id
           AND te.tenant_id = ${userContext.tenantId}
           ${dateFilter}
-        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
           AND r.tenant_id = ${userContext.tenantId}
         GROUP BY r.id, r.name
       )
@@ -362,8 +374,14 @@ export class ServiceManagerReportingService {
     }));
 
     const totalCalls = regions.reduce((sum, reg) => sum + reg.totalCalls, 0);
-    const totalFTF = regions.reduce((sum, reg) => sum + (reg.firstTimeFixRate * reg.totalCalls / 100), 0);
-    const totalSLA = regions.reduce((sum, reg) => sum + (reg.slaCompliance * reg.totalCalls / 100), 0);
+    const totalFTF = regions.reduce(
+      (sum, reg) => sum + (reg.firstTimeFixRate * reg.totalCalls) / 100,
+      0,
+    );
+    const totalSLA = regions.reduce(
+      (sum, reg) => sum + (reg.slaCompliance * reg.totalCalls) / 100,
+      0,
+    );
 
     const summary = {
       totalCalls,
@@ -383,7 +401,7 @@ export class ServiceManagerReportingService {
    */
   static async getRegionalSLATracking(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalSLATracking> {
     const cacheKey = `regional-sla:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalSLATracking>(cacheKey);
@@ -405,9 +423,10 @@ export class ServiceManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -427,7 +446,7 @@ export class ServiceManagerReportingService {
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
         AND sc.tenant_id = ${userContext.tenantId}
         ${dateFilter}
-      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
         AND r.tenant_id = ${userContext.tenantId}
       GROUP BY r.id, r.name
       ORDER BY sla_compliance DESC
@@ -452,13 +471,14 @@ export class ServiceManagerReportingService {
 
     const totalCalls = slas.reduce((sum, sla) => sum + sla.totalCalls, 0);
     const totalOnTime = slas.reduce((sum, sla) => sum + sla.onTimeCalls, 0);
-    const totalResponse = slas.reduce((sum, sla) => sum + (sla.avgResponseTime * sla.totalCalls), 0);
+    const totalResponse = slas.reduce((sum, sla) => sum + sla.avgResponseTime * sla.totalCalls, 0);
 
     const summary = {
       totalCalls,
-      overallCompliance: totalCalls > 0 ? Math.round((totalOnTime / totalCalls) * 100 * 100) / 100 : 0,
-      regionsOnTrack: slas.filter(sla => sla.onTrack).length,
-      regionsAtRisk: slas.filter(sla => !sla.onTrack).length,
+      overallCompliance:
+        totalCalls > 0 ? Math.round((totalOnTime / totalCalls) * 100 * 100) / 100 : 0,
+      regionsOnTrack: slas.filter((sla) => sla.onTrack).length,
+      regionsAtRisk: slas.filter((sla) => !sla.onTrack).length,
       avgResponseTime: totalCalls > 0 ? Math.round((totalResponse / totalCalls) * 100) / 100 : 0,
     };
 
@@ -472,7 +492,7 @@ export class ServiceManagerReportingService {
    */
   static async getRegionalTechnicianActivitySummary(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<RegionalTechnicianActivitySummary> {
     const cacheKey = `regional-tech-activity:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<RegionalTechnicianActivitySummary>(cacheKey);
@@ -493,9 +513,10 @@ export class ServiceManagerReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND te.date BETWEEN ${dateRange.dateFrom.toISOString().split('T')[0]} AND ${dateRange.dateTo.toISOString().split('T')[0]}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND te.date BETWEEN ${dateRange.dateFrom.toISOString().split('T')[0]} AND ${dateRange.dateTo.toISOString().split('T')[0]}`
+        : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -515,7 +536,7 @@ export class ServiceManagerReportingService {
       LEFT JOIN time_entries te ON te.user_id = u.id
         AND te.tenant_id = ${userContext.tenantId}
         ${dateFilter}
-      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
         AND r.tenant_id = ${userContext.tenantId}
       GROUP BY r.id, r.name
       ORDER BY total_hours DESC
@@ -534,7 +555,8 @@ export class ServiceManagerReportingService {
         documentationHours: parseFloat(row.documentation_hours || 0),
         totalHours,
         billableHours,
-        utilizationRate: totalHours > 0 ? Math.round((billableHours / totalHours) * 100 * 100) / 100 : 0,
+        utilizationRate:
+          totalHours > 0 ? Math.round((billableHours / totalHours) * 100 * 100) / 100 : 0,
         avgHoursPerTech: techCount > 0 ? Math.round((totalHours / techCount) * 100) / 100 : 0,
         locationCount: parseInt(row.location_count || 0),
       };
@@ -547,7 +569,8 @@ export class ServiceManagerReportingService {
     const summary = {
       totalHours,
       totalBillableHours: totalBillable,
-      averageUtilization: activities.length > 0 ? Math.round((totalUtilization / activities.length) * 100) / 100 : 0,
+      averageUtilization:
+        activities.length > 0 ? Math.round((totalUtilization / activities.length) * 100) / 100 : 0,
       mostProductiveRegion: activities.length > 0 ? activities[0] : null,
     };
 

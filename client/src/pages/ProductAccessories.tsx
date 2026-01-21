@@ -1,27 +1,52 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Package, Edit3, Tag, DollarSign, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProductAccessorySchema, type ProductAccessory, type InsertProductAccessory, type ProductModel } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Package, Edit3, Tag, DollarSign, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  insertProductAccessorySchema,
+  type ProductAccessory,
+  type InsertProductAccessory,
+  type ProductModel,
+} from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
 
 export default function ProductAccessories() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedManufacturer, setSelectedManufacturer] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedManufacturer, setSelectedManufacturer] = useState<string>('all');
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAccessory, setSelectedAccessory] = useState<ProductAccessory | null>(null);
@@ -46,16 +71,16 @@ export default function ProductAccessories() {
       setDialogOpen(false);
       form.reset();
       toast({
-        title: "Success",
-        description: "Product accessory created successfully",
+        title: 'Success',
+        description: 'Product accessory created successfully',
       });
     },
     onError: (error) => {
-      console.error("Create accessory error:", error);
+      console.error('Create accessory error:', error);
       toast({
-        title: "Error",
-        description: "Failed to create product accessory",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create product accessory',
+        variant: 'destructive',
       });
     },
   });
@@ -68,15 +93,15 @@ export default function ProductAccessories() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-accessories'] });
       setSelectedAccessory(null);
       toast({
-        title: "Success",
-        description: "Product accessory updated successfully",
+        title: 'Success',
+        description: 'Product accessory updated successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update product accessory",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update product accessory',
+        variant: 'destructive',
       });
     },
   });
@@ -84,11 +109,11 @@ export default function ProductAccessories() {
   const form = useForm<InsertProductAccessory>({
     resolver: zodResolver(insertProductAccessorySchema),
     defaultValues: {
-      accessoryCode: "",
-      accessoryName: "",
-      accessoryType: "Document Feeder",
+      accessoryCode: '',
+      accessoryName: '',
+      accessoryType: 'Document Feeder',
       category: null,
-      manufacturer: "",
+      manufacturer: '',
       description: null,
       standardCost: null,
       standardRepPrice: null,
@@ -110,9 +135,9 @@ export default function ProductAccessories() {
   });
 
   const onSubmit = (data: InsertProductAccessory) => {
-    console.log("Submitting accessory data:", data);
-    console.log("Form errors:", form.formState.errors);
-    
+    console.log('Submitting accessory data:', data);
+    console.log('Form errors:', form.formState.errors);
+
     // Remove tenantId from client data - server will add it
     const { tenantId, ...submitData } = data;
     createAccessoryMutation.mutate(submitData as InsertProductAccessory);
@@ -141,29 +166,31 @@ export default function ProductAccessories() {
   }, [selectedAccessory, editForm]);
 
   // Get unique manufacturers from models
-  const manufacturers = Array.from(new Set(models.map(m => m.manufacturer).filter(Boolean)));
+  const manufacturers = Array.from(new Set(models.map((m) => m.manufacturer).filter(Boolean)));
 
   // Filter models by selected manufacturer
-  const filteredModels = selectedManufacturer === "all" 
-    ? models 
-    : models.filter(m => m.manufacturer === selectedManufacturer);
+  const filteredModels =
+    selectedManufacturer === 'all'
+      ? models
+      : models.filter((m) => m.manufacturer === selectedManufacturer);
 
   // Filter accessories by search and manufacturer
-  const filteredAccessories = accessories.filter(accessory => {
-    const matchesSearch = accessory.accessoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         accessory.accessoryCode.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (selectedManufacturer === "all") return matchesSearch;
-    
+  const filteredAccessories = accessories.filter((accessory) => {
+    const matchesSearch =
+      accessory.accessoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      accessory.accessoryCode.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (selectedManufacturer === 'all') return matchesSearch;
+
     // Find the model this accessory belongs to and check manufacturer
-    const relatedModel = models.find(m => m.id === accessory.modelId);
+    const relatedModel = models.find((m) => m.id === accessory.modelId);
     const matchesManufacturer = relatedModel?.manufacturer === selectedManufacturer;
-    
+
     return matchesSearch && matchesManufacturer;
   });
 
   const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -171,8 +198,8 @@ export default function ProductAccessories() {
   };
 
   const AccessoryCard = ({ accessory }: { accessory: ProductAccessory }) => {
-    const relatedModel = models.find(m => m.id === accessory.modelId);
-    
+    const relatedModel = models.find((m) => m.id === accessory.modelId);
+
     return (
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
@@ -181,15 +208,17 @@ export default function ProductAccessories() {
               <CardTitle className="text-lg">{accessory.accessoryName}</CardTitle>
               <CardDescription>
                 <span className="font-medium">{accessory.accessoryCode}</span>
-                {relatedModel && <span className="ml-2 text-muted-foreground">• {relatedModel.productName}</span>}
+                {relatedModel && (
+                  <span className="ml-2 text-muted-foreground">• {relatedModel.productName}</span>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {accessory.isRequired && (
-                <Badge variant="destructive">Required</Badge>
-              )}
+              {accessory.isRequired && <Badge variant="destructive">Required</Badge>}
               {accessory.isActive ? (
-                <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  Active
+                </Badge>
               ) : (
                 <Badge variant="secondary">Inactive</Badge>
               )}
@@ -200,13 +229,13 @@ export default function ProductAccessories() {
           <div className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-muted-foreground" />
             <Badge variant="outline">{accessory.category}</Badge>
-            {relatedModel?.manufacturer && <Badge variant="outline">{relatedModel.manufacturer}</Badge>}
+            {relatedModel?.manufacturer && (
+              <Badge variant="outline">{relatedModel.manufacturer}</Badge>
+            )}
           </div>
 
           {accessory.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {accessory.description}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{accessory.description}</p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
@@ -220,7 +249,9 @@ export default function ProductAccessories() {
 
             <div className="space-y-2">
               <span className="text-sm font-medium">Rep Price</span>
-              <p className="text-lg font-bold text-green-600">{formatCurrency(accessory.repPrice)}</p>
+              <p className="text-lg font-bold text-green-600">
+                {formatCurrency(accessory.repPrice)}
+              </p>
             </div>
           </div>
 
@@ -230,11 +261,7 @@ export default function ProductAccessories() {
             <div className="text-sm text-muted-foreground">
               Model: {relatedModel?.productCode || 'Unknown'}
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setSelectedAccessory(accessory)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setSelectedAccessory(accessory)}>
               <Edit3 className="h-4 w-4 mr-1" />
               View Details
             </Button>
@@ -245,7 +272,10 @@ export default function ProductAccessories() {
   };
 
   return (
-    <MainLayout title="Product Accessories" description="Manage accessory products and configurations">
+    <MainLayout
+      title="Product Accessories"
+      description="Manage accessory products and configurations"
+    >
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -273,16 +303,22 @@ export default function ProductAccessories() {
                   {/* Information Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Information</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="accessoryName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Name <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="Saddle Stitching Finisher" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Saddle Stitching Finisher"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -307,9 +343,15 @@ export default function ProductAccessories() {
                         name="accessoryCode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Product Code <span className="text-red-500">*</span></FormLabel>
+                            <FormLabel>
+                              Product Code <span className="text-red-500">*</span>
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="FINISHER-SR5020" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="FINISHER-SR5020"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -328,7 +370,7 @@ export default function ProductAccessories() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Accessory Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -353,7 +395,7 @@ export default function ProductAccessories() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Manufacturer</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <Select value={field.value || ''} onValueChange={field.onChange}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -382,7 +424,11 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>Category</FormLabel>
                             <FormControl>
-                              <Input placeholder="Finishing Products" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                placeholder="Finishing Products"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -440,10 +486,7 @@ export default function ProductAccessories() {
                         name="isActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Active</label>
                           </div>
                         )}
@@ -453,10 +496,7 @@ export default function ProductAccessories() {
                         name="availableForAll"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                             <label className="text-sm font-medium">Available for All</label>
                           </div>
                         )}
@@ -469,7 +509,7 @@ export default function ProductAccessories() {
                   {/* Detail Section */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Detail</h3>
-                    
+
                     <div className="space-y-4">
                       <div>
                         <label className="text-sm font-medium">Summary</label>
@@ -478,7 +518,7 @@ export default function ProductAccessories() {
                           className="mt-1"
                         />
                       </div>
-                      
+
                       <FormField
                         control={form.control}
                         name="description"
@@ -488,7 +528,7 @@ export default function ProductAccessories() {
                             <FormControl>
                               <Textarea
                                 placeholder="Detailed description of the accessory and its capabilities..."
-                                value={field.value || ""}
+                                value={field.value || ''}
                                 onChange={field.onChange}
                                 rows={4}
                               />
@@ -505,7 +545,7 @@ export default function ProductAccessories() {
                   {/* Pricing Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Pricing Information</h3>
-                    
+
                     <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
@@ -514,12 +554,12 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>Standard Cost</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="5500.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="5500.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -533,12 +573,12 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>Standard Rep Price</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="6800.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="6800.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -556,12 +596,12 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>New Cost</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="5200.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="5200.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -575,12 +615,12 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>New Rep Price</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="6500.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="6500.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -598,12 +638,12 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>Upgrade Cost</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="4800.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="4800.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -617,12 +657,12 @@ export default function ProductAccessories() {
                           <FormItem>
                             <FormLabel>Upgrade Rep Price</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.01" 
-                                placeholder="6000.00" 
-                                value={field.value || ""} 
-                                onChange={field.onChange} 
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="6000.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -637,12 +677,17 @@ export default function ProductAccessories() {
                     <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={createAccessoryMutation.isPending}
-                      onClick={() => console.log("Submit button clicked", { isValid: form.formState.isValid, errors: form.formState.errors })}
+                      onClick={() =>
+                        console.log('Submit button clicked', {
+                          isValid: form.formState.isValid,
+                          errors: form.formState.errors,
+                        })
+                      }
                     >
-                      {createAccessoryMutation.isPending ? "Creating..." : "Create Accessory"}
+                      {createAccessoryMutation.isPending ? 'Creating...' : 'Create Accessory'}
                     </Button>
                   </div>
                 </form>
@@ -669,8 +714,10 @@ export default function ProductAccessories() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Manufacturers</SelectItem>
-              {manufacturers.map(manufacturer => (
-                <SelectItem key={manufacturer} value={manufacturer}>{manufacturer}</SelectItem>
+              {manufacturers.map((manufacturer) => (
+                <SelectItem key={manufacturer} value={manufacturer}>
+                  {manufacturer}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -699,12 +746,11 @@ export default function ProductAccessories() {
             <Package className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Accessories Found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm || selectedManufacturer !== "all" 
-                ? "No accessories match your current filters. Try adjusting your search criteria."
-                : "Get started by adding your first accessory to the catalog."
-              }
+              {searchTerm || selectedManufacturer !== 'all'
+                ? 'No accessories match your current filters. Try adjusting your search criteria.'
+                : 'Get started by adding your first accessory to the catalog.'}
             </p>
-            {!searchTerm && selectedManufacturer === "all" && (
+            {!searchTerm && selectedManufacturer === 'all' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Accessory
@@ -724,9 +770,7 @@ export default function ProductAccessories() {
           <span>
             {filteredAccessories.length} of {accessories.length} accessories
           </span>
-          <span>
-            {accessories.filter(a => a.isActive).length} active accessories
-          </span>
+          <span>{accessories.filter((a) => a.isActive).length} active accessories</span>
         </div>
 
         {/* Edit Accessory Dialog */}
@@ -776,7 +820,7 @@ export default function ProductAccessories() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select value={field.value || ""} onValueChange={field.onChange}>
+                        <Select value={field.value || ''} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -802,11 +846,7 @@ export default function ProductAccessories() {
                       <FormItem>
                         <FormLabel>Description</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            value={field.value || ""}
-                            onChange={field.onChange}
-                            rows={3}
-                          />
+                          <Textarea value={field.value || ''} onChange={field.onChange} rows={3} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -821,7 +861,12 @@ export default function ProductAccessories() {
                         <FormItem>
                           <FormLabel>MSRP ($)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -834,7 +879,12 @@ export default function ProductAccessories() {
                         <FormItem>
                           <FormLabel>Rep Price ($)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" value={field.value || ""} onChange={field.onChange} />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -849,10 +899,7 @@ export default function ProductAccessories() {
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Switch
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                           </FormControl>
                           <FormLabel className="text-sm font-medium">Required Accessory</FormLabel>
                         </FormItem>
@@ -864,10 +911,7 @@ export default function ProductAccessories() {
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
-                            <Switch
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
+                            <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                           </FormControl>
                           <FormLabel className="text-sm font-medium">Active</FormLabel>
                         </FormItem>
@@ -876,11 +920,15 @@ export default function ProductAccessories() {
                   </div>
 
                   <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setSelectedAccessory(null)}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setSelectedAccessory(null)}
+                    >
                       Cancel
                     </Button>
                     <Button type="submit" disabled={updateAccessoryMutation.isPending}>
-                      {updateAccessoryMutation.isPending ? "Saving..." : "Save Changes"}
+                      {updateAccessoryMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                   </div>
                 </form>

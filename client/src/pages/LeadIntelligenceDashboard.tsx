@@ -23,12 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import {
   Brain,
@@ -95,7 +90,11 @@ export default function LeadIntelligenceDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch analytics overview
-  const { data: analytics, isLoading: isLoadingAnalytics, refetch: refetchAnalytics } = useQuery<ScoringAnalytics>({
+  const {
+    data: analytics,
+    isLoading: isLoadingAnalytics,
+    refetch: refetchAnalytics,
+  } = useQuery<ScoringAnalytics>({
     queryKey: ['lead-intelligence-analytics'],
     queryFn: async () => {
       const res = await fetch('/api/lead-intelligence/analytics/overview');
@@ -105,7 +104,11 @@ export default function LeadIntelligenceDashboard() {
   });
 
   // Fetch leads requiring attention
-  const { data: attentionLeads, isLoading: isLoadingAttention, refetch: refetchAttention } = useQuery<LeadScore[]>({
+  const {
+    data: attentionLeads,
+    isLoading: isLoadingAttention,
+    refetch: refetchAttention,
+  } = useQuery<LeadScore[]>({
     queryKey: ['lead-intelligence-attention'],
     queryFn: async () => {
       const res = await fetch('/api/lead-intelligence/attention/required?limit=10');
@@ -245,9 +248,7 @@ export default function LeadIntelligenceDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {analytics?.totalLeads?.toLocaleString() || 0}
-            </div>
+            <div className="text-2xl font-bold">{analytics?.totalLeads?.toLocaleString() || 0}</div>
             <p className="text-xs text-muted-foreground">
               {analytics?.scoredLeads?.toLocaleString() || 0} scored
             </p>
@@ -332,8 +333,8 @@ export default function LeadIntelligenceDashboard() {
                             dist.tier === 'hot'
                               ? '[&>div]:bg-red-500'
                               : dist.tier === 'warm'
-                              ? '[&>div]:bg-orange-500'
-                              : '[&>div]:bg-blue-500'
+                                ? '[&>div]:bg-orange-500'
+                                : '[&>div]:bg-blue-500'
                           }`}
                         />
                       </div>
@@ -358,13 +359,8 @@ export default function LeadIntelligenceDashboard() {
                     const count =
                       analytics?.gradeDistribution?.find((g) => g.grade === grade)?.count || 0;
                     return (
-                      <div
-                        key={grade}
-                        className="p-3 rounded-lg border text-center"
-                      >
-                        <div className={`text-2xl font-bold ${getGradeColor(grade)}`}>
-                          {grade}
-                        </div>
+                      <div key={grade} className="p-3 rounded-lg border text-center">
+                        <div className={`text-2xl font-bold ${getGradeColor(grade)}`}>{grade}</div>
                         <div className="text-sm text-muted-foreground">{count} leads</div>
                       </div>
                     );
@@ -453,9 +449,7 @@ export default function LeadIntelligenceDashboard() {
                       <TableRow key={lead.leadId}>
                         <TableCell>
                           <div>
-                            <div className="font-medium">
-                              {lead.lead?.companyName || 'Unknown'}
-                            </div>
+                            <div className="font-medium">{lead.lead?.companyName || 'Unknown'}</div>
                             <div className="text-sm text-muted-foreground">
                               {lead.lead?.firstName} {lead.lead?.lastName}
                             </div>
@@ -473,7 +467,10 @@ export default function LeadIntelligenceDashboard() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={`gap-1 ${getTierColor(lead.leadTier)}`}>
+                          <Badge
+                            variant="outline"
+                            className={`gap-1 ${getTierColor(lead.leadTier)}`}
+                          >
                             {getTierIcon(lead.leadTier)}
                             {lead.leadTier}
                           </Badge>
@@ -531,7 +528,9 @@ export default function LeadIntelligenceDashboard() {
                   <p className="text-sm text-muted-foreground">
                     Company size, industry, revenue, and location-based scoring
                   </p>
-                  <Badge variant="secondary" className="mt-2">Max 20 points</Badge>
+                  <Badge variant="secondary" className="mt-2">
+                    Max 20 points
+                  </Badge>
                 </div>
 
                 <div className="p-4 border rounded-lg">
@@ -542,7 +541,9 @@ export default function LeadIntelligenceDashboard() {
                   <p className="text-sm text-muted-foreground">
                     Job title, seniority, department, and role-based scoring
                   </p>
-                  <Badge variant="secondary" className="mt-2">Max 20 points</Badge>
+                  <Badge variant="secondary" className="mt-2">
+                    Max 20 points
+                  </Badge>
                 </div>
 
                 <div className="p-4 border rounded-lg">
@@ -553,7 +554,9 @@ export default function LeadIntelligenceDashboard() {
                   <p className="text-sm text-muted-foreground">
                     Website visits, content downloads, and activity patterns
                   </p>
-                  <Badge variant="secondary" className="mt-2">Max 20 points</Badge>
+                  <Badge variant="secondary" className="mt-2">
+                    Max 20 points
+                  </Badge>
                 </div>
 
                 <div className="p-4 border rounded-lg">
@@ -564,7 +567,9 @@ export default function LeadIntelligenceDashboard() {
                   <p className="text-sm text-muted-foreground">
                     Email opens, meeting attendance, and response rates
                   </p>
-                  <Badge variant="secondary" className="mt-2">Max 20 points</Badge>
+                  <Badge variant="secondary" className="mt-2">
+                    Max 20 points
+                  </Badge>
                 </div>
 
                 <div className="p-4 border rounded-lg md:col-span-2">
@@ -575,7 +580,9 @@ export default function LeadIntelligenceDashboard() {
                   <p className="text-sm text-muted-foreground">
                     Budget, Authority, Need, and Timeline assessment (weighted at 80%)
                   </p>
-                  <Badge variant="secondary" className="mt-2">Max 25 points (20 weighted)</Badge>
+                  <Badge variant="secondary" className="mt-2">
+                    Max 25 points (20 weighted)
+                  </Badge>
                 </div>
               </div>
 
@@ -608,16 +615,12 @@ export default function LeadIntelligenceDashboard() {
                   <Search className="h-5 w-5 text-purple-500" />
                   Apollo.io Enrichment
                 </CardTitle>
-                <CardDescription>
-                  Lead data enrichment and prospecting
-                </CardDescription>
+                <CardDescription>Lead data enrichment and prospecting</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 border rounded-lg text-center">
-                    <div className="text-2xl font-bold">
-                      {apolloStats?.totalSearches || 0}
-                    </div>
+                    <div className="text-2xl font-bold">{apolloStats?.totalSearches || 0}</div>
                     <div className="text-sm text-muted-foreground">Searches</div>
                   </div>
                   <div className="p-3 border rounded-lg text-center">
@@ -651,9 +654,7 @@ export default function LeadIntelligenceDashboard() {
                   <Cloud className="h-5 w-5 text-blue-500" />
                   Salesforce Sync
                 </CardTitle>
-                <CardDescription>
-                  Bi-directional CRM synchronization
-                </CardDescription>
+                <CardDescription>Bi-directional CRM synchronization</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">

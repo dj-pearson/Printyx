@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Upload,
   Download,
@@ -9,15 +9,9 @@ import {
   X,
   Users,
   FileSpreadsheet,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -25,11 +19,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
 
 interface ImportResult {
   success: boolean;
@@ -52,113 +46,115 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
 
   // Sample CSV headers based on business_records schema
   const csvHeaders = [
-    "companyName",
-    "primaryContactName", 
-    "primaryContactEmail",
-    "primaryContactPhone",
-    "primaryContactTitle",
-    "website",
-    "industry",
-    "employeeCount",
-    "annualRevenue",
-    "addressLine1",
-    "addressLine2", 
-    "city",
-    "state",
-    "postalCode",
-    "country",
-    "phone",
-    "fax",
-    "leadSource",
-    "estimatedAmount",
-    "probability",
-    "salesStage",
-    "interestLevel",
-    "priority",
-    "territory",
-    "notes",
-    "assignedSalesRep"
+    'companyName',
+    'primaryContactName',
+    'primaryContactEmail',
+    'primaryContactPhone',
+    'primaryContactTitle',
+    'website',
+    'industry',
+    'employeeCount',
+    'annualRevenue',
+    'addressLine1',
+    'addressLine2',
+    'city',
+    'state',
+    'postalCode',
+    'country',
+    'phone',
+    'fax',
+    'leadSource',
+    'estimatedAmount',
+    'probability',
+    'salesStage',
+    'interestLevel',
+    'priority',
+    'territory',
+    'notes',
+    'assignedSalesRep',
   ];
 
   const sampleData = [
     {
-      companyName: "Acme Corporation",
-      primaryContactName: "John Smith",
-      primaryContactEmail: "john.smith@acme.com",
-      primaryContactPhone: "(555) 123-4567",
-      primaryContactTitle: "IT Director",
-      website: "https://www.acme.com",
-      industry: "Technology",
-      employeeCount: "150",
-      annualRevenue: "5000000",
-      addressLine1: "123 Business Street",
-      addressLine2: "Suite 100",
-      city: "New York",
-      state: "NY",
-      postalCode: "10001",
-      country: "US",
-      phone: "(555) 123-4567",
-      fax: "(555) 123-4568",
-      leadSource: "website",
-      estimatedAmount: "25000",
-      probability: "75",
-      salesStage: "qualified",
-      interestLevel: "hot",
-      priority: "high",
-      territory: "Northeast",
-      notes: "Interested in copier leasing program",
-      assignedSalesRep: "current_user"
+      companyName: 'Acme Corporation',
+      primaryContactName: 'John Smith',
+      primaryContactEmail: 'john.smith@acme.com',
+      primaryContactPhone: '(555) 123-4567',
+      primaryContactTitle: 'IT Director',
+      website: 'https://www.acme.com',
+      industry: 'Technology',
+      employeeCount: '150',
+      annualRevenue: '5000000',
+      addressLine1: '123 Business Street',
+      addressLine2: 'Suite 100',
+      city: 'New York',
+      state: 'NY',
+      postalCode: '10001',
+      country: 'US',
+      phone: '(555) 123-4567',
+      fax: '(555) 123-4568',
+      leadSource: 'website',
+      estimatedAmount: '25000',
+      probability: '75',
+      salesStage: 'qualified',
+      interestLevel: 'hot',
+      priority: 'high',
+      territory: 'Northeast',
+      notes: 'Interested in copier leasing program',
+      assignedSalesRep: 'current_user',
     },
     {
-      companyName: "Global Services Inc",
-      primaryContactName: "Sarah Johnson", 
-      primaryContactEmail: "sarah.johnson@globalservices.com",
-      primaryContactPhone: "(555) 987-6543",
-      primaryContactTitle: "Office Manager",
-      website: "https://www.globalservices.com",
-      industry: "Professional Services",
-      employeeCount: "75",
-      annualRevenue: "2500000",
-      addressLine1: "456 Commerce Ave",
-      addressLine2: "",
-      city: "Chicago",
-      state: "IL", 
-      postalCode: "60601",
-      country: "US",
-      phone: "(555) 987-6543",
-      fax: "",
-      leadSource: "referral",
-      estimatedAmount: "15000",
-      probability: "50",
-      salesStage: "contacted",
-      interestLevel: "warm",
-      priority: "medium",
-      territory: "Midwest",
-      notes: "Looking to upgrade existing fleet",
-      assignedSalesRep: "current_user"
-    }
+      companyName: 'Global Services Inc',
+      primaryContactName: 'Sarah Johnson',
+      primaryContactEmail: 'sarah.johnson@globalservices.com',
+      primaryContactPhone: '(555) 987-6543',
+      primaryContactTitle: 'Office Manager',
+      website: 'https://www.globalservices.com',
+      industry: 'Professional Services',
+      employeeCount: '75',
+      annualRevenue: '2500000',
+      addressLine1: '456 Commerce Ave',
+      addressLine2: '',
+      city: 'Chicago',
+      state: 'IL',
+      postalCode: '60601',
+      country: 'US',
+      phone: '(555) 987-6543',
+      fax: '',
+      leadSource: 'referral',
+      estimatedAmount: '15000',
+      probability: '50',
+      salesStage: 'contacted',
+      interestLevel: 'warm',
+      priority: 'medium',
+      territory: 'Midwest',
+      notes: 'Looking to upgrade existing fleet',
+      assignedSalesRep: 'current_user',
+    },
   ];
 
   // Download sample CSV template
   const downloadTemplate = () => {
     const csvContent = [
-      csvHeaders.join(","),
-      ...sampleData.map(row => 
-        csvHeaders.map(header => {
-          const value = row[header as keyof typeof row] || "";
-          // Escape values that contain commas or quotes
-          if (value.includes(",") || value.includes('"')) {
-            return `"${value.replace(/"/g, '""')}"`;
-          }
-          return value;
-        }).join(",")
-      )
-    ].join("\n");
+      csvHeaders.join(','),
+      ...sampleData.map((row) =>
+        csvHeaders
+          .map((header) => {
+            const value = row[header as keyof typeof row] || '';
+            // Escape values that contain commas or quotes
+            if (value.includes(',') || value.includes('"')) {
+              return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+          })
+          .join(','),
+      ),
+    ].join('\n');
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = "leads-import-template.csv";
+    link.download = 'leads-import-template.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -168,49 +164,49 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
   const importLeadsMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file);
-      
-      const response = await fetch("/api/business-records/import", {
-        method: "POST",
+      formData.append('file', file);
+
+      const response = await fetch('/api/business-records/import', {
+        method: 'POST',
         body: formData,
-        credentials: "include",
+        credentials: 'include',
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Import failed");
+        throw new Error(errorData.message || 'Import failed');
       }
-      
+
       return await response.json();
     },
     onSuccess: (result) => {
       setImportResult(result);
       toast({
-        title: "Import Completed",
-        description: `Successfully imported ${result.imported} leads. ${result.skipped > 0 ? `${result.skipped} rows skipped.` : ""}`,
+        title: 'Import Completed',
+        description: `Successfully imported ${result.imported} leads. ${result.skipped > 0 ? `${result.skipped} rows skipped.` : ''}`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/business-records"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
       onImportComplete?.();
     },
     onError: (error: any) => {
       toast({
-        title: "Import Failed",
-        description: error.message || "An error occurred during import",
-        variant: "destructive",
+        title: 'Import Failed',
+        description: error.message || 'An error occurred during import',
+        variant: 'destructive',
       });
     },
   });
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === "text/csv") {
+    if (file && file.type === 'text/csv') {
       setSelectedFile(file);
       setImportResult(null);
     } else {
       toast({
-        title: "Invalid File",
-        description: "Please select a CSV file",
-        variant: "destructive",
+        title: 'Invalid File',
+        description: 'Please select a CSV file',
+        variant: 'destructive',
       });
     }
   };
@@ -242,7 +238,8 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
             Import Leads from CSV
           </DialogTitle>
           <DialogDescription>
-            Upload a CSV file to import leads into your system. Download the template to see the required format.
+            Upload a CSV file to import leads into your system. Download the template to see the
+            required format.
           </DialogDescription>
         </DialogHeader>
 
@@ -284,9 +281,7 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
                 <Upload className="h-4 w-4" />
                 Step 2: Upload Your CSV File
               </CardTitle>
-              <CardDescription>
-                Select your completed CSV file to import leads
-              </CardDescription>
+              <CardDescription>Select your completed CSV file to import leads</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -308,11 +303,7 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
                   {selectedFile && (
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">{selectedFile.name}</Badge>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedFile(null)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedFile(null)}>
                         <X className="h-3 w-3" />
                       </Button>
                     </div>
@@ -395,7 +386,9 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
                         <div className="space-y-1">
                           <p className="font-medium">Errors encountered:</p>
                           {importResult.errors.slice(0, 5).map((error, index) => (
-                            <p key={index} className="text-sm">• {error}</p>
+                            <p key={index} className="text-sm">
+                              • {error}
+                            </p>
                           ))}
                           {importResult.errors.length > 5 && (
                             <p className="text-sm">... and {importResult.errors.length - 5} more</p>
@@ -412,13 +405,9 @@ export function LeadsImport({ onImportComplete }: LeadsImportProps) {
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="outline" onClick={handleDialogClose}>
-              {importResult ? "Close" : "Cancel"}
+              {importResult ? 'Close' : 'Cancel'}
             </Button>
-            {importResult && (
-              <Button onClick={handleDialogClose}>
-                View Imported Leads
-              </Button>
-            )}
+            {importResult && <Button onClick={handleDialogClose}>View Imported Leads</Button>}
           </div>
         </div>
       </DialogContent>

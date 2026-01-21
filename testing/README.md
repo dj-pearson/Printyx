@@ -169,7 +169,7 @@ chmod +x run.sh
 ### React Dashboard
 
 ```tsx
-import TestMonitor from "./testing/components/TestMonitor";
+import TestMonitor from './testing/components/TestMonitor';
 
 <TestMonitor autoConnect={true} />;
 ```

@@ -10,7 +10,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CheckCircle, Download } from 'lucide-react';
 import { USER_ROLES } from './types';
@@ -22,7 +28,12 @@ interface EmailCaptureModalProps {
   onSuccess: () => void;
 }
 
-export function EmailCaptureModal({ open, onClose, sessionKey, onSuccess }: EmailCaptureModalProps) {
+export function EmailCaptureModal({
+  open,
+  onClose,
+  sessionKey,
+  onSuccess,
+}: EmailCaptureModalProps) {
   const [formData, setFormData] = useState({
     email: '',
     companyName: '',
@@ -204,8 +215,11 @@ export function EmailCaptureModal({ open, onClose, sessionKey, onSuccess }: Emai
               }
             />
             <label htmlFor="quarterly-updates" className="text-sm leading-tight cursor-pointer">
-              Yes, send me quarterly print cost benchmarking updates and practical print management tips.
-              <span className="block text-xs text-gray-500 mt-1">No spam. Unsubscribe anytime.</span>
+              Yes, send me quarterly print cost benchmarking updates and practical print management
+              tips.
+              <span className="block text-xs text-gray-500 mt-1">
+                No spam. Unsubscribe anytime.
+              </span>
             </label>
           </div>
 

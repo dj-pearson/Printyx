@@ -1,27 +1,23 @@
-import express from "express";
-import { desc, eq, and, sql, asc, gte, lte, between , isNotNull } from "drizzle-orm";
-import { db } from "./db";
-import { isAuthenticated } from "./replitAuth";
+import express from 'express';
+import { desc, eq, and, sql, asc, gte, lte, between, isNotNull } from 'drizzle-orm';
+import { db } from './db';
+import { isAuthenticated } from './replitAuth';
+import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import {
-  resolveTenant,
-  requireTenant,
-  TenantRequest,
-} from "./middleware/tenancy";
-import { 
-  businessRecords, 
-  deals, 
-  quotes, 
-  proposals, 
+  businessRecords,
+  deals,
+  quotes,
+  proposals,
   salesGoals,
   goalProgress,
-  dealStages 
-} from "../shared/schema";
+  dealStages,
+} from '../shared/schema';
 import {
   salesForecasts,
   forecastPipelineItems,
   forecastMetrics,
   forecastRules,
-} from "./sales-forecasting-schema";
+} from './sales-forecasting-schema';
 
 const router = express.Router();
 
@@ -30,7 +26,7 @@ const router = express.Router();
 
 // Get all sales forecasts
 router.get(
-  "/api/sales-forecasts",
+  '/api/sales-forecasts',
   resolveTenant,
   requireTenant,
   async (req: TenantRequest, res) => {
@@ -43,51 +39,44 @@ router.get(
         .orderBy(desc(salesForecasts.createdAt));
       res.json(forecasts);
     } catch (error) {
-      console.error("Error fetching sales forecasts:", error);
-      res.status(500).json({ message: "Failed to fetch sales forecasts" });
+      console.error('Error fetching sales forecasts:', error);
+      res.status(500).json({ message: 'Failed to fetch sales forecasts' });
     }
-  }
+  },
 );
 
 // Get pipeline items for a specific forecast
-router.get(
-  "/api/sales-forecasts/:id/pipeline",
-  async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId)
-        return res.status(400).json({ message: "Tenant ID is required" });
+router.get('/api/sales-forecasts/:id/pipeline', async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
-      const items = await db
-        .select()
-        .from(forecastPipelineItems)
-        .where(
-          and(
-            eq(forecastPipelineItems.tenantId, tenantId),
-            eq(forecastPipelineItems.forecastId, id)
-          )
-        )
-        .orderBy(asc(forecastPipelineItems.expectedCloseDate));
+    const items = await db
+      .select()
+      .from(forecastPipelineItems)
+      .where(
+        and(eq(forecastPipelineItems.tenantId, tenantId), eq(forecastPipelineItems.forecastId, id)),
+      )
+      .orderBy(asc(forecastPipelineItems.expectedCloseDate));
 
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching pipeline items:", error);
-      res.status(500).json({ message: "Failed to fetch pipeline items" });
-    }
+    res.json(items);
+  } catch (error) {
+    console.error('Error fetching pipeline items:', error);
+    res.status(500).json({ message: 'Failed to fetch pipeline items' });
   }
-);
+});
 
 // Get comprehensive pipeline forecast data
 router.get(
-  "/api/pipeline-forecast/:forecastId?",
+  '/api/pipeline-forecast/:forecastId?',
   resolveTenant,
   requireTenant,
   async (req: TenantRequest, res) => {
     try {
       const tenantId = req.tenantId!;
       const { forecastId } = req.params;
-      const { period = "monthly", startDate, endDate } = req.query;
+      const { period = 'monthly', startDate, endDate } = req.query;
 
       // Get the forecast data if specific forecast requested
       let forecast = null;
@@ -95,12 +84,7 @@ router.get(
         const forecastData = await db
           .select()
           .from(salesForecasts)
-          .where(
-            and(
-              eq(salesForecasts.tenantId, tenantId),
-              eq(salesForecasts.id, forecastId)
-            )
-          )
+          .where(and(eq(salesForecasts.tenantId, tenantId), eq(salesForecasts.id, forecastId)))
           .limit(1);
         forecast = forecastData[0] || null;
       }
@@ -169,34 +153,34 @@ router.get(
       }
 
       // Transform data with type and default probabilities
-      const transformedDeals = dealsData.map(deal => ({
+      const transformedDeals = dealsData.map((deal) => ({
         id: deal.id,
         title: deal.title || `Deal ${deal.id}`,
         value: parseFloat(deal.amount?.toString() || '0'),
         probability: deal.probability || 50,
         expectedCloseDate: deal.expected_close_date || new Date().toISOString(),
         status: deal.status || 'open',
-        type: 'deal'
+        type: 'deal',
       }));
 
-      const transformedQuotes = quotesData.map(quote => ({
+      const transformedQuotes = quotesData.map((quote) => ({
         id: quote.id,
         title: quote.title || `Quote #${quote.quote_number || quote.id}`,
         value: parseFloat(quote.total_amount?.toString() || '0'),
         probability: 50, // Default probability for quotes
         expectedCloseDate: quote.valid_until || new Date().toISOString(),
         status: quote.status || 'sent',
-        type: 'quote'
+        type: 'quote',
       }));
 
-      const transformedProposals = proposalsData.map(proposal => ({
+      const transformedProposals = proposalsData.map((proposal) => ({
         id: proposal.id,
         title: proposal.title || `Proposal ${proposal.id}`,
         value: parseFloat(proposal.total_amount?.toString() || '0'),
         probability: 70, // Default probability for proposals
         expectedCloseDate: proposal.valid_until || new Date().toISOString(),
         status: proposal.status || 'sent',
-        type: 'proposal'
+        type: 'proposal',
       }));
 
       // Calculate pipeline totals
@@ -204,18 +188,18 @@ router.get(
       const totalPipelineValue = pipelineItems.reduce((sum, item) => {
         const value = parseFloat(item.value?.toString() || '0');
         const probability = parseFloat(item.probability?.toString() || '0') / 100;
-        return sum + (value * probability);
+        return sum + value * probability;
       }, 0);
 
       const totalPipelineCount = pipelineItems.length;
 
       // Calculate goal targets
       const totalGoalValue = crmGoalsData
-        .filter(goal => goal.goal_type === 'revenue')
+        .filter((goal) => goal.goal_type === 'revenue')
         .reduce((sum, goal) => sum + parseFloat(goal.target_value?.toString() || '0'), 0);
 
       const totalGoalCount = crmGoalsData
-        .filter(goal => goal.goal_type !== 'revenue')
+        .filter((goal) => goal.goal_type !== 'revenue')
         .reduce((sum, goal) => sum + parseInt(goal.target_count?.toString() || '0'), 0);
 
       // Calculate remaining to goal
@@ -226,31 +210,40 @@ router.get(
       const breakdown = {
         deals: {
           count: transformedDeals.length,
-          value: transformedDeals.reduce((sum, deal) => sum + parseFloat(deal.value?.toString() || '0'), 0),
+          value: transformedDeals.reduce(
+            (sum, deal) => sum + parseFloat(deal.value?.toString() || '0'),
+            0,
+          ),
           weightedValue: transformedDeals.reduce((sum, deal) => {
             const value = parseFloat(deal.value?.toString() || '0');
             const probability = parseFloat(deal.probability?.toString() || '0') / 100;
-            return sum + (value * probability);
-          }, 0)
+            return sum + value * probability;
+          }, 0),
         },
         quotes: {
           count: transformedQuotes.length,
-          value: transformedQuotes.reduce((sum, quote) => sum + parseFloat(quote.value?.toString() || '0'), 0),
+          value: transformedQuotes.reduce(
+            (sum, quote) => sum + parseFloat(quote.value?.toString() || '0'),
+            0,
+          ),
           weightedValue: transformedQuotes.reduce((sum, quote) => {
             const value = parseFloat(quote.value?.toString() || '0');
             const probability = 0.5; // 50% default for quotes
-            return sum + (value * probability);
-          }, 0)
+            return sum + value * probability;
+          }, 0),
         },
         proposals: {
           count: transformedProposals.length,
-          value: transformedProposals.reduce((sum, proposal) => sum + parseFloat(proposal.value?.toString() || '0'), 0),
+          value: transformedProposals.reduce(
+            (sum, proposal) => sum + parseFloat(proposal.value?.toString() || '0'),
+            0,
+          ),
           weightedValue: transformedProposals.reduce((sum, proposal) => {
             const value = parseFloat(proposal.value?.toString() || '0');
             const probability = 0.7; // 70% default for proposals
-            return sum + (value * probability);
-          }, 0)
-        }
+            return sum + value * probability;
+          }, 0),
+        },
       };
 
       const responseData = {
@@ -258,65 +251,62 @@ router.get(
         period: {
           type: period,
           startDate: dateStart,
-          endDate: dateEnd
+          endDate: dateEnd,
         },
         pipeline: {
           items: pipelineItems,
           totalValue: totalPipelineValue,
           totalCount: totalPipelineCount,
-          breakdown
+          breakdown,
         },
         goals: {
           items: crmGoalsData,
           totalValue: totalGoalValue,
-          totalCount: totalGoalCount
+          totalCount: totalGoalCount,
         },
         remaining: {
           toGoalValue: remainingToGoalValue,
           toGoalCount: remainingToGoalCount,
-          progressPercent: totalGoalValue > 0 ? Math.min(100, (totalPipelineValue / totalGoalValue) * 100) : 0
-        }
+          progressPercent:
+            totalGoalValue > 0 ? Math.min(100, (totalPipelineValue / totalGoalValue) * 100) : 0,
+        },
       };
 
       res.json(responseData);
     } catch (error) {
-      console.error("Error fetching pipeline forecast:", error);
-      res.status(500).json({ message: "Failed to fetch pipeline forecast data" });
+      console.error('Error fetching pipeline forecast:', error);
+      res.status(500).json({ message: 'Failed to fetch pipeline forecast data' });
     }
-  }
+  },
 );
 
 // Get sales performance metrics
-router.get(
-  "/api/sales-performance-metrics",
-  async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId)
-        return res.status(400).json({ message: "Tenant ID is required" });
+router.get('/api/sales-performance-metrics', async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
-      const metrics = await db
-        .select()
-        .from(forecastMetrics)
-        .where(eq(forecastMetrics.tenantId, tenantId))
-        .orderBy(desc(forecastMetrics.snapshotDate));
+    const metrics = await db
+      .select()
+      .from(forecastMetrics)
+      .where(eq(forecastMetrics.tenantId, tenantId))
+      .orderBy(desc(forecastMetrics.snapshotDate));
 
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching performance metrics:", error);
-      res.status(500).json({ message: "Failed to fetch performance metrics" });
-    }
+    res.json(metrics);
+  } catch (error) {
+    console.error('Error fetching performance metrics:', error);
+    res.status(500).json({ message: 'Failed to fetch performance metrics' });
   }
-);
+});
 
 // Create new sales forecast
-router.post("/api/sales-forecasts", isAuthenticated, async (req: any, res) => {
+router.post('/api/sales-forecasts', isAuthenticated, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
 
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const {
@@ -334,27 +324,27 @@ router.post("/api/sales-forecasts", isAuthenticated, async (req: any, res) => {
       .values({
         tenantId,
         forecastName,
-        forecastType: forecastType || "monthly",
+        forecastType: forecastType || 'monthly',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         revenueTarget: parseFloat(revenueTarget),
         unitTarget: parseInt(unitTarget) || null,
         dealCountTarget: parseInt(dealCountTarget) || null,
-        confidenceLevel: "medium",
-        status: "active",
+        confidenceLevel: 'medium',
+        status: 'active',
         createdBy: userId,
       })
       .returning();
 
     res.status(201).json(newForecast);
   } catch (error) {
-    console.error("Error creating sales forecast:", error);
-    res.status(500).json({ message: "Failed to create sales forecast" });
+    console.error('Error creating sales forecast:', error);
+    res.status(500).json({ message: 'Failed to create sales forecast' });
   }
 });
 
 // Update pipeline item stage/probability
-router.put("/api/sales-pipeline/:id", isAuthenticated, async (req: any, res) => {
+router.put('/api/sales-pipeline/:id', isAuthenticated, async (req: any, res) => {
   try {
     const { id } = req.params;
     const { stage, closeProbability, expectedCloseDate, notes } = req.body;
@@ -371,45 +361,40 @@ router.put("/api/sales-pipeline/:id", isAuthenticated, async (req: any, res) => 
       .returning();
 
     if (!updated) {
-      return res.status(404).json({ message: "Pipeline item not found" });
+      return res.status(404).json({ message: 'Pipeline item not found' });
     }
 
     res.json(updated);
   } catch (error) {
-    console.error("Error updating pipeline item:", error);
-    res.status(500).json({ message: "Failed to update pipeline item" });
+    console.error('Error updating pipeline item:', error);
+    res.status(500).json({ message: 'Failed to update pipeline item' });
   }
 });
 
 // Get forecasting rules/settings
-router.get(
-  "/api/sales-forecasting-rules",
-  async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId)
-        return res.status(400).json({ message: "Tenant ID is required" });
-
-      const rules = await db
-        .select()
-        .from(forecastRules)
-        .where(eq(forecastRules.tenantId, tenantId))
-        .orderBy(asc(forecastRules.ruleName));
-
-      res.json(rules);
-    } catch (error) {
-      console.error("Error fetching forecasting rules:", error);
-      res.status(500).json({ message: "Failed to fetch forecasting rules" });
-    }
-  }
-);
-
-// Get historical performance for trend analysis
-router.get("/api/sales-trends", async (req: any, res) => {
+router.get('/api/sales-forecasting-rules', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    if (!tenantId)
-      return res.status(400).json({ message: "Tenant ID is required" });
+    if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
+
+    const rules = await db
+      .select()
+      .from(forecastRules)
+      .where(eq(forecastRules.tenantId, tenantId))
+      .orderBy(asc(forecastRules.ruleName));
+
+    res.json(rules);
+  } catch (error) {
+    console.error('Error fetching forecasting rules:', error);
+    res.status(500).json({ message: 'Failed to fetch forecasting rules' });
+  }
+});
+
+// Get historical performance for trend analysis
+router.get('/api/sales-trends', async (req: any, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
     // Get historical sales metrics from business records and recent forecast metrics
     const { months = 6 } = req.query;
@@ -429,9 +414,9 @@ router.get("/api/sales-trends", async (req: any, res) => {
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            eq(businessRecords.type, "customer"),
-            gte(businessRecords.updatedAt, startDate)
-          )
+            eq(businessRecords.type, 'customer'),
+            gte(businessRecords.updatedAt, startDate),
+          ),
         )
         .groupBy(sql`DATE_TRUNC('month', ${businessRecords.updatedAt})`)
         .orderBy(sql`DATE_TRUNC('month', ${businessRecords.updatedAt}) DESC`),
@@ -441,10 +426,7 @@ router.get("/api/sales-trends", async (req: any, res) => {
         .select()
         .from(forecastMetrics)
         .where(
-          and(
-            eq(forecastMetrics.tenantId, tenantId),
-            gte(forecastMetrics.snapshotDate, startDate)
-          )
+          and(eq(forecastMetrics.tenantId, tenantId), gte(forecastMetrics.snapshotDate, startDate)),
         )
         .orderBy(desc(forecastMetrics.snapshotDate)),
     ]);
@@ -458,14 +440,14 @@ router.get("/api/sales-trends", async (req: any, res) => {
 
       const dealData = recentDeals.find((d) => d.month?.startsWith(monthKey));
       const metricData = metricsData.find((m) =>
-        m.snapshotDate?.toISOString().startsWith(monthKey)
+        m.snapshotDate?.toISOString().startsWith(monthKey),
       );
 
       trendData.push({
         month: monthKey,
-        monthName: date.toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
+        monthName: date.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
         }),
         revenue: dealData?.revenue || 0,
         deals: dealData?.deals || 0,
@@ -478,8 +460,8 @@ router.get("/api/sales-trends", async (req: any, res) => {
 
     res.json(trendData.reverse());
   } catch (error) {
-    console.error("Error fetching sales trends:", error);
-    res.status(500).json({ message: "Failed to fetch sales trends" });
+    console.error('Error fetching sales trends:', error);
+    res.status(500).json({ message: 'Failed to fetch sales trends' });
   }
 });
 

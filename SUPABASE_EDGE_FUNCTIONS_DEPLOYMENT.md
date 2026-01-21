@@ -106,6 +106,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### Domain Configuration (Optional)
 
 Set up a custom domain for your edge functions:
+
 - **Domain:** `functions.yourdomain.com`
 - **Enable HTTPS:** Yes (recommended)
 
@@ -135,6 +136,7 @@ curl https://your-edge-functions-domain.com/health
 ```
 
 Expected response:
+
 ```json
 {
   "status": "healthy",
@@ -152,6 +154,7 @@ curl -X POST https://your-edge-functions-domain.com/hello \
 ```
 
 Expected response:
+
 ```json
 {
   "message": "Hello Printyx!",
@@ -174,41 +177,33 @@ mkdir supabase/functions/my-function
 2. Create `index.ts`:
 
 ```typescript
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createSupabaseClient } from '../_shared/supabase.ts'
-import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createSupabaseClient } from '../_shared/supabase.ts';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req) => {
-  const corsResponse = handleCors(req)
-  if (corsResponse) return corsResponse
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
-    const supabase = createSupabaseClient(req)
-    
-    // Your function logic here
-    const { data, error } = await supabase
-      .from('your_table')
-      .select('*')
-    
-    if (error) throw error
+    const supabase = createSupabaseClient(req);
 
-    return new Response(
-      JSON.stringify({ data }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      },
-    )
+    // Your function logic here
+    const { data, error } = await supabase.from('your_table').select('*');
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ data }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
-      },
-    )
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    });
   }
-})
+});
 ```
 
 3. Commit and push:
@@ -277,14 +272,17 @@ Now every push to GitHub will trigger a new deployment!
 ### Build Fails
 
 **Error:** `Cannot find function directory`
+
 - **Solution:** Make sure `supabase/functions/` exists in your repo
 
 **Error:** `Deno import failed`
+
 - **Solution:** Check import URLs in your function files
 
 ### Function Not Loading
 
 **Check:**
+
 1. Function has `index.ts` file
 2. Function exports a `serve()` handler
 3. No syntax errors in the function code
@@ -292,6 +290,7 @@ Now every push to GitHub will trigger a new deployment!
 ### Connection to Supabase Fails
 
 **Check:**
+
 1. `SUPABASE_URL` is correct
 2. `SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY` is set
 3. Network connectivity between Edge Functions and Supabase
@@ -299,11 +298,12 @@ Now every push to GitHub will trigger a new deployment!
 ### CORS Errors
 
 Update `supabase/functions/_shared/cors.ts`:
+
 ```typescript
 export const corsHeaders = {
   'Access-Control-Allow-Origin': 'https://yourdomain.com',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 ```
 
 ---
@@ -319,28 +319,28 @@ const callEdgeFunction = async (functionName: string, data: any) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${supabaseAnonKey}`
+      Authorization: `Bearer ${supabaseAnonKey}`,
     },
-    body: JSON.stringify(data)
-  })
-  
-  return response.json()
-}
+    body: JSON.stringify(data),
+  });
+
+  return response.json();
+};
 
 // Usage
-const result = await callEdgeFunction('hello', { name: 'John' })
+const result = await callEdgeFunction('hello', { name: 'John' });
 ```
 
 ### Using Supabase Client
 
 ```typescript
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const { data, error } = await supabase.functions.invoke('hello', {
-  body: { name: 'John' }
-})
+  body: { name: 'John' },
+});
 ```
 
 ---
@@ -375,4 +375,3 @@ const { data, error } = await supabase.functions.invoke('hello', {
 ---
 
 **Need help?** Check the logs in Coolify or review the function code for errors.
-

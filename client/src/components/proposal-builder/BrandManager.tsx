@@ -5,7 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -30,7 +36,7 @@ import {
   FileImage,
   Monitor,
   Smartphone,
-  Tablet
+  Tablet,
 } from 'lucide-react';
 
 interface BrandProfile {
@@ -106,7 +112,7 @@ const defaultBrandProfile: Omit<BrandProfile, 'id' | 'createdAt' | 'updatedAt'> 
     accent: '#FF6B35',
     background: '#FFFFFF',
     text: '#1F2937',
-    muted: '#6B7280'
+    muted: '#6B7280',
   },
   typography: {
     headingFont: 'Inter',
@@ -115,7 +121,7 @@ const defaultBrandProfile: Omit<BrandProfile, 'id' | 'createdAt' | 'updatedAt'> 
     baseFontSize: 16,
     headingScale: 1.25,
     lineHeight: 1.6,
-    letterSpacing: 0
+    letterSpacing: 0,
   },
   logos: {},
   layout: {
@@ -123,7 +129,7 @@ const defaultBrandProfile: Omit<BrandProfile, 'id' | 'createdAt' | 'updatedAt'> 
     headerHeight: 80,
     footerHeight: 60,
     sectionSpacing: 32,
-    columnGap: 24
+    columnGap: 24,
   },
   styling: {
     borderRadius: 8,
@@ -132,34 +138,52 @@ const defaultBrandProfile: Omit<BrandProfile, 'id' | 'createdAt' | 'updatedAt'> 
       {
         name: 'Primary Gradient',
         colors: ['#0066CC', '#4A90E2'],
-        direction: '45deg'
-      }
+        direction: '45deg',
+      },
     ],
-    patterns: []
+    patterns: [],
   },
   templates: {
     coverPageLayout: 'centered',
     headerStyle: 'branded',
     footerStyle: 'minimal',
-    sectionDividers: 'spacing'
+    sectionDividers: 'spacing',
   },
-  isDefault: false
+  isDefault: false,
 };
 
 const fontOptions = [
-  'Inter', 'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 
-  'Roboto', 'Open Sans', 'Lato', 'Poppins', 'Montserrat',
-  'Source Sans Pro', 'Nunito', 'Playfair Display', 'Merriweather'
+  'Inter',
+  'Arial',
+  'Helvetica',
+  'Georgia',
+  'Times New Roman',
+  'Roboto',
+  'Open Sans',
+  'Lato',
+  'Poppins',
+  'Montserrat',
+  'Source Sans Pro',
+  'Nunito',
+  'Playfair Display',
+  'Merriweather',
 ];
 
 const gradientDirections = [
-  '0deg', '45deg', '90deg', '135deg', '180deg', '225deg', '270deg', '315deg'
+  '0deg',
+  '45deg',
+  '90deg',
+  '135deg',
+  '180deg',
+  '225deg',
+  '270deg',
+  '315deg',
 ];
 
 export default function BrandManager({
   initialProfile,
   onSave,
-  onClose
+  onClose,
 }: {
   initialProfile?: BrandProfile;
   onSave: (profile: BrandProfile) => void;
@@ -170,44 +194,44 @@ export default function BrandManager({
       ...defaultBrandProfile,
       id: 'new',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
+      updatedAt: new Date().toISOString(),
+    },
   );
   const [activeTab, setActiveTab] = useState('colors');
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const logoUploadRef = useRef<HTMLInputElement>(null);
 
   const updateProfile = (updates: Partial<BrandProfile>) => {
-    setProfile(prev => ({ ...prev, ...updates, updatedAt: new Date().toISOString() }));
+    setProfile((prev) => ({ ...prev, ...updates, updatedAt: new Date().toISOString() }));
   };
 
   const updateColors = (colorKey: keyof BrandProfile['colors'], value: string) => {
     updateProfile({
-      colors: { ...profile.colors, [colorKey]: value }
+      colors: { ...profile.colors, [colorKey]: value },
     });
   };
 
   const updateTypography = (key: keyof BrandProfile['typography'], value: any) => {
     updateProfile({
-      typography: { ...profile.typography, [key]: value }
+      typography: { ...profile.typography, [key]: value },
     });
   };
 
   const updateLayout = (key: keyof BrandProfile['layout'], value: any) => {
     updateProfile({
-      layout: { ...profile.layout, [key]: value }
+      layout: { ...profile.layout, [key]: value },
     });
   };
 
   const updateStyling = (key: keyof BrandProfile['styling'], value: any) => {
     updateProfile({
-      styling: { ...profile.styling, [key]: value }
+      styling: { ...profile.styling, [key]: value },
     });
   };
 
   const updateTemplates = (key: keyof BrandProfile['templates'], value: any) => {
     updateProfile({
-      templates: { ...profile.templates, [key]: value }
+      templates: { ...profile.templates, [key]: value },
     });
   };
 
@@ -222,7 +246,7 @@ export default function BrandManager({
         // Create object URL for preview (in production, upload to server)
         const url = URL.createObjectURL(file);
         updateProfile({
-          logos: { ...profile.logos, [type]: url }
+          logos: { ...profile.logos, [type]: url },
         });
       }
     };
@@ -233,7 +257,7 @@ export default function BrandManager({
     const newGradient = {
       name: `Gradient ${profile.styling.gradients.length + 1}`,
       colors: [profile.colors.primary, profile.colors.secondary],
-      direction: '45deg'
+      direction: '45deg',
     };
     updateStyling('gradients', [...profile.styling.gradients, newGradient]);
   };
@@ -256,13 +280,13 @@ export default function BrandManager({
   const adjustColor = (hex: string, amount: number, opacity: number = 1) => {
     const color = parseInt(hex.slice(1), 16);
     const r = Math.max(0, Math.min(255, (color >> 16) + amount));
-    const g = Math.max(0, Math.min(255, ((color >> 8) & 0x00FF) + amount));
-    const b = Math.max(0, Math.min(255, (color & 0x0000FF) + amount));
-    
+    const g = Math.max(0, Math.min(255, ((color >> 8) & 0x00ff) + amount));
+    const b = Math.max(0, Math.min(255, (color & 0x0000ff) + amount));
+
     if (opacity < 1) {
       return `rgba(${r}, ${g}, ${b}, ${opacity})`;
     }
-    return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
   };
 
   const previewStyles = {
@@ -273,7 +297,7 @@ export default function BrandManager({
     backgroundColor: profile.colors.background,
     padding: `${profile.layout.pageMargins.top}px ${profile.layout.pageMargins.right}px ${profile.layout.pageMargins.bottom}px ${profile.layout.pageMargins.left}px`,
     borderRadius: `${profile.styling.borderRadius}px`,
-    boxShadow: `0 ${profile.styling.shadowStrength}px ${profile.styling.shadowStrength * 2}px rgba(0,0,0,0.1)`
+    boxShadow: `0 ${profile.styling.shadowStrength}px ${profile.styling.shadowStrength * 2}px rgba(0,0,0,0.1)`,
   };
 
   return (
@@ -310,10 +334,18 @@ export default function BrandManager({
         <ScrollArea className="flex-1">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mx-3 sm:mx-4 mt-4 gap-1">
-              <TabsTrigger value="colors" className="text-xs sm:text-sm">Colors</TabsTrigger>
-              <TabsTrigger value="typography" className="text-xs sm:text-sm">Type</TabsTrigger>
-              <TabsTrigger value="layout" className="text-xs sm:text-sm">Layout</TabsTrigger>
-              <TabsTrigger value="style" className="text-xs sm:text-sm">Style</TabsTrigger>
+              <TabsTrigger value="colors" className="text-xs sm:text-sm">
+                Colors
+              </TabsTrigger>
+              <TabsTrigger value="typography" className="text-xs sm:text-sm">
+                Type
+              </TabsTrigger>
+              <TabsTrigger value="layout" className="text-xs sm:text-sm">
+                Layout
+              </TabsTrigger>
+              <TabsTrigger value="style" className="text-xs sm:text-sm">
+                Style
+              </TabsTrigger>
             </TabsList>
 
             <div className="p-3 sm:p-4">
@@ -405,15 +437,17 @@ export default function BrandManager({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {gradientDirections.map(dir => (
-                            <SelectItem key={dir} value={dir}>{dir}</SelectItem>
+                          {gradientDirections.map((dir) => (
+                            <SelectItem key={dir} value={dir}>
+                              {dir}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <div
                         className="h-4 rounded"
                         style={{
-                          background: `linear-gradient(${gradient.direction}, ${gradient.colors.join(', ')})`
+                          background: `linear-gradient(${gradient.direction}, ${gradient.colors.join(', ')})`,
                         }}
                       />
                     </div>
@@ -424,13 +458,18 @@ export default function BrandManager({
               <TabsContent value="typography" className="space-y-4">
                 <div>
                   <Label>Heading Font</Label>
-                  <Select value={profile.typography.headingFont} onValueChange={(value) => updateTypography('headingFont', value)}>
+                  <Select
+                    value={profile.typography.headingFont}
+                    onValueChange={(value) => updateTypography('headingFont', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {fontOptions.map(font => (
-                        <SelectItem key={font} value={font}>{font}</SelectItem>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font} value={font}>
+                          {font}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -438,13 +477,18 @@ export default function BrandManager({
 
                 <div>
                   <Label>Body Font</Label>
-                  <Select value={profile.typography.bodyFont} onValueChange={(value) => updateTypography('bodyFont', value)}>
+                  <Select
+                    value={profile.typography.bodyFont}
+                    onValueChange={(value) => updateTypography('bodyFont', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {fontOptions.map(font => (
-                        <SelectItem key={font} value={font}>{font}</SelectItem>
+                      {fontOptions.map((font) => (
+                        <SelectItem key={font} value={font}>
+                          {font}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -504,10 +548,12 @@ export default function BrandManager({
                       <Input
                         type="number"
                         value={profile.layout.pageMargins.top}
-                        onChange={(e) => updateLayout('pageMargins', { 
-                          ...profile.layout.pageMargins, 
-                          top: parseInt(e.target.value) || 0 
-                        })}
+                        onChange={(e) =>
+                          updateLayout('pageMargins', {
+                            ...profile.layout.pageMargins,
+                            top: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="h-8"
                       />
                     </div>
@@ -516,10 +562,12 @@ export default function BrandManager({
                       <Input
                         type="number"
                         value={profile.layout.pageMargins.right}
-                        onChange={(e) => updateLayout('pageMargins', { 
-                          ...profile.layout.pageMargins, 
-                          right: parseInt(e.target.value) || 0 
-                        })}
+                        onChange={(e) =>
+                          updateLayout('pageMargins', {
+                            ...profile.layout.pageMargins,
+                            right: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="h-8"
                       />
                     </div>
@@ -528,10 +576,12 @@ export default function BrandManager({
                       <Input
                         type="number"
                         value={profile.layout.pageMargins.bottom}
-                        onChange={(e) => updateLayout('pageMargins', { 
-                          ...profile.layout.pageMargins, 
-                          bottom: parseInt(e.target.value) || 0 
-                        })}
+                        onChange={(e) =>
+                          updateLayout('pageMargins', {
+                            ...profile.layout.pageMargins,
+                            bottom: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="h-8"
                       />
                     </div>
@@ -540,10 +590,12 @@ export default function BrandManager({
                       <Input
                         type="number"
                         value={profile.layout.pageMargins.left}
-                        onChange={(e) => updateLayout('pageMargins', { 
-                          ...profile.layout.pageMargins, 
-                          left: parseInt(e.target.value) || 0 
-                        })}
+                        onChange={(e) =>
+                          updateLayout('pageMargins', {
+                            ...profile.layout.pageMargins,
+                            left: parseInt(e.target.value) || 0,
+                          })
+                        }
                         className="h-8"
                       />
                     </div>
@@ -585,7 +637,10 @@ export default function BrandManager({
 
                 <div>
                   <Label>Cover Page Layout</Label>
-                  <Select value={profile.templates.coverPageLayout} onValueChange={(value) => updateTemplates('coverPageLayout', value)}>
+                  <Select
+                    value={profile.templates.coverPageLayout}
+                    onValueChange={(value) => updateTemplates('coverPageLayout', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -600,7 +655,10 @@ export default function BrandManager({
 
                 <div>
                   <Label>Header Style</Label>
-                  <Select value={profile.templates.headerStyle} onValueChange={(value) => updateTemplates('headerStyle', value)}>
+                  <Select
+                    value={profile.templates.headerStyle}
+                    onValueChange={(value) => updateTemplates('headerStyle', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -647,13 +705,25 @@ export default function BrandManager({
                         <Label className="text-xs capitalize w-16">{key}</Label>
                         {url ? (
                           <div className="flex items-center gap-2 flex-1">
-                            <OptimizedImage src={url} alt={key} className="h-8 w-8 object-contain border rounded" />
-                            <Button size="sm" variant="outline" onClick={() => handleLogoUpload(key as any)}>
+                            <OptimizedImage
+                              src={url}
+                              alt={key}
+                              className="h-8 w-8 object-contain border rounded"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleLogoUpload(key as any)}
+                            >
                               Change
                             </Button>
                           </div>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={() => handleLogoUpload(key as any)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleLogoUpload(key as any)}
+                          >
                             <Upload className="h-3 w-3 mr-1" />
                             Upload
                           </Button>
@@ -661,7 +731,11 @@ export default function BrandManager({
                       </div>
                     ))}
                     {!profile.logos.primary && (
-                      <Button size="sm" variant="outline" onClick={() => handleLogoUpload('primary')}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleLogoUpload('primary')}
+                      >
                         <Plus className="h-3 w-3 mr-1" />
                         Add Primary Logo
                       </Button>
@@ -671,7 +745,10 @@ export default function BrandManager({
 
                 <div>
                   <Label>Section Dividers</Label>
-                  <Select value={profile.templates.sectionDividers} onValueChange={(value) => updateTemplates('sectionDividers', value)}>
+                  <Select
+                    value={profile.templates.sectionDividers}
+                    onValueChange={(value) => updateTemplates('sectionDividers', value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -693,7 +770,14 @@ export default function BrandManager({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setProfile({ ...defaultBrandProfile, id: profile.id, createdAt: profile.createdAt, updatedAt: new Date().toISOString() })}
+              onClick={() =>
+                setProfile({
+                  ...defaultBrandProfile,
+                  id: profile.id,
+                  createdAt: profile.createdAt,
+                  updatedAt: new Date().toISOString(),
+                })
+              }
               className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
@@ -760,9 +844,10 @@ export default function BrandManager({
             className="bg-white shadow-lg mx-auto transition-all duration-300"
             style={{
               width: '100%',
-              maxWidth: previewMode === 'desktop' ? '794px' : previewMode === 'tablet' ? '600px' : '375px',
+              maxWidth:
+                previewMode === 'desktop' ? '794px' : previewMode === 'tablet' ? '600px' : '375px',
               minHeight: '400px',
-              ...previewStyles
+              ...previewStyles,
             }}
           >
             {/* Header Preview */}
@@ -770,22 +855,22 @@ export default function BrandManager({
               className="border-b mb-6 flex items-center justify-between"
               style={{
                 height: `${profile.layout.headerHeight}px`,
-                borderColor: profile.colors.muted
+                borderColor: profile.colors.muted,
               }}
             >
               {profile.logos.primary && (
-                <OptimizedImage 
-                  src={profile.logos.primary} 
-                  alt="Logo" 
+                <OptimizedImage
+                  src={profile.logos.primary}
+                  alt="Logo"
                   className="h-12 object-contain"
                 />
               )}
               <div className="text-right">
-                <h3 
-                  style={{ 
+                <h3
+                  style={{
                     fontFamily: profile.typography.headingFont,
                     fontSize: `${profile.typography.baseFontSize * profile.typography.headingScale}px`,
-                    color: profile.colors.primary
+                    color: profile.colors.primary,
                   }}
                 >
                   Company Name
@@ -804,7 +889,7 @@ export default function BrandManager({
                   fontSize: `${profile.typography.baseFontSize * Math.pow(profile.typography.headingScale, 3)}px`,
                   color: profile.colors.primary,
                   marginBottom: '16px',
-                  letterSpacing: `${profile.typography.letterSpacing}px`
+                  letterSpacing: `${profile.typography.letterSpacing}px`,
                 }}
               >
                 Proposal Title
@@ -821,14 +906,15 @@ export default function BrandManager({
                   fontSize: `${profile.typography.baseFontSize * Math.pow(profile.typography.headingScale, 2)}px`,
                   color: profile.colors.text,
                   marginBottom: '12px',
-                  letterSpacing: `${profile.typography.letterSpacing}px`
+                  letterSpacing: `${profile.typography.letterSpacing}px`,
                 }}
               >
                 Section Heading
               </h2>
               <p style={{ lineHeight: profile.typography.lineHeight }}>
-                This is a sample paragraph showing how your body text will appear with the selected typography settings. 
-                The font family, size, line height, and letter spacing all work together to create a cohesive reading experience.
+                This is a sample paragraph showing how your body text will appear with the selected
+                typography settings. The font family, size, line height, and letter spacing all work
+                together to create a cohesive reading experience.
               </p>
             </div>
 
@@ -839,7 +925,7 @@ export default function BrandManager({
                   fontFamily: profile.typography.headingFont,
                   fontSize: `${profile.typography.baseFontSize * profile.typography.headingScale}px`,
                   color: profile.colors.text,
-                  marginBottom: '12px'
+                  marginBottom: '12px',
                 }}
               >
                 Color Palette
@@ -849,7 +935,10 @@ export default function BrandManager({
                   <div key={name} className="text-center">
                     <div
                       className="w-12 h-12 rounded mb-1"
-                      style={{ backgroundColor: color, borderRadius: `${profile.styling.borderRadius}px` }}
+                      style={{
+                        backgroundColor: color,
+                        borderRadius: `${profile.styling.borderRadius}px`,
+                      }}
                     />
                     <div className="text-xs capitalize" style={{ color: profile.colors.muted }}>
                       {name}
@@ -867,7 +956,7 @@ export default function BrandManager({
                     fontFamily: profile.typography.headingFont,
                     fontSize: `${profile.typography.baseFontSize * profile.typography.headingScale}px`,
                     color: profile.colors.text,
-                    marginBottom: '12px'
+                    marginBottom: '12px',
                   }}
                 >
                   Gradients
@@ -879,7 +968,7 @@ export default function BrandManager({
                       className="h-8 rounded"
                       style={{
                         background: `linear-gradient(${gradient.direction}, ${gradient.colors.join(', ')})`,
-                        borderRadius: `${profile.styling.borderRadius}px`
+                        borderRadius: `${profile.styling.borderRadius}px`,
                       }}
                     />
                   ))}
@@ -893,7 +982,7 @@ export default function BrandManager({
               style={{
                 height: `${profile.layout.footerHeight}px`,
                 color: profile.colors.muted,
-                borderColor: profile.colors.muted
+                borderColor: profile.colors.muted,
               }}
             >
               <span>© 2024 Company Name. All rights reserved.</span>

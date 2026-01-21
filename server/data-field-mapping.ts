@@ -14,12 +14,12 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     primaryContactEmail: 'primary_contact_email',
     primaryContactPhone: 'primary_contact_phone',
     primaryContactTitle: 'primary_contact_title',
-    
+
     // Contact Information
     billingContactName: 'billing_contact_name',
     billingContactEmail: 'billing_contact_email',
     billingContactPhone: 'billing_contact_phone',
-    
+
     // Address Information
     addressLine1: 'address_line1',
     addressLine2: 'address_line2',
@@ -29,7 +29,7 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     billingCity: 'billing_city',
     billingState: 'billing_state',
     billingPostalCode: 'billing_zip_code',
-    
+
     // Financial Information
     estimatedDealValue: 'estimated_amount',
     creditLimit: 'credit_limit',
@@ -37,29 +37,29 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     billingTerms: 'billing_terms',
     taxExempt: 'tax_exempt',
     taxId: 'tax_id',
-    
+
     // Lead/Sales Information
     leadSource: 'source',
     salesStage: 'sales_stage',
     interestLevel: 'interest_level',
     leadScore: 'lead_score',
     closeDate: 'close_date',
-    
+
     // Customer Information
     customerNumber: 'customer_number',
     customerSince: 'customer_since',
     customerTier: 'customer_tier',
     currentBalance: 'current_balance',
-    
+
     // Service Information
     preferredTechnician: 'preferred_technician',
     lastServiceDate: 'last_service_date',
     nextScheduledService: 'next_scheduled_service',
-    
+
     // Tracking Information
     lastContactDate: 'last_contact_date',
     nextFollowUpDate: 'next_follow_up_date',
-    
+
     // Record Management
     recordType: 'record_type',
     status: 'status',
@@ -67,27 +67,27 @@ export const BUSINESS_RECORDS_FIELD_MAP = {
     ownerId: 'owner_id',
     assignedSalesRep: 'assigned_sales_rep',
     territory: 'territory',
-    
+
     // URL and Display Fields
     urlSlug: 'url_slug',
     companyDisplayId: 'company_display_id',
-    
+
     // External System Fields
     externalCustomerId: 'external_customer_id',
     externalSystemId: 'external_system_id',
     migrationStatus: 'migration_status',
     lastSyncDate: 'last_sync_date',
     externalData: 'external_data',
-    
+
     // Timestamps
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     createdBy: 'created_by',
-    convertedBy: 'converted_by'
+    convertedBy: 'converted_by',
   },
-  
+
   // Database -> Frontend mapping (reverse)
-  dbToFrontend: {} as Record<string, string>
+  dbToFrontend: {} as Record<string, string>,
 };
 
 // Auto-generate reverse mapping
@@ -117,9 +117,9 @@ export const EQUIPMENT_FIELD_MAP = {
     currentMeterReading: 'current_meter_reading',
     previousMeterReading: 'previous_meter_reading',
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
   },
-  dbToFrontend: {} as Record<string, string>
+  dbToFrontend: {} as Record<string, string>,
 };
 
 // Auto-generate reverse mapping for equipment
@@ -149,9 +149,9 @@ export const SERVICE_TICKET_FIELD_MAP = {
     followUpRequired: 'follow_up_required',
     followUpDate: 'follow_up_date',
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
   },
-  dbToFrontend: {} as Record<string, string>
+  dbToFrontend: {} as Record<string, string>,
 };
 
 // Auto-generate reverse mapping for service tickets
@@ -164,15 +164,15 @@ Object.entries(SERVICE_TICKET_FIELD_MAP.frontendToDb).forEach(([frontend, db]) =
  */
 export function transformFrontendToDb<T extends Record<string, any>>(
   data: T,
-  fieldMap: typeof BUSINESS_RECORDS_FIELD_MAP.frontendToDb
+  fieldMap: typeof BUSINESS_RECORDS_FIELD_MAP.frontendToDb,
 ): Record<string, any> {
   const transformed: Record<string, any> = {};
-  
+
   Object.entries(data).forEach(([key, value]) => {
     const dbKey = fieldMap[key] || key;
     transformed[dbKey] = value;
   });
-  
+
   return transformed;
 }
 
@@ -181,15 +181,15 @@ export function transformFrontendToDb<T extends Record<string, any>>(
  */
 export function transformDbToFrontend<T extends Record<string, any>>(
   data: T,
-  fieldMap: typeof BUSINESS_RECORDS_FIELD_MAP.dbToFrontend
+  fieldMap: typeof BUSINESS_RECORDS_FIELD_MAP.dbToFrontend,
 ): Record<string, any> {
   const transformed: Record<string, any> = {};
-  
+
   Object.entries(data).forEach(([key, value]) => {
     const frontendKey = fieldMap[key] || key;
     transformed[frontendKey] = value;
   });
-  
+
   return transformed;
 }
 
@@ -197,65 +197,65 @@ export function transformDbToFrontend<T extends Record<string, any>>(
  * Business Records specific transformers
  */
 export const BusinessRecordsTransformer = {
-  toDb: (data: Record<string, any>) => 
+  toDb: (data: Record<string, any>) =>
     transformFrontendToDb(data, BUSINESS_RECORDS_FIELD_MAP.frontendToDb),
-  
-  toFrontend: (data: Record<string, any>) => 
+
+  toFrontend: (data: Record<string, any>) =>
     transformDbToFrontend(data, BUSINESS_RECORDS_FIELD_MAP.dbToFrontend),
-  
+
   // Handle record type conversion from frontend format
   normalizeRecordType: (recordType: string): 'lead' | 'customer' => {
     const normalized = recordType.toLowerCase();
     return normalized === 'customer' ? 'customer' : 'lead';
   },
-  
+
   // Handle status conversion with proper lead-to-customer lifecycle
   normalizeStatus: (status: string, recordType: 'lead' | 'customer'): string => {
     const statusMap = {
       lead: {
-        'new': 'new',
-        'contacted': 'contacted', 
-        'qualified': 'qualified',
-        'proposal': 'proposal_sent',
-        'proposal_sent': 'proposal_sent',
-        'negotiating': 'negotiating',
-        'closed_won': 'active', // Convert to customer
-        'closed_lost': 'lost'
+        new: 'new',
+        contacted: 'contacted',
+        qualified: 'qualified',
+        proposal: 'proposal_sent',
+        proposal_sent: 'proposal_sent',
+        negotiating: 'negotiating',
+        closed_won: 'active', // Convert to customer
+        closed_lost: 'lost',
       },
       customer: {
-        'active': 'active',
-        'inactive': 'inactive',
-        'churned': 'churned',
-        'expired': 'expired',
-        'competitor_switch': 'competitor_switch',
-        'non_payment': 'non_payment'
-      }
+        active: 'active',
+        inactive: 'inactive',
+        churned: 'churned',
+        expired: 'expired',
+        competitor_switch: 'competitor_switch',
+        non_payment: 'non_payment',
+      },
     };
-    
+
     return statusMap[recordType][status.toLowerCase()] || status;
-  }
+  },
 };
 
 /**
  * Equipment specific transformers
  */
 export const EquipmentTransformer = {
-  toDb: (data: Record<string, any>) => 
+  toDb: (data: Record<string, any>) =>
     transformFrontendToDb(data, EQUIPMENT_FIELD_MAP.frontendToDb),
-  
-  toFrontend: (data: Record<string, any>) => 
-    transformDbToFrontend(data, EQUIPMENT_FIELD_MAP.dbToFrontend)
+
+  toFrontend: (data: Record<string, any>) =>
+    transformDbToFrontend(data, EQUIPMENT_FIELD_MAP.dbToFrontend),
 };
 
 /**
  * Service Ticket specific transformers
  */
 export const ServiceTicketTransformer = {
-  toDb: (data: Record<string, any>) => 
+  toDb: (data: Record<string, any>) =>
     transformFrontendToDb(data, SERVICE_TICKET_FIELD_MAP.frontendToDb),
-  
-  toFrontend: (data: Record<string, any>) => 
-    transformDbToFrontend(data, SERVICE_TICKET_FIELD_MAP.dbToFrontend)
+
+  toFrontend: (data: Record<string, any>) =>
+    transformDbToFrontend(data, SERVICE_TICKET_FIELD_MAP.dbToFrontend),
 };
 
 /**
@@ -289,10 +289,10 @@ export const ExternalSystemHelpers = {
       CustomerNumber: businessRecord.customer_number,
       // Add external system tracking
       ExternalCustomerId: businessRecord.external_customer_id,
-      LastSyncDate: new Date().toISOString()
+      LastSyncDate: new Date().toISOString(),
     };
   },
-  
+
   // Prepare data for Salesforce sync
   prepareForSalesforce: (businessRecord: Record<string, any>) => {
     return {
@@ -324,7 +324,7 @@ export const ExternalSystemHelpers = {
       UpsellOpportunity__c: businessRecord.upsell_opportunity,
       // External system tracking
       ExternalId__c: businessRecord.external_customer_id,
-      LastSyncDate__c: new Date().toISOString()
+      LastSyncDate__c: new Date().toISOString(),
     };
-  }
+  },
 };

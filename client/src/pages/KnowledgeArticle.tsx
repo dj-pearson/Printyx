@@ -1,6 +1,6 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useRoute, Link } from "wouter";
-import { 
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useRoute, Link } from 'wouter';
+import {
   ArrowLeft,
   Clock,
   Calendar,
@@ -9,15 +9,15 @@ import {
   Share2,
   BookmarkPlus,
   ChevronRight,
-  BookOpen
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+  BookOpen,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 
 interface Article {
   id: string;
@@ -47,35 +47,35 @@ interface TableOfContentsItem {
 }
 
 export default function KnowledgeArticle() {
-  const [, params] = useRoute("/knowledge-base/article/:slug");
+  const [, params] = useRoute('/knowledge-base/article/:slug');
   const slug = params?.slug;
   const { toast } = useToast();
   const [feedbackGiven, setFeedbackGiven] = useState(false);
 
   const { data: article, isLoading } = useQuery<Article>({
-    queryKey: ["/api/knowledge-base/articles", slug],
+    queryKey: ['/api/knowledge-base/articles', slug],
     enabled: !!slug,
   });
 
   const feedbackMutation = useMutation({
     mutationFn: async (helpful: boolean) => {
-      return apiRequest("POST", `/api/knowledge-base/articles/${slug}/feedback`, {
+      return apiRequest('POST', `/api/knowledge-base/articles/${slug}/feedback`, {
         helpful,
       });
     },
     onSuccess: () => {
       setFeedbackGiven(true);
-      queryClient.invalidateQueries({ queryKey: ["/api/knowledge-base/articles", slug] });
+      queryClient.invalidateQueries({ queryKey: ['/api/knowledge-base/articles', slug] });
       toast({
-        title: "Thank you for your feedback!",
-        description: "Your feedback helps us improve our documentation.",
+        title: 'Thank you for your feedback!',
+        description: 'Your feedback helps us improve our documentation.',
       });
     },
   });
 
   const extractTableOfContents = (content: any): TableOfContentsItem[] => {
     if (!content || !Array.isArray(content)) return [];
-    
+
     return content
       .filter((section: any) => section.type === 'heading')
       .map((section: any, index: number) => ({
@@ -87,10 +87,10 @@ export default function KnowledgeArticle() {
 
   const getDifficultyColor = (level: string) => {
     const colors: Record<string, string> = {
-      beginner: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      intermediate: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      advanced: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-      expert: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      beginner: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      intermediate: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      advanced: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      expert: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     };
     return colors[level] || colors.beginner;
   };
@@ -114,7 +114,9 @@ export default function KnowledgeArticle() {
       <div className="p-8 bg-white dark:bg-gray-900">
         <div className="max-w-5xl mx-auto text-center">
           <BookOpen className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" />
-          <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Article Not Found</h1>
+          <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+            Article Not Found
+          </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             The article you're looking for doesn't exist or has been removed.
           </p>
@@ -137,9 +139,9 @@ export default function KnowledgeArticle() {
       <div className="bg-gradient-to-b from-blue-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-5xl mx-auto px-8 py-8">
           <Link href="/knowledge-base">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               data-testid="button-back"
               className="mb-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             >
@@ -152,21 +154,25 @@ export default function KnowledgeArticle() {
             <Badge className={getDifficultyColor(article.difficultyLevel)}>
               {article.difficultyLevel}
             </Badge>
-            <Badge variant="outline" className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+            <Badge
+              variant="outline"
+              className="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
               {article.contentType}
             </Badge>
             <span className="text-gray-400 dark:text-gray-600">•</span>
             <span className="text-sm text-gray-600 dark:text-gray-400">{article.categoryName}</span>
           </div>
 
-          <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white" data-testid="text-article-title">
+          <h1
+            className="text-4xl font-bold mb-4 text-gray-900 dark:text-white"
+            data-testid="text-article-title"
+          >
             {article.title}
           </h1>
 
           {article.excerpt && (
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">
-              {article.excerpt}
-            </p>
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-6">{article.excerpt}</p>
           )}
 
           <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
@@ -176,9 +182,7 @@ export default function KnowledgeArticle() {
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
-              <span>
-                Updated {new Date(article.updatedAt).toLocaleDateString()}
-              </span>
+              <span>Updated {new Date(article.updatedAt).toLocaleDateString()}</span>
             </div>
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -196,9 +200,7 @@ export default function KnowledgeArticle() {
             <aside className="lg:col-span-1">
               <Card className="sticky top-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                 <CardContent className="pt-6">
-                  <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">
-                    On this page
-                  </h3>
+                  <h3 className="font-semibold mb-4 text-gray-900 dark:text-white">On this page</h3>
                   <nav className="space-y-2">
                     {toc.map((item) => (
                       <a
@@ -219,10 +221,10 @@ export default function KnowledgeArticle() {
           )}
 
           {/* Article Content */}
-          <div className={toc.length > 0 ? "lg:col-span-3" : "lg:col-span-4"}>
+          <div className={toc.length > 0 ? 'lg:col-span-3' : 'lg:col-span-4'}>
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <CardContent className="pt-8">
-                <div 
+                <div
                   data-testid="content-article-body"
                   className="prose prose-lg dark:prose-invert max-w-none
                     prose-headings:text-gray-900 dark:prose-headings:text-white
@@ -244,8 +246,8 @@ export default function KnowledgeArticle() {
                   <h3 className="font-semibold mb-3 text-gray-900 dark:text-white">Tags</h3>
                   <div className="flex flex-wrap gap-2">
                     {article.tags.map((tag, index) => (
-                      <Badge 
-                        key={index} 
+                      <Badge
+                        key={index}
                         variant="secondary"
                         className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                       >
@@ -264,9 +266,7 @@ export default function KnowledgeArticle() {
                   Was this article helpful?
                 </h3>
                 {feedbackGiven ? (
-                  <p className="text-green-600 dark:text-green-400">
-                    Thank you for your feedback!
-                  </p>
+                  <p className="text-green-600 dark:text-green-400">Thank you for your feedback!</p>
                 ) : (
                   <div className="flex gap-3">
                     <Button
@@ -293,8 +293,8 @@ export default function KnowledgeArticle() {
                 )}
                 <Separator className="my-4 bg-gray-200 dark:bg-gray-700" />
                 <div className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     data-testid="button-share"
                     className="text-gray-600 dark:text-gray-400"
@@ -302,8 +302,8 @@ export default function KnowledgeArticle() {
                     <Share2 className="h-4 w-4 mr-2" />
                     Share
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     data-testid="button-bookmark"
                     className="text-gray-600 dark:text-gray-400"
@@ -325,7 +325,7 @@ export default function KnowledgeArticle() {
                   <div className="space-y-3">
                     {article.relatedArticles.map((related: any) => (
                       <Link key={related.id} href={`/knowledge-base/article/${related.slug}`}>
-                        <div 
+                        <div
                           data-testid={`link-related-${related.slug}`}
                           className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                         >

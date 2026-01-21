@@ -13,6 +13,7 @@ The CSV import wizard was showing 404 errors and imported records weren't being 
 ## Solutions Implemented
 
 ### 1. Fixed Route Parsing (First Commit)
+
 - Added logic to remove the `/import` prefix from path parsing
 - Updated all route checks to use correct array indices (`pathParts[0]` instead of `pathParts[1]`)
 - Fixed endpoints:
@@ -23,33 +24,41 @@ The CSV import wizard was showing 404 errors and imported records weren't being 
   - ✅ GET `/import/jobs/:jobId`
 
 ### 2. Added Missing Routes (Second Commit)
+
 - ✅ POST `/import/jobs/:jobId/validate` - Validates uploaded data
 - ✅ GET `/import/jobs/:jobId/duplicates` - Returns duplicate records
 - ✅ POST `/import/jobs/:jobId/duplicates/resolve-all` - Resolves all duplicates
 - ✅ POST `/import/jobs/:jobId/execute` - Executes the import (initially with mock data)
 
 ### 3. Implemented Real Database Insertion (Third Commit)
+
 Added full import functionality:
 
 #### In-Memory Job Storage
+
 ```typescript
 const importJobs = new Map<string, any>();
 ```
+
 - Stores upload data, mappings, and progress
 - Persists across the import workflow steps
 
 #### Enhanced Upload Handler
+
 - Stores all CSV rows (not just preview)
 - Saves job data including headers, mappings, and tenant context
 - Returns job ID for tracking
 
 #### Real Validation
+
 - Retrieves job from memory
 - Updates job status to 'validated'
 - Returns actual row counts
 
 #### Database Insertion
+
 The execute endpoint now:
+
 1. Retrieves job data from memory
 2. Processes each CSV row
 3. Maps CSV columns to database fields
@@ -60,6 +69,7 @@ The execute endpoint now:
    - Record metadata (timestamps, status, etc.)
 
 #### Enhanced Salesforce Mapping
+
 Added intelligent field mapping for common Salesforce exports:
 
 ```typescript
@@ -79,7 +89,9 @@ const sfAliases: Record<string, string> = {
 This automatically maps Salesforce field names to your database schema.
 
 #### Flexible Data Mapping
+
 The insertion logic handles multiple column name variations:
+
 - `companyName` OR `businessName`
 - `primaryContactName` OR combines `firstName` + `lastName`
 - `address` OR `mailingStreet` OR `billingStreet`
@@ -111,6 +123,7 @@ The insertion logic handles multiple column name variations:
 ## What Gets Imported
 
 From your CSV file:
+
 - **Company**: BILD INTERNATIONAL
 - **5 Contacts**:
   - Matt Olson
@@ -127,6 +140,7 @@ From your CSV file:
 ## Technical Details
 
 ### Database Schema Used
+
 ```sql
 INSERT INTO business_records (
   tenant_id,
@@ -153,17 +167,19 @@ INSERT INTO business_records (
 ```
 
 ### Error Handling
+
 - Validates job exists before processing
 - Catches and logs individual row errors
 - Continues processing even if some rows fail
 - Returns counts of imported vs. skipped rows
 
 ### Limitations
+
 - **In-Memory Storage**: Job data is stored in memory, so it's lost if edge function restarts
   - For production: Move to database table (`import_jobs`)
 - **No Duplicate Detection**: Currently skipped for simplicity
   - Can be added by querying existing records before insert
-- **Single Entity Type**: Only handles `business_records` 
+- **Single Entity Type**: Only handles `business_records`
   - Can extend to `contacts`, `products`, etc.
 
 ## Next Steps (Optional Improvements)

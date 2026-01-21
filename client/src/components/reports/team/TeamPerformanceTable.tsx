@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -27,7 +34,7 @@ export default function TeamPerformanceTable({ comparison, summary }: TeamPerfor
     return [...comparison].sort((a, b) => {
       const aVal = a[sortBy];
       const bVal = b[sortBy];
-      return sortOrder === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+      return sortOrder === 'asc' ? (aVal > bVal ? 1 : -1) : aVal < bVal ? 1 : -1;
     });
   }, [comparison, sortBy, sortOrder]);
 
@@ -69,7 +76,10 @@ export default function TeamPerformanceTable({ comparison, summary }: TeamPerfor
               <TableHead className="cursor-pointer" onClick={() => handleSort('averageDealSize')}>
                 Avg Deal {sortBy === 'averageDealSize' && (sortOrder === 'desc' ? '↓' : '↑')}
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort('activitiesThisWeek')}>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort('activitiesThisWeek')}
+              >
                 Activities {sortBy === 'activitiesThisWeek' && (sortOrder === 'desc' ? '↓' : '↑')}
               </TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort('quotaAttainment')}>
@@ -96,7 +106,15 @@ export default function TeamPerformanceTable({ comparison, summary }: TeamPerfor
                 <TableCell>{formatCurrency(member.averageDealSize)}</TableCell>
                 <TableCell>{member.activitiesThisWeek}</TableCell>
                 <TableCell>
-                  <Badge variant={member.quotaAttainment >= 100 ? 'success' : member.quotaAttainment >= 80 ? 'default' : 'destructive' as any}>
+                  <Badge
+                    variant={
+                      member.quotaAttainment >= 100
+                        ? 'success'
+                        : member.quotaAttainment >= 80
+                          ? 'default'
+                          : ('destructive' as any)
+                    }
+                  >
                     {member.quotaAttainment.toFixed(0)}%
                   </Badge>
                 </TableCell>

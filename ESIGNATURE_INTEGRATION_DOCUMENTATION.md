@@ -29,12 +29,14 @@ The E-Signature Integration System is a provider-agnostic platform integration t
 ### Key Features
 
 ✅ **Multi-Provider Support**
+
 - DocuSign (primary)
 - Adobe Sign
 - HelloSign (Dropbox Sign)
 - Extensible architecture for additional providers
 
 ✅ **Complete Document Lifecycle**
+
 - Create and send signature requests
 - Track signing progress in real-time
 - Manage multiple signers per document
@@ -43,12 +45,14 @@ The E-Signature Integration System is a provider-agnostic platform integration t
 - Audit trail and compliance logging
 
 ✅ **Dealer Self-Service**
+
 - Configure integration credentials via UI
 - Health monitoring for integrations
 - Sandbox/production mode support
 - OAuth token management
 
 ✅ **Comprehensive Data Model**
+
 - 5 database tables with full relationships
 - Tenant isolation for multi-tenancy
 - Complete audit logging
@@ -104,6 +108,7 @@ The system uses a **provider-agnostic design**:
 ### Integration Pattern
 
 **Platform-Level Integration:**
+
 - Printyx provides the infrastructure (database, API, UI)
 - Dealers bring their own credentials
 - No platform-wide API keys required
@@ -124,7 +129,7 @@ Stores dealer-configured e-signature service credentials.
   provider: varchar ('docusign' | 'adobe_sign' | 'hellosign')
   integrationName: varchar
   status: varchar ('active' | 'inactive' | 'error')
-  
+
   // API Credentials
   apiKey: varchar (encrypted)
   apiSecret?: varchar (encrypted)
@@ -132,16 +137,16 @@ Stores dealer-configured e-signature service credentials.
   refreshToken?: varchar (encrypted)
   tokenExpiry?: timestamp
   accountId?: varchar
-  
+
   // Configuration
   sandboxMode: boolean (default: false)
   config?: jsonb (provider-specific settings)
-  
+
   // Health Monitoring
   healthStatus?: varchar ('healthy' | 'degraded' | 'unhealthy' | 'unknown')
   lastHealthCheck?: timestamp
   healthCheckError?: text
-  
+
   // Metadata
   createdAt: timestamp
   updatedAt: timestamp
@@ -149,11 +154,13 @@ Stores dealer-configured e-signature service credentials.
 ```
 
 **Indexes:**
+
 - `idx_integration_credentials_tenant` (tenantId)
 - `idx_integration_credentials_provider` (tenantId, provider)
 - `idx_integration_credentials_status` (status)
 
 **Constraints:**
+
 - Unique: (tenantId, integrationName)
 
 ---
@@ -167,45 +174,45 @@ Main table for signature requests/envelopes.
   id: varchar (UUID, Primary Key)
   tenantId: varchar (Foreign Key → tenants.id)
   requestNumber: varchar (unique per tenant, e.g., "SIG-2025-001")
-  
+
   // Request Details
   title: varchar
   description?: text
-  
+
   // Related Records
   customerId?: varchar (Foreign Key → business_records.id)
   leaseId?: varchar (Foreign Key → leases.id)
   contractId?: varchar (Foreign Key → contracts.id)
   serviceTicketId?: varchar (Foreign Key → service_tickets.id)
-  
+
   // Provider Integration
   provider: varchar ('docusign' | 'adobe_sign' | 'hellosign')
   integrationId: varchar (Foreign Key → integration_credentials.id)
   externalId?: varchar (provider's envelope/request ID)
-  
+
   // Status & Tracking
-  status: varchar ('draft' | 'sent' | 'delivered' | 'signed' | 
+  status: varchar ('draft' | 'sent' | 'delivered' | 'signed' |
                    'completed' | 'declined' | 'voided' | 'expired')
   sentAt?: timestamp
   completedAt?: timestamp
   declinedAt?: timestamp
   voidedAt?: timestamp
   expiresAt?: timestamp
-  
+
   // Email Configuration
   emailSubject?: varchar
   emailMessage?: text
   reminderEnabled: boolean (default: true)
   reminderDays?: integer
-  
+
   // Signing Configuration
   sequentialSigning: boolean (default: false)
-  
+
   // Progress Tracking
   totalSigners: integer
   signersCompleted: integer
   totalDocuments: integer
-  
+
   // Metadata
   declinedReason?: text
   voidedReason?: text
@@ -215,6 +222,7 @@ Main table for signature requests/envelopes.
 ```
 
 **Indexes:**
+
 - `idx_signature_requests_tenant` (tenantId)
 - `idx_signature_requests_number` (tenantId, requestNumber) UNIQUE
 - `idx_signature_requests_customer` (customerId)
@@ -233,27 +241,27 @@ Tracks individual signers for each request.
   id: varchar (UUID, Primary Key)
   tenantId: varchar (Foreign Key → tenants.id)
   requestId: varchar (Foreign Key → signature_requests.id)
-  
+
   // Signer Information
   signerOrder: integer
   signerType: varchar ('signer' | 'approver' | 'cc' | 'witness')
   name: varchar
   email: varchar
-  
+
   // Status & Tracking
-  status: varchar ('pending' | 'sent' | 'delivered' | 'viewed' | 
+  status: varchar ('pending' | 'sent' | 'delivered' | 'viewed' |
                    'signed' | 'declined')
   sentAt?: timestamp
   deliveredAt?: timestamp
   viewedAt?: timestamp
   signedAt?: timestamp
   declinedAt?: timestamp
-  
+
   // Signature Details
   signatureMethod?: varchar ('drawn' | 'typed' | 'uploaded' | 'digital_certificate')
   ipAddress?: varchar
   declineReason?: text
-  
+
   // Metadata
   createdAt: timestamp
   updatedAt: timestamp
@@ -261,6 +269,7 @@ Tracks individual signers for each request.
 ```
 
 **Indexes:**
+
 - `idx_signature_signers_tenant` (tenantId)
 - `idx_signature_signers_request` (requestId)
 - `idx_signature_signers_email` (email)
@@ -277,23 +286,23 @@ Individual documents within a signature request.
   id: varchar (UUID, Primary Key)
   tenantId: varchar (Foreign Key → tenants.id)
   requestId: varchar (Foreign Key → signature_requests.id)
-  
+
   // Document Information
   documentOrder: integer
   documentName: varchar
   documentType: varchar ('pdf' | 'docx' | 'html')
-  
+
   // File Storage
   originalFileUrl?: varchar
   signedFileUrl?: varchar (completed document)
   certificateUrl?: varchar (certificate of completion)
   fileSize?: integer (bytes)
-  
+
   // Status & Tracking
   status: varchar ('pending' | 'processing' | 'completed' | 'error')
   totalFields?: integer (signature/initial fields)
   completedFields?: integer
-  
+
   // Metadata
   createdAt: timestamp
   updatedAt: timestamp
@@ -301,6 +310,7 @@ Individual documents within a signature request.
 ```
 
 **Indexes:**
+
 - `idx_signature_documents_tenant` (tenantId)
 - `idx_signature_documents_request` (requestId)
 - `idx_signature_documents_status` (status)
@@ -318,30 +328,31 @@ Complete audit trail for compliance and tracking.
   requestId: varchar (Foreign Key → signature_requests.id)
   signerId?: varchar (Foreign Key → signature_signers.id)
   documentId?: varchar (Foreign Key → signature_documents.id)
-  
+
   // Event Information
-  eventType: varchar ('request_created' | 'sent' | 'delivered' | 'viewed' | 
-                      'signed' | 'declined' | 'voided' | 'completed' | 
-                      'reminder_sent' | 'expired' | 'document_uploaded' | 
+  eventType: varchar ('request_created' | 'sent' | 'delivered' | 'viewed' |
+                      'signed' | 'declined' | 'voided' | 'completed' |
+                      'reminder_sent' | 'expired' | 'document_uploaded' |
                       'field_updated' | 'webhook_received')
   eventDescription: text
-  
+
   // Actor Information
   actorType: varchar ('user' | 'signer' | 'system' | 'webhook')
   actorName?: varchar
   actorEmail?: varchar
-  
+
   // Additional Context
   ipAddress?: varchar
   userAgent?: varchar
   metadata?: jsonb
-  
+
   // Timestamp
   createdAt: timestamp (indexed)
 }
 ```
 
 **Indexes:**
+
 - `idx_signature_audit_logs_tenant` (tenantId)
 - `idx_signature_audit_logs_request` (requestId)
 - `idx_signature_audit_logs_signer` (signerId)
@@ -422,6 +433,7 @@ createBatchSignatureAuditLogs(data[]): Promise<SignatureAuditLog[]>
 ```
 
 **All methods include:**
+
 - Tenant isolation for security
 - Type safety with TypeScript
 - Error handling
@@ -580,6 +592,7 @@ POST   /api/signatures/webhooks/hellosign
 ```
 
 **All endpoints:**
+
 - Require authentication (`req.session.user`)
 - Enforce tenant isolation
 - Return proper HTTP status codes
@@ -597,17 +610,20 @@ POST   /api/signatures/webhooks/hellosign
 Select one of the supported e-signature providers:
 
 **DocuSign** (Recommended)
+
 - Industry leader
 - Most features
 - Best API documentation
 - Pricing: ~$25-45/user/month
 
 **Adobe Sign**
+
 - Strong document workflows
 - Good Adobe ecosystem integration
 - Pricing: ~$20-40/user/month
 
 **HelloSign (Dropbox Sign)**
+
 - Simple, user-friendly
 - Good for small teams
 - Pricing: ~$15-30/user/month
@@ -615,18 +631,21 @@ Select one of the supported e-signature providers:
 #### Step 2: Get API Credentials
 
 **DocuSign:**
+
 1. Sign up at https://developers.docusign.com
 2. Create an integration key
 3. Note your Account ID and API Key
 4. Configure OAuth (if using production)
 
 **Adobe Sign:**
+
 1. Log in to Adobe Sign admin
 2. Go to Account → Adobe Sign API
 3. Create integration key
 4. Configure OAuth application
 
 **HelloSign:**
+
 1. Sign up at https://app.hellosign.com/api
 2. Navigate to API → Settings
 3. Generate API key
@@ -647,6 +666,7 @@ Select one of the supported e-signature providers:
 #### Step 4: Start Using
 
 You can now:
+
 - Send leases for signature
 - Send service contracts for signature
 - Track signature progress
@@ -706,22 +726,22 @@ npx tsx server/seed-signature-data.ts
 
 ```sql
 -- Check integration credentials
-SELECT 
-  provider, 
-  integration_name, 
-  status, 
-  health_status 
+SELECT
+  provider,
+  integration_name,
+  status,
+  health_status
 FROM integration_credentials;
 
 -- Check signature requests by status
-SELECT 
-  status, 
-  COUNT(*) as count 
-FROM signature_requests 
+SELECT
+  status,
+  COUNT(*) as count
+FROM signature_requests
 GROUP BY status;
 
 -- Check signer completion rate
-SELECT 
+SELECT
   r.request_number,
   r.total_signers,
   r.signers_completed,
@@ -730,7 +750,7 @@ FROM signature_requests r
 WHERE r.total_signers > 0;
 
 -- Audit trail for a specific request
-SELECT 
+SELECT
   event_type,
   event_description,
   actor_name,
@@ -777,16 +797,19 @@ POST /api/signatures/requests/:id/sync
 ### Data Security
 
 ✅ **Encryption**
+
 - API keys and secrets encrypted at rest
 - All credentials stored securely
 - HTTPS required for all API calls
 
 ✅ **Tenant Isolation**
+
 - Row-level security on all tables
 - Tenant ID required for all queries
 - No cross-tenant data access
 
 ✅ **Audit Logging**
+
 - Complete event history
 - IP address tracking
 - Actor identification
@@ -795,17 +818,20 @@ POST /api/signatures/requests/:id/sync
 ### Compliance
 
 ✅ **ESIGN Act Compliance**
+
 - Complete audit trails
 - Signer identification
 - Document integrity
 - Timestamp accuracy
 
 ✅ **UETA Compliance**
+
 - Electronic record retention
 - Signature authentication
 - Non-repudiation
 
 ✅ **SOC 2 Ready**
+
 - Audit logging
 - Access controls
 - Data encryption
@@ -838,6 +864,7 @@ POST /api/signatures/requests/:id/sync
 ## Future Enhancements
 
 ### Phase 1 (Completed ✅)
+
 - ✅ Database schema design
 - ✅ Storage layer implementation
 - ✅ API routes and endpoints
@@ -846,6 +873,7 @@ POST /api/signatures/requests/:id/sync
 - ✅ Webhook handling
 
 ### Phase 2 (Future)
+
 - ⏳ UI for credential management
 - ⏳ UI for signature request creation
 - ⏳ UI for tracking and monitoring
@@ -853,6 +881,7 @@ POST /api/signatures/requests/:id/sync
 - ⏳ Document preview
 
 ### Phase 3 (Future)
+
 - ⏳ Automated workflows (auto-send after lease creation)
 - ⏳ Template management
 - ⏳ Bulk sending
@@ -860,6 +889,7 @@ POST /api/signatures/requests/:id/sync
 - ⏳ Mobile signing experience
 
 ### Phase 4 (Future)
+
 - ⏳ AI-powered field placement
 - ⏳ Smart document routing
 - ⏳ Predictive completion times
@@ -872,18 +902,21 @@ POST /api/signatures/requests/:id/sync
 ### Provider-Specific Features
 
 **DocuSign:**
+
 - Supports sequential signing
 - Rich field types (text, checkbox, radio, dropdown)
 - Templates and composite templates
 - PowerForms for embedded signing
 
 **Adobe Sign:**
+
 - MegaSign for bulk sending
 - Widget support for reusable forms
 - Library documents
 - Adobe PDF integration
 
 **HelloSign:**
+
 - Simple API design
 - Good for small teams
 - Embedded signing
@@ -892,6 +925,7 @@ POST /api/signatures/requests/:id/sync
 ### Webhook Security
 
 All webhook endpoints should implement:
+
 - Signature verification (HMAC)
 - IP whitelist (optional)
 - Idempotency handling
@@ -900,6 +934,7 @@ All webhook endpoints should implement:
 ### Rate Limiting
 
 Consider implementing rate limits:
+
 - 10 requests/minute per tenant for sending
 - 100 requests/minute for status checks
 - 1000 requests/minute for webhooks
@@ -909,17 +944,21 @@ Consider implementing rate limits:
 ## Support & Resources
 
 ### Printyx Documentation
+
 - This document
 - API endpoint reference
 - Database schema guide
 
 ### Provider Documentation
+
 - [DocuSign API Reference](https://developers.docusign.com/docs/esign-rest-api/)
 - [Adobe Sign API Guide](https://secure.na1.adobesign.com/public/docs/restapi/v6)
 - [HelloSign API Docs](https://developers.hellosign.com/api/reference/)
 
 ### Contact
+
 For questions or support with the E-Signature Integration System:
+
 - Review this documentation
 - Check provider-specific docs
 - Contact Printyx support
@@ -929,6 +968,7 @@ For questions or support with the E-Signature Integration System:
 ## Changelog
 
 ### November 2025 - Initial Release
+
 - Database schema (5 tables)
 - Storage layer (27 methods)
 - API routes (30+ endpoints)

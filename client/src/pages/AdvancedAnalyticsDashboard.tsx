@@ -1,16 +1,10 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import {
   BarChart3,
   TrendingUp,
@@ -29,15 +23,15 @@ import {
   CheckCircle,
   Clock,
   Zap,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -45,8 +39,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { MainLayout } from "@/components/layout/main-layout";
+} from '@/components/ui/dialog';
+import { MainLayout } from '@/components/layout/main-layout';
 
 interface AnalyticsData {
   executiveSummary: {
@@ -221,9 +215,9 @@ interface AnalyticsData {
 
 const getTrendIcon = (trend: string) => {
   switch (trend) {
-    case "up":
+    case 'up':
       return <TrendingUp className="h-4 w-4 text-green-600" />;
-    case "down":
+    case 'down':
       return <TrendingDown className="h-4 w-4 text-red-600" />;
     default:
       return <Activity className="h-4 w-4 text-gray-600" />;
@@ -231,9 +225,9 @@ const getTrendIcon = (trend: string) => {
 };
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
@@ -244,8 +238,8 @@ const formatPercentage = (value: number) => {
 };
 
 export default function AdvancedAnalyticsDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState("last-30-days");
-  const [selectedSegment, setSelectedSegment] = useState("all");
+  const [selectedPeriod, setSelectedPeriod] = useState('last-30-days');
+  const [selectedSegment, setSelectedSegment] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch analytics dashboard data
@@ -254,7 +248,7 @@ export default function AdvancedAnalyticsDashboard() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["/api/analytics/dashboard", selectedPeriod, selectedSegment],
+    queryKey: ['/api/analytics/dashboard', selectedPeriod, selectedSegment],
     select: (data: any) => ({
       ...data,
       customerAnalytics: {
@@ -309,14 +303,8 @@ export default function AdvancedAnalyticsDashboard() {
             </SelectContent>
           </Select>
 
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
-            />
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
 
@@ -335,13 +323,9 @@ export default function AdvancedAnalyticsDashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Total Revenue
-                    </p>
+                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(
-                        analyticsData.executiveSummary.totalRevenue.current
-                      )}
+                      {formatCurrency(analyticsData.executiveSummary.totalRevenue.current)}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -349,26 +333,18 @@ export default function AdvancedAnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
-                  {getTrendIcon(
-                    analyticsData.executiveSummary.totalRevenue.trend
-                  )}
+                  {getTrendIcon(analyticsData.executiveSummary.totalRevenue.trend)}
                   <span
                     className={`ml-2 text-sm font-medium ${
                       analyticsData.executiveSummary.totalRevenue.growth >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
+                        ? 'text-green-600'
+                        : 'text-red-600'
                     }`}
                   >
-                    {analyticsData.executiveSummary.totalRevenue.growth >= 0
-                      ? "+"
-                      : ""}
-                    {formatPercentage(
-                      analyticsData.executiveSummary.totalRevenue.growth
-                    )}
+                    {analyticsData.executiveSummary.totalRevenue.growth >= 0 ? '+' : ''}
+                    {formatPercentage(analyticsData.executiveSummary.totalRevenue.growth)}
                   </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    vs last period
-                  </span>
+                  <span className="text-sm text-gray-500 ml-1">vs last period</span>
                 </div>
               </CardContent>
             </Card>
@@ -377,9 +353,7 @@ export default function AdvancedAnalyticsDashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Active Customers
-                    </p>
+                    <p className="text-sm font-medium text-gray-600">Active Customers</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {analyticsData.executiveSummary.activeCustomers.current.toLocaleString()}
                     </p>
@@ -389,26 +363,18 @@ export default function AdvancedAnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
-                  {getTrendIcon(
-                    analyticsData.executiveSummary.activeCustomers.trend
-                  )}
+                  {getTrendIcon(analyticsData.executiveSummary.activeCustomers.trend)}
                   <span
                     className={`ml-2 text-sm font-medium ${
                       analyticsData.executiveSummary.activeCustomers.growth >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
+                        ? 'text-green-600'
+                        : 'text-red-600'
                     }`}
                   >
-                    {analyticsData.executiveSummary.activeCustomers.growth >= 0
-                      ? "+"
-                      : ""}
-                    {formatPercentage(
-                      analyticsData.executiveSummary.activeCustomers.growth
-                    )}
+                    {analyticsData.executiveSummary.activeCustomers.growth >= 0 ? '+' : ''}
+                    {formatPercentage(analyticsData.executiveSummary.activeCustomers.growth)}
                   </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    vs last period
-                  </span>
+                  <span className="text-sm text-gray-500 ml-1">vs last period</span>
                 </div>
               </CardContent>
             </Card>
@@ -417,9 +383,7 @@ export default function AdvancedAnalyticsDashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Service Tickets
-                    </p>
+                    <p className="text-sm font-medium text-gray-600">Service Tickets</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {analyticsData.executiveSummary.serviceTickets.current.toLocaleString()}
                     </p>
@@ -429,26 +393,18 @@ export default function AdvancedAnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
-                  {getTrendIcon(
-                    analyticsData.executiveSummary.serviceTickets.trend
-                  )}
+                  {getTrendIcon(analyticsData.executiveSummary.serviceTickets.trend)}
                   <span
                     className={`ml-2 text-sm font-medium ${
                       analyticsData.executiveSummary.serviceTickets.growth >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
+                        ? 'text-green-600'
+                        : 'text-red-600'
                     }`}
                   >
-                    {analyticsData.executiveSummary.serviceTickets.growth >= 0
-                      ? "+"
-                      : ""}
-                    {formatPercentage(
-                      analyticsData.executiveSummary.serviceTickets.growth
-                    )}
+                    {analyticsData.executiveSummary.serviceTickets.growth >= 0 ? '+' : ''}
+                    {formatPercentage(analyticsData.executiveSummary.serviceTickets.growth)}
                   </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    vs last period
-                  </span>
+                  <span className="text-sm text-gray-500 ml-1">vs last period</span>
                 </div>
               </CardContent>
             </Card>
@@ -457,13 +413,9 @@ export default function AdvancedAnalyticsDashboard() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">
-                      Gross Margin
-                    </p>
+                    <p className="text-sm font-medium text-gray-600">Gross Margin</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {formatPercentage(
-                        analyticsData.executiveSummary.grossMargin.current
-                      )}
+                      {formatPercentage(analyticsData.executiveSummary.grossMargin.current)}
                     </p>
                   </div>
                   <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
@@ -471,26 +423,18 @@ export default function AdvancedAnalyticsDashboard() {
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
-                  {getTrendIcon(
-                    analyticsData.executiveSummary.grossMargin.trend
-                  )}
+                  {getTrendIcon(analyticsData.executiveSummary.grossMargin.trend)}
                   <span
                     className={`ml-2 text-sm font-medium ${
                       analyticsData.executiveSummary.grossMargin.growth >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
+                        ? 'text-green-600'
+                        : 'text-red-600'
                     }`}
                   >
-                    {analyticsData.executiveSummary.grossMargin.growth >= 0
-                      ? "+"
-                      : ""}
-                    {formatPercentage(
-                      analyticsData.executiveSummary.grossMargin.growth
-                    )}
+                    {analyticsData.executiveSummary.grossMargin.growth >= 0 ? '+' : ''}
+                    {formatPercentage(analyticsData.executiveSummary.grossMargin.growth)}
                   </span>
-                  <span className="text-sm text-gray-500 ml-1">
-                    vs last period
-                  </span>
+                  <span className="text-sm text-gray-500 ml-1">vs last period</span>
                 </div>
               </CardContent>
             </Card>
@@ -498,12 +442,24 @@ export default function AdvancedAnalyticsDashboard() {
 
           <Tabs defaultValue="revenue" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 sm:gap-0">
-              <TabsTrigger value="revenue" className="text-xs sm:text-sm px-2 py-2">Revenue</TabsTrigger>
-              <TabsTrigger value="customers" className="text-xs sm:text-sm px-2 py-2">Customers</TabsTrigger>
-              <TabsTrigger value="service" className="text-xs sm:text-sm px-2 py-2">Service</TabsTrigger>
-              <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">Equipment</TabsTrigger>
-              <TabsTrigger value="financial" className="text-xs sm:text-sm px-2 py-2">Financial</TabsTrigger>
-              <TabsTrigger value="predictive" className="text-xs sm:text-sm px-2 py-2">Predictive</TabsTrigger>
+              <TabsTrigger value="revenue" className="text-xs sm:text-sm px-2 py-2">
+                Revenue
+              </TabsTrigger>
+              <TabsTrigger value="customers" className="text-xs sm:text-sm px-2 py-2">
+                Customers
+              </TabsTrigger>
+              <TabsTrigger value="service" className="text-xs sm:text-sm px-2 py-2">
+                Service
+              </TabsTrigger>
+              <TabsTrigger value="equipment" className="text-xs sm:text-sm px-2 py-2">
+                Equipment
+              </TabsTrigger>
+              <TabsTrigger value="financial" className="text-xs sm:text-sm px-2 py-2">
+                Financial
+              </TabsTrigger>
+              <TabsTrigger value="predictive" className="text-xs sm:text-sm px-2 py-2">
+                Predictive
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="revenue" className="space-y-6">
@@ -515,9 +471,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <BarChart3 className="h-5 w-5" />
                       Revenue by Category
                     </CardTitle>
-                    <CardDescription>
-                      Breakdown of revenue sources
-                    </CardDescription>
+                    <CardDescription>Breakdown of revenue sources</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -525,9 +479,7 @@ export default function AdvancedAnalyticsDashboard() {
                         (category: any, idx: number) => (
                           <div key={idx} className="space-y-2">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">
-                                {category.category}
-                              </span>
+                              <span className="text-sm font-medium">{category.category}</span>
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-bold">
                                   {formatCurrency(category.amount)}
@@ -535,25 +487,21 @@ export default function AdvancedAnalyticsDashboard() {
                                 <Badge
                                   className={
                                     category.growth >= 0
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-red-100 text-red-800'
                                   }
                                 >
-                                  {category.growth >= 0 ? "+" : ""}
+                                  {category.growth >= 0 ? '+' : ''}
                                   {formatPercentage(category.growth)}
                                 </Badge>
                               </div>
                             </div>
-                            <Progress
-                              value={category.percentage}
-                              className="h-2"
-                            />
+                            <Progress value={category.percentage} className="h-2" />
                             <div className="text-xs text-gray-500">
-                              {formatPercentage(category.percentage)} of total
-                              revenue
+                              {formatPercentage(category.percentage)} of total revenue
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </CardContent>
@@ -566,9 +514,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <Target className="h-5 w-5" />
                       Top Performing Products
                     </CardTitle>
-                    <CardDescription>
-                      Best selling products by revenue
-                    </CardDescription>
+                    <CardDescription>Best selling products by revenue</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -579,12 +525,9 @@ export default function AdvancedAnalyticsDashboard() {
                             className="flex items-center justify-between p-3 border rounded-lg"
                           >
                             <div className="flex-1">
-                              <div className="font-medium text-sm">
-                                {product.product}
-                              </div>
+                              <div className="font-medium text-sm">{product.product}</div>
                               <div className="text-xs text-gray-600">
-                                {product.units} units •{" "}
-                                {formatPercentage(product.margin)} margin
+                                {product.units} units • {formatPercentage(product.margin)} margin
                               </div>
                             </div>
                             <div className="text-right">
@@ -596,7 +539,7 @@ export default function AdvancedAnalyticsDashboard() {
                               </div>
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </CardContent>
@@ -610,28 +553,19 @@ export default function AdvancedAnalyticsDashboard() {
                     <LineChart className="h-5 w-5" />
                     Monthly Revenue Trend
                   </CardTitle>
-                  <CardDescription>
-                    Revenue, contracts, and new customers over time
-                  </CardDescription>
+                  <CardDescription>Revenue, contracts, and new customers over time</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
                     <div className="text-center">
                       <LineChart className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-600">
-                        Interactive chart would be rendered here
-                      </p>
+                      <p className="text-gray-600">Interactive chart would be rendered here</p>
                       <p className="text-sm text-gray-500">
-                        Showing trend from{" "}
-                        {
-                          analyticsData.revenueAnalytics.monthlyRevenue[0]
-                            ?.month
-                        }{" "}
-                        to{" "}
+                        Showing trend from {analyticsData.revenueAnalytics.monthlyRevenue[0]?.month}{' '}
+                        to{' '}
                         {
                           analyticsData.revenueAnalytics.monthlyRevenue[
-                            analyticsData.revenueAnalytics.monthlyRevenue
-                              .length - 1
+                            analyticsData.revenueAnalytics.monthlyRevenue.length - 1
                           ]?.month
                         }
                       </p>
@@ -650,9 +584,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <Users className="h-5 w-5" />
                       Customer Segmentation
                     </CardTitle>
-                    <CardDescription>
-                      Customers by business size
-                    </CardDescription>
+                    <CardDescription>Customers by business size</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -660,28 +592,20 @@ export default function AdvancedAnalyticsDashboard() {
                         (segment: any, idx: number) => (
                           <div key={idx} className="space-y-2">
                             <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">
-                                {segment.segment}
-                              </span>
+                              <span className="text-sm font-medium">{segment.segment}</span>
                               <div className="text-right">
-                                <div className="text-sm font-bold">
-                                  {segment.count} customers
-                                </div>
+                                <div className="text-sm font-bold">{segment.count} customers</div>
                                 <div className="text-xs text-gray-600">
                                   {formatCurrency(segment.revenue)}
                                 </div>
                               </div>
                             </div>
-                            <Progress
-                              value={segment.percentage}
-                              className="h-2"
-                            />
+                            <Progress value={segment.percentage} className="h-2" />
                             <div className="text-xs text-gray-500">
-                              {formatPercentage(segment.percentage)} of total
-                              revenue
+                              {formatPercentage(segment.percentage)} of total revenue
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </CardContent>
@@ -694,17 +618,14 @@ export default function AdvancedAnalyticsDashboard() {
                       <DollarSign className="h-5 w-5" />
                       Customer Lifetime Value
                     </CardTitle>
-                    <CardDescription>
-                      CLV metrics and retention rates
-                    </CardDescription>
+                    <CardDescription>CLV metrics and retention rates</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="text-center p-3 bg-gray-50 rounded">
                         <div className="text-lg font-bold text-gray-900">
                           {formatCurrency(
-                            analyticsData.customerAnalytics
-                              .customerLifetimeValue.average
+                            analyticsData.customerAnalytics.customerLifetimeValue.average,
                           )}
                         </div>
                         <div className="text-sm text-gray-600">Average CLV</div>
@@ -712,8 +633,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <div className="text-center p-3 bg-gray-50 rounded">
                         <div className="text-lg font-bold text-gray-900">
                           {formatCurrency(
-                            analyticsData.customerAnalytics
-                              .customerLifetimeValue.median
+                            analyticsData.customerAnalytics.customerLifetimeValue.median,
                           )}
                         </div>
                         <div className="text-sm text-gray-600">Median CLV</div>
@@ -721,19 +641,15 @@ export default function AdvancedAnalyticsDashboard() {
                       <div className="text-center p-3 bg-green-50 rounded">
                         <div className="text-lg font-bold text-green-900">
                           {formatPercentage(
-                            analyticsData.customerAnalytics
-                              .customerLifetimeValue.retentionRate
+                            analyticsData.customerAnalytics.customerLifetimeValue.retentionRate,
                           )}
                         </div>
-                        <div className="text-sm text-green-600">
-                          Retention Rate
-                        </div>
+                        <div className="text-sm text-green-600">Retention Rate</div>
                       </div>
                       <div className="text-center p-3 bg-red-50 rounded">
                         <div className="text-lg font-bold text-red-900">
                           {formatPercentage(
-                            analyticsData.customerAnalytics
-                              .customerLifetimeValue.churnRate
+                            analyticsData.customerAnalytics.customerLifetimeValue.churnRate,
                           )}
                         </div>
                         <div className="text-sm text-red-600">Churn Rate</div>
@@ -750,9 +666,7 @@ export default function AdvancedAnalyticsDashboard() {
                     <Target className="h-5 w-5" />
                     Top Customers
                   </CardTitle>
-                  <CardDescription>
-                    Highest value customers by revenue
-                  </CardDescription>
+                  <CardDescription>Highest value customers by revenue</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -765,18 +679,15 @@ export default function AdvancedAnalyticsDashboard() {
                           <div className="flex-1">
                             <div className="font-medium">{customer.name}</div>
                             <div className="text-sm text-gray-600">
-                              {customer.contracts} contracts • Last purchase:{" "}
-                              {format(customer.lastPurchase, "MMM dd, yyyy")}
+                              {customer.contracts} contracts • Last purchase:{' '}
+                              {format(customer.lastPurchase, 'MMM dd, yyyy')}
                             </div>
                             <div className="text-sm text-gray-500">
-                              Next renewal:{" "}
-                              {format(customer.nextRenewal, "MMM dd, yyyy")}
+                              Next renewal: {format(customer.nextRenewal, 'MMM dd, yyyy')}
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-bold">
-                              {formatCurrency(customer.revenue)}
-                            </div>
+                            <div className="font-bold">{formatCurrency(customer.revenue)}</div>
                             <div className="flex items-center justify-end mt-1">
                               <div className="flex items-center gap-1 text-sm">
                                 <span className="text-yellow-500">★</span>
@@ -785,7 +696,7 @@ export default function AdvancedAnalyticsDashboard() {
                             </div>
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </CardContent>
@@ -801,9 +712,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <Activity className="h-5 w-5" />
                       Service Metrics
                     </CardTitle>
-                    <CardDescription>
-                      Key service performance indicators
-                    </CardDescription>
+                    <CardDescription>Key service performance indicators</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
@@ -811,43 +720,30 @@ export default function AdvancedAnalyticsDashboard() {
                         <div className="text-lg font-bold text-blue-900">
                           {analyticsData.serviceAnalytics.serviceMetrics.totalTickets.toLocaleString()}
                         </div>
-                        <div className="text-sm text-blue-600">
-                          Total Tickets
-                        </div>
+                        <div className="text-sm text-blue-600">Total Tickets</div>
                       </div>
                       <div className="text-center p-3 bg-green-50 rounded">
                         <div className="text-lg font-bold text-green-900">
-                          {
-                            analyticsData.serviceAnalytics.serviceMetrics
-                              .avgResolutionTime
-                          }
-                          h
+                          {analyticsData.serviceAnalytics.serviceMetrics.avgResolutionTime}h
                         </div>
-                        <div className="text-sm text-green-600">
-                          Avg Resolution
-                        </div>
+                        <div className="text-sm text-green-600">Avg Resolution</div>
                       </div>
                       <div className="text-center p-3 bg-purple-50 rounded">
                         <div className="text-lg font-bold text-purple-900">
                           {formatPercentage(
-                            analyticsData.serviceAnalytics.serviceMetrics
-                              .firstCallResolution
+                            analyticsData.serviceAnalytics.serviceMetrics.firstCallResolution,
                           )}
                         </div>
-                        <div className="text-sm text-purple-600">
-                          First Call Resolution
-                        </div>
+                        <div className="text-sm text-purple-600">First Call Resolution</div>
                       </div>
                       <div className="text-center p-3 bg-yellow-50 rounded">
                         <div className="text-lg font-bold text-yellow-900">
                           {analyticsData.serviceAnalytics.serviceMetrics.customerSatisfaction.toFixed(
-                            1
+                            1,
                           )}
                           /5.0
                         </div>
-                        <div className="text-sm text-yellow-600">
-                          Satisfaction
-                        </div>
+                        <div className="text-sm text-yellow-600">Satisfaction</div>
                       </div>
                     </div>
                   </CardContent>
@@ -860,38 +756,28 @@ export default function AdvancedAnalyticsDashboard() {
                       <AlertTriangle className="h-5 w-5" />
                       Top Issues
                     </CardTitle>
-                    <CardDescription>
-                      Most common service issues
-                    </CardDescription>
+                    <CardDescription>Most common service issues</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {analyticsData.serviceAnalytics.topIssues.map(
-                        (issue: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between p-3 border rounded"
-                          >
-                            <div className="flex-1">
-                              <div className="font-medium text-sm">
-                                {issue.issue}
-                              </div>
-                              <div className="text-xs text-gray-600">
-                                Avg time: {issue.avgTime}h • Resolution:{" "}
-                                {formatPercentage(issue.resolution)}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="font-bold text-sm">
-                                {issue.count}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                tickets
-                              </div>
+                      {analyticsData.serviceAnalytics.topIssues.map((issue: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 border rounded"
+                        >
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{issue.issue}</div>
+                            <div className="text-xs text-gray-600">
+                              Avg time: {issue.avgTime}h • Resolution:{' '}
+                              {formatPercentage(issue.resolution)}
                             </div>
                           </div>
-                        )
-                      )}
+                          <div className="text-right">
+                            <div className="font-bold text-sm">{issue.count}</div>
+                            <div className="text-xs text-gray-500">tickets</div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -904,9 +790,7 @@ export default function AdvancedAnalyticsDashboard() {
                     <Users className="h-5 w-5" />
                     Technician Performance
                   </CardTitle>
-                  <CardDescription>
-                    Individual technician metrics and performance
-                  </CardDescription>
+                  <CardDescription>Individual technician metrics and performance</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -927,21 +811,17 @@ export default function AdvancedAnalyticsDashboard() {
                               <div className="text-sm font-bold">
                                 {tech.satisfaction.toFixed(1)}/5.0
                               </div>
-                              <div className="text-xs text-gray-500">
-                                Rating
-                              </div>
+                              <div className="text-xs text-gray-500">Rating</div>
                             </div>
                             <div className="text-center">
                               <div className="text-sm font-bold">
                                 {formatPercentage(tech.efficiency)}
                               </div>
-                              <div className="text-xs text-gray-500">
-                                Efficiency
-                              </div>
+                              <div className="text-xs text-gray-500">Efficiency</div>
                             </div>
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </CardContent>
@@ -957,9 +837,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <Target className="h-5 w-5" />
                       Fleet Overview
                     </CardTitle>
-                    <CardDescription>
-                      Overall equipment fleet metrics
-                    </CardDescription>
+                    <CardDescription>Overall equipment fleet metrics</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
@@ -971,9 +849,7 @@ export default function AdvancedAnalyticsDashboard() {
                       </div>
                       <div className="text-center p-3 bg-gray-50 rounded">
                         <div className="text-lg font-bold text-gray-900">
-                          {analyticsData.equipmentAnalytics.fleetOverview.averageAge.toFixed(
-                            1
-                          )}{" "}
+                          {analyticsData.equipmentAnalytics.fleetOverview.averageAge.toFixed(1)}{' '}
                           years
                         </div>
                         <div className="text-sm text-gray-600">Average Age</div>
@@ -981,24 +857,18 @@ export default function AdvancedAnalyticsDashboard() {
                       <div className="text-center p-3 bg-green-50 rounded">
                         <div className="text-lg font-bold text-green-900">
                           {formatPercentage(
-                            analyticsData.equipmentAnalytics.fleetOverview
-                              .utilizationRate
+                            analyticsData.equipmentAnalytics.fleetOverview.utilizationRate,
                           )}
                         </div>
-                        <div className="text-sm text-green-600">
-                          Utilization
-                        </div>
+                        <div className="text-sm text-green-600">Utilization</div>
                       </div>
                       <div className="text-center p-3 bg-purple-50 rounded">
                         <div className="text-lg font-bold text-purple-900">
                           {formatPercentage(
-                            analyticsData.equipmentAnalytics.fleetOverview
-                              .maintenanceCompliance
+                            analyticsData.equipmentAnalytics.fleetOverview.maintenanceCompliance,
                           )}
                         </div>
-                        <div className="text-sm text-purple-600">
-                          Compliance
-                        </div>
+                        <div className="text-sm text-purple-600">Compliance</div>
                       </div>
                     </div>
                   </CardContent>
@@ -1011,69 +881,47 @@ export default function AdvancedAnalyticsDashboard() {
                       <Clock className="h-5 w-5" />
                       Maintenance Schedule
                     </CardTitle>
-                    <CardDescription>
-                      Equipment maintenance status
-                    </CardDescription>
+                    <CardDescription>Equipment maintenance status</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded">
                         <div className="flex items-center gap-2">
                           <AlertTriangle className="h-4 w-4 text-red-600" />
-                          <span className="font-medium text-red-800">
-                            Overdue
-                          </span>
+                          <span className="font-medium text-red-800">Overdue</span>
                         </div>
                         <span className="font-bold text-red-900">
-                          {
-                            analyticsData.equipmentAnalytics.maintenanceSchedule
-                              .overdue
-                          }
+                          {analyticsData.equipmentAnalytics.maintenanceSchedule.overdue}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4 text-yellow-600" />
-                          <span className="font-medium text-yellow-800">
-                            Due Soon (30 days)
-                          </span>
+                          <span className="font-medium text-yellow-800">Due Soon (30 days)</span>
                         </div>
                         <span className="font-bold text-yellow-900">
-                          {
-                            analyticsData.equipmentAnalytics.maintenanceSchedule
-                              .dueSoon
-                          }
+                          {analyticsData.equipmentAnalytics.maintenanceSchedule.dueSoon}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-blue-600" />
-                          <span className="font-medium text-blue-800">
-                            Upcoming (90 days)
-                          </span>
+                          <span className="font-medium text-blue-800">Upcoming (90 days)</span>
                         </div>
                         <span className="font-bold text-blue-900">
-                          {
-                            analyticsData.equipmentAnalytics.maintenanceSchedule
-                              .upcoming
-                          }
+                          {analyticsData.equipmentAnalytics.maintenanceSchedule.upcoming}
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
                         <div className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-green-600" />
-                          <span className="font-medium text-green-800">
-                            Compliant
-                          </span>
+                          <span className="font-medium text-green-800">Compliant</span>
                         </div>
                         <span className="font-bold text-green-900">
-                          {
-                            analyticsData.equipmentAnalytics.maintenanceSchedule
-                              .compliant
-                          }
+                          {analyticsData.equipmentAnalytics.maintenanceSchedule.compliant}
                         </span>
                       </div>
                     </div>
@@ -1088,9 +936,7 @@ export default function AdvancedAnalyticsDashboard() {
                     <BarChart3 className="h-5 w-5" />
                     Equipment by Manufacturer
                   </CardTitle>
-                  <CardDescription>
-                    Fleet distribution across manufacturers
-                  </CardDescription>
+                  <CardDescription>Fleet distribution across manufacturers</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -1098,28 +944,20 @@ export default function AdvancedAnalyticsDashboard() {
                       (manufacturer: any, idx: number) => (
                         <div key={idx} className="space-y-2">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">
-                              {manufacturer.manufacturer}
-                            </span>
+                            <span className="text-sm font-medium">{manufacturer.manufacturer}</span>
                             <div className="text-right">
-                              <div className="text-sm font-bold">
-                                {manufacturer.units} units
-                              </div>
+                              <div className="text-sm font-bold">{manufacturer.units} units</div>
                               <div className="text-xs text-gray-600">
                                 Avg age: {manufacturer.avgAge.toFixed(1)} years
                               </div>
                             </div>
                           </div>
-                          <Progress
-                            value={manufacturer.percentage}
-                            className="h-2"
-                          />
+                          <Progress value={manufacturer.percentage} className="h-2" />
                           <div className="text-xs text-gray-500">
-                            {formatPercentage(manufacturer.percentage)} of total
-                            fleet
+                            {formatPercentage(manufacturer.percentage)} of total fleet
                           </div>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </CardContent>
@@ -1143,8 +981,7 @@ export default function AdvancedAnalyticsDashboard() {
                         <span className="font-medium">Gross Profit</span>
                         <span className="font-bold">
                           {formatCurrency(
-                            analyticsData.financialAnalytics.profitability
-                              .grossProfit
+                            analyticsData.financialAnalytics.profitability.grossProfit,
                           )}
                         </span>
                       </div>
@@ -1152,36 +989,28 @@ export default function AdvancedAnalyticsDashboard() {
                         <span className="font-medium">Gross Margin</span>
                         <span className="font-bold">
                           {formatPercentage(
-                            analyticsData.financialAnalytics.profitability
-                              .grossMargin
+                            analyticsData.financialAnalytics.profitability.grossMargin,
                           )}
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                         <span className="font-medium">Net Profit</span>
                         <span className="font-bold text-green-900">
-                          {formatCurrency(
-                            analyticsData.financialAnalytics.profitability
-                              .netProfit
-                          )}
+                          {formatCurrency(analyticsData.financialAnalytics.profitability.netProfit)}
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                         <span className="font-medium">Net Margin</span>
                         <span className="font-bold text-green-900">
                           {formatPercentage(
-                            analyticsData.financialAnalytics.profitability
-                              .netMargin
+                            analyticsData.financialAnalytics.profitability.netMargin,
                           )}
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                         <span className="font-medium">EBITDA</span>
                         <span className="font-bold text-blue-900">
-                          {formatCurrency(
-                            analyticsData.financialAnalytics.profitability
-                              .ebitda
-                          )}
+                          {formatCurrency(analyticsData.financialAnalytics.profitability.ebitda)}
                         </span>
                       </div>
                     </div>
@@ -1195,9 +1024,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <PieChart className="h-5 w-5" />
                       Expense Breakdown
                     </CardTitle>
-                    <CardDescription>
-                      Operating expenses by category
-                    </CardDescription>
+                    <CardDescription>Operating expenses by category</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -1208,12 +1035,9 @@ export default function AdvancedAnalyticsDashboard() {
                             className="flex items-center justify-between p-3 border rounded"
                           >
                             <div className="flex-1">
-                              <div className="font-medium text-sm">
-                                {expense.category}
-                              </div>
+                              <div className="font-medium text-sm">{expense.category}</div>
                               <div className="text-xs text-gray-600">
-                                {formatPercentage(expense.percentage)} of total
-                                expenses
+                                {formatPercentage(expense.percentage)} of total expenses
                               </div>
                             </div>
                             <div className="text-right">
@@ -1222,7 +1046,7 @@ export default function AdvancedAnalyticsDashboard() {
                               </div>
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </CardContent>
@@ -1236,17 +1060,13 @@ export default function AdvancedAnalyticsDashboard() {
                     <LineChart className="h-5 w-5" />
                     Cash Flow Trend
                   </CardTitle>
-                  <CardDescription>
-                    Monthly cash inflow, outflow, and net cash flow
-                  </CardDescription>
+                  <CardDescription>Monthly cash inflow, outflow, and net cash flow</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
                     <div className="text-center">
                       <LineChart className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-600">
-                        Cash flow chart would be rendered here
-                      </p>
+                      <p className="text-gray-600">Cash flow chart would be rendered here</p>
                       <p className="text-sm text-gray-500">
                         Net cash flow trend over last 7 months
                       </p>
@@ -1265,9 +1085,7 @@ export default function AdvancedAnalyticsDashboard() {
                       <TrendingUp className="h-5 w-5" />
                       Revenue Forecast
                     </CardTitle>
-                    <CardDescription>
-                      Predicted revenue for next 5 months
-                    </CardDescription>
+                    <CardDescription>Predicted revenue for next 5 months</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -1279,27 +1097,20 @@ export default function AdvancedAnalyticsDashboard() {
                           >
                             <div className="flex-1">
                               <div className="font-medium text-sm">
-                                {format(
-                                  new Date(forecast.month + "-01"),
-                                  "MMMM yyyy"
-                                )}
+                                {format(new Date(forecast.month + '-01'), 'MMMM yyyy')}
                               </div>
                               <div className="text-xs text-gray-600">
-                                {formatPercentage(forecast.confidence)}{" "}
-                                confidence
+                                {formatPercentage(forecast.confidence)} confidence
                               </div>
                             </div>
                             <div className="text-right">
                               <div className="font-bold text-sm">
                                 {formatCurrency(forecast.predicted)}
                               </div>
-                              <Progress
-                                value={forecast.confidence}
-                                className="h-1 w-16 mt-1"
-                              />
+                              <Progress value={forecast.confidence} className="h-1 w-16 mt-1" />
                             </div>
                           </div>
-                        )
+                        ),
                       )}
                     </div>
                   </CardContent>
@@ -1312,48 +1123,33 @@ export default function AdvancedAnalyticsDashboard() {
                       <AlertTriangle className="h-5 w-5" />
                       Churn Prediction
                     </CardTitle>
-                    <CardDescription>
-                      Customers at risk of churning
-                    </CardDescription>
+                    <CardDescription>Customers at risk of churning</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="grid grid-cols-3 gap-3">
                         <div className="text-center p-3 bg-red-50 rounded">
                           <div className="text-lg font-bold text-red-900">
-                            {
-                              analyticsData.predictiveAnalytics.churnPrediction
-                                .highRisk
-                            }
+                            {analyticsData.predictiveAnalytics.churnPrediction.highRisk}
                           </div>
                           <div className="text-sm text-red-600">High Risk</div>
                         </div>
                         <div className="text-center p-3 bg-yellow-50 rounded">
                           <div className="text-lg font-bold text-yellow-900">
-                            {
-                              analyticsData.predictiveAnalytics.churnPrediction
-                                .mediumRisk
-                            }
+                            {analyticsData.predictiveAnalytics.churnPrediction.mediumRisk}
                           </div>
-                          <div className="text-sm text-yellow-600">
-                            Medium Risk
-                          </div>
+                          <div className="text-sm text-yellow-600">Medium Risk</div>
                         </div>
                         <div className="text-center p-3 bg-green-50 rounded">
                           <div className="text-lg font-bold text-green-900">
-                            {
-                              analyticsData.predictiveAnalytics.churnPrediction
-                                .lowRisk
-                            }
+                            {analyticsData.predictiveAnalytics.churnPrediction.lowRisk}
                           </div>
                           <div className="text-sm text-green-600">Low Risk</div>
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <h4 className="font-medium text-sm">
-                          Immediate Actions Required:
-                        </h4>
+                        <h4 className="font-medium text-sm">Immediate Actions Required:</h4>
                         {analyticsData.predictiveAnalytics.churnPrediction.actions.map(
                           (action: any, idx: number) => (
                             <div
@@ -1361,12 +1157,8 @@ export default function AdvancedAnalyticsDashboard() {
                               className="flex items-center justify-between p-2 bg-red-50 border border-red-200 rounded"
                             >
                               <div className="flex-1">
-                                <div className="font-medium text-sm">
-                                  {action.customer}
-                                </div>
-                                <div className="text-xs text-red-600">
-                                  {action.action}
-                                </div>
+                                <div className="font-medium text-sm">{action.customer}</div>
+                                <div className="text-xs text-red-600">{action.action}</div>
                               </div>
                               <div className="text-right">
                                 <div className="text-sm font-bold text-red-900">
@@ -1374,7 +1166,7 @@ export default function AdvancedAnalyticsDashboard() {
                                 </div>
                               </div>
                             </div>
-                          )
+                          ),
                         )}
                       </div>
                     </div>
@@ -1389,9 +1181,7 @@ export default function AdvancedAnalyticsDashboard() {
                     <Target className="h-5 w-5" />
                     Competitive Analysis
                   </CardTitle>
-                  <CardDescription>
-                    Market position and win/loss analysis
-                  </CardDescription>
+                  <CardDescription>Market position and win/loss analysis</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
@@ -1402,16 +1192,12 @@ export default function AdvancedAnalyticsDashboard() {
                           <span className="text-sm">Our Company</span>
                           <span className="font-bold">
                             {formatPercentage(
-                              analyticsData.competitiveAnalysis.marketShare
-                                .company
+                              analyticsData.competitiveAnalysis.marketShare.company,
                             )}
                           </span>
                         </div>
                         <Progress
-                          value={
-                            analyticsData.competitiveAnalysis.marketShare
-                              .company
-                          }
+                          value={analyticsData.competitiveAnalysis.marketShare.company}
                           className="h-2"
                         />
                       </div>
@@ -1422,22 +1208,15 @@ export default function AdvancedAnalyticsDashboard() {
                       <div className="text-center p-3 bg-blue-50 rounded mb-3">
                         <div className="text-lg font-bold text-blue-900">
                           {formatPercentage(
-                            analyticsData.competitiveAnalysis.winLossAnalysis
-                              .winRate
+                            analyticsData.competitiveAnalysis.winLossAnalysis.winRate,
                           )}
                         </div>
                         <div className="text-sm text-blue-600">Win Rate</div>
                       </div>
                       <div className="text-sm text-gray-600">
-                        {analyticsData.competitiveAnalysis.winLossAnalysis.won}{" "}
-                        won •{" "}
-                        {analyticsData.competitiveAnalysis.winLossAnalysis.lost}{" "}
-                        lost •{" "}
-                        {
-                          analyticsData.competitiveAnalysis.winLossAnalysis
-                            .pending
-                        }{" "}
-                        pending
+                        {analyticsData.competitiveAnalysis.winLossAnalysis.won} won •{' '}
+                        {analyticsData.competitiveAnalysis.winLossAnalysis.lost} lost •{' '}
+                        {analyticsData.competitiveAnalysis.winLossAnalysis.pending} pending
                       </div>
                     </div>
                   </div>

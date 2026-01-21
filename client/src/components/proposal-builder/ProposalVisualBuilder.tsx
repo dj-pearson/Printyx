@@ -1,6 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,23 +21,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
-  GripVertical, 
-  Plus, 
-  Trash2, 
-  Eye, 
-  Settings, 
-  Palette, 
-  Type, 
-  Layout, 
-  Image, 
+import {
+  GripVertical,
+  Plus,
+  Trash2,
+  Eye,
+  Settings,
+  Palette,
+  Type,
+  Layout,
+  Image,
   Download,
   Save,
   Copy,
@@ -38,7 +56,7 @@ import {
   Italic,
   Underline,
   List,
-  ListOrdered
+  ListOrdered,
 } from 'lucide-react';
 
 interface ProposalSection {
@@ -93,18 +111,20 @@ interface ProposalTemplate {
 }
 
 // Sortable Section Component
-function SortableSection({ 
-  section, 
-  isSelected, 
-  onClick, 
-  onUpdate 
-}: { 
+function SortableSection({
+  section,
+  isSelected,
+  onClick,
+  onUpdate,
+}: {
   section: ProposalSection;
   isSelected: boolean;
   onClick: () => void;
   onUpdate: (section: ProposalSection) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: section.id,
+  });
   const [isEditing, setIsEditing] = useState(false);
 
   const style = {
@@ -120,7 +140,7 @@ function SortableSection({
   const handleStyleUpdate = (key: string, value: any) => {
     onUpdate({
       ...section,
-      styling: { ...section.styling, [key]: value }
+      styling: { ...section.styling, [key]: value },
     });
   };
 
@@ -129,7 +149,9 @@ function SortableSection({
       ref={setNodeRef}
       style={style}
       className={`group relative border-2 transition-all duration-200 touch-manipulation ${
-        isSelected ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-gray-300 active:border-gray-400'
+        isSelected
+          ? 'border-primary ring-2 ring-primary/20'
+          : 'border-transparent hover:border-gray-300 active:border-gray-400'
       } ${section.isLocked ? 'opacity-75' : ''}`}
       onClick={onClick}
     >
@@ -170,7 +192,7 @@ function SortableSection({
       </div>
 
       {/* Section Content */}
-      <div 
+      <div
         className="p-4 min-h-[100px] rounded"
         style={{
           backgroundColor: section.styling.backgroundColor || 'transparent',
@@ -195,14 +217,19 @@ function SortableSection({
               backgroundColor: 'transparent',
               color: 'inherit',
               fontFamily: 'inherit',
-              fontSize: 'inherit'
+              fontSize: 'inherit',
             }}
           />
         ) : (
           <div
             onDoubleClick={() => setIsEditing(true)}
             className="cursor-text"
-            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(section.content || `<h3>${section.title}</h3><p>Double-click to edit content...</p>`) }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeRichHtml(
+                section.content ||
+                  `<h3>${section.title}</h3><p>Double-click to edit content...</p>`,
+              ),
+            }}
           />
         )}
       </div>
@@ -216,11 +243,11 @@ function SortableSection({
 }
 
 // Style Panel Component
-function StylePanel({ 
-  selectedSection, 
+function StylePanel({
+  selectedSection,
   onSectionUpdate,
   globalStyling,
-  onGlobalStylingUpdate 
+  onGlobalStylingUpdate,
 }: {
   selectedSection: ProposalSection | null;
   onSectionUpdate: (section: ProposalSection) => void;
@@ -243,7 +270,9 @@ function StylePanel({
               <Input
                 type="color"
                 value={globalStyling.primaryColor}
-                onChange={(e) => onGlobalStylingUpdate({ ...globalStyling, primaryColor: e.target.value })}
+                onChange={(e) =>
+                  onGlobalStylingUpdate({ ...globalStyling, primaryColor: e.target.value })
+                }
                 className="h-12 touch-manipulation"
               />
             </div>
@@ -252,14 +281,21 @@ function StylePanel({
               <Input
                 type="color"
                 value={globalStyling.secondaryColor}
-                onChange={(e) => onGlobalStylingUpdate({ ...globalStyling, secondaryColor: e.target.value })}
+                onChange={(e) =>
+                  onGlobalStylingUpdate({ ...globalStyling, secondaryColor: e.target.value })
+                }
                 className="h-12 touch-manipulation"
               />
             </div>
           </div>
           <div>
             <Label className="text-xs sm:text-sm">Font Family</Label>
-            <Select value={globalStyling.fontFamily} onValueChange={(value) => onGlobalStylingUpdate({ ...globalStyling, fontFamily: value })}>
+            <Select
+              value={globalStyling.fontFamily}
+              onValueChange={(value) =>
+                onGlobalStylingUpdate({ ...globalStyling, fontFamily: value })
+              }
+            >
               <SelectTrigger className="touch-manipulation min-h-[44px]">
                 <SelectValue />
               </SelectTrigger>
@@ -280,40 +316,60 @@ function StylePanel({
                 placeholder="Top"
                 type="number"
                 value={globalStyling.pageMargins.top}
-                onChange={(e) => onGlobalStylingUpdate({
-                  ...globalStyling,
-                  pageMargins: { ...globalStyling.pageMargins, top: parseInt(e.target.value) || 0 }
-                })}
+                onChange={(e) =>
+                  onGlobalStylingUpdate({
+                    ...globalStyling,
+                    pageMargins: {
+                      ...globalStyling.pageMargins,
+                      top: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="Right"
                 type="number"
                 value={globalStyling.pageMargins.right}
-                onChange={(e) => onGlobalStylingUpdate({
-                  ...globalStyling,
-                  pageMargins: { ...globalStyling.pageMargins, right: parseInt(e.target.value) || 0 }
-                })}
+                onChange={(e) =>
+                  onGlobalStylingUpdate({
+                    ...globalStyling,
+                    pageMargins: {
+                      ...globalStyling.pageMargins,
+                      right: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="Bottom"
                 type="number"
                 value={globalStyling.pageMargins.bottom}
-                onChange={(e) => onGlobalStylingUpdate({
-                  ...globalStyling,
-                  pageMargins: { ...globalStyling.pageMargins, bottom: parseInt(e.target.value) || 0 }
-                })}
+                onChange={(e) =>
+                  onGlobalStylingUpdate({
+                    ...globalStyling,
+                    pageMargins: {
+                      ...globalStyling.pageMargins,
+                      bottom: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="touch-manipulation min-h-[44px]"
               />
               <Input
                 placeholder="Left"
                 type="number"
                 value={globalStyling.pageMargins.left}
-                onChange={(e) => onGlobalStylingUpdate({
-                  ...globalStyling,
-                  pageMargins: { ...globalStyling.pageMargins, left: parseInt(e.target.value) || 0 }
-                })}
+                onChange={(e) =>
+                  onGlobalStylingUpdate({
+                    ...globalStyling,
+                    pageMargins: {
+                      ...globalStyling.pageMargins,
+                      left: parseInt(e.target.value) || 0,
+                    },
+                  })
+                }
                 className="touch-manipulation min-h-[44px]"
               />
             </div>
@@ -326,7 +382,7 @@ function StylePanel({
   const handleStyleUpdate = (key: string, value: any) => {
     onSectionUpdate({
       ...selectedSection,
-      styling: { ...selectedSection.styling, [key]: value }
+      styling: { ...selectedSection.styling, [key]: value },
     });
   };
 
@@ -346,12 +402,12 @@ function StylePanel({
             <TabsTrigger value="layout">Layout</TabsTrigger>
             <TabsTrigger value="colors">Colors</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="typography" className="space-y-4">
             <div>
               <Label>Font Family</Label>
-              <Select 
-                value={selectedSection.styling.fontFamily || 'inherit'} 
+              <Select
+                value={selectedSection.styling.fontFamily || 'inherit'}
                 onValueChange={(value) => handleStyleUpdate('fontFamily', value)}
               >
                 <SelectTrigger>
@@ -367,7 +423,7 @@ function StylePanel({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label>Font Size: {selectedSection.styling.fontSize || 16}px</Label>
               <Slider
@@ -383,21 +439,38 @@ function StylePanel({
               <Button
                 variant={selectedSection.styling.fontWeight === 'bold' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handleStyleUpdate('fontWeight', selectedSection.styling.fontWeight === 'bold' ? 'normal' : 'bold')}
+                onClick={() =>
+                  handleStyleUpdate(
+                    'fontWeight',
+                    selectedSection.styling.fontWeight === 'bold' ? 'normal' : 'bold',
+                  )
+                }
               >
                 <Bold className="h-4 w-4" />
               </Button>
               <Button
                 variant={selectedSection.styling.fontStyle === 'italic' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => handleStyleUpdate('fontStyle', selectedSection.styling.fontStyle === 'italic' ? 'normal' : 'italic')}
+                onClick={() =>
+                  handleStyleUpdate(
+                    'fontStyle',
+                    selectedSection.styling.fontStyle === 'italic' ? 'normal' : 'italic',
+                  )
+                }
               >
                 <Italic className="h-4 w-4" />
               </Button>
               <Button
-                variant={selectedSection.styling.textDecoration === 'underline' ? 'default' : 'outline'}
+                variant={
+                  selectedSection.styling.textDecoration === 'underline' ? 'default' : 'outline'
+                }
                 size="sm"
-                onClick={() => handleStyleUpdate('textDecoration', selectedSection.styling.textDecoration === 'underline' ? 'none' : 'underline')}
+                onClick={() =>
+                  handleStyleUpdate(
+                    'textDecoration',
+                    selectedSection.styling.textDecoration === 'underline' ? 'none' : 'underline',
+                  )
+                }
               >
                 <Underline className="h-4 w-4" />
               </Button>
@@ -427,7 +500,7 @@ function StylePanel({
               </Button>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="layout" className="space-y-4">
             <div>
               <Label>Padding: {selectedSection.styling.padding || 16}px</Label>
@@ -439,7 +512,7 @@ function StylePanel({
                 step={4}
               />
             </div>
-            
+
             <div>
               <Label>Margin: {selectedSection.styling.margin || 0}px</Label>
               <Slider
@@ -451,7 +524,7 @@ function StylePanel({
               />
             </div>
           </TabsContent>
-          
+
           <TabsContent value="colors" className="space-y-4">
             <div>
               <Label>Text Color</Label>
@@ -462,7 +535,7 @@ function StylePanel({
                 className="h-10"
               />
             </div>
-            
+
             <div>
               <Label>Background Color</Label>
               <Input
@@ -484,7 +557,7 @@ export default function ProposalVisualBuilder({
   initialTemplate,
   quoteData,
   onSave,
-  onPreview
+  onPreview,
 }: {
   initialTemplate?: ProposalTemplate;
   quoteData?: any;
@@ -505,18 +578,19 @@ export default function ProposalVisualBuilder({
           styling: { fontSize: 24, fontWeight: 'bold', alignment: 'center' },
           layout: { width: '100%' },
           isVisible: true,
-          isLocked: false
+          isLocked: false,
         },
         {
           id: 'executive',
           type: 'executive_summary',
           title: 'Executive Summary',
-          content: '<h2>Executive Summary</h2><p>This proposal outlines our recommended solution...</p>',
+          content:
+            '<h2>Executive Summary</h2><p>This proposal outlines our recommended solution...</p>',
           styling: { fontSize: 16 },
           layout: { width: '100%' },
           isVisible: true,
-          isLocked: false
-        }
+          isLocked: false,
+        },
       ],
       globalStyling: {
         primaryColor: '#0066CC',
@@ -524,9 +598,9 @@ export default function ProposalVisualBuilder({
         accentColor: '#FF6B35',
         fontFamily: 'Inter',
         headerFont: 'Inter',
-        pageMargins: { top: 20, right: 20, bottom: 20, left: 20 }
-      }
-    }
+        pageMargins: { top: 20, right: 20, bottom: 20, left: 20 },
+      },
+    },
   );
 
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
@@ -536,24 +610,24 @@ export default function ProposalVisualBuilder({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
-  const selectedSection = template.sections.find(s => s.id === selectedSectionId) || null;
+  const selectedSection = template.sections.find((s) => s.id === selectedSectionId) || null;
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-      const oldIndex = template.sections.findIndex(s => s.id === active.id);
-      const newIndex = template.sections.findIndex(s => s.id === over.id);
+      const oldIndex = template.sections.findIndex((s) => s.id === active.id);
+      const newIndex = template.sections.findIndex((s) => s.id === over.id);
       const newSections = arrayMove(template.sections, oldIndex, newIndex);
       setTemplate({ ...template, sections: newSections });
     }
   };
 
   const handleSectionUpdate = (updatedSection: ProposalSection) => {
-    const newSections = template.sections.map(s => 
-      s.id === updatedSection.id ? updatedSection : s
+    const newSections = template.sections.map((s) =>
+      s.id === updatedSection.id ? updatedSection : s,
     );
     setTemplate({ ...template, sections: newSections });
   };
@@ -567,13 +641,13 @@ export default function ProposalVisualBuilder({
       styling: { fontSize: 16 },
       layout: { width: '100%' },
       isVisible: true,
-      isLocked: false
+      isLocked: false,
     };
     setTemplate({ ...template, sections: [...template.sections, newSection] });
   };
 
   const handleDeleteSection = (sectionId: string) => {
-    const newSections = template.sections.filter(s => s.id !== sectionId);
+    const newSections = template.sections.filter((s) => s.id !== sectionId);
     setTemplate({ ...template, sections: newSections });
     if (selectedSectionId === sectionId) {
       setSelectedSectionId(null);
@@ -586,7 +660,9 @@ export default function ProposalVisualBuilder({
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-gray-50">
       {/* Left Sidebar - Components & Templates */}
-      <div className={`${showLeftSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white border-b lg:border-r lg:border-b-0 flex flex-col max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-visible`}>
+      <div
+        className={`${showLeftSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white border-b lg:border-r lg:border-b-0 flex flex-col max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-visible`}
+      >
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
             <div>
@@ -630,9 +706,9 @@ export default function ProposalVisualBuilder({
                 ))}
               </div>
             </div>
-            
+
             <Separator />
-            
+
             <div>
               <h3 className="text-xs sm:text-sm font-medium mb-2">Sections</h3>
               <div className="space-y-2">
@@ -640,12 +716,16 @@ export default function ProposalVisualBuilder({
                   <div
                     key={section.id}
                     className={`p-2 sm:p-3 rounded border cursor-pointer transition-colors touch-manipulation ${
-                      selectedSectionId === section.id ? 'bg-primary/10 border-primary' : 'hover:bg-gray-50 active:bg-gray-100'
+                      selectedSectionId === section.id
+                        ? 'bg-primary/10 border-primary'
+                        : 'hover:bg-gray-50 active:bg-gray-100'
                     }`}
                     onClick={() => setSelectedSectionId(section.id)}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs sm:text-sm font-medium truncate">{section.title}</span>
+                      <span className="text-xs sm:text-sm font-medium truncate">
+                        {section.title}
+                      </span>
                       <div className="flex gap-1 flex-shrink-0">
                         <Switch
                           checked={section.isVisible}
@@ -708,7 +788,9 @@ export default function ProposalVisualBuilder({
                 onChange={(e) => setTemplate({ ...template, name: e.target.value })}
                 className="font-semibold text-sm sm:text-base touch-manipulation min-h-[44px]"
               />
-              <Badge variant="secondary" className="text-xs whitespace-nowrap">{template.sections.length} sections</Badge>
+              <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                {template.sections.length} sections
+              </Badge>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -749,14 +831,14 @@ export default function ProposalVisualBuilder({
               width: '100%',
               maxWidth: '794px', // A4 width at 96dpi
               padding: `${Math.max(12, template.globalStyling.pageMargins.top * 0.75)}px ${Math.max(12, template.globalStyling.pageMargins.right * 0.75)}px ${Math.max(12, template.globalStyling.pageMargins.bottom * 0.75)}px ${Math.max(12, template.globalStyling.pageMargins.left * 0.75)}px`,
-              fontFamily: template.globalStyling.fontFamily
+              fontFamily: template.globalStyling.fontFamily,
             }}
           >
             {previewMode ? (
               // Preview Mode
               <div className="space-y-4">
                 {template.sections
-                  .filter(section => section.isVisible)
+                  .filter((section) => section.isVisible)
                   .map((section) => (
                     <div
                       key={section.id}
@@ -765,7 +847,9 @@ export default function ProposalVisualBuilder({
                         backgroundColor: section.styling.backgroundColor || 'transparent',
                         color: section.styling.textColor || 'inherit',
                         fontFamily: section.styling.fontFamily || 'inherit',
-                        fontSize: section.styling.fontSize ? `${section.styling.fontSize}px` : 'inherit',
+                        fontSize: section.styling.fontSize
+                          ? `${section.styling.fontSize}px`
+                          : 'inherit',
                         padding: section.styling.padding ? `${section.styling.padding}px` : '16px',
                         margin: section.styling.margin ? `${section.styling.margin}px 0` : '0',
                         textAlign: section.styling.alignment || 'left',
@@ -785,12 +869,12 @@ export default function ProposalVisualBuilder({
                 onDragEnd={handleDragEnd}
               >
                 <SortableContext
-                  items={template.sections.filter(s => s.isVisible).map(s => s.id)}
+                  items={template.sections.filter((s) => s.isVisible).map((s) => s.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-4">
                     {template.sections
-                      .filter(section => section.isVisible)
+                      .filter((section) => section.isVisible)
                       .map((section) => (
                         <SortableSection
                           key={section.id}
@@ -809,7 +893,9 @@ export default function ProposalVisualBuilder({
       </div>
 
       {/* Right Sidebar - Properties */}
-      <div className={`${showRightSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white border-t lg:border-l lg:border-t-0 max-h-[40vh] lg:max-h-none overflow-y-auto`}>
+      <div
+        className={`${showRightSidebar ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white border-t lg:border-l lg:border-t-0 max-h-[40vh] lg:max-h-none overflow-y-auto`}
+      >
         <div className="lg:hidden p-4 border-b flex items-center justify-between">
           <h3 className="font-semibold">Styling</h3>
           <Button

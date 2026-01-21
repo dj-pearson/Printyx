@@ -74,11 +74,7 @@
       "label": "Printyx Dashboard - Mobile View"
     }
   ],
-  "categories": [
-    "business",
-    "productivity",
-    "finance"
-  ],
+  "categories": ["business", "productivity", "finance"],
   "shortcuts": [
     {
       "name": "Dashboard",

@@ -6,13 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -200,10 +194,10 @@ export default function ServiceTeamStatsWidget({
     ];
 
     const columns = [
-      createExportColumn<typeof exportData[0]>('category', 'Category'),
-      createExportColumn<typeof exportData[0]>('metric', 'Metric'),
-      createExportColumn<typeof exportData[0]>('value', 'Value'),
-      createExportColumn<typeof exportData[0]>('trend', 'Trend'),
+      createExportColumn<(typeof exportData)[0]>('category', 'Category'),
+      createExportColumn<(typeof exportData)[0]>('metric', 'Metric'),
+      createExportColumn<(typeof exportData)[0]>('value', 'Value'),
+      createExportColumn<(typeof exportData)[0]>('trend', 'Trend'),
     ];
 
     const timestamp = new Date().toISOString().split('T')[0];
@@ -260,17 +254,24 @@ export default function ServiceTeamStatsWidget({
     );
   }
 
-  const getPerformanceColor = (value: number, thresholds: { excellent: number; good: number; fair: number }) => {
+  const getPerformanceColor = (
+    value: number,
+    thresholds: { excellent: number; good: number; fair: number },
+  ) => {
     if (value >= thresholds.excellent) return 'text-green-600';
     if (value >= thresholds.good) return 'text-blue-600';
     if (value >= thresholds.fair) return 'text-yellow-600';
     return 'text-red-600';
   };
 
-  const getFTFColor = (ftf: number) => getPerformanceColor(ftf, { excellent: 85, good: 75, fair: 65 });
-  const getSLAColor = (sla: number) => getPerformanceColor(sla, { excellent: 95, good: 90, fair: 85 });
-  const getCSATColor = (csat: number) => getPerformanceColor(csat * 20, { excellent: 90, good: 80, fair: 70 });
-  const getUtilizationColor = (util: number) => getPerformanceColor(util, { excellent: 85, good: 75, fair: 65 });
+  const getFTFColor = (ftf: number) =>
+    getPerformanceColor(ftf, { excellent: 85, good: 75, fair: 65 });
+  const getSLAColor = (sla: number) =>
+    getPerformanceColor(sla, { excellent: 95, good: 90, fair: 85 });
+  const getCSATColor = (csat: number) =>
+    getPerformanceColor(csat * 20, { excellent: 90, good: 80, fair: 70 });
+  const getUtilizationColor = (util: number) =>
+    getPerformanceColor(util, { excellent: 85, good: 75, fair: 65 });
 
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <TrendingUp className="h-3 w-3 text-green-600" />;
@@ -288,12 +289,7 @@ export default function ServiceTeamStatsWidget({
               <Wrench className="h-4 w-4" />
               Service Team
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refetch()}
-              className="h-7 w-7 p-0"
-            >
+            <Button variant="ghost" size="sm" onClick={() => refetch()} className="h-7 w-7 p-0">
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
@@ -301,7 +297,9 @@ export default function ServiceTeamStatsWidget({
         <CardContent className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">FTF Rate</span>
-            <span className={cn('font-bold', getFTFColor(stats?.performance.firstTimeFixRate || 0))}>
+            <span
+              className={cn('font-bold', getFTFColor(stats?.performance.firstTimeFixRate || 0))}
+            >
               {stats?.performance.firstTimeFixRate.toFixed(0)}%
             </span>
           </div>
@@ -315,12 +313,16 @@ export default function ServiceTeamStatsWidget({
             <span className="text-muted-foreground">CSAT</span>
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-              <span className="font-medium">{stats?.performance.customerSatisfaction.toFixed(1)}</span>
+              <span className="font-medium">
+                {stats?.performance.customerSatisfaction.toFixed(1)}
+              </span>
             </div>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Technicians</span>
-            <span className="font-medium">{stats?.team.activeTechnicians}/{stats?.team.totalTechnicians}</span>
+            <span className="font-medium">
+              {stats?.team.activeTechnicians}/{stats?.team.totalTechnicians}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -339,11 +341,7 @@ export default function ServiceTeamStatsWidget({
         <div className="flex items-center gap-3">
           {showAutoRefresh && (
             <div className="flex items-center gap-2">
-              <Switch
-                id="auto-refresh"
-                checked={autoRefresh}
-                onCheckedChange={setAutoRefresh}
-              />
+              <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
               <Label htmlFor="auto-refresh" className="text-sm cursor-pointer">
                 Auto-refresh
               </Label>
@@ -370,19 +368,25 @@ export default function ServiceTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getFTFColor(stats?.performance.firstTimeFixRate || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getFTFColor(stats?.performance.firstTimeFixRate || 0),
+                )}
+              >
                 {stats?.performance.firstTimeFixRate.toFixed(1)}%
               </div>
               <TrendIcon trend={stats?.trends.ftfTrend || 'stable'} />
             </div>
-            <Progress
-              value={stats?.performance.firstTimeFixRate || 0}
-              className="mt-2 h-2"
-            />
+            <Progress value={stats?.performance.firstTimeFixRate || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {stats?.performance.firstTimeFixRate >= 85 ? 'Excellent' :
-               stats?.performance.firstTimeFixRate >= 75 ? 'Good' :
-               stats?.performance.firstTimeFixRate >= 65 ? 'Fair' : 'Needs Improvement'}
+              {stats?.performance.firstTimeFixRate >= 85
+                ? 'Excellent'
+                : stats?.performance.firstTimeFixRate >= 75
+                  ? 'Good'
+                  : stats?.performance.firstTimeFixRate >= 65
+                    ? 'Fair'
+                    : 'Needs Improvement'}
             </p>
           </CardContent>
         </Card>
@@ -399,15 +403,17 @@ export default function ServiceTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getSLAColor(stats?.performance.slaCompliance || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getSLAColor(stats?.performance.slaCompliance || 0),
+                )}
+              >
                 {stats?.performance.slaCompliance.toFixed(1)}%
               </div>
               <TrendIcon trend={stats?.trends.slaTrend || 'stable'} />
             </div>
-            <Progress
-              value={stats?.performance.slaCompliance || 0}
-              className="mt-2 h-2"
-            />
+            <Progress value={stats?.performance.slaCompliance || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
               {stats?.activity.overdueTickets || 0} tickets overdue
             </p>
@@ -426,7 +432,12 @@ export default function ServiceTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getCSATColor(stats?.performance.customerSatisfaction || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getCSATColor(stats?.performance.customerSatisfaction || 0),
+                )}
+              >
                 {stats?.performance.customerSatisfaction.toFixed(2)}
               </div>
               <span className="text-sm text-muted-foreground">/ 5.0</span>
@@ -440,7 +451,7 @@ export default function ServiceTeamStatsWidget({
                     'h-4 w-4',
                     star <= Math.round(stats?.performance.customerSatisfaction || 0)
                       ? 'fill-yellow-400 text-yellow-400'
-                      : 'text-gray-300'
+                      : 'text-gray-300',
                   )}
                 />
               ))}
@@ -463,16 +474,19 @@ export default function ServiceTeamStatsWidget({
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
-              <div className={cn('text-2xl font-bold', getUtilizationColor(stats?.performance.utilizationRate || 0))}>
+              <div
+                className={cn(
+                  'text-2xl font-bold',
+                  getUtilizationColor(stats?.performance.utilizationRate || 0),
+                )}
+              >
                 {stats?.performance.utilizationRate.toFixed(0)}%
               </div>
             </div>
-            <Progress
-              value={stats?.performance.utilizationRate || 0}
-              className="mt-2 h-2"
-            />
+            <Progress value={stats?.performance.utilizationRate || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {stats?.team.activeTechnicians || 0} / {stats?.team.totalTechnicians || 0} technicians active
+              {stats?.team.activeTechnicians || 0} / {stats?.team.totalTechnicians || 0} technicians
+              active
             </p>
           </CardContent>
         </Card>
@@ -494,11 +508,15 @@ export default function ServiceTeamStatsWidget({
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Completed</p>
-              <p className="text-2xl font-bold text-green-600">{stats?.activity.completedCalls || 0}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats?.activity.completedCalls || 0}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Scheduled</p>
-              <p className="text-2xl font-bold text-blue-600">{stats?.activity.scheduledCalls || 0}</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {stats?.activity.scheduledCalls || 0}
+              </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Top Technician</p>
@@ -512,10 +530,12 @@ export default function ServiceTeamStatsWidget({
               <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-yellow-900">
-                  {stats?.team.techsNeedingSupport} technician{stats?.team.techsNeedingSupport !== 1 ? 's' : ''} need support
+                  {stats?.team.techsNeedingSupport} technician
+                  {stats?.team.techsNeedingSupport !== 1 ? 's' : ''} need support
                 </p>
                 <p className="text-xs text-yellow-700 mt-1">
-                  Low performance or high workload detected. Consider coaching or workload redistribution.
+                  Low performance or high workload detected. Consider coaching or workload
+                  redistribution.
                 </p>
               </div>
             </div>

@@ -98,7 +98,7 @@ export class SsoService {
    */
   async getProviderConfig(
     tenantId: string,
-    providerId?: string
+    providerId?: string,
   ): Promise<SsoProviderConfig | null> {
     const conditions = [eq(ssoProviderConfigs.tenantId, tenantId)];
 
@@ -148,10 +148,7 @@ export class SsoService {
       config.attributeMapping = DEFAULT_ATTRIBUTE_MAPPINGS[providerType] || {};
     }
 
-    const [provider] = await db
-      .insert(ssoProviderConfigs)
-      .values(config)
-      .returning();
+    const [provider] = await db.insert(ssoProviderConfigs).values(config).returning();
 
     return provider;
   }
@@ -161,7 +158,7 @@ export class SsoService {
    */
   async updateProvider(
     providerId: string,
-    updates: Partial<NewSsoProviderConfig>
+    updates: Partial<NewSsoProviderConfig>,
   ): Promise<SsoProviderConfig | null> {
     const [provider] = await db
       .update(ssoProviderConfigs)
@@ -216,7 +213,7 @@ export class SsoService {
   private async initiateSamlAuth(
     provider: SsoProviderConfig,
     requestId: string,
-    request: SsoAuthRequest
+    request: SsoAuthRequest,
   ): Promise<SsoAuthResponse> {
     // Build SAML AuthnRequest
     const issuer = `${this.baseUrl}/api/sso/metadata/${provider.id}`;
@@ -267,7 +264,7 @@ export class SsoService {
   private async initiateOidcAuth(
     provider: SsoProviderConfig,
     requestId: string,
-    request: SsoAuthRequest
+    request: SsoAuthRequest,
   ): Promise<SsoAuthResponse> {
     const state = randomBytes(16).toString('hex');
     const nonce = randomBytes(16).toString('hex');
@@ -329,7 +326,7 @@ export class SsoService {
     provider: SsoProviderConfig,
     state: string,
     nonce: string,
-    redirectUri: string
+    redirectUri: string,
   ): URL {
     const tenantId = provider.providerSettings?.tenantId || 'common';
     const baseUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`;
@@ -362,7 +359,7 @@ export class SsoService {
     provider: SsoProviderConfig,
     state: string,
     nonce: string,
-    redirectUri: string
+    redirectUri: string,
   ): URL {
     const oktaDomain = provider.providerSettings?.oktaDomain;
     if (!oktaDomain) {
@@ -390,7 +387,7 @@ export class SsoService {
     provider: SsoProviderConfig,
     state: string,
     nonce: string,
-    redirectUri: string
+    redirectUri: string,
   ): URL {
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     url.searchParams.set('client_id', provider.oidcClientId || '');
@@ -405,7 +402,8 @@ export class SsoService {
     }
 
     // Hosted domain restriction for Google Workspace
-    const hostedDomain = provider.providerSettings?.hostedDomain ||
+    const hostedDomain =
+      provider.providerSettings?.hostedDomain ||
       provider.allowedEmailDomains?.split(',')[0]?.trim();
     if (hostedDomain) {
       url.searchParams.set('hd', hostedDomain);
@@ -421,7 +419,7 @@ export class SsoService {
     provider: SsoProviderConfig,
     state: string,
     nonce: string,
-    redirectUri: string
+    redirectUri: string,
   ): URL {
     const authUrl = provider.oidcAuthorizationUrl || `${provider.oidcIssuer}/authorize`;
     const url = new URL(authUrl);
@@ -442,7 +440,7 @@ export class SsoService {
     providerId: string,
     callbackData: SsoCallbackData,
     clientIp?: string,
-    userAgent?: string
+    userAgent?: string,
   ): Promise<SsoAuthResult> {
     const startTime = Date.now();
     let loginAttemptId: string | undefined;
@@ -469,7 +467,9 @@ export class SsoService {
 
       // Validate email domain if restrictions are set
       if (provider.allowedEmailDomains) {
-        const allowedDomains = provider.allowedEmailDomains.split(',').map(d => d.trim().toLowerCase());
+        const allowedDomains = provider.allowedEmailDomains
+          .split(',')
+          .map((d) => d.trim().toLowerCase());
         const emailDomain = userProfile.email.split('@')[1]?.toLowerCase();
 
         if (!allowedDomains.includes(emailDomain)) {
@@ -478,10 +478,7 @@ export class SsoService {
       }
 
       // Find or create user
-      const { user, provisioned, updated } = await this.findOrCreateUser(
-        provider,
-        userProfile
-      );
+      const { user, provisioned, updated } = await this.findOrCreateUser(provider, userProfile);
 
       // Create SSO session
       const session = await this.createSsoSession(provider, user.id, callbackData);
@@ -504,7 +501,7 @@ export class SsoService {
         .update(ssoProviderConfigs)
         .set({
           lastLoginAt: new Date(),
-          loginCount: ((parseInt(provider.loginCount || '0', 10) + 1).toString()),
+          loginCount: (parseInt(provider.loginCount || '0', 10) + 1).toString(),
           updatedAt: new Date(),
         })
         .where(eq(ssoProviderConfigs.id, providerId));
@@ -553,7 +550,7 @@ export class SsoService {
    */
   private async parseSamlResponse(
     provider: SsoProviderConfig,
-    callbackData: SsoCallbackData
+    callbackData: SsoCallbackData,
   ): Promise<SsoUserProfile> {
     // In production, use a proper SAML library for validation
     // This is a simplified version for illustration
@@ -580,14 +577,16 @@ export class SsoService {
     const externalId = nameIdMatch?.[1] || '';
 
     // Parse attribute statements
-    const attrRegex = /<saml:Attribute Name="([^"]+)"[^>]*>[\s\S]*?<saml:AttributeValue[^>]*>([^<]+)<\/saml:AttributeValue>/g;
+    const attrRegex =
+      /<saml:Attribute Name="([^"]+)"[^>]*>[\s\S]*?<saml:AttributeValue[^>]*>([^<]+)<\/saml:AttributeValue>/g;
     let match;
     while ((match = attrRegex.exec(samlXml)) !== null) {
       attributes[match[1]] = match[2];
     }
 
     // Map attributes to user profile
-    const email = attributes[attributeMapping.email || 'email'] ||
+    const email =
+      attributes[attributeMapping.email || 'email'] ||
       attributes['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
       externalId;
 
@@ -612,7 +611,7 @@ export class SsoService {
    */
   private async handleOidcCallback(
     provider: SsoProviderConfig,
-    callbackData: SsoCallbackData
+    callbackData: SsoCallbackData,
   ): Promise<SsoUserProfile> {
     if (!callbackData.code) {
       throw new Error('Authorization code is required');
@@ -654,7 +653,8 @@ export class SsoService {
     const attributes = { ...idTokenPayload, ...userInfo };
     const attributeMapping = provider.attributeMapping || {};
 
-    const email = attributes[attributeMapping.email || 'email'] ||
+    const email =
+      attributes[attributeMapping.email || 'email'] ||
       attributes.email ||
       attributes.preferred_username;
 
@@ -679,7 +679,7 @@ export class SsoService {
    */
   private async exchangeCodeForTokens(
     provider: SsoProviderConfig,
-    code: string
+    code: string,
   ): Promise<{ id_token: string; access_token: string; refresh_token?: string }> {
     let tokenUrl: string;
 
@@ -728,7 +728,7 @@ export class SsoService {
    */
   private async fetchUserInfo(
     provider: SsoProviderConfig,
-    accessToken: string
+    accessToken: string,
   ): Promise<Record<string, any>> {
     let userInfoUrl: string;
 
@@ -778,7 +778,7 @@ export class SsoService {
    */
   private async findOrCreateUser(
     provider: SsoProviderConfig,
-    profile: SsoUserProfile
+    profile: SsoUserProfile,
   ): Promise<{ user: any; provisioned: boolean; updated: boolean }> {
     // Check for existing user mapping
     const [existingMapping] = await db
@@ -787,16 +787,13 @@ export class SsoService {
       .where(
         and(
           eq(ssoUserMappings.providerId, provider.id),
-          eq(ssoUserMappings.externalId, profile.externalId)
-        )
+          eq(ssoUserMappings.externalId, profile.externalId),
+        ),
       );
 
     if (existingMapping) {
       // Get the existing user
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, existingMapping.userId));
+      const [user] = await db.select().from(users).where(eq(users.id, existingMapping.userId));
 
       if (!user) {
         throw new Error('Mapped user not found');
@@ -828,7 +825,7 @@ export class SsoService {
         .update(ssoUserMappings)
         .set({
           lastLoginAt: new Date(),
-          loginCount: ((parseInt(existingMapping.loginCount || '0', 10) + 1).toString()),
+          loginCount: (parseInt(existingMapping.loginCount || '0', 10) + 1).toString(),
           lastSyncedAt: new Date(),
           externalAttributes: profile.rawAttributes,
           externalGroups: profile.groups || [],
@@ -903,7 +900,7 @@ export class SsoService {
   private async createSsoSession(
     provider: SsoProviderConfig,
     userId: string,
-    callbackData: SsoCallbackData
+    callbackData: SsoCallbackData,
   ): Promise<{ sessionId: string; expiresAt: Date }> {
     const sessionId = randomBytes(32).toString('hex');
     const sessionTimeout = this.parseSessionTimeout(provider.sessionTimeout || '8h');
@@ -934,27 +931,34 @@ export class SsoService {
     const unit = match[2];
 
     switch (unit) {
-      case 's': return value * 1000;
-      case 'm': return value * 60 * 1000;
-      case 'h': return value * 60 * 60 * 1000;
-      case 'd': return value * 24 * 60 * 60 * 1000;
-      default: return 8 * 60 * 60 * 1000;
+      case 's':
+        return value * 1000;
+      case 'm':
+        return value * 60 * 1000;
+      case 'h':
+        return value * 60 * 60 * 1000;
+      case 'd':
+        return value * 24 * 60 * 60 * 1000;
+      default:
+        return 8 * 60 * 60 * 1000;
     }
   }
 
   /**
    * Log login attempt
    */
-  private async logLoginAttempt(data: Partial<{
-    tenantId: string;
-    providerId: string;
-    requestId: string;
-    protocol: 'saml2' | 'oidc';
-    success: boolean;
-    relayState?: string;
-    oidcState?: string;
-    oidcNonce?: string;
-  }>): Promise<void> {
+  private async logLoginAttempt(
+    data: Partial<{
+      tenantId: string;
+      providerId: string;
+      requestId: string;
+      protocol: 'saml2' | 'oidc';
+      success: boolean;
+      relayState?: string;
+      oidcState?: string;
+      oidcNonce?: string;
+    }>,
+  ): Promise<void> {
     await db.insert(ssoLoginAttempts).values({
       tenantId: data.tenantId,
       providerId: data.providerId,
@@ -984,7 +988,7 @@ export class SsoService {
       durationMs: string;
       clientIp: string;
       userAgent: string;
-    }>
+    }>,
   ): Promise<void> {
     await db
       .update(ssoLoginAttempts)
@@ -1057,7 +1061,7 @@ export class SsoService {
    */
   async handleLogout(
     sessionId: string,
-    initiator: 'user' | 'idp' | 'admin' = 'user'
+    initiator: 'user' | 'idp' | 'admin' = 'user',
   ): Promise<{ success: boolean; redirectUrl?: string }> {
     const [session] = await db
       .select()
@@ -1107,12 +1111,7 @@ export class SsoService {
     const [session] = await db
       .select()
       .from(ssoSessions)
-      .where(
-        and(
-          eq(ssoSessions.sessionId, sessionId),
-          eq(ssoSessions.isActive, true)
-        )
-      );
+      .where(and(eq(ssoSessions.sessionId, sessionId), eq(ssoSessions.isActive, true)));
 
     if (!session) {
       return { valid: false };

@@ -163,11 +163,7 @@ export default function PredictiveServiceDispatchDashboard() {
       medium: 'default',
       low: 'secondary',
     };
-    return (
-      <Badge variant={variants[priority] || 'default'}>
-        {priority.toUpperCase()}
-      </Badge>
-    );
+    return <Badge variant={variants[priority] || 'default'}>{priority.toUpperCase()}</Badge>;
   };
 
   return (
@@ -189,7 +185,9 @@ export default function PredictiveServiceDispatchDashboard() {
             disabled={analyzeFleetMutation.isPending}
             variant="outline"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${analyzeFleetMutation.isPending ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${analyzeFleetMutation.isPending ? 'animate-spin' : ''}`}
+            />
             {analyzeFleetMutation.isPending ? 'Analyzing Fleet...' : 'Analyze All Devices'}
           </Button>
         </div>
@@ -237,9 +235,7 @@ export default function PredictiveServiceDispatchDashboard() {
               <div className="text-3xl font-bold text-orange-500">
                 {overview?.devicesAtRisk || 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Require immediate attention
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Require immediate attention</p>
             </CardContent>
           </Card>
 
@@ -314,8 +310,8 @@ export default function PredictiveServiceDispatchDashboard() {
                     1. Monitor
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Continuously collect metrics from all devices: toner levels, supply life, page counts,
-                    error patterns, and device status via SNMP/HTTP.
+                    Continuously collect metrics from all devices: toner levels, supply life, page
+                    counts, error patterns, and device status via SNMP/HTTP.
                   </p>
                 </div>
 
@@ -327,8 +323,8 @@ export default function PredictiveServiceDispatchDashboard() {
                     2. Predict
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    AI analyzes trends to predict failures before they occur. Claude AI identifies patterns
-                    and calculates failure risk with recommended preventive actions.
+                    AI analyzes trends to predict failures before they occur. Claude AI identifies
+                    patterns and calculates failure risk with recommended preventive actions.
                   </p>
                 </div>
 
@@ -354,7 +350,8 @@ export default function PredictiveServiceDispatchDashboard() {
                     <div>
                       <div className="font-medium">Prevent Emergency Calls</div>
                       <div className="text-sm text-muted-foreground">
-                        Catch issues before they become emergencies, reducing urgent service calls by 60%
+                        Catch issues before they become emergencies, reducing urgent service calls
+                        by 60%
                       </div>
                     </div>
                   </div>
@@ -372,7 +369,8 @@ export default function PredictiveServiceDispatchDashboard() {
                     <div>
                       <div className="font-medium">Optimize Technician Routes</div>
                       <div className="text-sm text-muted-foreground">
-                        AI assigns jobs based on location, skills, and workload for maximum efficiency
+                        AI assigns jobs based on location, skills, and workload for maximum
+                        efficiency
                       </div>
                     </div>
                   </div>
@@ -483,19 +481,25 @@ export default function PredictiveServiceDispatchDashboard() {
                         </div>
                         <div>
                           <div className="text-muted-foreground">Toner</div>
-                          <div className={`font-medium ${device.tonerLevel < 15 ? 'text-orange-500' : ''}`}>
+                          <div
+                            className={`font-medium ${device.tonerLevel < 15 ? 'text-orange-500' : ''}`}
+                          >
                             {device.tonerLevel}%
                           </div>
                         </div>
                         <div>
                           <div className="text-muted-foreground">Fuser Life</div>
-                          <div className={`font-medium ${device.fuserLife < 20 ? 'text-red-500' : ''}`}>
+                          <div
+                            className={`font-medium ${device.fuserLife < 20 ? 'text-red-500' : ''}`}
+                          >
                             {device.fuserLife}%
                           </div>
                         </div>
                         <div>
                           <div className="text-muted-foreground">Drum Life</div>
-                          <div className={`font-medium ${device.drumLife < 20 ? 'text-red-500' : ''}`}>
+                          <div
+                            className={`font-medium ${device.drumLife < 20 ? 'text-red-500' : ''}`}
+                          >
                             {device.drumLife}%
                           </div>
                         </div>
@@ -505,7 +509,9 @@ export default function PredictiveServiceDispatchDashboard() {
                         <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5" />
                         <div className="flex-1">
                           <div className="font-medium text-sm">Predicted Issue</div>
-                          <div className="text-sm text-muted-foreground">{device.predictedIssue}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {device.predictedIssue}
+                          </div>
                         </div>
                       </div>
 
@@ -536,7 +542,9 @@ export default function PredictiveServiceDispatchDashboard() {
                 <div className="text-center py-8 text-muted-foreground">
                   <Calendar className="h-12 w-12 mx-auto mb-2" />
                   <p className="font-medium">No maintenance scheduled</p>
-                  <p className="text-sm">Run fleet analysis to identify devices needing attention</p>
+                  <p className="text-sm">
+                    Run fleet analysis to identify devices needing attention
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -553,7 +561,10 @@ export default function PredictiveServiceDispatchDashboard() {
                           </div>
                           <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
                             <Calendar className="h-3 w-3" />
-                            {format(new Date(maintenance.scheduledDate), 'EEEE, MMM d, yyyy h:mm a')}
+                            {format(
+                              new Date(maintenance.scheduledDate),
+                              'EEEE, MMM d, yyyy h:mm a',
+                            )}
                           </div>
                         </div>
                         <Badge variant="outline">
@@ -619,8 +630,8 @@ export default function PredictiveServiceDispatchDashboard() {
                             parseInt(tech.utilizationPercent) > 80
                               ? 'destructive'
                               : parseInt(tech.utilizationPercent) > 60
-                              ? 'default'
-                              : 'secondary'
+                                ? 'default'
+                                : 'secondary'
                           }
                         >
                           {tech.utilizationPercent}% Utilized

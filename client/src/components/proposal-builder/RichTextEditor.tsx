@@ -2,14 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { sanitizeRichHtml } from '@/lib/sanitize-html';
-import { 
-  Bold, 
-  Italic, 
-  Underline, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
-  List, 
+import {
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  List,
   ListOrdered,
   Link,
   Image,
@@ -19,12 +19,18 @@ import {
   Quote,
   Code,
   Undo,
-  Redo
+  Redo,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface RichTextEditorProps {
   value: string;
@@ -34,7 +40,13 @@ interface RichTextEditorProps {
   minHeight?: string;
 }
 
-const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", className = "", minHeight = "200px" }: RichTextEditorProps) => {
+const RichTextEditor = ({
+  value,
+  onChange,
+  placeholder = 'Start typing...',
+  className = '',
+  minHeight = '200px',
+}: RichTextEditorProps) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -228,10 +240,19 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
               <Label>Text Color</Label>
               <div className="flex gap-1 flex-wrap">
                 {[
-                  '#000000', '#333333', '#666666', '#999999',
-                  '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
-                  '#FF00FF', '#00FFFF', '#FFA500', '#800080'
-                ].map(color => (
+                  '#000000',
+                  '#333333',
+                  '#666666',
+                  '#999999',
+                  '#FF0000',
+                  '#00FF00',
+                  '#0000FF',
+                  '#FFFF00',
+                  '#FF00FF',
+                  '#00FFFF',
+                  '#FFA500',
+                  '#800080',
+                ].map((color) => (
                   <button
                     key={color}
                     className="w-8 h-8 sm:w-6 sm:h-6 rounded border-2 border-gray-300 touch-manipulation active:scale-[0.95]"
@@ -260,10 +281,19 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
               <Label>Background Color</Label>
               <div className="flex gap-1 flex-wrap">
                 {[
-                  '#FFFFFF', '#F0F0F0', '#D0D0D0', '#B0B0B0',
-                  '#FFE0E0', '#E0FFE0', '#E0E0FF', '#FFFFE0',
-                  '#FFE0FF', '#E0FFFF', '#FFEAA7', '#DDA0DD'
-                ].map(color => (
+                  '#FFFFFF',
+                  '#F0F0F0',
+                  '#D0D0D0',
+                  '#B0B0B0',
+                  '#FFE0E0',
+                  '#E0FFE0',
+                  '#E0E0FF',
+                  '#FFFFE0',
+                  '#FFE0FF',
+                  '#E0FFFF',
+                  '#FFEAA7',
+                  '#DDA0DD',
+                ].map((color) => (
                   <button
                     key={color}
                     className="w-8 h-8 sm:w-6 sm:h-6 rounded border-2 border-gray-300 touch-manipulation active:scale-[0.95]"
@@ -427,7 +457,7 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
       <style jsx>{`
         div[contenteditable]:empty:before {
           content: attr(data-placeholder);
-          color: #9CA3AF;
+          color: #9ca3af;
           pointer-events: none;
         }
         div[contenteditable] h1 {
@@ -454,20 +484,21 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           margin: 0.5rem 0;
         }
         div[contenteditable] blockquote {
-          border-left: 4px solid #E5E7EB;
+          border-left: 4px solid #e5e7eb;
           padding-left: 1rem;
           margin: 1rem 0;
-          color: #6B7280;
+          color: #6b7280;
           font-style: italic;
         }
         div[contenteditable] pre {
-          background: #F3F4F6;
+          background: #f3f4f6;
           padding: 1rem;
           border-radius: 0.375rem;
           font-family: 'Courier New', monospace;
           overflow-x: auto;
         }
-        div[contenteditable] ul, div[contenteditable] ol {
+        div[contenteditable] ul,
+        div[contenteditable] ol {
           margin: 0.5rem 0;
           padding-left: 1.5rem;
         }
@@ -481,12 +512,12 @@ const RichTextEditor = ({ value, onChange, placeholder = "Start typing...", clas
           margin: 0.5rem 0;
         }
         div[contenteditable] a {
-          color: #3B82F6;
+          color: #3b82f6;
           text-decoration: underline;
         }
         div[contenteditable] hr {
           border: none;
-          border-top: 1px solid #E5E7EB;
+          border-top: 1px solid #e5e7eb;
           margin: 1rem 0;
         }
       `}</style>

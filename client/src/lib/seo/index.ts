@@ -25,12 +25,7 @@ export {
 } from './seoConfig';
 
 // Provider and Hooks
-export {
-  SEOProvider,
-  useDynamicSEO,
-  useCurrentSEO,
-  useBreadcrumbs,
-} from './SEOProvider';
+export { SEOProvider, useDynamicSEO, useCurrentSEO, useBreadcrumbs } from './SEOProvider';
 
 // Internal Linking Components
 export {

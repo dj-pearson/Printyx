@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -7,25 +7,17 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from "@dnd-kit/core";
+} from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,
   useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import {
-  Settings,
-  GripVertical,
-  Eye,
-  EyeOff,
-  RotateCcw,
-  Save,
-  Plus,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Settings, GripVertical, Eye, EyeOff, RotateCcw, Save, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -33,18 +25,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 // Widget configuration type
 export interface DashboardWidget {
@@ -53,9 +45,9 @@ export interface DashboardWidget {
   title: string;
   component: React.ComponentType<any>;
   defaultProps?: any;
-  size?: "small" | "medium" | "large" | "full";
+  size?: 'small' | 'medium' | 'large' | 'full';
   visible?: boolean;
-  category?: "metrics" | "activity" | "tasks" | "team" | "analytics";
+  category?: 'metrics' | 'activity' | 'tasks' | 'team' | 'analytics';
 }
 
 interface CustomizableDashboardProps {
@@ -74,8 +66,9 @@ function SortableWidget({
   isEditMode: boolean;
   onToggleVisibility: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: widget.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: widget.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -87,10 +80,10 @@ function SortableWidget({
 
   // Map size to grid columns
   const sizeClasses = {
-    small: "col-span-1",
-    medium: "col-span-1 md:col-span-2",
-    large: "col-span-1 md:col-span-3",
-    full: "col-span-1 md:col-span-4",
+    small: 'col-span-1',
+    medium: 'col-span-1 md:col-span-2',
+    large: 'col-span-1 md:col-span-3',
+    full: 'col-span-1 md:col-span-4',
   };
 
   if (!widget.visible) return null;
@@ -100,9 +93,9 @@ function SortableWidget({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative",
-        sizeClasses[widget.size || "medium"],
-        isEditMode && "ring-2 ring-blue-500 ring-offset-2 rounded-lg"
+        'relative',
+        sizeClasses[widget.size || 'medium'],
+        isEditMode && 'ring-2 ring-blue-500 ring-offset-2 rounded-lg',
       )}
     >
       {/* Edit Mode Overlay */}
@@ -155,7 +148,7 @@ export function CustomizableDashboard({
         });
         setWidgets(mergedWidgets);
       } catch (err) {
-        console.error("Failed to load dashboard layout:", err);
+        console.error('Failed to load dashboard layout:', err);
       }
     }
   }, [userId, defaultWidgets]);
@@ -164,7 +157,7 @@ export function CustomizableDashboard({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -181,9 +174,7 @@ export function CustomizableDashboard({
 
   const handleToggleVisibility = (id: string) => {
     setWidgets((items) =>
-      items.map((item) =>
-        item.id === id ? { ...item, visible: !item.visible } : item
-      )
+      items.map((item) => (item.id === id ? { ...item, visible: !item.visible } : item)),
     );
   };
 
@@ -202,14 +193,14 @@ export function CustomizableDashboard({
       // await apiRequest(`/api/users/${userId}/dashboard-layout`, "PUT", { layout });
 
       toast({
-        title: "Dashboard saved",
-        description: "Your dashboard layout has been saved.",
+        title: 'Dashboard saved',
+        description: 'Your dashboard layout has been saved.',
       });
     } catch (err) {
       toast({
-        title: "Failed to save",
-        description: "Could not save dashboard layout. Please try again.",
-        variant: "destructive",
+        title: 'Failed to save',
+        description: 'Could not save dashboard layout. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsSaving(false);
@@ -221,8 +212,8 @@ export function CustomizableDashboard({
     setWidgets(defaultWidgets);
     localStorage.removeItem(`dashboard_layout_${userId}`);
     toast({
-      title: "Dashboard reset",
-      description: "Your dashboard has been reset to default.",
+      title: 'Dashboard reset',
+      description: 'Your dashboard has been reset to default.',
     });
   };
 
@@ -282,9 +273,7 @@ export function CustomizableDashboard({
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Widget</DialogTitle>
-                  <DialogDescription>
-                    Choose a widget to add to your dashboard
-                  </DialogDescription>
+                  <DialogDescription>Choose a widget to add to your dashboard</DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3">
                   {availableWidgets
@@ -313,36 +302,20 @@ export function CustomizableDashboard({
           {/* Edit/Save Controls */}
           {isEditMode ? (
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditMode(false)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setIsEditMode(false)}>
                 Cancel
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleResetLayout}
-              >
+              <Button variant="outline" size="sm" onClick={handleResetLayout}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Reset
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSaveLayout}
-                disabled={isSaving}
-              >
+              <Button size="sm" onClick={handleSaveLayout} disabled={isSaving}>
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Layout"}
+                {isSaving ? 'Saving...' : 'Save Layout'}
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditMode(true)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)}>
               <Settings className="h-4 w-4 mr-2" />
               Customize
             </Button>
@@ -351,15 +324,8 @@ export function CustomizableDashboard({
       </div>
 
       {/* Dashboard Grid */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={visibleWidgets.map((w) => w.id)}
-          strategy={rectSortingStrategy}
-        >
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={visibleWidgets.map((w) => w.id)} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {visibleWidgets.map((widget) => (
               <SortableWidget
@@ -399,7 +365,7 @@ export function useDashboardCustomization(userId: string) {
       try {
         setLayout(JSON.parse(savedLayout));
       } catch (err) {
-        console.error("Failed to load dashboard layout:", err);
+        console.error('Failed to load dashboard layout:', err);
       }
     }
   }, [userId]);

@@ -5,7 +5,7 @@ import { eq, and, sql, desc, count } from 'drizzle-orm';
 
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
-    return res.status(401).json({ message: "Authentication required" });
+    return res.status(401).json({ message: 'Authentication required' });
   }
   next();
 };
@@ -22,7 +22,7 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
     const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Get all equipment with calculated maintenance needs
@@ -43,19 +43,16 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
-      .where(
-        and(
-          eq(equipment.tenantId, tenantId),
-          eq(equipment.status, 'active')
-        )
-      )
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
       .orderBy(equipment.nextServiceDue);
 
     // Calculate maintenance metrics for each equipment
     const maintenanceItems = equipmentList.map((item) => {
       const now = new Date();
       const lastService = item.lastServiceDate ? new Date(item.lastServiceDate) : null;
-      const nextDue = item.nextServiceDue ? new Date(item.nextServiceDue) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+      const nextDue = item.nextServiceDue
+        ? new Date(item.nextServiceDue)
+        : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
       // Calculate days since last service
       const daysSinceService = lastService
@@ -135,18 +132,21 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
     });
 
     // Calculate summary statistics
-    const overdueCount = maintenanceItems.filter(i => i.urgency === 'overdue').length;
-    const urgentCount = maintenanceItems.filter(i => i.urgency === 'urgent').length;
-    const soonCount = maintenanceItems.filter(i => i.urgency === 'soon').length;
-    const scheduledCount = maintenanceItems.filter(i => i.urgency === 'scheduled').length;
+    const overdueCount = maintenanceItems.filter((i) => i.urgency === 'overdue').length;
+    const urgentCount = maintenanceItems.filter((i) => i.urgency === 'urgent').length;
+    const soonCount = maintenanceItems.filter((i) => i.urgency === 'soon').length;
+    const scheduledCount = maintenanceItems.filter((i) => i.urgency === 'scheduled').length;
 
-    const averageHealthScore = maintenanceItems.length > 0
-      ? maintenanceItems.reduce((sum, i) => sum + i.healthScore, 0) / maintenanceItems.length
-      : 100;
+    const averageHealthScore =
+      maintenanceItems.length > 0
+        ? maintenanceItems.reduce((sum, i) => sum + i.healthScore, 0) / maintenanceItems.length
+        : 100;
 
     // Estimate prevented emergencies (equipment that was proactively serviced)
     // This would come from actual historical data in production
-    const preventableEmergencies = Math.floor(maintenanceItems.filter(i => i.healthScore < 60).length * 0.7);
+    const preventableEmergencies = Math.floor(
+      maintenanceItems.filter((i) => i.healthScore < 60).length * 0.7,
+    );
 
     res.json({
       success: true,
@@ -161,7 +161,6 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
       },
       equipment: maintenanceItems,
     });
-
   } catch (error) {
     console.error('[PROACTIVE MAINTENANCE] Error:', error);
     res.status(500).json({
@@ -181,7 +180,7 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
     const { scheduledDate, priority = 'medium', notes } = req.body;
 
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Get equipment details
@@ -195,12 +194,7 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
         location: equipment.location,
       })
       .from(equipment)
-      .where(
-        and(
-          eq(equipment.id, equipmentId),
-          eq(equipment.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
       .limit(1);
 
     if (!equipmentItem) {
@@ -227,7 +221,9 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
       })
       .returning();
 
-    console.log(`[PROACTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`);
+    console.log(
+      `[PROACTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`,
+    );
 
     res.json({
       success: true,
@@ -238,7 +234,6 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
         scheduledDate: ticket.scheduledDate,
       },
     });
-
   } catch (error) {
     console.error('[PROACTIVE MAINTENANCE] Error scheduling service:', error);
     res.status(500).json({

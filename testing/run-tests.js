@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 
-const { spawn } = require("child_process");
-const http = require("http");
-const SimpleTestOrchestrator = require("./simple-test-orchestrator");
-const path = require("path");
+const { spawn } = require('child_process');
+const http = require('http');
+const SimpleTestOrchestrator = require('./simple-test-orchestrator');
+const path = require('path');
 
 class TestRunner {
   constructor(options = {}) {
     this.serverProcess = null;
-    this.serverUrl = "http://localhost:5000";
+    this.serverUrl = 'http://localhost:5000';
     this.serverStartTimeout = 60000; // 1 minute
     this.options = options;
   }
 
   async run() {
-    console.log("🚀 Printyx Comprehensive Test Runner");
-    console.log("=".repeat(50));
+    console.log('🚀 Printyx Comprehensive Test Runner');
+    console.log('='.repeat(50));
 
     try {
       // Check if server should be started
@@ -24,28 +24,28 @@ class TestRunner {
         const isServerRunning = await this.checkServer();
 
         if (!isServerRunning) {
-          console.log("📡 Starting development server...");
+          console.log('📡 Starting development server...');
           await this.startServer();
         } else {
-          console.log("✅ Server is already running");
+          console.log('✅ Server is already running');
         }
       } else {
-        console.log("⚙️ Skipping server startup (--no-server flag)");
+        console.log('⚙️ Skipping server startup (--no-server flag)');
         // Still check if server is accessible
         const isServerRunning = await this.checkServer();
         if (!isServerRunning) {
           throw new Error(
-            "Server is not running! Please start it manually or remove --no-server flag."
+            'Server is not running! Please start it manually or remove --no-server flag.',
           );
         }
-        console.log("✅ External server is accessible");
+        console.log('✅ External server is accessible');
       }
 
       // Wait a moment for server to fully initialize
       await this.sleep(2000);
 
       // Run the comprehensive tests
-      console.log("🧪 Starting comprehensive route testing...");
+      console.log('🧪 Starting comprehensive route testing...');
       const orchestrator = new SimpleTestOrchestrator();
 
       const results = await orchestrator.runTest({
@@ -60,12 +60,12 @@ class TestRunner {
 
       return results;
     } catch (error) {
-      console.error("❌ Test run failed:", error.message);
+      console.error('❌ Test run failed:', error.message);
       throw error;
     } finally {
       // Cleanup
       if (this.serverProcess) {
-        console.log("🛑 Stopping development server...");
+        console.log('🛑 Stopping development server...');
         this.serverProcess.kill();
       }
     }
@@ -83,67 +83,65 @@ class TestRunner {
   async startServer() {
     return new Promise((resolve, reject) => {
       // Change to project root directory
-      const projectRoot = path.resolve(__dirname, "..");
+      const projectRoot = path.resolve(__dirname, '..');
 
       // Start the development server
-      this.serverProcess = spawn("npm", ["run", "dev"], {
+      this.serverProcess = spawn('npm', ['run', 'dev'], {
         cwd: projectRoot,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ['ignore', 'pipe', 'pipe'],
         shell: true,
-        env: { 
+        env: {
           ...process.env,
-          DATABASE_URL: "sqlite://test.db",
-          REPLIT_DOMAINS: "localhost"
-        }
+          DATABASE_URL: 'sqlite://test.db',
+          REPLIT_DOMAINS: 'localhost',
+        },
       });
 
-      let serverOutput = "";
+      let serverOutput = '';
 
-      this.serverProcess.stdout.on("data", (data) => {
+      this.serverProcess.stdout.on('data', (data) => {
         const output = data.toString();
         serverOutput += output;
 
         // Check if server is ready
         if (
-          output.includes("Local:") ||
-          output.includes("localhost:5000") ||
-          output.includes("ready")
+          output.includes('Local:') ||
+          output.includes('localhost:5000') ||
+          output.includes('ready')
         ) {
-          console.log("✅ Development server started successfully");
+          console.log('✅ Development server started successfully');
           resolve();
         }
       });
 
-      this.serverProcess.stderr.on("data", (data) => {
+      this.serverProcess.stderr.on('data', (data) => {
         const output = data.toString();
         serverOutput += output;
-        console.log("Server stderr:", output);
+        console.log('Server stderr:', output);
       });
 
-      this.serverProcess.on("error", (error) => {
-        console.error("❌ Failed to start server:", error.message);
+      this.serverProcess.on('error', (error) => {
+        console.error('❌ Failed to start server:', error.message);
         reject(error);
       });
 
-      this.serverProcess.on("exit", (code) => {
+      this.serverProcess.on('exit', (code) => {
         if (code !== 0) {
           console.error(`❌ Server exited with code ${code}`);
-          console.log("Server output:", serverOutput);
+          console.log('Server output:', serverOutput);
         }
       });
 
       // Timeout if server doesn't start
       setTimeout(() => {
         if (this.serverProcess && !this.serverProcess.killed) {
-          console.log(
-            "⏰ Server startup timeout, checking if it's accessible..."
-          );
+          console.log("⏰ Server startup timeout, checking if it's accessible...");
           this.checkServer().then((isRunning) => {
             if (isRunning) {
-              console.log("✅ Server is accessible despite timeout");
+              console.log('✅ Server is accessible despite timeout');
               resolve();
             } else {
-              reject(new Error("Server failed to start within timeout"));
+              reject(new Error('Server failed to start within timeout'));
             }
           });
         }
@@ -161,10 +159,10 @@ class TestRunner {
         }
       });
 
-      request.on("error", reject);
+      request.on('error', reject);
       request.setTimeout(5000, () => {
         request.destroy();
-        reject(new Error("Request timeout"));
+        reject(new Error('Request timeout'));
       });
     });
   }
@@ -174,9 +172,9 @@ class TestRunner {
   }
 
   printFinalSummary(results) {
-    console.log("\n" + "=".repeat(60));
-    console.log("🎉 COMPREHENSIVE TEST COMPLETED");
-    console.log("=".repeat(60));
+    console.log('\n' + '='.repeat(60));
+    console.log('🎉 COMPREHENSIVE TEST COMPLETED');
+    console.log('='.repeat(60));
 
     const summary = results.summary;
     const duration = Math.round((summary.endTime - summary.startTime) / 1000);
@@ -187,16 +185,14 @@ class TestRunner {
       `   ✅ Successful: ${summary.successful} (${(
         (summary.successful / summary.totalRoutes) *
         100
-      ).toFixed(1)}%)`
+      ).toFixed(1)}%)`,
     );
     console.log(`   ❌ Errors: ${summary.errors}`);
     console.log(`   ⚠️  Warnings: ${summary.warnings}`);
     console.log(`   ⏱️  Duration: ${duration}s`);
 
     console.log(`\n⚡ PERFORMANCE:`);
-    console.log(
-      `   Average Load: ${Math.round(results.performance.averageLoadTime)}ms`
-    );
+    console.log(`   Average Load: ${Math.round(results.performance.averageLoadTime)}ms`);
     console.log(`   Slow Routes: ${results.performance.slowRoutes.length}`);
 
     console.log(`\n🔘 INTERACTIONS:`);
@@ -204,29 +200,29 @@ class TestRunner {
     console.log(`   Forms Found: ${results.forms.length}`);
 
     if (summary.errors > 0) {
-      console.log("\n❌ CRITICAL ISSUES TO ADDRESS:");
+      console.log('\n❌ CRITICAL ISSUES TO ADDRESS:');
       // This would be populated by the orchestrator's error analysis
     }
 
     if (results.performance.slowRoutes.length > 0) {
-      console.log("\n🐌 PERFORMANCE OPTIMIZATION NEEDED:");
+      console.log('\n🐌 PERFORMANCE OPTIMIZATION NEEDED:');
       results.performance.slowRoutes.slice(0, 5).forEach((route) => {
         console.log(`   ${route.route}: ${route.loadTime}ms`);
       });
     }
 
-    console.log("\n📄 Reports generated in ./test-results/");
-    console.log("   📊 orchestrated-test-results.json - Full results");
-    console.log("   📋 test-summary.json - Summary data");
-    console.log("   🎯 actionable-report.json - Action items");
-    console.log("   🌐 test-report.html - Visual report");
+    console.log('\n📄 Reports generated in ./test-results/');
+    console.log('   📊 orchestrated-test-results.json - Full results');
+    console.log('   📋 test-summary.json - Summary data');
+    console.log('   🎯 actionable-report.json - Action items');
+    console.log('   🌐 test-report.html - Visual report');
 
-    console.log("\n🎯 NEXT STEPS:");
-    console.log("   1. Review actionable-report.json for priority fixes");
-    console.log("   2. Address critical errors first");
-    console.log("   3. Optimize slow-loading routes");
-    console.log("   4. Add missing button handlers");
-    console.log("=".repeat(60));
+    console.log('\n🎯 NEXT STEPS:');
+    console.log('   1. Review actionable-report.json for priority fixes');
+    console.log('   2. Address critical errors first');
+    console.log('   3. Optimize slow-loading routes');
+    console.log('   4. Add missing button handlers');
+    console.log('='.repeat(60));
   }
 }
 
@@ -234,15 +230,13 @@ class TestRunner {
 async function main() {
   const args = process.argv.slice(2);
   const options = {
-    autoServer: !args.includes("--no-server"),
-    screenshots: !args.includes("--no-screenshots"),
-    viewports: args.includes("--desktop-only")
-      ? ["desktop"]
-      : ["desktop", "tablet", "mobile"],
-    verbose: args.includes("--verbose"),
+    autoServer: !args.includes('--no-server'),
+    screenshots: !args.includes('--no-screenshots'),
+    viewports: args.includes('--desktop-only') ? ['desktop'] : ['desktop', 'tablet', 'mobile'],
+    verbose: args.includes('--verbose'),
   };
 
-  if (args.includes("--help")) {
+  if (args.includes('--help')) {
     console.log(`
 🚀 Printyx Comprehensive Test Runner
 
@@ -266,10 +260,10 @@ Examples:
   try {
     const runner = new TestRunner(options);
     await runner.run();
-    console.log("\n✅ All tests completed successfully!");
+    console.log('\n✅ All tests completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error("\n❌ Test runner failed:", error.message);
+    console.error('\n❌ Test runner failed:', error.message);
     if (options.verbose) {
       console.error(error.stack);
     }

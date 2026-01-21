@@ -81,7 +81,7 @@ export abstract class BaseManufacturerAdapter {
    */
   async collectMultipleDeviceMetrics(deviceIds: string[]): Promise<CollectionResult[]> {
     const results: CollectionResult[] = [];
-    
+
     for (const deviceId of deviceIds) {
       try {
         const result = await this.collectDeviceMetrics(deviceId);
@@ -91,11 +91,11 @@ export abstract class BaseManufacturerAdapter {
           success: false,
           deviceId,
           metrics: [],
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
-    
+
     return results;
   }
 
@@ -127,7 +127,7 @@ export abstract class BaseManufacturerAdapter {
     // Base implementation - override in specific adapters for custom field mapping
     Object.entries(rawData).forEach(([key, value]) => {
       const mappedField = mappings[key] || key;
-      
+
       if (this.isValidMetricValue(value)) {
         metrics.push({
           metricType: mappedField,
@@ -138,7 +138,7 @@ export abstract class BaseManufacturerAdapter {
           booleanValue: typeof value === 'boolean' ? value : undefined,
           jsonValue: typeof value === 'object' ? value : undefined,
           measurementTimestamp: new Date(),
-          rawData: { [key]: value }
+          rawData: { [key]: value },
         });
       }
     });
@@ -149,25 +149,49 @@ export abstract class BaseManufacturerAdapter {
   /**
    * Categorize metrics based on metric type
    */
-  protected categorizeMetric(metricType: string): 'usage' | 'supply' | 'maintenance' | 'error' | 'status' {
+  protected categorizeMetric(
+    metricType: string,
+  ): 'usage' | 'supply' | 'maintenance' | 'error' | 'status' {
     const type = metricType.toLowerCase();
-    
-    if (type.includes('print') || type.includes('copy') || type.includes('scan') || type.includes('page') || type.includes('count')) {
+
+    if (
+      type.includes('print') ||
+      type.includes('copy') ||
+      type.includes('scan') ||
+      type.includes('page') ||
+      type.includes('count')
+    ) {
       return 'usage';
     }
-    
-    if (type.includes('toner') || type.includes('ink') || type.includes('paper') || type.includes('supply') || type.includes('level')) {
+
+    if (
+      type.includes('toner') ||
+      type.includes('ink') ||
+      type.includes('paper') ||
+      type.includes('supply') ||
+      type.includes('level')
+    ) {
       return 'supply';
     }
-    
-    if (type.includes('maintenance') || type.includes('clean') || type.includes('service') || type.includes('drum')) {
+
+    if (
+      type.includes('maintenance') ||
+      type.includes('clean') ||
+      type.includes('service') ||
+      type.includes('drum')
+    ) {
       return 'maintenance';
     }
-    
-    if (type.includes('error') || type.includes('jam') || type.includes('fault') || type.includes('warning')) {
+
+    if (
+      type.includes('error') ||
+      type.includes('jam') ||
+      type.includes('fault') ||
+      type.includes('warning')
+    ) {
       return 'error';
     }
-    
+
     return 'status';
   }
 
@@ -182,12 +206,12 @@ export abstract class BaseManufacturerAdapter {
    * Make HTTP request with error handling and retries
    */
   protected async makeHttpRequest(
-    url: string, 
-    options: RequestInit, 
-    retries: number = 3
+    url: string,
+    options: RequestInit,
+    retries: number = 3,
   ): Promise<Response> {
     let lastError: Error;
-    
+
     for (let i = 0; i < retries; i++) {
       try {
         const response = await fetch(url, {
@@ -195,21 +219,21 @@ export abstract class BaseManufacturerAdapter {
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'Printyx-Integration/1.0',
-            ...options.headers
-          }
+            ...options.headers,
+          },
         });
-        
+
         if (response.status === 401) {
           await this.handleAuthError();
           continue; // Retry with new auth
         }
-        
+
         if (response.status === 429) {
           // Rate limited - wait and retry
           await this.sleep(Math.pow(2, i) * 1000);
           continue;
         }
-        
+
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
@@ -218,7 +242,7 @@ export abstract class BaseManufacturerAdapter {
         }
       }
     }
-    
+
     throw lastError!;
   }
 
@@ -226,7 +250,7 @@ export abstract class BaseManufacturerAdapter {
    * Sleep utility for retries and rate limiting
    */
   protected sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /**
@@ -236,11 +260,11 @@ export abstract class BaseManufacturerAdapter {
     if (!this.config.apiEndpoint) {
       throw new Error('API endpoint is required');
     }
-    
+
     if (!this.config.authCredentials) {
       throw new Error('Authentication credentials are required');
     }
-    
+
     return true;
   }
 
@@ -249,20 +273,22 @@ export abstract class BaseManufacturerAdapter {
    */
   protected getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {};
-    
+
     switch (this.config.authType) {
       case 'api_key':
         headers['Authorization'] = `Bearer ${this.config.authCredentials.apiKey}`;
         break;
       case 'basic_auth':
-        const credentials = btoa(`${this.config.authCredentials.username}:${this.config.authCredentials.password}`);
+        const credentials = btoa(
+          `${this.config.authCredentials.username}:${this.config.authCredentials.password}`,
+        );
         headers['Authorization'] = `Basic ${credentials}`;
         break;
       case 'oauth2':
         headers['Authorization'] = `Bearer ${this.config.authCredentials.accessToken}`;
         break;
     }
-    
+
     return headers;
   }
 
@@ -274,12 +300,12 @@ export abstract class BaseManufacturerAdapter {
       const errorText = await response.text();
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
-    
+
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       return await response.json();
     }
-    
+
     return await response.text();
   }
 }

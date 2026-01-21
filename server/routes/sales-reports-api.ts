@@ -35,13 +35,10 @@ router.get(
 
       const { dateFrom, dateTo } = req.query;
 
-      const pipeline = await SalesReportingService.getPersonalPipeline(
-        req.user,
-        {
-          dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
-          dateTo: dateTo ? new Date(dateTo as string) : undefined,
-        }
-      );
+      const pipeline = await SalesReportingService.getPersonalPipeline(req.user, {
+        dateFrom: dateFrom ? new Date(dateFrom as string) : undefined,
+        dateTo: dateTo ? new Date(dateTo as string) : undefined,
+      });
 
       res.json({
         pipeline,
@@ -53,7 +50,7 @@ router.get(
       console.error('Error fetching personal pipeline:', error);
       res.status(500).json({ error: 'Failed to fetch pipeline data', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -81,7 +78,7 @@ router.get(
           dateFrom: new Date(dateFrom as string),
           dateTo: new Date(dateTo as string),
         },
-        granularity as 'day' | 'week'
+        granularity as 'day' | 'week',
       );
 
       const totals = activities.reduce(
@@ -92,7 +89,7 @@ router.get(
           demos: acc.demos + day.demos,
           proposals: acc.proposals + day.proposals,
         }),
-        { calls: 0, emails: 0, meetings: 0, demos: 0, proposals: 0 }
+        { calls: 0, emails: 0, meetings: 0, demos: 0, proposals: 0 },
       );
 
       res.json({
@@ -110,7 +107,7 @@ router.get(
       console.error('Error fetching personal activity:', error);
       res.status(500).json({ error: 'Failed to fetch activity data', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -130,7 +127,7 @@ router.get(
 
       const quota = await SalesReportingService.getPersonalQuotaAttainment(
         req.user,
-        period as 'current' | 'previous' | 'ytd'
+        period as 'current' | 'previous' | 'ytd',
       );
 
       res.json({
@@ -140,7 +137,7 @@ router.get(
           gap: quota.quotaAmount - quota.actualRevenue,
           gapPercent: 100 - quota.attainmentPercent,
           dealsNeeded: Math.ceil(
-            (quota.quotaAmount - quota.actualRevenue) / (quota.averageDealSize || 1)
+            (quota.quotaAmount - quota.actualRevenue) / (quota.averageDealSize || 1),
           ),
         },
       });
@@ -148,7 +145,7 @@ router.get(
       console.error('Error fetching quota attainment:', error);
       res.status(500).json({ error: 'Failed to fetch quota data', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -176,14 +173,20 @@ router.get(
           dateFrom: new Date(dateFrom as string),
           dateTo: new Date(dateTo as string),
         },
-        status as 'pending' | 'approved' | 'paid' | undefined
+        status as 'pending' | 'approved' | 'paid' | undefined,
       );
 
       const summary = {
         totalCommission: commissions.reduce((sum, c) => sum + c.commissionAmount, 0),
-        pending: commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + c.commissionAmount, 0),
-        approved: commissions.filter(c => c.status === 'approved').reduce((sum, c) => sum + c.commissionAmount, 0),
-        paid: commissions.filter(c => c.status === 'paid').reduce((sum, c) => sum + c.commissionAmount, 0),
+        pending: commissions
+          .filter((c) => c.status === 'pending')
+          .reduce((sum, c) => sum + c.commissionAmount, 0),
+        approved: commissions
+          .filter((c) => c.status === 'approved')
+          .reduce((sum, c) => sum + c.commissionAmount, 0),
+        paid: commissions
+          .filter((c) => c.status === 'paid')
+          .reduce((sum, c) => sum + c.commissionAmount, 0),
         count: commissions.length,
       };
 
@@ -195,7 +198,7 @@ router.get(
       console.error('Error fetching commissions:', error);
       res.status(500).json({ error: 'Failed to fetch commission data', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -216,10 +219,10 @@ router.get(
       const leaderboard = await SalesReportingService.getLeaderboard(
         req.user,
         metric as 'revenue' | 'deals' | 'pipeline' | 'activities',
-        scope as 'team' | 'location' | 'company'
+        scope as 'team' | 'location' | 'company',
       );
 
-      const myPosition = leaderboard.find(entry => entry.userId === req.user!.id);
+      const myPosition = leaderboard.find((entry) => entry.userId === req.user!.id);
 
       res.json({
         leaderboard,
@@ -233,7 +236,7 @@ router.get(
       console.error('Error fetching leaderboard:', error);
       res.status(500).json({ error: 'Failed to fetch leaderboard data', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -259,7 +262,8 @@ router.get(
         teamSize: comparison.length,
         totalPipeline: comparison.reduce((sum, m) => sum + m.pipelineValue, 0),
         averageWinRate: comparison.reduce((sum, m) => sum + m.winRate, 0) / comparison.length,
-        averageQuotaAttainment: comparison.reduce((sum, m) => sum + m.quotaAttainment, 0) / comparison.length,
+        averageQuotaAttainment:
+          comparison.reduce((sum, m) => sum + m.quotaAttainment, 0) / comparison.length,
         topPerformer: comparison.length > 0 ? comparison[0] : null,
       };
 
@@ -271,7 +275,7 @@ router.get(
       console.error('Error fetching team comparison:', error);
       res.status(500).json({ error: 'Failed to fetch team data', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -289,7 +293,7 @@ router.get(
 
       const comparison = await SalesReportingService.getTeamComparison(req.user);
 
-      const pipelineData = comparison.map(member => ({
+      const pipelineData = comparison.map((member) => ({
         userName: member.userName,
         userId: member.userId,
         pipelineValue: member.pipelineValue,
@@ -306,7 +310,7 @@ router.get(
       console.error('Error fetching team pipeline:', error);
       res.status(500).json({ error: 'Failed to fetch team pipeline data', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -328,27 +332,33 @@ router.get(
 
       const { dateFrom, dateTo } = req.query;
 
-      const dateRange = dateFrom && dateTo ? {
-        dateFrom: new Date(dateFrom as string),
-        dateTo: new Date(dateTo as string),
-      } : undefined;
+      const dateRange =
+        dateFrom && dateTo
+          ? {
+              dateFrom: new Date(dateFrom as string),
+              dateTo: new Date(dateTo as string),
+            }
+          : undefined;
 
-      const result = await SalesReportingService.getTeamPipelineSummary(
-        req.user,
-        dateRange
-      );
+      const result = await SalesReportingService.getTeamPipelineSummary(req.user, dateRange);
 
       // Enrich with additional metrics
       const metrics = {
         teamSize: result.individualPipelines.length,
-        averageValuePerRep: result.individualPipelines.length > 0
-          ? result.summary.totalTeamValue / result.individualPipelines.length
-          : 0,
-        averageDealsPerRep: result.individualPipelines.length > 0
-          ? result.summary.totalTeamDeals / result.individualPipelines.length
-          : 0,
-        pipelineHealth: result.summary.teamConversionRate >= 20 ? 'healthy' :
-                        result.summary.teamConversionRate >= 10 ? 'fair' : 'needs_attention',
+        averageValuePerRep:
+          result.individualPipelines.length > 0
+            ? result.summary.totalTeamValue / result.individualPipelines.length
+            : 0,
+        averageDealsPerRep:
+          result.individualPipelines.length > 0
+            ? result.summary.totalTeamDeals / result.individualPipelines.length
+            : 0,
+        pipelineHealth:
+          result.summary.teamConversionRate >= 20
+            ? 'healthy'
+            : result.summary.teamConversionRate >= 10
+              ? 'fair'
+              : 'needs_attention',
       };
 
       res.json({
@@ -357,9 +367,11 @@ router.get(
       });
     } catch (error: any) {
       console.error('Error fetching team pipeline summary:', error);
-      res.status(500).json({ error: 'Failed to fetch team pipeline summary', details: error.message });
+      res
+        .status(500)
+        .json({ error: 'Failed to fetch team pipeline summary', details: error.message });
     }
-  }
+  },
 );
 
 /**
@@ -388,7 +400,7 @@ router.post(
       console.error('Error invalidating cache:', error);
       res.status(500).json({ error: 'Failed to invalidate cache', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================

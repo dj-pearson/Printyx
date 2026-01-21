@@ -35,17 +35,19 @@ interface WebSocketHookReturn {
 export function useWebSocket(
   userId: string | null,
   tenantId: string | null,
-  options: WebSocketHookOptions = {}
+  options: WebSocketHookOptions = {},
 ): WebSocketHookReturn {
   const {
     autoConnect = true,
     reconnectAttempts = 5,
     reconnectInterval = 3000,
-    heartbeatInterval = 30000
+    heartbeatInterval = 30000,
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
-  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [connectionState, setConnectionState] = useState<
+    'disconnected' | 'connecting' | 'connected' | 'error'
+  >('disconnected');
   const [error, setError] = useState<string | null>(null);
   const [lastMessage, setLastMessage] = useState<WebSocketMessage | null>(null);
 
@@ -72,47 +74,53 @@ export function useWebSocket(
   }, []);
 
   // Subscribe to a channel
-  const subscribe = useCallback((channel: string, callback: (data: any) => void) => {
-    subscriptionsRef.current.set(channel, callback);
-    
-    // Send subscription request if connected
-    if (isConnected) {
-      const [type, id] = channel.split(':');
-      const subscriptionData: any = { channel };
-      
-      if (type === 'report') {
-        subscriptionData.reportId = id;
-      } else if (type === 'kpi') {
-        subscriptionData.kpiId = id;
-      }
+  const subscribe = useCallback(
+    (channel: string, callback: (data: any) => void) => {
+      subscriptionsRef.current.set(channel, callback);
 
-      send({
-        type: 'subscribe',
-        data: subscriptionData
-      });
-    }
-  }, [isConnected, send]);
+      // Send subscription request if connected
+      if (isConnected) {
+        const [type, id] = channel.split(':');
+        const subscriptionData: any = { channel };
+
+        if (type === 'report') {
+          subscriptionData.reportId = id;
+        } else if (type === 'kpi') {
+          subscriptionData.kpiId = id;
+        }
+
+        send({
+          type: 'subscribe',
+          data: subscriptionData,
+        });
+      }
+    },
+    [isConnected, send],
+  );
 
   // Unsubscribe from a channel
-  const unsubscribe = useCallback((channel: string) => {
-    subscriptionsRef.current.delete(channel);
-    
-    if (isConnected) {
-      const [type, id] = channel.split(':');
-      const unsubscriptionData: any = { channel };
-      
-      if (type === 'report') {
-        unsubscriptionData.reportId = id;
-      } else if (type === 'kpi') {
-        unsubscriptionData.kpiId = id;
-      }
+  const unsubscribe = useCallback(
+    (channel: string) => {
+      subscriptionsRef.current.delete(channel);
 
-      send({
-        type: 'unsubscribe',
-        data: unsubscriptionData
-      });
-    }
-  }, [isConnected, send]);
+      if (isConnected) {
+        const [type, id] = channel.split(':');
+        const unsubscriptionData: any = { channel };
+
+        if (type === 'report') {
+          unsubscriptionData.reportId = id;
+        } else if (type === 'kpi') {
+          unsubscriptionData.kpiId = id;
+        }
+
+        send({
+          type: 'unsubscribe',
+          data: unsubscriptionData,
+        });
+      }
+    },
+    [isConnected, send],
+  );
 
   // Start heartbeat
   const startHeartbeat = useCallback(() => {
@@ -134,65 +142,68 @@ export function useWebSocket(
   }, []);
 
   // Handle WebSocket messages
-  const handleMessage = useCallback((event: MessageEvent) => {
-    try {
-      const message: WebSocketMessage = JSON.parse(event.data);
-      setLastMessage(message);
+  const handleMessage = useCallback(
+    (event: MessageEvent) => {
+      try {
+        const message: WebSocketMessage = JSON.parse(event.data);
+        setLastMessage(message);
 
-      switch (message.type) {
-        case 'connected':
-          console.log('✅ WebSocket connected:', message.data);
-          setIsConnected(true);
-          setConnectionState('connected');
-          setError(null);
-          reconnectAttemptsRef.current = 0;
-          startHeartbeat();
-          
-          // Re-subscribe to all channels
-          subscriptionsRef.current.forEach((callback, channel) => {
-            const [type, id] = channel.split(':');
-            const subscriptionData: any = { channel };
-            
-            if (type === 'report') {
-              subscriptionData.reportId = id;
-            } else if (type === 'kpi') {
-              subscriptionData.kpiId = id;
-            }
+        switch (message.type) {
+          case 'connected':
+            console.log('✅ WebSocket connected:', message.data);
+            setIsConnected(true);
+            setConnectionState('connected');
+            setError(null);
+            reconnectAttemptsRef.current = 0;
+            startHeartbeat();
 
-            send({
-              type: 'subscribe',
-              data: subscriptionData
+            // Re-subscribe to all channels
+            subscriptionsRef.current.forEach((callback, channel) => {
+              const [type, id] = channel.split(':');
+              const subscriptionData: any = { channel };
+
+              if (type === 'report') {
+                subscriptionData.reportId = id;
+              } else if (type === 'kpi') {
+                subscriptionData.kpiId = id;
+              }
+
+              send({
+                type: 'subscribe',
+                data: subscriptionData,
+              });
             });
-          });
-          break;
+            break;
 
-        case 'data_update':
-        case 'kpi_update':
-          if (message.channel) {
-            const callback = subscriptionsRef.current.get(message.channel);
-            if (callback && message.data) {
-              callback(message.data);
+          case 'data_update':
+          case 'kpi_update':
+            if (message.channel) {
+              const callback = subscriptionsRef.current.get(message.channel);
+              if (callback && message.data) {
+                callback(message.data);
+              }
             }
-          }
-          break;
+            break;
 
-        case 'error':
-          console.error('WebSocket error:', message.error);
-          setError(message.error || 'Unknown error');
-          break;
+          case 'error':
+            console.error('WebSocket error:', message.error);
+            setError(message.error || 'Unknown error');
+            break;
 
-        case 'heartbeat':
-        case 'pong':
-          // Heartbeat received, connection is alive
-          break;
+          case 'heartbeat':
+          case 'pong':
+            // Heartbeat received, connection is alive
+            break;
 
-        default:
-          console.log('Unknown message type:', message.type);
+          default:
+            console.log('Unknown message type:', message.type);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
       }
-    } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
-    }
-  }, [send, startHeartbeat]);
+    },
+    [send, startHeartbeat],
+  );
 
   // Connect to WebSocket
   const connect = useCallback(() => {
@@ -211,7 +222,7 @@ export function useWebSocket(
     try {
       const url = getWebSocketUrl();
       console.log('🔌 Connecting to WebSocket:', url);
-      
+
       wsRef.current = new WebSocket(url);
 
       wsRef.current.onopen = () => {
@@ -229,8 +240,10 @@ export function useWebSocket(
         // Attempt reconnection if not manually closed
         if (event.code !== 1000 && reconnectAttemptsRef.current < reconnectAttempts) {
           reconnectAttemptsRef.current++;
-          console.log(`🔄 Attempting reconnection ${reconnectAttemptsRef.current}/${reconnectAttempts}...`);
-          
+          console.log(
+            `🔄 Attempting reconnection ${reconnectAttemptsRef.current}/${reconnectAttempts}...`,
+          );
+
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
           }, reconnectInterval);
@@ -245,13 +258,20 @@ export function useWebSocket(
         setConnectionState('error');
         setError('WebSocket connection error');
       };
-
     } catch (error) {
       console.error('Error creating WebSocket connection:', error);
       setConnectionState('error');
       setError('Failed to create WebSocket connection');
     }
-  }, [userId, tenantId, getWebSocketUrl, handleMessage, stopHeartbeat, reconnectAttempts, reconnectInterval]);
+  }, [
+    userId,
+    tenantId,
+    getWebSocketUrl,
+    handleMessage,
+    stopHeartbeat,
+    reconnectAttempts,
+    reconnectInterval,
+  ]);
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -299,7 +319,7 @@ export function useWebSocket(
     disconnect,
     connect,
     error,
-    lastMessage
+    lastMessage,
   };
 }
 
@@ -311,13 +331,13 @@ export function useRealtimeKPI(kpiId: string, userId: string | null, tenantId: s
   const { isConnected, subscribe, unsubscribe, connectionState } = useWebSocket(userId, tenantId, {
     autoConnect: true,
     reconnectAttempts: 3,
-    heartbeatInterval: 30000
+    heartbeatInterval: 30000,
   });
 
   useEffect(() => {
     if (isConnected && kpiId) {
       const channel = `kpi:${kpiId}`;
-      
+
       const handleKPIUpdate = (data: any) => {
         setKpiData(data);
         setLastUpdated(new Date());
@@ -335,25 +355,30 @@ export function useRealtimeKPI(kpiId: string, userId: string | null, tenantId: s
     data: kpiData,
     lastUpdated,
     isConnected,
-    connectionState
+    connectionState,
   };
 }
 
 // Hook for report real-time updates
-export function useRealtimeReport(reportId: string, userId: string | null, tenantId: string | null, parameters: any = {}) {
+export function useRealtimeReport(
+  reportId: string,
+  userId: string | null,
+  tenantId: string | null,
+  parameters: any = {},
+) {
   const [reportData, setReportData] = useState<any | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const { isConnected, subscribe, unsubscribe, connectionState } = useWebSocket(userId, tenantId, {
     autoConnect: true,
     reconnectAttempts: 3,
-    heartbeatInterval: 30000
+    heartbeatInterval: 30000,
   });
 
   useEffect(() => {
     if (isConnected && reportId) {
       const channel = `report:${reportId}`;
-      
+
       const handleReportUpdate = (data: any) => {
         setReportData(data);
         setLastUpdated(new Date());
@@ -371,7 +396,7 @@ export function useRealtimeReport(reportId: string, userId: string | null, tenan
     data: reportData,
     lastUpdated,
     isConnected,
-    connectionState
+    connectionState,
   };
 }
 

@@ -17,7 +17,9 @@ function isAdminOrManager(user: any): boolean {
   if (!user?.role) return false;
   const role = user.role || '';
   const roleLower = role.toLowerCase();
-  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+  return (
+    roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive')
+  );
 }
 
 // ==================== Billing Rules ====================
@@ -31,7 +33,7 @@ router.get('/rules', async (req: Request, res: Response) => {
 
   try {
     const { ruleType, ruleStatus, customerId, equipmentId, contractId } = req.query;
-    
+
     const filters: any = {};
     if (ruleType) filters.ruleType = ruleType as string;
     if (ruleStatus) filters.ruleStatus = ruleStatus as string;
@@ -56,11 +58,11 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
 
   try {
     const rule = await storage.getBillingRule(req.params.id);
-    
+
     if (!rule || rule.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Billing rule not found' });
     }
-    
+
     res.json(rule);
   } catch (error) {
     console.error('Get billing rule error:', error);
@@ -76,7 +78,9 @@ router.post('/rules', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to create billing rules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to create billing rules' });
   }
 
   try {
@@ -86,7 +90,7 @@ router.post('/rules', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       createdBy: user.id,
     });
-    
+
     res.status(201).json(rule);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -105,7 +109,9 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to update billing rules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to update billing rules' });
   }
 
   try {
@@ -116,7 +122,7 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
 
     const data = insertBillingRuleSchema.partial().parse(req.body);
     const updated = await storage.updateBillingRule(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -135,7 +141,9 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to delete billing rules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to delete billing rules' });
   }
 
   try {
@@ -195,7 +203,7 @@ router.get('/anomalies', async (req: Request, res: Response) => {
 
   try {
     const { anomalyType, severity, resolved, equipmentId, customerId } = req.query;
-    
+
     const filters: any = {};
     if (anomalyType) filters.anomalyType = anomalyType as string;
     if (severity) filters.severity = severity as string;
@@ -236,11 +244,11 @@ router.get('/anomalies/:id', async (req: Request, res: Response) => {
 
   try {
     const anomaly = await storage.getMeterAnomaly(req.params.id);
-    
+
     if (!anomaly || anomaly.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Meter anomaly not found' });
     }
-    
+
     res.json(anomaly);
   } catch (error) {
     console.error('Get meter anomaly error:', error);
@@ -261,7 +269,7 @@ router.post('/anomalies', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(anomaly);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -286,14 +294,14 @@ router.post('/anomalies/:id/review', async (req: Request, res: Response) => {
     }
 
     const { reviewNotes } = req.body;
-    
+
     const reviewed = await storage.reviewMeterAnomaly(
       req.params.id,
       user.tenantId,
       user.id,
-      reviewNotes
+      reviewNotes,
     );
-    
+
     res.json(reviewed);
   } catch (error) {
     console.error('Review meter anomaly error:', error);
@@ -314,17 +322,18 @@ router.post('/anomalies/:id/resolve', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Meter anomaly not found' });
     }
 
-    const { resolutionMethod, resolutionNotes, correctedBwReading, correctedColorReading } = req.body;
-    
+    const { resolutionMethod, resolutionNotes, correctedBwReading, correctedColorReading } =
+      req.body;
+
     const resolved = await storage.resolveMeterAnomaly(
       req.params.id,
       user.tenantId,
       resolutionMethod,
       resolutionNotes,
       correctedBwReading,
-      correctedColorReading
+      correctedColorReading,
     );
-    
+
     res.json(resolved);
   } catch (error) {
     console.error('Resolve meter anomaly error:', error);
@@ -340,11 +349,8 @@ router.get('/anomalies/equipment/:equipmentId', async (req: Request, res: Respon
   }
 
   try {
-    const anomalies = await storage.getAnomaliesByEquipment(
-      req.params.equipmentId,
-      user.tenantId
-    );
-    
+    const anomalies = await storage.getAnomaliesByEquipment(req.params.equipmentId, user.tenantId);
+
     res.json(anomalies);
   } catch (error) {
     console.error('Get anomalies by equipment error:', error);
@@ -363,7 +369,7 @@ router.get('/disputes', async (req: Request, res: Response) => {
 
   try {
     const { disputeType, disputeStatus, severity, customerId, invoiceId } = req.query;
-    
+
     const filters: any = {};
     if (disputeType) filters.disputeType = disputeType as string;
     if (disputeStatus) filters.disputeStatus = disputeStatus as string;
@@ -404,11 +410,11 @@ router.get('/disputes/:id', async (req: Request, res: Response) => {
 
   try {
     const dispute = await storage.getBillingDispute(req.params.id);
-    
+
     if (!dispute || dispute.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
-    
+
     res.json(dispute);
   } catch (error) {
     console.error('Get billing dispute error:', error);
@@ -430,7 +436,7 @@ router.post('/disputes', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       createdBy: user.id,
     });
-    
+
     res.status(201).json(dispute);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -456,7 +462,7 @@ router.put('/disputes/:id', async (req: Request, res: Response) => {
 
     const data = insertBillingDisputeSchema.partial().parse(req.body);
     const updated = await storage.updateBillingDispute(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -475,7 +481,9 @@ router.post('/disputes/:id/assign', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to assign disputes' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to assign disputes' });
   }
 
   try {
@@ -488,13 +496,9 @@ router.post('/disputes/:id/assign', async (req: Request, res: Response) => {
     if (!assignedTo) {
       return res.status(400).json({ error: 'assignedTo is required' });
     }
-    
-    const assigned = await storage.assignBillingDispute(
-      req.params.id,
-      user.tenantId,
-      assignedTo
-    );
-    
+
+    const assigned = await storage.assignBillingDispute(req.params.id, user.tenantId, assignedTo);
+
     res.json(assigned);
   } catch (error) {
     console.error('Assign billing dispute error:', error);
@@ -515,11 +519,8 @@ router.post('/disputes/:id/acknowledge', async (req: Request, res: Response) => 
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
-    const acknowledged = await storage.acknowledgeBillingDispute(
-      req.params.id,
-      user.tenantId
-    );
-    
+    const acknowledged = await storage.acknowledgeBillingDispute(req.params.id, user.tenantId);
+
     res.json(acknowledged);
   } catch (error) {
     console.error('Acknowledge billing dispute error:', error);
@@ -535,7 +536,9 @@ router.post('/disputes/:id/resolve', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to resolve disputes' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to resolve disputes' });
   }
 
   try {
@@ -548,15 +551,15 @@ router.post('/disputes/:id/resolve', async (req: Request, res: Response) => {
     if (!resolutionType) {
       return res.status(400).json({ error: 'resolutionType is required' });
     }
-    
+
     const resolved = await storage.resolveBillingDispute(
       req.params.id,
       user.tenantId,
       user.id,
       resolutionType,
-      resolutionDescription
+      resolutionDescription,
     );
-    
+
     res.json(resolved);
   } catch (error) {
     console.error('Resolve billing dispute error:', error);
@@ -572,7 +575,9 @@ router.post('/disputes/:id/escalate', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to escalate disputes' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to escalate disputes' });
   }
 
   try {
@@ -585,14 +590,14 @@ router.post('/disputes/:id/escalate', async (req: Request, res: Response) => {
     if (!escalatedTo) {
       return res.status(400).json({ error: 'escalatedTo is required' });
     }
-    
+
     const escalated = await storage.escalateBillingDispute(
       req.params.id,
       user.tenantId,
       escalatedTo,
-      escalationReason
+      escalationReason,
     );
-    
+
     res.json(escalated);
   } catch (error) {
     console.error('Escalate billing dispute error:', error);
@@ -610,9 +615,9 @@ router.get('/disputes/customer/:customerId', async (req: Request, res: Response)
   try {
     const disputes = await storage.getBillingDisputesByCustomer(
       req.params.customerId,
-      user.tenantId
+      user.tenantId,
     );
-    
+
     res.json(disputes);
   } catch (error) {
     console.error('Get disputes by customer error:', error);
@@ -628,11 +633,8 @@ router.get('/disputes/invoice/:invoiceId', async (req: Request, res: Response) =
   }
 
   try {
-    const disputes = await storage.getBillingDisputesByInvoice(
-      req.params.invoiceId,
-      user.tenantId
-    );
-    
+    const disputes = await storage.getBillingDisputesByInvoice(req.params.invoiceId, user.tenantId);
+
     res.json(disputes);
   } catch (error) {
     console.error('Get disputes by invoice error:', error);
@@ -651,7 +653,7 @@ router.get('/generation/logs', async (req: Request, res: Response) => {
 
   try {
     const { status, generationType, customerId, batchId } = req.query;
-    
+
     const filters: any = {};
     if (status) filters.status = status as string;
     if (generationType) filters.generationType = generationType as string;
@@ -675,11 +677,11 @@ router.get('/generation/logs/:id', async (req: Request, res: Response) => {
 
   try {
     const log = await storage.getInvoiceGenerationLog(req.params.id);
-    
+
     if (!log || log.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Invoice generation log not found' });
     }
-    
+
     res.json(log);
   } catch (error) {
     console.error('Get invoice generation log error:', error);
@@ -695,27 +697,29 @@ router.post('/generation/generate', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to generate invoices' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to generate invoices' });
   }
 
   try {
     const { customerId, contractId, billingPeriodStart, billingPeriodEnd } = req.body;
-    
+
     if (!customerId || !billingPeriodStart || !billingPeriodEnd) {
-      return res.status(400).json({ 
-        error: 'customerId, billingPeriodStart, and billingPeriodEnd are required' 
+      return res.status(400).json({
+        error: 'customerId, billingPeriodStart, and billingPeriodEnd are required',
       });
     }
-    
+
     const result = await storage.generateInvoice(
       user.tenantId,
       customerId,
       contractId,
       new Date(billingPeriodStart),
       new Date(billingPeriodEnd),
-      user.id
+      user.id,
     );
-    
+
     res.status(201).json(result);
   } catch (error) {
     console.error('Generate invoice error:', error);
@@ -731,26 +735,28 @@ router.post('/generation/batch', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to generate invoice batches' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to generate invoice batches' });
   }
 
   try {
     const { customerIds, billingPeriodStart, billingPeriodEnd } = req.body;
-    
+
     if (!customerIds || !Array.isArray(customerIds) || !billingPeriodStart || !billingPeriodEnd) {
-      return res.status(400).json({ 
-        error: 'customerIds (array), billingPeriodStart, and billingPeriodEnd are required' 
+      return res.status(400).json({
+        error: 'customerIds (array), billingPeriodStart, and billingPeriodEnd are required',
       });
     }
-    
+
     const results = await storage.generateInvoiceBatch(
       user.tenantId,
       customerIds,
       new Date(billingPeriodStart),
       new Date(billingPeriodEnd),
-      user.id
+      user.id,
     );
-    
+
     res.status(201).json(results);
   } catch (error) {
     console.error('Generate invoice batch error:', error);
@@ -783,13 +789,13 @@ router.get('/generation/stats', async (req: Request, res: Response) => {
 
   try {
     const { startDate, endDate } = req.query;
-    
+
     const stats = await storage.getInvoiceGenerationStats(
       user.tenantId,
       startDate ? new Date(startDate as string) : undefined,
-      endDate ? new Date(endDate as string) : undefined
+      endDate ? new Date(endDate as string) : undefined,
     );
-    
+
     res.json(stats);
   } catch (error) {
     console.error('Get invoice generation stats error:', error);
@@ -808,7 +814,7 @@ router.get('/schedules', async (req: Request, res: Response) => {
 
   try {
     const { scheduleType, frequency, isActive, customerId } = req.query;
-    
+
     const filters: any = {};
     if (scheduleType) filters.scheduleType = scheduleType as string;
     if (frequency) filters.frequency = frequency as string;
@@ -864,11 +870,11 @@ router.get('/schedules/:id', async (req: Request, res: Response) => {
 
   try {
     const schedule = await storage.getBillingSchedule(req.params.id);
-    
+
     if (!schedule || schedule.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Billing schedule not found' });
     }
-    
+
     res.json(schedule);
   } catch (error) {
     console.error('Get billing schedule error:', error);
@@ -884,7 +890,9 @@ router.post('/schedules', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to create billing schedules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to create billing schedules' });
   }
 
   try {
@@ -894,7 +902,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       createdBy: user.id,
     });
-    
+
     res.status(201).json(schedule);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -913,7 +921,9 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to update billing schedules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to update billing schedules' });
   }
 
   try {
@@ -924,7 +934,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
 
     const data = insertBillingScheduleSchema.partial().parse(req.body);
     const updated = await storage.updateBillingSchedule(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -943,7 +953,9 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to delete billing schedules' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to delete billing schedules' });
   }
 
   try {
@@ -971,7 +983,7 @@ router.get('/credit-memos', async (req: Request, res: Response) => {
 
   try {
     const { creditStatus, customerId, invoiceId, disputeId } = req.query;
-    
+
     const filters: any = {};
     if (creditStatus) filters.creditStatus = creditStatus as string;
     if (customerId) filters.customerId = customerId as string;
@@ -1011,11 +1023,11 @@ router.get('/credit-memos/:id', async (req: Request, res: Response) => {
 
   try {
     const creditMemo = await storage.getCreditMemo(req.params.id);
-    
+
     if (!creditMemo || creditMemo.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
-    
+
     res.json(creditMemo);
   } catch (error) {
     console.error('Get credit memo error:', error);
@@ -1031,7 +1043,9 @@ router.post('/credit-memos', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to create credit memos' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to create credit memos' });
   }
 
   try {
@@ -1041,7 +1055,7 @@ router.post('/credit-memos', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       createdBy: user.id,
     });
-    
+
     res.status(201).json(creditMemo);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1067,7 +1081,7 @@ router.put('/credit-memos/:id', async (req: Request, res: Response) => {
 
     const data = insertCreditMemoSchema.partial().parse(req.body);
     const updated = await storage.updateCreditMemo(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1086,7 +1100,9 @@ router.post('/credit-memos/:id/approve', async (req: Request, res: Response) => 
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to approve credit memos' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to approve credit memos' });
   }
 
   try {
@@ -1096,7 +1112,7 @@ router.post('/credit-memos/:id/approve', async (req: Request, res: Response) => 
     }
 
     const approved = await storage.approveCreditMemo(req.params.id, user.tenantId, user.id);
-    
+
     res.json(approved);
   } catch (error) {
     console.error('Approve credit memo error:', error);
@@ -1112,7 +1128,9 @@ router.post('/credit-memos/:id/issue', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to issue credit memos' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to issue credit memos' });
   }
 
   try {
@@ -1122,7 +1140,7 @@ router.post('/credit-memos/:id/issue', async (req: Request, res: Response) => {
     }
 
     const issued = await storage.issueCreditMemo(req.params.id, user.tenantId);
-    
+
     res.json(issued);
   } catch (error) {
     console.error('Issue credit memo error:', error);
@@ -1138,7 +1156,9 @@ router.post('/credit-memos/:id/apply', async (req: Request, res: Response) => {
   }
 
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to apply credit memos' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to apply credit memos' });
   }
 
   try {
@@ -1153,7 +1173,7 @@ router.post('/credit-memos/:id/apply', async (req: Request, res: Response) => {
     }
 
     const applied = await storage.applyCreditMemo(req.params.id, user.tenantId, invoiceId);
-    
+
     res.json(applied);
   } catch (error) {
     console.error('Apply credit memo error:', error);
@@ -1186,7 +1206,7 @@ router.post('/credit-memos/:id/void', async (req: Request, res: Response) => {
     }
 
     const voided = await storage.voidCreditMemo(req.params.id, user.tenantId, user.id, voidReason);
-    
+
     res.json(voided);
   } catch (error) {
     console.error('Void credit memo error:', error);
@@ -1202,7 +1222,10 @@ router.get('/credit-memos/customer/:customerId', async (req: Request, res: Respo
   }
 
   try {
-    const creditMemos = await storage.getCreditMemosByCustomer(req.params.customerId, user.tenantId);
+    const creditMemos = await storage.getCreditMemosByCustomer(
+      req.params.customerId,
+      user.tenantId,
+    );
     res.json(creditMemos);
   } catch (error) {
     console.error('Get credit memos by customer error:', error);

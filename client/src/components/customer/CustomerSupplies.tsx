@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,17 +26,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import {
   Package,
   Plus,
@@ -52,8 +52,8 @@ import {
   FileText,
   Settings,
   DollarSign,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Supply {
   id: string;
@@ -94,28 +94,25 @@ interface CustomerSuppliesProps {
 }
 
 const statusColors = {
-  pending: "bg-yellow-100 text-yellow-800",
-  ordered: "bg-blue-100 text-blue-800",
-  shipped: "bg-purple-100 text-purple-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
+  pending: 'bg-yellow-100 text-yellow-800',
+  ordered: 'bg-blue-100 text-blue-800',
+  shipped: 'bg-purple-100 text-purple-800',
+  delivered: 'bg-green-100 text-green-800',
+  cancelled: 'bg-red-100 text-red-800',
 };
 
 const supplyTypeColors = {
-  Toner: "bg-blue-100 text-blue-800",
-  Ink: "bg-purple-100 text-purple-800",
-  Paper: "bg-gray-100 text-gray-800",
-  Parts: "bg-orange-100 text-orange-800",
-  Supplies: "bg-green-100 text-green-800",
+  Toner: 'bg-blue-100 text-blue-800',
+  Ink: 'bg-purple-100 text-purple-800',
+  Paper: 'bg-gray-100 text-gray-800',
+  Parts: 'bg-orange-100 text-orange-800',
+  Supplies: 'bg-green-100 text-green-800',
 };
 
-export function CustomerSupplies({
-  customerId,
-  customerName,
-}: CustomerSuppliesProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+export function CustomerSupplies({ customerId, customerName }: CustomerSuppliesProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
 
@@ -123,75 +120,60 @@ export function CustomerSupplies({
   const queryClient = useQueryClient();
 
   // Fetch customer supply orders
-  const { data: supplyOrders = [], isLoading: loadingOrders } = useQuery<
-    CustomerSupplyOrder[]
-  >({
+  const { data: supplyOrders = [], isLoading: loadingOrders } = useQuery<CustomerSupplyOrder[]>({
     queryKey: [`/api/customers/${customerId}/supply-orders`],
-    queryFn: async () =>
-      apiRequest(`/api/customers/${customerId}/supply-orders`),
+    queryFn: async () => apiRequest(`/api/customers/${customerId}/supply-orders`),
   });
 
   // Fetch available supplies
-  const { data: availableSupplies = [], isLoading: loadingSupplies } = useQuery<
-    Supply[]
-  >({
-    queryKey: ["/api/supplies"],
-    queryFn: async () => apiRequest("/api/supplies?active=true"),
+  const { data: availableSupplies = [], isLoading: loadingSupplies } = useQuery<Supply[]>({
+    queryKey: ['/api/supplies'],
+    queryFn: async () => apiRequest('/api/supplies?active=true'),
   });
 
   // Create supply order mutation
   const createOrderMutation = useMutation({
     mutationFn: async (orderData: any) =>
-      apiRequest(
-        `/api/customers/${customerId}/supply-orders`,
-        "POST",
-        orderData
-      ),
+      apiRequest(`/api/customers/${customerId}/supply-orders`, 'POST', orderData),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/customers/${customerId}/supply-orders`],
       });
       setIsOrderDialogOpen(false);
       toast({
-        title: "Success",
-        description: "Supply order created successfully",
+        title: 'Success',
+        description: 'Supply order created successfully',
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to create supply order",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create supply order',
+        variant: 'destructive',
       });
     },
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   // Filter supply orders
   const filteredOrders = supplyOrders.filter((order) => {
     const matchesSearch =
-      order.supply.productName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      order.supply.productCode
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
+      order.supply.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.supply.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.notes?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || order.status === statusFilter;
-    const matchesType =
-      typeFilter === "all" || order.supply.productType === typeFilter;
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesType = typeFilter === 'all' || order.supply.productType === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -200,7 +182,7 @@ export function CustomerSupplies({
   const stats = {
     totalOrders: supplyOrders.length,
     totalValue: supplyOrders.reduce((sum, order) => sum + order.totalPrice, 0),
-    pendingOrders: supplyOrders.filter((o) => o.status === "pending").length,
+    pendingOrders: supplyOrders.filter((o) => o.status === 'pending').length,
     thisMonth: supplyOrders.filter((o) => {
       const orderDate = new Date(o.orderDate);
       const thisMonth = new Date();
@@ -231,9 +213,7 @@ export function CustomerSupplies({
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(stats.totalValue)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
                 <p className="text-sm text-gray-600">Total Value</p>
               </div>
             </div>
@@ -305,10 +285,7 @@ export function CustomerSupplies({
                   <SelectItem value="Supplies">Supplies</SelectItem>
                 </SelectContent>
               </Select>
-              <Dialog
-                open={isOrderDialogOpen}
-                onOpenChange={setIsOrderDialogOpen}
-              >
+              <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <ShoppingCart className="h-4 w-4 mr-2" />
@@ -351,9 +328,7 @@ export function CustomerSupplies({
                     <TableHead className="min-w-[100px]">Unit Price</TableHead>
                     <TableHead className="min-w-[100px]">Total</TableHead>
                     <TableHead className="min-w-[100px]">Order Date</TableHead>
-                    <TableHead className="min-w-[100px]">
-                      Delivery Date
-                    </TableHead>
+                    <TableHead className="min-w-[100px]">Delivery Date</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
                     <TableHead className="min-w-[150px]">Notes</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
@@ -364,25 +339,18 @@ export function CustomerSupplies({
                     <TableRow key={order.id} className="hover:bg-gray-50">
                       <TableCell>
                         <div>
-                          <div className="font-medium">
-                            {order.supply.productName}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {order.supply.summary}
-                          </div>
+                          <div className="font-medium">{order.supply.productName}</div>
+                          <div className="text-sm text-gray-500">{order.supply.summary}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-mono text-sm">
-                          {order.supply.productCode}
-                        </div>
+                        <div className="font-mono text-sm">{order.supply.productCode}</div>
                       </TableCell>
                       <TableCell>
                         <Badge
                           className={
                             supplyTypeColors[
-                              order.supply
-                                .productType as keyof typeof supplyTypeColors
+                              order.supply.productType as keyof typeof supplyTypeColors
                             ]
                           }
                         >
@@ -394,31 +362,19 @@ export function CustomerSupplies({
                       </TableCell>
                       <TableCell>{formatCurrency(order.unitPrice)}</TableCell>
                       <TableCell>
-                        <span className="font-medium">
-                          {formatCurrency(order.totalPrice)}
-                        </span>
+                        <span className="font-medium">{formatCurrency(order.totalPrice)}</span>
                       </TableCell>
                       <TableCell>{formatDate(order.orderDate)}</TableCell>
                       <TableCell>
-                        {order.deliveryDate
-                          ? formatDate(order.deliveryDate)
-                          : "-"}
+                        {order.deliveryDate ? formatDate(order.deliveryDate) : '-'}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          className={
-                            statusColors[
-                              order.status as keyof typeof statusColors
-                            ]
-                          }
-                        >
+                        <Badge className={statusColors[order.status as keyof typeof statusColors]}>
                           {order.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm truncate max-w-[150px]">
-                          {order.notes || "-"}
-                        </div>
+                        <div className="text-sm truncate max-w-[150px]">{order.notes || '-'}</div>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -463,13 +419,11 @@ export function CustomerSupplies({
         <Card>
           <CardContent className="p-12 text-center">
             <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No supply orders found
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No supply orders found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm
-                ? "No orders match your search criteria."
-                : "No supply orders have been placed for this customer yet."}
+                ? 'No orders match your search criteria.'
+                : 'No supply orders have been placed for this customer yet.'}
             </p>
             <Button onClick={() => setIsOrderDialogOpen(true)}>
               <ShoppingCart className="w-4 h-4 mr-2" />
@@ -496,7 +450,7 @@ function SupplyOrderForm({
 }) {
   const [selectedSupply, setSelectedSupply] = useState<Supply | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -511,15 +465,13 @@ function SupplyOrderForm({
       quantity,
       unitPrice,
       totalPrice,
-      status: "pending",
-      orderType: "manual",
+      status: 'pending',
+      orderType: 'manual',
       notes,
     });
   };
 
-  const filteredSupplies = availableSupplies.filter(
-    (supply) => supply.isActive
-  );
+  const filteredSupplies = availableSupplies.filter((supply) => supply.isActive);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -586,9 +538,7 @@ function SupplyOrderForm({
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Code:</span>
-                    <p className="font-mono text-sm">
-                      {selectedSupply.productCode}
-                    </p>
+                    <p className="font-mono text-sm">{selectedSupply.productCode}</p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Type:</span>
@@ -607,31 +557,27 @@ function SupplyOrderForm({
                     <p className="font-medium">
                       {selectedSupply.newRepPrice
                         ? `$${selectedSupply.newRepPrice}`
-                        : "Contact for pricing"}
+                        : 'Contact for pricing'}
                     </p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Total:</span>
                     <p className="text-lg font-bold text-blue-600">
                       {selectedSupply.newRepPrice
-                        ? `$${(selectedSupply.newRepPrice * quantity).toFixed(
-                            2
-                          )}`
-                        : "Contact for pricing"}
+                        ? `$${(selectedSupply.newRepPrice * quantity).toFixed(2)}`
+                        : 'Contact for pricing'}
                     </p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Stock Status:</span>
                     <Badge
                       className={
-                        selectedSupply.inStock === "Y"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        selectedSupply.inStock === 'Y'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
                       }
                     >
-                      {selectedSupply.inStock === "Y"
-                        ? "In Stock"
-                        : "Out of Stock"}
+                      {selectedSupply.inStock === 'Y' ? 'In Stock' : 'Out of Stock'}
                     </Badge>
                   </div>
                 </div>
@@ -643,7 +589,7 @@ function SupplyOrderForm({
 
       <div className="flex justify-end space-x-2">
         <Button type="submit" disabled={isLoading || !selectedSupply}>
-          {isLoading ? "Creating Order..." : "Create Order"}
+          {isLoading ? 'Creating Order...' : 'Create Order'}
         </Button>
       </div>
     </form>

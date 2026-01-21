@@ -22,17 +22,20 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
 
   // Memoize sections to prevent infinite re-renders
-  const memoizedSections = useMemo(() => sections, [sections?.length, sections?.map(s => s.id).join(',')]);
+  const memoizedSections = useMemo(
+    () => sections,
+    [sections?.length, sections?.map((s) => s.id).join(',')],
+  );
 
   // Determine which section should be expanded based on current route
   useEffect(() => {
-    const currentSection = memoizedSections.find(section => {
+    const currentSection = memoizedSections.find((section) => {
       // Check if current route matches the section's main path
       if (location === section.path) return true;
-      
+
       // Check if current route matches any of the section's match patterns
       if (section.matchPatterns) {
-        return section.matchPatterns.some(pattern => {
+        return section.matchPatterns.some((pattern) => {
           // Convert pattern to regex (e.g., "/crm*" -> /^\/crm/)
           const regexPattern = pattern.replace(/\*/g, '.*');
           const regex = new RegExp(`^${regexPattern}`);
@@ -42,18 +45,18 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
 
       // Check if current route matches any child path
       if (section.children) {
-        return section.children.some(child => location === child.path);
+        return section.children.some((child) => location === child.path);
       }
 
       return false;
     });
 
     // Update expanded sections based on route
-    setExpandedSections(prevExpanded => {
+    setExpandedSections((prevExpanded) => {
       const newExpanded = new Set<string>();
-      
+
       // Always keep user-expanded sections open
-      userExpandedSections.forEach(sectionId => {
+      userExpandedSections.forEach((sectionId) => {
         newExpanded.add(sectionId);
       });
 
@@ -67,7 +70,7 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
   }, [location, memoizedSections, userExpandedSections]);
 
   const toggleSection = (sectionId: string) => {
-    setUserExpandedSections(prev => {
+    setUserExpandedSections((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sectionId)) {
         newSet.delete(sectionId);
@@ -77,7 +80,7 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
       return newSet;
     });
 
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sectionId)) {
         newSet.delete(sectionId);
@@ -93,11 +96,11 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
   const isActive = (path: string) => location === path;
 
   const getActiveSection = () => {
-    return sections.find(section => {
+    return sections.find((section) => {
       if (location === section.path) return true;
-      
+
       if (section.matchPatterns) {
-        return section.matchPatterns.some(pattern => {
+        return section.matchPatterns.some((pattern) => {
           const regexPattern = pattern.replace(/\*/g, '.*');
           const regex = new RegExp(`^${regexPattern}`);
           return regex.test(location);
@@ -105,7 +108,7 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
       }
 
       if (section.children) {
-        return section.children.some(child => location === child.path);
+        return section.children.some((child) => location === child.path);
       }
 
       return false;
@@ -118,7 +121,7 @@ export function useCollapsibleNavigation(sections: NavigationSection[]) {
     isExpanded,
     isActive,
     getActiveSection,
-    currentLocation: location
+    currentLocation: location,
   };
 }
 

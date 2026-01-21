@@ -1,27 +1,27 @@
-import React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle, Info } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 type AlertItem = {
   id: string;
-  type: "info" | "warning" | "error" | "success" | string;
+  type: 'info' | 'warning' | 'error' | 'success' | string;
   category: string; // system, security, performance, business
   message: string;
-  severity?: "low" | "medium" | "high" | "critical" | string;
+  severity?: 'low' | 'medium' | 'high' | 'critical' | string;
   createdAt?: string;
   page?: string;
 };
 
 function iconFor(type: string) {
   switch (type) {
-    case "error":
+    case 'error':
       return <AlertTriangle className="h-4 w-4 text-red-600" />;
-    case "warning":
+    case 'warning':
       return <AlertTriangle className="h-4 w-4 text-amber-600" />;
-    case "success":
+    case 'success':
       return <CheckCircle className="h-4 w-4 text-green-600" />;
     default:
       return <Info className="h-4 w-4 text-blue-600" />;
@@ -41,11 +41,15 @@ export default function PageAlerts({
   severities,
   pageKey,
   limit = 3,
-  className = "",
+  className = '',
 }: PageAlertsProps) {
-  const { data: alerts = [], isLoading, isError } = useQuery<AlertItem[]>({
-    queryKey: ["/api/performance/alerts"],
-    queryFn: () => apiRequest("/api/performance/alerts"),
+  const {
+    data: alerts = [],
+    isLoading,
+    isError,
+  } = useQuery<AlertItem[]>({
+    queryKey: ['/api/performance/alerts'],
+    queryFn: () => apiRequest('/api/performance/alerts'),
     refetchInterval: 60_000,
   });
 
@@ -53,7 +57,9 @@ export default function PageAlerts({
 
   const filtered = alerts
     .filter((a) => (categories?.length ? categories.includes(a.category) : true))
-    .filter((a) => (severities?.length ? (a.severity ? severities.includes(a.severity) : false) : true))
+    .filter((a) =>
+      severities?.length ? (a.severity ? severities.includes(a.severity) : false) : true,
+    )
     .filter((a) => (pageKey ? a.page === pageKey : true))
     .slice(0, limit);
 
@@ -86,5 +92,3 @@ export default function PageAlerts({
     </div>
   );
 }
-
-

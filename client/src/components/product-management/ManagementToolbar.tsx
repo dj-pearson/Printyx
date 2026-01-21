@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Search, Plus, Trash2, CheckSquare, Square } from "lucide-react";
-import ProductImport from "@/components/product-import/ProductImport";
-import { ReactNode } from "react";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Search, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
+import ProductImport from '@/components/product-import/ProductImport';
+import { ReactNode } from 'react';
 
 type ManagementToolbarProps = {
   title: string;
@@ -25,7 +25,7 @@ export default function ManagementToolbar(props: ManagementToolbarProps) {
   const {
     title,
     description,
-    searchPlaceholder = "Search...",
+    searchPlaceholder = 'Search...',
     searchTerm,
     onSearchTermChange,
     onAddClick,
@@ -43,14 +43,10 @@ export default function ManagementToolbar(props: ManagementToolbarProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-          {description && (
-            <p className="text-muted-foreground">{description}</p>
-          )}
+          {description && <p className="text-muted-foreground">{description}</p>}
         </div>
         <div className="flex gap-2 items-center">
-          {productTypeForImport && (
-            <ProductImport productType={productTypeForImport} />
-          )}
+          {productTypeForImport && <ProductImport productType={productTypeForImport} />}
           <Button onClick={onAddClick} data-testid="button-add-item">
             <Plus className="h-4 w-4 mr-2" />
             Add
@@ -77,7 +73,7 @@ export default function ManagementToolbar(props: ManagementToolbarProps) {
               ) : (
                 <Square className="h-4 w-4 mr-2" />
               )}
-              {bulkMode ? "Bulk Mode On" : "Bulk Mode"}
+              {bulkMode ? 'Bulk Mode On' : 'Bulk Mode'}
             </Button>
             <Button
               variant="destructive"
@@ -98,5 +94,3 @@ export default function ManagementToolbar(props: ManagementToolbarProps) {
     </div>
   );
 }
-
-

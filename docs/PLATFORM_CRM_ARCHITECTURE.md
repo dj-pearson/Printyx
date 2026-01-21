@@ -10,6 +10,7 @@ This document outlines the comprehensive Platform-Level CRM system for managing 
 A full-featured CRM system for platform-level tenant management that transforms basic signup tracking into a comprehensive sales and customer success platform.
 
 **Key Capabilities:**
+
 - **Unified Business Records**: Zero-data-loss prospect-to-tenant conversion
 - **Sales Pipeline**: Complete deal management with stages, probabilities, and forecasting
 - **Contact Management**: Multiple contacts per company with roles and hierarchy
@@ -36,6 +37,7 @@ prospect → new → contacted → qualified → demo_scheduled → demo_complet
 ```
 
 **Key Benefits:**
+
 1. **No Data Loss**: All prospect activities and history are preserved when they become customers
 2. **Complete Audit Trail**: Full timeline from first contact to churn
 3. **Single Source of Truth**: One record ID throughout the entire lifecycle
@@ -46,10 +48,12 @@ prospect → new → contacted → qualified → demo_scheduled → demo_complet
 ### Core Tables (17 tables, 1,196 lines of code)
 
 #### 1. Platform Business Records
+
 **Table:** `platform_business_records`
 **Purpose:** Unified prospect/tenant tracking
 
 **Key Features:**
+
 - **Dual Identity**: `recordType` (prospect/tenant) + `status` (20+ statuses)
 - **Complete Company Profile**: Industry, size, revenue, employee count
 - **Contact Information**: Primary contact details
@@ -66,6 +70,7 @@ prospect → new → contacted → qualified → demo_scheduled → demo_complet
 **Indexes:** 9 indexes for performance (name, email, status, type, tenant, rep, score, follow-up, created)
 
 **Sample Use Cases:**
+
 ```sql
 -- Get all high-value hot prospects assigned to me
 SELECT * FROM platform_business_records
@@ -88,10 +93,12 @@ WHERE convertedFromProspectAt IS NOT NULL
 ```
 
 #### 2. Platform Contacts
+
 **Table:** `platform_contacts`
 **Purpose:** Decision-makers and stakeholders at prospect/tenant companies
 
 **Key Features:**
+
 - **Contact Details**: Name, email, phone, mobile
 - **Professional Info**: Title, department, role (decision_maker, influencer, champion, end_user, gatekeeper)
 - **Hierarchy**: Reports-to relationships, decision-maker flag
@@ -102,10 +109,12 @@ WHERE convertedFromProspectAt IS NOT NULL
 **Use Case:** Track multiple stakeholders through the sales process, identify champions and decision-makers
 
 #### 3. Platform Deals
+
 **Table:** `platform_deals`
 **Purpose:** Sales pipeline and opportunity tracking
 
 **Key Features:**
+
 - **Deal Pipeline**: 9-stage pipeline (prospecting → closed won/lost)
 - **Financial Tracking**: Deal value, estimated MRR, probability, weighted value
 - **BANT Qualification**: Budget, authority, need, timeline confirmed flags
@@ -115,6 +124,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 - **Commission**: Amount and payment status
 
 **Pipeline Stages:**
+
 1. Prospecting
 2. Qualification
 3. Demo Scheduled
@@ -126,10 +136,12 @@ WHERE convertedFromProspectAt IS NOT NULL
 9. Closed Lost ✗
 
 #### 4. Platform Activities
+
 **Table:** `platform_activities`
 **Purpose:** Complete activity tracking (calls, emails, meetings, demos, tasks)
 
 **Activity Types:**
+
 - **Calls**: Duration, outcome, disposition, recording URL
 - **Emails**: From/to/cc, subject, body, opened/clicked/replied tracking
 - **Meetings**: Type, duration, location, attendees, notes, outcome
@@ -143,10 +155,12 @@ WHERE convertedFromProspectAt IS NOT NULL
 #### 5. Lead Scoring System
 
 **Tables:**
+
 - `platform_lead_scoring_rules`: Configurable scoring rules
 - `platform_lead_score_calculations`: Score breakdowns and ML predictions
 
 **Scoring Components (0-100 each):**
+
 1. **Demographic Score**: Company size, industry match, location
 2. **Firmographic Score**: Revenue, employee count, growth indicators
 3. **Behavioral Score**: Website visits, email engagement, content downloads
@@ -154,6 +168,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 5. **BANT Score**: Budget, authority, need, timeline qualification
 
 **Output:**
+
 - **Total Score**: 0-100 weighted average
 - **Lead Grade**: A+, A, B+, B, C+, C, D, F
 - **Lead Tier**: Hot, Warm, Cold
@@ -161,48 +176,57 @@ WHERE convertedFromProspectAt IS NOT NULL
 - **Recommended Action**: Contact immediately, nurture, disqualify, request more info
 
 #### 6. BANT Qualification
+
 **Table:** `platform_bant_qualification`
 **Purpose:** Detailed qualification tracking
 
 **Four Components (25 points each):**
 
 **Budget (0-25):**
+
 - Budget identified, amount, timeframe, approval status
 - Notes on budget discussions
 
 **Authority (0-25):**
+
 - Decision-maker identified, name, title, contact
 - Decision process documented
 - Influencers mapped
 
 **Need (0-25):**
+
 - Need type (growth, replacement, efficiency, compliance)
 - Urgency (critical, high, medium, low)
 - Pain points documented
 - Current solution analysis
 
 **Timeline (0-25):**
+
 - Expected decision date
 - Implementation timeline
 - Blockers identified
 - Notes on timeline discussions
 
 **Overall Assessment:**
+
 - Total BANT score (0-100)
 - Qualification status (unqualified, partially_qualified, qualified, highly_qualified)
 - Competitive analysis
 
 #### 7. Sales Territories
+
 **Table:** `platform_sales_territories`
 **Purpose:** Geographic and industry-based territory management
 
 **Territory Types:**
+
 - Geographic: Countries, states, cities, postal codes
 - Industry: Specific industries
 - Company Size: Employee count and revenue ranges
 - Named Accounts: Strategic account assignments
 
 **Territory Features:**
+
 - Owner (primary rep) + team members
 - Manager assignment
 - Monthly/quarterly/annual quotas
@@ -211,11 +235,13 @@ WHERE convertedFromProspectAt IS NOT NULL
 #### 8. Lead Assignment System
 
 **Tables:**
+
 - `platform_lead_assignment_rules`: Assignment logic
 - `platform_rep_capacity`: Rep capacity and availability tracking
 - `platform_lead_assignment_history`: Assignment audit trail
 
 **Assignment Strategies:**
+
 1. **Territory-Based**: Assign based on geographic/industry territory match
 2. **Round-Robin**: Rotate leads among team members
 3. **Skill-Based**: Match lead characteristics to rep specializations
@@ -223,6 +249,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 5. **Manual**: Admin assignment
 
 **Capacity Management:**
+
 - Max active prospects per rep
 - Max new prospects per day/week
 - Current load tracking
@@ -230,6 +257,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 - Performance metrics (response time, conversion rate, avg deal size)
 
 **Assignment Features:**
+
 - Priority-based rule evaluation
 - Business hours enforcement
 - Delay options for routing
@@ -239,12 +267,14 @@ WHERE convertedFromProspectAt IS NOT NULL
 #### 9. Customer Success System
 
 **Tables:**
+
 - `platform_health_scores`: Multi-dimensional health scoring
 - `platform_churn_predictions`: AI-powered churn prediction
 - `platform_success_interventions`: Proactive intervention tracking
 - `platform_renewal_opportunities`: Renewal management
 
 **Health Score Components (0-100 each):**
+
 1. **Usage Score**: Login frequency, active user percentage
 2. **Engagement Score**: Feature adoption, data creation
 3. **Adoption Score**: Features adopted vs total available
@@ -253,6 +283,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 6. **Satisfaction Score**: NPS, CSAT scores
 
 **Overall Health Status:**
+
 - Excellent (90-100)
 - Healthy (70-89)
 - At Risk (50-69)
@@ -260,6 +291,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 - Churned
 
 **Churn Prediction:**
+
 - **Churn Risk**: Very Low, Low, Medium, High, Critical
 - **Churn Probability**: 0.0000 to 1.0000 (ML model output)
 - **Predicted Churn Date**: When churn is expected
@@ -268,6 +300,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 - **Model Info**: Version, type (rules-based, ML, ensemble), feature importance
 
 **Success Interventions:**
+
 - **Intervention Types**: Outreach, training, discount, upgrade offer, executive review
 - **Triggers**: Churn risk, health decline, usage drop, payment issue, manual
 - **Workflow**: Pending → Scheduled → In Progress → Completed
@@ -275,6 +308,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 - **Customer Response**: Positive, neutral, negative, no response
 
 **Renewal Management:**
+
 - **Renewal Types**: Standard, expansion, downsizing, at-risk
 - **Financial Tracking**: Current vs projected MRR, expansion value
 - **Expansion Opportunities**: Suggested add-ons and upgrades
@@ -284,10 +318,12 @@ WHERE convertedFromProspectAt IS NOT NULL
 #### 10. Sales Performance System
 
 **Tables:**
+
 - `platform_sales_goals`: Individual and team goals
 - `platform_activity_reports`: Activity metrics by period
 
 **Goal Types:**
+
 - New tenants acquired
 - ARR booked
 - Deals closed
@@ -295,6 +331,7 @@ WHERE convertedFromProspectAt IS NOT NULL
 - Conversion rates
 
 **Activity Reports (Daily/Weekly/Monthly/Quarterly):**
+
 - **Activity Counts**: Calls (total, connected), emails (total, replied), meetings (total, held), demos (total, completed)
 - **Pipeline Metrics**: New prospects, qualified prospects, new deals, won/lost deals
 - **Revenue**: Total ARR booked, average deal size, pipeline value
@@ -303,9 +340,11 @@ WHERE convertedFromProspectAt IS NOT NULL
 #### 11. Advanced Analytics
 
 **Tables:**
+
 - `platform_cohort_analysis`: Cohort retention and revenue analysis
 
 **Cohort Analysis Features:**
+
 - **Cohort Definition**: Monthly/quarterly/yearly cohorts
 - **Retention Tracking**: Initial vs current size, retention rate
 - **Revenue Metrics**: Initial/current MRR, cumulative revenue, average LTV
@@ -318,40 +357,40 @@ WHERE convertedFromProspectAt IS NOT NULL
 
 ### 📊 Complete CRM Features
 
-| Feature Category | Tenant-Level CRM | **Platform CRM** | Status |
-|-----------------|------------------|------------------|--------|
-| **Unified Business Records** | ✓ businessRecords | ✓ platformBusinessRecords | ✅ Implemented |
-| **Contact Management** | ✓ enhancedContacts | ✓ platformContacts | ✅ Implemented |
-| **Deal Pipeline** | ✓ deals, dealStages | ✓ platformDeals | ✅ Implemented |
-| **Activity Tracking** | ✓ businessRecordActivities | ✓ platformActivities | ✅ Implemented |
-| **Lead Scoring** | ✓ AI-powered | ✓ AI-powered + ML | ✅ Implemented |
-| **BANT Qualification** | ✓ bantQualificationCriteria | ✓ platformBantQualification | ✅ Implemented |
-| **Territory Management** | ✓ salesTerritories | ✓ platformSalesTerritories | ✅ Implemented |
-| **Lead Assignment** | ✓ leadAssignmentRules | ✓ platformLeadAssignmentRules | ✅ Implemented |
-| **Health Scores** | ✓ customerHealthScores | ✓ platformHealthScores | ✅ Implemented |
-| **Churn Prediction** | ✓ churnPredictions | ✓ platformChurnPredictions | ✅ Implemented |
-| **Customer Success** | ✓ successInterventions | ✓ platformSuccessInterventions | ✅ Implemented |
-| **Renewal Management** | ✓ renewalOpportunities | ✓ platformRenewalOpportunities | ✅ Implemented |
-| **Sales Goals** | ✓ salesGoals | ✓ platformSalesGoals | ✅ Implemented |
-| **Activity Reports** | ✓ activityReports | ✓ platformActivityReports | ✅ Implemented |
-| **Analytics** | ✓ Basic | ✓ Cohort Analysis + Advanced | ✅ Implemented |
+| Feature Category             | Tenant-Level CRM            | **Platform CRM**               | Status         |
+| ---------------------------- | --------------------------- | ------------------------------ | -------------- |
+| **Unified Business Records** | ✓ businessRecords           | ✓ platformBusinessRecords      | ✅ Implemented |
+| **Contact Management**       | ✓ enhancedContacts          | ✓ platformContacts             | ✅ Implemented |
+| **Deal Pipeline**            | ✓ deals, dealStages         | ✓ platformDeals                | ✅ Implemented |
+| **Activity Tracking**        | ✓ businessRecordActivities  | ✓ platformActivities           | ✅ Implemented |
+| **Lead Scoring**             | ✓ AI-powered                | ✓ AI-powered + ML              | ✅ Implemented |
+| **BANT Qualification**       | ✓ bantQualificationCriteria | ✓ platformBantQualification    | ✅ Implemented |
+| **Territory Management**     | ✓ salesTerritories          | ✓ platformSalesTerritories     | ✅ Implemented |
+| **Lead Assignment**          | ✓ leadAssignmentRules       | ✓ platformLeadAssignmentRules  | ✅ Implemented |
+| **Health Scores**            | ✓ customerHealthScores      | ✓ platformHealthScores         | ✅ Implemented |
+| **Churn Prediction**         | ✓ churnPredictions          | ✓ platformChurnPredictions     | ✅ Implemented |
+| **Customer Success**         | ✓ successInterventions      | ✓ platformSuccessInterventions | ✅ Implemented |
+| **Renewal Management**       | ✓ renewalOpportunities      | ✓ platformRenewalOpportunities | ✅ Implemented |
+| **Sales Goals**              | ✓ salesGoals                | ✓ platformSalesGoals           | ✅ Implemented |
+| **Activity Reports**         | ✓ activityReports           | ✓ platformActivityReports      | ✅ Implemented |
+| **Analytics**                | ✓ Basic                     | ✓ Cohort Analysis + Advanced   | ✅ Implemented |
 
 ### 🎯 What Makes This a "Full CRM"
 
 **Compared to Current Signup Tracking:**
 
-| Aspect | Current (Basic) | New (Full CRM) |
-|--------|----------------|----------------|
-| Data Model | platform_signups (single table) | 17 interconnected tables |
-| Prospect Management | Basic company + contact info | Multi-contact hierarchy, roles, social |
-| Sales Pipeline | Status field only | Full pipeline with stages, probabilities, forecasting |
-| Lead Qualification | Simple score (0-100) | AI-powered multi-dimensional scoring + BANT |
-| Lead Assignment | Manual assignment field | Automated territory/round-robin/skill-based rules |
-| Activity Tracking | Email open/click only | Calls, emails, meetings, demos, tasks with outcomes |
-| Customer Success | None | Health scores, churn prediction, interventions |
-| Renewal Management | None | Automated renewal tracking with expansion |
-| Sales Performance | None | Goals, activity reports, conversion metrics |
-| Analytics | Basic funnel | Cohort analysis, LTV/CAC, advanced metrics |
+| Aspect              | Current (Basic)                 | New (Full CRM)                                        |
+| ------------------- | ------------------------------- | ----------------------------------------------------- |
+| Data Model          | platform_signups (single table) | 17 interconnected tables                              |
+| Prospect Management | Basic company + contact info    | Multi-contact hierarchy, roles, social                |
+| Sales Pipeline      | Status field only               | Full pipeline with stages, probabilities, forecasting |
+| Lead Qualification  | Simple score (0-100)            | AI-powered multi-dimensional scoring + BANT           |
+| Lead Assignment     | Manual assignment field         | Automated territory/round-robin/skill-based rules     |
+| Activity Tracking   | Email open/click only           | Calls, emails, meetings, demos, tasks with outcomes   |
+| Customer Success    | None                            | Health scores, churn prediction, interventions        |
+| Renewal Management  | None                            | Automated renewal tracking with expansion             |
+| Sales Performance   | None                            | Goals, activity reports, conversion metrics           |
+| Analytics           | Basic funnel                    | Cohort analysis, LTV/CAC, advanced metrics            |
 
 ## Data Flow & Lifecycle
 
@@ -458,12 +497,14 @@ platform_business_records (1) ←→ (many) platform_contacts
 ## Implementation Roadmap
 
 ### Phase 1: Schema & Migration ✅ COMPLETE
+
 - [x] Design comprehensive schema (1,196 lines)
 - [x] Create platform-crm-schema.ts
 - [ ] Export from main schema.ts
 - [ ] Run database migration
 
 ### Phase 2: Backend API
+
 - [ ] routes-platform-crm.ts - Business records CRUD
 - [ ] routes-platform-deals.ts - Deal pipeline management
 - [ ] routes-platform-activities.ts - Activity logging
@@ -473,6 +514,7 @@ platform_business_records (1) ←→ (many) platform_contacts
 - [ ] routes-platform-analytics.ts - Reporting and analytics
 
 ### Phase 3: Frontend UI
+
 - [ ] PlatformCRMDashboard.tsx - Executive dashboard
 - [ ] PlatformBusinessRecords.tsx - Prospect/tenant management
 - [ ] PlatformDealsPipeline.tsx - Visual pipeline
@@ -483,6 +525,7 @@ platform_business_records (1) ←→ (many) platform_contacts
 - [ ] PlatformAnalytics.tsx - Cohort analysis, LTV/CAC
 
 ### Phase 4: Automation
+
 - [ ] Lead scoring service (scheduled job)
 - [ ] Lead assignment service (event-driven)
 - [ ] Health score calculation service (scheduled)
@@ -491,6 +534,7 @@ platform_business_records (1) ←→ (many) platform_contacts
 - [ ] Activity report generation (daily/weekly/monthly)
 
 ### Phase 5: ML & AI
+
 - [ ] Lead scoring ML model training
 - [ ] Churn prediction model training
 - [ ] Deal outcome prediction
@@ -500,13 +544,16 @@ platform_business_records (1) ←→ (many) platform_contacts
 ## Performance Considerations
 
 ### Indexing Strategy
+
 All tables have strategic indexes on:
+
 - Foreign keys (business_record_id, deal_id, contact_id, tenant_id)
 - Query filters (status, type, date ranges)
 - Sort columns (created_at, score, date fields)
 - Unique constraints where applicable
 
 ### Scalability
+
 - **Row Estimates**:
   - 100,000 business records
   - 300,000 contacts (avg 3 per record)
@@ -521,6 +568,7 @@ All tables have strategic indexes on:
   - Caching for frequently accessed data
 
 ### Caching Strategy
+
 - Lead scores: Cache for 24 hours
 - Health scores: Cache for 1 hour
 - Analytics: Cache for 15 minutes
@@ -529,12 +577,14 @@ All tables have strategic indexes on:
 ## Security & Access Control
 
 ### RBAC Requirements
+
 - **Root Admin (Level 8)**: Full access to all platform CRM features
 - **Platform Sales Manager (Level 7)**: View all, edit own territories
 - **Platform Sales Rep (Level 6)**: View and edit own prospects/deals only
 - **Platform CSM (Level 6)**: View customers, edit health scores and interventions
 
 ### Data Privacy
+
 - Internal notes not visible to customers
 - Sensitive data (churn reasons, lost reasons) restricted
 - Audit log for all CRM actions
@@ -543,6 +593,7 @@ All tables have strategic indexes on:
 ## Metrics & KPIs
 
 ### Sales Metrics
+
 - Lead-to-Opportunity Conversion Rate
 - Opportunity-to-Customer Conversion Rate
 - Average Sales Cycle Length
@@ -552,6 +603,7 @@ All tables have strategic indexes on:
 - Forecast Accuracy
 
 ### Customer Success Metrics
+
 - Customer Health Score Distribution
 - Churn Rate (Gross, Net)
 - Net Revenue Retention (NRR)
@@ -563,6 +615,7 @@ All tables have strategic indexes on:
 - Expansion Rate
 
 ### Activity Metrics
+
 - Activities per Prospect
 - Response Time (First Contact)
 - Call Connect Rate
@@ -573,31 +626,33 @@ All tables have strategic indexes on:
 
 ## Comparison: Basic Signup Tracking vs Full Platform CRM
 
-| Capability | Basic System | Full CRM | Improvement |
-|-----------|-------------|----------|-------------|
-| **Data Model** | 1 table (184 lines) | 17 tables (1,196 lines) | **6.5x more comprehensive** |
-| **Prospect Tracking** | Company + 1 contact | Company + unlimited contacts with roles | **Multi-contact hierarchy** |
-| **Sales Pipeline** | Status field | 9-stage pipeline with probability and forecasting | **Full pipeline management** |
-| **Lead Qualification** | Single score (0-100) | Multi-dimensional scoring + BANT framework | **5 score components + ML** |
-| **Assignment** | Manual field | Automated territory/round-robin/skill-based | **Intelligent automation** |
-| **Activities** | Email tracking only | Calls, emails, meetings, demos, tasks with outcomes | **6 activity types** |
-| **Customer Success** | None | Health scores, churn prediction, interventions | **Proactive CS management** |
-| **Renewals** | None | Automated tracking with expansion opportunities | **Revenue expansion** |
-| **Analytics** | Basic funnel (4 stages) | Cohort analysis, LTV/CAC, 30+ metrics | **Advanced BI** |
-| **Reporting** | Manual | Automated daily/weekly/monthly reports | **Scheduled automation** |
-| **ML/AI** | Basic qualification score | Lead scoring, churn prediction, recommendations | **Predictive analytics** |
+| Capability             | Basic System              | Full CRM                                            | Improvement                  |
+| ---------------------- | ------------------------- | --------------------------------------------------- | ---------------------------- |
+| **Data Model**         | 1 table (184 lines)       | 17 tables (1,196 lines)                             | **6.5x more comprehensive**  |
+| **Prospect Tracking**  | Company + 1 contact       | Company + unlimited contacts with roles             | **Multi-contact hierarchy**  |
+| **Sales Pipeline**     | Status field              | 9-stage pipeline with probability and forecasting   | **Full pipeline management** |
+| **Lead Qualification** | Single score (0-100)      | Multi-dimensional scoring + BANT framework          | **5 score components + ML**  |
+| **Assignment**         | Manual field              | Automated territory/round-robin/skill-based         | **Intelligent automation**   |
+| **Activities**         | Email tracking only       | Calls, emails, meetings, demos, tasks with outcomes | **6 activity types**         |
+| **Customer Success**   | None                      | Health scores, churn prediction, interventions      | **Proactive CS management**  |
+| **Renewals**           | None                      | Automated tracking with expansion opportunities     | **Revenue expansion**        |
+| **Analytics**          | Basic funnel (4 stages)   | Cohort analysis, LTV/CAC, 30+ metrics               | **Advanced BI**              |
+| **Reporting**          | Manual                    | Automated daily/weekly/monthly reports              | **Scheduled automation**     |
+| **ML/AI**              | Basic qualification score | Lead scoring, churn prediction, recommendations     | **Predictive analytics**     |
 
 ## Conclusion
 
 This Platform CRM transforms basic signup tracking into a **world-class, enterprise-grade CRM system** that rivals Salesforce, HubSpot, and other leading CRM platforms. It provides complete visibility and control over the tenant lifecycle from first contact through renewal, with AI-powered insights and automation throughout.
 
 **Total Effort:**
+
 - **Schema Design**: 1,196 lines of code
 - **Tables**: 17 specialized tables
 - **Features**: 200+ distinct CRM capabilities
 - **Mirrors**: Tenant-level CRM architecture (proven pattern)
 
 **Next Steps:**
+
 1. Export schema from main schema.ts
 2. Run database migration
 3. Build backend API routes

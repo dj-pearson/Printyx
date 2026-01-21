@@ -31,7 +31,6 @@ Apollo.io uses API key authentication. To get started:
 - **Mobile number reveal**: ~8 credits per number
 - Search API consumes credits when revealing contact details
 
-
 ### Key API Endpoints
 
 **People Search Endpoint**[^10][^11]
@@ -108,10 +107,7 @@ import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -125,12 +121,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const filters = req.body;
-    
+
     // Create hash for caching
-    const searchHash = crypto
-      .createHash('md5')
-      .update(JSON.stringify(filters))
-      .digest('hex');
+    const searchHash = crypto.createHash('md5').update(JSON.stringify(filters)).digest('hex');
 
     // Check cache first
     const { data: cachedSearch } = await supabase
@@ -163,7 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Content-Type': 'application/json',
           'X-Api-Key': process.env.APOLLO_API_KEY!,
         },
-      }
+      },
     );
 
     const results = apolloResponse.data;
@@ -179,11 +172,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(results);
   } catch (error: any) {
     console.error('Apollo API Error:', error.response?.data || error.message);
-    
+
     if (error.response?.status === 429) {
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: 'Rate limit exceeded',
-        retryAfter: error.response.headers['retry-after']
+        retryAfter: error.response.headers['retry-after'],
       });
     }
 
@@ -345,7 +338,7 @@ export const LeadSearchForm: React.FC = () => {
           placeholder="Location (e.g., Des Moines, Iowa)"
           onChange={(e) => setFilters({ ...filters, personLocations: [e.target.value] })}
         />
-        
+
         <div className="filter-group">
           <label>Seniority:</label>
           {seniorities.map((s) => (
@@ -363,12 +356,12 @@ export const LeadSearchForm: React.FC = () => {
             </label>
           ))}
         </div>
-        
+
         <button onClick={handleSearch} disabled={loading}>
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
-      
+
       {results && (
         <LeadResults results={results} />
       )}
@@ -376,7 +369,6 @@ export const LeadSearchForm: React.FC = () => {
   );
 };
 ```
-
 
 ### Bulk Add Implementation with Deduplication
 
@@ -392,8 +384,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select('*')
     .in('apollo_id', leadIds);
 
-  const cachedIds = new Set(cachedLeads?.map(l => l.apollo_id) || []);
-  const leadsToEnrich = leadIds.filter(id => !cachedIds.has(id));
+  const cachedIds = new Set(cachedLeads?.map((l) => l.apollo_id) || []);
+  const leadsToEnrich = leadIds.filter((id) => !cachedIds.has(id));
 
   // Enrich missing leads if needed
   // ... enrichment logic
@@ -405,19 +397,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('tenant_id', tenantId)
     .in('apollo_id', leadIds);
 
-  const existingIds = new Set(existingLeads?.map(l => l.apollo_id) || []);
-  const newLeads = allLeads.filter(lead => !existingIds.has(lead.id));
+  const existingIds = new Set(existingLeads?.map((l) => l.apollo_id) || []);
+  const newLeads = allLeads.filter((lead) => !existingIds.has(lead.id));
 
   // Insert new leads
   const { data: insertedLeads } = await supabase
     .from('leads')
-    .insert(newLeads.map(lead => ({
-      tenant_id: tenantId,
-      apollo_id: lead.id,
-      first_name: lead.first_name,
-      // ... other fields
-      raw_data: lead,
-    })))
+    .insert(
+      newLeads.map((lead) => ({
+        tenant_id: tenantId,
+        apollo_id: lead.id,
+        first_name: lead.first_name,
+        // ... other fields
+        raw_data: lead,
+      })),
+    )
     .select();
 
   return res.status(200).json({
@@ -426,7 +420,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 }
 ```
-
 
 ### Best Practices \& Optimization
 
@@ -459,7 +452,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 - Use database indexes on `apollo_id`, `email`, `tenant_id`
 - Implement pagination for large result sets
 - Consider Redis for frequently accessed cache data
-
 
 ### Implementation Phases
 
@@ -680,4 +672,3 @@ This implementation gives you a production-ready Apollo.io integration that effi
 [^88]: https://www.apollographql.com/docs/ios/v0-legacy/tutorial/tutorial-pagination
 
 [^89]: https://docs.apollo.io/reference/search-for-contacts
-

@@ -9,13 +9,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'dist/',
-        'server/tests/**',
-        '**/*.test.ts',
-        '**/*.spec.ts',
-      ],
+      exclude: ['node_modules/', 'dist/', 'server/tests/**', '**/*.test.ts', '**/*.spec.ts'],
     },
     testTimeout: 30000,
     hookTimeout: 30000,

@@ -1,19 +1,44 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Calendar, CheckCircle, Clock, Plus, FileText, Download, Eye, Settings, AlertCircle, ArrowRight, Wrench } from "lucide-react";
-import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Calendar,
+  CheckCircle,
+  Clock,
+  Plus,
+  FileText,
+  Download,
+  Eye,
+  Settings,
+  AlertCircle,
+  ArrowRight,
+  Wrench,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import { useLocation } from 'wouter';
 
 interface OnboardingChecklist {
   id: string;
@@ -98,46 +123,48 @@ export default function OnboardingDashboard() {
 
   // Create checklist mutation
   const createChecklistMutation = useMutation({
-    mutationFn: (data: CreateChecklistData) => apiRequest(`/api/onboarding/checklists`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    mutationFn: (data: CreateChecklistData) =>
+      apiRequest(`/api/onboarding/checklists`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/onboarding/checklists'] });
       setIsCreateDialogOpen(false);
       toast({
-        title: "Success",
-        description: "Onboarding checklist created successfully",
+        title: 'Success',
+        description: 'Onboarding checklist created successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create checklist",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create checklist',
+        variant: 'destructive',
       });
     },
   });
 
   // Generate PDF mutation
   const generatePdfMutation = useMutation({
-    mutationFn: (checklistId: string) => apiRequest(`/api/onboarding/checklists/${checklistId}/generate-pdf`, {
-      method: 'POST',
-    }),
+    mutationFn: (checklistId: string) =>
+      apiRequest(`/api/onboarding/checklists/${checklistId}/generate-pdf`, {
+        method: 'POST',
+      }),
     onSuccess: (data: { pdfUrl: string }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/onboarding/checklists'] });
       toast({
-        title: "Success",
-        description: "PDF generated successfully",
+        title: 'Success',
+        description: 'PDF generated successfully',
       });
       // Open PDF in new tab
       window.open(data.pdfUrl, '_blank');
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate PDF",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to generate PDF',
+        variant: 'destructive',
       });
     },
   });
@@ -158,7 +185,7 @@ export default function OnboardingDashboard() {
         contactPhone: checklistData.customerData?.phone,
         contactEmail: checklistData.customerData?.email,
       };
-      
+
       return apiRequest('/api/service-tickets', {
         method: 'POST',
         body: serviceRecord,
@@ -166,7 +193,7 @@ export default function OnboardingDashboard() {
     },
     onSuccess: (data, variables) => {
       toast({
-        title: "Service Record Created",
+        title: 'Service Record Created',
         description: `Installation handoff complete. Service monitoring initiated for ${variables.customerData?.companyName}.`,
       });
       // Navigate to service hub with the new service record
@@ -174,17 +201,18 @@ export default function OnboardingDashboard() {
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to create service record. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create service record. Please try again.',
+        variant: 'destructive',
       });
     },
   });
 
   const filteredChecklists = checklists.filter((checklist: OnboardingChecklist) => {
     const matchesStatus = selectedStatus === 'all' || checklist.status === selectedStatus;
-    const matchesSearch = checklist.checklistTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         checklist.customerData?.companyName?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      checklist.checklistTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      checklist.customerData?.companyName?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -198,7 +226,7 @@ export default function OnboardingDashboard() {
   const handleCreateChecklist = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const checklistData: CreateChecklistData = {
       checklistTitle: formData.get('checklistTitle') as string,
       installationType: formData.get('installationType') as string,
@@ -211,9 +239,9 @@ export default function OnboardingDashboard() {
       siteInformation: {
         address: formData.get('address') as string,
       },
-      scheduledInstallDate: formData.get('scheduledInstallDate') as string || undefined,
-      accessRequirements: formData.get('accessRequirements') as string || undefined,
-      specialInstructions: formData.get('specialInstructions') as string || undefined,
+      scheduledInstallDate: (formData.get('scheduledInstallDate') as string) || undefined,
+      accessRequirements: (formData.get('accessRequirements') as string) || undefined,
+      specialInstructions: (formData.get('specialInstructions') as string) || undefined,
     };
 
     createChecklistMutation.mutate(checklistData);
@@ -254,15 +282,15 @@ export default function OnboardingDashboard() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button 
-            onClick={() => window.location.href = '/onboarding/new'} 
-            size="default" 
+          <Button
+            onClick={() => (window.location.href = '/onboarding/new')}
+            size="default"
             className="w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Comprehensive Checklist
           </Button>
-          
+
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button size="default" variant="outline" className="w-full sm:w-auto">
@@ -270,153 +298,153 @@ export default function OnboardingDashboard() {
                 Quick Checklist
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Onboarding Checklist</DialogTitle>
-              <DialogDescription>
-                Set up a new installation and onboarding checklist for a customer
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateChecklist} className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="checklistTitle">Checklist Title</Label>
-                  <Input
-                    id="checklistTitle"
-                    name="checklistTitle"
-                    placeholder="e.g., ABC Company Installation"
-                    required
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Onboarding Checklist</DialogTitle>
+                <DialogDescription>
+                  Set up a new installation and onboarding checklist for a customer
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateChecklist} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="checklistTitle">Checklist Title</Label>
+                    <Input
+                      id="checklistTitle"
+                      name="checklistTitle"
+                      placeholder="e.g., ABC Company Installation"
+                      required
+                      className="min-h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="installationType">Installation Type</Label>
+                    <Select name="installationType" required>
+                      <SelectTrigger className="min-h-11">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new_site">New Site</SelectItem>
+                        <SelectItem value="equipment_upgrade">Equipment Upgrade</SelectItem>
+                        <SelectItem value="relocation">Relocation</SelectItem>
+                        <SelectItem value="expansion">Expansion</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-medium">Customer Information</h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Company Name</Label>
+                      <Input
+                        id="companyName"
+                        name="companyName"
+                        placeholder="ABC Company"
+                        required
+                        className="min-h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryContact">Primary Contact</Label>
+                      <Input
+                        id="primaryContact"
+                        name="primaryContact"
+                        placeholder="John Doe"
+                        required
+                        className="min-h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        className="min-h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="john@company.com"
+                        className="min-h-11"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="font-medium">Site Information</h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="address">Installation Address</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        placeholder="123 Main St, City, State 12345"
+                        required
+                        className="min-h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="scheduledInstallDate">Scheduled Install Date</Label>
+                      <Input
+                        id="scheduledInstallDate"
+                        name="scheduledInstallDate"
+                        type="date"
+                        className="min-h-11"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="accessRequirements">Access Requirements</Label>
+                    <Textarea
+                      id="accessRequirements"
+                      name="accessRequirements"
+                      placeholder="Building access codes, contact person, parking instructions..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="specialInstructions">Special Instructions</Label>
+                    <Textarea
+                      id="specialInstructions"
+                      name="specialInstructions"
+                      placeholder="Any special requirements or notes for the installation..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
                     className="min-h-11"
-                  />
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createChecklistMutation.isPending}
+                    className="min-h-11"
+                  >
+                    {createChecklistMutation.isPending ? 'Creating...' : 'Create Checklist'}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="installationType">Installation Type</Label>
-                  <Select name="installationType" required>
-                    <SelectTrigger className="min-h-11">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new_site">New Site</SelectItem>
-                      <SelectItem value="equipment_upgrade">Equipment Upgrade</SelectItem>
-                      <SelectItem value="relocation">Relocation</SelectItem>
-                      <SelectItem value="expansion">Expansion</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="font-medium">Customer Information</h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      name="companyName"
-                      placeholder="ABC Company"
-                      required
-                      className="min-h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="primaryContact">Primary Contact</Label>
-                    <Input
-                      id="primaryContact"
-                      name="primaryContact"
-                      placeholder="John Doe"
-                      required
-                      className="min-h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      placeholder="(555) 123-4567"
-                      className="min-h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="john@company.com"
-                      className="min-h-11"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="font-medium">Site Information</h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="address">Installation Address</Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      placeholder="123 Main St, City, State 12345"
-                      required
-                      className="min-h-11"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduledInstallDate">Scheduled Install Date</Label>
-                    <Input
-                      id="scheduledInstallDate"
-                      name="scheduledInstallDate"
-                      type="date"
-                      className="min-h-11"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="accessRequirements">Access Requirements</Label>
-                  <Textarea
-                    id="accessRequirements"
-                    name="accessRequirements"
-                    placeholder="Building access codes, contact person, parking instructions..."
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="specialInstructions">Special Instructions</Label>
-                  <Textarea
-                    id="specialInstructions"
-                    name="specialInstructions"
-                    placeholder="Any special requirements or notes for the installation..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsCreateDialogOpen(false)}
-                  className="min-h-11"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createChecklistMutation.isPending}
-                  className="min-h-11"
-                >
-                  {createChecklistMutation.isPending ? "Creating..." : "Create Checklist"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -480,9 +508,15 @@ export default function OnboardingDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {checklists.length > 0 
-                ? Math.round(checklists.reduce((sum: number, c: OnboardingChecklist) => sum + (c.progressPercentage || 0), 0) / checklists.length)
-                : 0}%
+              {checklists.length > 0
+                ? Math.round(
+                    checklists.reduce(
+                      (sum: number, c: OnboardingChecklist) => sum + (c.progressPercentage || 0),
+                      0,
+                    ) / checklists.length,
+                  )
+                : 0}
+              %
             </div>
           </CardContent>
         </Card>
@@ -496,10 +530,9 @@ export default function OnboardingDashboard() {
               <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-medium mb-2">No checklists found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchQuery || selectedStatus !== 'all' 
-                  ? "Try adjusting your filters or search terms"
-                  : "Create your first onboarding checklist to get started"
-                }
+                {searchQuery || selectedStatus !== 'all'
+                  ? 'Try adjusting your filters or search terms'
+                  : 'Create your first onboarding checklist to get started'}
               </p>
               {!searchQuery && selectedStatus === 'all' && (
                 <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -530,7 +563,7 @@ export default function OnboardingDashboard() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => window.location.href = `/onboarding/${checklist.id}`}
+                      onClick={() => (window.location.href = `/onboarding/${checklist.id}`)}
                       className="min-h-8"
                     >
                       <Eye className="w-4 h-4 mr-1" />
@@ -575,7 +608,9 @@ export default function OnboardingDashboard() {
                     ></div>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{checklist.completedSections || 0} of {checklist.totalSections || 0} sections</span>
+                    <span>
+                      {checklist.completedSections || 0} of {checklist.totalSections || 0} sections
+                    </span>
                     <span>
                       {checklist.scheduledInstallDate && (
                         <>
@@ -612,7 +647,9 @@ export default function OnboardingDashboard() {
                         className="h-auto p-0 text-xs"
                         onClick={() => window.open(checklist.pdfUrl, '_blank')}
                       >
-                        Generated {checklist.pdfGeneratedAt && format(new Date(checklist.pdfGeneratedAt), 'MMM dd')}
+                        Generated{' '}
+                        {checklist.pdfGeneratedAt &&
+                          format(new Date(checklist.pdfGeneratedAt), 'MMM dd')}
                       </Button>
                     </div>
                   )}

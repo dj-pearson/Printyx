@@ -11,19 +11,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Target, 
+import {
+  BarChart3,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Target,
   Calendar,
   AlertTriangle,
   Clock,
@@ -39,7 +39,7 @@ import {
   ChevronRight,
   Star,
   Grid3X3,
-  List
+  List,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
@@ -55,7 +55,15 @@ interface ReportDefinition {
   name: string;
   code: string;
   description: string;
-  category: 'sales' | 'service' | 'finance' | 'operations' | 'hr' | 'it' | 'compliance' | 'executive';
+  category:
+    | 'sales'
+    | 'service'
+    | 'finance'
+    | 'operations'
+    | 'hr'
+    | 'it'
+    | 'compliance'
+    | 'executive';
   organizationalScope: 'platform' | 'company' | 'regional' | 'location' | 'team' | 'individual';
   requiredPermissions: Record<string, boolean>;
   defaultVisualization: 'table' | 'chart' | 'dashboard' | 'kpi_widget';
@@ -95,32 +103,44 @@ export default function EnhancedReportsHub() {
     searchQuery: '',
     viewMode: 'grid',
     sortBy: 'name',
-    showFavorites: false
+    showFavorites: false,
   });
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
 
   // Fetch available reports from new architecture
-  const { data: reports, isLoading: reportsLoading, refetch: refetchReports } = useQuery<ReportDefinition[]>({
+  const {
+    data: reports,
+    isLoading: reportsLoading,
+    refetch: refetchReports,
+  } = useQuery<ReportDefinition[]>({
     queryKey: ['reporting/reports', dashboardState.selectedCategory, dashboardState.searchQuery],
-    queryFn: () => apiRequest('/api/reporting/reports', {
-      params: {
-        category: dashboardState.selectedCategory !== 'all' ? dashboardState.selectedCategory : undefined,
-        search: dashboardState.searchQuery || undefined
-      }
-    }).then(response => response.reports || []),
-    staleTime: 30000 // 30 seconds
+    queryFn: () =>
+      apiRequest('/api/reporting/reports', {
+        params: {
+          category:
+            dashboardState.selectedCategory !== 'all' ? dashboardState.selectedCategory : undefined,
+          search: dashboardState.searchQuery || undefined,
+        },
+      }).then((response) => response.reports || []),
+    staleTime: 30000, // 30 seconds
   });
 
   // Fetch KPIs from new architecture
-  const { data: kpis, isLoading: kpisLoading, refetch: refetchKPIs } = useQuery<KPIDefinition[]>({
+  const {
+    data: kpis,
+    isLoading: kpisLoading,
+    refetch: refetchKPIs,
+  } = useQuery<KPIDefinition[]>({
     queryKey: ['reporting/kpis', dashboardState.selectedCategory],
-    queryFn: () => apiRequest('/api/reporting/kpis', {
-      params: {
-        category: dashboardState.selectedCategory !== 'all' ? dashboardState.selectedCategory : undefined
-      }
-    }).then(response => response.kpis || []),
+    queryFn: () =>
+      apiRequest('/api/reporting/kpis', {
+        params: {
+          category:
+            dashboardState.selectedCategory !== 'all' ? dashboardState.selectedCategory : undefined,
+        },
+      }).then((response) => response.kpis || []),
     refetchInterval: 60000, // Refresh KPIs every minute
-    staleTime: 30000
+    staleTime: 30000,
   });
 
   // Filter and sort reports
@@ -132,10 +152,11 @@ export default function EnhancedReportsHub() {
     // Apply search filter
     if (dashboardState.searchQuery) {
       const query = dashboardState.searchQuery.toLowerCase();
-      filtered = filtered.filter(report => 
-        report.name.toLowerCase().includes(query) ||
-        report.description.toLowerCase().includes(query) ||
-        report.tags?.some(tag => tag.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (report) =>
+          report.name.toLowerCase().includes(query) ||
+          report.description.toLowerCase().includes(query) ||
+          report.tags?.some((tag) => tag.toLowerCase().includes(query)),
       );
     }
 
@@ -145,7 +166,7 @@ export default function EnhancedReportsHub() {
         case 'category':
           return a.category.localeCompare(b.category);
         case 'lastUpdated':
-          return (new Date(b.lastUpdated || 0)).getTime() - (new Date(a.lastUpdated || 0)).getTime();
+          return new Date(b.lastUpdated || 0).getTime() - new Date(a.lastUpdated || 0).getTime();
         case 'name':
         default:
           return a.name.localeCompare(b.name);
@@ -158,7 +179,7 @@ export default function EnhancedReportsHub() {
   // Group reports by category
   const reportsByCategory = useMemo(() => {
     const grouped: Record<string, ReportDefinition[]> = {};
-    filteredReports.forEach(report => {
+    filteredReports.forEach((report) => {
       if (!grouped[report.category]) {
         grouped[report.category] = [];
       }
@@ -176,11 +197,11 @@ export default function EnhancedReportsHub() {
     hr: Users,
     it: Settings,
     compliance: AlertTriangle,
-    executive: BarChart3
+    executive: BarChart3,
   };
 
   const handleStateChange = (key: keyof DashboardState, value: any) => {
-    setDashboardState(prev => ({ ...prev, [key]: value }));
+    setDashboardState((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleReportClick = (reportId: string) => {
@@ -194,15 +215,12 @@ export default function EnhancedReportsHub() {
 
   // Show individual report view
   if (selectedReport) {
-    const report = reports?.find(r => r.id === selectedReport);
+    const report = reports?.find((r) => r.id === selectedReport);
     return (
       <MainLayout>
         <div className="container mx-auto p-6 space-y-6">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setSelectedReport(null)}
-            >
+            <Button variant="outline" onClick={() => setSelectedReport(null)}>
               ← Back to Reports
             </Button>
             <div>
@@ -210,7 +228,7 @@ export default function EnhancedReportsHub() {
               <p className="text-gray-600">{report?.description}</p>
             </div>
           </div>
-          
+
           <ReportViewer
             reportId={selectedReport}
             reportName={report?.name}
@@ -237,14 +255,16 @@ export default function EnhancedReportsHub() {
               Comprehensive reporting across all departments with real-time insights
             </p>
           </div>
-          
+
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleRefreshAll}
               disabled={reportsLoading || kpisLoading}
             >
-              <RefreshCw className={cn("h-4 w-4 mr-2", (reportsLoading || kpisLoading) && "animate-spin")} />
+              <RefreshCw
+                className={cn('h-4 w-4 mr-2', (reportsLoading || kpisLoading) && 'animate-spin')}
+              />
               Refresh
             </Button>
             <Button variant="default">
@@ -259,19 +279,19 @@ export default function EnhancedReportsHub() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Key Performance Indicators</h2>
-              <Badge 
-                variant="outline" 
-                style={{ 
+              <Badge
+                variant="outline"
+                style={{
                   backgroundColor: THEME_CONFIG.brand.colors.primary[50],
                   borderColor: THEME_CONFIG.brand.colors.primary[200],
-                  color: THEME_CONFIG.brand.colors.primary[700]
+                  color: THEME_CONFIG.brand.colors.primary[700],
                 }}
               >
                 Real-time Data
               </Badge>
             </div>
             <KPIGrid
-              kpis={kpis.map(kpi => ({
+              kpis={kpis.map((kpi) => ({
                 id: kpi.id,
                 title: kpi.name,
                 value: kpi.current_value || 0,
@@ -280,11 +300,18 @@ export default function EnhancedReportsHub() {
                 performanceLevel: kpi.performance_level || undefined,
                 description: kpi.description,
                 lastUpdated: kpi.last_updated || undefined,
-                trend: kpi.variance_percentage ? {
-                  direction: kpi.variance_percentage > 0 ? 'up' : kpi.variance_percentage < 0 ? 'down' : 'stable',
-                  percentage: Math.abs(kpi.variance_percentage)
-                } : undefined,
-                onClick: () => console.log('KPI clicked:', kpi.id)
+                trend: kpi.variance_percentage
+                  ? {
+                      direction:
+                        kpi.variance_percentage > 0
+                          ? 'up'
+                          : kpi.variance_percentage < 0
+                            ? 'down'
+                            : 'stable',
+                      percentage: Math.abs(kpi.variance_percentage),
+                    }
+                  : undefined,
+                onClick: () => console.log('KPI clicked:', kpi.id),
               }))}
               columns={4}
               isLoading={kpisLoading}
@@ -297,14 +324,17 @@ export default function EnhancedReportsHub() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">
-                {dashboardState.selectedCategory.charAt(0).toUpperCase() + dashboardState.selectedCategory.slice(1)} Analytics
+                {dashboardState.selectedCategory.charAt(0).toUpperCase() +
+                  dashboardState.selectedCategory.slice(1)}{' '}
+                Analytics
               </h2>
-              <Badge 
+              <Badge
                 variant="outline"
-                style={{ 
-                  backgroundColor: getThemeForCategory(dashboardState.selectedCategory).primary + '20',
+                style={{
+                  backgroundColor:
+                    getThemeForCategory(dashboardState.selectedCategory).primary + '20',
                   borderColor: getThemeForCategory(dashboardState.selectedCategory).primary,
-                  color: getThemeForCategory(dashboardState.selectedCategory).primary
+                  color: getThemeForCategory(dashboardState.selectedCategory).primary,
                 }}
               >
                 Interactive Charts
@@ -318,22 +348,22 @@ export default function EnhancedReportsHub() {
                   data: generateMockChartData('trend'),
                   type: 'line',
                   category: dashboardState.selectedCategory,
-                  span: 2
+                  span: 2,
                 },
                 {
                   id: 'distribution',
                   title: 'Distribution Analysis',
                   data: generateMockChartData('distribution'),
                   type: 'pie',
-                  category: dashboardState.selectedCategory
+                  category: dashboardState.selectedCategory,
                 },
                 {
                   id: 'comparison',
                   title: 'Period Comparison',
                   data: generateMockChartData('comparison'),
                   type: 'bar',
-                  category: dashboardState.selectedCategory
-                }
+                  category: dashboardState.selectedCategory,
+                },
               ]}
               onChartDrillDown={(chartId, field, value) => {
                 console.log('Chart drill-down:', chartId, field, value);
@@ -378,8 +408,8 @@ export default function EnhancedReportsHub() {
             </div>
 
             {/* Category Filter */}
-            <Select 
-              value={dashboardState.selectedCategory} 
+            <Select
+              value={dashboardState.selectedCategory}
               onValueChange={(value) => handleStateChange('selectedCategory', value)}
             >
               <SelectTrigger>
@@ -399,8 +429,8 @@ export default function EnhancedReportsHub() {
             </Select>
 
             {/* Sort By */}
-            <Select 
-              value={dashboardState.sortBy} 
+            <Select
+              value={dashboardState.sortBy}
               onValueChange={(value: any) => handleStateChange('sortBy', value)}
             >
               <SelectTrigger>
@@ -443,8 +473,9 @@ export default function EnhancedReportsHub() {
           ) : dashboardState.selectedCategory === 'all' ? (
             // Show reports grouped by category
             Object.entries(reportsByCategory).map(([category, categoryReports]) => {
-              const IconComponent = categoryIcons[category as keyof typeof categoryIcons] || BarChart3;
-              
+              const IconComponent =
+                categoryIcons[category as keyof typeof categoryIcons] || BarChart3;
+
               return (
                 <div key={category} className="space-y-4">
                   <div className="flex items-center space-x-2">
@@ -453,12 +484,14 @@ export default function EnhancedReportsHub() {
                       {category} Reports ({categoryReports.length})
                     </h3>
                   </div>
-                  
-                  <div className={cn(
-                    dashboardState.viewMode === 'grid' 
-                      ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                      : "space-y-2"
-                  )}>
+
+                  <div
+                    className={cn(
+                      dashboardState.viewMode === 'grid'
+                        ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                        : 'space-y-2',
+                    )}
+                  >
                     {categoryReports.map((report) => (
                       <ReportCard
                         key={report.id}
@@ -473,11 +506,13 @@ export default function EnhancedReportsHub() {
             })
           ) : (
             // Show reports for selected category
-            <div className={cn(
-              dashboardState.viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                : "space-y-2"
-            )}>
+            <div
+              className={cn(
+                dashboardState.viewMode === 'grid'
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+                  : 'space-y-2',
+              )}
+            >
               {filteredReports.map((report) => (
                 <ReportCard
                   key={report.id}
@@ -496,9 +531,9 @@ export default function EnhancedReportsHub() {
                 <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No reports found</h3>
                 <p className="text-gray-500">
-                  {dashboardState.searchQuery 
-                    ? "Try adjusting your search terms or filters"
-                    : "No reports are available for the selected category"}
+                  {dashboardState.searchQuery
+                    ? 'Try adjusting your search terms or filters'
+                    : 'No reports are available for the selected category'}
                 </p>
               </div>
             </Card>
@@ -521,7 +556,7 @@ function ReportCard({ report, viewMode, onClick }: ReportCardProps) {
 
   if (viewMode === 'list') {
     return (
-      <Card 
+      <Card
         className="p-4 hover:shadow-md hover:scale-[1.01] transition-all duration-200 cursor-pointer"
         onClick={onClick}
       >
@@ -532,12 +567,10 @@ function ReportCard({ report, viewMode, onClick }: ReportCardProps) {
             </div>
             <div>
               <h4 className="font-medium">{report.name}</h4>
-              <p className="text-sm text-gray-600 truncate max-w-md">
-                {report.description}
-              </p>
+              <p className="text-sm text-gray-600 truncate max-w-md">{report.description}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Badge variant="outline" className="capitalize">
               {report.category}
@@ -555,7 +588,7 @@ function ReportCard({ report, viewMode, onClick }: ReportCardProps) {
   }
 
   return (
-    <Card 
+    <Card
       className="hover:shadow-md hover:scale-[1.02] transition-all duration-200 cursor-pointer"
       onClick={onClick}
     >
@@ -571,23 +604,19 @@ function ReportCard({ report, viewMode, onClick }: ReportCardProps) {
           )}
         </div>
         <CardTitle className="text-lg">{report.name}</CardTitle>
-        <CardDescription className="text-sm">
-          {report.description}
-        </CardDescription>
+        <CardDescription className="text-sm">{report.description}</CardDescription>
       </CardHeader>
-      
+
       <CardContent>
         <div className="flex items-center justify-between">
           <Badge variant="outline" className="capitalize">
             {report.category}
           </Badge>
-          
+
           <div className="flex items-center space-x-2 text-xs text-gray-500">
             {report.supportsDrillDown && <Eye className="h-3 w-3" />}
             {report.supportsExport && <Download className="h-3 w-3" />}
-            {report.lastUpdated && (
-              <span>{new Date(report.lastUpdated).toLocaleDateString()}</span>
-            )}
+            {report.lastUpdated && <span>{new Date(report.lastUpdated).toLocaleDateString()}</span>}
           </div>
         </div>
       </CardContent>
@@ -604,21 +633,21 @@ const generateMockChartData = (type: string) => {
         value: Math.floor(Math.random() * 50000) + 10000,
         target: 40000,
         location: ['New York', 'Chicago', 'LA'][Math.floor(Math.random() * 3)],
-        region: ['East', 'Central', 'West'][Math.floor(Math.random() * 3)]
+        region: ['East', 'Central', 'West'][Math.floor(Math.random() * 3)],
       }));
     case 'distribution':
       return [
         { name: 'New Customers', value: 400, location: 'All', region: 'All' },
         { name: 'Existing Customers', value: 300, location: 'All', region: 'All' },
         { name: 'Renewals', value: 200, location: 'All', region: 'All' },
-        { name: 'Upgrades', value: 100, location: 'All', region: 'All' }
+        { name: 'Upgrades', value: 100, location: 'All', region: 'All' },
       ];
     case 'comparison':
       return [
         { name: 'Q1', value: 45000, comparison: 42000, location: 'NYC', region: 'East' },
         { name: 'Q2', value: 52000, comparison: 48000, location: 'CHI', region: 'Central' },
         { name: 'Q3', value: 48000, comparison: 45000, location: 'LA', region: 'West' },
-        { name: 'Q4', value: 61000, comparison: 55000, location: 'NYC', region: 'East' }
+        { name: 'Q4', value: 61000, comparison: 55000, location: 'NYC', region: 'East' },
       ];
     default:
       return [];
@@ -633,5 +662,5 @@ const categoryIcons = {
   hr: Users,
   it: Settings,
   compliance: AlertTriangle,
-  executive: BarChart3
+  executive: BarChart3,
 };

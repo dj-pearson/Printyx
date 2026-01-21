@@ -292,11 +292,8 @@ class CloudWatchTransport extends LogTransport {
   }
 
   private async ensureLogGroupAndStream(): Promise<void> {
-    const {
-      CreateLogGroupCommand,
-      CreateLogStreamCommand,
-      ResourceAlreadyExistsException,
-    } = await import('@aws-sdk/client-cloudwatch-logs');
+    const { CreateLogGroupCommand, CreateLogStreamCommand, ResourceAlreadyExistsException } =
+      await import('@aws-sdk/client-cloudwatch-logs');
 
     const client = this.client!;
 
@@ -382,9 +379,9 @@ class ElasticsearchTransport extends LogTransport {
     if (this.config_.apiKey) {
       headers['Authorization'] = `ApiKey ${this.config_.apiKey}`;
     } else if (this.config_.username && this.config_.password) {
-      const credentials = Buffer.from(
-        `${this.config_.username}:${this.config_.password}`,
-      ).toString('base64');
+      const credentials = Buffer.from(`${this.config_.username}:${this.config_.password}`).toString(
+        'base64',
+      );
       headers['Authorization'] = `Basic ${credentials}`;
     }
 
@@ -395,7 +392,9 @@ class ElasticsearchTransport extends LogTransport {
     });
 
     if (!response.ok) {
-      throw new Error(`Elasticsearch bulk request failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Elasticsearch bulk request failed: ${response.status} ${response.statusText}`,
+      );
     }
 
     const result = (await response.json()) as { errors?: boolean };
@@ -546,10 +545,7 @@ class FileTransport extends LogTransport {
     const dataSize = Buffer.byteLength(data);
 
     // Check if rotation is needed
-    if (
-      this.config_.maxSize &&
-      this.currentSize + dataSize > this.config_.maxSize
-    ) {
+    if (this.config_.maxSize && this.currentSize + dataSize > this.config_.maxSize) {
       await this.rotate();
     }
 
@@ -624,22 +620,28 @@ export function createTransportStream(): Transform {
     transform(chunk: string, _encoding: BufferEncoding, callback: TransformCallback) {
       try {
         const entry = JSON.parse(chunk) as LogEntry;
-        transportInstance!.write(entry).then(() => {
-          callback(null, chunk);
-        }).catch((err) => {
-          callback(err as Error);
-        });
+        transportInstance!
+          .write(entry)
+          .then(() => {
+            callback(null, chunk);
+          })
+          .catch((err) => {
+            callback(err as Error);
+          });
       } catch (error) {
         callback(error as Error);
       }
     },
     flush(callback: TransformCallback) {
       if (transportInstance) {
-        transportInstance.flush().then(() => {
-          callback();
-        }).catch((err) => {
-          callback(err as Error);
-        });
+        transportInstance
+          .flush()
+          .then(() => {
+            callback();
+          })
+          .catch((err) => {
+            callback(err as Error);
+          });
       } else {
         callback();
       }

@@ -5,7 +5,19 @@
  * for service-to-service authentication.
  */
 
-import { pgTable, uuid, varchar, text, boolean, timestamp, jsonb, pgEnum, index, unique, integer } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  timestamp,
+  jsonb,
+  pgEnum,
+  index,
+  unique,
+  integer,
+} from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -13,11 +25,11 @@ import { users, tenants } from './schema';
 
 // API Key Types
 export const apiKeyTypeEnum = pgEnum('api_key_type', [
-  'service',     // Service-to-service communication
+  'service', // Service-to-service communication
   'integration', // Third-party integrations
-  'webhook',     // Webhook delivery
-  'readonly',    // Read-only API access
-  'admin',       // Full administrative access
+  'webhook', // Webhook delivery
+  'readonly', // Read-only API access
+  'admin', // Full administrative access
 ]);
 
 // API Key Status
@@ -33,169 +45,205 @@ export const apiKeyStatusEnum = pgEnum('api_key_status', [
  *
  * Stores API keys for programmatic access to the API.
  */
-export const apiKeys = pgTable('api_keys', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
 
-  // Key identification
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  keyType: apiKeyTypeEnum('key_type').notNull().default('service'),
+    // Key identification
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    keyType: apiKeyTypeEnum('key_type').notNull().default('service'),
 
-  // Key data (prefix is visible, hash is stored for verification)
-  keyPrefix: varchar('key_prefix', { length: 12 }).notNull(), // First 8 chars of key for identification
-  keyHash: varchar('key_hash', { length: 128 }).notNull(), // SHA-256 hash of the full key
-  keySalt: varchar('key_salt', { length: 64 }).notNull(), // Salt used for hashing
+    // Key data (prefix is visible, hash is stored for verification)
+    keyPrefix: varchar('key_prefix', { length: 12 }).notNull(), // First 8 chars of key for identification
+    keyHash: varchar('key_hash', { length: 128 }).notNull(), // SHA-256 hash of the full key
+    keySalt: varchar('key_salt', { length: 64 }).notNull(), // Salt used for hashing
 
-  // Status
-  status: apiKeyStatusEnum('status').notNull().default('active'),
-  isActive: boolean('is_active').notNull().default(true),
+    // Status
+    status: apiKeyStatusEnum('status').notNull().default('active'),
+    isActive: boolean('is_active').notNull().default(true),
 
-  // Expiration
-  expiresAt: timestamp('expires_at'),
-  neverExpires: boolean('never_expires').notNull().default(false),
+    // Expiration
+    expiresAt: timestamp('expires_at'),
+    neverExpires: boolean('never_expires').notNull().default(false),
 
-  // Permissions and scopes
-  scopes: jsonb('scopes').$type<string[]>().default([]),
-  permissions: jsonb('permissions').$type<string[]>().default([]),
+    // Permissions and scopes
+    scopes: jsonb('scopes').$type<string[]>().default([]),
+    permissions: jsonb('permissions').$type<string[]>().default([]),
 
-  // IP restrictions
-  allowedIps: jsonb('allowed_ips').$type<string[]>().default([]),
-  allowAllIps: boolean('allow_all_ips').notNull().default(true),
+    // IP restrictions
+    allowedIps: jsonb('allowed_ips').$type<string[]>().default([]),
+    allowAllIps: boolean('allow_all_ips').notNull().default(true),
 
-  // Rate limiting
-  rateLimitPerMinute: integer('rate_limit_per_minute').default(1000),
-  rateLimitPerHour: integer('rate_limit_per_hour').default(10000),
-  rateLimitPerDay: integer('rate_limit_per_day').default(100000),
+    // Rate limiting
+    rateLimitPerMinute: integer('rate_limit_per_minute').default(1000),
+    rateLimitPerHour: integer('rate_limit_per_hour').default(10000),
+    rateLimitPerDay: integer('rate_limit_per_day').default(100000),
 
-  // Usage tracking
-  lastUsedAt: timestamp('last_used_at'),
-  usageCount: varchar('usage_count', { length: 20 }).default('0'),
-  lastUsedIp: varchar('last_used_ip', { length: 45 }),
-  lastUsedUserAgent: text('last_used_user_agent'),
+    // Usage tracking
+    lastUsedAt: timestamp('last_used_at'),
+    usageCount: varchar('usage_count', { length: 20 }).default('0'),
+    lastUsedIp: varchar('last_used_ip', { length: 45 }),
+    lastUsedUserAgent: text('last_used_user_agent'),
 
-  // Environment restrictions
-  environment: varchar('environment', { length: 50 }).default('production'), // production, staging, development
-  allowedEnvironments: jsonb('allowed_environments').$type<string[]>().default(['production']),
+    // Environment restrictions
+    environment: varchar('environment', { length: 50 }).default('production'), // production, staging, development
+    allowedEnvironments: jsonb('allowed_environments').$type<string[]>().default(['production']),
 
-  // Metadata
-  metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
-  tags: jsonb('tags').$type<string[]>().default([]),
+    // Metadata
+    metadata: jsonb('metadata').$type<Record<string, any>>().default({}),
+    tags: jsonb('tags').$type<string[]>().default([]),
 
-  // Ownership
-  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-  revokedBy: uuid('revoked_by').references(() => users.id, { onDelete: 'set null' }),
-  revokedAt: timestamp('revoked_at'),
-  revokedReason: text('revoked_reason'),
+    // Ownership
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    revokedBy: uuid('revoked_by').references(() => users.id, { onDelete: 'set null' }),
+    revokedAt: timestamp('revoked_at'),
+    revokedReason: text('revoked_reason'),
 
-  // Audit fields
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  tenantIdx: index('api_keys_tenant_idx').on(table.tenantId),
-  keyPrefixIdx: index('api_keys_key_prefix_idx').on(table.keyPrefix),
-  keyHashIdx: index('api_keys_key_hash_idx').on(table.keyHash),
-  statusIdx: index('api_keys_status_idx').on(table.status),
-  expiresAtIdx: index('api_keys_expires_at_idx').on(table.expiresAt),
-  keyTypeIdx: index('api_keys_key_type_idx').on(table.keyType),
-  uniqueKeyHash: unique('api_keys_key_hash_unique').on(table.keyHash),
-}));
+    // Audit fields
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    tenantIdx: index('api_keys_tenant_idx').on(table.tenantId),
+    keyPrefixIdx: index('api_keys_key_prefix_idx').on(table.keyPrefix),
+    keyHashIdx: index('api_keys_key_hash_idx').on(table.keyHash),
+    statusIdx: index('api_keys_status_idx').on(table.status),
+    expiresAtIdx: index('api_keys_expires_at_idx').on(table.expiresAt),
+    keyTypeIdx: index('api_keys_key_type_idx').on(table.keyType),
+    uniqueKeyHash: unique('api_keys_key_hash_unique').on(table.keyHash),
+  }),
+);
 
 /**
  * API Key Usage Logs
  *
  * Detailed logging of API key usage for audit and analytics.
  */
-export const apiKeyUsageLogs = pgTable('api_key_usage_logs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  apiKeyId: uuid('api_key_id').notNull().references(() => apiKeys.id, { onDelete: 'cascade' }),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+export const apiKeyUsageLogs = pgTable(
+  'api_key_usage_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    apiKeyId: uuid('api_key_id')
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
 
-  // Request details
-  requestId: varchar('request_id', { length: 255 }),
-  method: varchar('method', { length: 10 }).notNull(),
-  path: varchar('path', { length: 1024 }).notNull(),
-  queryParams: jsonb('query_params').$type<Record<string, any>>().default({}),
+    // Request details
+    requestId: varchar('request_id', { length: 255 }),
+    method: varchar('method', { length: 10 }).notNull(),
+    path: varchar('path', { length: 1024 }).notNull(),
+    queryParams: jsonb('query_params').$type<Record<string, any>>().default({}),
 
-  // Response details
-  statusCode: integer('status_code'),
-  responseTimeMs: integer('response_time_ms'),
-  errorMessage: text('error_message'),
+    // Response details
+    statusCode: integer('status_code'),
+    responseTimeMs: integer('response_time_ms'),
+    errorMessage: text('error_message'),
 
-  // Client info
-  clientIp: varchar('client_ip', { length: 45 }),
-  userAgent: text('user_agent'),
-  origin: varchar('origin', { length: 512 }),
+    // Client info
+    clientIp: varchar('client_ip', { length: 45 }),
+    userAgent: text('user_agent'),
+    origin: varchar('origin', { length: 512 }),
 
-  // Timestamp
-  timestamp: timestamp('timestamp').defaultNow().notNull(),
-}, (table) => ({
-  apiKeyIdx: index('api_key_usage_logs_api_key_idx').on(table.apiKeyId),
-  tenantIdx: index('api_key_usage_logs_tenant_idx').on(table.tenantId),
-  timestampIdx: index('api_key_usage_logs_timestamp_idx').on(table.timestamp),
-  methodPathIdx: index('api_key_usage_logs_method_path_idx').on(table.method, table.path),
-}));
+    // Timestamp
+    timestamp: timestamp('timestamp').defaultNow().notNull(),
+  },
+  (table) => ({
+    apiKeyIdx: index('api_key_usage_logs_api_key_idx').on(table.apiKeyId),
+    tenantIdx: index('api_key_usage_logs_tenant_idx').on(table.tenantId),
+    timestampIdx: index('api_key_usage_logs_timestamp_idx').on(table.timestamp),
+    methodPathIdx: index('api_key_usage_logs_method_path_idx').on(table.method, table.path),
+  }),
+);
 
 /**
  * API Key Rate Limit Buckets
  *
  * Tracks rate limit usage for sliding window rate limiting.
  */
-export const apiKeyRateLimits = pgTable('api_key_rate_limits', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  apiKeyId: uuid('api_key_id').notNull().references(() => apiKeys.id, { onDelete: 'cascade' }),
+export const apiKeyRateLimits = pgTable(
+  'api_key_rate_limits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    apiKeyId: uuid('api_key_id')
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: 'cascade' }),
 
-  // Bucket identification
-  bucketType: varchar('bucket_type', { length: 20 }).notNull(), // minute, hour, day
-  bucketKey: varchar('bucket_key', { length: 50 }).notNull(), // e.g., "2024-01-15T10:30" for minute bucket
+    // Bucket identification
+    bucketType: varchar('bucket_type', { length: 20 }).notNull(), // minute, hour, day
+    bucketKey: varchar('bucket_key', { length: 50 }).notNull(), // e.g., "2024-01-15T10:30" for minute bucket
 
-  // Count
-  requestCount: integer('request_count').notNull().default(0),
+    // Count
+    requestCount: integer('request_count').notNull().default(0),
 
-  // Timing
-  bucketStart: timestamp('bucket_start').notNull(),
-  bucketEnd: timestamp('bucket_end').notNull(),
+    // Timing
+    bucketStart: timestamp('bucket_start').notNull(),
+    bucketEnd: timestamp('bucket_end').notNull(),
 
-  // Timestamps
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  apiKeyIdx: index('api_key_rate_limits_api_key_idx').on(table.apiKeyId),
-  bucketKeyIdx: index('api_key_rate_limits_bucket_key_idx').on(table.apiKeyId, table.bucketType, table.bucketKey),
-  bucketEndIdx: index('api_key_rate_limits_bucket_end_idx').on(table.bucketEnd),
-  uniqueBucket: unique('api_key_rate_limits_bucket_unique').on(table.apiKeyId, table.bucketType, table.bucketKey),
-}));
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    apiKeyIdx: index('api_key_rate_limits_api_key_idx').on(table.apiKeyId),
+    bucketKeyIdx: index('api_key_rate_limits_bucket_key_idx').on(
+      table.apiKeyId,
+      table.bucketType,
+      table.bucketKey,
+    ),
+    bucketEndIdx: index('api_key_rate_limits_bucket_end_idx').on(table.bucketEnd),
+    uniqueBucket: unique('api_key_rate_limits_bucket_unique').on(
+      table.apiKeyId,
+      table.bucketType,
+      table.bucketKey,
+    ),
+  }),
+);
 
 /**
  * API Key Rotations
  *
  * Tracks key rotation history for audit purposes.
  */
-export const apiKeyRotations = pgTable('api_key_rotations', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  apiKeyId: uuid('api_key_id').notNull().references(() => apiKeys.id, { onDelete: 'cascade' }),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+export const apiKeyRotations = pgTable(
+  'api_key_rotations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    apiKeyId: uuid('api_key_id')
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: 'cascade' }),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
 
-  // Old key info (hash only for security)
-  oldKeyPrefix: varchar('old_key_prefix', { length: 12 }).notNull(),
-  oldKeyHash: varchar('old_key_hash', { length: 128 }).notNull(),
+    // Old key info (hash only for security)
+    oldKeyPrefix: varchar('old_key_prefix', { length: 12 }).notNull(),
+    oldKeyHash: varchar('old_key_hash', { length: 128 }).notNull(),
 
-  // New key info
-  newKeyPrefix: varchar('new_key_prefix', { length: 12 }).notNull(),
+    // New key info
+    newKeyPrefix: varchar('new_key_prefix', { length: 12 }).notNull(),
 
-  // Rotation details
-  rotatedAt: timestamp('rotated_at').defaultNow().notNull(),
-  rotatedBy: uuid('rotated_by').references(() => users.id, { onDelete: 'set null' }),
-  reason: text('reason'),
+    // Rotation details
+    rotatedAt: timestamp('rotated_at').defaultNow().notNull(),
+    rotatedBy: uuid('rotated_by').references(() => users.id, { onDelete: 'set null' }),
+    reason: text('reason'),
 
-  // Grace period for old key
-  gracePeriodEndsAt: timestamp('grace_period_ends_at'),
-  oldKeyDisabledAt: timestamp('old_key_disabled_at'),
-}, (table) => ({
-  apiKeyIdx: index('api_key_rotations_api_key_idx').on(table.apiKeyId),
-  tenantIdx: index('api_key_rotations_tenant_idx').on(table.tenantId),
-  rotatedAtIdx: index('api_key_rotations_rotated_at_idx').on(table.rotatedAt),
-}));
+    // Grace period for old key
+    gracePeriodEndsAt: timestamp('grace_period_ends_at'),
+    oldKeyDisabledAt: timestamp('old_key_disabled_at'),
+  },
+  (table) => ({
+    apiKeyIdx: index('api_key_rotations_api_key_idx').on(table.apiKeyId),
+    tenantIdx: index('api_key_rotations_tenant_idx').on(table.tenantId),
+    rotatedAtIdx: index('api_key_rotations_rotated_at_idx').on(table.rotatedAt),
+  }),
+);
 
 // Relations
 export const apiKeysRelations = relations(apiKeys, ({ one, many }) => ({
@@ -299,7 +347,7 @@ export const API_KEY_SCOPES = {
   BULK_OPERATIONS: 'bulk:operations',
 } as const;
 
-export type ApiKeyScope = typeof API_KEY_SCOPES[keyof typeof API_KEY_SCOPES];
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[keyof typeof API_KEY_SCOPES];
 
 // Validation schemas for API
 export const createApiKeyRequestSchema = z.object({

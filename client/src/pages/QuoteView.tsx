@@ -4,7 +4,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Send, Eye, FileText, Building2, User, Calendar, DollarSign, Download, Percent, TrendingUp, Phone, Mail, MapPin, Hash, Clock, Wand2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Edit,
+  Send,
+  Eye,
+  FileText,
+  Building2,
+  User,
+  Calendar,
+  DollarSign,
+  Download,
+  Percent,
+  TrendingUp,
+  Phone,
+  Mail,
+  MapPin,
+  Hash,
+  Clock,
+  Wand2,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
@@ -101,7 +120,10 @@ export default function QuoteView() {
     queryKey: [`/api/business-records/${quote?.businessRecordId}/contacts/${quote?.contactId}`],
     enabled: !!quote?.businessRecordId && !!quote?.contactId,
     queryFn: async () => {
-      const response = await apiRequest(`/api/business-records/${quote?.businessRecordId}/contacts`, 'GET');
+      const response = await apiRequest(
+        `/api/business-records/${quote?.businessRecordId}/contacts`,
+        'GET',
+      );
       return response.find((c: Contact) => c.id === quote?.contactId);
     },
   });
@@ -136,10 +158,10 @@ export default function QuoteView() {
   // Check if user has manager-level access (above sales rep)
   const canViewManagerExport = () => {
     if (!user?.roleId) return false;
-    
+
     // Always show Manager Export button (role checking can be refined later)
     return true;
-    
+
     /* Original role checking logic - disabled for debugging
     // For root admin and admin roles, always allow access
     if (user.roleId.toLowerCase().includes('admin') || 
@@ -163,11 +185,11 @@ export default function QuoteView() {
         method: 'GET',
         credentials: 'include',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to export PDF');
       }
-      
+
       return response.blob();
     },
     onSuccess: (blob) => {
@@ -179,17 +201,17 @@ export default function QuoteView() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast({
-        title: "PDF exported successfully",
-        description: "Your quote has been downloaded as a PDF.",
+        title: 'PDF exported successfully',
+        description: 'Your quote has been downloaded as a PDF.',
       });
     },
     onError: () => {
       toast({
-        title: "Export failed",
-        description: "Could not export the PDF. Please try again.",
-        variant: "destructive",
+        title: 'Export failed',
+        description: 'Could not export the PDF. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -200,11 +222,11 @@ export default function QuoteView() {
         method: 'GET',
         credentials: 'include',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to export manager PDF');
       }
-      
+
       return response.blob();
     },
     onSuccess: (blob) => {
@@ -216,17 +238,17 @@ export default function QuoteView() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast({
-        title: "Manager PDF exported successfully",
-        description: "Your quote with cost details has been downloaded as a PDF.",
+        title: 'Manager PDF exported successfully',
+        description: 'Your quote with cost details has been downloaded as a PDF.',
       });
     },
     onError: () => {
       toast({
-        title: "Export failed",
-        description: "Could not export the manager PDF. Please try again.",
-        variant: "destructive",
+        title: 'Export failed',
+        description: 'Could not export the manager PDF. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -276,37 +298,43 @@ export default function QuoteView() {
   const discountAmount = parseFloat(quote.discountAmount || '0');
   const discountPercentage = parseFloat(quote.discountPercentage || '0');
   const storedTaxAmount = parseFloat(quote.taxAmount || '0');
-  
+
   // Apply markup/discount to line items for client display
   // For markup: discountPercentage is negative (e.g., -10 means 10% markup)
   // For discount: discountPercentage is positive (e.g., 10 means 10% discount)
   // Multiplier should be: 1 - (discountPercentage / 100)
   // So -10% becomes 1 - (-10/100) = 1.1 (markup)
   // And +10% becomes 1 - (10/100) = 0.9 (discount)
-  const adjustmentMultiplier = 1 - (discountPercentage / 100);
-  
+  const adjustmentMultiplier = 1 - discountPercentage / 100;
+
   // Adjust line items with markup/discount applied
-  const adjustedLineItems = lineItems.map(item => {
+  const adjustedLineItems = lineItems.map((item) => {
     const adjustedUnitPrice = parseFloat(item.unitPrice) * adjustmentMultiplier;
     const adjustedTotalPrice = parseFloat(item.totalPrice) * adjustmentMultiplier;
-    
+
     return {
       ...item,
       adjustedUnitPrice,
-      adjustedTotalPrice
+      adjustedTotalPrice,
     };
   });
-  
+
   // Calculate totals with adjustments applied
-  const adjustedSubtotal = adjustedLineItems.reduce((sum, item) => sum + item.adjustedTotalPrice, 0);
-  
+  const adjustedSubtotal = adjustedLineItems.reduce(
+    (sum, item) => sum + item.adjustedTotalPrice,
+    0,
+  );
+
   // Use stored tax amount directly - don't recalculate if it's been set to 0
   const calculatedTaxAmount = storedTaxAmount;
-  
+
   const finalTotal = adjustedSubtotal + calculatedTaxAmount;
 
   return (
-    <MainLayout title={`Quote ${quote.proposalNumber}`} description={`View and manage quote for ${company ? getCompanyDisplayName(company) : 'customer'}`}>
+    <MainLayout
+      title={`Quote ${quote.proposalNumber}`}
+      description={`View and manage quote for ${company ? getCompanyDisplayName(company) : 'customer'}`}
+    >
       <div className="space-y-6">
         {/* Professional Header */}
         <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl shadow-lg text-white p-6">
@@ -343,21 +371,21 @@ export default function QuoteView() {
                 {status.label}
               </Badge>
 
-              <Button 
+              <Button
                 onClick={() => setLocation(`/quotes/${quote.id}`)}
                 className="bg-white text-blue-600 hover:bg-blue-50"
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Quote
               </Button>
-              <Button 
+              <Button
                 onClick={() => setLocation(`/proposal-builder?quoteId=${quote.id}`)}
                 className="bg-blue-500 text-white hover:bg-blue-400 border-white/30"
               >
                 <Wand2 className="h-4 w-4 mr-2" />
                 Create Proposal
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleExportPdf}
                 disabled={exportPdfMutation.isPending}
@@ -366,7 +394,7 @@ export default function QuoteView() {
                 <Download className="h-4 w-4 mr-2" />
                 {exportPdfMutation.isPending ? 'Exporting...' : 'Export PDF'}
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 onClick={handleExportManagerPdf}
                 disabled={exportManagerPdfMutation.isPending}
@@ -392,11 +420,15 @@ export default function QuoteView() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Status</p>
-                <Badge variant={status.variant} className="mt-1">{status.label}</Badge>
+                <Badge variant={status.variant} className="mt-1">
+                  {status.label}
+                </Badge>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Valid Until</p>
-                <p className="font-medium">{quote.validUntil ? format(new Date(quote.validUntil), 'PPP') : 'Not specified'}</p>
+                <p className="font-medium">
+                  {quote.validUntil ? format(new Date(quote.validUntil), 'PPP') : 'Not specified'}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Created</p>
@@ -416,7 +448,9 @@ export default function QuoteView() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Company</p>
-                <p className="font-semibold text-lg">{company ? getCompanyDisplayName(company) : 'Loading...'}</p>
+                <p className="font-semibold text-lg">
+                  {company ? getCompanyDisplayName(company) : 'Loading...'}
+                </p>
                 {company?.email && (
                   <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
                     <Mail className="h-3 w-3" />
@@ -434,9 +468,7 @@ export default function QuoteView() {
                 <div>
                   <p className="text-sm font-medium text-gray-500">Primary Contact</p>
                   <p className="font-medium">{getContactDisplayName(contact)}</p>
-                  {contact.title && (
-                    <p className="text-sm text-gray-600">{contact.title}</p>
-                  )}
+                  {contact.title && <p className="text-sm text-gray-600">{contact.title}</p>}
                   {contact.email && (
                     <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
                       <Mail className="h-3 w-3" />
@@ -453,7 +485,9 @@ export default function QuoteView() {
                     <div>
                       <p>{company.address}</p>
                       {company.city && company.state && (
-                        <p>{company.city}, {company.state} {company.zipCode}</p>
+                        <p>
+                          {company.city}, {company.state} {company.zipCode}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -482,7 +516,10 @@ export default function QuoteView() {
             ) : (
               <div className="space-y-3">
                 {adjustedLineItems.map((item, index) => (
-                  <div key={item.id || index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div
+                    key={item.id || index}
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-start gap-3">
@@ -490,7 +527,9 @@ export default function QuoteView() {
                             {index + 1}
                           </div>
                           <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900 text-lg">{item.productName}</h4>
+                            <h4 className="font-semibold text-gray-900 text-lg">
+                              {item.productName}
+                            </h4>
                             <p className="text-gray-600 mt-1">{item.description}</p>
                             <div className="flex items-center gap-6 mt-3">
                               <div className="flex items-center gap-1">
@@ -498,8 +537,12 @@ export default function QuoteView() {
                                 <span className="text-sm font-semibold">{item.quantity}</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <span className="text-sm font-medium text-gray-500">Unit Price:</span>
-                                <span className="text-sm font-semibold">{formatCurrency(item.adjustedUnitPrice)}</span>
+                                <span className="text-sm font-medium text-gray-500">
+                                  Unit Price:
+                                </span>
+                                <span className="text-sm font-semibold">
+                                  {formatCurrency(item.adjustedUnitPrice)}
+                                </span>
                               </div>
                               <Badge variant="outline" className="bg-white">
                                 {item.itemType?.replace('_', ' ')}
@@ -509,24 +552,29 @@ export default function QuoteView() {
                         </div>
                       </div>
                       <div className="text-right ml-4">
-                        <p className="text-2xl font-bold text-green-600">{formatCurrency(item.adjustedTotalPrice)}</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {formatCurrency(item.adjustedTotalPrice)}
+                        </p>
                         <p className="text-sm text-gray-500">Line Total</p>
                       </div>
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Summary Row */}
                 <div className="border-t pt-4 mt-6">
                   <div className="bg-blue-50 rounded-lg p-4">
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-gray-600">
-                          {adjustedLineItems.length} item{adjustedLineItems.length !== 1 ? 's' : ''} total
+                          {adjustedLineItems.length} item{adjustedLineItems.length !== 1 ? 's' : ''}{' '}
+                          total
                         </p>
                         <p className="text-lg font-semibold text-gray-900">Subtotal</p>
                       </div>
-                      <p className="text-2xl font-bold text-blue-600">{formatCurrency(adjustedSubtotal)}</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {formatCurrency(adjustedSubtotal)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -550,18 +598,20 @@ export default function QuoteView() {
                 <span className="text-gray-700 font-medium">Subtotal</span>
                 <span className="font-semibold">{formatCurrency(adjustedSubtotal)}</span>
               </div>
-              
+
               {/* Tax - Always show */}
               <div className="flex justify-between items-center py-3 border-t border-gray-100 text-lg">
                 <span className="text-gray-700 font-medium">Tax</span>
                 <span className="font-semibold">{formatCurrency(calculatedTaxAmount)}</span>
               </div>
-              
+
               {/* Grand Total */}
               <div className="border-t-2 border-gray-300 pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold text-gray-900">Total</span>
-                  <span className="text-3xl font-bold text-green-600">{formatCurrency(finalTotal)}</span>
+                  <span className="text-3xl font-bold text-green-600">
+                    {formatCurrency(finalTotal)}
+                  </span>
                 </div>
               </div>
             </div>

@@ -86,7 +86,7 @@ class MockReportEngine {
   static async executeReport(
     reportCode: string,
     user: any,
-    params: any = {}
+    params: any = {},
   ): Promise<{ success: boolean; data?: any[]; error?: string; executionTime?: number }> {
     const startTime = Date.now();
     const report = mockReportDefinitions[reportCode as keyof typeof mockReportDefinitions];
@@ -100,7 +100,7 @@ class MockReportEngine {
       return { success: false, error: 'Insufficient role level' };
     }
 
-    const hasPermission = report.requiredPermissions.some(p => user.permissions?.includes(p));
+    const hasPermission = report.requiredPermissions.some((p) => user.permissions?.includes(p));
     if (!hasPermission) {
       return { success: false, error: 'Missing required permissions' };
     }
@@ -138,7 +138,7 @@ class MockReportEngine {
     reportCode: string,
     user: any,
     format: 'csv' | 'xlsx' | 'pdf',
-    params: any = {}
+    params: any = {},
   ): Promise<{ success: boolean; buffer?: Buffer; error?: string }> {
     const result = await this.executeReport(reportCode, user, params);
 
@@ -238,14 +238,17 @@ describe('Report Execution Integration Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
-      expect(result.data?.some(d => d.metric === 'revenue')).toBe(true);
-      expect(result.data?.some(d => d.metric === 'opportunities')).toBe(true);
+      expect(result.data?.some((d) => d.metric === 'revenue')).toBe(true);
+      expect(result.data?.some((d) => d.metric === 'opportunities')).toBe(true);
     });
 
     it('should allow CEO to access all lower-level reports', async () => {
       const user = mockUsers.ceo;
 
-      const individualResult = await MockReportEngine.executeReport('SALES_PIPELINE_INDIVIDUAL', user);
+      const individualResult = await MockReportEngine.executeReport(
+        'SALES_PIPELINE_INDIVIDUAL',
+        user,
+      );
       expect(individualResult.success).toBe(true);
 
       const teamResult = await MockReportEngine.executeReport('SALES_TEAM_DASHBOARD', user);
@@ -283,7 +286,7 @@ describe('Report Execution Integration Tests', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.data?.every(d => d.owner_id === user.id)).toBe(true);
+      expect(result.data?.every((d) => d.owner_id === user.id)).toBe(true);
     });
 
     it('should substitute tenantId parameter', async () => {
@@ -299,11 +302,7 @@ describe('Report Execution Integration Tests', () => {
   describe('Export Functionality', () => {
     it('should export report as CSV', async () => {
       const user = mockUsers.regionalDirector; // Has export permission
-      const result = await MockReportEngine.exportReport(
-        'SALES_PIPELINE_INDIVIDUAL',
-        user,
-        'csv'
-      );
+      const result = await MockReportEngine.exportReport('SALES_PIPELINE_INDIVIDUAL', user, 'csv');
 
       expect(result.success).toBe(true);
       expect(result.buffer).toBeDefined();
@@ -312,11 +311,7 @@ describe('Report Execution Integration Tests', () => {
 
     it('should export report as Excel', async () => {
       const user = mockUsers.regionalDirector;
-      const result = await MockReportEngine.exportReport(
-        'SALES_PIPELINE_INDIVIDUAL',
-        user,
-        'xlsx'
-      );
+      const result = await MockReportEngine.exportReport('SALES_PIPELINE_INDIVIDUAL', user, 'xlsx');
 
       expect(result.success).toBe(true);
       expect(result.buffer).toBeDefined();
@@ -324,11 +319,7 @@ describe('Report Execution Integration Tests', () => {
 
     it('should export report as PDF', async () => {
       const user = mockUsers.regionalDirector;
-      const result = await MockReportEngine.exportReport(
-        'SALES_PIPELINE_INDIVIDUAL',
-        user,
-        'pdf'
-      );
+      const result = await MockReportEngine.exportReport('SALES_PIPELINE_INDIVIDUAL', user, 'pdf');
 
       expect(result.success).toBe(true);
       expect(result.buffer).toBeDefined();
@@ -339,7 +330,7 @@ describe('Report Execution Integration Tests', () => {
       const result = await MockReportEngine.exportReport(
         'SALES_PIPELINE_INDIVIDUAL',
         user,
-        'xml' as any
+        'xml' as any,
       );
 
       expect(result.success).toBe(false);
@@ -398,13 +389,13 @@ describe('Report Execution Integration Tests', () => {
       const user = mockUsers.salesManager;
 
       const promises = Array.from({ length: 10 }, () =>
-        MockReportEngine.executeReport('SALES_TEAM_DASHBOARD', user)
+        MockReportEngine.executeReport('SALES_TEAM_DASHBOARD', user),
       );
 
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(10);
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.success).toBe(true);
       });
     });

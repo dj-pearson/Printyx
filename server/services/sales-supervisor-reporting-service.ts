@@ -150,7 +150,7 @@ class ReportCache {
       return;
     }
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -168,7 +168,7 @@ export class SalesSupervisorReportingService {
    */
   static async getLocationPipelineOverview(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<LocationPipelineOverview> {
     const cacheKey = `location-pipeline:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<LocationPipelineOverview>(cacheKey);
@@ -191,9 +191,10 @@ export class SalesSupervisorReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Get pipeline by location and stage
     const result = await db.execute(sql`
@@ -211,7 +212,7 @@ export class SalesSupervisorReportingService {
         AND o.tenant_id = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
         AND l.tenant_id = ${userContext.tenantId}
       GROUP BY l.id, l.name, o.stage
       ORDER BY l.name, CASE o.stage
@@ -235,8 +236,11 @@ export class SalesSupervisorReportingService {
     }));
 
     // Aggregate by stage across all locations
-    const stageMap = new Map<string, { totalDeals: number; totalValue: number; locationCount: number }>();
-    pipelines.forEach(p => {
+    const stageMap = new Map<
+      string,
+      { totalDeals: number; totalValue: number; locationCount: number }
+    >();
+    pipelines.forEach((p) => {
       const existing = stageMap.get(p.stage) || { totalDeals: 0, totalValue: 0, locationCount: 0 };
       existing.totalDeals += p.dealCount;
       existing.totalValue += p.totalValue;
@@ -254,12 +258,13 @@ export class SalesSupervisorReportingService {
     // Calculate summary
     const totalPipeline = pipelines.reduce((sum, p) => sum + p.totalValue, 0);
     const totalDeals = pipelines.reduce((sum, p) => sum + p.dealCount, 0);
-    const uniqueLocations = new Set(pipelines.map(p => p.locationId)).size;
+    const uniqueLocations = new Set(pipelines.map((p) => p.locationId)).size;
     const averageDealSize = totalDeals > 0 ? totalPipeline / totalDeals : 0;
-    const avgConversion = pipelines.length > 0
-      ? pipelines.reduce((sum, p) => sum + p.conversionRate, 0) / pipelines.length
-      : 0;
-    const healthScore = Math.min(100, (avgConversion * 0.4 + (totalDeals / uniqueLocations) * 0.6));
+    const avgConversion =
+      pipelines.length > 0
+        ? pipelines.reduce((sum, p) => sum + p.conversionRate, 0) / pipelines.length
+        : 0;
+    const healthScore = Math.min(100, avgConversion * 0.4 + (totalDeals / uniqueLocations) * 0.6);
 
     const overview: LocationPipelineOverview = {
       pipelines,
@@ -282,7 +287,7 @@ export class SalesSupervisorReportingService {
    */
   static async getLocationPerformanceMetrics(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<LocationPerformanceMetrics> {
     const cacheKey = `location-performance:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<LocationPerformanceMetrics>(cacheKey);
@@ -304,9 +309,10 @@ export class SalesSupervisorReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       WITH location_stats AS (
@@ -323,7 +329,7 @@ export class SalesSupervisorReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenantId}
         LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenantId} ${dateFilter}
         LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenantId} ${dateFilter}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
           AND l.tenant_id = ${userContext.tenantId}
         GROUP BY l.id, l.name
       ),
@@ -336,7 +342,7 @@ export class SalesSupervisorReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN quotas q ON q.user_id = u.id AND q.period = 'current'
         LEFT JOIN opportunities o ON o.owner_id = u.id AND o.stage = 'Closed Won' AND o.tenant_id = ${userContext.tenantId}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
         GROUP BY l.id
       )
       SELECT
@@ -359,9 +365,10 @@ export class SalesSupervisorReportingService {
       teamSize: parseInt(row.team_size || 0),
       totalRevenue: parseFloat(row.total_revenue || 0),
       dealsWon: parseInt(row.deals_won || 0),
-      winRate: parseInt(row.total_closed || 0) > 0
-        ? (parseInt(row.deals_won || 0) / parseInt(row.total_closed)) * 100
-        : 0,
+      winRate:
+        parseInt(row.total_closed || 0) > 0
+          ? (parseInt(row.deals_won || 0) / parseInt(row.total_closed)) * 100
+          : 0,
       averageDealSize: parseFloat(row.avg_deal_size || 0),
       quotaAttainment: parseFloat(row.quota_attainment || 0),
       activityScore: parseInt(row.total_activities || 0),
@@ -370,9 +377,10 @@ export class SalesSupervisorReportingService {
 
     const totalRevenue = locations.reduce((sum, l) => sum + l.totalRevenue, 0);
     const totalDeals = locations.reduce((sum, l) => sum + l.dealsWon, 0);
-    const averageWinRate = locations.length > 0
-      ? locations.reduce((sum, l) => sum + l.winRate, 0) / locations.length
-      : 0;
+    const averageWinRate =
+      locations.length > 0
+        ? locations.reduce((sum, l) => sum + l.winRate, 0) / locations.length
+        : 0;
 
     const metrics: LocationPerformanceMetrics = {
       locations,
@@ -394,7 +402,7 @@ export class SalesSupervisorReportingService {
    */
   static async getLocationQuotaTracking(
     userContext: EnhancedUserContext,
-    period: 'current' | 'previous' | 'ytd' = 'current'
+    period: 'current' | 'previous' | 'ytd' = 'current',
   ): Promise<LocationQuotaTracking> {
     const cacheKey = `location-quota:${userContext.id}:${period}`;
     const cached = ReportCache.get<LocationQuotaTracking>(cacheKey);
@@ -428,7 +436,7 @@ export class SalesSupervisorReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN quotas q ON q.user_id = u.id AND q.period = ${period}
         LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenantId}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map(id => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
           AND l.tenant_id = ${userContext.tenantId}
         GROUP BY l.id, l.name
       )
@@ -466,8 +474,8 @@ export class SalesSupervisorReportingService {
     const totalQuota = quotas.reduce((sum, q) => sum + q.quotaAmount, 0);
     const totalRevenue = quotas.reduce((sum, q) => sum + q.actualRevenue, 0);
     const overallAttainment = totalQuota > 0 ? (totalRevenue / totalQuota) * 100 : 0;
-    const locationsOnTrack = quotas.filter(q => q.onTrack).length;
-    const locationsAtRisk = quotas.filter(q => !q.onTrack && q.attainmentPercent < 75).length;
+    const locationsOnTrack = quotas.filter((q) => q.onTrack).length;
+    const locationsAtRisk = quotas.filter((q) => !q.onTrack && q.attainmentPercent < 75).length;
 
     const tracking: LocationQuotaTracking = {
       quotas,
@@ -489,7 +497,7 @@ export class SalesSupervisorReportingService {
    */
   static async getLocationActivitySummary(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<LocationActivitySummary> {
     const cacheKey = `location-activity:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<LocationActivitySummary>(cacheKey);
@@ -509,9 +517,10 @@ export class SalesSupervisorReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND a.activity_date BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND a.activity_date BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -527,7 +536,7 @@ export class SalesSupervisorReportingService {
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenantId}
       LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenantId} ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
         AND l.tenant_id = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY total_activities DESC

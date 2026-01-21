@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Download,
   Filter,
@@ -10,13 +10,13 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -25,14 +25,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import MainLayout from "@/components/layout/main-layout";
-import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+} from '@/components/ui/table';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import MainLayout from '@/components/layout/main-layout';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
 interface LineItem {
   productName: string;
@@ -69,10 +65,10 @@ interface MarginReportItem {
 export default function MarginAnalysisReport() {
   const { data: visibility } = usePricingVisibility();
   const [filters, setFilters] = useState({
-    startDate: "",
-    endDate: "",
-    salesRepId: "",
-    quoteId: "",
+    startDate: '',
+    endDate: '',
+    salesRepId: '',
+    quoteId: '',
   });
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
 
@@ -85,40 +81,40 @@ export default function MarginAnalysisReport() {
   });
 
   const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 2,
     }).format(value);
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
   const getMarginColor = (percentage: number): string => {
-    if (percentage >= 20) return "text-green-600";
-    if (percentage >= 10) return "text-blue-600";
-    if (percentage >= 5) return "text-orange-600";
-    return "text-red-600";
+    if (percentage >= 20) return 'text-green-600';
+    if (percentage >= 10) return 'text-blue-600';
+    if (percentage >= 5) return 'text-orange-600';
+    return 'text-red-600';
   };
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
-      draft: { variant: "secondary", label: "Draft" },
-      pending_approval: { variant: "outline", label: "Pending Approval" },
-      approved: { variant: "default", label: "Approved" },
-      sent: { variant: "default", label: "Sent" },
-      accepted: { variant: "default", label: "Accepted" },
-      rejected: { variant: "destructive", label: "Rejected" },
-      expired: { variant: "secondary", label: "Expired" },
+      draft: { variant: 'secondary', label: 'Draft' },
+      pending_approval: { variant: 'outline', label: 'Pending Approval' },
+      approved: { variant: 'default', label: 'Approved' },
+      sent: { variant: 'default', label: 'Sent' },
+      accepted: { variant: 'default', label: 'Accepted' },
+      rejected: { variant: 'destructive', label: 'Rejected' },
+      expired: { variant: 'secondary', label: 'Expired' },
     };
 
-    const config = variants[status] || { variant: "outline", label: status };
+    const config = variants[status] || { variant: 'outline', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -134,16 +130,16 @@ export default function MarginAnalysisReport() {
 
   const handleExport = async () => {
     const queryParams = new URLSearchParams();
-    if (filters.startDate) queryParams.append("startDate", filters.startDate);
-    if (filters.endDate) queryParams.append("endDate", filters.endDate);
-    if (filters.salesRepId) queryParams.append("salesRepId", filters.salesRepId);
+    if (filters.startDate) queryParams.append('startDate', filters.startDate);
+    if (filters.endDate) queryParams.append('endDate', filters.endDate);
+    if (filters.salesRepId) queryParams.append('salesRepId', filters.salesRepId);
 
     const response = await fetch(`/api/pricing/margin-report/export?${queryParams.toString()}`);
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `margin-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `margin-report-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -157,11 +153,13 @@ export default function MarginAnalysisReport() {
       totalMargin: acc.totalMargin + item.totalMargin,
       quoteCount: acc.quoteCount + 1,
     }),
-    { totalRevenue: 0, totalMargin: 0, quoteCount: 0 }
+    { totalRevenue: 0, totalMargin: 0, quoteCount: 0 },
   ) || { totalRevenue: 0, totalMargin: 0, quoteCount: 0 };
 
   const avgMarginPercentage =
-    summary.totalRevenue > 0 ? (summary.totalMargin / (summary.totalRevenue - summary.totalMargin)) * 100 : 0;
+    summary.totalRevenue > 0
+      ? (summary.totalMargin / (summary.totalRevenue - summary.totalMargin)) * 100
+      : 0;
 
   if (!visibility?.showDealerCost) {
     return (
@@ -169,7 +167,8 @@ export default function MarginAnalysisReport() {
         <Card>
           <CardContent className="p-6">
             <p className="text-muted-foreground">
-              You do not have permission to view this report. Only managers and above can access margin analysis.
+              You do not have permission to view this report. Only managers and above can access
+              margin analysis.
             </p>
           </CardContent>
         </Card>
@@ -341,7 +340,9 @@ export default function MarginAnalysisReport() {
 
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Total Price</p>
-                              <p className="text-sm font-bold">{formatCurrency(quote.totalCustomerPrice)}</p>
+                              <p className="text-sm font-bold">
+                                {formatCurrency(quote.totalCustomerPrice)}
+                              </p>
                             </div>
 
                             <div className="text-right">
@@ -353,7 +354,9 @@ export default function MarginAnalysisReport() {
 
                             <div className="text-right">
                               <p className="text-sm text-muted-foreground">Margin %</p>
-                              <p className={`text-sm font-bold ${getMarginColor(quote.marginPercentage)}`}>
+                              <p
+                                className={`text-sm font-bold ${getMarginColor(quote.marginPercentage)}`}
+                              >
                                 {quote.marginPercentage.toFixed(1)}%
                               </p>
                             </div>
@@ -383,7 +386,9 @@ export default function MarginAnalysisReport() {
                                   <TableCell>
                                     <div>
                                       <p className="font-medium">{item.productName}</p>
-                                      <p className="text-xs text-muted-foreground">{item.productCode}</p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {item.productCode}
+                                      </p>
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right">{item.quantity}</TableCell>
@@ -399,7 +404,9 @@ export default function MarginAnalysisReport() {
                                   <TableCell className="text-right text-green-600 font-medium">
                                     {formatCurrency(item.lineMargin)}
                                   </TableCell>
-                                  <TableCell className={`text-right font-bold ${getMarginColor(item.lineMarginPercentage)}`}>
+                                  <TableCell
+                                    className={`text-right font-bold ${getMarginColor(item.lineMarginPercentage)}`}
+                                  >
                                     {item.lineMarginPercentage.toFixed(1)}%
                                   </TableCell>
                                 </TableRow>

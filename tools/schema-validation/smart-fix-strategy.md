@@ -10,12 +10,14 @@
 ## 🔥 Priority Order (Recommended)
 
 ### Priority 1: Critical Auth/Metadata Issues (Validate, Don't Fix)
+
 **Files**: `supabase/functions/me/index.ts`, `client/src/hooks/useSupabaseAuth.ts`  
 **Issues**: `app_metadata`, `user_metadata` (85 + 71 = 156 occurrences)
 
 **Why First**: These might be FALSE POSITIVES - they're valid on Supabase auth.User!
 
-**Action**: 
+**Action**:
+
 ```typescript
 // ✅ This is CORRECT for Supabase auth:
 const metadata = user.user_metadata;
@@ -25,9 +27,11 @@ const appMetadata = user.app_metadata;
 **Fix**: Update validator to recognize Supabase auth patterns, NOT the code itself!
 
 ### Priority 2: Easy Pattern-Based Fixes (Auto-Fix)
+
 **Estimated**: ~100 issues
 
 **Patterns**:
+
 1. `location_id` → `location` (8 occurrences with suggestion)
 2. Simple typos with clear suggestions
 3. Removing columns that definitely don't exist
@@ -35,9 +39,11 @@ const appMetadata = user.app_metadata;
 **Action**: Run auto-fix script
 
 ### Priority 3: Nested Data Structure Fixes (Template-Based)
+
 **Estimated**: ~200 issues
 
 **Common Patterns**:
+
 ```typescript
 // Pattern 1: company_name (12 occurrences)
 ❌ customer.company_name
@@ -55,9 +61,11 @@ const appMetadata = user.app_metadata;
 **Action**: Use search & replace with templates
 
 ### Priority 4: Reporting/Analytics Columns (Business Logic Review)
+
 **Files**: All `*-reporting-service.ts` files (200+ issues)
 
 **Why Last**: These need understanding of:
+
 - What data the reports actually need
 - Where that data comes from (might be computed)
 - Whether to update schema or queries
@@ -67,6 +75,7 @@ const appMetadata = user.app_metadata;
 ## 🛠️ Step-by-Step Fix Process
 
 ### Step 1: Validate Auth Patterns (5 minutes)
+
 ```powershell
 # Check if app_metadata/user_metadata are false positives
 npx tsx tools/schema-validation/validate-code.ts | grep "metadata"
@@ -75,10 +84,12 @@ npx tsx tools/schema-validation/validate-code.ts | grep "metadata"
 **Expected**: Most will be in auth-related files → These are VALID
 
 **Decision**: Either:
+
 - A) Update validator to skip auth.User fields
 - B) Manually mark these as reviewed
 
 ### Step 2: Run Auto-Fix (10 minutes)
+
 ```powershell
 # Preview
 npx tsx tools/schema-validation/auto-fix.ts
@@ -95,6 +106,7 @@ npx tsx tools/schema-validation/validate-code.ts
 ### Step 3: Batch Fix Nested Data (30-60 minutes)
 
 **Template for Customer/Company Fields**:
+
 ```typescript
 // Find all: \.company_name
 // Replace with: .companies?.business_name
@@ -107,6 +119,7 @@ npx tsx tools/schema-validation/validate-code.ts
 ```
 
 Use VSCode's find-and-replace with regex:
+
 ```regex
 Find:    (\w+)\.company_name
 Replace: $1.companies?.business_name
@@ -141,6 +154,7 @@ Replace: $1.companies?.business_name
    - Apply same transformation pattern
 
 ### Step 5: Review Remaining Issues (1 hour)
+
 ```powershell
 # Generate fresh report
 npx tsx tools/schema-validation/generate-report.ts
@@ -156,17 +170,18 @@ npx tsx tools/schema-validation/generate-report.ts
 ## 📊 Fix Templates
 
 ### Template 1: Customer/Company Data
+
 ```typescript
 // BEFORE (throughout codebase)
-const enriched = customers.map(c => ({
+const enriched = customers.map((c) => ({
   id: c.id,
-  companyName: c.company_name,              // ❌
-  contactEmail: c.primary_contact_email,    // ❌
-  customerSince: c.customer_since,          // ❌
+  companyName: c.company_name, // ❌
+  contactEmail: c.primary_contact_email, // ❌
+  customerSince: c.customer_since, // ❌
 }));
 
 // AFTER (add transformation layer)
-const enriched = customers.map(c => ({
+const enriched = customers.map((c) => ({
   id: c.id,
   companyName: c.companies?.business_name ?? 'Unknown',
   contactEmail: c.company_contacts?.[0]?.email ?? '',
@@ -175,6 +190,7 @@ const enriched = customers.map(c => ({
 ```
 
 ### Template 2: Select Queries
+
 ```typescript
 // BEFORE
 .select('id, company_name, customer_since, contact_email')
@@ -196,9 +212,10 @@ const enriched = customers.map(c => ({
 ```
 
 ### Template 3: Reporting Aggregations
+
 ```typescript
 // BEFORE
-SELECT 
+SELECT
   region_id,              -- ❌ doesn't exist
   region_name,            -- ❌ doesn't exist
   COUNT(*) as call_count  -- ❌ wrong column name
@@ -206,7 +223,7 @@ FROM service_calls
 GROUP BY region_id, region_name;
 
 // AFTER (needs schema review)
-SELECT 
+SELECT
   location_id,
   locations.name as location_name,
   COUNT(*) as total_calls
@@ -218,38 +235,43 @@ GROUP BY location_id, locations.name;
 ## 🎓 Lessons Learned
 
 ### What We Already Fixed Successfully
+
 1. ✅ **customers.tsx** - Nested data transformation
 2. ✅ **CustomerDetail.tsx** - API response flattening
 3. ✅ **useSupabaseAuth.ts** - Removed invalid columns
 4. ✅ **customers/index.ts** (Edge Function) - Fixed table references
 
 ### Apply Same Patterns
+
 Use the patterns from these fixes for similar issues elsewhere!
 
 ## 📈 Expected Timeline
 
-| Phase | Time | Issues Fixed |
-|-------|------|--------------|
-| Validate auth patterns | 5 min | ~150 (marked as valid) |
-| Auto-fix | 10 min | ~100 |
-| Batch nested data fix | 1 hour | ~200 |
-| Top 5 files manual fix | 2 hours | ~100 |
-| Remaining cleanup | 1 hour | ~50 |
-| **Total** | **~4-5 hours** | **600+ issues** |
+| Phase                  | Time           | Issues Fixed           |
+| ---------------------- | -------------- | ---------------------- |
+| Validate auth patterns | 5 min          | ~150 (marked as valid) |
+| Auto-fix               | 10 min         | ~100                   |
+| Batch nested data fix  | 1 hour         | ~200                   |
+| Top 5 files manual fix | 2 hours        | ~100                   |
+| Remaining cleanup      | 1 hour         | ~50                    |
+| **Total**              | **~4-5 hours** | **600+ issues**        |
 
 ## 🚦 Go/No-Go Decision Points
 
 ### Should I auto-fix?
+
 - ✅ YES if: Pattern is clear and consistent
 - ⚠️ REVIEW if: Suggestions provided by validator
 - ❌ NO if: Business logic involved
 
 ### Should I batch fix?
+
 - ✅ YES if: Same pattern in 10+ files
 - ⚠️ REVIEW if: Mix of contexts (database vs API)
 - ❌ NO if: Each case is unique
 
 ### Should I fix manually?
+
 - ✅ YES if: Critical business logic
 - ✅ YES if: Complex nested relationships
 - ✅ YES if: Reporting/analytics
@@ -258,6 +280,7 @@ Use the patterns from these fixes for similar issues elsewhere!
 ## 🎯 Success Metrics
 
 After completion:
+
 - ✅ < 50 remaining issues (mostly false positives)
 - ✅ All critical files (auth, customer flow) validated
 - ✅ All Edge Functions using correct schema

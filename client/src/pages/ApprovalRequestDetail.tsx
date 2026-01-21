@@ -1,14 +1,14 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation, useRoute } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation, useRoute } from 'wouter';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
 import {
   CheckCircle2,
   XCircle,
@@ -29,8 +29,8 @@ import {
   Target,
   ChevronRight,
   Send,
-} from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 
 interface ApprovalRequestDetail {
   id: string;
@@ -94,14 +94,14 @@ interface ApprovalRequestDetail {
 }
 
 export default function ApprovalRequestDetail() {
-  const [, params] = useRoute("/deal-desk/requests/:id");
+  const [, params] = useRoute('/deal-desk/requests/:id');
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [commentText, setCommentText] = useState("");
-  const [decisionComments, setDecisionComments] = useState("");
-  const [showDecisionForm, setShowDecisionForm] = useState<"approve" | "reject" | null>(null);
+  const [commentText, setCommentText] = useState('');
+  const [decisionComments, setDecisionComments] = useState('');
+  const [showDecisionForm, setShowDecisionForm] = useState<'approve' | 'reject' | null>(null);
 
   const requestId = params?.id;
 
@@ -121,10 +121,10 @@ export default function ApprovalRequestDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/deal-desk/requests/${requestId}`] });
-      setCommentText("");
+      setCommentText('');
       toast({
-        title: "Comment Added",
-        description: "Your comment has been posted.",
+        title: 'Comment Added',
+        description: 'Your comment has been posted.',
       });
     },
   });
@@ -142,17 +142,17 @@ export default function ApprovalRequestDetail() {
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/my-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/dashboard'] });
       setShowDecisionForm(null);
-      setDecisionComments("");
+      setDecisionComments('');
       toast({
-        title: "Decision Recorded",
-        description: "Your approval decision has been processed.",
+        title: 'Decision Recorded',
+        description: 'Your approval decision has been processed.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to process decision",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to process decision',
+        variant: 'destructive',
       });
     },
   });
@@ -178,10 +178,11 @@ export default function ApprovalRequestDetail() {
   }
 
   const isMyTurn = request.approvalChain.some(
-    (member) => member.status === 'pending' && member.level === request.currentApprovalLevel
+    (member) => member.status === 'pending' && member.level === request.currentApprovalLevel,
   );
 
-  const canTakeAction = isMyTurn && (request.status === 'pending' || request.status === 'in_review');
+  const canTakeAction =
+    isMyTurn && (request.status === 'pending' || request.status === 'in_review');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -247,11 +248,15 @@ export default function ApprovalRequestDetail() {
                     <>
                       <div>
                         <p className="text-sm text-slate-600">Original Price</p>
-                        <p className="text-2xl font-bold">${request.originalPrice.toLocaleString()}</p>
+                        <p className="text-2xl font-bold">
+                          ${request.originalPrice.toLocaleString()}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-slate-600">Proposed Price</p>
-                        <p className="text-2xl font-bold text-orange-600">${request.proposedPrice.toLocaleString()}</p>
+                        <p className="text-2xl font-bold text-orange-600">
+                          ${request.proposedPrice.toLocaleString()}
+                        </p>
                       </div>
                     </>
                   )}
@@ -264,14 +269,18 @@ export default function ApprovalRequestDetail() {
                     <div className="text-center p-3 bg-slate-50 rounded-lg">
                       <Percent className="h-5 w-5 mx-auto text-orange-600 mb-1" />
                       <p className="text-sm text-slate-600">Discount</p>
-                      <p className="text-xl font-bold text-orange-600">{request.discountPercentage}%</p>
+                      <p className="text-xl font-bold text-orange-600">
+                        {request.discountPercentage}%
+                      </p>
                     </div>
                   )}
                   {request.discountAmount && (
                     <div className="text-center p-3 bg-slate-50 rounded-lg">
                       <DollarSign className="h-5 w-5 mx-auto text-slate-600 mb-1" />
                       <p className="text-sm text-slate-600">Discount $</p>
-                      <p className="text-xl font-bold">${request.discountAmount.toLocaleString()}</p>
+                      <p className="text-xl font-bold">
+                        ${request.discountAmount.toLocaleString()}
+                      </p>
                     </div>
                   )}
                   {request.proposedMargin && (
@@ -298,12 +307,16 @@ export default function ApprovalRequestDetail() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-slate-600">Deal Value</p>
-                        <p className="text-lg font-semibold">${request.dealValue.toLocaleString()}</p>
+                        <p className="text-lg font-semibold">
+                          ${request.dealValue.toLocaleString()}
+                        </p>
                       </div>
                       {request.totalContractValue && (
                         <div>
                           <p className="text-sm text-slate-600">Total Contract Value</p>
-                          <p className="text-lg font-semibold">${request.totalContractValue.toLocaleString()}</p>
+                          <p className="text-lg font-semibold">
+                            ${request.totalContractValue.toLocaleString()}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -430,7 +443,9 @@ export default function ApprovalRequestDetail() {
                   <Calendar className="h-4 w-4 mt-0.5 text-slate-500" />
                   <div className="flex-1">
                     <p className="text-slate-600">Submitted</p>
-                    <p className="font-medium">{format(new Date(request.submittedAt), 'MMM dd, yyyy')}</p>
+                    <p className="font-medium">
+                      {format(new Date(request.submittedAt), 'MMM dd, yyyy')}
+                    </p>
                     <p className="text-xs text-slate-500">
                       {formatDistanceToNow(new Date(request.submittedAt), { addSuffix: true })}
                     </p>
@@ -444,7 +459,9 @@ export default function ApprovalRequestDetail() {
                       <Clock className="h-4 w-4 mt-0.5 text-slate-500" />
                       <div className="flex-1">
                         <p className="text-slate-600">SLA Deadline</p>
-                        <p className="font-medium">{format(new Date(request.slaDeadline), 'MMM dd, yyyy HH:mm')}</p>
+                        <p className="font-medium">
+                          {format(new Date(request.slaDeadline), 'MMM dd, yyyy HH:mm')}
+                        </p>
                       </div>
                     </div>
                   </>
@@ -456,28 +473,35 @@ export default function ApprovalRequestDetail() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Approval Chain</CardTitle>
-                <CardDescription>Level {request.currentApprovalLevel} of {request.approvalChain.length}</CardDescription>
+                <CardDescription>
+                  Level {request.currentApprovalLevel} of {request.approvalChain.length}
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {request.approvalChain.map((member, idx) => (
                     <div key={idx}>
-                      <div className={`p-3 rounded-lg border ${
-                        member.level === request.currentApprovalLevel && member.status === 'pending'
-                          ? 'border-blue-300 bg-blue-50'
-                          : 'border-slate-200 bg-slate-50'
-                      }`}>
+                      <div
+                        className={`p-3 rounded-lg border ${
+                          member.level === request.currentApprovalLevel &&
+                          member.status === 'pending'
+                            ? 'border-blue-300 bg-blue-50'
+                            : 'border-slate-200 bg-slate-50'
+                        }`}
+                      >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                              member.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : member.status === 'rejected'
-                                ? 'bg-red-100 text-red-700'
-                                : member.level === request.currentApprovalLevel
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                                member.status === 'approved'
+                                  ? 'bg-green-100 text-green-700'
+                                  : member.status === 'rejected'
+                                    ? 'bg-red-100 text-red-700'
+                                    : member.level === request.currentApprovalLevel
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
                               {member.status === 'approved' ? (
                                 <CheckCircle2 className="h-4 w-4" />
                               ) : member.status === 'rejected' ? (
@@ -527,7 +551,7 @@ export default function ApprovalRequestDetail() {
                     <>
                       <Button
                         className="w-full bg-green-600 hover:bg-green-700"
-                        onClick={() => setShowDecisionForm("approve")}
+                        onClick={() => setShowDecisionForm('approve')}
                       >
                         <ThumbsUp className="h-4 w-4 mr-2" />
                         Approve Request
@@ -535,7 +559,7 @@ export default function ApprovalRequestDetail() {
                       <Button
                         variant="destructive"
                         className="w-full"
-                        onClick={() => setShowDecisionForm("reject")}
+                        onClick={() => setShowDecisionForm('reject')}
                       >
                         <ThumbsDown className="h-4 w-4 mr-2" />
                         Reject Request
@@ -544,7 +568,11 @@ export default function ApprovalRequestDetail() {
                   ) : (
                     <div className="space-y-3">
                       <Textarea
-                        placeholder={showDecisionForm === 'approve' ? 'Comments (optional)' : 'Rejection reason (required)'}
+                        placeholder={
+                          showDecisionForm === 'approve'
+                            ? 'Comments (optional)'
+                            : 'Rejection reason (required)'
+                        }
                         value={decisionComments}
                         onChange={(e) => setDecisionComments(e.target.value)}
                         rows={4}
@@ -555,7 +583,7 @@ export default function ApprovalRequestDetail() {
                           className="flex-1"
                           onClick={() => {
                             setShowDecisionForm(null);
-                            setDecisionComments("");
+                            setDecisionComments('');
                           }}
                         >
                           Cancel
@@ -563,10 +591,20 @@ export default function ApprovalRequestDetail() {
                         <Button
                           className={`flex-1 ${showDecisionForm === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                           variant={showDecisionForm === 'reject' ? 'destructive' : 'default'}
-                          onClick={() => decisionMutation.mutate({ decision: showDecisionForm, comments: decisionComments })}
-                          disabled={decisionMutation.isPending || (showDecisionForm === 'reject' && !decisionComments)}
+                          onClick={() =>
+                            decisionMutation.mutate({
+                              decision: showDecisionForm,
+                              comments: decisionComments,
+                            })
+                          }
+                          disabled={
+                            decisionMutation.isPending ||
+                            (showDecisionForm === 'reject' && !decisionComments)
+                          }
                         >
-                          {decisionMutation.isPending ? 'Processing...' : `Confirm ${showDecisionForm === 'approve' ? 'Approval' : 'Rejection'}`}
+                          {decisionMutation.isPending
+                            ? 'Processing...'
+                            : `Confirm ${showDecisionForm === 'approve' ? 'Approval' : 'Rejection'}`}
                         </Button>
                       </div>
                     </div>

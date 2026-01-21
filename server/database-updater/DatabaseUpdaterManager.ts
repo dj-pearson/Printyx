@@ -54,7 +54,7 @@ export class DatabaseUpdaterManager {
         tenantId: targetTenantId,
         dryRun,
         logger: this.logger,
-      })
+      }),
     );
 
     // Register service ticket updater
@@ -65,7 +65,7 @@ export class DatabaseUpdaterManager {
         customerId: targetCustomerId,
         dryRun,
         logger: this.logger,
-      })
+      }),
     );
 
     // Register business record (leads) updater
@@ -75,7 +75,7 @@ export class DatabaseUpdaterManager {
         tenantId: targetTenantId,
         dryRun,
         logger: this.logger,
-      })
+      }),
     );
 
     this.logger.info(`Initialized ${this.registry.getUpdaterCount()} updaters`, {
@@ -152,7 +152,7 @@ export class DatabaseUpdaterManager {
       }
 
       const result = await updater.execute();
-      
+
       this.logger.info(`Manual execution completed for ${updaterName}`, {
         success: result.success,
         recordsUpdated: result.recordsUpdated,
@@ -170,7 +170,7 @@ export class DatabaseUpdaterManager {
   getStatus() {
     return {
       isRunning: this.isRunning,
-      updaters: this.registry.getAll().map(updater => ({
+      updaters: this.registry.getAll().map((updater) => ({
         name: updater.name,
         lastExecution: updater.getLastExecution(),
         isEnabled: updater.isEnabled(),
@@ -188,7 +188,7 @@ export class DatabaseUpdaterManager {
     this.logger.info('Updating configuration', newConfig);
 
     const wasRunning = this.isRunning;
-    
+
     if (wasRunning) {
       await this.stop();
     }
@@ -209,7 +209,11 @@ export class DatabaseUpdaterManager {
     const errors: string[] = [];
 
     // Validate tenant ID format
-    if (!this.config.targetTenantId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    if (
+      !this.config.targetTenantId.match(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      )
+    ) {
       errors.push('Invalid tenant ID format');
     }
 
@@ -252,32 +256,24 @@ export class DatabaseUpdaterManager {
         if (updater) {
           await updater.execute();
         }
-      }
+      },
     );
 
     // Schedule service tickets updater
-    this.scheduler.schedule(
-      'service_tickets',
-      scheduleConfig.serviceTickets,
-      async () => {
-        const updater = this.registry.get('service_tickets');
-        if (updater) {
-          await updater.execute();
-        }
+    this.scheduler.schedule('service_tickets', scheduleConfig.serviceTickets, async () => {
+      const updater = this.registry.get('service_tickets');
+      if (updater) {
+        await updater.execute();
       }
-    );
+    });
 
     // Schedule new leads updater
-    this.scheduler.schedule(
-      'business_records',
-      scheduleConfig.newLeads,
-      async () => {
-        const updater = this.registry.get('business_records');
-        if (updater) {
-          await updater.execute();
-        }
+    this.scheduler.schedule('business_records', scheduleConfig.newLeads, async () => {
+      const updater = this.registry.get('business_records');
+      if (updater) {
+        await updater.execute();
       }
-    );
+    });
 
     this.logger.info('All updaters scheduled successfully');
   }
@@ -287,7 +283,7 @@ export class DatabaseUpdaterManager {
    */
   private logNextExecutions(): void {
     const nextExecutions = this.scheduler.getNextExecutions();
-    
+
     this.logger.info('Next scheduled executions:', nextExecutions);
   }
 

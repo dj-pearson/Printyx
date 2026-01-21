@@ -24,7 +24,7 @@ import {
   Settings,
   Palette,
   Eye,
-  Download
+  Download,
 } from 'lucide-react';
 
 interface QuoteData {
@@ -99,25 +99,27 @@ const defaultSections: ProposalSection[] = [
     content: '',
     isIncluded: true,
     isRequired: true,
-    order: 1
+    order: 1,
   },
   {
     id: 'executive_summary',
     type: 'executive_summary',
     title: 'Executive Summary',
-    content: 'This proposal presents a comprehensive solution tailored to meet your specific business requirements.',
+    content:
+      'This proposal presents a comprehensive solution tailored to meet your specific business requirements.',
     isIncluded: true,
     isRequired: false,
-    order: 2
+    order: 2,
   },
   {
     id: 'company_introduction',
     type: 'company_introduction',
     title: 'About Our Company',
-    content: 'We are a leading provider of business solutions with over [X] years of experience serving companies like yours.',
+    content:
+      'We are a leading provider of business solutions with over [X] years of experience serving companies like yours.',
     isIncluded: true,
     isRequired: false,
-    order: 3
+    order: 3,
   },
   {
     id: 'solution_overview',
@@ -126,7 +128,7 @@ const defaultSections: ProposalSection[] = [
     content: 'Based on our analysis of your requirements, we recommend the following solution:',
     isIncluded: true,
     isRequired: false,
-    order: 4
+    order: 4,
   },
   {
     id: 'pricing_breakdown',
@@ -135,25 +137,27 @@ const defaultSections: ProposalSection[] = [
     content: '',
     isIncluded: true,
     isRequired: true,
-    order: 5
+    order: 5,
   },
   {
     id: 'implementation_timeline',
     type: 'implementation_timeline',
     title: 'Implementation Plan',
-    content: 'Our proven implementation process ensures a smooth transition and rapid return on investment.',
+    content:
+      'Our proven implementation process ensures a smooth transition and rapid return on investment.',
     isIncluded: false,
     isRequired: false,
-    order: 6
+    order: 6,
   },
   {
     id: 'value_proposition',
     type: 'value_proposition',
     title: 'Why Choose Us',
-    content: 'Here are the key benefits and value propositions that set us apart from the competition.',
+    content:
+      'Here are the key benefits and value propositions that set us apart from the competition.',
     isIncluded: false,
     isRequired: false,
-    order: 7
+    order: 7,
   },
   {
     id: 'team_introduction',
@@ -162,16 +166,17 @@ const defaultSections: ProposalSection[] = [
     content: 'Meet the experienced professionals who will be working on your project.',
     isIncluded: false,
     isRequired: false,
-    order: 8
+    order: 8,
   },
   {
     id: 'guarantees_warranties',
     type: 'guarantees_warranties',
     title: 'Guarantees & Warranties',
-    content: 'We stand behind our solutions with comprehensive warranties and service level agreements.',
+    content:
+      'We stand behind our solutions with comprehensive warranties and service level agreements.',
     isIncluded: false,
     isRequired: false,
-    order: 9
+    order: 9,
   },
   {
     id: 'terms_conditions',
@@ -180,22 +185,23 @@ const defaultSections: ProposalSection[] = [
     content: 'This proposal is subject to the following terms and conditions.',
     isIncluded: true,
     isRequired: false,
-    order: 10
+    order: 10,
   },
   {
     id: 'next_steps',
     type: 'next_steps',
     title: 'Next Steps',
-    content: 'We look forward to moving forward with this exciting opportunity. Here are the next steps in our process.',
+    content:
+      'We look forward to moving forward with this exciting opportunity. Here are the next steps in our process.',
     isIncluded: true,
     isRequired: false,
-    order: 11
-  }
+    order: 11,
+  },
 ];
 
-export default function QuoteTransformer({ 
-  quoteId, 
-  onTransformComplete 
+export default function QuoteTransformer({
+  quoteId,
+  onTransformComplete,
 }: {
   quoteId: string;
   onTransformComplete: (proposalData: any) => void;
@@ -209,26 +215,28 @@ export default function QuoteTransformer({
     includeTermsAndConditions: true,
     includeTeamIntroduction: false,
     includeGuarantees: false,
-    customSections: []
+    customSections: [],
   });
-  const [activeTab, setActiveTab] = useState<'overview' | 'sections' | 'content' | 'preview'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sections' | 'content' | 'preview'>(
+    'overview',
+  );
 
   // Fetch quote data
   const { data: quote, isLoading: quoteLoading } = useQuery<QuoteData>({
     queryKey: [`/api/proposals/${quoteId}`],
-    enabled: !!quoteId
+    enabled: !!quoteId,
   });
 
   // Fetch business record data
   const { data: businessRecord } = useQuery<BusinessRecord>({
     queryKey: [`/api/business-records/${quote?.businessRecordId}`],
-    enabled: !!quote?.businessRecordId
+    enabled: !!quote?.businessRecordId,
   });
 
   // Fetch contact data
   const { data: contact } = useQuery<Contact>({
     queryKey: [`/api/business-records/${quote?.businessRecordId}/contacts/${quote?.contactId}`],
-    enabled: !!quote?.contactId
+    enabled: !!quote?.contactId,
   });
 
   // Auto-populate content when quote data is loaded
@@ -239,7 +247,7 @@ export default function QuoteTransformer({
   }, [quote, businessRecord, contact]);
 
   const generateContentFromQuote = () => {
-    const updatedSections = sections.map(section => {
+    const updatedSections = sections.map((section) => {
       let content = section.content;
 
       switch (section.type) {
@@ -278,43 +286,67 @@ export default function QuoteTransformer({
           break;
 
         case 'solution_overview':
-          const equipmentItems = quote!.lineItems.filter(item => item.itemType === 'equipment');
-          const serviceItems = quote!.lineItems.filter(item => item.itemType === 'service');
-          const accessoryItems = quote!.lineItems.filter(item => item.itemType === 'accessory');
+          const equipmentItems = quote!.lineItems.filter((item) => item.itemType === 'equipment');
+          const serviceItems = quote!.lineItems.filter((item) => item.itemType === 'service');
+          const accessoryItems = quote!.lineItems.filter((item) => item.itemType === 'accessory');
 
           content = `
             <h2>Proposed Solution</h2>
             <p>Based on our analysis of ${businessRecord!.name}'s requirements, we have designed a comprehensive solution that includes:</p>
             
-            ${equipmentItems.length > 0 ? `
+            ${
+              equipmentItems.length > 0
+                ? `
             <h3>Equipment</h3>
             <ul>
-              ${equipmentItems.map(item => `
+              ${equipmentItems
+                .map(
+                  (item) => `
                 <li><strong>${item.productName}</strong> - Quantity: ${item.quantity} - $${parseFloat(item.totalPrice).toLocaleString()}
                   ${item.description ? `<br><em>${item.description}</em>` : ''}
                 </li>
-              `).join('')}
-            </ul>` : ''}
+              `,
+                )
+                .join('')}
+            </ul>`
+                : ''
+            }
 
-            ${serviceItems.length > 0 ? `
+            ${
+              serviceItems.length > 0
+                ? `
             <h3>Services</h3>
             <ul>
-              ${serviceItems.map(item => `
+              ${serviceItems
+                .map(
+                  (item) => `
                 <li><strong>${item.productName}</strong> - $${parseFloat(item.totalPrice).toLocaleString()}
                   ${item.description ? `<br><em>${item.description}</em>` : ''}
                 </li>
-              `).join('')}
-            </ul>` : ''}
+              `,
+                )
+                .join('')}
+            </ul>`
+                : ''
+            }
 
-            ${accessoryItems.length > 0 ? `
+            ${
+              accessoryItems.length > 0
+                ? `
             <h3>Accessories & Add-ons</h3>
             <ul>
-              ${accessoryItems.map(item => `
+              ${accessoryItems
+                .map(
+                  (item) => `
                 <li><strong>${item.productName}</strong> - Quantity: ${item.quantity} - $${parseFloat(item.totalPrice).toLocaleString()}
                   ${item.description ? `<br><em>${item.description}</em>` : ''}
                 </li>
-              `).join('')}
-            </ul>` : ''}
+              `,
+                )
+                .join('')}
+            </ul>`
+                : ''
+            }
           `;
           break;
 
@@ -332,7 +364,9 @@ export default function QuoteTransformer({
                   </tr>
                 </thead>
                 <tbody>
-                  ${quote!.lineItems.map(item => `
+                  ${quote!.lineItems
+                    .map(
+                      (item) => `
                     <tr style="border-bottom: 1px solid #dee2e6;">
                       <td style="padding: 12px 0;">
                         <strong>${item.productName}</strong>
@@ -342,7 +376,9 @@ export default function QuoteTransformer({
                       <td style="text-align: right; padding: 12px 0;">$${parseFloat(item.unitPrice).toLocaleString()}</td>
                       <td style="text-align: right; padding: 12px 0;">$${parseFloat(item.totalPrice).toLocaleString()}</td>
                     </tr>
-                  `).join('')}
+                  `,
+                    )
+                    .join('')}
                 </tbody>
                 <tfoot>
                   <tr style="border-top: 2px solid #0066CC; font-weight: bold;">
@@ -391,20 +427,20 @@ export default function QuoteTransformer({
   };
 
   const handleSectionToggle = (sectionId: string, isIncluded: boolean) => {
-    setSections(prev => prev.map(section => 
-      section.id === sectionId ? { ...section, isIncluded } : section
-    ));
+    setSections((prev) =>
+      prev.map((section) => (section.id === sectionId ? { ...section, isIncluded } : section)),
+    );
   };
 
   const handleContentChange = (sectionId: string, content: string) => {
-    setSections(prev => prev.map(section => 
-      section.id === sectionId ? { ...section, content } : section
-    ));
+    setSections((prev) =>
+      prev.map((section) => (section.id === sectionId ? { ...section, content } : section)),
+    );
   };
 
   const handleTransform = () => {
     const includedSections = sections
-      .filter(section => section.isIncluded)
+      .filter((section) => section.isIncluded)
       .sort((a, b) => a.order - b.order);
 
     const proposalData = {
@@ -415,7 +451,7 @@ export default function QuoteTransformer({
       sections: includedSections,
       totalAmount: quote?.totalAmount,
       validUntil: quote?.validUntil,
-      transformedAt: new Date().toISOString()
+      transformedAt: new Date().toISOString(),
     };
 
     onTransformComplete(proposalData);
@@ -469,10 +505,18 @@ export default function QuoteTransformer({
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
-          <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-          <TabsTrigger value="sections" className="text-xs sm:text-sm">Sections</TabsTrigger>
-          <TabsTrigger value="content" className="text-xs sm:text-sm">Content</TabsTrigger>
-          <TabsTrigger value="preview" className="text-xs sm:text-sm">Preview</TabsTrigger>
+          <TabsTrigger value="overview" className="text-xs sm:text-sm">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="sections" className="text-xs sm:text-sm">
+            Sections
+          </TabsTrigger>
+          <TabsTrigger value="content" className="text-xs sm:text-sm">
+            Content
+          </TabsTrigger>
+          <TabsTrigger value="preview" className="text-xs sm:text-sm">
+            Preview
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -503,7 +547,9 @@ export default function QuoteTransformer({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Amount:</span>
-                  <span className="font-medium text-lg">${parseFloat(quote.totalAmount).toLocaleString()}</span>
+                  <span className="font-medium text-lg">
+                    ${parseFloat(quote.totalAmount).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Line Items:</span>
@@ -512,7 +558,9 @@ export default function QuoteTransformer({
                 {quote.validUntil && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Valid Until:</span>
-                    <span className="font-medium">{new Date(quote.validUntil).toLocaleDateString()}</span>
+                    <span className="font-medium">
+                      {new Date(quote.validUntil).toLocaleDateString()}
+                    </span>
                   </div>
                 )}
               </CardContent>
@@ -529,8 +577,11 @@ export default function QuoteTransformer({
                     <Label>Include Executive Summary</Label>
                     <Switch
                       checked={transformationSettings.includeExecutiveSummary}
-                      onCheckedChange={(checked) => 
-                        setTransformationSettings(prev => ({ ...prev, includeExecutiveSummary: checked }))
+                      onCheckedChange={(checked) =>
+                        setTransformationSettings((prev) => ({
+                          ...prev,
+                          includeExecutiveSummary: checked,
+                        }))
                       }
                     />
                   </div>
@@ -538,8 +589,11 @@ export default function QuoteTransformer({
                     <Label>Include Company Introduction</Label>
                     <Switch
                       checked={transformationSettings.includeCompanyIntro}
-                      onCheckedChange={(checked) => 
-                        setTransformationSettings(prev => ({ ...prev, includeCompanyIntro: checked }))
+                      onCheckedChange={(checked) =>
+                        setTransformationSettings((prev) => ({
+                          ...prev,
+                          includeCompanyIntro: checked,
+                        }))
                       }
                     />
                   </div>
@@ -547,8 +601,11 @@ export default function QuoteTransformer({
                     <Label>Include Value Proposition</Label>
                     <Switch
                       checked={transformationSettings.includeValueProposition}
-                      onCheckedChange={(checked) => 
-                        setTransformationSettings(prev => ({ ...prev, includeValueProposition: checked }))
+                      onCheckedChange={(checked) =>
+                        setTransformationSettings((prev) => ({
+                          ...prev,
+                          includeValueProposition: checked,
+                        }))
                       }
                     />
                   </div>
@@ -556,8 +613,11 @@ export default function QuoteTransformer({
                     <Label>Include Implementation Plan</Label>
                     <Switch
                       checked={transformationSettings.includeImplementationPlan}
-                      onCheckedChange={(checked) => 
-                        setTransformationSettings(prev => ({ ...prev, includeImplementationPlan: checked }))
+                      onCheckedChange={(checked) =>
+                        setTransformationSettings((prev) => ({
+                          ...prev,
+                          includeImplementationPlan: checked,
+                        }))
                       }
                     />
                   </div>
@@ -565,8 +625,11 @@ export default function QuoteTransformer({
                     <Label>Include Terms & Conditions</Label>
                     <Switch
                       checked={transformationSettings.includeTermsAndConditions}
-                      onCheckedChange={(checked) => 
-                        setTransformationSettings(prev => ({ ...prev, includeTermsAndConditions: checked }))
+                      onCheckedChange={(checked) =>
+                        setTransformationSettings((prev) => ({
+                          ...prev,
+                          includeTermsAndConditions: checked,
+                        }))
                       }
                     />
                   </div>
@@ -608,10 +671,15 @@ export default function QuoteTransformer({
                     </div>
                     <div className="flex items-center gap-2">
                       {section.isRequired && (
-                        <Badge variant="secondary" className="text-xs">Required</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Required
+                        </Badge>
                       )}
-                      <Badge variant={section.isIncluded ? "default" : "outline"} className="text-xs">
-                        {section.isIncluded ? "Included" : "Excluded"}
+                      <Badge
+                        variant={section.isIncluded ? 'default' : 'outline'}
+                        className="text-xs"
+                      >
+                        {section.isIncluded ? 'Included' : 'Excluded'}
                       </Badge>
                     </div>
                   </div>
@@ -624,7 +692,7 @@ export default function QuoteTransformer({
         <TabsContent value="content">
           <div className="space-y-6">
             {sections
-              .filter(section => section.isIncluded)
+              .filter((section) => section.isIncluded)
               .sort((a, b) => a.order - b.order)
               .map((section) => (
                 <Card key={section.id}>
@@ -667,7 +735,7 @@ export default function QuoteTransformer({
               <ScrollArea className="h-96">
                 <div className="space-y-6">
                   {sections
-                    .filter(section => section.isIncluded)
+                    .filter((section) => section.isIncluded)
                     .sort((a, b) => a.order - b.order)
                     .map((section) => (
                       <div key={section.id} className="border-l-4 border-primary/20 pl-4">
@@ -688,13 +756,10 @@ export default function QuoteTransformer({
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
         <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-          {sections.filter(s => s.isIncluded).length} sections selected
+          {sections.filter((s) => s.isIncluded).length} sections selected
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <Button
-            variant="outline"
-            className="touch-manipulation active:scale-[0.98] min-h-[44px]"
-          >
+          <Button variant="outline" className="touch-manipulation active:scale-[0.98] min-h-[44px]">
             <Settings className="h-4 w-4 mr-2" />
             Save Template
           </Button>

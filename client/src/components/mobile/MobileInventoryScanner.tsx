@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  Package, 
-  QrCode, 
-  Camera, 
+import { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Package,
+  QrCode,
+  Camera,
   Search,
   Plus,
   Minus,
@@ -15,10 +15,10 @@ import {
   AlertTriangle,
   MapPin,
   Clock,
-  BarChart3
-} from "lucide-react";
-import { useMobileScanning } from "@/hooks/useExternalIntegrations";
-import { useToast } from "@/hooks/use-toast";
+  BarChart3,
+} from 'lucide-react';
+import { useMobileScanning } from '@/hooks/useExternalIntegrations';
+import { useToast } from '@/hooks/use-toast';
 
 interface InventoryItem {
   id: string;
@@ -48,7 +48,7 @@ export function MobileInventoryScanner() {
   const [currentItem, setCurrentItem] = useState<InventoryItem | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const scanner = useMobileScanning();
   const { toast } = useToast();
 
@@ -65,7 +65,7 @@ export function MobileInventoryScanner() {
       minStock: 5,
       maxStock: 50,
       unitPrice: 89.99,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     },
     {
       id: '2',
@@ -78,8 +78,8 @@ export function MobileInventoryScanner() {
       minStock: 3,
       maxStock: 20,
       unitPrice: 249.99,
-      lastUpdated: new Date().toISOString()
-    }
+      lastUpdated: new Date().toISOString(),
+    },
   ];
 
   useEffect(() => {
@@ -90,21 +90,19 @@ export function MobileInventoryScanner() {
 
   const handleScanResult = (result: string) => {
     // Find item by part number
-    const item = mockInventory.find(item => 
-      item.partNumber === result || item.id === result
-    );
+    const item = mockInventory.find((item) => item.partNumber === result || item.id === result);
 
     if (item) {
       setCurrentItem(item);
       toast({
-        title: "Item Found",
-        description: `Scanned: ${item.name}`
+        title: 'Item Found',
+        description: `Scanned: ${item.name}`,
       });
     } else {
       toast({
-        title: "Item Not Found",
+        title: 'Item Not Found',
         description: `Part number ${result} not in inventory`,
-        variant: "destructive"
+        variant: 'destructive',
       });
     }
   };
@@ -114,9 +112,9 @@ export function MobileInventoryScanner() {
       await scanner.startScan(scanMode);
     } catch (error) {
       toast({
-        title: "Scan Failed",
-        description: "Unable to access camera. Check permissions.",
-        variant: "destructive"
+        title: 'Scan Failed',
+        description: 'Unable to access camera. Check permissions.',
+        variant: 'destructive',
       });
     }
   };
@@ -128,14 +126,14 @@ export function MobileInventoryScanner() {
       partNumber: currentItem.partNumber,
       action: scanAction,
       quantity: ['add', 'remove', 'count'].includes(scanAction) ? quantity : undefined,
-      location: scanAction === 'locate' ? currentItem.location : undefined
+      location: scanAction === 'locate' ? currentItem.location : undefined,
     };
 
-    setScannedItems(prev => [...prev, scanResult]);
-    
+    setScannedItems((prev) => [...prev, scanResult]);
+
     toast({
       title: `${scanAction.charAt(0).toUpperCase() + scanAction.slice(1)} Recorded`,
-      description: `${currentItem.name}: ${quantity} units`
+      description: `${currentItem.name}: ${quantity} units`,
     });
 
     // Reset for next scan
@@ -276,15 +274,20 @@ export function MobileInventoryScanner() {
             />
             <Button
               onClick={() => {
-                const item = mockInventory.find(item => 
-                  item.partNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  item.name.toLowerCase().includes(searchTerm.toLowerCase())
+                const item = mockInventory.find(
+                  (item) =>
+                    item.partNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    item.name.toLowerCase().includes(searchTerm.toLowerCase()),
                 );
                 if (item) {
                   setCurrentItem(item);
-                  toast({ title: "Item Found", description: item.name });
+                  toast({ title: 'Item Found', description: item.name });
                 } else {
-                  toast({ title: "Not Found", description: "No matching items", variant: "destructive" });
+                  toast({
+                    title: 'Not Found',
+                    description: 'No matching items',
+                    variant: 'destructive',
+                  });
                 }
               }}
             >
@@ -321,7 +324,13 @@ export function MobileInventoryScanner() {
                 <Label>Current Stock</Label>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{currentItem.currentStock}</span>
-                  <Badge className={getStockStatusColor(currentItem.currentStock, currentItem.minStock, currentItem.maxStock)}>
+                  <Badge
+                    className={getStockStatusColor(
+                      currentItem.currentStock,
+                      currentItem.minStock,
+                      currentItem.maxStock,
+                    )}
+                  >
                     {getStockStatusText(currentItem.currentStock, currentItem.minStock)}
                   </Badge>
                 </div>
@@ -347,21 +356,13 @@ export function MobileInventoryScanner() {
                     className="text-center w-20"
                     min="1"
                   />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setQuantity(quantity + 1)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => setQuantity(quantity + 1)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
-              <Button
-                size="lg"
-                className="w-full"
-                onClick={handleInventoryAction}
-              >
+              <Button size="lg" className="w-full" onClick={handleInventoryAction}>
                 <CheckCircle className="h-5 w-5 mr-2" />
                 {scanAction === 'add' && `Add ${quantity} to Inventory`}
                 {scanAction === 'remove' && `Remove ${quantity} from Inventory`}
@@ -384,31 +385,37 @@ export function MobileInventoryScanner() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {scannedItems.slice(-5).reverse().map((scan, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium">{scan.partNumber}</div>
-                    <div className="text-xs text-gray-500">
-                      {scan.action.toUpperCase()}
-                      {scan.quantity && ` - Qty: ${scan.quantity}`}
-                      {scan.location && ` - Location: ${scan.location}`}
+              {scannedItems
+                .slice(-5)
+                .reverse()
+                .map((scan, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                  >
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">{scan.partNumber}</div>
+                      <div className="text-xs text-gray-500">
+                        {scan.action.toUpperCase()}
+                        {scan.quantity && ` - Qty: ${scan.quantity}`}
+                        {scan.location && ` - Location: ${scan.location}`}
+                      </div>
                     </div>
+                    <Badge variant="outline" className="text-xs">
+                      {new Date().toLocaleTimeString()}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {new Date().toLocaleTimeString()}
-                  </Badge>
-                </div>
-              ))}
+                ))}
             </div>
-            
+
             {scannedItems.length > 0 && (
               <Button
                 size="sm"
                 className="w-full mt-4"
                 onClick={() => {
                   toast({
-                    title: "Actions Synced",
-                    description: `${scannedItems.length} inventory actions processed`
+                    title: 'Actions Synced',
+                    description: `${scannedItems.length} inventory actions processed`,
                   });
                   setScannedItems([]);
                 }}

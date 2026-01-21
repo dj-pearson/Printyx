@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,13 +19,21 @@ export default function DashboardScreen() {
   const { user } = useAuth();
 
   // Fetch stats
-  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ['mobile-stats'],
     queryFn: () => apiClient.getStats(),
   });
 
   // Fetch today's tickets
-  const { data: ticketsData, isLoading: ticketsLoading, refetch: refetchTickets } = useQuery({
+  const {
+    data: ticketsData,
+    isLoading: ticketsLoading,
+    refetch: refetchTickets,
+  } = useQuery({
     queryKey: ['mobile-tickets'],
     queryFn: () => apiClient.getTickets(),
   });
@@ -57,9 +58,7 @@ export default function DashboardScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -80,18 +79,8 @@ export default function DashboardScreen() {
           value={stats?.completed || 0}
           color="#10b981"
         />
-        <StatCard
-          icon="time"
-          label="In Progress"
-          value={stats?.inProgress || 0}
-          color="#f59e0b"
-        />
-        <StatCard
-          icon="list"
-          label="Open"
-          value={stats?.open || 0}
-          color="#6366f1"
-        />
+        <StatCard icon="time" label="In Progress" value={stats?.inProgress || 0} color="#f59e0b" />
+        <StatCard icon="list" label="Open" value={stats?.open || 0} color="#6366f1" />
       </View>
 
       {/* Today's Tickets */}
@@ -110,13 +99,15 @@ export default function DashboardScreen() {
             <Text style={styles.emptyStateSubtext}>You're all caught up!</Text>
           </View>
         ) : (
-          todayTickets.slice(0, 5).map((ticket: any) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              onPress={() => navigation.navigate('TicketDetail', { ticketId: ticket.id })}
-            />
-          ))
+          todayTickets
+            .slice(0, 5)
+            .map((ticket: any) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                onPress={() => navigation.navigate('TicketDetail', { ticketId: ticket.id })}
+              />
+            ))
         )}
       </View>
     </ScrollView>
@@ -167,7 +158,12 @@ function TicketCard({ ticket, onPress }: { ticket: any; onPress: () => void }) {
     <TouchableOpacity style={styles.ticketCard} onPress={onPress}>
       <View style={styles.ticketHeader}>
         <Text style={styles.ticketId}>#{ticket.ticketNumber || ticket.id.slice(0, 8)}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: statusColors[ticket.enhancedTicketStatus] || '#6b7280' }]}>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: statusColors[ticket.enhancedTicketStatus] || '#6b7280' },
+          ]}
+        >
           <Text style={styles.statusText}>{ticket.enhancedTicketStatus}</Text>
         </View>
       </View>
@@ -185,11 +181,7 @@ function TicketCard({ ticket, onPress }: { ticket: any; onPress: () => void }) {
 
       {ticket.priority && (
         <View style={styles.ticketDetail}>
-          <Ionicons
-            name="flag"
-            size={16}
-            color={priorityColors[ticket.priority] || '#6b7280'}
-          />
+          <Ionicons name="flag" size={16} color={priorityColors[ticket.priority] || '#6b7280'} />
           <Text style={[styles.ticketDetailText, { color: priorityColors[ticket.priority] }]}>
             {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)} Priority
           </Text>

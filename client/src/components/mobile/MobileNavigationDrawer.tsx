@@ -1,19 +1,19 @@
-import { useState } from "react";
-import { useLocation, Link } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from 'react';
+import { useLocation, Link } from 'wouter';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetClose
-} from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
+  SheetClose,
+} from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   Target,
@@ -51,9 +51,9 @@ import {
   Search,
   Video,
   Wand2,
-  X
-} from "lucide-react";
-import useCollapsibleNavigation, { NavigationSection } from "@/hooks/useCollapsibleNavigation";
+  X,
+} from 'lucide-react';
+import useCollapsibleNavigation, { NavigationSection } from '@/hooks/useCollapsibleNavigation';
 
 // Get role-aware navigation sections (same logic as CollapsibleSidebar)
 function getNavigationSections(userRole: any): NavigationSection[] {
@@ -63,11 +63,11 @@ function getNavigationSections(userRole: any): NavigationSection[] {
 
   const permissions = userRole.permissions || {};
   const isPlatformRole = userRole.canAccessAllTenants === true;
-  const isCompanyAdmin = userRole.name?.includes("Admin");
+  const isCompanyAdmin = userRole.name?.includes('Admin');
   const level = userRole.level || 1;
 
   const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
-  const adminPrefix = useAdminRoutes ? "/admin" : "";
+  const adminPrefix = useAdminRoutes ? '/admin' : '';
 
   // Always visible sections
   sections.push({
@@ -75,7 +75,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     title: 'Dashboard',
     icon: LayoutDashboard,
     path: '/',
-    matchPatterns: ['/dashboard*']
+    matchPatterns: ['/dashboard*'],
   });
 
   // Sales & CRM Hub
@@ -85,7 +85,17 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       title: 'CRM Hub',
       icon: Target,
       path: '/crm',
-      matchPatterns: ['/crm*', '/leads*', '/contacts*', '/deals*', '/sales-pipeline*', '/quote*', '/proposal*', '/demo*', '/contracts*'],
+      matchPatterns: [
+        '/crm*',
+        '/leads*',
+        '/contacts*',
+        '/deals*',
+        '/sales-pipeline*',
+        '/quote*',
+        '/proposal*',
+        '/demo*',
+        '/contracts*',
+      ],
       children: [
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
         { title: 'Contacts', path: '/contacts', icon: Users },
@@ -94,8 +104,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: PieChart },
         { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: Calendar },
         { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
-        { title: 'Proposal Builder', path: '/proposal-builder', icon: Wand2 }
-      ]
+        { title: 'Proposal Builder', path: '/proposal-builder', icon: Wand2 },
+      ],
     });
   }
 
@@ -111,8 +121,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         { title: 'Service Dispatch', path: '/service-dispatch-optimization', icon: Activity },
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
         { title: 'Service Billing', path: '/billing', icon: Calculator },
-        { title: 'Technician Management', path: '/technician-management', icon: Users }
-      ]
+        { title: 'Technician Management', path: '/technician-management', icon: Users },
+      ],
     });
   }
 
@@ -123,15 +133,21 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       title: 'Product Hub',
       icon: Package,
       path: '/product-hub',
-      matchPatterns: ['/product*', '/supplies*', '/professional-services*', '/managed-services*', '/software-products*'],
+      matchPatterns: [
+        '/product*',
+        '/supplies*',
+        '/professional-services*',
+        '/managed-services*',
+        '/software-products*',
+      ],
       children: [
         { title: 'Product Models', path: '/product-models', icon: Package },
         { title: 'Accessories', path: '/product-accessories', icon: Layers },
         { title: 'Supplies', path: '/supplies', icon: Package },
         { title: 'Professional Services', path: '/professional-services', icon: FileText },
         { title: 'Managed Services', path: '/managed-services', icon: Crown },
-        { title: 'Software Products', path: '/software-products', icon: Monitor }
-      ]
+        { title: 'Software Products', path: '/software-products', icon: Monitor },
+      ],
     });
   }
 
@@ -146,8 +162,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       children: [
         { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
         { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
-        { title: 'Inventory Management', path: '/inventory', icon: Package }
-      ]
+        { title: 'Inventory Management', path: '/inventory', icon: Package },
+      ],
     });
   }
 
@@ -163,8 +179,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         { title: 'Invoices', path: '/invoices', icon: FileText },
         { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
         { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
-        { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard }
-      ]
+        { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
+      ],
     });
   }
 
@@ -178,8 +194,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       matchPatterns: ['/reports*', '/advanced-reporting*', '/performance-monitoring*'],
       children: [
         { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
-        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity }
-      ]
+        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+      ],
     });
   }
 
@@ -192,8 +208,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     matchPatterns: ['/task*'],
     children: [
       { title: 'Advanced Task Management', path: '/task-management', icon: Brain },
-      { title: 'Basic Task Management', path: '/basic-task-management', icon: CheckSquare }
-    ]
+      { title: 'Basic Task Management', path: '/basic-task-management', icon: CheckSquare },
+    ],
   });
 
   // AI Hub
@@ -209,8 +225,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
       { title: 'AI Search & Knowledge', path: '/ai-search', icon: Search },
       { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
-      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare }
-    ]
+      { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare },
+    ],
   });
 
   // Customers
@@ -219,7 +235,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     title: 'Customers',
     icon: Building2,
     path: '/customers',
-    matchPatterns: ['/customers*']
+    matchPatterns: ['/customers*'],
   });
 
   // Platform Admin
@@ -238,8 +254,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
         { title: 'User Management', path: `${adminPrefix}/user-management`, icon: UserCheck },
         { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: Users },
         { title: 'System Settings', path: `${adminPrefix}/system-settings`, icon: Settings },
-        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 }
-      ]
+        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 },
+      ],
     });
   }
 
@@ -254,8 +270,8 @@ function getNavigationSections(userRole: any): NavigationSection[] {
       children: [
         { title: 'Company Settings', path: `${adminPrefix}/company-settings`, icon: Building2 },
         { title: 'User Management', path: `${adminPrefix}/user-management`, icon: Users },
-        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: UserCheck }
-      ]
+        { title: 'Role Management', path: `${adminPrefix}/role-management`, icon: UserCheck },
+      ],
     });
   }
 
@@ -265,7 +281,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     title: 'Integrations',
     icon: Plug,
     path: '/integrations',
-    matchPatterns: ['/integrations*']
+    matchPatterns: ['/integrations*'],
   });
 
   // Settings
@@ -274,7 +290,7 @@ function getNavigationSections(userRole: any): NavigationSection[] {
     title: 'Settings',
     icon: Settings,
     path: '/settings',
-    matchPatterns: ['/settings*']
+    matchPatterns: ['/settings*'],
   });
 
   return sections;
@@ -285,22 +301,21 @@ interface MobileNavigationDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNavigationDrawerProps) {
+export default function MobileNavigationDrawer({
+  open,
+  onOpenChange,
+}: MobileNavigationDrawerProps) {
   const { user } = useAuth();
   const [location] = useLocation();
 
   const navigationSections = getNavigationSections(user?.role);
-  const {
-    expandedSections,
-    toggleSection,
-    isExpanded,
-    isActive
-  } = useCollapsibleNavigation(navigationSections);
+  const { expandedSections, toggleSection, isExpanded, isActive } =
+    useCollapsibleNavigation(navigationSections);
 
   const renderNavigationItem = (section: NavigationSection) => {
     const hasChildren = section.children && section.children.length > 0;
     const isCurrentlyActive = isActive(section.path);
-    const isParentActive = section.children?.some(child => isActive(child.path));
+    const isParentActive = section.children?.some((child) => isActive(child.path));
     const shouldShowAsActive = isCurrentlyActive || isParentActive;
 
     if (hasChildren) {
@@ -314,12 +329,12 @@ export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNav
             <Button
               variant="ghost"
               className={cn(
-                "w-full justify-between h-auto py-3 px-4 rounded-lg transition-all duration-200 touch-manipulation",
-                "active:scale-[0.98]",
+                'w-full justify-between h-auto py-3 px-4 rounded-lg transition-all duration-200 touch-manipulation',
+                'active:scale-[0.98]',
                 shouldShowAsActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "hover:bg-accent text-foreground",
-                "font-semibold text-sm"
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'hover:bg-accent text-foreground',
+                'font-semibold text-sm',
               )}
             >
               <div className="flex items-center gap-3">
@@ -341,12 +356,12 @@ export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNav
                   variant="ghost"
                   onClick={() => onOpenChange(false)}
                   className={cn(
-                    "w-full justify-start h-auto py-2.5 px-4 pl-12 rounded-md transition-all duration-200 touch-manipulation",
-                    "active:scale-[0.98]",
+                    'w-full justify-start h-auto py-2.5 px-4 pl-12 rounded-md transition-all duration-200 touch-manipulation',
+                    'active:scale-[0.98]',
                     isActive(child.path)
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "hover:bg-accent/50 text-muted-foreground",
-                    "text-sm"
+                      ? 'bg-accent text-accent-foreground font-medium'
+                      : 'hover:bg-accent/50 text-muted-foreground',
+                    'text-sm',
                   )}
                 >
                   <div className="flex items-center gap-3 w-full">
@@ -366,12 +381,12 @@ export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNav
             variant="ghost"
             onClick={() => onOpenChange(false)}
             className={cn(
-              "w-full justify-start h-auto py-3 px-4 rounded-lg transition-all duration-200 touch-manipulation",
-              "active:scale-[0.98]",
+              'w-full justify-start h-auto py-3 px-4 rounded-lg transition-all duration-200 touch-manipulation',
+              'active:scale-[0.98]',
               isCurrentlyActive
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "hover:bg-accent text-foreground",
-              "font-semibold text-sm"
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'hover:bg-accent text-foreground',
+              'font-semibold text-sm',
             )}
           >
             <div className="flex items-center gap-3">
@@ -386,10 +401,7 @@ export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNav
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="h-[85vh] p-0 flex flex-col"
-      >
+      <SheetContent side="bottom" className="h-[85vh] p-0 flex flex-col">
         {/* Header */}
         <SheetHeader className="px-6 py-4 border-b bg-background sticky top-0 z-10">
           <div className="flex items-center justify-between">
@@ -399,9 +411,7 @@ export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNav
               </div>
               <div>
                 <SheetTitle className="text-lg">Navigation</SheetTitle>
-                <SheetDescription className="text-xs">
-                  Access all features
-                </SheetDescription>
+                <SheetDescription className="text-xs">Access all features</SheetDescription>
               </div>
             </div>
             <SheetClose className="rounded-full h-10 w-10 flex items-center justify-center hover:bg-accent touch-manipulation active:scale-95">
@@ -422,13 +432,14 @@ export default function MobileNavigationDrawer({ open, onOpenChange }: MobileNav
             <Avatar className="h-10 w-10 ring-2 ring-border">
               <AvatarImage src={user?.picture} alt={user?.name} />
               <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
-                {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                {user?.name
+                  ?.split(' ')
+                  .map((n) => n[0])
+                  .join('') || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">
-                {user?.name || 'User'}
-              </p>
+              <p className="text-sm font-semibold truncate">{user?.name || 'User'}</p>
               <p className="text-xs text-muted-foreground truncate">
                 {user?.email || 'user@example.com'}
               </p>

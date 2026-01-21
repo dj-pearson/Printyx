@@ -56,12 +56,12 @@ def resolve_effective_permissions(user_id, organizational_context, cache_manager
     Combines role inheritance with 4-tier organizational scope
     """
     cache_key = f"effective_perms_{user_id}_{organizational_context.tenant_id}_{organizational_context.unit_id}"
-    
+
     # Multi-level caching for performance
     cached_permissions = cache_manager.get_l1(cache_key)
     if cached_permissions:
         return cached_permissions
-    
+
     # SQL query leveraging nested sets for efficient hierarchy traversal
     query = """
     WITH RECURSIVE role_hierarchy AS (
@@ -69,18 +69,18 @@ def resolve_effective_permissions(user_id, organizational_context, cache_manager
         SELECT r.id, r.hierarchy_level, r.lft, r.rght, r.organizational_unit_id, 1 as depth
         FROM user_roles ur
         JOIN roles r ON ur.role_id = r.id
-        WHERE ur.user_id = %s 
+        WHERE ur.user_id = %s
           AND ur.tenant_id = %s
           AND (r.organizational_unit_id = %s OR r.organizational_unit_id IS NULL)
-        
+
         UNION ALL
-        
+
         -- Inherited roles from organizational hierarchy
-        SELECT parent_r.id, parent_r.hierarchy_level, parent_r.lft, parent_r.rght, 
+        SELECT parent_r.id, parent_r.hierarchy_level, parent_r.lft, parent_r.rght,
                parent_r.organizational_unit_id, rh.depth + 1
         FROM role_hierarchy rh
         JOIN organizational_units child_ou ON rh.organizational_unit_id = child_ou.id
-        JOIN organizational_units parent_ou ON (child_ou.lft >= parent_ou.lft 
+        JOIN organizational_units parent_ou ON (child_ou.lft >= parent_ou.lft
                                                 AND child_ou.rght <= parent_ou.rght)
         JOIN roles parent_r ON parent_ou.id = parent_r.organizational_unit_id
         WHERE rh.depth < 4 -- Limit inheritance depth
@@ -95,14 +95,14 @@ def resolve_effective_permissions(user_id, organizational_context, cache_manager
     )
     SELECT * FROM effective_permissions;
     """
-    
-    permissions = execute_query(query, [user_id, organizational_context.tenant_id, 
+
+    permissions = execute_query(query, [user_id, organizational_context.tenant_id,
                                        organizational_context.unit_id])
-    
+
     # Cache with intelligent TTL based on role volatility
     cache_ttl = calculate_cache_ttl(user_id, organizational_context)
     cache_manager.set_multi_level(cache_key, permissions, cache_ttl)
-    
+
     return permissions
 ```
 
@@ -141,27 +141,27 @@ class EnterpriseRBACCache:
         self.l1_cache = LRUCache(maxsize=10000)  # In-memory hot cache
         self.l2_cache = RedisCluster()  # Distributed cache
         self.l3_cache = PostgresCache()  # Query result cache
-    
+
     async def get_user_permissions(self, user_id, org_context):
         cache_key = f"permissions:{user_id}:{org_context.hash()}"
-        
+
         # L1: Check memory cache (< 1ms)
         if cache_key in self.l1_cache:
             return self.l1_cache[cache_key]
-        
+
         # L2: Check distributed cache (< 5ms)
         result = await self.l2_cache.get(cache_key)
         if result:
             self.l1_cache[cache_key] = result
             return result
-        
+
         # L3: Compute with optimized query (< 50ms)
         permissions = await self.compute_effective_permissions(user_id, org_context)
-        
+
         # Cache at all levels with appropriate TTLs
         self.l1_cache[cache_key] = permissions
         await self.l2_cache.setex(cache_key, 1800, permissions)  # 30 min
-        
+
         return permissions
 ```
 
@@ -174,48 +174,50 @@ Research from Reddit's authorization implementation shows P99 latencies of 8 mil
 ```typescript
 // OpenFGA policy definition for 4-tier hierarchy
 const authorizationModel = {
-  schema_version: "1.1",
+  schema_version: '1.1',
   type_definitions: [
     {
-      type: "platform",
+      type: 'platform',
       relations: {
         admin: { this: {} },
-        company: { this: {} }
-      }
+        company: { this: {} },
+      },
     },
     {
-      type: "company", 
+      type: 'company',
       relations: {
         admin: { this: {} },
         member: { this: {} },
         regional: { this: {} },
-        platform_admin: { 
-          computedUserset: { 
-            relation: "admin",
-            object: "platform"
-          }
-        }
-      }
+        platform_admin: {
+          computedUserset: {
+            relation: 'admin',
+            object: 'platform',
+          },
+        },
+      },
     },
     {
-      type: "document",
+      type: 'document',
       relations: {
         owner: { this: {} },
         viewer: {
           union: {
             child: [
               { this: {} },
-              { computedUserset: { relation: "owner", object: "" } },
-              { tupleToUserset: { 
-                  tupleset: { relation: "member", object: "" },
-                  computedUserset: { relation: "viewer", object: "" }
-                }}
-            ]
-          }
-        }
-      }
-    }
-  ]
+              { computedUserset: { relation: 'owner', object: '' } },
+              {
+                tupleToUserset: {
+                  tupleset: { relation: 'member', object: '' },
+                  computedUserset: { relation: 'viewer', object: '' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  ],
 };
 ```
 
@@ -234,13 +236,13 @@ class CustomerPortalPermissions:
         if customer_user.role == 'primary_contact':
             return tickets.filter(account=customer_user.account)
         elif customer_user.role == 'location_contact':
-            return tickets.filter(account=customer_user.account, 
+            return tickets.filter(account=customer_user.account,
                                 location=customer_user.location)
         elif customer_user.role == 'technician_liaison':
             return tickets.filter(account=customer_user.account,
                                 service_type__in=['maintenance', 'repair'])
         return []
-    
+
     def get_invoice_access_level(self, customer_user):
         permissions = {
             'primary_contact': {'view_all': True, 'download': True, 'dispute': True},

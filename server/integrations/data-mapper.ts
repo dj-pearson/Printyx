@@ -27,7 +27,14 @@ export interface DataMappingRule {
 
 export interface MappingCondition {
   field: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'starts_with' | 'ends_with' | 'exists' | 'not_exists';
+  operator:
+    | 'equals'
+    | 'not_equals'
+    | 'contains'
+    | 'starts_with'
+    | 'ends_with'
+    | 'exists'
+    | 'not_exists';
   value: any;
 }
 
@@ -65,11 +72,19 @@ export class DataMapper {
         { source: 'BillingState', target: 'billingState' },
         { source: 'BillingPostalCode', target: 'billingPostalCode' },
         { source: 'BillingCountry', target: 'billingCountry' },
-        { source: 'AnnualRevenue', target: 'annualRevenue', transform: (value) => value ? parseFloat(value) : null },
-        { source: 'NumberOfEmployees', target: 'employeeCount', transform: (value) => value ? parseInt(value) : null }
+        {
+          source: 'AnnualRevenue',
+          target: 'annualRevenue',
+          transform: (value) => (value ? parseFloat(value) : null),
+        },
+        {
+          source: 'NumberOfEmployees',
+          target: 'employeeCount',
+          transform: (value) => (value ? parseInt(value) : null),
+        },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Salesforce Contact to Company Contact mapping
@@ -93,10 +108,10 @@ export class DataMapper {
         { source: 'MailingCity', target: 'city' },
         { source: 'MailingState', target: 'state' },
         { source: 'MailingPostalCode', target: 'postalCode' },
-        { source: 'MailingCountry', target: 'country' }
+        { source: 'MailingCountry', target: 'country' },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Stripe Customer to Customer mapping
@@ -119,10 +134,10 @@ export class DataMapper {
         { source: 'address.state', target: 'billingState' },
         { source: 'address.postal_code', target: 'billingPostalCode' },
         { source: 'address.country', target: 'billingCountry' },
-        { source: 'created', target: 'createdAt', transform: (value) => new Date(value * 1000) }
+        { source: 'created', target: 'createdAt', transform: (value) => new Date(value * 1000) },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // QuickBooks Customer to Customer mapping
@@ -145,10 +160,10 @@ export class DataMapper {
         { source: 'BillAddr.City', target: 'billingCity' },
         { source: 'BillAddr.CountrySubDivisionCode', target: 'billingState' },
         { source: 'BillAddr.PostalCode', target: 'billingPostalCode' },
-        { source: 'BillAddr.Country', target: 'billingCountry' }
+        { source: 'BillAddr.Country', target: 'billingCountry' },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Google Calendar Event mapping
@@ -168,10 +183,10 @@ export class DataMapper {
         { source: 'end.dateTime', target: 'endTime', transform: (value) => new Date(value) },
         { source: 'location', target: 'location' },
         { source: 'status', target: 'status' },
-        { source: 'creator.email', target: 'createdBy' }
+        { source: 'creator.email', target: 'createdBy' },
       ],
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
   }
 
@@ -194,7 +209,7 @@ export class DataMapper {
    */
   static getMappingRulesForEntity(provider: string, sourceEntity: string): DataMappingRule[] {
     return Array.from(this.mappingRules.values()).filter(
-      rule => rule.provider === provider && rule.sourceEntity === sourceEntity && rule.enabled
+      (rule) => rule.provider === provider && rule.sourceEntity === sourceEntity && rule.enabled,
     );
   }
 
@@ -204,14 +219,14 @@ export class DataMapper {
   static transformData(
     provider: string,
     sourceEntity: string,
-    sourceData: any
+    sourceData: any,
   ): TransformationResult {
     const mappingRules = this.getMappingRulesForEntity(provider, sourceEntity);
-    
+
     if (mappingRules.length === 0) {
       return {
         success: false,
-        errors: [`No mapping rules found for ${provider}.${sourceEntity}`]
+        errors: [`No mapping rules found for ${provider}.${sourceEntity}`],
       };
     }
 
@@ -226,7 +241,9 @@ export class DataMapper {
           results.push(transformedData);
         }
       } catch (error) {
-        errors.push(`Error applying rule ${rule.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        errors.push(
+          `Error applying rule ${rule.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
       }
     }
 
@@ -234,7 +251,7 @@ export class DataMapper {
       success: errors.length === 0,
       data: results.length === 1 ? results[0] : results,
       errors: errors.length > 0 ? errors : undefined,
-      warnings: warnings.length > 0 ? warnings : undefined
+      warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
 
@@ -253,13 +270,13 @@ export class DataMapper {
     for (const mapping of rule.fieldMappings) {
       try {
         const sourceValue = this.getNestedValue(sourceData, mapping.source);
-        
+
         if (sourceValue === undefined || sourceValue === null) {
           if (mapping.required) {
             errors.push(`Required field ${mapping.source} is missing`);
             continue;
           }
-          
+
           if (mapping.defaultValue !== undefined) {
             this.setNestedValue(targetData, mapping.target, mapping.defaultValue);
           }
@@ -267,7 +284,7 @@ export class DataMapper {
         }
 
         let transformedValue = sourceValue;
-        
+
         // Apply transformation if specified
         if (mapping.transform) {
           transformedValue = mapping.transform(sourceValue);
@@ -275,9 +292,10 @@ export class DataMapper {
 
         // Set the transformed value in target data
         this.setNestedValue(targetData, mapping.target, transformedValue);
-        
       } catch (error) {
-        errors.push(`Error mapping ${mapping.source} to ${mapping.target}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        errors.push(
+          `Error mapping ${mapping.source} to ${mapping.target}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
       }
     }
 
@@ -292,9 +310,9 @@ export class DataMapper {
    * Evaluate mapping conditions
    */
   private static evaluateConditions(conditions: MappingCondition[], data: any): boolean {
-    return conditions.every(condition => {
+    return conditions.every((condition) => {
       const fieldValue = this.getNestedValue(data, condition.field);
-      
+
       switch (condition.operator) {
         case 'equals':
           return fieldValue === condition.value;
@@ -331,14 +349,14 @@ export class DataMapper {
   private static setNestedValue(obj: any, path: string, value: any): void {
     const keys = path.split('.');
     const lastKey = keys.pop()!;
-    
+
     const target = keys.reduce((current, key) => {
       if (!current[key] || typeof current[key] !== 'object') {
         current[key] = {};
       }
       return current[key];
     }, obj);
-    
+
     target[lastKey] = value;
   }
 
@@ -347,11 +365,11 @@ export class DataMapper {
    */
   static testMappingRule(ruleId: string, sampleData: any): TransformationResult {
     const rule = this.getMappingRule(ruleId);
-    
+
     if (!rule) {
       return {
         success: false,
-        errors: [`Mapping rule ${ruleId} not found`]
+        errors: [`Mapping rule ${ruleId} not found`],
       };
     }
 
@@ -359,12 +377,12 @@ export class DataMapper {
       const transformedData = this.applyMappingRule(rule, sampleData);
       return {
         success: true,
-        data: transformedData
+        data: transformedData,
       };
     } catch (error) {
       return {
         success: false,
-        errors: [error instanceof Error ? error.message : 'Unknown error']
+        errors: [error instanceof Error ? error.message : 'Unknown error'],
       };
     }
   }
@@ -386,7 +404,7 @@ export class DataMapper {
     const updatedRule = {
       ...rule,
       ...updates,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     this.mappingRules.set(id, updatedRule);

@@ -11,6 +11,7 @@ I've successfully built a complete Electron desktop application for printer moni
 A complete, production-ready desktop application with:
 
 #### Main Process (Backend)
+
 - **Main Process** (`src/main/main.ts`): Core Electron app with IPC handlers
 - **Printer Discovery Service** (`src/main/services/printer-discovery.ts`): SNMP-based network scanning
 - **Monitoring Service** (`src/main/services/monitoring-service.ts`): Periodic data collection and upload
@@ -18,6 +19,7 @@ A complete, production-ready desktop application with:
 - **Windows Service** (`src/main/services/windows-service.ts`): Install as Windows service for auto-start
 
 #### Renderer Process (Frontend)
+
 Beautiful React UI with 4 main pages:
 
 1. **Settings Page**: Configure API key, server URL, company/location IDs
@@ -26,6 +28,7 @@ Beautiful React UI with 4 main pages:
 4. **Monitoring Page**: Start/stop monitoring, view collection status, install Windows service
 
 #### Key Features
+
 - **Automatic Printer Discovery**: Scans local network for SNMP devices
 - **OID Preset Integration**: Pulls manufacturer-specific OID configurations from your platform
 - **Beautiful Modern UI**: Clean, intuitive interface with Tailwind CSS
@@ -39,6 +42,7 @@ Beautiful React UI with 4 main pages:
 Added new endpoints to `server/routes-client-monitoring.ts`:
 
 #### For Desktop Client:
+
 - `GET /api/printer-monitoring/oid-presets` - Get all OID presets
 - `GET /api/printer-monitoring/oid-presets/:manufacturer` - Get preset by manufacturer
 - `POST /api/printer-monitoring/devices` - Register/update a device
@@ -82,6 +86,7 @@ All endpoints support API key authentication via `X-API-Key` header.
 ## Customer Workflow
 
 ### Setup (One-time)
+
 1. Customer installs Printyx Desktop app on Windows PC
 2. Opens app → Goes to Settings
 3. Logs into Printyx web app → Creates API key
@@ -89,6 +94,7 @@ All endpoints support API key authentication via `X-API-Key` header.
 5. Saves settings ✓
 
 ### Discovery
+
 1. Goes to "Discover Printers" page
 2. Clicks "Start Discovery"
 3. App scans network and shows all SNMP printers
@@ -97,12 +103,14 @@ All endpoints support API key authentication via `X-API-Key` header.
 6. App automatically pulls manufacturer-specific OID presets from your platform ✓
 
 ### Monitoring
+
 1. Goes to "Monitoring" page
 2. Clicks "Start Monitoring"
 3. App collects data every 15 minutes and uploads to Printyx
 4. Optionally installs as Windows service for automatic startup ✓
 
 ### Result
+
 - Customer's printers are now monitored 24/7
 - Data flows into your Printyx platform
 - Customer can view metrics, toner levels, usage in the main platform
@@ -112,6 +120,7 @@ All endpoints support API key authentication via `X-API-Key` header.
 ## Technical Stack
 
 ### Desktop App
+
 - **Electron 33**: Desktop framework
 - **React 18**: UI library
 - **TypeScript 5**: Type-safe development
@@ -123,6 +132,7 @@ All endpoints support API key authentication via `X-API-Key` header.
 - **node-windows**: Windows service management
 
 ### Platform Integration
+
 - Existing Express.js API
 - Drizzle ORM for database
 - API key authentication
@@ -160,6 +170,7 @@ printyx-desktop/
 ## Building & Distribution
 
 ### Development
+
 ```bash
 cd printyx-desktop
 npm install
@@ -167,6 +178,7 @@ npm run dev
 ```
 
 ### Production Build
+
 ```bash
 npm run build           # Build all code
 npm run package:win     # Create Windows installer
@@ -175,6 +187,7 @@ npm run package:win     # Create Windows installer
 Output: `release/Printyx Monitor Setup.exe`
 
 ### Distribution to Customers
+
 1. Upload installer to your website
 2. Customers download and run installer
 3. Installer creates desktop shortcut
@@ -191,17 +204,20 @@ Output: `release/Printyx Monitor Setup.exe`
 ## Next Steps
 
 ### Testing
+
 1. Create a monitoring client API key in the main platform
 2. Test the desktop app with real printers
 3. Verify data flows into the platform correctly
 
 ### Distribution
+
 1. Set up code signing certificate for Windows
 2. Configure auto-update server
 3. Build production installers
 4. Create installation guide for customers
 
 ### Enhancements (Future)
+
 - macOS and Linux support
 - Scheduled discovery (automatic new printer detection)
 - In-app toner ordering
@@ -214,6 +230,7 @@ Output: `release/Printyx Monitor Setup.exe`
 All endpoints in `server/routes-client-monitoring.ts`:
 
 ### OID Presets
+
 - **GET** `/api/printer-monitoring/oid-presets`
   - Query params: `manufacturer` (optional)
   - Returns: Array of OID presets
@@ -224,12 +241,14 @@ All endpoints in `server/routes-client-monitoring.ts`:
   - Auth: X-API-Key header or session
 
 ### Device Management
+
 - **POST** `/api/printer-monitoring/devices`
   - Body: `{ ip, manufacturer, model, serialNumber, location }`
   - Returns: `{ deviceId, message }`
   - Auth: X-API-Key header
 
 ### Metrics Collection
+
 - **POST** `/api/printer-monitoring/metrics`
   - Body: `{ deviceId, timestamp, metrics: [{ name, value, oid }] }`
   - Returns: `{ message: 'success' }`
@@ -238,6 +257,7 @@ All endpoints in `server/routes-client-monitoring.ts`:
 ## Benefits
 
 ### For Your Business
+
 - **Scalable**: Unlimited deployments at customer sites
 - **Automated**: No manual meter reading needed
 - **Professional**: Branded desktop app builds trust
@@ -245,6 +265,7 @@ All endpoints in `server/routes-client-monitoring.ts`:
 - **Support**: Reduced support calls with automated monitoring
 
 ### For Your Customers
+
 - **Easy Setup**: 5-minute installation and configuration
 - **Automatic**: Set it and forget it monitoring
 - **Reliable**: Windows service runs 24/7
@@ -254,6 +275,7 @@ All endpoints in `server/routes-client-monitoring.ts`:
 ## Success Metrics
 
 Once deployed, you can track:
+
 - Number of active desktop clients
 - Total printers monitored
 - Data collection success rate

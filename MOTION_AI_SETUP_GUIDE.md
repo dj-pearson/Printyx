@@ -1,5 +1,6 @@
 # Motion AI Setup Guide
-*Printyx CRM with Claude AI Integration*
+
+_Printyx CRM with Claude AI Integration_
 
 ## 🚀 Quick Start
 

@@ -51,6 +51,7 @@ SERVER_PASSWORD=<your-server-password>
 ### Find Your Coolify Service ID
 
 The service ID is in the container names. Look for patterns like:
+
 - `supabase-db-<service-id>`
 - `supabase-kong-<service-id>`
 - `supabase-auth-<service-id>`
@@ -110,16 +111,16 @@ docker ps -a | grep supabase
 
 ### Common Supabase Container Names
 
-| Service | Container Pattern |
-|---------|-------------------|
-| Database | `supabase-db-<service-id>` |
-| Auth | `supabase-auth-<service-id>` |
-| REST API | `supabase-rest-<service-id>` |
-| Realtime | `supabase-realtime-<service-id>` |
-| Storage | `supabase-storage-<service-id>` |
-| Kong (API Gateway) | `supabase-kong-<service-id>` |
-| Studio | `supabase-studio-<service-id>` |
-| Edge Functions | `supabase-edge-functions-<service-id>` |
+| Service            | Container Pattern                      |
+| ------------------ | -------------------------------------- |
+| Database           | `supabase-db-<service-id>`             |
+| Auth               | `supabase-auth-<service-id>`           |
+| REST API           | `supabase-rest-<service-id>`           |
+| Realtime           | `supabase-realtime-<service-id>`       |
+| Storage            | `supabase-storage-<service-id>`        |
+| Kong (API Gateway) | `supabase-kong-<service-id>`           |
+| Studio             | `supabase-studio-<service-id>`         |
+| Edge Functions     | `supabase-edge-functions-<service-id>` |
 
 ### Container Operations
 
@@ -513,13 +514,13 @@ ufw allow 5555/tcp
 
 ### Common Errors
 
-| Error | Solution |
-|-------|----------|
-| `ECONNREFUSED` | Database not accessible. Check socat/SSH tunnel, firewall |
-| `password authentication failed` | Wrong credentials in DATABASE_URL |
-| `relation does not exist` | Run `npm run db:push` to create tables |
-| `listen_addresses = 'localhost'` | Update postgresql.conf and restart container |
-| `ENOTSUP: operation not supported on socket` | Add `WINDOWS_COMPAT=true` to .env (Windows only) |
+| Error                                        | Solution                                                  |
+| -------------------------------------------- | --------------------------------------------------------- |
+| `ECONNREFUSED`                               | Database not accessible. Check socat/SSH tunnel, firewall |
+| `password authentication failed`             | Wrong credentials in DATABASE_URL                         |
+| `relation does not exist`                    | Run `npm run db:push` to create tables                    |
+| `listen_addresses = 'localhost'`             | Update postgresql.conf and restart container              |
+| `ENOTSUP: operation not supported on socket` | Add `WINDOWS_COMPAT=true` to .env (Windows only)          |
 
 ### Reset Database (DANGER!)
 
@@ -603,4 +604,4 @@ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' sup
 
 ---
 
-*Last updated: December 2024*
+_Last updated: December 2024_

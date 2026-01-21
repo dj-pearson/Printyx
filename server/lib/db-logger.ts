@@ -203,9 +203,7 @@ export class DrizzleLogger implements Logger {
  * Create a logged database instance
  * This wraps the Drizzle instance with query logging
  */
-export function createLoggedDb<T extends object>(
-  db: T,
-): T {
+export function createLoggedDb<T extends object>(db: T): T {
   if (!ENABLE_QUERY_LOGGING) {
     return db;
   }

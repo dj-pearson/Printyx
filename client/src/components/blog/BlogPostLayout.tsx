@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
-import { ArrowLeft, Calendar, Clock, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { usePageSeo, BreadcrumbSchemaScript } from "@/lib/seoUtils";
+import { ReactNode } from 'react';
+import { ArrowLeft, Calendar, Clock, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { usePageSeo, BreadcrumbSchemaScript } from '@/lib/seoUtils';
 
 interface BlogPostLayoutProps {
   title: string;
@@ -17,7 +17,7 @@ interface BlogPostLayoutProps {
   featuredImage?: string;
   keywords?: string[];
   publishedDate?: string; // ISO date string (e.g., "2025-01-10")
-  modifiedDate?: string;  // ISO date string
+  modifiedDate?: string; // ISO date string
 }
 
 const BlogPostLayout = ({
@@ -34,41 +34,41 @@ const BlogPostLayout = ({
   publishedDate,
   modifiedDate,
 }: BlogPostLayoutProps) => {
-  const baseUrl = "https://printyx.com";
+  const baseUrl = 'https://printyx.com';
   const canonicalUrl = `${baseUrl}/blog/${slug}`;
 
   // Build Article schema for structured data
   const articleSchema = {
-    "@context": "https://schema.org",
-    "@type": "Article",
+    '@context': 'https://schema.org',
+    '@type': 'Article',
     headline: title,
     description: description,
     author: {
-      "@type": "Organization",
+      '@type': 'Organization',
       name: author,
     },
     publisher: {
-      "@type": "Organization",
-      name: "Printyx",
+      '@type': 'Organization',
+      name: 'Printyx',
       logo: {
-        "@type": "ImageObject",
+        '@type': 'ImageObject',
         url: `${baseUrl}/logo.png`,
       },
     },
     datePublished: publishedDate,
     dateModified: modifiedDate || publishedDate,
     mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": canonicalUrl,
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
     },
     articleSection: category,
     ...(featuredImage && {
       image: {
-        "@type": "ImageObject",
-        url: featuredImage.startsWith("http") ? featuredImage : `${baseUrl}${featuredImage}`,
+        '@type': 'ImageObject',
+        url: featuredImage.startsWith('http') ? featuredImage : `${baseUrl}${featuredImage}`,
       },
     }),
-    ...(keywords && { keywords: keywords.join(", ") }),
+    ...(keywords && { keywords: keywords.join(', ') }),
   };
 
   // Apply SEO meta tags
@@ -77,15 +77,15 @@ const BlogPostLayout = ({
     description,
     keywords,
     ogImage: featuredImage,
-    ogType: "article",
+    ogType: 'article',
     canonicalUrl,
     schema: articleSchema,
   });
 
   // Breadcrumb data for structured navigation
   const breadcrumbs = [
-    { name: "Home", url: baseUrl },
-    { name: "Blog", url: `${baseUrl}/blog` },
+    { name: 'Home', url: baseUrl },
+    { name: 'Blog', url: `${baseUrl}/blog` },
     { name: title },
   ];
 
@@ -97,7 +97,7 @@ const BlogPostLayout = ({
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Button
             variant="ghost"
-            onClick={() => window.location.href = '/blog'}
+            onClick={() => (window.location.href = '/blog')}
             className="hover:bg-gray-100"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -109,17 +109,13 @@ const BlogPostLayout = ({
       {/* Article Header */}
       <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <header className="mb-12">
-          <Badge className="mb-4 bg-blue-100 text-blue-800 border-blue-300">
-            {category}
-          </Badge>
+          <Badge className="mb-4 bg-blue-100 text-blue-800 border-blue-300">{category}</Badge>
 
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
             {title}
           </h1>
 
-          <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            {description}
-          </p>
+          <p className="text-xl text-gray-600 mb-8 leading-relaxed">{description}</p>
 
           <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600">
             <div className="flex items-center">
@@ -138,23 +134,20 @@ const BlogPostLayout = ({
         </header>
 
         {/* Article Content */}
-        <div className="prose prose-lg max-w-none">
-          {children}
-        </div>
+        <div className="prose prose-lg max-w-none">{children}</div>
 
         {/* CTA Section */}
         <div className="mt-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-          <h3 className="text-2xl font-bold mb-4">
-            Ready to Experience Predictive Intelligence?
-          </h3>
+          <h3 className="text-2xl font-bold mb-4">Ready to Experience Predictive Intelligence?</h3>
           <p className="text-blue-100 mb-6">
-            See how Printyx can transform your copier dealership with AI-powered predictive maintenance and intelligent pricing.
+            See how Printyx can transform your copier dealership with AI-powered predictive
+            maintenance and intelligent pricing.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
               size="lg"
               className="bg-white text-blue-600 hover:bg-gray-100"
-              onClick={() => window.location.href = '/signup'}
+              onClick={() => (window.location.href = '/signup')}
             >
               Start Free Trial
             </Button>
@@ -162,7 +155,7 @@ const BlogPostLayout = ({
               size="lg"
               variant="outline"
               className="border-2 border-white text-white hover:bg-white hover:text-blue-600"
-              onClick={() => window.location.href = '/'}
+              onClick={() => (window.location.href = '/')}
             >
               Learn More
             </Button>

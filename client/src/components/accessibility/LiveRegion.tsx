@@ -30,10 +30,7 @@ interface LiveRegionProviderProps {
   clearDelay?: number;
 }
 
-export function LiveRegionProvider({
-  children,
-  clearDelay = 5000,
-}: LiveRegionProviderProps) {
+export function LiveRegionProvider({ children, clearDelay = 5000 }: LiveRegionProviderProps) {
   const [politeAnnouncements, setPoliteAnnouncements] = useState<Announcement[]>([]);
   const [assertiveAnnouncements, setAssertiveAnnouncements] = useState<Announcement[]>([]);
 
@@ -41,12 +38,8 @@ export function LiveRegionProvider({
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      setPoliteAnnouncements((prev) =>
-        prev.filter((a) => now - a.timestamp < clearDelay)
-      );
-      setAssertiveAnnouncements((prev) =>
-        prev.filter((a) => now - a.timestamp < clearDelay)
-      );
+      setPoliteAnnouncements((prev) => prev.filter((a) => now - a.timestamp < clearDelay));
+      setAssertiveAnnouncements((prev) => prev.filter((a) => now - a.timestamp < clearDelay));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -67,13 +60,19 @@ export function LiveRegionProvider({
     }
   }, []);
 
-  const announcePolite = useCallback((message: string) => {
-    announce(message, 'polite');
-  }, [announce]);
+  const announcePolite = useCallback(
+    (message: string) => {
+      announce(message, 'polite');
+    },
+    [announce],
+  );
 
-  const announceAssertive = useCallback((message: string) => {
-    announce(message, 'assertive');
-  }, [announce]);
+  const announceAssertive = useCallback(
+    (message: string) => {
+      announce(message, 'assertive');
+    },
+    [announce],
+  );
 
   const clearAnnouncements = useCallback(() => {
     setPoliteAnnouncements([]);
@@ -91,23 +90,13 @@ export function LiveRegionProvider({
     >
       {children}
       {/* Polite live region for non-urgent announcements */}
-      <div
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
         {politeAnnouncements.map((a) => (
           <p key={a.id}>{a.message}</p>
         ))}
       </div>
       {/* Assertive live region for urgent announcements */}
-      <div
-        role="alert"
-        aria-live="assertive"
-        aria-atomic="true"
-        className="sr-only"
-      >
+      <div role="alert" aria-live="assertive" aria-atomic="true" className="sr-only">
         {assertiveAnnouncements.map((a) => (
           <p key={a.id}>{a.message}</p>
         ))}
@@ -134,18 +123,9 @@ interface LiveRegionProps {
   role?: 'status' | 'alert' | 'log';
 }
 
-export function LiveRegion({
-  message,
-  priority = 'polite',
-  role = 'status',
-}: LiveRegionProps) {
+export function LiveRegion({ message, priority = 'polite', role = 'status' }: LiveRegionProps) {
   return (
-    <div
-      role={role}
-      aria-live={priority}
-      aria-atomic="true"
-      className="sr-only"
-    >
+    <div role={role} aria-live={priority} aria-atomic="true" className="sr-only">
       {message}
     </div>
   );
@@ -173,22 +153,14 @@ export function ProgressAnnouncer({
     // Announce at intervals (e.g., every 25%)
     const currentInterval = Math.floor(progress / interval) * interval;
     if (currentInterval > lastAnnounced || progress === 100) {
-      const message =
-        progress === 100
-          ? `${label}: Complete`
-          : `${label}: ${currentInterval}%`;
+      const message = progress === 100 ? `${label}: Complete` : `${label}: ${currentInterval}%`;
       setAnnouncement(message);
       setLastAnnounced(currentInterval);
     }
   }, [progress, interval, label, lastAnnounced]);
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-    >
+    <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
       {announcement}
     </div>
   );
@@ -223,12 +195,7 @@ export function LoadingAnnouncer({
   }, [isLoading, wasLoading, loadingMessage, completeMessage]);
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sr-only"
-    >
+    <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
       {announcement}
     </div>
   );

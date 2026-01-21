@@ -4,10 +4,21 @@
 import fs from 'fs/promises';
 
 const TABLES_WITH_DATA = [
-  'tenants', 'users', 'roles', 'enhanced_roles', 'role_permissions',
-  'companies', 'locations', 'regions', 'business_records', 
-  'master_product_models', 'master_product_accessories', 
-  'enabled_products', 'product_models', 'deals', 'quotes'
+  'tenants',
+  'users',
+  'roles',
+  'enhanced_roles',
+  'role_permissions',
+  'companies',
+  'locations',
+  'regions',
+  'business_records',
+  'master_product_models',
+  'master_product_accessories',
+  'enabled_products',
+  'product_models',
+  'deals',
+  'quotes',
 ];
 
 async function generateExportCommands() {
@@ -43,7 +54,8 @@ pg_dump "$DATABASE_URL" --data-only --inserts > "database-exports/all-data.sql"
 echo "📊 Creating CSV exports..."
 `;
 
-  for (const table of TABLES_WITH_DATA.slice(0, 8)) { // First 8 tables for CSV
+  for (const table of TABLES_WITH_DATA.slice(0, 8)) {
+    // First 8 tables for CSV
     commands += `psql "$DATABASE_URL" -c "\\COPY ${table} TO 'database-exports/${table}.csv' WITH CSV HEADER"\n`;
   }
 
@@ -54,7 +66,7 @@ echo "📁 Files created in database-exports/ folder"
 
   await fs.writeFile('export-commands.sh', commands);
   await fs.chmod('export-commands.sh', '755');
-  
+
   console.log('✅ Created export-commands.sh');
   console.log('📝 Run: ./export-commands.sh');
 }

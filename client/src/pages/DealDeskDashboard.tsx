@@ -1,17 +1,30 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
 import {
   CheckCircle2,
   XCircle,
@@ -36,8 +49,8 @@ import {
   Zap,
   Award,
   AlertCircle,
-} from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+} from 'lucide-react';
+import { formatDistanceToNow, format } from 'date-fns';
 
 interface ApprovalRequest {
   id: string;
@@ -77,15 +90,15 @@ export default function DealDeskDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedTab, setSelectedTab] = useState<"my-queue" | "all" | "completed">("my-queue");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [selectedTab, setSelectedTab] = useState<'my-queue' | 'all' | 'completed'>('my-queue');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [quickDecisionDialog, setQuickDecisionDialog] = useState<{
     open: boolean;
     requestId: string | null;
-    decision: "approve" | "reject" | null;
+    decision: 'approve' | 'reject' | null;
   }>({ open: false, requestId: null, decision: null });
-  const [decisionComments, setDecisionComments] = useState("");
+  const [decisionComments, setDecisionComments] = useState('');
 
   // Fetch dashboard stats
   const { data: stats } = useQuery<DashboardStats>({
@@ -102,14 +115,25 @@ export default function DealDeskDashboard() {
 
   // Fetch all approval requests
   const { data: allRequests = [], isLoading: allRequestsLoading } = useQuery<ApprovalRequest[]>({
-    queryKey: ['/api/deal-desk/requests', { status: statusFilter !== 'all' ? statusFilter : undefined }],
+    queryKey: [
+      '/api/deal-desk/requests',
+      { status: statusFilter !== 'all' ? statusFilter : undefined },
+    ],
     enabled: selectedTab === 'all' || selectedTab === 'completed',
     refetchInterval: 30000,
   });
 
   // Process decision mutation
   const decisionMutation = useMutation({
-    mutationFn: async ({ id, decision, comments }: { id: string; decision: string; comments?: string }) => {
+    mutationFn: async ({
+      id,
+      decision,
+      comments,
+    }: {
+      id: string;
+      decision: string;
+      comments?: string;
+    }) => {
       return apiRequest(`/api/deal-desk/requests/${id}/decision`, {
         method: 'POST',
         body: JSON.stringify({ decision, comments }),
@@ -120,22 +144,22 @@ export default function DealDeskDashboard() {
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/requests'] });
       queryClient.invalidateQueries({ queryKey: ['/api/deal-desk/dashboard'] });
       setQuickDecisionDialog({ open: false, requestId: null, decision: null });
-      setDecisionComments("");
+      setDecisionComments('');
       toast({
-        title: "Decision Recorded",
-        description: "Your approval decision has been processed.",
+        title: 'Decision Recorded',
+        description: 'Your approval decision has been processed.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to process decision",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to process decision',
+        variant: 'destructive',
       });
     },
   });
 
-  const handleQuickDecision = (requestId: string, decision: "approve" | "reject") => {
+  const handleQuickDecision = (requestId: string, decision: 'approve' | 'reject') => {
     setQuickDecisionDialog({ open: true, requestId, decision });
   };
 
@@ -182,7 +206,7 @@ export default function DealDeskDashboard() {
   };
 
   const filteredRequests = (selectedTab === 'my-queue' ? myApprovals : allRequests)
-    .filter(req => {
+    .filter((req) => {
       if (searchQuery) {
         const search = searchQuery.toLowerCase();
         return (
@@ -193,7 +217,7 @@ export default function DealDeskDashboard() {
       }
       return true;
     })
-    .filter(req => {
+    .filter((req) => {
       if (selectedTab === 'completed') {
         return req.status === 'approved' || req.status === 'rejected' || req.status === 'cancelled';
       }
@@ -202,7 +226,7 @@ export default function DealDeskDashboard() {
 
   const ApprovalCard = ({ request }: { request: ApprovalRequest }) => {
     const isMyTurn = request.approvalChain.some(
-      (member) => member.status === 'pending' && member.level === request.currentApprovalLevel
+      (member) => member.status === 'pending' && member.level === request.currentApprovalLevel,
     );
 
     const hoursUntilSLA = request.slaDeadline
@@ -210,13 +234,13 @@ export default function DealDeskDashboard() {
       : null;
 
     return (
-      <Card className={`hover:shadow-md transition-shadow ${request.slaBreached ? 'border-red-300' : ''}`}>
+      <Card
+        className={`hover:shadow-md transition-shadow ${request.slaBreached ? 'border-red-300' : ''}`}
+      >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 flex-1">
-              <div className="mt-1">
-                {getRequestTypeIcon(request.requestType)}
-              </div>
+              <div className="mt-1">{getRequestTypeIcon(request.requestType)}</div>
               <div className="flex-1 min-w-0">
                 <CardTitle className="text-lg mb-1 flex items-center gap-2">
                   <span className="truncate">{request.requestTitle}</span>
@@ -266,9 +290,7 @@ export default function DealDeskDashboard() {
             {request.proposedMargin && (
               <div className="text-center p-2 bg-slate-50 rounded-md">
                 <div className="text-xs text-slate-600">Margin</div>
-                <div className="text-sm font-semibold">
-                  {request.proposedMargin}%
-                </div>
+                <div className="text-sm font-semibold">{request.proposedMargin}%</div>
               </div>
             )}
           </div>
@@ -284,10 +306,11 @@ export default function DealDeskDashboard() {
                       member.status === 'approved'
                         ? 'bg-green-100 text-green-700'
                         : member.status === 'rejected'
-                        ? 'bg-red-100 text-red-700'
-                        : member.status === 'pending' && member.level === request.currentApprovalLevel
-                        ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-300'
-                        : 'bg-gray-100 text-gray-500'
+                          ? 'bg-red-100 text-red-700'
+                          : member.status === 'pending' &&
+                              member.level === request.currentApprovalLevel
+                            ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-300'
+                            : 'bg-gray-100 text-gray-500'
                     }`}
                     title={member.approverName}
                   >
@@ -310,8 +333,18 @@ export default function DealDeskDashboard() {
           {/* SLA Timer */}
           {hoursUntilSLA !== null && (
             <div className="flex items-center gap-2 text-xs">
-              <Timer className={`h-4 w-4 ${hoursUntilSLA < 0 ? 'text-red-500' : hoursUntilSLA < 4 ? 'text-orange-500' : 'text-slate-500'}`} />
-              <span className={hoursUntilSLA < 0 ? 'text-red-600 font-medium' : hoursUntilSLA < 4 ? 'text-orange-600' : 'text-slate-600'}>
+              <Timer
+                className={`h-4 w-4 ${hoursUntilSLA < 0 ? 'text-red-500' : hoursUntilSLA < 4 ? 'text-orange-500' : 'text-slate-500'}`}
+              />
+              <span
+                className={
+                  hoursUntilSLA < 0
+                    ? 'text-red-600 font-medium'
+                    : hoursUntilSLA < 4
+                      ? 'text-orange-600'
+                      : 'text-slate-600'
+                }
+              >
                 {hoursUntilSLA < 0
                   ? `SLA breached ${Math.abs(hoursUntilSLA).toFixed(1)}h ago`
                   : `${hoursUntilSLA.toFixed(1)}h until SLA deadline`}
@@ -411,7 +444,9 @@ export default function DealDeskDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription className="text-xs">SLA Breached</CardDescription>
-              <CardTitle className={`text-3xl font-bold ${(stats?.slaBreached || 0) > 0 ? 'text-red-600' : ''}`}>
+              <CardTitle
+                className={`text-3xl font-bold ${(stats?.slaBreached || 0) > 0 ? 'text-red-600' : ''}`}
+              >
                 {stats?.slaBreached || 0}
               </CardTitle>
             </CardHeader>
@@ -426,7 +461,9 @@ export default function DealDeskDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription className="text-xs">Approval Rate (30d)</CardDescription>
-              <CardTitle className="text-3xl font-bold">{stats?.approvalRate?.toFixed(0) || 0}%</CardTitle>
+              <CardTitle className="text-3xl font-bold">
+                {stats?.approvalRate?.toFixed(0) || 0}%
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-slate-600 flex items-center gap-1">
@@ -492,9 +529,7 @@ export default function DealDeskDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              filteredRequests.map((request) => (
-                <ApprovalCard key={request.id} request={request} />
-              ))
+              filteredRequests.map((request) => <ApprovalCard key={request.id} request={request} />)
             )}
           </TabsContent>
 
@@ -510,9 +545,7 @@ export default function DealDeskDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              filteredRequests.map((request) => (
-                <ApprovalCard key={request.id} request={request} />
-              ))
+              filteredRequests.map((request) => <ApprovalCard key={request.id} request={request} />)
             )}
           </TabsContent>
 
@@ -527,16 +560,19 @@ export default function DealDeskDashboard() {
                 </CardContent>
               </Card>
             ) : (
-              filteredRequests.map((request) => (
-                <ApprovalCard key={request.id} request={request} />
-              ))
+              filteredRequests.map((request) => <ApprovalCard key={request.id} request={request} />)
             )}
           </TabsContent>
         </Tabs>
       </div>
 
       {/* Quick Decision Dialog */}
-      <Dialog open={quickDecisionDialog.open} onOpenChange={(open) => !open && setQuickDecisionDialog({ open: false, requestId: null, decision: null })}>
+      <Dialog
+        open={quickDecisionDialog.open}
+        onOpenChange={(open) =>
+          !open && setQuickDecisionDialog({ open: false, requestId: null, decision: null })
+        }
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -550,7 +586,11 @@ export default function DealDeskDashboard() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Textarea
-              placeholder={quickDecisionDialog.decision === 'approve' ? 'Comments (optional)' : 'Rejection reason (required)'}
+              placeholder={
+                quickDecisionDialog.decision === 'approve'
+                  ? 'Comments (optional)'
+                  : 'Rejection reason (required)'
+              }
               value={decisionComments}
               onChange={(e) => setDecisionComments(e.target.value)}
               rows={4}
@@ -559,17 +599,26 @@ export default function DealDeskDashboard() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setQuickDecisionDialog({ open: false, requestId: null, decision: null })}
+              onClick={() =>
+                setQuickDecisionDialog({ open: false, requestId: null, decision: null })
+              }
             >
               Cancel
             </Button>
             <Button
               onClick={confirmDecision}
-              disabled={decisionMutation.isPending || (quickDecisionDialog.decision === 'reject' && !decisionComments)}
-              className={quickDecisionDialog.decision === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''}
+              disabled={
+                decisionMutation.isPending ||
+                (quickDecisionDialog.decision === 'reject' && !decisionComments)
+              }
+              className={
+                quickDecisionDialog.decision === 'approve' ? 'bg-green-600 hover:bg-green-700' : ''
+              }
               variant={quickDecisionDialog.decision === 'reject' ? 'destructive' : 'default'}
             >
-              {decisionMutation.isPending ? 'Processing...' : `Confirm ${quickDecisionDialog.decision === 'approve' ? 'Approval' : 'Rejection'}`}
+              {decisionMutation.isPending
+                ? 'Processing...'
+                : `Confirm ${quickDecisionDialog.decision === 'approve' ? 'Approval' : 'Rejection'}`}
             </Button>
           </DialogFooter>
         </DialogContent>

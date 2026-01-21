@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -28,9 +28,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
 import {
   Building2,
   Users,
@@ -56,11 +56,11 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
-  AlertTriangle
-} from "lucide-react";
-import { format } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
-import { useLocation } from "wouter";
+  AlertTriangle,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
+import { useLocation } from 'wouter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,7 +68,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 
 interface BusinessRecord {
   id: string;
@@ -96,12 +96,12 @@ export default function PlatformBusinessRecords() {
   const [, setLocation] = useLocation();
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [recordType, setRecordType] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [leadTierFilter, setLeadTierFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [recordType, setRecordType] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [leadTierFilter, setLeadTierFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -122,8 +122,13 @@ export default function PlatformBusinessRecords() {
   queryParams.set('limit', limit.toString());
 
   // Fetch records
-  const { data, isLoading, refetch } = useQuery<{ records: BusinessRecord[]; total: number; page: number; totalPages: number }>({
-    queryKey: ["/api/platform-crm/business-records", queryParams.toString()],
+  const { data, isLoading, refetch } = useQuery<{
+    records: BusinessRecord[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }>({
+    queryKey: ['/api/platform-crm/business-records', queryParams.toString()],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -137,24 +142,30 @@ export default function PlatformBusinessRecords() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/platform-crm/business-records"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/business-records'] });
       toast({
-        title: "Success",
-        description: "Business record deleted successfully",
+        title: 'Success',
+        description: 'Business record deleted successfully',
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to delete business record",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to delete business record',
+        variant: 'destructive',
       });
     },
   });
 
   // Bulk assign mutation
   const bulkAssignMutation = useMutation({
-    mutationFn: async ({ recordIds, assignedRep }: { recordIds: string[]; assignedRep: string }) => {
+    mutationFn: async ({
+      recordIds,
+      assignedRep,
+    }: {
+      recordIds: string[];
+      assignedRep: string;
+    }) => {
       const response = await fetch('/api/platform-crm/business-records/bulk/assign', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -164,11 +175,11 @@ export default function PlatformBusinessRecords() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/platform-crm/business-records"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/platform-crm/business-records'] });
       setSelectedRecords(new Set());
       toast({
-        title: "Success",
-        description: "Records assigned successfully",
+        title: 'Success',
+        description: 'Records assigned successfully',
       });
     },
   });
@@ -177,27 +188,30 @@ export default function PlatformBusinessRecords() {
   const totalPages = data?.totalPages || 1;
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-      new: { variant: "secondary", label: "New" },
-      contacted: { variant: "outline", label: "Contacted" },
-      qualified: { variant: "default", label: "Qualified" },
-      trial_active: { variant: "default", label: "Trial Active" },
-      active_customer: { variant: "default", label: "Active" },
-      churned: { variant: "destructive", label: "Churned" },
-      lost: { variant: "destructive", label: "Lost" },
+    const variants: Record<
+      string,
+      { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }
+    > = {
+      new: { variant: 'secondary', label: 'New' },
+      contacted: { variant: 'outline', label: 'Contacted' },
+      qualified: { variant: 'default', label: 'Qualified' },
+      trial_active: { variant: 'default', label: 'Trial Active' },
+      active_customer: { variant: 'default', label: 'Active' },
+      churned: { variant: 'destructive', label: 'Churned' },
+      lost: { variant: 'destructive', label: 'Lost' },
     };
-    const config = variants[status] || { variant: "outline" as const, label: status };
+    const config = variants[status] || { variant: 'outline' as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getLeadTierBadge = (tier: string) => {
     const colors: Record<string, string> = {
-      hot: "bg-red-100 text-red-800",
-      warm: "bg-orange-100 text-orange-800",
-      cold: "bg-blue-100 text-blue-800",
+      hot: 'bg-red-100 text-red-800',
+      warm: 'bg-orange-100 text-orange-800',
+      cold: 'bg-blue-100 text-blue-800',
     };
     return (
-      <Badge className={colors[tier] || "bg-gray-100 text-gray-800"}>
+      <Badge className={colors[tier] || 'bg-gray-100 text-gray-800'}>
         {tier?.toUpperCase() || 'N/A'}
       </Badge>
     );
@@ -205,25 +219,21 @@ export default function PlatformBusinessRecords() {
 
   const getLeadGradeBadge = (grade: string) => {
     const colors: Record<string, string> = {
-      'A+': "bg-green-600 text-white",
-      'A': "bg-green-500 text-white",
-      'B': "bg-blue-500 text-white",
-      'C': "bg-yellow-500 text-white",
-      'D': "bg-orange-500 text-white",
-      'F': "bg-red-500 text-white",
+      'A+': 'bg-green-600 text-white',
+      A: 'bg-green-500 text-white',
+      B: 'bg-blue-500 text-white',
+      C: 'bg-yellow-500 text-white',
+      D: 'bg-orange-500 text-white',
+      F: 'bg-red-500 text-white',
     };
-    return (
-      <Badge className={colors[grade] || "bg-gray-500 text-white"}>
-        {grade || 'N/A'}
-      </Badge>
-    );
+    return <Badge className={colors[grade] || 'bg-gray-500 text-white'}>{grade || 'N/A'}</Badge>;
   };
 
   const handleSelectAll = () => {
     if (selectedRecords.size === records.length) {
       setSelectedRecords(new Set());
     } else {
-      setSelectedRecords(new Set(records.map(r => r.id)));
+      setSelectedRecords(new Set(records.map((r) => r.id)));
     }
   };
 
@@ -239,7 +249,9 @@ export default function PlatformBusinessRecords() {
 
   const handleExport = async (format: 'csv' | 'excel' | 'pdf') => {
     try {
-      const response = await fetch(`/api/platform-crm/business-records/export?${queryParams.toString()}&format=${format}`);
+      const response = await fetch(
+        `/api/platform-crm/business-records/export?${queryParams.toString()}&format=${format}`,
+      );
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -250,24 +262,24 @@ export default function PlatformBusinessRecords() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Exported ${records.length} records as ${format.toUpperCase()}`,
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to export records",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to export records',
+        variant: 'destructive',
       });
     }
   };
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(field);
-      setSortOrder("desc");
+      setSortOrder('desc');
     }
   };
 
@@ -413,11 +425,7 @@ export default function PlatformBusinessRecords() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedRecords(new Set())}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setSelectedRecords(new Set())}>
                     Clear Selection
                   </Button>
                   <Button
@@ -426,8 +434,8 @@ export default function PlatformBusinessRecords() {
                     onClick={() => {
                       // Bulk assign dialog would go here
                       toast({
-                        title: "Bulk Assign",
-                        description: "Bulk assign functionality coming soon",
+                        title: 'Bulk Assign',
+                        description: 'Bulk assign functionality coming soon',
                       });
                     }}
                   >
@@ -441,8 +449,8 @@ export default function PlatformBusinessRecords() {
                       if (confirm(`Delete ${selectedRecords.size} records?`)) {
                         // Bulk delete would go here
                         toast({
-                          title: "Bulk Delete",
-                          description: "Bulk delete functionality coming soon",
+                          title: 'Bulk Delete',
+                          description: 'Bulk delete functionality coming soon',
                         });
                       }
                     }}
@@ -498,7 +506,10 @@ export default function PlatformBusinessRecords() {
                             onCheckedChange={handleSelectAll}
                           />
                         </TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => handleSort('companyName')}>
+                        <TableHead
+                          className="cursor-pointer"
+                          onClick={() => handleSort('companyName')}
+                        >
                           <div className="flex items-center gap-1">
                             Company
                             <ArrowUpDown className="w-4 h-4" />
@@ -507,7 +518,10 @@ export default function PlatformBusinessRecords() {
                         <TableHead>Contact</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => handleSort('leadScore')}>
+                        <TableHead
+                          className="cursor-pointer"
+                          onClick={() => handleSort('leadScore')}
+                        >
                           <div className="flex items-center gap-1">
                             Score
                             <ArrowUpDown className="w-4 h-4" />
@@ -516,7 +530,10 @@ export default function PlatformBusinessRecords() {
                         <TableHead>Tier</TableHead>
                         <TableHead>Grade</TableHead>
                         <TableHead>MRR</TableHead>
-                        <TableHead className="cursor-pointer" onClick={() => handleSort('createdAt')}>
+                        <TableHead
+                          className="cursor-pointer"
+                          onClick={() => handleSort('createdAt')}
+                        >
                           <div className="flex items-center gap-1">
                             Created
                             <ArrowUpDown className="w-4 h-4" />
@@ -551,11 +568,15 @@ export default function PlatformBusinessRecords() {
                           <TableCell>
                             <div className="text-sm">
                               <div>{record.primaryContactName || 'N/A'}</div>
-                              <div className="text-muted-foreground text-xs">{record.primaryContactEmail}</div>
+                              <div className="text-muted-foreground text-xs">
+                                {record.primaryContactEmail}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={record.recordType === 'tenant' ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={record.recordType === 'tenant' ? 'default' : 'secondary'}
+                            >
                               {record.recordType}
                             </Badge>
                           </TableCell>
@@ -569,7 +590,9 @@ export default function PlatformBusinessRecords() {
                           <TableCell>{getLeadTierBadge(record.leadTier || '')}</TableCell>
                           <TableCell>{getLeadGradeBadge(record.leadGrade || '')}</TableCell>
                           <TableCell>
-                            {record.currentMRR ? `$${parseFloat(record.currentMRR).toLocaleString()}` : '-'}
+                            {record.currentMRR
+                              ? `$${parseFloat(record.currentMRR).toLocaleString()}`
+                              : '-'}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {format(new Date(record.createdAt), 'MMM d, yyyy')}
@@ -583,11 +606,19 @@ export default function PlatformBusinessRecords() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => setLocation(`/platform-crm/business-records/${record.id}`)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setLocation(`/platform-crm/business-records/${record.id}`)
+                                  }
+                                >
                                   <Eye className="w-4 h-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setLocation(`/platform-crm/business-records/${record.id}/edit`)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    setLocation(`/platform-crm/business-records/${record.id}/edit`)
+                                  }
+                                >
                                   <Edit className="w-4 h-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
@@ -615,13 +646,14 @@ export default function PlatformBusinessRecords() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
-                    Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, data?.total || 0)} of {data?.total || 0} records
+                    Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data?.total || 0)}{' '}
+                    of {data?.total || 0} records
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
                     >
                       Previous
@@ -632,7 +664,7 @@ export default function PlatformBusinessRecords() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
                     >
                       Next

@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -25,7 +32,7 @@ import {
   Target,
   ArrowRight,
   Sparkles,
-  Timer
+  Timer,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
@@ -114,7 +121,6 @@ export default function AutoLeadRoutingDashboard() {
       description="AI-powered automatic lead scoring and assignment"
     >
       <div className="container mx-auto p-6 space-y-6">
-
         {/* Header with CTA */}
         <div className="flex items-center justify-between">
           <div>
@@ -126,7 +132,8 @@ export default function AutoLeadRoutingDashboard() {
               </Badge>
             </div>
             <p className="text-muted-foreground">
-              AI automatically scores leads and assigns them to the best sales rep in under 5 seconds
+              AI automatically scores leads and assigns them to the best sales rep in under 5
+              seconds
             </p>
           </div>
           <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
@@ -155,11 +162,7 @@ export default function AutoLeadRoutingDashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label>Minimum Lead Score</Label>
-                  <Input
-                    type="number"
-                    defaultValue={config?.minLeadScore || 50}
-                    placeholder="50"
-                  />
+                  <Input type="number" defaultValue={config?.minLeadScore || 50} placeholder="50" />
                   <p className="text-xs text-muted-foreground">
                     Only auto-route leads with score ≥ this value
                   </p>
@@ -248,8 +251,7 @@ export default function AutoLeadRoutingDashboard() {
                 ≈ ${overview.timeSavedCost || 0} in labor costs
               </p>
               <div className="flex items-center text-xs text-green-600 mt-2">
-                <TrendingUp className="h-3 w-3 mr-1" />
-                5 min saved per lead
+                <TrendingUp className="h-3 w-3 mr-1" />5 min saved per lead
               </div>
             </CardContent>
           </Card>
@@ -263,9 +265,7 @@ export default function AutoLeadRoutingDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">96.5%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Successful assignments
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Successful assignments</p>
               <Progress value={96.5} className="mt-2" />
             </CardContent>
           </Card>
@@ -313,7 +313,10 @@ export default function AutoLeadRoutingDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {recentLeads.map((lead: any) => (
-                      <div key={lead.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={lead.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
@@ -378,8 +381,8 @@ export default function AutoLeadRoutingDashboard() {
                             parseFloat(rep.utilizationPercent) > 80
                               ? 'destructive'
                               : parseFloat(rep.utilizationPercent) > 60
-                              ? 'default'
-                              : 'secondary'
+                                ? 'default'
+                                : 'secondary'
                           }
                         >
                           {rep.utilizationPercent}% Capacity
@@ -412,14 +415,15 @@ export default function AutoLeadRoutingDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Lead Score Distribution</CardTitle>
-                <CardDescription>
-                  Breakdown of lead grades from AI scoring
-                </CardDescription>
+                <CardDescription>Breakdown of lead grades from AI scoring</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {scoreDistribution.map((item: any) => {
-                    const total = scoreDistribution.reduce((sum: number, d: any) => sum + d.count, 0);
+                    const total = scoreDistribution.reduce(
+                      (sum: number, d: any) => sum + d.count,
+                      0,
+                    );
                     const percentage = total > 0 ? (item.count / total) * 100 : 0;
 
                     return (
@@ -431,8 +435,8 @@ export default function AutoLeadRoutingDashboard() {
                                 item.grade.startsWith('A')
                                   ? 'default'
                                   : item.grade.startsWith('B')
-                                  ? 'secondary'
-                                  : 'outline'
+                                    ? 'secondary'
+                                    : 'outline'
                               }
                             >
                               Grade {item.grade}
@@ -457,9 +461,7 @@ export default function AutoLeadRoutingDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Manual Lead Routing</CardTitle>
-                <CardDescription>
-                  Manually trigger AI routing for a specific lead
-                </CardDescription>
+                <CardDescription>Manually trigger AI routing for a specific lead</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">

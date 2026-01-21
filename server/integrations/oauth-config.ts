@@ -34,14 +34,15 @@ export const googleCalendarConfig: IntegrationProvider = {
   config: {
     clientId: process.env.GOOGLE_CLIENT_ID || '',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    redirectUri: process.env.GOOGLE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/google/callback`,
+    redirectUri:
+      process.env.GOOGLE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/google/callback`,
     scopes: [
       'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/calendar.events'
-    ]
+      'https://www.googleapis.com/auth/calendar.events',
+    ],
   },
   authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenUrl: 'https://oauth2.googleapis.com/token'
+  tokenUrl: 'https://oauth2.googleapis.com/token',
 };
 
 // Microsoft Outlook Calendar Configuration
@@ -53,14 +54,16 @@ export const microsoftCalendarConfig: IntegrationProvider = {
   config: {
     clientId: process.env.MICROSOFT_CLIENT_ID || '',
     clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-    redirectUri: process.env.MICROSOFT_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/microsoft/callback`,
+    redirectUri:
+      process.env.MICROSOFT_REDIRECT_URI ||
+      `${process.env.BASE_URL}/api/integrations/microsoft/callback`,
     scopes: [
       'https://graph.microsoft.com/calendars.readwrite',
-      'https://graph.microsoft.com/user.read'
-    ]
+      'https://graph.microsoft.com/user.read',
+    ],
   },
   authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-  tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token'
+  tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
 };
 
 // Salesforce CRM Configuration
@@ -72,15 +75,13 @@ export const salesforceConfig: IntegrationProvider = {
   config: {
     clientId: process.env.SALESFORCE_CLIENT_ID || '',
     clientSecret: process.env.SALESFORCE_CLIENT_SECRET || '',
-    redirectUri: process.env.SALESFORCE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/salesforce/callback`,
-    scopes: [
-      'api',
-      'refresh_token',
-      'offline_access'
-    ]
+    redirectUri:
+      process.env.SALESFORCE_REDIRECT_URI ||
+      `${process.env.BASE_URL}/api/integrations/salesforce/callback`,
+    scopes: ['api', 'refresh_token', 'offline_access'],
   },
   authUrl: 'https://login.salesforce.com/services/oauth2/authorize',
-  tokenUrl: 'https://login.salesforce.com/services/oauth2/token'
+  tokenUrl: 'https://login.salesforce.com/services/oauth2/token',
 };
 
 // QuickBooks Online Configuration
@@ -92,11 +93,13 @@ export const quickbooksConfig: IntegrationProvider = {
   config: {
     clientId: process.env.QUICKBOOKS_CLIENT_ID || '',
     clientSecret: process.env.QUICKBOOKS_CLIENT_SECRET || '',
-    redirectUri: process.env.QUICKBOOKS_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/quickbooks/callback`,
-    scopes: ['com.intuit.quickbooks.accounting']
+    redirectUri:
+      process.env.QUICKBOOKS_REDIRECT_URI ||
+      `${process.env.BASE_URL}/api/integrations/quickbooks/callback`,
+    scopes: ['com.intuit.quickbooks.accounting'],
   },
   authUrl: 'https://appcenter.intuit.com/connect/oauth2',
-  tokenUrl: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer'
+  tokenUrl: 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
 };
 
 // Stripe Payments Configuration
@@ -108,11 +111,12 @@ export const stripeConfig: IntegrationProvider = {
   config: {
     clientId: process.env.STRIPE_CLIENT_ID || '',
     clientSecret: process.env.STRIPE_SECRET_KEY || '',
-    redirectUri: process.env.STRIPE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/stripe/callback`,
-    scopes: ['read_write']
+    redirectUri:
+      process.env.STRIPE_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/stripe/callback`,
+    scopes: ['read_write'],
   },
   authUrl: 'https://connect.stripe.com/oauth/authorize',
-  tokenUrl: 'https://connect.stripe.com/oauth/token'
+  tokenUrl: 'https://connect.stripe.com/oauth/token',
 };
 
 // Additional integration configs for future expansion
@@ -129,7 +133,7 @@ export const availableIntegrations: IntegrationProvider[] = [
  * Get integration config by provider ID
  */
 export function getIntegrationConfig(providerId: string): IntegrationProvider | undefined {
-  return availableIntegrations.find(integration => integration.id === providerId);
+  return availableIntegrations.find((integration) => integration.id === providerId);
 }
 
 /**
@@ -148,7 +152,7 @@ export function generateAuthUrl(providerId: string, state?: string): string {
     scope: integration.config.scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent',
-    ...(state && { state })
+    ...(state && { state }),
   });
 
   return `${integration.authUrl}?${params.toString()}`;
@@ -176,7 +180,7 @@ export function createGoogleAuthClient(refreshToken?: string): OAuth2Client {
   const oauth2Client = new OAuth2Client(
     googleCalendarConfig.config.clientId,
     googleCalendarConfig.config.clientSecret,
-    googleCalendarConfig.config.redirectUri
+    googleCalendarConfig.config.redirectUri,
   );
 
   if (refreshToken) {
@@ -191,24 +195,27 @@ export function createGoogleAuthClient(refreshToken?: string): OAuth2Client {
  */
 export function createMicrosoftGraphClient(accessToken: string): Client {
   const authProvider = new CustomAuthProvider(accessToken);
-  
+
   return Client.initWithMiddleware({
-    authProvider
+    authProvider,
   });
 }
 
 /**
  * Create Salesforce client
  */
-export function createSalesforceClient(accessToken: string, instanceUrl?: string): jsforce.Connection {
+export function createSalesforceClient(
+  accessToken: string,
+  instanceUrl?: string,
+): jsforce.Connection {
   const conn = new jsforce.Connection({
     oauth2: {
       clientId: salesforceConfig.config.clientId,
       clientSecret: salesforceConfig.config.clientSecret,
-      redirectUri: salesforceConfig.config.redirectUri
+      redirectUri: salesforceConfig.config.redirectUri,
     },
     instanceUrl: instanceUrl || 'https://login.salesforce.com',
-    accessToken: accessToken
+    accessToken: accessToken,
   });
 
   return conn;
@@ -221,16 +228,20 @@ export function createStripeClient(accessToken?: string): Stripe {
   // For Stripe, we typically use the secret key for server-side operations
   // accessToken would be for Stripe Connect applications
   const apiKey = accessToken || process.env.STRIPE_SECRET_KEY;
-  
+
   return new Stripe(apiKey!, {
-    apiVersion: '2024-06-20'
+    apiVersion: '2024-06-20',
   });
 }
 
 /**
  * Create QuickBooks client
  */
-export function createQuickBooksClient(accessToken: string, refreshToken: string, companyId: string): QuickBooks {
+export function createQuickBooksClient(
+  accessToken: string,
+  refreshToken: string,
+  companyId: string,
+): QuickBooks {
   return new QuickBooks(
     quickbooksConfig.config.clientId,
     quickbooksConfig.config.clientSecret,
@@ -241,7 +252,7 @@ export function createQuickBooksClient(accessToken: string, refreshToken: string
     true, // debug mode
     null, // minor_version
     '2.0', // oauth_version
-    refreshToken
+    refreshToken,
   );
 }
 
@@ -250,7 +261,7 @@ export function createQuickBooksClient(accessToken: string, refreshToken: string
  */
 export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-  
+
   // Check Google Calendar config
   if (!googleCalendarConfig.config.clientId) {
     errors.push('GOOGLE_CLIENT_ID environment variable not set');
@@ -258,7 +269,7 @@ export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   if (!googleCalendarConfig.config.clientSecret) {
     errors.push('GOOGLE_CLIENT_SECRET environment variable not set');
   }
-  
+
   // Check Microsoft Calendar config
   if (!microsoftCalendarConfig.config.clientId) {
     errors.push('MICROSOFT_CLIENT_ID environment variable not set');
@@ -266,7 +277,7 @@ export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   if (!microsoftCalendarConfig.config.clientSecret) {
     errors.push('MICROSOFT_CLIENT_SECRET environment variable not set');
   }
-  
+
   // Check Salesforce config
   if (!salesforceConfig.config.clientId) {
     errors.push('SALESFORCE_CLIENT_ID environment variable not set');
@@ -274,7 +285,7 @@ export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   if (!salesforceConfig.config.clientSecret) {
     errors.push('SALESFORCE_CLIENT_SECRET environment variable not set');
   }
-  
+
   // Check QuickBooks config
   if (!quickbooksConfig.config.clientId) {
     errors.push('QUICKBOOKS_CLIENT_ID environment variable not set');
@@ -282,7 +293,7 @@ export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   if (!quickbooksConfig.config.clientSecret) {
     errors.push('QUICKBOOKS_CLIENT_SECRET environment variable not set');
   }
-  
+
   // Check Stripe config
   if (!stripeConfig.config.clientId) {
     errors.push('STRIPE_CLIENT_ID environment variable not set');
@@ -290,9 +301,9 @@ export function validateOAuthConfig(): { valid: boolean; errors: string[] } {
   if (!stripeConfig.config.clientSecret) {
     errors.push('STRIPE_SECRET_KEY environment variable not set');
   }
-  
+
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }

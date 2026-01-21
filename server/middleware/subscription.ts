@@ -267,7 +267,10 @@ export async function requireTrialOrPaid(req: Request, res: Response, next: Next
     }
 
     // Allow trial, active, and free subscriptions
-    if (!['active', 'trialing'].includes(status.subscription.status) && !status.subscription.isFree) {
+    if (
+      !['active', 'trialing'].includes(status.subscription.status) &&
+      !status.subscription.isFree
+    ) {
       return res.status(403).json({
         error: 'Subscription required',
         code: 'SUBSCRIPTION_REQUIRED',

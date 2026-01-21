@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,16 +26,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 import {
   FileText,
   Plus,
@@ -56,8 +56,8 @@ import {
   Calculator,
   RefreshCcw,
   XCircle,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Quote {
   id: string;
@@ -92,21 +92,21 @@ interface LeadQuotesProps {
 }
 
 const statusColors = {
-  draft: "bg-gray-100 text-gray-800",
-  sent: "bg-blue-100 text-blue-800",
-  accepted: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-  expired: "bg-yellow-100 text-yellow-800",
-  converted: "bg-purple-100 text-purple-800",
+  draft: 'bg-gray-100 text-gray-800',
+  sent: 'bg-blue-100 text-blue-800',
+  accepted: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  expired: 'bg-yellow-100 text-yellow-800',
+  converted: 'bg-purple-100 text-purple-800',
 };
 
 const statusLabels = {
-  draft: "Draft",
-  sent: "Sent",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  expired: "Expired",
-  converted: "Converted",
+  draft: 'Draft',
+  sent: 'Sent',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  expired: 'Expired',
+  converted: 'Converted',
 };
 
 const statusIcons = {
@@ -119,8 +119,8 @@ const statusIcons = {
 };
 
 export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [, setLocation] = useLocation();
@@ -134,7 +134,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["/api/quotes", "lead", leadId],
+    queryKey: ['/api/quotes', 'lead', leadId],
     enabled: !!leadId,
     queryFn: async () => apiRequest(`/api/quotes?leadId=${leadId}`),
   });
@@ -142,14 +142,14 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
   // Update quote status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) =>
-      apiRequest(`/api/quotes/${id}/status`, "PATCH", { status }),
+      apiRequest(`/api/quotes/${id}/status`, 'PATCH', { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/quotes", "lead", leadId],
+        queryKey: ['/api/quotes', 'lead', leadId],
       });
       toast({
-        title: "Success",
-        description: "Quote status updated",
+        title: 'Success',
+        description: 'Quote status updated',
       });
     },
   });
@@ -160,8 +160,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
       quote.quoteNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.title?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || quote.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -170,29 +169,26 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
   const stats = {
     total: quotes.length,
     totalValue: quotes.reduce((sum: number, q: Quote) => {
-      const amount = parseFloat(q.totalAmount?.toString() || "0");
+      const amount = parseFloat(q.totalAmount?.toString() || '0');
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0),
-    pending: quotes.filter((q: Quote) => ["draft", "sent"].includes(q.status))
-      .length,
-    accepted: quotes.filter((q: Quote) => q.status === "accepted").length,
+    pending: quotes.filter((q: Quote) => ['draft', 'sent'].includes(q.status)).length,
+    accepted: quotes.filter((q: Quote) => q.status === 'accepted').length,
     winRate:
       quotes.length > 0
-        ? (quotes.filter((q: Quote) => q.status === "accepted").length /
-            quotes.length) *
-          100
+        ? (quotes.filter((q: Quote) => q.status === 'accepted').length / quotes.length) * 100
         : 0,
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   const getStatusIcon = (status: string) => {
@@ -205,7 +201,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
     const params = new URLSearchParams({
       leadId: leadId,
       companyName: leadName,
-      prefill: "true",
+      prefill: 'true',
     });
     setLocation(`/quotes/new?${params.toString()}`);
   };
@@ -230,9 +226,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(stats.totalValue)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
                 <p className="text-sm text-gray-600">Total Value</p>
               </div>
             </div>
@@ -254,9 +248,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
             <div className="flex items-center">
               <TrendingUp className="h-8 w-8 text-purple-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {stats.winRate.toFixed(1)}%
-                </p>
+                <p className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
                 <p className="text-sm text-gray-600">Win Rate</p>
               </div>
             </div>
@@ -330,9 +322,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="flex flex-col items-center space-y-2">
                           <Calculator className="h-8 w-8 text-gray-400" />
-                          <p className="text-gray-500">
-                            No quotes found for this lead
-                          </p>
+                          <p className="text-gray-500">No quotes found for this lead</p>
                           <Button size="sm" onClick={handleCreateQuote}>
                             <Plus className="h-4 w-4 mr-2" />
                             Create First Quote
@@ -344,42 +334,28 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                     filteredQuotes.map((quote) => (
                       <TableRow key={quote.id} className="hover:bg-gray-50">
                         <TableCell>
-                          <div className="font-medium text-blue-600">
-                            {quote.quoteNumber}
-                          </div>
+                          <div className="font-medium text-blue-600">{quote.quoteNumber}</div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{quote.title}</div>
                         </TableCell>
                         <TableCell>
                           <Badge
-                            className={
-                              statusColors[
-                                quote.status as keyof typeof statusColors
-                              ]
-                            }
+                            className={statusColors[quote.status as keyof typeof statusColors]}
                           >
                             <div className="flex items-center space-x-1">
                               {getStatusIcon(quote.status)}
                               <span className="capitalize">
-                                {
-                                  statusLabels[
-                                    quote.status as keyof typeof statusLabels
-                                  ]
-                                }
+                                {statusLabels[quote.status as keyof typeof statusLabels]}
                               </span>
                             </div>
                           </Badge>
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(
-                            parseFloat(quote.totalAmount?.toString() || "0")
-                          )}
+                          {formatCurrency(parseFloat(quote.totalAmount?.toString() || '0'))}
                         </TableCell>
                         <TableCell>
-                          {quote.validUntil
-                            ? formatDate(quote.validUntil)
-                            : "-"}
+                          {quote.validUntil ? formatDate(quote.validUntil) : '-'}
                         </TableCell>
                         <TableCell>{formatDate(quote.createdAt)}</TableCell>
                         <TableCell>
@@ -391,19 +367,11 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setLocation(`/quotes/${quote.id}`)
-                                }
-                              >
+                              <DropdownMenuItem onClick={() => setLocation(`/quotes/${quote.id}`)}>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Quote
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  setLocation(`/quotes/${quote.id}`)
-                                }
-                              >
+                              <DropdownMenuItem onClick={() => setLocation(`/quotes/${quote.id}`)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Quote
                               </DropdownMenuItem>
@@ -412,10 +380,10 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                                 onClick={() =>
                                   updateStatusMutation.mutate({
                                     id: quote.id,
-                                    status: "sent",
+                                    status: 'sent',
                                   })
                                 }
-                                disabled={quote.status === "sent"}
+                                disabled={quote.status === 'sent'}
                               >
                                 <Send className="mr-2 h-4 w-4" />
                                 Send Quote
@@ -424,10 +392,10 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                                 onClick={() =>
                                   updateStatusMutation.mutate({
                                     id: quote.id,
-                                    status: "accepted",
+                                    status: 'accepted',
                                   })
                                 }
-                                disabled={quote.status === "accepted"}
+                                disabled={quote.status === 'accepted'}
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" />
                                 Mark Accepted

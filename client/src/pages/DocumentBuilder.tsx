@@ -5,11 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Plus, FileText, Download, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -31,33 +43,33 @@ interface DocumentData {
   shipToAddress: string;
   poNumber: string;
   orderDate: string;
-  
+
   // Equipment/Line Items
   lineItems: QuoteLineItem[];
-  
+
   // Service Contract Fields
   includeServiceContract: boolean;
   serviceTerm: number; // months
   serviceStartDate: string;
   autoRenewal: boolean;
-  
+
   // Meter/Billing Details
   minimumBlackPrints: number;
   minimumColorPrints: number;
   blackRate: number;
   colorRate: number;
   monthlyBase: number;
-  
+
   // Consumable Supplies
   includeConsumables: boolean;
   includeBlackSupplies: boolean;
   includeColorSupplies: boolean;
-  
+
   // Terms and Conditions
   paymentTerms: string;
   warrantyTerms: string;
   specialTerms: string;
-  
+
   // Customer Info
   customerId: string;
   customerName: string;
@@ -75,7 +87,7 @@ export default function DocumentBuilder() {
     minimumBlackPrints: 500,
     minimumColorPrints: 500,
     blackRate: 0.008,
-    colorRate: 0.050,
+    colorRate: 0.05,
     monthlyBase: 30,
     includeConsumables: true,
     includeBlackSupplies: true,
@@ -112,7 +124,7 @@ export default function DocumentBuilder() {
     const quote = availableQuotes.find((q: any) => q.id === selectedQuoteId);
     if (quote) {
       const customer = customers.find((c: any) => c.id === quote.customerId);
-      setDocumentForm(prev => ({
+      setDocumentForm((prev) => ({
         ...prev,
         customerId: quote.customerId,
         customerName: customer?.company_name || customer?.primary_contact_name || '',
@@ -149,7 +161,7 @@ export default function DocumentBuilder() {
       });
       if (!res.ok) throw new Error('Failed to generate PDF');
       const blob = await res.blob();
-      
+
       // Download the PDF
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -174,23 +186,39 @@ export default function DocumentBuilder() {
 
   if (isLoading) {
     return (
-      <MainLayout title="Document Builder" description="Create combined purchase agreements and service contracts">
+      <MainLayout
+        title="Document Builder"
+        description="Create combined purchase agreements and service contracts"
+      >
         <div className="animate-pulse space-y-4">
-          <Card><CardContent className="p-6"><div className="h-4 bg-gray-200 rounded w-1/4"></div></CardContent></Card>
-          <Card><CardContent className="p-6"><div className="h-4 bg-gray-200 rounded w-1/2"></div></CardContent></Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            </CardContent>
+          </Card>
         </div>
       </MainLayout>
     );
   }
 
   return (
-    <MainLayout title="Document Builder" description="Create combined purchase agreements and service contracts">
+    <MainLayout
+      title="Document Builder"
+      description="Create combined purchase agreements and service contracts"
+    >
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold">Document Builder</h2>
-            <p className="text-muted-foreground">Create comprehensive purchase agreements with service contracts</p>
+            <p className="text-muted-foreground">
+              Create comprehensive purchase agreements with service contracts
+            </p>
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
@@ -203,7 +231,7 @@ export default function DocumentBuilder() {
               <DialogHeader>
                 <DialogTitle>Create Purchase Agreement & Service Contract</DialogTitle>
               </DialogHeader>
-              
+
               <div className="space-y-6">
                 {/* Quote Import Section */}
                 <Card>
@@ -226,11 +254,12 @@ export default function DocumentBuilder() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {selectedQuoteId && (
                       <div className="bg-blue-50 p-4 rounded-lg">
                         <p className="text-sm text-blue-800">
-                          ✓ Quote data imported! Line items, customer info, and pricing will be pre-filled.
+                          ✓ Quote data imported! Line items, customer info, and pricing will be
+                          pre-filled.
                         </p>
                       </div>
                     )}
@@ -245,32 +274,40 @@ export default function DocumentBuilder() {
                   <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label>Agreement Number</Label>
-                      <Input 
+                      <Input
                         value={documentForm.agreementNumber || ''}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, agreementNumber: e.target.value }))}
+                        onChange={(e) =>
+                          setDocumentForm((prev) => ({ ...prev, agreementNumber: e.target.value }))
+                        }
                         placeholder="Auto-generated"
                       />
                     </div>
                     <div>
                       <Label>Order Date</Label>
-                      <Input 
+                      <Input
                         type="date"
                         value={documentForm.orderDate || ''}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, orderDate: e.target.value }))}
+                        onChange={(e) =>
+                          setDocumentForm((prev) => ({ ...prev, orderDate: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
                       <Label>Buyer Name</Label>
-                      <Input 
+                      <Input
                         value={documentForm.buyerName || documentForm.customerName || ''}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, buyerName: e.target.value }))}
+                        onChange={(e) =>
+                          setDocumentForm((prev) => ({ ...prev, buyerName: e.target.value }))
+                        }
                       />
                     </div>
                     <div>
                       <Label>P.O. Number</Label>
-                      <Input 
+                      <Input
                         value={documentForm.poNumber || ''}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, poNumber: e.target.value }))}
+                        onChange={(e) =>
+                          setDocumentForm((prev) => ({ ...prev, poNumber: e.target.value }))
+                        }
                       />
                     </div>
                   </CardContent>
@@ -285,10 +322,15 @@ export default function DocumentBuilder() {
                     {(documentForm.lineItems || []).length > 0 ? (
                       <div className="space-y-3">
                         {documentForm.lineItems.map((item, index) => (
-                          <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                          <div
+                            key={index}
+                            className="flex justify-between items-center p-3 bg-gray-50 rounded"
+                          >
                             <div className="flex-1">
                               <p className="font-medium">{item.description}</p>
-                              <p className="text-sm text-gray-600">Qty: {item.quantity} × ${item.unitPrice}</p>
+                              <p className="text-sm text-gray-600">
+                                Qty: {item.quantity} × ${item.unitPrice}
+                              </p>
                             </div>
                             <div className="text-right">
                               <p className="font-bold">${item.totalPrice.toFixed(2)}</p>
@@ -302,7 +344,9 @@ export default function DocumentBuilder() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500">No line items. Import from a quote to populate.</p>
+                      <p className="text-gray-500">
+                        No line items. Import from a quote to populate.
+                      </p>
                     )}
                   </CardContent>
                 </Card>
@@ -314,11 +358,14 @@ export default function DocumentBuilder() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
+                      <Checkbox
                         id="includeService"
                         checked={documentForm.includeServiceContract}
-                        onCheckedChange={(checked) => 
-                          setDocumentForm(prev => ({ ...prev, includeServiceContract: !!checked }))
+                        onCheckedChange={(checked) =>
+                          setDocumentForm((prev) => ({
+                            ...prev,
+                            includeServiceContract: !!checked,
+                          }))
                         }
                       />
                       <Label htmlFor="includeService">Include Service Contract</Label>
@@ -329,34 +376,38 @@ export default function DocumentBuilder() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <Label>Service Term (Months)</Label>
-                            <Input 
+                            <Input
                               type="number"
                               value={documentForm.serviceTerm || 60}
-                              onChange={(e) => setDocumentForm(prev => ({ 
-                                ...prev, 
-                                serviceTerm: parseInt(e.target.value) || 60 
-                              }))}
+                              onChange={(e) =>
+                                setDocumentForm((prev) => ({
+                                  ...prev,
+                                  serviceTerm: parseInt(e.target.value) || 60,
+                                }))
+                              }
                             />
                           </div>
                           <div>
                             <Label>Service Start Date</Label>
-                            <Input 
+                            <Input
                               type="date"
                               value={documentForm.serviceStartDate || ''}
-                              onChange={(e) => setDocumentForm(prev => ({ 
-                                ...prev, 
-                                serviceStartDate: e.target.value 
-                              }))}
+                              onChange={(e) =>
+                                setDocumentForm((prev) => ({
+                                  ...prev,
+                                  serviceStartDate: e.target.value,
+                                }))
+                              }
                             />
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                          <Checkbox 
+                          <Checkbox
                             id="autoRenewal"
                             checked={documentForm.autoRenewal}
-                            onCheckedChange={(checked) => 
-                              setDocumentForm(prev => ({ ...prev, autoRenewal: !!checked }))
+                            onCheckedChange={(checked) =>
+                              setDocumentForm((prev) => ({ ...prev, autoRenewal: !!checked }))
                             }
                           />
                           <Label htmlFor="autoRenewal">Auto-Renewal (12-month terms)</Label>
@@ -368,62 +419,72 @@ export default function DocumentBuilder() {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <Label>Monthly Base</Label>
-                              <Input 
+                              <Input
                                 type="number"
                                 step="0.01"
                                 value={documentForm.monthlyBase || 30}
-                                onChange={(e) => setDocumentForm(prev => ({ 
-                                  ...prev, 
-                                  monthlyBase: parseFloat(e.target.value) || 30 
-                                }))}
+                                onChange={(e) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    monthlyBase: parseFloat(e.target.value) || 30,
+                                  }))
+                                }
                               />
                             </div>
                             <div>
                               <Label>Black Rate (per print)</Label>
-                              <Input 
+                              <Input
                                 type="number"
                                 step="0.001"
                                 value={documentForm.blackRate || 0.008}
-                                onChange={(e) => setDocumentForm(prev => ({ 
-                                  ...prev, 
-                                  blackRate: parseFloat(e.target.value) || 0.008 
-                                }))}
+                                onChange={(e) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    blackRate: parseFloat(e.target.value) || 0.008,
+                                  }))
+                                }
                               />
                             </div>
                             <div>
                               <Label>Color Rate (per print)</Label>
-                              <Input 
+                              <Input
                                 type="number"
                                 step="0.001"
-                                value={documentForm.colorRate || 0.050}
-                                onChange={(e) => setDocumentForm(prev => ({ 
-                                  ...prev, 
-                                  colorRate: parseFloat(e.target.value) || 0.050 
-                                }))}
+                                value={documentForm.colorRate || 0.05}
+                                onChange={(e) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    colorRate: parseFloat(e.target.value) || 0.05,
+                                  }))
+                                }
                               />
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label>Minimum Black Prints</Label>
-                              <Input 
+                              <Input
                                 type="number"
                                 value={documentForm.minimumBlackPrints || 500}
-                                onChange={(e) => setDocumentForm(prev => ({ 
-                                  ...prev, 
-                                  minimumBlackPrints: parseInt(e.target.value) || 500 
-                                }))}
+                                onChange={(e) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    minimumBlackPrints: parseInt(e.target.value) || 500,
+                                  }))
+                                }
                               />
                             </div>
                             <div>
                               <Label>Minimum Color Prints</Label>
-                              <Input 
+                              <Input
                                 type="number"
                                 value={documentForm.minimumColorPrints || 500}
-                                onChange={(e) => setDocumentForm(prev => ({ 
-                                  ...prev, 
-                                  minimumColorPrints: parseInt(e.target.value) || 500 
-                                }))}
+                                onChange={(e) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    minimumColorPrints: parseInt(e.target.value) || 500,
+                                  }))
+                                }
                               />
                             </div>
                           </div>
@@ -434,24 +495,34 @@ export default function DocumentBuilder() {
                           <Label className="text-base font-medium">Consumable Supplies</Label>
                           <div className="mt-2 space-y-2">
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
+                              <Checkbox
                                 id="includeBlackSupplies"
                                 checked={documentForm.includeBlackSupplies}
-                                onCheckedChange={(checked) => 
-                                  setDocumentForm(prev => ({ ...prev, includeBlackSupplies: !!checked }))
+                                onCheckedChange={(checked) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    includeBlackSupplies: !!checked,
+                                  }))
                                 }
                               />
-                              <Label htmlFor="includeBlackSupplies">Include Black Supplies (toner, developer, fuser lubricant)</Label>
+                              <Label htmlFor="includeBlackSupplies">
+                                Include Black Supplies (toner, developer, fuser lubricant)
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
+                              <Checkbox
                                 id="includeColorSupplies"
                                 checked={documentForm.includeColorSupplies}
-                                onCheckedChange={(checked) => 
-                                  setDocumentForm(prev => ({ ...prev, includeColorSupplies: !!checked }))
+                                onCheckedChange={(checked) =>
+                                  setDocumentForm((prev) => ({
+                                    ...prev,
+                                    includeColorSupplies: !!checked,
+                                  }))
                                 }
                               />
-                              <Label htmlFor="includeColorSupplies">Include Color Supplies (toner, developer, fuser lubricant)</Label>
+                              <Label htmlFor="includeColorSupplies">
+                                Include Color Supplies (toner, developer, fuser lubricant)
+                              </Label>
                             </div>
                           </div>
                         </div>
@@ -468,9 +539,11 @@ export default function DocumentBuilder() {
                   <CardContent className="space-y-4">
                     <div>
                       <Label>Payment Terms</Label>
-                      <Select 
-                        value={documentForm.paymentTerms} 
-                        onValueChange={(value) => setDocumentForm(prev => ({ ...prev, paymentTerms: value }))}
+                      <Select
+                        value={documentForm.paymentTerms}
+                        onValueChange={(value) =>
+                          setDocumentForm((prev) => ({ ...prev, paymentTerms: value }))
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -485,18 +558,25 @@ export default function DocumentBuilder() {
                     </div>
                     <div>
                       <Label>Special Terms</Label>
-                      <Textarea 
+                      <Textarea
                         value={documentForm.specialTerms || ''}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, specialTerms: e.target.value }))}
+                        onChange={(e) =>
+                          setDocumentForm((prev) => ({ ...prev, specialTerms: e.target.value }))
+                        }
                         placeholder="Any special terms or conditions"
                         rows={3}
                       />
                     </div>
                     <div>
                       <Label>Authorized Signer Title</Label>
-                      <Input 
+                      <Input
                         value={documentForm.authorizedSignerTitle || ''}
-                        onChange={(e) => setDocumentForm(prev => ({ ...prev, authorizedSignerTitle: e.target.value }))}
+                        onChange={(e) =>
+                          setDocumentForm((prev) => ({
+                            ...prev,
+                            authorizedSignerTitle: e.target.value,
+                          }))
+                        }
                         placeholder="e.g., VP Director Tax & Treasury"
                       />
                     </div>
@@ -505,13 +585,10 @@ export default function DocumentBuilder() {
 
                 {/* Actions */}
                 <div className="flex justify-end space-x-4 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateOpen(false)}
-                  >
+                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleCreateDocument}
                     disabled={createDocumentMutation.isPending || !documentForm.customerId}
                   >
@@ -546,31 +623,25 @@ export default function DocumentBuilder() {
                   <div className="flex justify-between items-start">
                     <div className="space-y-2">
                       <div className="flex items-center space-x-2">
-                        <h3 className="text-lg font-semibold">
-                          Agreement #{doc.agreementNumber}
-                        </h3>
-                        <Badge variant={doc.includeServiceContract ? "default" : "secondary"}>
-                          {doc.includeServiceContract ? "Purchase + Service" : "Purchase Only"}
+                        <h3 className="text-lg font-semibold">Agreement #{doc.agreementNumber}</h3>
+                        <Badge variant={doc.includeServiceContract ? 'default' : 'secondary'}>
+                          {doc.includeServiceContract ? 'Purchase + Service' : 'Purchase Only'}
                         </Badge>
                       </div>
-                      <p className="text-gray-600">
-                        Customer: {doc.customerName || doc.buyerName}
-                      </p>
+                      <p className="text-gray-600">Customer: {doc.customerName || doc.buyerName}</p>
                       <p className="text-sm text-gray-500">
                         Created: {format(new Date(doc.createdAt), 'MMM dd, yyyy')}
                       </p>
                       {doc.includeServiceContract && (
                         <div className="text-sm text-blue-600">
-                          Service Term: {doc.serviceTerm} months • 
-                          Base: ${doc.monthlyBase} • 
-                          B&W: ${doc.blackRate}/print • 
-                          Color: ${doc.colorRate}/print
+                          Service Term: {doc.serviceTerm} months • Base: ${doc.monthlyBase} • B&W: $
+                          {doc.blackRate}/print • Color: ${doc.colorRate}/print
                         </div>
                       )}
                     </div>
                     <div className="flex space-x-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => generatePDFMutation.mutate(doc.id)}
                         disabled={generatePDFMutation.isPending}

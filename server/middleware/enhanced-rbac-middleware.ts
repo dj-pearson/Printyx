@@ -13,6 +13,7 @@ import {
   permissionOverrides,
   permissionCache,
   organizationalUnits,
+  rbacAuditLog,
   type Permission,
   type EnhancedRole,
   type UserRoleAssignment,
@@ -607,12 +608,14 @@ export const requirePermission = (
       return;
     }
 
-    // Platform admins bypass all permission checks
+    const requiredPermissions = Array.isArray(permission) ? permission : [permission];
+
+    // Platform admins bypass all permission checks - LOG THIS FOR AUDIT
     if (req.user.hasAllPermissions) {
+      logAdminBypass(req, 'PERMISSION', requiredPermissions);
       return next();
     }
 
-    const requiredPermissions = Array.isArray(permission) ? permission : [permission];
     const userPermissions = req.user.permissions;
 
     // Check if user has ANY of the required permissions
@@ -674,8 +677,9 @@ export const requireAllPermissions = (
       return;
     }
 
-    // Platform admins bypass all permission checks
+    // Platform admins bypass all permission checks - LOG THIS FOR AUDIT
     if (req.user.hasAllPermissions) {
+      logAdminBypass(req, 'ALL_PERMISSIONS', requiredPermissions);
       return next();
     }
 
@@ -714,8 +718,9 @@ export const requireAnyPermission = (
       return;
     }
 
-    // Platform admins bypass all permission checks
+    // Platform admins bypass all permission checks - LOG THIS FOR AUDIT
     if (req.user.hasAllPermissions) {
+      logAdminBypass(req, 'ANY_PERMISSION', requiredPermissions);
       return next();
     }
 
@@ -952,8 +957,11 @@ export const requireApproval = (
       return;
     }
 
-    // Platform admins bypass approval requirements
+    // Platform admins bypass approval requirements - LOG THIS FOR AUDIT
     if (req.user.hasAllPermissions) {
+      logAdminBypass(req, 'APPROVAL', [permissionCode], {
+        resourceId: req.params.id || req.body?.resourceId,
+      });
       return next();
     }
 
@@ -1014,6 +1022,31 @@ interface RBACLogEntry {
 }
 
 /**
+ * Log admin bypass events for audit trail
+ * CRITICAL: All permission bypasses by platform admins must be logged
+ */
+async function logAdminBypass(
+  req: AuthenticatedRequest,
+  bypassType: 'PERMISSION' | 'ALL_PERMISSIONS' | 'ANY_PERMISSION' | 'APPROVAL' | 'LEVEL' | 'SCOPE',
+  requiredPermissions: string[] | null,
+  additionalDetails: Record<string, any> = {},
+): Promise<void> {
+  const details: Record<string, any> = {
+    bypassType,
+    requiredPermissions,
+    userRoleLevel: req.user?.roleLevel,
+    userRoleCode: req.user?.roleCode,
+    hasAllPermissions: req.user?.hasAllPermissions,
+    requestBody: req.body ? Object.keys(req.body) : [], // Log keys only, not values (security)
+    requestParams: req.params,
+    requestQuery: req.query,
+    ...additionalDetails,
+  };
+
+  await logRBACEvent(req, 'ADMIN_BYPASS', details);
+}
+
+/**
  * Log RBAC events for audit purposes
  * Writes to both console and database for compliance
  */
@@ -1039,7 +1072,13 @@ async function logRBACEvent(
   };
 
   // Log to console for immediate visibility
-  const logLevel = ['PERMISSION_DENIED', 'MFA_REQUIRED', 'APPROVAL_REQUIRED'].includes(eventType)
+  // ADMIN_BYPASS events are logged at 'warn' level for security monitoring
+  const logLevel = [
+    'PERMISSION_DENIED',
+    'MFA_REQUIRED',
+    'APPROVAL_REQUIRED',
+    'ADMIN_BYPASS',
+  ].includes(eventType)
     ? 'warn'
     : 'info';
   console[logLevel](`[RBAC] ${eventType}:`, JSON.stringify(logEntry, null, 2));
@@ -1047,20 +1086,21 @@ async function logRBACEvent(
   // Write to database asynchronously (fire and forget for performance)
   try {
     await db
-      .execute(
-        sql`
-      INSERT INTO rbac_audit_log (
-        event_type, user_id, tenant_id, role_code, role_level,
-        details, route, method, ip_address, user_agent, session_id, request_id
-      ) VALUES (
-        ${eventType}, ${req.user?.id || null}, ${req.user?.tenantId || null},
-        ${req.user?.roleCode || null}, ${req.user?.roleLevel || null},
-        ${JSON.stringify(details)}, ${req.path}, ${req.method},
-        ${req.ip || null}, ${req.get('user-agent') || null},
-        ${req.session?.id || null}, ${(req as any).requestId || null}
-      )
-    `,
-      )
+      .insert(rbacAuditLog)
+      .values({
+        eventType,
+        userId: req.user?.id || null,
+        tenantId: req.user?.tenantId || null,
+        roleCode: req.user?.roleCode || null,
+        roleLevel: req.user?.roleLevel || null,
+        details,
+        route: req.path,
+        method: req.method,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+        sessionId: req.session?.id || null,
+        requestId: (req as any).requestId || null,
+      })
       .catch((err) => {
         // Table might not exist yet - silently fail
         if (!err.message?.includes('does not exist')) {

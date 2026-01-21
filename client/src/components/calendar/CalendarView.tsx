@@ -2,18 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
-  Clock, 
-  MapPin, 
-  Users, 
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  MapPin,
+  Users,
   Brain,
   Plus,
-  Settings
+  Settings,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+} from 'date-fns';
 
 interface CalendarEvent {
   id: string;
@@ -108,24 +117,29 @@ export default function CalendarView({ className }: CalendarViewProps) {
   const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => 
-      isSameDay(new Date(event.startTime), date)
-    );
+    return events.filter((event) => isSameDay(new Date(event.startTime), date));
   };
 
   const getEventTypeColor = (eventType: string, isAiGenerated: boolean) => {
     if (isAiGenerated) {
       switch (eventType) {
-        case 'task': return 'bg-blue-100 text-blue-800 border-blue-200';
-        case 'focus_time': return 'bg-purple-100 text-purple-800 border-purple-200';
-        case 'meeting': return 'bg-green-100 text-green-800 border-green-200';
-        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+        case 'task':
+          return 'bg-blue-100 text-blue-800 border-blue-200';
+        case 'focus_time':
+          return 'bg-purple-100 text-purple-800 border-purple-200';
+        case 'meeting':
+          return 'bg-green-100 text-green-800 border-green-200';
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200';
       }
     } else {
       switch (eventType) {
-        case 'meeting': return 'bg-orange-100 text-orange-800 border-orange-200';
-        case 'task': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-        default: return 'bg-gray-100 text-gray-800 border-gray-200';
+        case 'meeting':
+          return 'bg-orange-100 text-orange-800 border-orange-200';
+        case 'task':
+          return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        default:
+          return 'bg-gray-100 text-gray-800 border-gray-200';
       }
     }
   };
@@ -138,9 +152,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => 
-      direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1)
-    );
+    setCurrentDate((prev) => (direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1)));
   };
 
   if (loading) {
@@ -174,29 +186,19 @@ export default function CalendarView({ className }: CalendarViewProps) {
             </Button>
           </div>
         </div>
-        
+
         {/* Calendar Navigation */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigateMonth('prev')}
-            >
+            <Button variant="outline" size="sm" onClick={() => navigateMonth('prev')}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <h3 className="text-lg font-semibold">
-              {format(currentDate, 'MMMM yyyy')}
-            </h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigateMonth('next')}
-            >
+            <h3 className="text-lg font-semibold">{format(currentDate, 'MMMM yyyy')}</h3>
+            <Button variant="outline" size="sm" onClick={() => navigateMonth('next')}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          
+
           <div className="flex space-x-1">
             {(['month', 'week', 'day'] as const).map((viewType) => (
               <Button
@@ -216,18 +218,18 @@ export default function CalendarView({ className }: CalendarViewProps) {
         {view === 'month' && (
           <div className="grid grid-cols-7 gap-1">
             {/* Day headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
                 {day}
               </div>
             ))}
-            
+
             {/* Calendar days */}
             {calendarDays.map((date, index) => {
               const dayEvents = getEventsForDate(date);
               const isSelected = isSameDay(date, selectedDate);
               const isCurrentMonth = isSameMonth(date, currentDate);
-              
+
               return (
                 <div
                   key={index}
@@ -238,12 +240,10 @@ export default function CalendarView({ className }: CalendarViewProps) {
                   `}
                   onClick={() => setSelectedDate(date)}
                 >
-                  <div className="text-sm font-medium mb-1">
-                    {format(date, 'd')}
-                  </div>
-                  
+                  <div className="text-sm font-medium mb-1">{format(date, 'd')}</div>
+
                   <div className="space-y-1">
-                    {dayEvents.slice(0, 2).map(event => (
+                    {dayEvents.slice(0, 2).map((event) => (
                       <div
                         key={event.id}
                         className={`
@@ -253,17 +253,13 @@ export default function CalendarView({ className }: CalendarViewProps) {
                         title={`${event.title} - ${formatEventTime(event.startTime, event.endTime, event.isAllDay)}`}
                       >
                         <div className="flex items-center">
-                          {event.isAiGenerated && (
-                            <Brain className="h-2 w-2 mr-1 flex-shrink-0" />
-                          )}
+                          {event.isAiGenerated && <Brain className="h-2 w-2 mr-1 flex-shrink-0" />}
                           <span className="truncate">{event.title}</span>
                         </div>
                       </div>
                     ))}
                     {dayEvents.length > 2 && (
-                      <div className="text-xs text-gray-500 pl-1">
-                        +{dayEvents.length - 2} more
-                      </div>
+                      <div className="text-xs text-gray-500 pl-1">+{dayEvents.length - 2} more</div>
                     )}
                   </div>
                 </div>
@@ -278,48 +274,46 @@ export default function CalendarView({ className }: CalendarViewProps) {
             <h4 className="font-medium mb-3">
               Events for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
             </h4>
-            
+
             {getEventsForDate(selectedDate).length === 0 ? (
               <p className="text-gray-500 text-sm">No events scheduled</p>
             ) : (
               <div className="space-y-3">
-                {getEventsForDate(selectedDate).map(event => (
+                {getEventsForDate(selectedDate).map((event) => (
                   <div key={event.id} className="border rounded-lg p-3">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center">
-                        {event.isAiGenerated && (
-                          <Brain className="h-4 w-4 mr-2 text-blue-600" />
-                        )}
+                        {event.isAiGenerated && <Brain className="h-4 w-4 mr-2 text-blue-600" />}
                         <h5 className="font-medium">{event.title}</h5>
                       </div>
-                      <Badge 
-                        variant="outline" 
+                      <Badge
+                        variant="outline"
                         className={getEventTypeColor(event.eventType, event.isAiGenerated)}
                       >
                         {event.eventType.replace('_', ' ')}
                       </Badge>
                     </div>
-                    
+
                     <div className="space-y-1 text-sm text-gray-600">
                       <div className="flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
                         {formatEventTime(event.startTime, event.endTime, event.isAllDay)}
                       </div>
-                      
+
                       {event.location && (
                         <div className="flex items-center">
                           <MapPin className="h-3 w-3 mr-1" />
                           {event.location}
                         </div>
                       )}
-                      
+
                       {event.attendees && event.attendees.length > 0 && (
                         <div className="flex items-center">
                           <Users className="h-3 w-3 mr-1" />
                           {event.attendees.length} attendee{event.attendees.length !== 1 ? 's' : ''}
                         </div>
                       )}
-                      
+
                       {event.isAiGenerated && event.aiConfidence && (
                         <div className="flex items-center">
                           <Brain className="h-3 w-3 mr-1" />
@@ -327,7 +321,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
                         </div>
                       )}
                     </div>
-                    
+
                     {event.description && (
                       <p className="text-sm text-gray-700 mt-2">{event.description}</p>
                     )}

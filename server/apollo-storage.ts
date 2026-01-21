@@ -1,5 +1,5 @@
-import { db } from "./db";
-import { eq, and, sql, desc, gte, lt, inArray } from "drizzle-orm";
+import { db } from './db';
+import { eq, and, sql, desc, gte, lt, inArray } from 'drizzle-orm';
 import {
   centralizedApolloContacts,
   tenantApolloLeads,
@@ -12,12 +12,12 @@ import {
   ApolloSearchCache,
   InsertApolloSearchCache,
   InsertApolloApiUsage,
-} from "@shared/schema";
-import crypto from "crypto";
+} from '@shared/schema';
+import crypto from 'crypto';
 
 export class ApolloStorage {
   // ===== Centralized Apollo Contacts =====
-  
+
   async getCentralizedContact(apolloId: string): Promise<CentralizedApolloContact | null> {
     const [contact] = await db
       .select()
@@ -36,11 +36,11 @@ export class ApolloStorage {
   }
 
   async createOrUpdateCentralizedContact(
-    data: InsertCentralizedApolloContact
+    data: InsertCentralizedApolloContact,
   ): Promise<CentralizedApolloContact> {
     // Check if exists
     const existing = await this.getCentralizedContact(data.apolloId);
-    
+
     if (existing) {
       // Update existing contact and increment access count
       const [updated] = await db
@@ -57,10 +57,7 @@ export class ApolloStorage {
     }
 
     // Create new contact
-    const [created] = await db
-      .insert(centralizedApolloContacts)
-      .values(data)
-      .returning();
+    const [created] = await db.insert(centralizedApolloContacts).values(data).returning();
     return created;
   }
 
@@ -73,7 +70,7 @@ export class ApolloStorage {
       addedToCrm?: boolean;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<TenantApolloLead[]> {
     const conditions = [eq(tenantApolloLeads.tenantId, tenantId)];
 
@@ -106,55 +103,39 @@ export class ApolloStorage {
     const [lead] = await db
       .select()
       .from(tenantApolloLeads)
-      .where(
-        and(
-          eq(tenantApolloLeads.id, id),
-          eq(tenantApolloLeads.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(tenantApolloLeads.id, id), eq(tenantApolloLeads.tenantId, tenantId)))
       .limit(1);
     return lead || null;
   }
 
   async getTenantLeadByApolloId(
     apolloId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<TenantApolloLead | null> {
     const [lead] = await db
       .select()
       .from(tenantApolloLeads)
       .where(
-        and(
-          eq(tenantApolloLeads.apolloId, apolloId),
-          eq(tenantApolloLeads.tenantId, tenantId)
-        )
+        and(eq(tenantApolloLeads.apolloId, apolloId), eq(tenantApolloLeads.tenantId, tenantId)),
       )
       .limit(1);
     return lead || null;
   }
 
   async createTenantLead(data: InsertTenantApolloLead): Promise<TenantApolloLead> {
-    const [created] = await db
-      .insert(tenantApolloLeads)
-      .values(data)
-      .returning();
+    const [created] = await db.insert(tenantApolloLeads).values(data).returning();
     return created;
   }
 
   async updateTenantLead(
     id: string,
     tenantId: string,
-    data: Partial<TenantApolloLead>
+    data: Partial<TenantApolloLead>,
   ): Promise<TenantApolloLead | null> {
     const [updated] = await db
       .update(tenantApolloLeads)
       .set({ ...data, updatedAt: new Date() })
-      .where(
-        and(
-          eq(tenantApolloLeads.id, id),
-          eq(tenantApolloLeads.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(tenantApolloLeads.id, id), eq(tenantApolloLeads.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -162,10 +143,10 @@ export class ApolloStorage {
   async markLeadAsViewed(
     id: string,
     tenantId: string,
-    userId: string
+    userId: string,
   ): Promise<TenantApolloLead | null> {
     return await this.updateTenantLead(id, tenantId, {
-      status: "viewed",
+      status: 'viewed',
       viewedAt: new Date(),
       viewedBy: userId,
     });
@@ -175,10 +156,10 @@ export class ApolloStorage {
     id: string,
     tenantId: string,
     userId: string,
-    businessRecordId: string
+    businessRecordId: string,
   ): Promise<TenantApolloLead | null> {
     return await this.updateTenantLead(id, tenantId, {
-      status: "added_to_crm",
+      status: 'added_to_crm',
       addedToCrm: true,
       addedAt: new Date(),
       addedBy: userId,
@@ -190,10 +171,10 @@ export class ApolloStorage {
     id: string,
     tenantId: string,
     userId: string,
-    reason: string
+    reason: string,
   ): Promise<TenantApolloLead | null> {
     return await this.updateTenantLead(id, tenantId, {
-      status: "rejected",
+      status: 'rejected',
       rejectedAt: new Date(),
       rejectedBy: userId,
       rejectionReason: reason,
@@ -204,7 +185,7 @@ export class ApolloStorage {
 
   generateSearchHash(filters: any): string {
     const filterString = JSON.stringify(filters, Object.keys(filters).sort());
-    return crypto.createHash("md5").update(filterString).digest("hex");
+    return crypto.createHash('md5').update(filterString).digest('hex');
   }
 
   async getSearchCache(searchHash: string): Promise<ApolloSearchCache | null> {
@@ -214,8 +195,8 @@ export class ApolloStorage {
       .where(
         and(
           eq(apolloSearchCache.searchHash, searchHash),
-          gte(apolloSearchCache.expiresAt, new Date())
-        )
+          gte(apolloSearchCache.expiresAt, new Date()),
+        ),
       )
       .limit(1);
 
@@ -268,7 +249,7 @@ export class ApolloStorage {
   async getApiUsageStats(
     tenantId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<{
     totalCalls: number;
     successfulCalls: number;
@@ -287,8 +268,8 @@ export class ApolloStorage {
         and(
           eq(apolloApiUsage.tenantId, tenantId),
           gte(apolloApiUsage.createdAt, startDate),
-          lt(apolloApiUsage.createdAt, endDate)
-        )
+          lt(apolloApiUsage.createdAt, endDate),
+        ),
       );
 
     return {

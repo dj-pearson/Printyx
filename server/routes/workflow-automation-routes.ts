@@ -198,7 +198,7 @@ router.get('/workflows/:workflowId/triggers', async (req: Request, res: Response
     }
 
     const triggers = await storage.getWorkflowTriggers(req.params.workflowId);
-    
+
     // Fetch schedules for schedule-type triggers
     const triggersWithSchedules = await Promise.all(
       triggers.map(async (trigger) => {
@@ -207,7 +207,7 @@ router.get('/workflows/:workflowId/triggers', async (req: Request, res: Response
           return { ...trigger, schedule };
         }
         return trigger;
-      })
+      }),
     );
 
     res.json(triggersWithSchedules);
@@ -641,17 +641,17 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       storage.getWorkflowExecutionsByTenant(user.tenantId, 100),
     ]);
 
-    const activeWorkflows = workflows.filter(w => w.status === 'active').length;
+    const activeWorkflows = workflows.filter((w) => w.status === 'active').length;
     const totalExecutions = executions.length;
-    const successfulExecutions = executions.filter(e => e.status === 'completed').length;
-    const failedExecutions = executions.filter(e => e.status === 'failed').length;
-    const runningExecutions = executions.filter(e => e.status === 'running').length;
+    const successfulExecutions = executions.filter((e) => e.status === 'completed').length;
+    const failedExecutions = executions.filter((e) => e.status === 'failed').length;
+    const runningExecutions = executions.filter((e) => e.status === 'running').length;
 
     res.json({
       totalWorkflows: workflows.length,
       activeWorkflows,
-      pausedWorkflows: workflows.filter(w => w.status === 'paused').length,
-      draftWorkflows: workflows.filter(w => w.status === 'draft').length,
+      pausedWorkflows: workflows.filter((w) => w.status === 'paused').length,
+      draftWorkflows: workflows.filter((w) => w.status === 'draft').length,
       totalExecutions,
       successfulExecutions,
       failedExecutions,
@@ -846,7 +846,7 @@ router.post('/approvals/:id/respond', async (req: Request, res: Response) => {
     // Check if user is authorized to approve
     const canApprove =
       approval.assignedToUserId === user.id ||
-      await storage.isUserInGroup(user.id, approval.assignedToGroupId);
+      (await storage.isUserInGroup(user.id, approval.assignedToGroupId));
 
     if (!canApprove) {
       return res.status(403).json({ error: 'You are not authorized to respond to this approval' });

@@ -11,6 +11,7 @@
 This deployment adds **complete toner management automation** to the Printyx fleet monitoring system. The integration connects monitoring clients → product catalog → warehouse inventory → service contracts → customer notifications in a fully automated workflow.
 
 ### What Was Built
+
 1. ✅ Product catalog integration for real-time toner SKU lookup
 2. ✅ Warehouse inventory checking with stock availability
 3. ✅ Service contract validation for automatic toner coverage
@@ -22,19 +23,23 @@ This deployment adds **complete toner management automation** to the Printyx fle
 ## 🎯 What Was Accomplished
 
 ### 1. Navigation & Routing Integration
+
 **Commit:** `2111e63`
 
 **Files Modified:**
+
 - `client/src/App.tsx` - Added `/fleet-monitoring` route
 - `client/src/components/layout/RoleAwareCollapsibleSidebar.tsx` - Added menu item
 - `client/src/components/customer/CustomerMeterReadings.tsx` - Moved to correct location
 
 **What It Does:**
+
 - Fleet Monitoring Dashboard is now accessible at `/fleet-monitoring`
 - Appears in Service Hub section of sidebar navigation
 - Auto-highlights when route is active
 
 **Deployment Notes:**
+
 - No database changes required
 - Frontend-only changes
 - Works immediately after deployment
@@ -42,12 +47,15 @@ This deployment adds **complete toner management automation** to the Printyx fle
 ---
 
 ### 2. Product Catalog Integration
+
 **Commit:** `2b50d5e`
 
 **Files Modified:**
+
 - `server/routes-client-monitoring.ts`
 
 **What It Does:**
+
 - Created `lookupTonerProduct()` helper function
 - Queries `supplies` table for real toner products
 - Searches by manufacturer, model, and color with flexible patterns:
@@ -59,6 +67,7 @@ This deployment adds **complete toner management automation** to the Printyx fle
 - Falls back to placeholder values if product not found
 
 **Database Tables Used:**
+
 - `supplies` (existing table, no migration needed)
   - `productCode` - Product SKU
   - `productName` - Product name
@@ -67,6 +76,7 @@ This deployment adds **complete toner management automation** to the Printyx fle
   - Pricing fields: `newRepPrice`, `upgradeRepPrice`, etc.
 
 **Deployment Requirements:**
+
 - ✅ No database migration needed (uses existing `supplies` table)
 - ⚠️ **ACTION REQUIRED:** Populate `supplies` table with toner products
   - Add toner products with searchable product codes
@@ -75,6 +85,7 @@ This deployment adds **complete toner management automation** to the Printyx fle
   - Mark as `isActive: true`
 
 **Testing:**
+
 ```sql
 -- Verify supplies table has toner products
 SELECT productCode, productName, newRepPrice, isActive
@@ -87,12 +98,15 @@ LIMIT 10;
 ---
 
 ### 3. Warehouse Inventory Integration
+
 **Commit:** `e4e1ff6`
 
 **Files Modified:**
+
 - `server/routes-client-monitoring.ts`
 
 **What It Does:**
+
 - Enhanced `lookupTonerProduct()` to check warehouse inventory
 - Queries `inventoryItems` table for stock availability
 - Checks actual stock levels:
@@ -108,6 +122,7 @@ LIMIT 10;
   - `manufacturerPartNumber` = `productCode`
 
 **Database Tables Used:**
+
 - `inventoryItems` (existing table, no migration needed)
   - `partNumber` - Links to supplies.productCode
   - `manufacturerPartNumber` - Alternate linking field
@@ -117,6 +132,7 @@ LIMIT 10;
   - `binLocation` - Bin location for picking
 
 **Deployment Requirements:**
+
 - ✅ No database migration needed (uses existing `inventoryItems` table)
 - ⚠️ **ACTION REQUIRED:** Link inventory to toner products
   - Ensure `inventoryItems.partNumber` matches `supplies.productCode`
@@ -124,6 +140,7 @@ LIMIT 10;
   - Update `quantityOnOrder` when purchasing toner
 
 **Testing:**
+
 ```sql
 -- Check inventory for toner products
 SELECT
@@ -144,12 +161,15 @@ LIMIT 10;
 ---
 
 ### 4. Service Contract Validation
+
 **Commit:** `74a99bc`
 
 **Files Modified:**
+
 - `server/routes-client-monitoring.ts`
 
 **What It Does:**
+
 - Created `checkServiceContractCoverage()` helper function
 - Validates active service contracts for equipment
 - Checks contract coverage flags:
@@ -164,6 +184,7 @@ LIMIT 10;
 - Adds contract information to order notes
 
 **Database Tables Used:**
+
 - `serviceContracts` (existing table, no migration needed)
   - `equipmentId` - Links to device_registrations
   - `customerId` - Fallback if no equipmentId
@@ -174,6 +195,7 @@ LIMIT 10;
   - `contractType` - Type of contract
 
 **Deployment Requirements:**
+
 - ✅ No database migration needed (uses existing `serviceContracts` table)
 - ⚠️ **ACTION REQUIRED:** Link service contracts to equipment
   - Set `serviceContracts.equipmentId` to match device registration IDs
@@ -182,11 +204,13 @@ LIMIT 10;
   - Keep `contractStatus = 'active'` for valid contracts
 
 **Business Logic:**
+
 - When `includesToner = true`: Order total = $0.00 (free for customer)
 - When `includesToner = false`: Customer pays full price
 - Contract information appears in order notes for reference
 
 **Testing:**
+
 ```sql
 -- Find active contracts with toner coverage
 SELECT
@@ -211,12 +235,15 @@ LIMIT 10;
 ---
 
 ### 5. Email/SMS Notification System
+
 **Commit:** `12d6d78`
 
 **Files Modified:**
+
 - `server/routes-client-monitoring.ts`
 
 **What It Does:**
+
 - Created `sendNotificationAlerts()` helper function
 - Sends notifications via email and SMS when toner orders are created
 - Updates notification tracking fields:
@@ -228,6 +255,7 @@ LIMIT 10;
 - Framework ready for external service integration
 
 **Database Tables Used:**
+
 - `customer_notifications` (existing table, no migration needed)
   - `type` - Notification type ('supply_low')
   - `title` - Notification title
@@ -243,6 +271,7 @@ LIMIT 10;
   - `phone` - Customer phone number
 
 **Deployment Requirements:**
+
 - ✅ No database migration needed
 - ⚠️ **ACTION REQUIRED:** Set up external notification services
 
@@ -250,6 +279,7 @@ LIMIT 10;
 Choose one email provider and add credentials to environment:
 
 **Option 1: SendGrid**
+
 ```bash
 # .env
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxx
@@ -258,6 +288,7 @@ SENDGRID_FROM_NAME="Printyx Notifications"
 ```
 
 **Option 2: AWS SES**
+
 ```bash
 # .env
 AWS_REGION=us-east-1
@@ -267,6 +298,7 @@ AWS_SES_FROM_EMAIL=notifications@printyx.com
 ```
 
 **Option 3: Resend**
+
 ```bash
 # .env
 RESEND_API_KEY=re_xxxxxxxxxxxxx
@@ -275,6 +307,7 @@ RESEND_FROM_EMAIL=notifications@printyx.com
 
 **Code Integration Point:**
 Located at `server/routes-client-monitoring.ts:381-388`
+
 ```typescript
 // TODO: Integrate with email service (SendGrid, AWS SES, Resend, etc.)
 // Example integration:
@@ -290,6 +323,7 @@ Located at `server/routes-client-monitoring.ts:381-388`
 Choose one SMS provider and add credentials to environment:
 
 **Option 1: Twilio**
+
 ```bash
 # .env
 TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxx
@@ -298,6 +332,7 @@ TWILIO_PHONE_NUMBER=+15551234567
 ```
 
 **Option 2: AWS SNS**
+
 ```bash
 # .env
 AWS_REGION=us-east-1
@@ -308,6 +343,7 @@ AWS_SNS_SENDER_ID=Printyx
 
 **Code Integration Point:**
 Located at `server/routes-client-monitoring.ts:414-419`
+
 ```typescript
 // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
 // Example integration:
@@ -319,6 +355,7 @@ Located at `server/routes-client-monitoring.ts:414-419`
 ```
 
 **Testing (Current Simulation Mode):**
+
 - Email/SMS are currently **simulated** (marked as sent but not actually delivered)
 - Logs show what would be sent: `[EMAIL NOTIFICATION]` and `[SMS NOTIFICATION]`
 - Safe to deploy - notifications won't spam customers until services are configured
@@ -330,6 +367,7 @@ Located at `server/routes-client-monitoring.ts:414-419`
 ### Required Data Population
 
 #### 1. Populate `supplies` Table with Toner Products
+
 **Priority:** HIGH
 **Before:** Toner orders will use placeholder prices
 **After:** Toner orders will use real product catalog prices
@@ -370,10 +408,12 @@ INSERT INTO supplies (
 ```
 
 **Naming Convention:**
+
 - Use searchable product codes: `TONER-{COLOR}-{MANUFACTURER}-{MODEL}`
 - Support flexible searches: manufacturer + model, just manufacturer, etc.
 
 #### 2. Link Inventory to Toner Products
+
 **Priority:** HIGH
 **Before:** Stock availability will show as "in stock" by default
 **After:** Real-time stock availability from warehouse
@@ -416,11 +456,13 @@ INSERT INTO inventory_items (
 ```
 
 **Important:**
+
 - Keep `quantity_available` updated in real-time
 - Link via `part_number` = `supplies.product_code`
 - Update `quantity_on_order` when purchasing from suppliers
 
 #### 3. Link Service Contracts to Equipment
+
 **Priority:** MEDIUM
 **Before:** All toner orders charge customers full price
 **After:** Contracts with toner coverage = $0.00 for customer
@@ -461,11 +503,13 @@ INSERT INTO service_contracts (
 ```
 
 **Business Rules:**
+
 - `includesToner = true` → Customer pays $0.00 for toner
 - `includesToner = false` → Customer pays full catalog price
 - Link to `device_registrations.id` for automatic lookup
 
 #### 4. Ensure Customer Portal Access Has Contact Info
+
 **Priority:** HIGH (for notifications)
 **Before:** Notifications created but not sent
 **After:** Email/SMS delivered to customers
@@ -494,6 +538,7 @@ WHERE id = 'portal-user-id';
 ## 📦 Deployment Steps
 
 ### 1. Pre-Deployment Checklist
+
 - [ ] Review all code changes in branch `claude/fm-audit-client-011CUthx8J8LarHPYzpfPbZT`
 - [ ] Verify database schema (no migrations needed - all tables exist)
 - [ ] Populate `supplies` table with toner products
@@ -522,6 +567,7 @@ npm start  # or your deployment command
 ### 3. Post-Deployment Verification
 
 #### Backend API Tests
+
 ```bash
 # Test toner order endpoint
 curl -X POST http://localhost:5000/api/devices/{device-id}/order-toner \
@@ -549,6 +595,7 @@ curl -X POST http://localhost:5000/api/devices/{device-id}/order-toner \
 ```
 
 #### Database Verification
+
 ```sql
 -- Check that orders are being created
 SELECT
@@ -592,6 +639,7 @@ ORDER BY created_at DESC;
 ```
 
 #### Frontend Tests
+
 1. Navigate to `/fleet-monitoring`
 2. Click "Order Toner" on a low-toner device
 3. Select toner colors
@@ -602,6 +650,7 @@ ORDER BY created_at DESC;
 ### 4. Monitoring & Logging
 
 **Key Log Patterns to Monitor:**
+
 ```bash
 # Product catalog lookups
 [TONER LOOKUP] Found product:
@@ -624,6 +673,7 @@ ORDER BY created_at DESC;
 ```
 
 **Error Patterns to Watch:**
+
 ```bash
 [TONER LOOKUP] Error looking up toner product:
 [SERVICE CONTRACT] Error checking coverage:
@@ -684,6 +734,7 @@ WHERE id = 'pilot-customer-id';
 ```
 
 ### Testing Groups
+
 1. **Internal Testing** - Your own devices first
 2. **Pilot Customers** - 5-10 friendly customers
 3. **General Availability** - All customers
@@ -693,6 +744,7 @@ WHERE id = 'pilot-customer-id';
 ## ✅ Testing Checklist
 
 ### Unit Testing
+
 - [ ] Test `lookupTonerProduct()` with various manufacturers/models
 - [ ] Test `lookupTonerProduct()` with missing products (fallback)
 - [ ] Test `checkServiceContractCoverage()` with active contracts
@@ -702,6 +754,7 @@ WHERE id = 'pilot-customer-id';
 - [ ] Test `sendNotificationAlerts()` SMS flag updates
 
 ### Integration Testing
+
 - [ ] Create toner order with product in catalog → verify real price
 - [ ] Create toner order with product NOT in catalog → verify fallback price
 - [ ] Create toner order with in-stock product → verify availability
@@ -712,12 +765,14 @@ WHERE id = 'pilot-customer-id';
 - [ ] Create toner order → verify email/SMS flags updated
 
 ### End-to-End Testing
+
 - [ ] Full flow: Low toner alert → Order toner → Notification sent
 - [ ] Full flow: Urgent order → Contract covered → $0.00 invoice
 - [ ] Full flow: Normal order → Not covered → Charged full price
 - [ ] Full flow: Out of stock → Estimated ship date shown
 
 ### Load Testing
+
 - [ ] 100 concurrent toner orders
 - [ ] 1000 devices reporting low toner simultaneously
 - [ ] Database query performance on large `supplies` table
@@ -728,9 +783,11 @@ WHERE id = 'pilot-customer-id';
 ## 🚨 Troubleshooting Guide
 
 ### Issue: "No product found for toner"
+
 **Symptoms:** Orders use placeholder SKUs and $99.99 price
 **Cause:** Product not in catalog or search patterns don't match
 **Solution:**
+
 ```sql
 -- Check what products exist for this manufacturer/model
 SELECT product_code, product_name
@@ -753,9 +810,11 @@ INSERT INTO supplies (
 ```
 
 ### Issue: "Inventory always shows 'in stock'"
+
 **Symptoms:** All orders show available even when out of stock
 **Cause:** No inventory record linked to product
 **Solution:**
+
 ```sql
 -- Check if inventory exists for this product
 SELECT * FROM inventory_items
@@ -780,9 +839,11 @@ INSERT INTO inventory_items (
 ```
 
 ### Issue: "Contract coverage not working"
+
 **Symptoms:** Orders charge full price even with contract
 **Cause:** Contract not linked to device or includes_toner = false
 **Solution:**
+
 ```sql
 -- Find the device registration ID
 SELECT id, device_name, serial_number
@@ -806,9 +867,11 @@ WHERE contract_number = 'SVC-2025-001';
 ```
 
 ### Issue: "Notifications not being sent"
+
 **Symptoms:** Notifications created but email/SMS not delivered
 **Cause:** External services not configured (expected until integration)
 **Solution:**
+
 - This is **normal behavior** until email/SMS services are set up
 - Check logs for `[EMAIL NOTIFICATION]` and `[SMS NOTIFICATION]` entries
 - Notifications are being logged and tracked in database
@@ -819,7 +882,9 @@ WHERE contract_number = 'SVC-2025-001';
 ## 📈 Performance Optimization
 
 ### Database Indexes
+
 Already exist on:
+
 - `supplies.tenant_id` + `supplies.is_active`
 - `supplies.product_code`
 - `inventory_items.tenant_id` + `inventory_items.part_number`
@@ -827,6 +892,7 @@ Already exist on:
 - `customer_notifications.tenant_id` + `customer_notifications.created_at`
 
 ### Query Performance Tips
+
 ```sql
 -- If supplies table grows large, add composite index:
 CREATE INDEX idx_supplies_search
@@ -848,6 +914,7 @@ WHERE contract_status = 'active';
 ## 🔮 Future Enhancements
 
 ### Short-Term (Next Sprint)
+
 1. **Email Template Designer**
    - Create rich HTML email templates for toner notifications
    - Include order details, shipping info, tracking links
@@ -869,6 +936,7 @@ WHERE contract_status = 'active';
    - Send delivery notifications
 
 ### Medium-Term (Next Quarter)
+
 1. **Analytics Dashboard**
    - Toner consumption trends by device/customer
    - Cost savings from contract coverage
@@ -891,6 +959,7 @@ WHERE contract_status = 'active';
    - Identify abnormal consumption patterns
 
 ### Long-Term (Future Roadmap)
+
 1. **Multi-Warehouse Support**
    - Route orders to nearest warehouse
    - Transfer inventory between warehouses
@@ -911,16 +980,19 @@ WHERE contract_status = 'active';
 ## 📞 Support & Contacts
 
 ### Development Team
+
 - **Primary Developer:** Claude (AI Assistant)
 - **Repository:** `dj-pearson/Printyx`
 - **Branch:** `claude/fm-audit-client-011CUthx8J8LarHPYzpfPbZT`
 
 ### External Services to Configure
+
 - **Email Provider:** SendGrid / AWS SES / Resend
 - **SMS Provider:** Twilio / AWS SNS
 - **Support:** Refer to provider documentation for API setup
 
 ### Deployment Questions
+
 - Review commit messages for detailed implementation notes
 - Check server logs for `[TONER LOOKUP]`, `[SERVICE CONTRACT]`, `[NOTIFICATION]` prefixes
 - Database queries use standard Drizzle ORM patterns
@@ -930,6 +1002,7 @@ WHERE contract_status = 'active';
 ## 📝 Change Log
 
 ### 2025-11-07 (Initial Implementation)
+
 - ✅ Added navigation routing for Fleet Monitoring Dashboard
 - ✅ Implemented product catalog integration with supplies table
 - ✅ Added warehouse inventory checking with stock availability
@@ -940,6 +1013,7 @@ WHERE contract_status = 'active';
 - ✅ Graceful fallbacks for missing data
 
 ### 2025-11-07 (Notification Delivery Improvements)
+
 - ✅ Created provider-agnostic notification adapter system
   - `server/services/email-service.ts` - Email service with provider support (SendGrid, AWS SES, Resend)
   - `server/services/sms-service.ts` - SMS service with provider support (Twilio, AWS SNS)
@@ -973,10 +1047,13 @@ WHERE contract_status = 'active';
 During testing, the following schema mismatches were discovered between the Drizzle TypeScript schema and the actual PostgreSQL database:
 
 ### 1. `device_registrations` Table
+
 **Drizzle Schema Expects:**
+
 - `ipAddress`, `macAddress`, `department`, `capabilities`, `registeredAt`
 
 **Actual Database Has:**
+
 - `installation_date`, `created_at`, `updated_at`
 - Missing: `ipAddress`, `macAddress`, `department`, `capabilities`, `registeredAt`
 
@@ -984,22 +1061,27 @@ During testing, the following schema mismatches were discovered between the Driz
 **Resolution:** Run `npm run db:push --force` to sync schema when ready
 
 ### 2. `device_metrics` Table
+
 **Drizzle Schema Expects:**
+
 - `collectionTimestamp`, `totalImpressions`, `bwImpressions`, `colorImpressions`
 - `tonerLevels` (JSONB), `paperLevels` (JSONB), `errorCodes`, `rawData`
 - Rich metric structure
 
 **Actual Database Has:**
+
 - `metric_type`, `metric_value`, `collected_at`
 - Simplified key-value pair structure
 
 **Impact:** MEDIUM - Toner order endpoint gracefully handles missing metrics
 **Resolution:** Decide on metric storage strategy:
-  - Option A: Migrate to rich schema (run `npm run db:push --force`)
-  - Option B: Keep simplified schema and update Drizzle schema to match
-  - Option C: Hybrid approach with metric type mapping
+
+- Option A: Migrate to rich schema (run `npm run db:push --force`)
+- Option B: Keep simplified schema and update Drizzle schema to match
+- Option C: Hybrid approach with metric type mapping
 
 ### 3. Recommendation
+
 **Do NOT run schema migration during toner order deployment** - The current implementation works with existing schema via graceful fallbacks. Schedule schema migration separately after reviewing impact.
 
 ---
@@ -1007,7 +1089,9 @@ During testing, the following schema mismatches were discovered between the Driz
 ## 🔧 Notification Service Configuration
 
 ### Quick Start (Simulation Mode)
+
 For testing without external services:
+
 ```bash
 # .env
 EMAIL_ENABLED="true"
@@ -1021,6 +1105,7 @@ This configuration allows the notification flow to be tested without actually se
 ### Production Setup (External Services)
 
 #### Option 1: SendGrid + Twilio
+
 ```bash
 # .env
 EMAIL_ENABLED="true"
@@ -1037,6 +1122,7 @@ TWILIO_PHONE_NUMBER="+15551234567"
 ```
 
 #### Option 2: AWS SES + AWS SNS
+
 ```bash
 # .env
 EMAIL_ENABLED="true"
@@ -1053,6 +1139,7 @@ AWS_SNS_SENDER_ID="Printyx"
 ```
 
 #### Option 3: Resend + Twilio
+
 ```bash
 # .env
 EMAIL_ENABLED="true"
@@ -1073,7 +1160,7 @@ After configuring services, verify delivery:
 
 ```bash
 # Check notification delivery status in database
-SELECT 
+SELECT
   id,
   title,
   message,
@@ -1090,11 +1177,13 @@ ORDER BY created_at DESC;
 ### Testing Notification Flow
 
 1. **Run seed script to populate test data:**
+
    ```bash
    npx tsx server/seed-toner-workflow.ts
    ```
 
 2. **Set environment variables for simulation mode:**
+
    ```bash
    EMAIL_ENABLED="true"
    SMS_ENABLED="true"
@@ -1121,6 +1210,7 @@ ORDER BY created_at DESC;
 **External Services Required:** NO (simulation mode available for testing)
 
 **Key Benefits:**
+
 - Real product catalog pricing instead of placeholders
 - Real-time warehouse inventory availability
 - Automatic $0.00 pricing for contract-covered toner
@@ -1131,6 +1221,7 @@ ORDER BY created_at DESC;
 - Simulation mode for safe testing
 
 **Risk Level:** LOW
+
 - No destructive schema changes required
 - Backward compatible with existing data
 - Fails gracefully if data not populated or services not configured

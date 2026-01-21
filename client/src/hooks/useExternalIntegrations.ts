@@ -81,7 +81,7 @@ export function useExternalIntegrations() {
     },
   });
 
-  // Salesforce Integration  
+  // Salesforce Integration
   const salesforceConfig = useQuery({
     queryKey: ['/api/integrations/salesforce/config'],
     queryFn: () => apiRequest<SalesforceIntegration>('/api/integrations/salesforce/config'),
@@ -181,9 +181,12 @@ export function useMobileDetection() {
   useEffect(() => {
     const checkDevice = () => {
       const userAgent = navigator.userAgent;
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-      const isTabletDevice = /iPad|Android(?=.*Mobile)/i.test(userAgent) && window.innerWidth >= 768;
-      
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        userAgent,
+      );
+      const isTabletDevice =
+        /iPad|Android(?=.*Mobile)/i.test(userAgent) && window.innerWidth >= 768;
+
       setIsMobile(isMobileDevice && !isTabletDevice);
       setIsTablet(isTabletDevice);
       setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
@@ -206,10 +209,10 @@ export function useMobileDetection() {
 export function useMobileScanning() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<string | null>(null);
-  
+
   const startScan = async (type: 'barcode' | 'qr' | 'text') => {
     setIsScanning(true);
-    
+
     try {
       // Check if device supports camera
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -218,7 +221,7 @@ export function useMobileScanning() {
 
       // Request camera permission
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera
+        video: { facingMode: 'environment' }, // Use back camera
       });
 
       // In a real implementation, you would use a barcode scanning library here
@@ -226,9 +229,8 @@ export function useMobileScanning() {
       setTimeout(() => {
         setScanResult(`${type.toUpperCase()}_${Date.now()}`);
         setIsScanning(false);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       }, 3000);
-
     } catch (error) {
       console.error('Scanning failed:', error);
       setIsScanning(false);
@@ -245,7 +247,7 @@ export function useMobileScanning() {
     scanResult,
     startScan,
     stopScan,
-    isSupported: 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices
+    isSupported: 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices,
   };
 }
 

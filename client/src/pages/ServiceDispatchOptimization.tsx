@@ -1,28 +1,62 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
-import { 
-  Navigation, MapPin, Clock, User, Route, TrendingUp, Zap, 
-  Settings, Bell, Calendar, Smartphone, Users, AlertTriangle,
-  CheckCircle, ChevronRight, Filter, Search, Eye, Play,
-  Pause, MoreHorizontal, Target, Timer, Activity, Phone
-} from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { format, addMinutes, isAfter, isBefore } from "date-fns";
-import { MobileFAB } from "@/components/ui/mobile-fab";
-import ContextualHelp from "@/components/contextual/ContextualHelp";
-import PageAlerts from "@/components/contextual/PageAlerts";
-import ServiceTeamStatsWidget from "@/components/stats/ServiceTeamStatsWidget";
+import {
+  Navigation,
+  MapPin,
+  Clock,
+  User,
+  Route,
+  TrendingUp,
+  Zap,
+  Settings,
+  Bell,
+  Calendar,
+  Smartphone,
+  Users,
+  AlertTriangle,
+  CheckCircle,
+  ChevronRight,
+  Filter,
+  Search,
+  Eye,
+  Play,
+  Pause,
+  MoreHorizontal,
+  Target,
+  Timer,
+  Activity,
+  Phone,
+} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { format, addMinutes, isAfter, isBefore } from 'date-fns';
+import { MobileFAB } from '@/components/ui/mobile-fab';
+import ContextualHelp from '@/components/contextual/ContextualHelp';
+import PageAlerts from '@/components/contextual/PageAlerts';
+import ServiceTeamStatsWidget from '@/components/stats/ServiceTeamStatsWidget';
 
 // Types
 interface DispatchMetrics {
@@ -112,9 +146,9 @@ interface DispatchAlert {
 }
 
 export default function ServiceDispatchOptimization() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [selectedTechnician, setSelectedTechnician] = useState<string>("all");
-  const [selectedTimeRange, setSelectedTimeRange] = useState<string>("today");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedTechnician, setSelectedTechnician] = useState<string>('all');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>('today');
   const [routeOptimizationEnabled, setRouteOptimizationEnabled] = useState(true);
   const [realTimeTrackingEnabled, setRealTimeTrackingEnabled] = useState(true);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
@@ -130,193 +164,213 @@ export default function ServiceDispatchOptimization() {
     customerSatisfactionScore: 4.6,
     firstCallResolutionRate: 87, // percentage
     dailyJobsCompleted: 34,
-    milesDrivenToday: 456
+    milesDrivenToday: 456,
   };
 
   const mockTechnicians: TechnicianLocation[] = [
     {
-      id: "tech-001",
-      name: "Mike Johnson",
-      status: "busy",
+      id: 'tech-001',
+      name: 'Mike Johnson',
+      status: 'busy',
       currentLocation: {
         lat: 40.7128,
-        lng: -74.0060,
-        address: "Downtown Manhattan, NY"
+        lng: -74.006,
+        address: 'Downtown Manhattan, NY',
       },
       nextAppointment: {
-        time: "14:30",
-        customerName: "TechCorp Solutions",
-        address: "45 Broadway, New York, NY",
-        estimatedTravelTime: 12
+        time: '14:30',
+        customerName: 'TechCorp Solutions',
+        address: '45 Broadway, New York, NY',
+        estimatedTravelTime: 12,
       },
       performanceToday: {
         jobsCompleted: 4,
         milesdriven: 67,
         customerRating: 4.8,
-        onTimePercentage: 100
+        onTimePercentage: 100,
       },
-      skills: ["Printer Repair", "Network Setup", "Installation"],
-      workload: "moderate"
+      skills: ['Printer Repair', 'Network Setup', 'Installation'],
+      workload: 'moderate',
     },
     {
-      id: "tech-002", 
-      name: "Sarah Chen",
-      status: "available",
+      id: 'tech-002',
+      name: 'Sarah Chen',
+      status: 'available',
       currentLocation: {
         lat: 40.7589,
         lng: -73.9851,
-        address: "Midtown Manhattan, NY"
+        address: 'Midtown Manhattan, NY',
       },
       performanceToday: {
         jobsCompleted: 3,
         milesdriven: 45,
         customerRating: 4.9,
-        onTimePercentage: 95
+        onTimePercentage: 95,
       },
-      skills: ["Copier Maintenance", "Troubleshooting", "Training"],
-      workload: "light"
+      skills: ['Copier Maintenance', 'Troubleshooting', 'Training'],
+      workload: 'light',
     },
     {
-      id: "tech-003",
-      name: "David Rodriguez", 
-      status: "en_route",
+      id: 'tech-003',
+      name: 'David Rodriguez',
+      status: 'en_route',
       currentLocation: {
         lat: 40.6892,
         lng: -74.0445,
-        address: "Brooklyn Heights, NY"
+        address: 'Brooklyn Heights, NY',
       },
       nextAppointment: {
-        time: "15:45",
-        customerName: "Brooklyn Medical Center",
-        address: "123 Atlantic Ave, Brooklyn, NY",
-        estimatedTravelTime: 8
+        time: '15:45',
+        customerName: 'Brooklyn Medical Center',
+        address: '123 Atlantic Ave, Brooklyn, NY',
+        estimatedTravelTime: 8,
       },
       performanceToday: {
         jobsCompleted: 5,
         milesdriven: 89,
         customerRating: 4.7,
-        onTimePercentage: 90
+        onTimePercentage: 90,
       },
-      skills: ["Medical Equipment", "Emergency Repair", "Maintenance"],
-      workload: "heavy"
-    }
+      skills: ['Medical Equipment', 'Emergency Repair', 'Maintenance'],
+      workload: 'heavy',
+    },
   ];
 
   const mockRoutes: ServiceRoute[] = [
     {
-      id: "route-001",
-      technicianId: "tech-001",
-      technicianName: "Mike Johnson",
+      id: 'route-001',
+      technicianId: 'tech-001',
+      technicianName: 'Mike Johnson',
       totalJobs: 6,
       completedJobs: 4,
-      estimatedCompletionTime: "17:30",
+      estimatedCompletionTime: '17:30',
       totalMiles: 67,
       optimizationScore: 94,
       jobs: [
         {
-          id: "job-001",
-          customerName: "TechCorp Solutions",
-          address: "45 Broadway, New York, NY",
-          serviceType: "Printer Installation",
-          priority: "high",
+          id: 'job-001',
+          customerName: 'TechCorp Solutions',
+          address: '45 Broadway, New York, NY',
+          serviceType: 'Printer Installation',
+          priority: 'high',
           estimatedDuration: 90,
-          scheduledTime: "14:30",
-          status: "scheduled",
-          gpsCoordinates: { lat: 40.7128, lng: -74.0060 },
-          customerContactInfo: { phone: "(555) 123-4567", email: "tech@techcorp.com" }
+          scheduledTime: '14:30',
+          status: 'scheduled',
+          gpsCoordinates: { lat: 40.7128, lng: -74.006 },
+          customerContactInfo: { phone: '(555) 123-4567', email: 'tech@techcorp.com' },
         },
         {
-          id: "job-002", 
-          customerName: "Financial District Office",
-          address: "88 Pine St, New York, NY",
-          serviceType: "Maintenance",
-          priority: "medium",
+          id: 'job-002',
+          customerName: 'Financial District Office',
+          address: '88 Pine St, New York, NY',
+          serviceType: 'Maintenance',
+          priority: 'medium',
           estimatedDuration: 60,
-          scheduledTime: "16:00",
-          status: "scheduled",
+          scheduledTime: '16:00',
+          status: 'scheduled',
           gpsCoordinates: { lat: 40.7074, lng: -74.0113 },
-          customerContactInfo: { phone: "(555) 987-6543", email: "admin@fdoffice.com" }
-        }
+          customerContactInfo: { phone: '(555) 987-6543', email: 'admin@fdoffice.com' },
+        },
       ],
       actualRoute: {
         travelTime: 89,
         distance: 67,
-        trafficConditions: "moderate"
-      }
-    }
+        trafficConditions: 'moderate',
+      },
+    },
   ];
 
   const mockAlerts: DispatchAlert[] = [
     {
-      id: "alert-001",
-      type: "traffic",
-      severity: "medium",
-      title: "Traffic Delay Expected",
+      id: 'alert-001',
+      type: 'traffic',
+      severity: 'medium',
+      title: 'Traffic Delay Expected',
       message: "Heavy traffic on I-95 may delay Mike Johnson's 3:30 PM appointment by 15 minutes",
-      technicianId: "tech-001",
+      technicianId: 'tech-001',
       timestamp: new Date().toISOString(),
       actionRequired: true,
-      suggestedAction: "Contact customer to adjust appointment time"
+      suggestedAction: 'Contact customer to adjust appointment time',
     },
     {
-      id: "alert-002",
-      type: "route_optimization",
-      severity: "low", 
-      title: "Route Optimization Available",
+      id: 'alert-002',
+      type: 'route_optimization',
+      severity: 'low',
+      title: 'Route Optimization Available',
       message: "Reordering Sarah Chen's afternoon schedule could save 23 minutes of travel time",
-      technicianId: "tech-002",
+      technicianId: 'tech-002',
       timestamp: new Date().toISOString(),
       actionRequired: false,
-      suggestedAction: "Apply optimized route"
+      suggestedAction: 'Apply optimized route',
     },
     {
-      id: "alert-003",
-      type: "emergency",
-      severity: "high",
-      title: "Emergency Service Request",
-      message: "Urgent copier repair needed at Brooklyn Medical Center - Patient records system down",
+      id: 'alert-003',
+      type: 'emergency',
+      severity: 'high',
+      title: 'Emergency Service Request',
+      message:
+        'Urgent copier repair needed at Brooklyn Medical Center - Patient records system down',
       timestamp: new Date().toISOString(),
       actionRequired: true,
-      suggestedAction: "Assign nearest technician immediately"
-    }
+      suggestedAction: 'Assign nearest technician immediately',
+    },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available': return 'default';
-      case 'busy': return 'secondary';  
-      case 'en_route': return 'outline';
-      case 'offline': return 'destructive';
-      default: return 'outline';
+      case 'available':
+        return 'default';
+      case 'busy':
+        return 'secondary';
+      case 'en_route':
+        return 'outline';
+      case 'offline':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'destructive';
-      case 'high': return 'secondary';
-      case 'medium': return 'outline';
-      case 'low': return 'outline';
-      default: return 'outline';
+      case 'urgent':
+        return 'destructive';
+      case 'high':
+        return 'secondary';
+      case 'medium':
+        return 'outline';
+      case 'low':
+        return 'outline';
+      default:
+        return 'outline';
     }
   };
 
   const getAlertSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-100 border-red-300 text-red-800';
-      case 'high': return 'bg-orange-100 border-orange-300 text-orange-800';
-      case 'medium': return 'bg-yellow-100 border-yellow-300 text-yellow-800';
-      case 'low': return 'bg-blue-100 border-blue-300 text-blue-800';
-      default: return 'bg-gray-100 border-gray-300 text-gray-800';
+      case 'critical':
+        return 'bg-red-100 border-red-300 text-red-800';
+      case 'high':
+        return 'bg-orange-100 border-orange-300 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 border-yellow-300 text-yellow-800';
+      case 'low':
+        return 'bg-blue-100 border-blue-300 text-blue-800';
+      default:
+        return 'bg-gray-100 border-gray-300 text-gray-800';
     }
   };
 
   const getWorkloadColor = (workload: string) => {
     switch (workload) {
-      case 'heavy': return 'text-red-600';
-      case 'moderate': return 'text-yellow-600';
-      case 'light': return 'text-green-600';
-      default: return 'text-gray-600';
+      case 'heavy':
+        return 'text-red-600';
+      case 'moderate':
+        return 'text-yellow-600';
+      case 'light':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
@@ -334,7 +388,9 @@ export default function ServiceDispatchOptimization() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Service Dispatch Optimization</h1>
-            <p className="text-gray-600 mt-1">AI-powered route optimization and real-time technician tracking</p>
+            <p className="text-gray-600 mt-1">
+              AI-powered route optimization and real-time technician tracking
+            </p>
           </div>
           <div className="flex items-center space-x-4">
             <Button
@@ -357,16 +413,21 @@ export default function ServiceDispatchOptimization() {
 
         {/* Page Alerts */}
         <PageAlerts
-          alerts={mockAlerts.filter(alert => alert.actionRequired).map(alert => ({
-            id: alert.id,
-            type: alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 'warning',
-            title: alert.title,
-            message: alert.message,
-            action: alert.suggestedAction ? {
-              label: "Take Action",
-              onClick: () => console.log(`Taking action for alert ${alert.id}`)
-            } : undefined
-          }))}
+          alerts={mockAlerts
+            .filter((alert) => alert.actionRequired)
+            .map((alert) => ({
+              id: alert.id,
+              type:
+                alert.severity === 'critical' || alert.severity === 'high' ? 'error' : 'warning',
+              title: alert.title,
+              message: alert.message,
+              action: alert.suggestedAction
+                ? {
+                    label: 'Take Action',
+                    onClick: () => console.log(`Taking action for alert ${alert.id}`),
+                  }
+                : undefined,
+            }))}
         />
 
         {/* Service Team Performance Stats */}
@@ -384,7 +445,8 @@ export default function ServiceDispatchOptimization() {
                 {mockMetrics.activeTechnicians}/{mockMetrics.totalTechnicians}
               </div>
               <p className="text-xs text-muted-foreground">
-                {Math.round((mockMetrics.activeTechnicians / mockMetrics.totalTechnicians) * 100)}% capacity
+                {Math.round((mockMetrics.activeTechnicians / mockMetrics.totalTechnicians) * 100)}%
+                capacity
               </p>
             </CardContent>
           </Card>
@@ -398,9 +460,7 @@ export default function ServiceDispatchOptimization() {
               <div className="text-2xl font-bold text-green-600" data-testid="metric-response-time">
                 {mockMetrics.averageResponseTime}m
               </div>
-              <p className="text-xs text-muted-foreground">
-                12% better than industry avg
-              </p>
+              <p className="text-xs text-muted-foreground">12% better than industry avg</p>
             </CardContent>
           </Card>
 
@@ -413,9 +473,7 @@ export default function ServiceDispatchOptimization() {
               <div className="text-2xl font-bold text-blue-600" data-testid="metric-route-savings">
                 {mockMetrics.routeOptimizationSavings}%
               </div>
-              <p className="text-xs text-muted-foreground">
-                Time savings vs manual routing
-              </p>
+              <p className="text-xs text-muted-foreground">Time savings vs manual routing</p>
             </CardContent>
           </Card>
 
@@ -458,8 +516,8 @@ export default function ServiceDispatchOptimization() {
                 <CardContent>
                   <div className="space-y-3">
                     {mockAlerts.slice(0, 4).map((alert) => (
-                      <div 
-                        key={alert.id} 
+                      <div
+                        key={alert.id}
                         className={`p-3 rounded-lg border ${getAlertSeverityColor(alert.severity)}`}
                       >
                         <div className="flex items-start justify-between">
@@ -494,7 +552,9 @@ export default function ServiceDispatchOptimization() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Jobs Completed</span>
-                      <span className="font-bold text-green-600">{mockMetrics.dailyJobsCompleted}</span>
+                      <span className="font-bold text-green-600">
+                        {mockMetrics.dailyJobsCompleted}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">Miles Driven</span>
@@ -532,36 +592,46 @@ export default function ServiceDispatchOptimization() {
                   {mockTechnicians.map((technician) => (
                     <div key={technician.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-medium" data-testid={`technician-name-${technician.id}`}>
+                        <h3
+                          className="font-medium"
+                          data-testid={`technician-name-${technician.id}`}
+                        >
                           {technician.name}
                         </h3>
                         <Badge variant={getStatusColor(technician.status)}>
                           {technician.status}
                         </Badge>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-gray-500" />
-                          <span className="text-gray-600">{technician.currentLocation.address}</span>
+                          <span className="text-gray-600">
+                            {technician.currentLocation.address}
+                          </span>
                         </div>
-                        
+
                         {technician.nextAppointment && (
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-gray-500" />
                             <span className="text-gray-600">
-                              Next: {technician.nextAppointment.time} - {technician.nextAppointment.customerName}
+                              Next: {technician.nextAppointment.time} -{' '}
+                              {technician.nextAppointment.customerName}
                             </span>
                           </div>
                         )}
-                        
+
                         <div className="flex justify-between mt-3 pt-2 border-t">
                           <div className="text-center">
-                            <p className="font-medium">{technician.performanceToday.jobsCompleted}</p>
+                            <p className="font-medium">
+                              {technician.performanceToday.jobsCompleted}
+                            </p>
                             <p className="text-xs text-gray-600">Jobs</p>
                           </div>
                           <div className="text-center">
-                            <p className="font-medium">{technician.performanceToday.customerRating}</p>
+                            <p className="font-medium">
+                              {technician.performanceToday.customerRating}
+                            </p>
                             <p className="text-xs text-gray-600">Rating</p>
                           </div>
                           <div className="text-center">
@@ -596,9 +666,7 @@ export default function ServiceDispatchOptimization() {
                     <MapPin className="h-16 w-16 text-gray-400 mx-auto" />
                     <div>
                       <h3 className="text-lg font-medium text-gray-600">Interactive Map View</h3>
-                      <p className="text-gray-500 mt-2">
-                        Google Maps integration would display:
-                      </p>
+                      <p className="text-gray-500 mt-2">Google Maps integration would display:</p>
                       <ul className="text-sm text-gray-500 mt-2 space-y-1">
                         <li>• Real-time technician locations</li>
                         <li>• Optimized route overlays</li>
@@ -684,16 +752,15 @@ export default function ServiceDispatchOptimization() {
                       </div>
                     </div>
                     <CardDescription>
-                      {route.completedJobs}/{route.totalJobs} jobs completed • 
-                      {route.totalMiles} miles • 
-                      ETA: {route.estimatedCompletionTime}
+                      {route.completedJobs}/{route.totalJobs} jobs completed •{route.totalMiles}{' '}
+                      miles • ETA: {route.estimatedCompletionTime}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {route.jobs.map((job, index) => (
-                        <div 
-                          key={job.id} 
+                        <div
+                          key={job.id}
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div className="flex items-center space-x-3">
@@ -707,9 +774,7 @@ export default function ServiceDispatchOptimization() {
                             </div>
                           </div>
                           <div className="text-right space-y-1">
-                            <Badge variant={getPriorityColor(job.priority)}>
-                              {job.priority}
-                            </Badge>
+                            <Badge variant={getPriorityColor(job.priority)}>{job.priority}</Badge>
                             <p className="text-sm font-medium">{job.scheduledTime}</p>
                             <p className="text-xs text-gray-600">
                               {formatDuration(job.estimatedDuration)}
@@ -725,7 +790,9 @@ export default function ServiceDispatchOptimization() {
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <p className="text-blue-600">Travel Time</p>
-                            <p className="font-medium">{formatDuration(route.actualRoute.travelTime)}</p>
+                            <p className="font-medium">
+                              {formatDuration(route.actualRoute.travelTime)}
+                            </p>
                           </div>
                           <div>
                             <p className="text-blue-600">Distance</p>
@@ -733,7 +800,9 @@ export default function ServiceDispatchOptimization() {
                           </div>
                           <div>
                             <p className="text-blue-600">Traffic</p>
-                            <p className="font-medium capitalize">{route.actualRoute.trafficConditions}</p>
+                            <p className="font-medium capitalize">
+                              {route.actualRoute.trafficConditions}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -752,9 +821,7 @@ export default function ServiceDispatchOptimization() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{technician.name}</CardTitle>
-                      <Badge variant={getStatusColor(technician.status)}>
-                        {technician.status}
-                      </Badge>
+                      <Badge variant={getStatusColor(technician.status)}>{technician.status}</Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -793,18 +860,21 @@ export default function ServiceDispatchOptimization() {
                           <MapPin className="h-4 w-4 text-gray-500" />
                           <span className="text-sm">{technician.currentLocation.address}</span>
                         </div>
-                        
+
                         {technician.nextAppointment && (
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-gray-500" />
                             <span className="text-sm">
-                              Next: {technician.nextAppointment.time} - {technician.nextAppointment.customerName}
+                              Next: {technician.nextAppointment.time} -{' '}
+                              {technician.nextAppointment.customerName}
                             </span>
                           </div>
                         )}
 
                         <div className="flex items-center gap-2">
-                          <Activity className={`h-4 w-4 ${getWorkloadColor(technician.workload)}`} />
+                          <Activity
+                            className={`h-4 w-4 ${getWorkloadColor(technician.workload)}`}
+                          />
                           <span className={`text-sm ${getWorkloadColor(technician.workload)}`}>
                             Workload: {technician.workload}
                           </span>
@@ -844,17 +914,21 @@ export default function ServiceDispatchOptimization() {
                     <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
                       <h4 className="font-medium text-purple-800 mb-2">Smart Route Optimization</h4>
                       <p className="text-sm text-purple-700 mb-3">
-                        AI analysis suggests reordering routes could save an additional 18 minutes and 12 miles across all technicians today.
+                        AI analysis suggests reordering routes could save an additional 18 minutes
+                        and 12 miles across all technicians today.
                       </p>
                       <Button size="sm" className="bg-purple-600 hover:bg-purple-700">
                         Apply Optimization
                       </Button>
                     </div>
-                    
+
                     <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <h4 className="font-medium text-green-800 mb-2">Predictive Maintenance Alert</h4>
+                      <h4 className="font-medium text-green-800 mb-2">
+                        Predictive Maintenance Alert
+                      </h4>
                       <p className="text-sm text-green-700 mb-3">
-                        Based on service patterns, 3 customers are due for proactive equipment checks this week.
+                        Based on service patterns, 3 customers are due for proactive equipment
+                        checks this week.
                       </p>
                       <Button size="sm" variant="outline">
                         Schedule Checks
@@ -864,7 +938,8 @@ export default function ServiceDispatchOptimization() {
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <h4 className="font-medium text-blue-800 mb-2">Technician Performance</h4>
                       <p className="text-sm text-blue-700">
-                        Sarah Chen consistently outperforms on customer satisfaction. Consider her for training new technicians.
+                        Sarah Chen consistently outperforms on customer satisfaction. Consider her
+                        for training new technicians.
                       </p>
                     </div>
                   </div>
@@ -888,7 +963,7 @@ export default function ServiceDispatchOptimization() {
                       </div>
                       <Progress value={88} className="h-2" />
                     </div>
-                    
+
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm">Route Efficiency</span>
@@ -896,11 +971,13 @@ export default function ServiceDispatchOptimization() {
                       </div>
                       <Progress value={94} className="h-2" />
                     </div>
-                    
+
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm">Customer Satisfaction</span>
-                        <span className="text-sm font-medium text-purple-600">↑ 8% this quarter</span>
+                        <span className="text-sm font-medium text-purple-600">
+                          ↑ 8% this quarter
+                        </span>
                       </div>
                       <Progress value={92} className="h-2" />
                     </div>
@@ -956,35 +1033,35 @@ export default function ServiceDispatchOptimization() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="route-optimization">Route Optimization</Label>
-                    <p className="text-sm text-gray-600">Use AI to automatically optimize technician routes</p>
+                    <p className="text-sm text-gray-600">
+                      Use AI to automatically optimize technician routes
+                    </p>
                   </div>
-                  <Switch 
+                  <Switch
                     id="route-optimization"
                     checked={routeOptimizationEnabled}
                     onCheckedChange={setRouteOptimizationEnabled}
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="real-time-tracking">Real-time Tracking</Label>
                     <p className="text-sm text-gray-600">Enable GPS tracking for all technicians</p>
                   </div>
-                  <Switch 
+                  <Switch
                     id="real-time-tracking"
                     checked={realTimeTrackingEnabled}
                     onCheckedChange={setRealTimeTrackingEnabled}
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsSettingsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={() => setIsSettingsDialogOpen(false)}>
-                  Save Settings
-                </Button>
+                <Button onClick={() => setIsSettingsDialogOpen(false)}>Save Settings</Button>
               </div>
             </div>
           </DialogContent>

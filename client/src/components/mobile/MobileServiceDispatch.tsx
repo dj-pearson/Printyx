@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  MapPin, 
-  Phone, 
-  Clock, 
-  User, 
+import { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  MapPin,
+  Phone,
+  Clock,
+  User,
   Wrench,
   Camera,
   Navigation,
@@ -19,10 +19,10 @@ import {
   Pause,
   Package,
   FileText,
-  QrCode
-} from "lucide-react";
-import { useMobileDetection, useMobileScanning } from "@/hooks/useExternalIntegrations";
-import { useToast } from "@/hooks/use-toast";
+  QrCode,
+} from 'lucide-react';
+import { useMobileDetection, useMobileScanning } from '@/hooks/useExternalIntegrations';
+import { useToast } from '@/hooks/use-toast';
 
 interface ServiceTicket {
   id: string;
@@ -49,7 +49,7 @@ export function MobileServiceDispatch({ technicianId, className }: MobileService
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [notes, setNotes] = useState('');
   const [partsUsed, setPartsUsed] = useState<string[]>([]);
-  
+
   const { isMobile, orientation } = useMobileDetection();
   const scanner = useMobileScanning();
   const { toast } = useToast();
@@ -66,21 +66,21 @@ export function MobileServiceDispatch({ technicianId, className }: MobileService
       priority: 'high',
       status: 'assigned',
       scheduledTime: '2025-08-13T14:00:00Z',
-      estimatedDuration: 90
+      estimatedDuration: 90,
     });
   }, []);
 
   const handleStatusUpdate = (newStatus: string) => {
     setCurrentStatus(newStatus);
-    
+
     if (newStatus === 'on-site' && !timeTracking) {
       setTimeTracking(true);
       setStartTime(new Date());
     }
-    
+
     toast({
-      title: "Status Updated",
-      description: `Ticket status changed to: ${newStatus.replace('-', ' ')}`
+      title: 'Status Updated',
+      description: `Ticket status changed to: ${newStatus.replace('-', ' ')}`,
     });
   };
 
@@ -88,39 +88,50 @@ export function MobileServiceDispatch({ technicianId, className }: MobileService
     try {
       await scanner.startScan('barcode');
       if (scanner.scanResult) {
-        setPartsUsed(prev => [...prev, scanner.scanResult]);
+        setPartsUsed((prev) => [...prev, scanner.scanResult]);
         toast({
-          title: "Part Scanned",
-          description: `Added part: ${scanner.scanResult}`
+          title: 'Part Scanned',
+          description: `Added part: ${scanner.scanResult}`,
         });
       }
     } catch (error) {
       toast({
-        title: "Scan Failed",
-        description: "Unable to scan barcode. Try manual entry.",
-        variant: "destructive"
+        title: 'Scan Failed',
+        description: 'Unable to scan barcode. Try manual entry.',
+        variant: 'destructive',
       });
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'assigned': return 'bg-blue-100 text-blue-800';
-      case 'en-route': return 'bg-yellow-100 text-yellow-800';
-      case 'on-site': return 'bg-orange-100 text-orange-800';
-      case 'in-progress': return 'bg-purple-100 text-purple-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'assigned':
+        return 'bg-blue-100 text-blue-800';
+      case 'en-route':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'on-site':
+        return 'bg-orange-100 text-orange-800';
+      case 'in-progress':
+        return 'bg-purple-100 text-purple-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return 'bg-red-100 text-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'urgent':
+        return 'bg-red-100 text-red-800';
+      case 'high':
+        return 'bg-orange-100 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -194,7 +205,7 @@ export function MobileServiceDispatch({ technicianId, className }: MobileService
                 )}
                 <Button
                   size="sm"
-                  variant={timeTracking ? "destructive" : "default"}
+                  variant={timeTracking ? 'destructive' : 'default'}
                   onClick={() => {
                     setTimeTracking(!timeTracking);
                     if (!timeTracking) {
@@ -220,7 +231,7 @@ export function MobileServiceDispatch({ technicianId, className }: MobileService
             {['assigned', 'en-route', 'on-site', 'in-progress', 'completed'].map((status) => (
               <Button
                 key={status}
-                variant={currentStatus === status ? "default" : "outline"}
+                variant={currentStatus === status ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handleStatusUpdate(status)}
                 className="text-xs"
@@ -272,11 +283,16 @@ export function MobileServiceDispatch({ technicianId, className }: MobileService
               <Label>Parts Used:</Label>
               <div className="space-y-1">
                 {partsUsed.map((part, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                  >
                     <span className="text-sm">{part}</span>
-                    <Button size="sm" variant="ghost" onClick={() => 
-                      setPartsUsed(prev => prev.filter((_, i) => i !== index))
-                    }>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setPartsUsed((prev) => prev.filter((_, i) => i !== index))}
+                    >
                       ×
                     </Button>
                   </div>

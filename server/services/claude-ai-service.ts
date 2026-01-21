@@ -114,8 +114,12 @@ class ClaudeAIService {
         score: Math.min(100, Math.max(0, analysis.score || 50)),
         conversionProbability: Math.min(100, Math.max(0, analysis.conversionProbability || 25)),
         insights: Array.isArray(analysis.insights) ? analysis.insights : [],
-        recommendedActions: Array.isArray(analysis.recommendedActions) ? analysis.recommendedActions : [],
-        optimalContactTimes: Array.isArray(analysis.optimalContactTimes) ? analysis.optimalContactTimes : [],
+        recommendedActions: Array.isArray(analysis.recommendedActions)
+          ? analysis.recommendedActions
+          : [],
+        optimalContactTimes: Array.isArray(analysis.optimalContactTimes)
+          ? analysis.optimalContactTimes
+          : [],
       };
     } catch (error) {
       console.error('Error analyzing lead data:', error);

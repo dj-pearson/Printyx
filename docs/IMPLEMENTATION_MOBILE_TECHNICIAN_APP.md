@@ -18,11 +18,13 @@ A native mobile application for field service technicians that provides offline-
 ### Technology Stack
 
 **Framework:** React Native (Expo)
+
 - **Why:** Maximum code reuse with existing React web codebase
 - **Benefits:** Single codebase for iOS and Android, hot reload, OTA updates
 - **Tradeoff:** Slightly lower performance than native, but acceptable for this use case
 
 **Key Libraries:**
+
 ```json
 {
   "react-native": "^0.75.0",
@@ -44,17 +46,20 @@ A native mobile application for field service technicians that provides offline-
 ```
 
 **Offline Database:** WatermelonDB
+
 - High-performance SQLite-based database
 - Lazy loading and reactive updates
 - Seamless sync with backend
 - Proven at scale (used by many production apps)
 
 **State Management:**
+
 - TanStack Query for server state (with persistence)
 - React Context for app-level state (auth, theme, settings)
 - WatermelonDB for local data persistence
 
 **Backend:** Extend existing Printyx Express.js API
+
 - New routes in `server/routes/mobile-technician.ts`
 - Sync endpoints for offline data
 - Image upload with compression
@@ -119,6 +124,7 @@ A native mobile application for field service technicians that provides offline-
 ### Phase 1: Foundation (Weeks 1-4)
 
 **1. Authentication & Onboarding**
+
 - Login with existing Printyx credentials
 - Biometric authentication (Face ID/Touch ID)
 - Role-based access (only technicians can access)
@@ -126,6 +132,7 @@ A native mobile application for field service technicians that provides offline-
 - Onboarding tutorial for first-time users
 
 **2. Offline Data Sync**
+
 - Download tickets, equipment, customers, and parts inventory
 - Queue mutations (ticket updates, notes, photos) when offline
 - Automatic sync when connection restored
@@ -133,6 +140,7 @@ A native mobile application for field service technicians that provides offline-
 - Sync status indicator
 
 **3. Navigation & Dashboard**
+
 - Bottom tab navigation:
   - Today (assigned tickets)
   - Tickets (all open tickets)
@@ -148,6 +156,7 @@ A native mobile application for field service technicians that provides offline-
 ### Phase 2: Core Workflows (Weeks 5-8)
 
 **4. Ticket Management**
+
 - View ticket details (customer, equipment, issue description)
 - Update ticket status (En Route, On Site, In Progress, Completed)
 - Add internal notes and customer-visible updates
@@ -158,6 +167,7 @@ A native mobile application for field service technicians that provides offline-
 - Generate PDF service report
 
 **5. Equipment Information**
+
 - Search equipment by serial number, location, or customer
 - View equipment details:
   - Model, serial number, location
@@ -169,6 +179,7 @@ A native mobile application for field service technicians that provides offline-
 - QR code scanner for quick lookup
 
 **6. Camera & Photo Management**
+
 - Native camera integration (high quality)
 - Photo annotation (arrows, text, highlights)
 - Compress before upload (reduce bandwidth)
@@ -178,6 +189,7 @@ A native mobile application for field service technicians that provides offline-
 ### Phase 3: Advanced Features (Weeks 9-12)
 
 **7. Parts Inventory**
+
 - View on-hand parts inventory
 - Search parts by number or description
 - Check availability before ordering
@@ -186,6 +198,7 @@ A native mobile application for field service technicians that provides offline-
 - Low stock alerts
 
 **8. Customer Information**
+
 - View customer contact details
 - Call customer with one tap (tel: link)
 - View service location address
@@ -193,6 +206,7 @@ A native mobile application for field service technicians that provides offline-
 - Access site notes and special instructions
 
 **9. GPS Tracking & Geofencing**
+
 - Background location tracking (with user permission)
 - Automatic "Arrived on Site" when entering geofence
 - Automatic "Left Site" when leaving geofence
@@ -200,6 +214,7 @@ A native mobile application for field service technicians that provides offline-
 - Mileage tracking for reimbursement
 
 **10. Notifications**
+
 - Push notifications for new assignments
 - SLA breach warnings
 - Parts availability updates
@@ -209,6 +224,7 @@ A native mobile application for field service technicians that provides offline-
 ### Phase 4: Polish & Optimization (Weeks 13-16)
 
 **11. Performance Optimization**
+
 - Image lazy loading and caching
 - Pagination for large lists
 - Database query optimization
@@ -216,14 +232,17 @@ A native mobile application for field service technicians that provides offline-
 - Improve app startup time
 
 **12. Voice Features**
+
 - Voice-to-text for notes (hands-free)
 - Voice commands ("Complete ticket", "Add note")
 
 **13. Barcode Scanning**
+
 - Scan parts barcodes for quick entry
 - Scan equipment barcodes for lookup
 
 **14. Reporting**
+
 - Daily/weekly technician reports
 - Parts usage summary
 - Time tracking summary
@@ -234,6 +253,7 @@ A native mobile application for field service technicians that provides offline-
 ## User Flow Examples
 
 ### Starting the Day
+
 1. Technician opens app
 2. Dashboard shows 5 assigned tickets for today
 3. Tickets are sorted by priority and geolocation
@@ -241,6 +261,7 @@ A native mobile application for field service technicians that provides offline-
 5. Taps "Start Navigation" to first stop
 
 ### Service Call Workflow
+
 1. Technician arrives → App auto-detects (geofence) and prompts to start ticket
 2. Takes "before" photos of issue
 3. Scans QR code on equipment → Instant access to service history and manuals
@@ -253,6 +274,7 @@ A native mobile application for field service technicians that provides offline-
 10. Ticket marked complete and synced to server
 
 ### Offline Scenario
+
 1. Technician is in basement with no cell signal
 2. All ticket data already cached locally
 3. Works on ticket, takes photos, adds notes
@@ -266,6 +288,7 @@ A native mobile application for field service technicians that provides offline-
 ## Screen Mockups (Key Screens)
 
 ### Home Dashboard
+
 ```
 ┌─────────────────────────┐
 │  ☰  Printyx    🔔 👤   │
@@ -301,6 +324,7 @@ A native mobile application for field service technicians that provides offline-
 ```
 
 ### Ticket Detail Screen
+
 ```
 ┌─────────────────────────┐
 │  ← Ticket #T-2024-1234  │
@@ -338,6 +362,7 @@ A native mobile application for field service technicians that provides offline-
 ```
 
 ### QR Scanner Screen
+
 ```
 ┌─────────────────────────┐
 │  ← Scan Equipment       │
@@ -361,6 +386,7 @@ A native mobile application for field service technicians that provides offline-
 ```
 
 ### Signature Capture
+
 ```
 ┌─────────────────────────┐
 │  ← Customer Signature   │
@@ -423,12 +449,12 @@ router.get('/sync', async (req, res) => {
       where: and(
         eq(serviceTickets.tenantId, tenantId),
         eq(serviceTickets.assignedTo, technicianId),
-        since ? gte(serviceTickets.updatedAt, new Date(since)) : undefined
+        since ? gte(serviceTickets.updatedAt, new Date(since)) : undefined,
       ),
       with: {
         customer: true,
         equipment: true,
-      }
+      },
     });
 
     // Get equipment the technician services
@@ -463,7 +489,8 @@ router.post('/tickets/:id/update', async (req, res) => {
   const { status, notes, partsUsed, timeSpent } = req.body;
 
   try {
-    const ticket = await db.update(serviceTickets)
+    const ticket = await db
+      .update(serviceTickets)
       .set({
         status,
         notes,
@@ -516,6 +543,7 @@ export default router;
 ```
 
 **Integration in `server/index.ts`:**
+
 ```typescript
 import mobileTechnicianRoutes from './routes/mobile-technician';
 
@@ -529,10 +557,12 @@ app.use('/api/mobile', mobileTechnicianRoutes);
 ### Sync Architecture
 
 **Bidirectional Sync:**
+
 - **Download:** Server → Mobile (GET /api/mobile/sync)
 - **Upload:** Mobile → Server (POST to various endpoints)
 
 **Sync Triggers:**
+
 - App startup (if connected)
 - Pull-to-refresh gesture
 - Periodic background sync (every 15 minutes when app is active)
@@ -540,12 +570,14 @@ app.use('/api/mobile', mobileTechnicianRoutes);
 - Before critical operations (completing ticket)
 
 **Conflict Resolution:**
+
 - **Last-Write-Wins:** For most fields (status, time spent)
 - **Merge Strategy:** For notes (append both versions with timestamp)
 - **Server Authority:** For billing and admin fields
 - **Client Validation:** Check server response, retry with latest if conflict
 
 **Sync Queue:**
+
 ```typescript
 // WatermelonDB sync adapter
 import { synchronize } from '@nozbe/watermelondb/sync';
@@ -559,7 +591,10 @@ async function syncDatabase() {
 
       return {
         changes: {
-          tickets: { created: tickets.filter(t => t.isNew), updated: tickets.filter(t => !t.isNew) },
+          tickets: {
+            created: tickets.filter((t) => t.isNew),
+            updated: tickets.filter((t) => !t.isNew),
+          },
           equipment: { created: [], updated: equipment },
           partsInventory: { created: [], updated: partsInventory },
         },
@@ -584,24 +619,28 @@ async function syncDatabase() {
 ## Security Considerations
 
 ### Authentication
+
 - JWT token stored in secure storage (iOS Keychain / Android Keystore)
 - Token refresh mechanism (30-day expiration)
 - Biometric authentication for quick access
 - Auto-lock after 5 minutes of inactivity
 
 ### Data Protection
+
 - Database encryption at rest (SQLCipher for WatermelonDB)
 - HTTPS for all API calls
 - Certificate pinning to prevent MITM attacks
 - No sensitive customer data cached unnecessarily
 
 ### Permissions
+
 - Camera: For photos and QR scanning
 - Location: For GPS tracking and geofencing
 - Notifications: For push alerts
 - Storage: For offline data and photos
 
 ### Compliance
+
 - GDPR: Right to be forgotten (purge local data on logout)
 - CCPA: Data access and deletion
 - HIPAA: If handling medical office equipment (encrypt PHI)
@@ -611,17 +650,20 @@ async function syncDatabase() {
 ## Testing Strategy
 
 ### Unit Tests
+
 - API client functions
 - Data transformation utilities
 - Sync logic
 - Form validation
 
 ### Integration Tests
+
 - Sync process (online/offline scenarios)
 - Photo upload and compression
 - Database operations
 
 ### E2E Tests (Detox)
+
 ```javascript
 describe('Technician Workflow', () => {
   it('should complete a service ticket', async () => {
@@ -640,6 +682,7 @@ describe('Technician Workflow', () => {
 ```
 
 ### Device Testing Matrix
+
 - iOS: iPhone 12, 13, 14, 15 (various screen sizes)
 - Android: Samsung Galaxy S21, S22, Pixel 6, 7
 - Tablets: iPad Pro, Samsung Galaxy Tab
@@ -650,6 +693,7 @@ describe('Technician Workflow', () => {
 ## Performance Targets
 
 ### Metrics
+
 - **App Startup:** < 2 seconds (cold start)
 - **Ticket List Load:** < 500ms (from local DB)
 - **Photo Upload:** < 5 seconds for 3MB image (compressed)
@@ -658,6 +702,7 @@ describe('Technician Workflow', () => {
 - **Battery Usage:** < 5% per hour of active use
 
 ### Optimization Techniques
+
 - Image compression before upload (JPEG quality 80%, max 1920x1080)
 - Lazy loading of images in lists
 - Virtualized lists (FlatList with optimization)
@@ -672,21 +717,25 @@ describe('Technician Workflow', () => {
 ### App Store Submission
 
 **iOS (Apple App Store):**
+
 - Apple Developer Account required ($99/year)
 - App Review: 1-3 days typically
 - TestFlight for beta testing (100 internal, 10,000 external testers)
 
 **Android (Google Play Store):**
+
 - Google Play Developer Account ($25 one-time)
 - Review: Usually same day
 - Internal/closed/open testing tracks
 
 ### OTA Updates (Expo)
+
 - Push updates without app store approval (JavaScript changes only)
 - Native changes require full app store update
 - Gradual rollout possible (10% → 50% → 100%)
 
 ### Beta Testing Plan
+
 1. **Alpha (Weeks 13-14):** Internal testing with 5 technicians
 2. **Beta (Weeks 15-16):** Expand to 20 technicians at 3 customers
 3. **Release Candidate (Week 17):** Full testing, prepare for launch
@@ -697,12 +746,14 @@ describe('Technician Workflow', () => {
 ## Training & Documentation
 
 ### Technician Training
+
 - 30-minute video walkthrough
 - Quick start guide (PDF)
 - In-app tutorial (first launch)
 - FAQs and troubleshooting guide
 
 ### Admin Documentation
+
 - Deployment guide
 - API documentation
 - Troubleshooting common issues
@@ -713,22 +764,27 @@ describe('Technician Workflow', () => {
 ## Success Metrics (KPIs)
 
 ### Adoption
+
 - **Target:** 90% of technicians using app within 30 days
 - **Metric:** Daily active users / Total technicians
 
 ### Efficiency
+
 - **Target:** 20% reduction in ticket completion time
 - **Metric:** Average time from assignment to completion
 
 ### Quality
+
 - **Target:** 15% increase in first-time fix rate
 - **Metric:** Tickets completed on first visit / Total tickets
 
 ### Customer Satisfaction
+
 - **Target:** 10-point increase in NPS
 - **Metric:** Post-service survey scores
 
 ### Offline Usage
+
 - **Target:** 30% of operations happen offline
 - **Metric:** Operations queued for sync / Total operations
 
@@ -737,6 +793,7 @@ describe('Technician Workflow', () => {
 ## Budget Estimate
 
 ### Development Costs
+
 - **Mobile Developer (4 months):** $50,000 - $80,000 (contractor/employee)
 - **Backend Developer (1 month):** $12,000 - $20,000
 - **UI/UX Design:** $5,000 - $10,000
@@ -744,6 +801,7 @@ describe('Technician Workflow', () => {
 - **Total Development:** $75,000 - $122,000
 
 ### Ongoing Costs
+
 - **Apple Developer Account:** $99/year
 - **Google Play Account:** $25 one-time
 - **Expo EAS Build/Update:** $99/month (production plan)
@@ -752,6 +810,7 @@ describe('Technician Workflow', () => {
 - **Total Year 1:** ~$2,500 + development costs
 
 ### ROI Calculation
+
 - **Time Savings:** 30 technicians × 2 hours/week × $40/hour × 50 weeks = $120,000/year
 - **Payback Period:** 7-12 months
 - **3-Year ROI:** 400-600%
@@ -760,20 +819,21 @@ describe('Technician Workflow', () => {
 
 ## Risks & Mitigation
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Low technician adoption | Medium | High | Training, gamification, management support |
-| Offline sync conflicts | Medium | Medium | Robust conflict resolution, testing |
-| Battery drain issues | Low | High | Optimize location tracking, power management |
-| App store rejection | Low | Medium | Follow guidelines strictly, pre-submission checklist |
-| Performance on older devices | Medium | Low | Test on older hardware, graceful degradation |
-| Backend API changes breaking app | Medium | High | Versioned API, backward compatibility |
+| Risk                             | Probability | Impact | Mitigation                                           |
+| -------------------------------- | ----------- | ------ | ---------------------------------------------------- |
+| Low technician adoption          | Medium      | High   | Training, gamification, management support           |
+| Offline sync conflicts           | Medium      | Medium | Robust conflict resolution, testing                  |
+| Battery drain issues             | Low         | High   | Optimize location tracking, power management         |
+| App store rejection              | Low         | Medium | Follow guidelines strictly, pre-submission checklist |
+| Performance on older devices     | Medium      | Low    | Test on older hardware, graceful degradation         |
+| Backend API changes breaking app | Medium      | High   | Versioned API, backward compatibility                |
 
 ---
 
 ## Next Steps (Week 1-2)
 
 ### Immediate Actions
+
 1. **Validate with Users:** Interview 5-10 technicians to confirm feature priorities
 2. **Design Review:** Create high-fidelity mockups in Figma
 3. **Technical Spike:** Prove offline sync with WatermelonDB (2-day prototype)
@@ -781,6 +841,7 @@ describe('Technician Workflow', () => {
 5. **Resource Allocation:** Hire/contract mobile developer if needed
 
 ### Decision Points
+
 - [ ] Approve budget and timeline
 - [ ] Select React Native vs Flutter (recommendation: React Native)
 - [ ] Define MVP scope (Phase 1-2 vs all phases)
@@ -791,17 +852,20 @@ describe('Technician Workflow', () => {
 ## Appendix
 
 ### Competitor Analysis
+
 - **ServiceTrade:** Mobile app but limited offline capability
 - **FieldAware:** Strong mobile offering but expensive
 - **Housecall Pro:** Great UX but not copier-industry specific
 - **Printyx Advantage:** Tight integration with existing platform, offline-first design
 
 ### Technology Alternatives Considered
+
 - **Flutter:** Better performance, but Dart language barrier
 - **Native iOS/Android:** Best performance, but 2x development cost
 - **Progressive Web App:** No app store, but limited offline and native features
 
 ### References
+
 - [React Native Documentation](https://reactnative.dev/)
 - [Expo Documentation](https://docs.expo.dev/)
 - [WatermelonDB Documentation](https://watermelondb.dev/)
@@ -811,7 +875,6 @@ describe('Technician Workflow', () => {
 
 ## Document History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-11-23 | Claude | Initial implementation plan |
-
+| Version | Date       | Author | Changes                     |
+| ------- | ---------- | ------ | --------------------------- |
+| 1.0     | 2025-11-23 | Claude | Initial implementation plan |

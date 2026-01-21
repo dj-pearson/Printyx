@@ -1,93 +1,93 @@
-const puppeteer = require("puppeteer");
-const fs = require("fs");
-const path = require("path");
+const puppeteer = require('puppeteer');
+const fs = require('fs');
+const path = require('path');
 
 // All routes extracted from the role-based sidebar
 const ALL_ROUTES = [
-  "/",
-  "/leads-management",
-  "/crm-enhanced",
-  "/sales-pipeline",
-  "/crm-goals-dashboard",
-  "/contacts",
-  "/company-contacts",
-  "/deals-management",
-  "/sales-pipeline-forecasting",
-  "/customers",
-  "/customer-success-management",
-  "/contracts",
-  "/quote-proposal-generation",
-  "/commission-management",
-  "/demo-scheduling",
-  "/task-management",
-  "/service-dispatch",
-  "/service-dispatch-enhanced",
-  "/service-dispatch-optimization",
-  "/mobile-field-service",
-  "/mobile-field-operations",
-  "/mobile-service-app",
-  "/service-analytics",
-  "/service-products",
-  "/remote-monitoring",
-  "/preventive-maintenance-scheduling",
-  "/preventive-maintenance-automation",
-  "/meter-readings",
-  "/incident-response-system",
-  "/inventory",
-  "/invoices",
-  "/advanced-billing-engine",
-  "/meter-billing",
-  "/chart-of-accounts",
-  "/journal-entries",
-  "/financial-forecasting",
-  "/vendors",
-  "/accounts-payable",
-  "/accounts-receivable",
-  "/reports",
-  "/advanced-reporting",
-  "/advanced-analytics-dashboard",
-  "/ai-analytics-dashboard",
-  "/predictive-analytics",
-  "/integration-hub",
-  "/quickbooks-integration",
-  "/erp-integration",
-  "/esignature-integration",
-  "/system-integrations",
-  "/workflow-automation",
-  "/business-process-optimization",
-  "/business-records",
-  "/document-management",
-  "/security-compliance-management",
-  "/deployment-readiness",
-  "/performance-monitoring",
-  "/data-enrichment",
-  "/root-admin-dashboard",
-  "/social-media-generator",
-  "/security-management",
-  "/system-monitoring",
-  "/access-control",
-  "/platform-configuration",
-  "/database-management",
-  "/tenant-setup",
-  "/professional-services",
-  "/managed-services",
-  "/customer-self-service-portal",
-  "/mobile-optimization",
-  "/settings",
+  '/',
+  '/leads-management',
+  '/crm-enhanced',
+  '/sales-pipeline',
+  '/crm-goals-dashboard',
+  '/contacts',
+  '/company-contacts',
+  '/deals-management',
+  '/sales-pipeline-forecasting',
+  '/customers',
+  '/customer-success-management',
+  '/contracts',
+  '/quote-proposal-generation',
+  '/commission-management',
+  '/demo-scheduling',
+  '/task-management',
+  '/service-dispatch',
+  '/service-dispatch-enhanced',
+  '/service-dispatch-optimization',
+  '/mobile-field-service',
+  '/mobile-field-operations',
+  '/mobile-service-app',
+  '/service-analytics',
+  '/service-products',
+  '/remote-monitoring',
+  '/preventive-maintenance-scheduling',
+  '/preventive-maintenance-automation',
+  '/meter-readings',
+  '/incident-response-system',
+  '/inventory',
+  '/invoices',
+  '/advanced-billing-engine',
+  '/meter-billing',
+  '/chart-of-accounts',
+  '/journal-entries',
+  '/financial-forecasting',
+  '/vendors',
+  '/accounts-payable',
+  '/accounts-receivable',
+  '/reports',
+  '/advanced-reporting',
+  '/advanced-analytics-dashboard',
+  '/ai-analytics-dashboard',
+  '/predictive-analytics',
+  '/integration-hub',
+  '/quickbooks-integration',
+  '/erp-integration',
+  '/esignature-integration',
+  '/system-integrations',
+  '/workflow-automation',
+  '/business-process-optimization',
+  '/business-records',
+  '/document-management',
+  '/security-compliance-management',
+  '/deployment-readiness',
+  '/performance-monitoring',
+  '/data-enrichment',
+  '/root-admin-dashboard',
+  '/social-media-generator',
+  '/security-management',
+  '/system-monitoring',
+  '/access-control',
+  '/platform-configuration',
+  '/database-management',
+  '/tenant-setup',
+  '/professional-services',
+  '/managed-services',
+  '/customer-self-service-portal',
+  '/mobile-optimization',
+  '/settings',
 ];
 
 // Test configuration
 const CONFIG = {
-  baseUrl: "http://localhost:5000",
+  baseUrl: 'http://localhost:5000',
   timeout: 30000,
   viewports: [
-    { width: 1920, height: 1080, device: "desktop" },
-    { width: 768, height: 1024, device: "tablet" },
-    { width: 375, height: 667, device: "mobile" },
+    { width: 1920, height: 1080, device: 'desktop' },
+    { width: 768, height: 1024, device: 'tablet' },
+    { width: 375, height: 667, device: 'mobile' },
   ],
   screenshots: true,
-  screenshotDir: "./test-results/screenshots",
-  reportDir: "./test-results",
+  screenshotDir: './test-results/screenshots',
+  reportDir: './test-results',
 };
 
 class ComprehensiveRouteTest {
@@ -124,21 +124,21 @@ class ComprehensiveRouteTest {
   }
 
   async runTests() {
-    console.log("🚀 Starting Comprehensive Route Testing...");
+    console.log('🚀 Starting Comprehensive Route Testing...');
     console.log(`📊 Testing ${ALL_ROUTES.length} routes`);
-    console.log("=".repeat(60));
+    console.log('='.repeat(60));
 
     const browser = await puppeteer.launch({
       headless: true,
       args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--no-first-run",
-        "--no-zygote",
-        "--single-process",
-        "--disable-gpu",
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
       ],
     });
 
@@ -146,7 +146,7 @@ class ComprehensiveRouteTest {
       // Test each viewport
       for (const viewport of CONFIG.viewports) {
         console.log(
-          `\n📱 Testing ${viewport.device} viewport (${viewport.width}x${viewport.height})`
+          `\n📱 Testing ${viewport.device} viewport (${viewport.width}x${viewport.height})`,
         );
         await this.testViewport(browser, viewport);
       }
@@ -167,19 +167,19 @@ class ComprehensiveRouteTest {
       await page.setViewport({
         width: viewport.width,
         height: viewport.height,
-        isMobile: viewport.device === "mobile",
+        isMobile: viewport.device === 'mobile',
       });
 
       // Enable request interception to catch 404s
       await page.setRequestInterception(true);
-      page.on("request", (request) => {
+      page.on('request', (request) => {
         request.continue();
       });
 
       // Listen for console errors
       const consoleErrors = [];
-      page.on("console", (msg) => {
-        if (msg.type() === "error") {
+      page.on('console', (msg) => {
+        if (msg.type() === 'error') {
           consoleErrors.push(msg.text());
         }
       });
@@ -197,7 +197,7 @@ class ComprehensiveRouteTest {
     const routeTest = {
       route: route,
       viewport: viewport.device,
-      status: "unknown",
+      status: 'unknown',
       httpStatus: null,
       loadTime: 0,
       errors: [],
@@ -215,7 +215,7 @@ class ComprehensiveRouteTest {
 
       // Navigate to route with timeout
       const response = await page.goto(`${CONFIG.baseUrl}${route}`, {
-        waitUntil: "networkidle0",
+        waitUntil: 'networkidle0',
         timeout: CONFIG.timeout,
       });
 
@@ -225,7 +225,7 @@ class ComprehensiveRouteTest {
 
       // Check for successful load
       if (response.status() >= 200 && response.status() < 300) {
-        routeTest.status = "success";
+        routeTest.status = 'success';
         this.results.summary.successful++;
 
         // Test page content and interactions
@@ -235,7 +235,7 @@ class ComprehensiveRouteTest {
         if (CONFIG.screenshots) {
           const screenshotPath = path.join(
             CONFIG.screenshotDir,
-            `${route.replace(/\//g, "_") || "home"}_${viewport.device}.png`
+            `${route.replace(/\//g, '_') || 'home'}_${viewport.device}.png`,
           );
           await page.screenshot({ path: screenshotPath, fullPage: true });
           routeTest.screenshot = screenshotPath;
@@ -251,30 +251,28 @@ class ComprehensiveRouteTest {
           });
         }
       } else if (response.status() === 404) {
-        routeTest.status = "error";
-        routeTest.errors.push("404 - Page Not Found");
+        routeTest.status = 'error';
+        routeTest.errors.push('404 - Page Not Found');
         this.results.summary.errors++;
       } else if (response.status() >= 500) {
-        routeTest.status = "error";
+        routeTest.status = 'error';
         routeTest.errors.push(`${response.status()} - Server Error`);
         this.results.summary.errors++;
       } else {
-        routeTest.status = "warning";
+        routeTest.status = 'warning';
         routeTest.warnings.push(`HTTP ${response.status()}`);
         this.results.summary.warnings++;
       }
 
       // Check for console errors
       if (consoleErrors.length > 0) {
-        routeTest.errors.push(
-          ...consoleErrors.map((err) => `Console Error: ${err}`)
-        );
+        routeTest.errors.push(...consoleErrors.map((err) => `Console Error: ${err}`));
         consoleErrors.length = 0; // Clear for next route
       }
 
       this.results.performance.totalLoadTime += loadTime;
     } catch (error) {
-      routeTest.status = "error";
+      routeTest.status = 'error';
       routeTest.errors.push(`Navigation Error: ${error.message}`);
       this.results.summary.errors++;
       console.log(`    ❌ Error: ${error.message}`);
@@ -285,16 +283,8 @@ class ComprehensiveRouteTest {
 
     // Progress indicator
     const statusIcon =
-      routeTest.status === "success"
-        ? "✅"
-        : routeTest.status === "error"
-        ? "❌"
-        : "⚠️";
-    console.log(
-      `    ${statusIcon} ${routeTest.status.toUpperCase()} (${
-        routeTest.loadTime
-      }ms)`
-    );
+      routeTest.status === 'success' ? '✅' : routeTest.status === 'error' ? '❌' : '⚠️';
+    console.log(`    ${statusIcon} ${routeTest.status.toUpperCase()} (${routeTest.loadTime}ms)`);
   }
 
   async testPageInteractions(page, routeTest) {
@@ -310,15 +300,14 @@ class ComprehensiveRouteTest {
             const text =
               el.textContent?.trim() ||
               el.value ||
-              el.getAttribute("aria-label") ||
+              el.getAttribute('aria-label') ||
               `button-${index}`;
             const hasOnClick = !!(
               el.onclick ||
-              el.getAttribute("onclick") ||
-              el.classList.contains("cursor-pointer")
+              el.getAttribute('onclick') ||
+              el.classList.contains('cursor-pointer')
             );
-            const isDisabled =
-              el.disabled || el.getAttribute("disabled") !== null;
+            const isDisabled = el.disabled || el.getAttribute('disabled') !== null;
 
             return {
               text: text.substring(0, 50), // Limit text length
@@ -328,7 +317,7 @@ class ComprehensiveRouteTest {
               tagName: el.tagName,
             };
           });
-        }
+        },
       );
 
       // Analyze buttons
@@ -343,9 +332,7 @@ class ComprehensiveRouteTest {
         };
 
         if (!button.hasOnClick && !button.isDisabled) {
-          routeTest.warnings.push(
-            `Button "${button.text}" appears to lack click handler`
-          );
+          routeTest.warnings.push(`Button "${button.text}" appears to lack click handler`);
         }
 
         this.results.buttons.push(buttonTest);
@@ -353,23 +340,23 @@ class ComprehensiveRouteTest {
       });
 
       // Test forms (including React Hook Forms)
-      const forms = await page.$$eval("form", (elements) => {
+      const forms = await page.$$eval('form', (elements) => {
         return elements.map((form, index) => {
           // Check for various submit handler patterns
           const hasSubmitHandler = !!(
-            form.onsubmit || 
-            form.getAttribute("onsubmit") ||
+            form.onsubmit ||
+            form.getAttribute('onsubmit') ||
             // React Hook Form patterns
-            form.getAttribute("novalidate") !== null || // React Hook Form sets novalidate
+            form.getAttribute('novalidate') !== null || // React Hook Form sets novalidate
             form.querySelector('button[type="submit"]') ||
             form.querySelector('input[type="submit"]') ||
             // Look for event listeners (approximate check)
             form.hasAttribute('data-testid') ||
             form.className.includes('form')
           );
-          const action = form.action || "";
-          const method = form.method || "GET";
-          const inputCount = form.querySelectorAll("input, textarea, select").length;
+          const action = form.action || '';
+          const method = form.method || 'GET';
+          const inputCount = form.querySelectorAll('input, textarea, select').length;
 
           return {
             index,
@@ -377,8 +364,11 @@ class ComprehensiveRouteTest {
             action,
             method,
             inputCount,
-            isReactForm: form.getAttribute("novalidate") !== null,
-            hasSubmitButton: !!(form.querySelector('button[type="submit"]') || form.querySelector('input[type="submit"]'))
+            isReactForm: form.getAttribute('novalidate') !== null,
+            hasSubmitButton: !!(
+              form.querySelector('button[type="submit"]') ||
+              form.querySelector('input[type="submit"]')
+            ),
           };
         });
       });
@@ -399,7 +389,7 @@ class ComprehensiveRouteTest {
         // More lenient warning for React forms
         if (!form.hasSubmitHandler && !form.hasSubmitButton && form.inputCount > 0) {
           routeTest.warnings.push(
-            `Form ${index} may lack submit handler (found ${form.inputCount} inputs)`
+            `Form ${index} may lack submit handler (found ${form.inputCount} inputs)`,
           );
         }
 
@@ -420,7 +410,7 @@ class ComprehensiveRouteTest {
     try {
       // Test first few clickable buttons
       const clickableButtons = await page.$$(
-        'button:not([disabled]), input[type="button"]:not([disabled]), input[type="submit"]:not([disabled])'
+        'button:not([disabled]), input[type="button"]:not([disabled]), input[type="submit"]:not([disabled])',
       );
 
       const maxButtonsToTest = Math.min(3, clickableButtons.length);
@@ -429,8 +419,8 @@ class ComprehensiveRouteTest {
         try {
           const button = clickableButtons[i];
           const buttonText = await page.evaluate(
-            (el) => el.textContent?.trim() || el.value || "unnamed",
-            button
+            (el) => el.textContent?.trim() || el.value || 'unnamed',
+            button,
           );
 
           // Get current URL before click
@@ -445,31 +435,27 @@ class ComprehensiveRouteTest {
           // Check if URL changed or modal appeared
           const afterUrl = page.url();
           const modalAppeared =
-            (await page.$(
-              '[role="dialog"], .modal, [data-testid*="modal"]'
-            )) !== null;
+            (await page.$('[role="dialog"], .modal, [data-testid*="modal"]')) !== null;
 
           if (beforeUrl !== afterUrl) {
             routeTest.buttons[i] = routeTest.buttons[i] || {};
-            routeTest.buttons[i].action = "navigation";
+            routeTest.buttons[i].action = 'navigation';
             routeTest.buttons[i].newUrl = afterUrl;
           } else if (modalAppeared) {
             routeTest.buttons[i] = routeTest.buttons[i] || {};
-            routeTest.buttons[i].action = "modal";
+            routeTest.buttons[i].action = 'modal';
           } else {
             // Check for other changes (form submission, state changes, etc.)
             routeTest.buttons[i] = routeTest.buttons[i] || {};
-            routeTest.buttons[i].action = "unknown";
+            routeTest.buttons[i].action = 'unknown';
           }
 
           // Navigate back to original route if URL changed
           if (beforeUrl !== afterUrl) {
-            await page.goto(beforeUrl, { waitUntil: "networkidle0" });
+            await page.goto(beforeUrl, { waitUntil: 'networkidle0' });
           }
         } catch (clickError) {
-          routeTest.warnings.push(
-            `Button click test failed: ${clickError.message}`
-          );
+          routeTest.warnings.push(`Button click test failed: ${clickError.message}`);
         }
       }
     } catch (error) {
@@ -483,10 +469,7 @@ class ComprehensiveRouteTest {
       this.results.performance.totalLoadTime / this.results.summary.totalRoutes;
 
     // Generate detailed JSON report
-    const reportPath = path.join(
-      CONFIG.reportDir,
-      "comprehensive-test-report.json"
-    );
+    const reportPath = path.join(CONFIG.reportDir, 'comprehensive-test-report.json');
     fs.writeFileSync(reportPath, JSON.stringify(this.results, null, 2));
 
     // Generate HTML report
@@ -494,9 +477,7 @@ class ComprehensiveRouteTest {
 
     console.log(`\n📄 Reports generated:`);
     console.log(`  📊 JSON: ${reportPath}`);
-    console.log(
-      `  🌐 HTML: ${path.join(CONFIG.reportDir, "test-report.html")}`
-    );
+    console.log(`  🌐 HTML: ${path.join(CONFIG.reportDir, 'test-report.html')}`);
   }
 
   async generateHtmlReport() {
@@ -526,22 +507,16 @@ class ComprehensiveRouteTest {
     
     <div class="summary">
         <h2>📊 Test Summary</h2>
-        <p><strong>Total Routes Tested:</strong> ${
-          this.results.summary.totalRoutes
-        }</p>
-        <p><strong>✅ Successful:</strong> ${
-          this.results.summary.successful
-        }</p>
+        <p><strong>Total Routes Tested:</strong> ${this.results.summary.totalRoutes}</p>
+        <p><strong>✅ Successful:</strong> ${this.results.summary.successful}</p>
         <p><strong>❌ Errors:</strong> ${this.results.summary.errors}</p>
         <p><strong>⚠️ Warnings:</strong> ${this.results.summary.warnings}</p>
         <p><strong>⚡ Average Load Time:</strong> ${Math.round(
-          this.results.performance.averageLoadTime
+          this.results.performance.averageLoadTime,
         )}ms</p>
-        <p><strong>🐌 Slow Routes (>3s):</strong> ${
-          this.results.performance.slowRoutes.length
-        }</p>
+        <p><strong>🐌 Slow Routes (>3s):</strong> ${this.results.performance.slowRoutes.length}</p>
         <p><strong>🕒 Test Duration:</strong> ${Math.round(
-          (this.results.summary.endTime - this.results.summary.startTime) / 1000
+          (this.results.summary.endTime - this.results.summary.startTime) / 1000,
         )}s</p>
     </div>
 
@@ -551,33 +526,27 @@ class ComprehensiveRouteTest {
         (route) => `
         <div class="route ${route.status}">
             <h3>${route.route} (${route.viewport})</h3>
-            <p><strong>Status:</strong> ${route.status.toUpperCase()} (HTTP ${
-          route.httpStatus
-        })</p>
+            <p><strong>Status:</strong> ${route.status.toUpperCase()} (HTTP ${route.httpStatus})</p>
             <p><strong>Load Time:</strong> ${route.loadTime}ms</p>
             
             ${
               route.errors.length > 0
                 ? `
                 <div><strong>❌ Errors:</strong>
-                    <ul>${route.errors
-                      .map((error) => `<li>${error}</li>`)
-                      .join("")}</ul>
+                    <ul>${route.errors.map((error) => `<li>${error}</li>`).join('')}</ul>
                 </div>
             `
-                : ""
+                : ''
             }
             
             ${
               route.warnings.length > 0
                 ? `
                 <div><strong>⚠️ Warnings:</strong>
-                    <ul>${route.warnings
-                      .map((warning) => `<li>${warning}</li>`)
-                      .join("")}</ul>
+                    <ul>${route.warnings.map((warning) => `<li>${warning}</li>`).join('')}</ul>
                 </div>
             `
-                : ""
+                : ''
             }
             
             ${
@@ -590,15 +559,15 @@ class ComprehensiveRouteTest {
                         (btn) => `
                         <div class="button-test">
                             <strong>"${btn.text}"</strong> - 
-                            Handler: ${btn.hasHandler ? "✅" : "❌"} - 
-                            Action: ${btn.action || "none"}
+                            Handler: ${btn.hasHandler ? '✅' : '❌'} - 
+                            Action: ${btn.action || 'none'}
                         </div>
-                    `
+                    `,
                       )
-                      .join("")}
+                      .join('')}
                 </div>
             `
-                : ""
+                : ''
             }
             
             ${
@@ -607,16 +576,16 @@ class ComprehensiveRouteTest {
                 <div><strong>📸 Screenshot:</strong><br>
                     <img src="${path.relative(
                       CONFIG.reportDir,
-                      route.screenshot
+                      route.screenshot,
                     )}" alt="Screenshot" class="screenshot">
                 </div>
             `
-                : ""
+                : ''
             }
         </div>
-    `
+    `,
       )
-      .join("")}
+      .join('')}
 
     <h2>🔘 Button Analysis</h2>
     <table>
@@ -634,13 +603,13 @@ class ComprehensiveRouteTest {
             <tr>
                 <td>${btn.route}</td>
                 <td>${btn.text}</td>
-                <td>${btn.hasHandler ? "✅" : "❌"}</td>
-                <td>${btn.action || "Unknown"}</td>
-                <td>${btn.hasHandler ? "Good" : "Needs Review"}</td>
+                <td>${btn.hasHandler ? '✅' : '❌'}</td>
+                <td>${btn.action || 'Unknown'}</td>
+                <td>${btn.hasHandler ? 'Good' : 'Needs Review'}</td>
             </tr>
-        `
+        `,
           )
-          .join("")}
+          .join('')}
     </table>
 
     <p><em>Generated: ${new Date().toLocaleString()}</em></p>
@@ -648,72 +617,60 @@ class ComprehensiveRouteTest {
 </html>
     `;
 
-    const htmlPath = path.join(CONFIG.reportDir, "test-report.html");
+    const htmlPath = path.join(CONFIG.reportDir, 'test-report.html');
     fs.writeFileSync(htmlPath, htmlContent);
   }
 
   printSummary() {
-    console.log("\n" + "=".repeat(60));
-    console.log("📊 COMPREHENSIVE TEST RESULTS SUMMARY");
-    console.log("=".repeat(60));
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 COMPREHENSIVE TEST RESULTS SUMMARY');
+    console.log('='.repeat(60));
     console.log(`Total Routes Tested: ${this.results.summary.totalRoutes}`);
     console.log(
       `✅ Successful: ${this.results.summary.successful} (${(
         (this.results.summary.successful / this.results.summary.totalRoutes) *
         100
-      ).toFixed(1)}%)`
+      ).toFixed(1)}%)`,
     );
     console.log(`❌ Errors: ${this.results.summary.errors}`);
     console.log(`⚠️  Warnings: ${this.results.summary.warnings}`);
-    console.log("");
-    console.log("⚡ PERFORMANCE INSIGHTS:");
-    console.log(
-      `Average Load Time: ${Math.round(
-        this.results.performance.averageLoadTime
-      )}ms`
-    );
-    console.log(
-      `Slow Routes (>3s): ${this.results.performance.slowRoutes.length}`
-    );
-    console.log("");
-    console.log("🔘 BUTTON ANALYSIS:");
+    console.log('');
+    console.log('⚡ PERFORMANCE INSIGHTS:');
+    console.log(`Average Load Time: ${Math.round(this.results.performance.averageLoadTime)}ms`);
+    console.log(`Slow Routes (>3s): ${this.results.performance.slowRoutes.length}`);
+    console.log('');
+    console.log('🔘 BUTTON ANALYSIS:');
     console.log(`Total Buttons Found: ${this.results.buttons.length}`);
-    const buttonsWithHandlers = this.results.buttons.filter(
-      (btn) => btn.hasHandler
-    ).length;
+    const buttonsWithHandlers = this.results.buttons.filter((btn) => btn.hasHandler).length;
     console.log(
       `Buttons with Handlers: ${buttonsWithHandlers} (${(
         (buttonsWithHandlers / this.results.buttons.length) *
         100
-      ).toFixed(1)}%)`
+      ).toFixed(1)}%)`,
     );
-    console.log("");
-    console.log("📋 FORM ANALYSIS:");
+    console.log('');
+    console.log('📋 FORM ANALYSIS:');
     console.log(`Total Forms Found: ${this.results.forms.length}`);
-    const formsWithHandlers = this.results.forms.filter(
-      (form) => form.hasHandler
-    ).length;
+    const formsWithHandlers = this.results.forms.filter((form) => form.hasHandler).length;
     console.log(
       `Forms with Handlers: ${formsWithHandlers} (${(
         (formsWithHandlers / this.results.forms.length) *
         100
-      ).toFixed(1)}%)`
+      ).toFixed(1)}%)`,
     );
-    console.log("");
+    console.log('');
 
     if (this.results.performance.slowRoutes.length > 0) {
-      console.log("🐌 SLOWEST ROUTES:");
+      console.log('🐌 SLOWEST ROUTES:');
       this.results.performance.slowRoutes
         .sort((a, b) => b.loadTime - a.loadTime)
         .slice(0, 5)
         .forEach((route) => {
-          console.log(
-            `  ${route.route} (${route.viewport}): ${route.loadTime}ms`
-          );
+          console.log(`  ${route.route} (${route.viewport}): ${route.loadTime}ms`);
         });
     }
 
-    console.log("=".repeat(60));
+    console.log('='.repeat(60));
   }
 }
 

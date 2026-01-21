@@ -11,6 +11,7 @@ Reverting to the proven `companies`-based architecture from your old NEON databa
 ## The Problem with business_records
 
 ### Current Issues
+
 - ❌ **Data Duplication**: Company info duplicated in every lead/customer record
 - ❌ **No Multi-Contact Support**: Can't have multiple contacts per company
 - ❌ **Lost Relationships**: Converting lead → customer loses history
@@ -18,7 +19,9 @@ Reverting to the proven `companies`-based architecture from your old NEON databa
 - ❌ **Inconsistency Risk**: Same company can have different data in different records
 
 ### Files Currently Using business_records
+
 **Frontend (11 files):**
+
 - `client/src/pages/LeadsManagement.tsx`
 - `client/src/pages/customers.tsx`
 - `client/src/pages/CustomerDetail.tsx`
@@ -28,6 +31,7 @@ Reverting to the proven `companies`-based architecture from your old NEON databa
 - (+ 5 more)
 
 **Backend (44 files):**
+
 - `server/routes-business-records.ts`
 - `server/routes-customers.ts`
 - `server/storage.ts`
@@ -38,6 +42,7 @@ Reverting to the proven `companies`-based architecture from your old NEON databa
 ## The Solution: Companies Architecture
 
 ### Core Principle
+
 **One Company = One Source of Truth**
 
 ### Database Structure
@@ -128,6 +133,7 @@ Reverting to the proven `companies`-based architecture from your old NEON databa
 ### Phase 1: Data Migration ✓ (Already in NEON backup)
 
 Your `database-exports/complete-with-schema.sql` already has:
+
 - ✅ 181 tables including `companies`
 - ✅ `company_contacts` table
 - ✅ `leads` table (with company_id FK)
@@ -144,19 +150,20 @@ Your `database-exports/complete-with-schema.sql` already has:
    - Keep temporarily for rollback safety
 
 2. **Migrate Existing Data** (if any business_records data exists)
+
    ```sql
    -- Move business_records to companies
    INSERT INTO companies (tenant_id, business_name, phone, email, ...)
    SELECT DISTINCT tenant_id, company_name, phone, primary_contact_email, ...
    FROM business_records
    ON CONFLICT (customer_number) DO UPDATE ...;
-   
+
    -- Create company_contacts from business_records
    INSERT INTO company_contacts (company_id, first_name, last_name, email, ...)
    SELECT c.id, br.primary_contact_name, br.primary_contact_email, ...
    FROM business_records br
    JOIN companies c ON c.business_name = br.company_name;
-   
+
    -- Create leads from business_records where record_type='lead'
    INSERT INTO leads (company_id, contact_id, status, estimated_value, ...)
    SELECT c.id, cc.id, br.status, br.estimated_deal_value, ...
@@ -164,7 +171,7 @@ Your `database-exports/complete-with-schema.sql` already has:
    JOIN companies c ON c.business_name = br.company_name
    LEFT JOIN company_contacts cc ON cc.company_id = c.id AND cc.is_primary = true
    WHERE br.record_type = 'lead';
-   
+
    -- Create customers from business_records where record_type='customer'
    INSERT INTO customers (company_id, contact_id, customer_since, ...)
    SELECT c.id, cc.id, br.customer_since, ...
@@ -177,6 +184,7 @@ Your `database-exports/complete-with-schema.sql` already has:
 ### Phase 3: Update Edge Functions
 
 **Update Priority:**
+
 1. ✅ `supabase/functions/business-records/index.ts` → Redirect to companies
 2. ✅ `supabase/functions/customers/index.ts` → Use customers + companies
 3. ✅ `supabase/functions/deals/index.ts` → Use companies
@@ -186,28 +194,29 @@ Your `database-exports/complete-with-schema.sql` already has:
 7. ✅ `supabase/functions/invoices/index.ts` → Use companies
 
 **Pattern for Edge Functions:**
+
 ```typescript
 // OLD (business_records)
-const { data } = await supabase
-  .from('business_records')
-  .select('*')
-  .eq('tenant_id', tenantId);
+const { data } = await supabase.from('business_records').select('*').eq('tenant_id', tenantId);
 
 // NEW (companies-based)
 const { data } = await supabase
   .from('companies')
-  .select(`
+  .select(
+    `
     *,
     company_contacts!inner(*),
     leads(*),
     customers(*)
-  `)
+  `,
+  )
   .eq('tenant_id', tenantId);
 ```
 
 ### Phase 4: Update Frontend Pages
 
 **Page Updates:**
+
 1. **LeadsManagement.tsx**
    - Query: `companies` with `leads` join
    - Create: Insert into `companies` + `company_contacts` + `leads`
@@ -226,6 +235,7 @@ const { data } = await supabase
    - Link to parent company
 
 **Frontend Query Pattern:**
+
 ```typescript
 // OLD
 const { data: leads } = await supabase
@@ -236,7 +246,8 @@ const { data: leads } = await supabase
 // NEW
 const { data: companies } = await supabase
   .from('companies')
-  .select(`
+  .select(
+    `
     id,
     business_name,
     customer_number,
@@ -258,13 +269,15 @@ const { data: companies } = await supabase
       owner_id,
       created_at
     )
-  `)
+  `,
+  )
   .eq('tenant_id', tenantId);
 ```
 
 ### Phase 5: Server Routes Update
 
 **Update server routes:**
+
 - `server/routes-business-records.ts` → Deprecate or redirect
 - `server/routes-companies.ts` → Make primary
 - `server/routes-customers.ts` → Update to use companies
@@ -273,6 +286,7 @@ const { data: companies } = await supabase
 ## Implementation Checklist
 
 ### Week 1: Foundation
+
 - [x] Audit current business_records usage
 - [x] Document architecture design
 - [ ] Deploy schema to Supabase (in progress)
@@ -280,12 +294,14 @@ const { data: companies } = await supabase
 - [ ] Test migration on sample data
 
 ### Week 2: Backend
+
 - [ ] Update edge functions (7 functions)
 - [ ] Update server routes (5 main routes)
 - [ ] Update storage.ts queries
 - [ ] Add deprecation warnings to business_records endpoints
 
 ### Week 3: Frontend
+
 - [ ] Update LeadsManagement page
 - [ ] Update customers page
 - [ ] Update CustomerDetail/Company profile
@@ -293,6 +309,7 @@ const { data: companies } = await supabase
 - [ ] Update import wizards
 
 ### Week 4: Testing & Deployment
+
 - [ ] Integration testing
 - [ ] User acceptance testing
 - [ ] Performance testing
@@ -302,6 +319,7 @@ const { data: companies } = await supabase
 ## Rollback Plan
 
 If issues arise:
+
 1. Keep `business_records` table for 30 days
 2. Keep old edge function versions
 3. Feature flag for new vs old architecture
@@ -319,6 +337,7 @@ If issues arise:
 ## API Changes for Frontend
 
 ### Before (business_records)
+
 ```typescript
 // Create a lead
 POST /api/business-records
@@ -338,6 +357,7 @@ PATCH /api/business-records/:id
 ```
 
 ### After (companies)
+
 ```typescript
 // Create a company + lead
 POST /api/companies
@@ -389,4 +409,3 @@ POST /api/customers
 ---
 
 **Remember:** This is the RIGHT architecture. Your old NEON schema already had this working. We're going back to what worked!
-

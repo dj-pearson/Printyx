@@ -1,21 +1,15 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MainLayout from "@/components/layout/main-layout";
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import MainLayout from '@/components/layout/main-layout';
 import {
   TrendingUp,
   TrendingDown,
@@ -23,28 +17,28 @@ import {
   DollarSign,
   Users,
   BarChart3,
-} from "lucide-react";
-import { RevenueForecastChart } from "@/components/billing/revenue-forecast-chart";
-import { ChurnRiskHeatmap } from "@/components/billing/churn-risk-heatmap";
-import { CLVRankingsTable } from "@/components/billing/clv-rankings-table";
-import { Badge } from "@/components/ui/badge";
+} from 'lucide-react';
+import { RevenueForecastChart } from '@/components/billing/revenue-forecast-chart';
+import { ChurnRiskHeatmap } from '@/components/billing/churn-risk-heatmap';
+import { CLVRankingsTable } from '@/components/billing/clv-rankings-table';
+import { Badge } from '@/components/ui/badge';
 
 export default function BillingAnalytics() {
-  const [forecastPeriods, setForecastPeriods] = useState("3");
+  const [forecastPeriods, setForecastPeriods] = useState('3');
 
   // Fetch revenue forecast
   const { data: forecastData, isLoading: loadingForecast } = useQuery({
-    queryKey: ["/api/billing/analytics/revenue-forecast", { periods: forecastPeriods }],
+    queryKey: ['/api/billing/analytics/revenue-forecast', { periods: forecastPeriods }],
   });
 
   // Fetch churn predictions
   const { data: churnData, isLoading: loadingChurn } = useQuery({
-    queryKey: ["/api/billing/analytics/churn-prediction"],
+    queryKey: ['/api/billing/analytics/churn-prediction'],
   });
 
   // Fetch customer lifetime value
   const { data: clvData, isLoading: loadingCLV } = useQuery({
-    queryKey: ["/api/billing/analytics/lifetime-value"],
+    queryKey: ['/api/billing/analytics/lifetime-value'],
   });
 
   const churnPredictions = churnData?.predictions || [];
@@ -176,12 +170,12 @@ export default function BillingAnalytics() {
                         <span className="text-2xl font-bold">
                           ${(forecast.forecastedRevenue / 1000).toFixed(1)}K
                         </span>
-                        {forecast.trend === "increasing" ? (
+                        {forecast.trend === 'increasing' ? (
                           <Badge className="bg-green-100 text-green-800">
                             <TrendingUp className="mr-1 h-3 w-3" />
                             Growing
                           </Badge>
-                        ) : forecast.trend === "decreasing" ? (
+                        ) : forecast.trend === 'decreasing' ? (
                           <Badge variant="destructive">
                             <TrendingDown className="mr-1 h-3 w-3" />
                             Declining
@@ -241,9 +235,7 @@ export default function BillingAnalytics() {
                     <div className="text-3xl font-bold text-destructive">
                       {churnSummary.critical || 0}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Requires immediate action
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Requires immediate action</p>
                   </CardContent>
                 </Card>
 
@@ -276,9 +268,7 @@ export default function BillingAnalytics() {
                     <CardTitle className="text-sm">Low Risk</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-green-600">
-                      {churnSummary.low || 0}
-                    </div>
+                    <div className="text-3xl font-bold text-green-600">{churnSummary.low || 0}</div>
                     <p className="text-xs text-muted-foreground mt-1">Healthy customers</p>
                   </CardContent>
                 </Card>
@@ -317,9 +307,7 @@ export default function BillingAnalytics() {
                     <div className="text-2xl font-bold">
                       ${((clvSummary.totalHistoricalValue || 0) / 1000).toFixed(0)}K
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Revenue generated to date
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Revenue generated to date</p>
                   </CardContent>
                 </Card>
 
@@ -331,9 +319,7 @@ export default function BillingAnalytics() {
                     <div className="text-2xl font-bold">
                       ${((clvSummary.totalPredictedValue || 0) / 1000).toFixed(0)}K
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Forecasted total revenue
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Forecasted total revenue</p>
                   </CardContent>
                 </Card>
 

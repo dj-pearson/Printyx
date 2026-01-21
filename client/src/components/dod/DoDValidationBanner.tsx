@@ -13,20 +13,26 @@ interface ValidationError {
 
 interface DoDValidationBannerProps {
   recordId: string;
-  validationType: 'quote-to-proposal' | 'proposal-to-contract' | 'po-to-warehouse' | 'service-completion';
+  validationType:
+    | 'quote-to-proposal'
+    | 'proposal-to-contract'
+    | 'po-to-warehouse'
+    | 'service-completion';
   onValidationPass?: () => void;
   onValidationFail?: (errors: ValidationError[]) => void;
   enabled?: boolean;
 }
 
-export default function DoDValidationBanner({ 
-  recordId, 
-  validationType, 
-  onValidationPass, 
+export default function DoDValidationBanner({
+  recordId,
+  validationType,
+  onValidationPass,
   onValidationFail,
-  enabled = true 
+  enabled = true,
 }: DoDValidationBannerProps) {
-  const [validationStatus, setValidationStatus] = useState<'checking' | 'passed' | 'failed' | 'hidden'>('hidden');
+  const [validationStatus, setValidationStatus] = useState<
+    'checking' | 'passed' | 'failed' | 'hidden'
+  >('hidden');
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [showBanner, setShowBanner] = useState(false);
 
@@ -42,14 +48,14 @@ export default function DoDValidationBanner({
           'x-tenant-id': localStorage.getItem('currentTenantId') || '',
         },
       });
-      
+
       const result = await response.json();
 
       if (result.valid) {
         setValidationStatus('passed');
         setValidationErrors([]);
         onValidationPass?.();
-        
+
         // Auto-hide success banner after 3 seconds
         setTimeout(() => {
           setShowBanner(false);
@@ -63,7 +69,9 @@ export default function DoDValidationBanner({
     } catch (error) {
       console.error('DoD validation error:', error);
       setValidationStatus('failed');
-      setValidationErrors([{ field: 'system', message: 'Unable to validate requirements. Please try again.' }]);
+      setValidationErrors([
+        { field: 'system', message: 'Unable to validate requirements. Please try again.' },
+      ]);
       onValidationFail?.([{ field: 'system', message: 'Validation system error' }]);
     }
   };
@@ -107,11 +115,15 @@ export default function DoDValidationBanner({
   }
 
   return (
-    <Alert className={`border-l-4 ${
-      validationStatus === 'passed' ? 'border-green-500 bg-green-50' :
-      validationStatus === 'failed' ? 'border-red-500 bg-red-50' :
-      'border-blue-500 bg-blue-50'
-    }`}>
+    <Alert
+      className={`border-l-4 ${
+        validationStatus === 'passed'
+          ? 'border-green-500 bg-green-50'
+          : validationStatus === 'failed'
+            ? 'border-red-500 bg-red-50'
+            : 'border-blue-500 bg-blue-50'
+      }`}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3 flex-1">
           {validationStatus === 'checking' && (
@@ -120,40 +132,49 @@ export default function DoDValidationBanner({
           {validationStatus === 'passed' && (
             <CheckCircle2 className="h-4 w-4 text-green-600 mt-1" />
           )}
-          {validationStatus === 'failed' && (
-            <AlertTriangle className="h-4 w-4 text-red-600 mt-1" />
-          )}
-          
+          {validationStatus === 'failed' && <AlertTriangle className="h-4 w-4 text-red-600 mt-1" />}
+
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <h4 className="font-semibold text-sm">{getValidationTitle()}</h4>
-              <Badge variant={
-                validationStatus === 'passed' ? 'default' :
-                validationStatus === 'failed' ? 'destructive' :
-                'secondary'
-              }>
-                {validationStatus === 'checking' ? 'Checking...' :
-                 validationStatus === 'passed' ? 'Passed' :
-                 validationStatus === 'failed' ? 'Failed' : 'Unknown'}
+              <Badge
+                variant={
+                  validationStatus === 'passed'
+                    ? 'default'
+                    : validationStatus === 'failed'
+                      ? 'destructive'
+                      : 'secondary'
+                }
+              >
+                {validationStatus === 'checking'
+                  ? 'Checking...'
+                  : validationStatus === 'passed'
+                    ? 'Passed'
+                    : validationStatus === 'failed'
+                      ? 'Failed'
+                      : 'Unknown'}
               </Badge>
             </div>
-            
+
             <AlertDescription>
               {validationStatus === 'checking' && 'Verifying all requirements are met...'}
-              {validationStatus === 'passed' && 'All requirements satisfied. Ready to proceed to next stage.'}
+              {validationStatus === 'passed' &&
+                'All requirements satisfied. Ready to proceed to next stage.'}
               {validationStatus === 'failed' && (
                 <div>
-                  <p className="mb-2">The following requirements must be completed before proceeding:</p>
+                  <p className="mb-2">
+                    The following requirements must be completed before proceeding:
+                  </p>
                   <ul className="space-y-1">
                     {validationErrors.map((error, index) => (
                       <li key={index} className="flex items-center justify-between text-sm">
                         <span>• {error.message}</span>
                         {error.actionLink && (
-                          <Button 
-                            variant="link" 
-                            size="sm" 
+                          <Button
+                            variant="link"
+                            size="sm"
                             className="h-auto p-0 text-blue-600"
-                            onClick={() => window.location.href = error.actionLink!}
+                            onClick={() => (window.location.href = error.actionLink!)}
                           >
                             {error.action || 'Fix'}
                             <ExternalLink className="h-3 w-3 ml-1" />
@@ -167,15 +188,10 @@ export default function DoDValidationBanner({
             </AlertDescription>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2 ml-4">
           {validationStatus === 'failed' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={checkValidation}
-              className="text-xs"
-            >
+            <Button variant="outline" size="sm" onClick={checkValidation} className="text-xs">
               Re-check
             </Button>
           )}

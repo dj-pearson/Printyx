@@ -1,16 +1,31 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { Brain, Code, Users, MessageSquare, BarChart3, FileText, Settings, Zap } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Brain,
+  Code,
+  Users,
+  MessageSquare,
+  BarChart3,
+  FileText,
+  Settings,
+  Zap,
+} from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface GPT5Config {
   name: string;
@@ -21,84 +36,88 @@ interface GPT5Config {
 
 const GPT5_CONFIGS: Record<string, GPT5Config> = {
   LEAD_ANALYSIS: {
-    name: "Lead Analysis",
-    description: "For CRM lead analysis and customer insights",
+    name: 'Lead Analysis',
+    description: 'For CRM lead analysis and customer insights',
     icon: Users,
-    color: "blue"
+    color: 'blue',
   },
   PROPOSAL_GENERATION: {
-    name: "Proposal Generation", 
-    description: "For quote and proposal generation",
+    name: 'Proposal Generation',
+    description: 'For quote and proposal generation',
     icon: FileText,
-    color: "green"
+    color: 'green',
   },
   SERVICE_ANALYSIS: {
-    name: "Service Analysis",
-    description: "For service ticket analysis and predictive maintenance",
+    name: 'Service Analysis',
+    description: 'For service ticket analysis and predictive maintenance',
     icon: Settings,
-    color: "orange"
+    color: 'orange',
   },
   CUSTOMER_SUPPORT: {
-    name: "Customer Support",
-    description: "For quick customer support responses",
+    name: 'Customer Support',
+    description: 'For quick customer support responses',
     icon: MessageSquare,
-    color: "purple"
+    color: 'purple',
   },
   BUSINESS_ANALYTICS: {
-    name: "Business Analytics",
-    description: "For complex business analytics and forecasting",
+    name: 'Business Analytics',
+    description: 'For complex business analytics and forecasting',
     icon: BarChart3,
-    color: "red"
+    color: 'red',
   },
   CODE_GENERATION: {
-    name: "Code Generation",
-    description: "For code generation and technical tasks",
+    name: 'Code Generation',
+    description: 'For code generation and technical tasks',
     icon: Code,
-    color: "indigo"
+    color: 'indigo',
   },
   CLASSIFICATION: {
-    name: "Classification",
-    description: "For high-throughput classification tasks",
+    name: 'Classification',
+    description: 'For high-throughput classification tasks',
     icon: Brain,
-    color: "pink"
-  }
+    color: 'pink',
+  },
 };
 
 export default function GPT5Dashboard() {
-  const [selectedConfig, setSelectedConfig] = useState<string>("LEAD_ANALYSIS");
-  const [prompt, setPrompt] = useState("");
-  const [previousResponseId, setPreviousResponseId] = useState<string>("");
+  const [selectedConfig, setSelectedConfig] = useState<string>('LEAD_ANALYSIS');
+  const [prompt, setPrompt] = useState('');
+  const [previousResponseId, setPreviousResponseId] = useState<string>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Get available configurations
   const { data: configsData } = useQuery({
     queryKey: ['/api/ai/gpt5/configs'],
-    enabled: true
+    enabled: true,
   });
 
   // Custom prompt mutation
   const customPromptMutation = useMutation({
-    mutationFn: async (data: { prompt: string; configType?: string; previousResponseId?: string }) => {
+    mutationFn: async (data: {
+      prompt: string;
+      configType?: string;
+      previousResponseId?: string;
+    }) => {
       return apiRequest('/api/ai/gpt5/custom-prompt', {
         method: 'POST',
-        body: data
+        body: data,
       });
     },
     onSuccess: (data) => {
       toast({
-        title: "Response Generated",
-        description: "GPT-5 has successfully processed your request."
+        title: 'Response Generated',
+        description: 'GPT-5 has successfully processed your request.',
       });
       setPreviousResponseId(data.responseId);
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate response",
-        variant: "destructive"
+        title: 'Error',
+        description: error.message || 'Failed to generate response',
+        variant: 'destructive',
       });
-    }
+    },
   });
 
   // Lead analysis mutation
@@ -106,31 +125,35 @@ export default function GPT5Dashboard() {
     mutationFn: async (data: { leadData: any; customerHistory?: any }) => {
       return apiRequest('/api/ai/gpt5/analyze-lead', {
         method: 'POST',
-        body: data
+        body: data,
       });
     },
     onSuccess: () => {
       toast({
-        title: "Lead Analysis Complete",
-        description: "AI-powered lead insights generated successfully."
+        title: 'Lead Analysis Complete',
+        description: 'AI-powered lead insights generated successfully.',
       });
-    }
+    },
   });
 
   // Proposal generation mutation
   const proposalMutation = useMutation({
-    mutationFn: async (data: { customerData: any; equipmentRequirements: any; pricingData: any }) => {
+    mutationFn: async (data: {
+      customerData: any;
+      equipmentRequirements: any;
+      pricingData: any;
+    }) => {
       return apiRequest('/api/ai/gpt5/generate-proposal', {
         method: 'POST',
-        body: data
+        body: data,
       });
     },
     onSuccess: () => {
       toast({
-        title: "Proposal Generated",
-        description: "Professional proposal content created successfully."
+        title: 'Proposal Generated',
+        description: 'Professional proposal content created successfully.',
       });
-    }
+    },
   });
 
   // Service analysis mutation
@@ -138,15 +161,15 @@ export default function GPT5Dashboard() {
     mutationFn: async (data: { ticketData: any; equipmentHistory?: any }) => {
       return apiRequest('/api/ai/gpt5/analyze-service', {
         method: 'POST',
-        body: data
+        body: data,
       });
     },
     onSuccess: () => {
       toast({
-        title: "Service Analysis Complete",
-        description: "Predictive maintenance insights generated."
+        title: 'Service Analysis Complete',
+        description: 'Predictive maintenance insights generated.',
       });
-    }
+    },
   });
 
   // Classification mutation
@@ -154,23 +177,23 @@ export default function GPT5Dashboard() {
     mutationFn: async (data: { inquiry: string }) => {
       return apiRequest('/api/ai/gpt5/classify-inquiry', {
         method: 'POST',
-        body: data
+        body: data,
       });
     },
     onSuccess: () => {
       toast({
-        title: "Classification Complete",
-        description: "Customer inquiry categorized successfully."
+        title: 'Classification Complete',
+        description: 'Customer inquiry categorized successfully.',
       });
-    }
+    },
   });
 
   const handleCustomPrompt = () => {
     if (!prompt.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a prompt",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Please enter a prompt',
+        variant: 'destructive',
       });
       return;
     }
@@ -178,45 +201,45 @@ export default function GPT5Dashboard() {
     customPromptMutation.mutate({
       prompt,
       configType: selectedConfig,
-      previousResponseId: previousResponseId || undefined
+      previousResponseId: previousResponseId || undefined,
     });
   };
 
   const handleLeadAnalysis = () => {
     const sampleLead = {
-      company: "Sample Corp",
-      contact: "John Doe",
-      email: "john@sample.com",
-      phone: "555-0123",
-      industry: "Manufacturing",
+      company: 'Sample Corp',
+      contact: 'John Doe',
+      email: 'john@sample.com',
+      phone: '555-0123',
+      industry: 'Manufacturing',
       employees: 50,
-      currentEquipment: "HP LaserJet Pro",
+      currentEquipment: 'HP LaserJet Pro',
       monthlyCopies: 2500,
-      requirements: "Color printing, scanning capabilities"
+      requirements: 'Color printing, scanning capabilities',
     };
 
     leadAnalysisMutation.mutate({
-      leadData: sampleLead
+      leadData: sampleLead,
     });
   };
 
   const handleProposalGeneration = () => {
     const sampleData = {
       customerData: {
-        company: "Sample Corp",
-        contact: "John Doe",
-        industry: "Manufacturing"
+        company: 'Sample Corp',
+        contact: 'John Doe',
+        industry: 'Manufacturing',
       },
       equipmentRequirements: {
-        type: "Multifunction Printer",
-        features: ["Color printing", "Scanning", "Copying"],
-        volume: "2500 pages/month"
+        type: 'Multifunction Printer',
+        features: ['Color printing', 'Scanning', 'Copying'],
+        volume: '2500 pages/month',
       },
       pricingData: {
         equipmentCost: 2500,
         monthlyService: 150,
-        supplies: 75
-      }
+        supplies: 75,
+      },
     };
 
     proposalMutation.mutate(sampleData);
@@ -322,7 +345,7 @@ export default function GPT5Dashboard() {
                   disabled={customPromptMutation.isPending}
                   className="w-full"
                 >
-                  {customPromptMutation.isPending ? "Processing..." : "Generate Response"}
+                  {customPromptMutation.isPending ? 'Processing...' : 'Generate Response'}
                 </Button>
 
                 {/* Response Display */}
@@ -334,8 +357,8 @@ export default function GPT5Dashboard() {
                     </pre>
                     {customPromptMutation.data.usage && (
                       <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                        Tokens: {customPromptMutation.data.usage.total_tokens} | 
-                        Response ID: {customPromptMutation.data.responseId}
+                        Tokens: {customPromptMutation.data.usage.total_tokens} | Response ID:{' '}
+                        {customPromptMutation.data.responseId}
                       </div>
                     )}
                   </div>
@@ -364,7 +387,7 @@ export default function GPT5Dashboard() {
                     disabled={leadAnalysisMutation.isPending}
                     className="w-full"
                   >
-                    {leadAnalysisMutation.isPending ? "Analyzing..." : "Analyze Sample Lead"}
+                    {leadAnalysisMutation.isPending ? 'Analyzing...' : 'Analyze Sample Lead'}
                   </Button>
                   {leadAnalysisMutation.data && (
                     <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -383,9 +406,7 @@ export default function GPT5Dashboard() {
                     <FileText className="h-5 w-5 text-green-600" />
                     Proposal Generation
                   </CardTitle>
-                  <CardDescription>
-                    Generate professional proposals and quotes
-                  </CardDescription>
+                  <CardDescription>Generate professional proposals and quotes</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button
@@ -393,7 +414,7 @@ export default function GPT5Dashboard() {
                     disabled={proposalMutation.isPending}
                     className="w-full"
                   >
-                    {proposalMutation.isPending ? "Generating..." : "Generate Sample Proposal"}
+                    {proposalMutation.isPending ? 'Generating...' : 'Generate Sample Proposal'}
                   </Button>
                   {proposalMutation.data && (
                     <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -412,9 +433,7 @@ export default function GPT5Dashboard() {
                     <Brain className="h-5 w-5 text-pink-600" />
                     Inquiry Classification
                   </CardTitle>
-                  <CardDescription>
-                    Classify customer inquiries automatically
-                  </CardDescription>
+                  <CardDescription>Classify customer inquiries automatically</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -431,15 +450,16 @@ export default function GPT5Dashboard() {
                     />
                     <Button
                       onClick={() => {
-                        classifyMutation.mutate({ 
-                          inquiry: "My printer is making strange noises and won't print color pages properly" 
+                        classifyMutation.mutate({
+                          inquiry:
+                            "My printer is making strange noises and won't print color pages properly",
                         });
                       }}
                       disabled={classifyMutation.isPending}
                       className="w-full"
                       variant="outline"
                     >
-                      {classifyMutation.isPending ? "Classifying..." : "Classify Sample Inquiry"}
+                      {classifyMutation.isPending ? 'Classifying...' : 'Classify Sample Inquiry'}
                     </Button>
                   </div>
                   {classifyMutation.data && (
@@ -496,9 +516,7 @@ export default function GPT5Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>GPT-5 Implementation Details</CardTitle>
-                <CardDescription>
-                  Technical information about the GPT-5 integration
-                </CardDescription>
+                <CardDescription>Technical information about the GPT-5 integration</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

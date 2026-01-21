@@ -128,19 +128,16 @@ Standard work (examples)
 Endpoints (confirm/implement)
 
 - Products/Catalog
-
   - GET `/api/products/with-pricing` (tenant‑scoped)
   - GET/POST/PATCH `/api/products` (admin)
   - Category rules: GET/POST `/api/pricing/category-rules`
 
 - Pricing
-
   - GET `/api/pricing/company-settings`
   - POST `/api/pricing/products` (set per‑product override)
   - POST `/api/pricing/products/bulk-update`
 
 - Inventory
-
   - GET `/api/inventory`
   - POST `/api/inventory/adjust` (delta with reason)
   - POST `/api/inventory/reorder` (creates PO draft)

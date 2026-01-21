@@ -248,7 +248,7 @@ router.get('/availability/:userId', async (req, res) => {
       tenantId,
       userId,
       new Date(start as string),
-      new Date(end as string)
+      new Date(end as string),
     );
 
     res.json(availability);
@@ -268,8 +268,8 @@ router.post('/find-meeting-time', async (req, res) => {
     const { tenantId } = req.user;
 
     if (!attendeeIds || !duration || !preferredStart || !preferredEnd) {
-      return res.status(400).json({ 
-        error: 'Attendee IDs, duration, preferred start, and preferred end are required' 
+      return res.status(400).json({
+        error: 'Attendee IDs, duration, preferred start, and preferred end are required',
       });
     }
 
@@ -278,7 +278,7 @@ router.post('/find-meeting-time', async (req, res) => {
       attendeeIds,
       duration,
       new Date(preferredStart),
-      new Date(preferredEnd)
+      new Date(preferredEnd),
     );
 
     res.json({ suggestions });

@@ -5,10 +5,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { ServiceSupervisorReportingService } from '../services/service-supervisor-reporting-service';
-import {
-  enhanceUserContext,
-  requirePermission,
-} from '../middleware/enhanced-rbac-middleware';
+import { enhanceUserContext, requirePermission } from '../middleware/enhanced-rbac-middleware';
 
 const router = Router();
 
@@ -37,25 +34,32 @@ router.get(
 
       const data = await ServiceSupervisorReportingService.getLocationServiceCallOverview(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Enrich response with insights
-      const priorityBreakdown = data.aggregated.reduce((acc, agg) => {
-        acc[agg.priority.toLowerCase()] = {
-          totalCalls: agg.totalCalls,
-          avgCallsPerLocation: agg.avgCallsPerLocation,
-          avgDuration: agg.avgDuration,
-        };
-        return acc;
-      }, {} as Record<string, any>);
+      const priorityBreakdown = data.aggregated.reduce(
+        (acc, agg) => {
+          acc[agg.priority.toLowerCase()] = {
+            totalCalls: agg.totalCalls,
+            avgCallsPerLocation: agg.avgCallsPerLocation,
+            avgDuration: agg.avgDuration,
+          };
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
 
       res.json({
         ...data,
         insights: {
           priorityBreakdown,
-          healthStatus: data.summary.avgFirstTimeFixRate >= 85 ? 'healthy' :
-                       data.summary.avgFirstTimeFixRate >= 70 ? 'fair' : 'needs_attention',
+          healthStatus:
+            data.summary.avgFirstTimeFixRate >= 85
+              ? 'healthy'
+              : data.summary.avgFirstTimeFixRate >= 70
+                ? 'fair'
+                : 'needs_attention',
         },
       });
     } catch (error) {
@@ -65,7 +69,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -90,12 +94,12 @@ router.get(
 
       const data = await ServiceSupervisorReportingService.getLocationServicePerformanceMetrics(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Calculate performance spread
-      const ftfRates = data.locations.map(loc => loc.firstTimeFixRate);
-      const slaRates = data.locations.map(loc => loc.slaCompliance);
+      const ftfRates = data.locations.map((loc) => loc.firstTimeFixRate);
+      const slaRates = data.locations.map((loc) => loc.slaCompliance);
 
       const performanceSpread = {
         ftfRate: {
@@ -115,7 +119,9 @@ router.get(
         insights: {
           performanceSpread,
           topPerformers: data.locations.slice(0, 3),
-          needsAttention: data.locations.filter(loc => loc.firstTimeFixRate < 75 || loc.slaCompliance < 85),
+          needsAttention: data.locations.filter(
+            (loc) => loc.firstTimeFixRate < 75 || loc.slaCompliance < 85,
+          ),
         },
       });
     } catch (error) {
@@ -125,7 +131,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -150,20 +156,22 @@ router.get(
 
       const data = await ServiceSupervisorReportingService.getLocationSLATracking(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // SLA distribution breakdown
       const slaDistribution = {
-        onTrack: data.slas.filter(sla => sla.slaCompliancePercent >= 90).length,
-        nearTarget: data.slas.filter(sla => sla.slaCompliancePercent >= 75 && sla.slaCompliancePercent < 90).length,
-        atRisk: data.slas.filter(sla => sla.slaCompliancePercent < 75).length,
+        onTrack: data.slas.filter((sla) => sla.slaCompliancePercent >= 90).length,
+        nearTarget: data.slas.filter(
+          (sla) => sla.slaCompliancePercent >= 75 && sla.slaCompliancePercent < 90,
+        ).length,
+        atRisk: data.slas.filter((sla) => sla.slaCompliancePercent < 75).length,
       };
 
       // Identify critical locations
       const criticalLocations = data.slas
-        .filter(sla => sla.overdueCalls > 5 || sla.slaCompliancePercent < 70)
-        .map(sla => ({
+        .filter((sla) => sla.overdueCalls > 5 || sla.slaCompliancePercent < 70)
+        .map((sla) => ({
           locationId: sla.locationId,
           locationName: sla.locationName,
           compliance: sla.slaCompliancePercent,
@@ -185,7 +193,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -210,7 +218,7 @@ router.get(
 
       const data = await ServiceSupervisorReportingService.getLocationTechnicianActivitySummary(
         req.user!,
-        dateRange
+        dateRange,
       );
 
       // Activity breakdown aggregation
@@ -223,9 +231,11 @@ router.get(
 
       // Utilization distribution
       const utilizationDistribution = {
-        high: data.activities.filter(act => act.utilizationRate >= 80).length,
-        medium: data.activities.filter(act => act.utilizationRate >= 60 && act.utilizationRate < 80).length,
-        low: data.activities.filter(act => act.utilizationRate < 60).length,
+        high: data.activities.filter((act) => act.utilizationRate >= 80).length,
+        medium: data.activities.filter(
+          (act) => act.utilizationRate >= 60 && act.utilizationRate < 80,
+        ).length,
+        low: data.activities.filter((act) => act.utilizationRate < 60).length,
       };
 
       res.json({
@@ -244,7 +254,7 @@ router.get(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -270,7 +280,7 @@ router.post(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }
+  },
 );
 
 export default router;

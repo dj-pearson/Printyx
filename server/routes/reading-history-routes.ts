@@ -43,16 +43,13 @@ router.get('/', async (req: Request, res: Response) => {
 
     let whereConditions = and(
       eq(readingHistory.tenantId, tenantId),
-      eq(readingHistory.userId, userId)
+      eq(readingHistory.userId, userId),
     );
 
     // Filter by completion status if specified
     if (completed !== undefined) {
       const isCompleted = completed === 'true' || completed === '1';
-      whereConditions = and(
-        whereConditions,
-        eq(readingHistory.completed, isCompleted)
-      );
+      whereConditions = and(whereConditions, eq(readingHistory.completed, isCompleted));
     }
 
     const history = await db
@@ -83,7 +80,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      history: history.map(h => ({
+      history: history.map((h) => ({
         ...h.history,
         article: h.article,
       })),
@@ -129,12 +126,7 @@ router.post('/', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(readingHistory)
-      .where(
-        and(
-          eq(readingHistory.userId, userId),
-          eq(readingHistory.articleId, articleId)
-        )
-      )
+      .where(and(eq(readingHistory.userId, userId), eq(readingHistory.articleId, articleId)))
       .limit(1);
 
     let result;
@@ -148,10 +140,12 @@ router.post('/', async (req: Request, res: Response) => {
         .set({
           scrollPosition: scrollPosition !== undefined ? scrollPosition : record.scrollPosition,
           readingProgress: readingProgress !== undefined ? readingProgress : record.readingProgress,
-          currentSectionId: currentSectionId !== undefined ? currentSectionId : record.currentSectionId,
+          currentSectionId:
+            currentSectionId !== undefined ? currentSectionId : record.currentSectionId,
           completed: completed !== undefined ? completed : record.completed,
           totalTimeSeconds: record.totalTimeSeconds + (lastReadDuration || 0),
-          lastReadDuration: lastReadDuration !== undefined ? lastReadDuration : record.lastReadDuration,
+          lastReadDuration:
+            lastReadDuration !== undefined ? lastReadDuration : record.lastReadDuration,
           lastViewedAt: new Date(),
           completedAt: completed && !record.completed ? new Date() : record.completedAt,
         })
@@ -227,15 +221,15 @@ router.get('/recent', async (req: Request, res: Response) => {
         and(
           eq(readingHistory.tenantId, tenantId),
           eq(readingHistory.userId, userId),
-          gte(readingHistory.lastViewedAt, sevenDaysAgo)
-        )
+          gte(readingHistory.lastViewedAt, sevenDaysAgo),
+        ),
       )
       .orderBy(desc(readingHistory.lastViewedAt))
       .limit(Number(limit));
 
     res.json({
       success: true,
-      articles: recent.map(r => ({
+      articles: recent.map((r) => ({
         ...r.history,
         article: r.article,
       })),
@@ -269,12 +263,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         averageProgress: sql<number>`avg(${readingHistory.readingProgress})`,
       })
       .from(readingHistory)
-      .where(
-        and(
-          eq(readingHistory.tenantId, tenantId),
-          eq(readingHistory.userId, userId)
-        )
-      );
+      .where(and(eq(readingHistory.tenantId, tenantId), eq(readingHistory.userId, userId)));
 
     // Get reading streak (consecutive days with reading activity)
     const recentActivity = await db
@@ -282,12 +271,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         date: sql<string>`DATE(${readingHistory.lastViewedAt})`,
       })
       .from(readingHistory)
-      .where(
-        and(
-          eq(readingHistory.tenantId, tenantId),
-          eq(readingHistory.userId, userId)
-        )
-      )
+      .where(and(eq(readingHistory.tenantId, tenantId), eq(readingHistory.userId, userId)))
       .groupBy(sql`DATE(${readingHistory.lastViewedAt})`)
       .orderBy(desc(sql`DATE(${readingHistory.lastViewedAt})`))
       .limit(30);
@@ -325,8 +309,8 @@ router.get('/stats', async (req: Request, res: Response) => {
         and(
           eq(readingHistory.tenantId, tenantId),
           eq(readingHistory.userId, userId),
-          gte(readingHistory.lastViewedAt, weekAgo)
-        )
+          gte(readingHistory.lastViewedAt, weekAgo),
+        ),
       );
 
     res.json({
@@ -372,12 +356,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
     const history = await db
       .select()
       .from(readingHistory)
-      .where(
-        and(
-          eq(readingHistory.userId, userId),
-          eq(readingHistory.articleId, articleId)
-        )
-      )
+      .where(and(eq(readingHistory.userId, userId), eq(readingHistory.articleId, articleId)))
       .limit(1);
 
     res.json({
@@ -406,12 +385,7 @@ router.delete('/:articleId', async (req: Request, res: Response) => {
 
     await db
       .delete(readingHistory)
-      .where(
-        and(
-          eq(readingHistory.userId, userId),
-          eq(readingHistory.articleId, articleId)
-        )
-      );
+      .where(and(eq(readingHistory.userId, userId), eq(readingHistory.articleId, articleId)));
 
     res.json({
       success: true,

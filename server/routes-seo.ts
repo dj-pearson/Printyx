@@ -1416,14 +1416,23 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
     const baseUrl = process.env.BASE_URL || 'https://printyx.com';
 
     // Import schemas for images
-    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import('@shared/schema');
+    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import(
+      '@shared/schema'
+    );
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
     xml += '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n';
 
     // Helper function to add image entry
-    const addImageUrl = (pageUrl: string, imageUrl: string, title?: string, caption?: string, geoLocation?: string, license?: string) => {
+    const addImageUrl = (
+      pageUrl: string,
+      imageUrl: string,
+      title?: string,
+      caption?: string,
+      geoLocation?: string,
+      license?: string,
+    ) => {
       if (!imageUrl) return;
 
       // Ensure absolute URL
@@ -1467,7 +1476,7 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
           `${baseUrl}/blog/${post.slug}`,
           post.featuredImage,
           post.featuredImageAlt || post.title,
-          `Featured image for ${post.title}`
+          `Featured image for ${post.title}`,
         );
       }
     });
@@ -1490,7 +1499,7 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
           `${baseUrl}/guides/${guide.slug}`,
           guide.coverImage,
           guide.coverImageAlt || guide.title,
-          `Cover image for ${guide.title}`
+          `Cover image for ${guide.title}`,
         );
       }
     });
@@ -1513,7 +1522,7 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
           `${baseUrl}/case-studies/${study.slug}`,
           study.featuredImage,
           study.featuredImageAlt || study.title,
-          `Featured image for ${study.title}`
+          `Featured image for ${study.title}`,
         );
       }
     });
@@ -1535,7 +1544,7 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
           `${baseUrl}/${page.slug}`,
           page.heroImage,
           page.title,
-          `Hero image for ${page.title}`
+          `Hero image for ${page.title}`,
         );
       }
     });
@@ -1557,7 +1566,7 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
           `${baseUrl}/kb/${article.slug}`,
           article.featuredImage,
           article.title,
-          `Featured image for ${article.title}`
+          `Featured image for ${article.title}`,
         );
       }
     });

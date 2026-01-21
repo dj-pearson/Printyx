@@ -268,7 +268,7 @@ Screenshots are automatically captured for:
 
 ```javascript
 // Add custom routes to test
-const CUSTOM_ROUTES = ["/my-custom-route"];
+const CUSTOM_ROUTES = ['/my-custom-route'];
 // Modify ALL_ROUTES array in puppeteer-test.js
 ```
 
@@ -276,7 +276,7 @@ const CUSTOM_ROUTES = ["/my-custom-route"];
 
 ```javascript
 // Enable performance monitoring
-await page.tracing.start({ path: "trace.json" });
+await page.tracing.start({ path: 'trace.json' });
 // ... navigate and test
 await page.tracing.stop();
 ```
@@ -350,16 +350,13 @@ To add new routes to test:
 ### Using the TestMonitor React Component
 
 ```tsx
-import TestMonitor from "./testing/components/TestMonitor";
+import TestMonitor from './testing/components/TestMonitor';
 
 function TestDashboard() {
   return (
     <div>
       <h1>Live Test Dashboard</h1>
-      <TestMonitor
-        wsUrl="ws://localhost:8080/test-monitor"
-        autoConnect={true}
-      />
+      <TestMonitor wsUrl="ws://localhost:8080/test-monitor" autoConnect={true} />
     </div>
   );
 }
@@ -373,7 +370,7 @@ const orchestrator = new TestOrchestrator();
 
 await orchestrator.runTest({
   includeScreenshots: true,
-  viewports: ["desktop", "mobile"], // Skip tablet
+  viewports: ['desktop', 'mobile'], // Skip tablet
   maxButtonsPerPage: 10, // Test more buttons per page
   realTimeUpdates: true,
 });
@@ -393,7 +390,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: '18'
       - run: cd testing && npm install
       - run: cd testing && npm run test
       - uses: actions/upload-artifact@v3

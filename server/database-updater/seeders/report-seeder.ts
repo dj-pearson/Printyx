@@ -15,7 +15,15 @@ interface ReportDefinition {
   name: string;
   code: string;
   description: string;
-  category: 'sales' | 'service' | 'finance' | 'operations' | 'hr' | 'it' | 'compliance' | 'executive';
+  category:
+    | 'sales'
+    | 'service'
+    | 'finance'
+    | 'operations'
+    | 'hr'
+    | 'it'
+    | 'compliance'
+    | 'executive';
   organizationalScope: 'platform' | 'company' | 'regional' | 'location' | 'team' | 'individual';
   requiredPermissions: string[];
   defaultVisualization: 'table' | 'chart' | 'dashboard' | 'kpi_widget' | 'chart_table_combo';
@@ -43,7 +51,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Personal Pipeline Report',
     code: 'SALES_PERSONAL_PIPELINE',
-    description: 'View your personal sales pipeline with opportunities by stage, weighted value, and conversion rates',
+    description:
+      'View your personal sales pipeline with opportunities by stage, weighted value, and conversion rates',
     category: 'sales',
     organizationalScope: 'individual',
     requiredPermissions: ['sales.opportunity.view_own'],
@@ -87,7 +96,7 @@ const SALES_REPORTS: ReportDefinition[] = [
     availableGroupings: {
       stage: { field: 'stage', label: 'Pipeline Stage' },
       productCategory: { field: 'product_category', label: 'Product Category' },
-      month: { field: 'DATE_TRUNC(\'month\', expected_close_date)', label: 'Expected Close Month' },
+      month: { field: "DATE_TRUNC('month', expected_close_date)", label: 'Expected Close Month' },
     },
     chartConfig: {
       funnelChart: {
@@ -168,7 +177,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Personal Quota Attainment',
     code: 'SALES_PERSONAL_QUOTA',
-    description: 'Monitor your quota performance and track progress toward monthly, quarterly, and annual targets',
+    description:
+      'Monitor your quota performance and track progress toward monthly, quarterly, and annual targets',
     category: 'sales',
     organizationalScope: 'individual',
     requiredPermissions: ['sales.quota.view_own'],
@@ -256,7 +266,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Personal Leaderboard Position',
     code: 'SALES_PERSONAL_LEADERBOARD',
-    description: 'See your ranking compared to other sales reps by revenue, deals closed, and activities',
+    description:
+      'See your ranking compared to other sales reps by revenue, deals closed, and activities',
     category: 'sales',
     organizationalScope: 'team',
     requiredPermissions: ['sales.leaderboard.view'],
@@ -298,7 +309,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Team Pipeline Comparison',
     code: 'SALES_TEAM_PIPELINE_COMPARISON',
-    description: 'Compare pipeline metrics across your team members including coverage and stage distribution',
+    description:
+      'Compare pipeline metrics across your team members including coverage and stage distribution',
     category: 'sales',
     organizationalScope: 'team',
     requiredPermissions: ['sales.opportunity.view_team'],
@@ -339,7 +351,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Team Activity Leaderboard',
     code: 'SALES_TEAM_ACTIVITY_LEADERBOARD',
-    description: 'Track and compare activity levels across team members to identify coaching opportunities',
+    description:
+      'Track and compare activity levels across team members to identify coaching opportunities',
     category: 'sales',
     organizationalScope: 'team',
     requiredPermissions: ['sales.activity.view_team'],
@@ -377,7 +390,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Team Performance Dashboard',
     code: 'SALES_TEAM_PERFORMANCE',
-    description: 'Comprehensive team performance metrics including revenue, quota attainment, and win rates',
+    description:
+      'Comprehensive team performance metrics including revenue, quota attainment, and win rates',
     category: 'sales',
     organizationalScope: 'team',
     requiredPermissions: ['sales.performance.view_team'],
@@ -416,7 +430,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Lead Management Report',
     code: 'SALES_LEAD_MANAGEMENT',
-    description: 'Monitor lead flow, conversion rates, aging, and assignment for location-level oversight',
+    description:
+      'Monitor lead flow, conversion rates, aging, and assignment for location-level oversight',
     category: 'sales',
     organizationalScope: 'location',
     requiredPermissions: ['sales.lead.view_location'],
@@ -465,7 +480,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Coaching Report',
     code: 'SALES_COACHING_REPORT',
-    description: 'Identify coaching opportunities based on activity levels, conversion rates, and deal velocity',
+    description:
+      'Identify coaching opportunities based on activity levels, conversion rates, and deal velocity',
     category: 'sales',
     organizationalScope: 'team',
     requiredPermissions: ['sales.coaching.view_team'],
@@ -499,7 +515,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Location Sales Performance Report',
     code: 'SALES_LOCATION_PERFORMANCE',
-    description: 'Complete location sales overview including revenue, quota, pipeline coverage, and team breakdown',
+    description:
+      'Complete location sales overview including revenue, quota, pipeline coverage, and team breakdown',
     category: 'sales',
     organizationalScope: 'location',
     requiredPermissions: ['sales.performance.view_location'],
@@ -539,7 +556,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Sales Forecasting Report',
     code: 'SALES_FORECASTING',
-    description: 'AI-powered sales forecast with commit, best case, and worst case scenarios by rep and product',
+    description:
+      'AI-powered sales forecast with commit, best case, and worst case scenarios by rep and product',
     category: 'sales',
     organizationalScope: 'location',
     requiredPermissions: ['sales.forecast.view_location'],
@@ -583,7 +601,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Win/Loss Analysis Report',
     code: 'SALES_WIN_LOSS_ANALYSIS',
-    description: 'Detailed analysis of won and lost deals including reasons, competitors, and trends',
+    description:
+      'Detailed analysis of won and lost deals including reasons, competitors, and trends',
     category: 'sales',
     organizationalScope: 'location',
     requiredPermissions: ['sales.analytics.view_location'],
@@ -623,7 +642,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Territory Performance Report',
     code: 'SALES_TERRITORY_PERFORMANCE',
-    description: 'Analyze sales performance by geographic territory including coverage and penetration',
+    description:
+      'Analyze sales performance by geographic territory including coverage and penetration',
     category: 'sales',
     organizationalScope: 'location',
     requiredPermissions: ['sales.territory.view_location'],
@@ -659,7 +679,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Product Mix Report',
     code: 'SALES_PRODUCT_MIX',
-    description: 'Sales breakdown by product category including units sold, ASP, margin, and attach rates',
+    description:
+      'Sales breakdown by product category including units sold, ASP, margin, and attach rates',
     category: 'sales',
     organizationalScope: 'location',
     requiredPermissions: ['sales.analytics.view_location'],
@@ -704,7 +725,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Regional Sales Performance Report',
     code: 'SALES_REGIONAL_PERFORMANCE',
-    description: 'Regional sales overview with location-by-location breakdown and comparative analysis',
+    description:
+      'Regional sales overview with location-by-location breakdown and comparative analysis',
     category: 'sales',
     organizationalScope: 'regional',
     requiredPermissions: ['sales.performance.view_regional'],
@@ -856,7 +878,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Executive Sales Dashboard',
     code: 'SALES_EXECUTIVE_DASHBOARD',
-    description: 'Company-wide sales overview with KPIs, trends, and regional breakdown for executive leadership',
+    description:
+      'Company-wide sales overview with KPIs, trends, and regional breakdown for executive leadership',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['sales.performance.view_company', 'executive.dashboard.view'],
@@ -896,7 +919,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Company-Wide Sales Analytics Report',
     code: 'SALES_COMPANY_ANALYTICS',
-    description: 'Deep analytics across all dimensions: region, product, segment, with cohort and LTV analysis',
+    description:
+      'Deep analytics across all dimensions: region, product, segment, with cohort and LTV analysis',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['sales.analytics.view_company', 'executive.analytics.view'],
@@ -940,7 +964,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Sales Team Effectiveness Report',
     code: 'SALES_TEAM_EFFECTIVENESS',
-    description: 'Analyze sales team productivity, quota distribution, ramp time, and attrition patterns',
+    description:
+      'Analyze sales team productivity, quota distribution, ramp time, and attrition patterns',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['sales.performance.view_company', 'hr.analytics.view'],
@@ -979,7 +1004,8 @@ const SALES_REPORTS: ReportDefinition[] = [
   {
     name: 'Strategic Account Report',
     code: 'SALES_STRATEGIC_ACCOUNTS',
-    description: 'Monitor strategic accounts with revenue trends, health scores, and expansion opportunities',
+    description:
+      'Monitor strategic accounts with revenue trends, health scores, and expansion opportunities',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['sales.strategic_accounts.view_company'],
@@ -1065,7 +1091,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Personal Productivity Report (Service)',
     code: 'SERVICE_PERSONAL_PRODUCTIVITY',
-    description: 'Track your personal service metrics including tickets completed, FTF rate, and CSAT',
+    description:
+      'Track your personal service metrics including tickets completed, FTF rate, and CSAT',
     category: 'service',
     organizationalScope: 'individual',
     requiredPermissions: ['service.ticket.view_own'],
@@ -1205,7 +1232,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Team Productivity Report (Service)',
     code: 'SERVICE_TEAM_PRODUCTIVITY',
-    description: 'Monitor team service metrics including completion rates, FTF, CSAT, and response times',
+    description:
+      'Monitor team service metrics including completion rates, FTF, CSAT, and response times',
     category: 'service',
     organizationalScope: 'team',
     requiredPermissions: ['service.performance.view_team'],
@@ -1285,7 +1313,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Dispatch Efficiency Report',
     code: 'SERVICE_DISPATCH_EFFICIENCY',
-    description: 'Analyze dispatch performance including assignment times, routing, and emergency response',
+    description:
+      'Analyze dispatch performance including assignment times, routing, and emergency response',
     category: 'service',
     organizationalScope: 'team',
     requiredPermissions: ['service.dispatch.view_team'],
@@ -1326,7 +1355,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Location Service Performance Report',
     code: 'SERVICE_LOCATION_PERFORMANCE',
-    description: 'Complete location service overview including volume, revenue, costs, and quality metrics',
+    description:
+      'Complete location service overview including volume, revenue, costs, and quality metrics',
     category: 'service',
     organizationalScope: 'location',
     requiredPermissions: ['service.performance.view_location'],
@@ -1368,7 +1398,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Technician Performance Report',
     code: 'SERVICE_TECHNICIAN_PERFORMANCE',
-    description: 'Detailed technician scorecard with FTF, CSAT, utilization, efficiency, and revenue metrics',
+    description:
+      'Detailed technician scorecard with FTF, CSAT, utilization, efficiency, and revenue metrics',
     category: 'service',
     organizationalScope: 'location',
     requiredPermissions: ['service.performance.view_location'],
@@ -1453,7 +1484,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Equipment Health Report',
     code: 'SERVICE_EQUIPMENT_HEALTH',
-    description: 'Monitor equipment uptime, service frequency, preventive maintenance, and at-risk devices',
+    description:
+      'Monitor equipment uptime, service frequency, preventive maintenance, and at-risk devices',
     category: 'service',
     organizationalScope: 'location',
     requiredPermissions: ['service.equipment.view_location'],
@@ -1490,7 +1522,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Parts Usage & Cost Report',
     code: 'SERVICE_PARTS_USAGE_COST',
-    description: 'Track parts consumption, costs, returns, and efficiency by technician and customer',
+    description:
+      'Track parts consumption, costs, returns, and efficiency by technician and customer',
     category: 'service',
     organizationalScope: 'location',
     requiredPermissions: ['service.parts.view_location'],
@@ -1660,7 +1693,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Executive Service Dashboard',
     code: 'SERVICE_EXECUTIVE_DASHBOARD',
-    description: 'Company-wide service overview with KPIs, trends, and profitability for executive leadership',
+    description:
+      'Company-wide service overview with KPIs, trends, and profitability for executive leadership',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['service.performance.view_company', 'executive.dashboard.view'],
@@ -1699,7 +1733,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Company-Wide Service Analytics Report',
     code: 'SERVICE_COMPANY_ANALYTICS',
-    description: 'Deep service analytics with segment analysis, demand forecasting, and churn correlation',
+    description:
+      'Deep service analytics with segment analysis, demand forecasting, and churn correlation',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['service.analytics.view_company', 'executive.analytics.view'],
@@ -1760,7 +1795,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Service Quality Report',
     code: 'SERVICE_QUALITY_REPORT',
-    description: 'Comprehensive quality analysis including FTF, CSAT, repeat tickets, escalations, and root causes',
+    description:
+      'Comprehensive quality analysis including FTF, CSAT, repeat tickets, escalations, and root causes',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['service.quality.view_company', 'executive.quality.view'],
@@ -1806,7 +1842,8 @@ const SERVICE_REPORTS: ReportDefinition[] = [
   {
     name: 'Board-Level Service Report',
     code: 'SERVICE_BOARD_REPORT',
-    description: 'Executive summary for board meetings with strategic service metrics and efficiency ratios',
+    description:
+      'Executive summary for board meetings with strategic service metrics and efficiency ratios',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['executive.board_reports.view'],
@@ -1853,7 +1890,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
   {
     name: 'Personal Productivity Report (Warehouse)',
     code: 'OPS_PERSONAL_PRODUCTIVITY',
-    description: 'Track your daily warehouse productivity including items received, picked, packed, and accuracy',
+    description:
+      'Track your daily warehouse productivity including items received, picked, packed, and accuracy',
     category: 'operations',
     organizationalScope: 'individual',
     requiredPermissions: ['operations.inventory.view_own'],
@@ -1956,7 +1994,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
   {
     name: 'FPY (First Pass Yield) Report',
     code: 'OPS_FPY_REPORT',
-    description: 'Monitor first pass yield for warehouse assembly/kitting operations with failure analysis',
+    description:
+      'Monitor first pass yield for warehouse assembly/kitting operations with failure analysis',
     category: 'operations',
     organizationalScope: 'location',
     requiredPermissions: ['operations.fpy.view_location'],
@@ -1999,7 +2038,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
   {
     name: 'Warehouse Performance Report',
     code: 'OPS_WAREHOUSE_PERFORMANCE',
-    description: 'Comprehensive warehouse KPIs including receiving, shipping, turns, fill rate, and labor productivity',
+    description:
+      'Comprehensive warehouse KPIs including receiving, shipping, turns, fill rate, and labor productivity',
     category: 'operations',
     organizationalScope: 'location',
     requiredPermissions: ['operations.performance.view_location'],
@@ -2036,7 +2076,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
   {
     name: 'Inventory Valuation Report',
     code: 'OPS_INVENTORY_VALUATION',
-    description: 'Inventory value analysis with aging, slow-moving items, obsolescence, and carrying costs',
+    description:
+      'Inventory value analysis with aging, slow-moving items, obsolescence, and carrying costs',
     category: 'operations',
     organizationalScope: 'location',
     requiredPermissions: ['operations.inventory.view_location', 'finance.inventory.view'],
@@ -2105,7 +2146,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
   {
     name: 'Logistics & Delivery Report',
     code: 'OPS_LOGISTICS_DELIVERY',
-    description: 'Track delivery performance including on-time rate, costs, route efficiency, and CSAT',
+    description:
+      'Track delivery performance including on-time rate, costs, route efficiency, and CSAT',
     category: 'operations',
     organizationalScope: 'location',
     requiredPermissions: ['operations.logistics.view_location'],
@@ -2218,7 +2260,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
   {
     name: 'Executive Operations Dashboard',
     code: 'OPS_EXECUTIVE_DASHBOARD',
-    description: 'Company-wide operations overview for executive leadership with key efficiency metrics',
+    description:
+      'Company-wide operations overview for executive leadership with key efficiency metrics',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['operations.performance.view_company', 'executive.dashboard.view'],
@@ -2296,7 +2339,8 @@ const FINANCE_REPORTS: ReportDefinition[] = [
   {
     name: 'AR Aging Report',
     code: 'FINANCE_AR_AGING',
-    description: 'Accounts receivable aging analysis with customer breakdown and collection priorities',
+    description:
+      'Accounts receivable aging analysis with customer breakdown and collection priorities',
     category: 'finance',
     organizationalScope: 'location',
     requiredPermissions: ['finance.ar.view_location'],
@@ -2528,7 +2572,8 @@ const FINANCE_REPORTS: ReportDefinition[] = [
   {
     name: 'Profitability Analysis Report',
     code: 'FINANCE_PROFITABILITY_ANALYSIS',
-    description: 'Multi-dimensional profitability analysis by location, department, customer, and product',
+    description:
+      'Multi-dimensional profitability analysis by location, department, customer, and product',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['finance.profitability.view_company', 'executive.analytics.view'],
@@ -2711,7 +2756,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
   {
     name: 'Company Performance Report',
     code: 'EXECUTIVE_COMPANY_PERFORMANCE',
-    description: 'Comprehensive monthly company performance across all functions with strategic initiatives tracking',
+    description:
+      'Comprehensive monthly company performance across all functions with strategic initiatives tracking',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['executive.performance.view'],
@@ -2761,7 +2807,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
   {
     name: 'Strategic KPI Report',
     code: 'EXECUTIVE_STRATEGIC_KPIS',
-    description: 'Strategic KPIs for executive leadership including growth, profitability, and efficiency metrics',
+    description:
+      'Strategic KPIs for executive leadership including growth, profitability, and efficiency metrics',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['executive.kpis.view'],
@@ -2803,7 +2850,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
   {
     name: 'Board Report',
     code: 'EXECUTIVE_BOARD_REPORT',
-    description: 'Comprehensive board-level report with executive summary, strategic goals, and forward-looking statements',
+    description:
+      'Comprehensive board-level report with executive summary, strategic goals, and forward-looking statements',
     category: 'executive',
     organizationalScope: 'company',
     requiredPermissions: ['executive.board_reports.view'],
@@ -2838,7 +2886,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
   {
     name: 'Platform System Metrics',
     code: 'PLATFORM_SYSTEM_METRICS',
-    description: 'Platform-wide system health, performance, and usage metrics for Printyx administrators',
+    description:
+      'Platform-wide system health, performance, and usage metrics for Printyx administrators',
     category: 'it',
     organizationalScope: 'platform',
     requiredPermissions: ['platform.metrics.view'],
@@ -2873,7 +2922,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
   {
     name: 'Tenant Usage Report',
     code: 'PLATFORM_TENANT_USAGE',
-    description: 'Per-tenant usage statistics including users, storage, API calls, and feature adoption',
+    description:
+      'Per-tenant usage statistics including users, storage, API calls, and feature adoption',
     category: 'it',
     organizationalScope: 'platform',
     requiredPermissions: ['platform.tenants.view'],
@@ -2949,7 +2999,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
   {
     name: 'Security & Audit Report',
     code: 'PLATFORM_SECURITY_AUDIT',
-    description: 'Platform security monitoring including login attempts, MFA adoption, and audit trail',
+    description:
+      'Platform security monitoring including login attempts, MFA adoption, and audit trail',
     category: 'compliance',
     organizationalScope: 'platform',
     requiredPermissions: ['platform.security.view', 'audit.logs.view'],
@@ -2998,7 +3049,11 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
     description: 'Complete customer view aggregating sales, service, finance, and operations data',
     category: 'sales',
     organizationalScope: 'location',
-    requiredPermissions: ['sales.customer.view_location', 'service.customer.view_location', 'finance.customer.view_location'],
+    requiredPermissions: [
+      'sales.customer.view_location',
+      'service.customer.view_location',
+      'finance.customer.view_location',
+    ],
     defaultVisualization: 'dashboard',
     isRealTime: true,
     supportsDrillDown: true,
@@ -3042,7 +3097,15 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
         AND c.tenant_id = :tenantId
       GROUP BY c.id, c.name, c.segment, c.account_status, c.payment_terms, c.credit_limit
     `,
-    tags: ['cross-department', 'customer-360', 'sales', 'service', 'finance', 'operations', 'level-4'],
+    tags: [
+      'cross-department',
+      'customer-360',
+      'sales',
+      'service',
+      'finance',
+      'operations',
+      'level-4',
+    ],
   },
   {
     name: 'Employee Performance Report',
@@ -3171,40 +3234,43 @@ export async function seedReports() {
     // Seed each report
     for (const report of ALL_REPORTS) {
       try {
-        await db.insert(reportDefinitions).values({
-          tenantId: systemTenantId,
-          name: report.name,
-          code: report.code,
-          description: report.description || '',
-          category: report.category,
-          sqlQuery: report.sqlQuery,
-          defaultParameters: report.defaultParameters || {},
-          availableFilters: report.availableFilters || {},
-          availableGroupings: report.availableGroupings || {},
-          requiredPermissions: report.requiredPermissions,
-          organizationalScope: report.organizationalScope,
-          containsSensitiveData: report.containsSensitiveData || false,
-          defaultVisualization: report.defaultVisualization,
-          chartConfig: report.chartConfig || {},
-          cacheDuration: report.cacheDuration || 300,
-          queryTimeout: report.queryTimeout || 30,
-          maxRowLimit: report.maxRowLimit || 10000,
-          isRealTime: report.isRealTime || false,
-          supportsDrillDown: report.supportsDrillDown || false,
-          supportsExport: report.supportsExport !== false,
-          isActive: true,
-          version: '1.0',
-          tags: report.tags || [],
-          createdBy: systemUserId,
-        }).onConflictDoUpdate({
-          target: [reportDefinitions.code, reportDefinitions.tenantId],
-          set: {
+        await db
+          .insert(reportDefinitions)
+          .values({
+            tenantId: systemTenantId,
             name: report.name,
+            code: report.code,
             description: report.description || '',
+            category: report.category,
             sqlQuery: report.sqlQuery,
-            updatedAt: new Date(),
-          },
-        });
+            defaultParameters: report.defaultParameters || {},
+            availableFilters: report.availableFilters || {},
+            availableGroupings: report.availableGroupings || {},
+            requiredPermissions: report.requiredPermissions,
+            organizationalScope: report.organizationalScope,
+            containsSensitiveData: report.containsSensitiveData || false,
+            defaultVisualization: report.defaultVisualization,
+            chartConfig: report.chartConfig || {},
+            cacheDuration: report.cacheDuration || 300,
+            queryTimeout: report.queryTimeout || 30,
+            maxRowLimit: report.maxRowLimit || 10000,
+            isRealTime: report.isRealTime || false,
+            supportsDrillDown: report.supportsDrillDown || false,
+            supportsExport: report.supportsExport !== false,
+            isActive: true,
+            version: '1.0',
+            tags: report.tags || [],
+            createdBy: systemUserId,
+          })
+          .onConflictDoUpdate({
+            target: [reportDefinitions.code, reportDefinitions.tenantId],
+            set: {
+              name: report.name,
+              description: report.description || '',
+              sqlQuery: report.sqlQuery,
+              updatedAt: new Date(),
+            },
+          });
 
         successCount++;
         console.log(`  ✅ ${report.code.padEnd(40)} - ${report.name}`);

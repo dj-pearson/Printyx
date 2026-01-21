@@ -4,13 +4,13 @@
  * Part of Improvement #2 - Task Automation
  */
 
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +18,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Zap,
   Plus,
@@ -35,7 +35,7 @@ import {
   Edit,
   Trash2,
   Copy,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ProjectTemplate {
   id: string;
@@ -60,29 +60,29 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
 
   // Fetch templates
   const { data: templates = [], isLoading } = useQuery({
-    queryKey: ["/api/templates"],
-    queryFn: async () => apiRequest("/api/templates"),
+    queryKey: ['/api/templates'],
+    queryFn: async () => apiRequest('/api/templates'),
   });
 
   // Create project from template mutation
   const useTemplateMutation = useMutation({
     mutationFn: async (data: any) =>
-      apiRequest(`/api/templates/${selectedTemplate?.id}/instantiate`, "POST", data),
+      apiRequest(`/api/templates/${selectedTemplate?.id}/instantiate`, 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
       toast({
-        title: "Success",
-        description: "Project created from template successfully",
+        title: 'Success',
+        description: 'Project created from template successfully',
       });
       setIsUseTemplateOpen(false);
       setSelectedTemplate(null);
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to create project from template",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create project from template',
+        variant: 'destructive',
       });
     },
   });
@@ -90,48 +90,48 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
   // Default templates
   const defaultTemplates = [
     {
-      id: "equipment-installation",
-      name: "Equipment Installation",
-      description: "Complete workflow for installing copiers at customer sites",
-      category: "equipment",
+      id: 'equipment-installation',
+      name: 'Equipment Installation',
+      description: 'Complete workflow for installing copiers at customer sites',
+      category: 'equipment',
       taskCount: 8,
       estimatedDuration: 480,
       isPublic: true,
       icon: Truck,
-      color: "bg-blue-500",
+      color: 'bg-blue-500',
     },
     {
-      id: "service-campaign",
-      name: "Service Campaign",
-      description: "Proactive maintenance campaign for multiple devices",
-      category: "service",
+      id: 'service-campaign',
+      name: 'Service Campaign',
+      description: 'Proactive maintenance campaign for multiple devices',
+      category: 'service',
       taskCount: 5,
       estimatedDuration: 240,
       isPublic: true,
       icon: Wrench,
-      color: "bg-green-500",
+      color: 'bg-green-500',
     },
     {
-      id: "customer-onboarding",
-      name: "Customer Onboarding",
-      description: "New customer welcome and setup process",
-      category: "customer_success",
+      id: 'customer-onboarding',
+      name: 'Customer Onboarding',
+      description: 'New customer welcome and setup process',
+      category: 'customer_success',
       taskCount: 12,
       estimatedDuration: 720,
       isPublic: true,
       icon: Users,
-      color: "bg-purple-500",
+      color: 'bg-purple-500',
     },
     {
-      id: "sales-proposal",
-      name: "Sales Proposal Workflow",
-      description: "End-to-end proposal creation and approval process",
-      category: "sales",
+      id: 'sales-proposal',
+      name: 'Sales Proposal Workflow',
+      description: 'End-to-end proposal creation and approval process',
+      category: 'sales',
       taskCount: 7,
       estimatedDuration: 360,
       isPublic: true,
       icon: Target,
-      color: "bg-orange-500",
+      color: 'bg-orange-500',
     },
   ];
 
@@ -142,12 +142,12 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
 
   const getCategoryBadge = (category: string) => {
     const colors: Record<string, string> = {
-      equipment: "bg-blue-100 text-blue-800",
-      service: "bg-green-100 text-green-800",
-      customer_success: "bg-purple-100 text-purple-800",
-      sales: "bg-orange-100 text-orange-800",
+      equipment: 'bg-blue-100 text-blue-800',
+      service: 'bg-green-100 text-green-800',
+      customer_success: 'bg-purple-100 text-purple-800',
+      sales: 'bg-orange-100 text-orange-800',
     };
-    return colors[category] || "bg-gray-100 text-gray-800";
+    return colors[category] || 'bg-gray-100 text-gray-800';
   };
 
   if (isLoading) {
@@ -186,7 +186,7 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
                       variant="outline"
                       className={`mt-1 ${getCategoryBadge(template.category)}`}
                     >
-                      {template.category.replace("_", " ")}
+                      {template.category.replace('_', ' ')}
                     </Badge>
                   </div>
                 </div>
@@ -196,9 +196,7 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {template.description}
-              </p>
+              <p className="text-sm text-muted-foreground">{template.description}</p>
 
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-1">
@@ -213,10 +211,7 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
                 )}
               </div>
 
-              <Button
-                className="w-full"
-                onClick={() => handleUseTemplate(template)}
-              >
+              <Button className="w-full" onClick={() => handleUseTemplate(template)}>
                 <Play className="h-4 w-4 mr-2" />
                 Use Template
               </Button>
@@ -276,17 +271,14 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsUseTemplateOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsUseTemplateOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={() => useTemplateMutation.mutate({})}
               disabled={useTemplateMutation.isPending}
             >
-              {useTemplateMutation.isPending ? "Creating..." : "Create Project"}
+              {useTemplateMutation.isPending ? 'Creating...' : 'Create Project'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,9 +289,7 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Template</DialogTitle>
-            <DialogDescription>
-              Create a reusable project template
-            </DialogDescription>
+            <DialogDescription>Create a reusable project template</DialogDescription>
           </DialogHeader>
           <div className="py-4 text-center text-muted-foreground">
             Template creation interface coming soon

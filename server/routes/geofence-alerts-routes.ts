@@ -19,7 +19,9 @@ function isAdminOrManager(user: any): boolean {
   if (!user?.role) return false;
   const role = user.role || '';
   const roleLower = role.toLowerCase();
-  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+  return (
+    roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive')
+  );
 }
 
 // ==================== Alert Rules ====================
@@ -75,8 +77,8 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertRules.id, req.params.id),
-          eq(geofenceAlertRules.tenantId, user.tenantId)
-        )
+          eq(geofenceAlertRules.tenantId, user.tenantId),
+        ),
       )
       .limit(1);
 
@@ -144,8 +146,8 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertRules.id, req.params.id),
-          eq(geofenceAlertRules.tenantId, user.tenantId)
-        )
+          eq(geofenceAlertRules.tenantId, user.tenantId),
+        ),
       )
       .limit(1);
 
@@ -192,8 +194,8 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertRules.id, req.params.id),
-          eq(geofenceAlertRules.tenantId, user.tenantId)
-        )
+          eq(geofenceAlertRules.tenantId, user.tenantId),
+        ),
       )
       .limit(1);
 
@@ -295,12 +297,7 @@ router.get('/alerts/:id', async (req: Request, res: Response) => {
     const [alert] = await db
       .select()
       .from(geofenceAlerts)
-      .where(
-        and(
-          eq(geofenceAlerts.id, req.params.id),
-          eq(geofenceAlerts.tenantId, user.tenantId)
-        )
-      )
+      .where(and(eq(geofenceAlerts.id, req.params.id), eq(geofenceAlerts.tenantId, user.tenantId)))
       .limit(1);
 
     if (!alert) {
@@ -332,7 +329,7 @@ router.post('/alerts/:id/acknowledge', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       user.id,
-      notes
+      notes,
     );
 
     if (!alert) {
@@ -369,7 +366,7 @@ router.post('/alerts/:id/resolve', async (req: Request, res: Response) => {
       user.tenantId,
       user.id,
       resolutionType,
-      notes
+      notes,
     );
 
     if (!alert) {
@@ -405,7 +402,7 @@ router.post('/alerts/:id/escalate', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       escalatedTo,
-      reason
+      reason,
     );
 
     if (!alert) {
@@ -460,7 +457,7 @@ router.post('/process-event', async (req: Request, res: Response) => {
         customerId: data.customerId,
         routeId: data.routeId,
         dwellDurationMinutes: data.dwellDurationMinutes,
-      }
+      },
     );
 
     res.json({ alertsTriggered: alerts.length, alerts });
@@ -563,7 +560,7 @@ router.post('/dwell-sessions/start', async (req: Request, res: Response) => {
         customerId: data.customerId,
         routeId: data.routeId,
         expectedDwellMinutes: data.expectedDwellMinutes,
-      }
+      },
     );
 
     res.status(201).json(session);
@@ -601,7 +598,7 @@ router.post('/dwell-sessions/end', async (req: Request, res: Response) => {
       data.technicianId,
       data.geofenceId,
       data.exitLocation,
-      data.exitEventId
+      data.exitEventId,
     );
 
     if (!session) {
@@ -634,8 +631,8 @@ router.get('/subscriptions', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertSubscriptions.tenantId, user.tenantId),
-          eq(geofenceAlertSubscriptions.userId, user.id)
-        )
+          eq(geofenceAlertSubscriptions.userId, user.id),
+        ),
       );
 
     res.json(subscriptions);
@@ -691,8 +688,8 @@ router.delete('/subscriptions/:id', async (req: Request, res: Response) => {
         and(
           eq(geofenceAlertSubscriptions.id, req.params.id),
           eq(geofenceAlertSubscriptions.tenantId, user.tenantId),
-          eq(geofenceAlertSubscriptions.userId, user.id)
-        )
+          eq(geofenceAlertSubscriptions.userId, user.id),
+        ),
       )
       .limit(1);
 
@@ -700,7 +697,9 @@ router.delete('/subscriptions/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Subscription not found' });
     }
 
-    await db.delete(geofenceAlertSubscriptions).where(eq(geofenceAlertSubscriptions.id, req.params.id));
+    await db
+      .delete(geofenceAlertSubscriptions)
+      .where(eq(geofenceAlertSubscriptions.id, req.params.id));
 
     res.status(204).send();
   } catch (error) {
@@ -728,7 +727,7 @@ router.get('/statistics', async (req: Request, res: Response) => {
     const statistics = await geofenceAlertsService.getAlertStatistics(
       user.tenantId,
       new Date(startDate as string),
-      new Date(endDate as string)
+      new Date(endDate as string),
     );
 
     res.json(statistics);

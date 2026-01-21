@@ -94,8 +94,8 @@ router.get('/', async (req, res) => {
 
     // Apply filters
     let filteredTasks = mockTasks;
-    if (status) filteredTasks = filteredTasks.filter(t => t.status === status);
-    if (priority) filteredTasks = filteredTasks.filter(t => t.priority === priority);
+    if (status) filteredTasks = filteredTasks.filter((t) => t.status === status);
+    if (priority) filteredTasks = filteredTasks.filter((t) => t.priority === priority);
 
     // Apply pagination
     const startIndex = parseInt(offset as string);
@@ -133,9 +133,10 @@ router.post('/', async (req, res) => {
     let aiAnalysis = null;
     try {
       const analysis = await ClaudeAIService.generateCompletion({
-        messages: [{
-          role: 'user',
-          content: `Analyze this new task for priority and complexity scoring:
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this new task for priority and complexity scoring:
 
 Title: ${taskData.title}
 Description: ${taskData.description || 'No description'}
@@ -147,10 +148,11 @@ Return JSON with:
 - priorityScore (0-100)
 - complexityScore (0-100)
 - suggestedTags (array of relevant tags)
-- reasoning (brief explanation)`
-        }],
+- reasoning (brief explanation)`,
+          },
+        ],
         temperature: 0.3,
-        max_tokens: 200
+        max_tokens: 200,
       });
 
       aiAnalysis = JSON.parse(analysis);
@@ -227,13 +229,7 @@ router.delete('/:taskId', async (req, res) => {
  */
 router.post('/schedule', async (req, res) => {
   try {
-    const { 
-      taskIds, 
-      startDate, 
-      endDate, 
-      preferences = {},
-      existingEvents = [] 
-    } = req.body;
+    const { taskIds, startDate, endDate, preferences = {}, existingEvents = [] } = req.body;
     const { tenantId } = req.user;
     const userId = req.user.id;
 
@@ -298,7 +294,7 @@ router.post('/schedule', async (req, res) => {
       defaultPreferences,
       existingEvents,
       startDate ? new Date(startDate) : new Date(),
-      endDate ? new Date(endDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      endDate ? new Date(endDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     );
 
     res.json(schedulingResult);

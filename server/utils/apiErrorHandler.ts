@@ -73,7 +73,7 @@ export function handleApiError(
   error: unknown,
   context: string,
   statusCode: number = 500,
-  errorCode?: string
+  errorCode?: string,
 ): Response<ApiError> {
   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
   const finalErrorCode = errorCode || ErrorCodes.INTERNAL_SERVER_ERROR;
@@ -102,7 +102,7 @@ export function sendSuccess<T>(
   res: Response,
   data: T,
   message?: string,
-  statusCode: number = 200
+  statusCode: number = 200,
 ): Response<ApiSuccess<T>> {
   return res.status(statusCode).json({
     success: true,
@@ -122,7 +122,7 @@ export const ApiErrorHandlers = {
       new Error(`${resource} not found`),
       `find ${resource}`,
       404,
-      ErrorCodes.NOT_FOUND
+      ErrorCodes.NOT_FOUND,
     ),
 
   unauthorized: (res: Response, reason?: string) =>
@@ -131,7 +131,7 @@ export const ApiErrorHandlers = {
       new Error(reason || 'Unauthorized access'),
       'authenticate request',
       401,
-      ErrorCodes.UNAUTHORIZED
+      ErrorCodes.UNAUTHORIZED,
     ),
 
   forbidden: (res: Response, reason?: string) =>
@@ -140,7 +140,7 @@ export const ApiErrorHandlers = {
       new Error(reason || 'Access forbidden'),
       'authorize action',
       403,
-      ErrorCodes.FORBIDDEN
+      ErrorCodes.FORBIDDEN,
     ),
 
   validation: (res: Response, details: string) =>
@@ -149,7 +149,7 @@ export const ApiErrorHandlers = {
       new Error(`Validation failed: ${details}`),
       'validate input',
       400,
-      ErrorCodes.VALIDATION_ERROR
+      ErrorCodes.VALIDATION_ERROR,
     ),
 
   conflict: (res: Response, resource: string) =>
@@ -158,7 +158,7 @@ export const ApiErrorHandlers = {
       new Error(`${resource} already exists or conflicts with existing data`),
       `create ${resource}`,
       409,
-      ErrorCodes.CONFLICT
+      ErrorCodes.CONFLICT,
     ),
 
   database: (res: Response, operation: string, error: unknown) =>
@@ -167,7 +167,7 @@ export const ApiErrorHandlers = {
       error,
       `execute database operation: ${operation}`,
       500,
-      ErrorCodes.DATABASE_ERROR
+      ErrorCodes.DATABASE_ERROR,
     ),
 
   externalService: (res: Response, service: string, error: unknown) =>
@@ -176,7 +176,7 @@ export const ApiErrorHandlers = {
       error,
       `communicate with ${service}`,
       502,
-      ErrorCodes.EXTERNAL_SERVICE_ERROR
+      ErrorCodes.EXTERNAL_SERVICE_ERROR,
     ),
 };
 
@@ -198,15 +198,12 @@ export function asyncHandler(fn: Function) {
 export function validateRequiredFields(
   data: Record<string, any>,
   requiredFields: string[],
-  res: Response
+  res: Response,
 ): boolean {
   const missingFields = requiredFields.filter((field) => !data[field]);
 
   if (missingFields.length > 0) {
-    ApiErrorHandlers.validation(
-      res,
-      `Missing required fields: ${missingFields.join(', ')}`
-    );
+    ApiErrorHandlers.validation(res, `Missing required fields: ${missingFields.join(', ')}`);
     return false;
   }
 

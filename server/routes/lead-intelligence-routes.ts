@@ -34,7 +34,10 @@ router.get('/:leadId', isAuthenticated, async (req: Request, res: Response) => {
     }
 
     const { leadId } = req.params;
-    const intelligence = await leadIntelligenceService.getLeadIntelligence(leadId, context.tenantId);
+    const intelligence = await leadIntelligenceService.getLeadIntelligence(
+      leadId,
+      context.tenantId,
+    );
 
     res.json(intelligence);
   } catch (error: any) {
@@ -55,7 +58,11 @@ router.post('/:leadId/score', isAuthenticated, async (req: Request, res: Respons
     }
 
     const { leadId } = req.params;
-    const score = await leadIntelligenceService.calculateLeadScore(leadId, context.tenantId, context.userId);
+    const score = await leadIntelligenceService.calculateLeadScore(
+      leadId,
+      context.tenantId,
+      context.userId,
+    );
 
     res.json({
       success: true,
@@ -79,7 +86,11 @@ router.post('/:leadId/enrich', isAuthenticated, async (req: Request, res: Respon
     }
 
     const { leadId } = req.params;
-    const enrichment = await leadIntelligenceService.enrichLeadFromApollo(leadId, context.tenantId, context.userId);
+    const enrichment = await leadIntelligenceService.enrichLeadFromApollo(
+      leadId,
+      context.tenantId,
+      context.userId,
+    );
 
     res.json({
       success: true,
@@ -103,7 +114,11 @@ router.post('/:leadId/process', isAuthenticated, async (req: Request, res: Respo
     }
 
     const { leadId } = req.params;
-    const result = await leadIntelligenceService.processNewLead(leadId, context.tenantId, context.userId);
+    const result = await leadIntelligenceService.processNewLead(
+      leadId,
+      context.tenantId,
+      context.userId,
+    );
 
     res.json({
       success: true,
@@ -131,7 +146,11 @@ router.post('/batch/score', isAuthenticated, async (req: Request, res: Response)
     });
 
     const { leadIds } = schema.parse(req.body);
-    const result = await leadIntelligenceService.batchProcessLeads(leadIds, context.tenantId, context.userId);
+    const result = await leadIntelligenceService.batchProcessLeads(
+      leadIds,
+      context.tenantId,
+      context.userId,
+    );
 
     res.json(result);
   } catch (error: any) {
@@ -180,7 +199,9 @@ router.get('/attention/required', isAuthenticated, async (req: Request, res: Res
     res.json(leads);
   } catch (error: any) {
     console.error('Get attention required error:', error);
-    res.status(500).json({ error: 'Failed to get leads requiring attention', message: error.message });
+    res
+      .status(500)
+      .json({ error: 'Failed to get leads requiring attention', message: error.message });
   }
 });
 

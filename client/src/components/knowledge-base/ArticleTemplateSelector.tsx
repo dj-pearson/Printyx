@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   BookOpen,
   ListChecks,
@@ -14,7 +14,7 @@ import {
   Check,
   Clock,
   GraduationCap,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ArticleTemplate {
   id: string;
@@ -30,81 +30,83 @@ interface ArticleTemplate {
 
 const templates: ArticleTemplate[] = [
   {
-    id: "tutorial",
-    name: "Tutorial Template",
-    description: "Step-by-step guide teaching a specific skill or workflow with prerequisites and verification steps",
-    contentType: "tutorial",
-    recommendedDifficulty: "beginner",
+    id: 'tutorial',
+    name: 'Tutorial Template',
+    description:
+      'Step-by-step guide teaching a specific skill or workflow with prerequisites and verification steps',
+    contentType: 'tutorial',
+    recommendedDifficulty: 'beginner',
     estimatedReadingTime: 10,
     icon: <GraduationCap className="h-5 w-5" />,
     sectionCount: 15,
-    useCases: ["Teaching new features", "Onboarding guides", "Skill development"],
+    useCases: ['Teaching new features', 'Onboarding guides', 'Skill development'],
   },
   {
-    id: "howTo",
-    name: "How-To Guide",
-    description: "Quick, focused guide for accomplishing a specific task with concise action steps",
-    contentType: "how_to",
-    recommendedDifficulty: "beginner",
+    id: 'howTo',
+    name: 'How-To Guide',
+    description: 'Quick, focused guide for accomplishing a specific task with concise action steps',
+    contentType: 'how_to',
+    recommendedDifficulty: 'beginner',
     estimatedReadingTime: 7,
     icon: <ListChecks className="h-5 w-5" />,
     sectionCount: 10,
-    useCases: ["Quick tasks", "Common operations", "Feature usage"],
+    useCases: ['Quick tasks', 'Common operations', 'Feature usage'],
   },
   {
-    id: "reference",
-    name: "Reference Documentation",
-    description: "Comprehensive documentation for features, APIs, or configurations with examples",
-    contentType: "reference",
-    recommendedDifficulty: "intermediate",
+    id: 'reference',
+    name: 'Reference Documentation',
+    description: 'Comprehensive documentation for features, APIs, or configurations with examples',
+    contentType: 'reference',
+    recommendedDifficulty: 'intermediate',
     estimatedReadingTime: 12,
     icon: <FileText className="h-5 w-5" />,
     sectionCount: 13,
-    useCases: ["Feature documentation", "API references", "Configuration guides"],
+    useCases: ['Feature documentation', 'API references', 'Configuration guides'],
   },
   {
-    id: "troubleshooting",
-    name: "Troubleshooting Guide",
-    description: "Diagnostic guide for resolving specific issues or errors with solutions",
-    contentType: "troubleshooting",
-    recommendedDifficulty: "intermediate",
+    id: 'troubleshooting',
+    name: 'Troubleshooting Guide',
+    description: 'Diagnostic guide for resolving specific issues or errors with solutions',
+    contentType: 'troubleshooting',
+    recommendedDifficulty: 'intermediate',
     estimatedReadingTime: 8,
     icon: <AlertCircle className="h-5 w-5" />,
     sectionCount: 16,
-    useCases: ["Error resolution", "Common problems", "Diagnostic guides"],
+    useCases: ['Error resolution', 'Common problems', 'Diagnostic guides'],
   },
   {
-    id: "bestPractice",
-    name: "Best Practice Guide",
-    description: "Industry best practices and optimization recommendations with real-world examples",
-    contentType: "best_practice",
-    recommendedDifficulty: "intermediate",
+    id: 'bestPractice',
+    name: 'Best Practice Guide',
+    description:
+      'Industry best practices and optimization recommendations with real-world examples',
+    contentType: 'best_practice',
+    recommendedDifficulty: 'intermediate',
     estimatedReadingTime: 10,
     icon: <Award className="h-5 w-5" />,
     sectionCount: 16,
-    useCases: ["Optimization strategies", "Industry standards", "Process improvement"],
+    useCases: ['Optimization strategies', 'Industry standards', 'Process improvement'],
   },
   {
-    id: "faq",
-    name: "FAQ Template",
-    description: "Frequently asked questions in Q&A format with concise answers",
-    contentType: "faq",
-    recommendedDifficulty: "beginner",
+    id: 'faq',
+    name: 'FAQ Template',
+    description: 'Frequently asked questions in Q&A format with concise answers',
+    contentType: 'faq',
+    recommendedDifficulty: 'beginner',
     estimatedReadingTime: 5,
     icon: <HelpCircle className="h-5 w-5" />,
     sectionCount: 7,
-    useCases: ["Common questions", "Quick answers", "Self-service support"],
+    useCases: ['Common questions', 'Quick answers', 'Self-service support'],
   },
   {
-    id: "releaseNotes",
-    name: "Release Notes",
-    description: "Document new features, improvements, and bug fixes in product updates",
-    contentType: "release_notes",
-    recommendedDifficulty: "beginner",
+    id: 'releaseNotes',
+    name: 'Release Notes',
+    description: 'Document new features, improvements, and bug fixes in product updates',
+    contentType: 'release_notes',
+    recommendedDifficulty: 'beginner',
     estimatedReadingTime: 5,
     icon: <Rocket className="h-5 w-5" />,
     sectionCount: 13,
-    useCases: ["Product updates", "Feature announcements", "Changelog"],
+    useCases: ['Product updates', 'Feature announcements', 'Changelog'],
   },
 ];
 
@@ -131,10 +133,10 @@ export default function ArticleTemplateSelector({
 
   const getDifficultyColor = (difficulty: string) => {
     const colors: Record<string, string> = {
-      beginner: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-      intermediate: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      advanced: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-      expert: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      beginner: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      intermediate: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      advanced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      expert: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     };
     return colors[difficulty] || colors.beginner;
   };
@@ -156,8 +158,8 @@ export default function ArticleTemplateSelector({
               key={template.id}
               className={`cursor-pointer transition-all hover:shadow-md ${
                 selectedTemplate === template.id
-                  ? "ring-2 ring-blue-500 border-blue-500"
-                  : "hover:border-gray-400"
+                  ? 'ring-2 ring-blue-500 border-blue-500'
+                  : 'hover:border-gray-400'
               }`}
               onClick={() => handleSelect(template.id)}
             >
@@ -171,9 +173,11 @@ export default function ArticleTemplateSelector({
                       <CardTitle className="text-lg">{template.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-xs">
-                          {template.contentType.replace("_", " ")}
+                          {template.contentType.replace('_', ' ')}
                         </Badge>
-                        <Badge className={`text-xs ${getDifficultyColor(template.recommendedDifficulty)}`}>
+                        <Badge
+                          className={`text-xs ${getDifficultyColor(template.recommendedDifficulty)}`}
+                        >
                           {template.recommendedDifficulty}
                         </Badge>
                       </div>
@@ -222,12 +226,8 @@ export default function ArticleTemplateSelector({
             Cancel
           </Button>
         )}
-        <Button
-          onClick={handleConfirm}
-          disabled={!selectedTemplate}
-          className="min-w-[120px]"
-        >
-          {selectedTemplate ? "Use Template" : "Select a Template"}
+        <Button onClick={handleConfirm} disabled={!selectedTemplate} className="min-w-[120px]">
+          {selectedTemplate ? 'Use Template' : 'Select a Template'}
         </Button>
       </div>
 
@@ -243,10 +243,11 @@ export default function ArticleTemplateSelector({
                   What happens next?
                 </h3>
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Your article editor will be pre-populated with the{" "}
-                  <strong>{templates.find((t) => t.id === selectedTemplate)?.name}</strong>{" "}
-                  structure. You'll have {templates.find((t) => t.id === selectedTemplate)?.sectionCount}{" "}
-                  pre-defined sections with guidance on what to write in each section.
+                  Your article editor will be pre-populated with the{' '}
+                  <strong>{templates.find((t) => t.id === selectedTemplate)?.name}</strong>{' '}
+                  structure. You'll have{' '}
+                  {templates.find((t) => t.id === selectedTemplate)?.sectionCount} pre-defined
+                  sections with guidance on what to write in each section.
                 </p>
               </div>
             </div>

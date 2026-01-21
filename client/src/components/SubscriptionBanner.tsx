@@ -34,7 +34,12 @@ export function SubscriptionBanner() {
     subscription.trialDaysRemaining !== undefined &&
     subscription.trialDaysRemaining <= 7
   ) {
-    const urgency = subscription.trialDaysRemaining <= 1 ? 'urgent' : subscription.trialDaysRemaining <= 3 ? 'high' : 'normal';
+    const urgency =
+      subscription.trialDaysRemaining <= 1
+        ? 'urgent'
+        : subscription.trialDaysRemaining <= 3
+          ? 'high'
+          : 'normal';
 
     return (
       <Alert
@@ -42,8 +47,8 @@ export function SubscriptionBanner() {
           urgency === 'urgent'
             ? 'bg-red-50 border-red-200 dark:bg-red-950/50 dark:border-red-800'
             : urgency === 'high'
-            ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/50 dark:border-orange-800'
-            : 'bg-blue-50 border-blue-200 dark:bg-blue-950/50 dark:border-blue-800'
+              ? 'bg-orange-50 border-orange-200 dark:bg-orange-950/50 dark:border-orange-800'
+              : 'bg-blue-50 border-blue-200 dark:bg-blue-950/50 dark:border-blue-800'
         }`}
       >
         <div className="flex items-start gap-3">
@@ -52,23 +57,26 @@ export function SubscriptionBanner() {
               urgency === 'urgent'
                 ? 'text-red-600 dark:text-red-400'
                 : urgency === 'high'
-                ? 'text-orange-600 dark:text-orange-400'
-                : 'text-blue-600 dark:text-blue-400'
+                  ? 'text-orange-600 dark:text-orange-400'
+                  : 'text-blue-600 dark:text-blue-400'
             }`}
           />
           <div className="flex-1">
             <AlertDescription className="font-medium">
               {subscription.trialDaysRemaining === 0 ? (
                 <>
-                  <strong>Your trial expires today!</strong> Add a payment method to continue using all features.
+                  <strong>Your trial expires today!</strong> Add a payment method to continue using
+                  all features.
                 </>
               ) : subscription.trialDaysRemaining === 1 ? (
                 <>
-                  <strong>Trial ending tomorrow!</strong> Your {subscription.plan?.name} trial ends in 1 day.
+                  <strong>Trial ending tomorrow!</strong> Your {subscription.plan?.name} trial ends
+                  in 1 day.
                 </>
               ) : (
                 <>
-                  <strong>Trial ending soon:</strong> Your {subscription.plan?.name} trial ends in {subscription.trialDaysRemaining} days.
+                  <strong>Trial ending soon:</strong> Your {subscription.plan?.name} trial ends in{' '}
+                  {subscription.trialDaysRemaining} days.
                 </>
               )}
             </AlertDescription>
@@ -152,20 +160,33 @@ export function SubscriptionBanner() {
   if (subscription.usage && subscription.limits) {
     const warnings: string[] = [];
 
-    if (subscription.limits.users !== -1 && subscription.usage.users >= subscription.limits.users * 0.8) {
+    if (
+      subscription.limits.users !== -1 &&
+      subscription.usage.users >= subscription.limits.users * 0.8
+    ) {
       const pct = Math.round((subscription.usage.users / subscription.limits.users) * 100);
       warnings.push(`Users: ${subscription.usage.users}/${subscription.limits.users} (${pct}%)`);
     }
 
-    if (subscription.limits.storage !== -1 && subscription.usage.storage >= subscription.limits.storage * 1024 * 0.8) {
+    if (
+      subscription.limits.storage !== -1 &&
+      subscription.usage.storage >= subscription.limits.storage * 1024 * 0.8
+    ) {
       const usedGB = Math.round(subscription.usage.storage / 1024);
-      const pct = Math.round((subscription.usage.storage / (subscription.limits.storage * 1024)) * 100);
+      const pct = Math.round(
+        (subscription.usage.storage / (subscription.limits.storage * 1024)) * 100,
+      );
       warnings.push(`Storage: ${usedGB}/${subscription.limits.storage}GB (${pct}%)`);
     }
 
-    if (subscription.limits.apiCalls !== -1 && subscription.usage.apiCalls >= subscription.limits.apiCalls * 0.8) {
+    if (
+      subscription.limits.apiCalls !== -1 &&
+      subscription.usage.apiCalls >= subscription.limits.apiCalls * 0.8
+    ) {
       const pct = Math.round((subscription.usage.apiCalls / subscription.limits.apiCalls) * 100);
-      warnings.push(`API Calls: ${subscription.usage.apiCalls.toLocaleString()}/${subscription.limits.apiCalls.toLocaleString()} (${pct}%)`);
+      warnings.push(
+        `API Calls: ${subscription.usage.apiCalls.toLocaleString()}/${subscription.limits.apiCalls.toLocaleString()} (${pct}%)`,
+      );
     }
 
     if (warnings.length > 0) {
@@ -212,7 +233,8 @@ export function SubscriptionBanner() {
           <AlertTriangle className="h-5 w-5 mt-0.5 text-red-600 dark:text-red-400" />
           <div className="flex-1">
             <AlertDescription className="font-medium">
-              <strong>Payment past due:</strong> Please update your payment method to continue service.
+              <strong>Payment past due:</strong> Please update your payment method to continue
+              service.
             </AlertDescription>
             <div className="mt-2">
               <Link href="/settings/billing">
@@ -244,7 +266,8 @@ export function SubscriptionBanner() {
           <Info className="h-5 w-5 mt-0.5 text-orange-600 dark:text-orange-400" />
           <div className="flex-1">
             <AlertDescription className="font-medium">
-              <strong>Subscription canceled:</strong> Your access will end in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}.
+              <strong>Subscription canceled:</strong> Your access will end in {daysRemaining} day
+              {daysRemaining !== 1 ? 's' : ''}.
             </AlertDescription>
             <div className="mt-2">
               <Link href="/pricing">

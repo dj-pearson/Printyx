@@ -172,7 +172,7 @@ class ReportCache {
     }
 
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -191,15 +191,16 @@ export class ServiceReportingService {
   static async getPersonalServiceCalls(
     userContext: EnhancedUserContext,
     dateRange?: Partial<DateRange>,
-    status?: string
+    status?: string,
   ): Promise<ServiceCallSummary> {
     const cacheKey = `service-calls:${userContext.id}:${JSON.stringify(dateRange)}:${status}`;
     const cached = ReportCache.get<ServiceCallSummary>(cacheKey);
     if (cached) return cached;
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND st.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND st.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const statusFilter = status ? sql`AND st.status = ${status}` : sql``;
 
@@ -253,38 +254,42 @@ export class ServiceReportingService {
       category: row.category,
       resolutionType: row.resolution_type,
       firstTimeFixRate: row.first_time_fix_rate,
-      customerSatisfaction: row.customer_satisfaction ? parseFloat(row.customer_satisfaction) : null,
+      customerSatisfaction: row.customer_satisfaction
+        ? parseFloat(row.customer_satisfaction)
+        : null,
     }));
 
     // Calculate summary statistics
-    const completed = calls.filter(c => c.status === 'completed').length;
-    const inProgress = calls.filter(c => c.status === 'in_progress').length;
-    const scheduled = calls.filter(c => c.status === 'scheduled').length;
+    const completed = calls.filter((c) => c.status === 'completed').length;
+    const inProgress = calls.filter((c) => c.status === 'in_progress').length;
+    const scheduled = calls.filter((c) => c.status === 'scheduled').length;
 
-    const completedCalls = calls.filter(c => c.status === 'completed' && c.duration > 0);
-    const averageDuration = completedCalls.length > 0
-      ? completedCalls.reduce((sum, c) => sum + c.duration, 0) / completedCalls.length
-      : 0;
+    const completedCalls = calls.filter((c) => c.status === 'completed' && c.duration > 0);
+    const averageDuration =
+      completedCalls.length > 0
+        ? completedCalls.reduce((sum, c) => sum + c.duration, 0) / completedCalls.length
+        : 0;
 
-    const firstTimeFixes = completedCalls.filter(c => c.firstTimeFixRate).length;
-    const firstTimeFixRate = completedCalls.length > 0
-      ? (firstTimeFixes / completedCalls.length) * 100
-      : 0;
+    const firstTimeFixes = completedCalls.filter((c) => c.firstTimeFixRate).length;
+    const firstTimeFixRate =
+      completedCalls.length > 0 ? (firstTimeFixes / completedCalls.length) * 100 : 0;
 
-    const satisfactionRatings = calls.filter(c => c.customerSatisfaction !== null);
-    const averageSatisfaction = satisfactionRatings.length > 0
-      ? satisfactionRatings.reduce((sum, c) => sum + (c.customerSatisfaction || 0), 0) / satisfactionRatings.length
-      : 0;
+    const satisfactionRatings = calls.filter((c) => c.customerSatisfaction !== null);
+    const averageSatisfaction =
+      satisfactionRatings.length > 0
+        ? satisfactionRatings.reduce((sum, c) => sum + (c.customerSatisfaction || 0), 0) /
+          satisfactionRatings.length
+        : 0;
 
     // Group by priority
     const callsByPriority: Record<string, number> = {};
-    calls.forEach(call => {
+    calls.forEach((call) => {
       callsByPriority[call.priority] = (callsByPriority[call.priority] || 0) + 1;
     });
 
     // Group by category
     const callsByCategory: Record<string, number> = {};
-    calls.forEach(call => {
+    calls.forEach((call) => {
       callsByCategory[call.category] = (callsByCategory[call.category] || 0) + 1;
     });
 
@@ -312,15 +317,16 @@ export class ServiceReportingService {
    */
   static async getPersonalPartsUsage(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<PartsUsageSummary> {
     const cacheKey = `parts-usage:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<PartsUsageSummary>(cacheKey);
     if (cached) return cached;
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND pu.used_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND pu.used_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -358,12 +364,15 @@ export class ServiceReportingService {
 
     // Calculate summary statistics
     const totalCost = parts.reduce((sum, p) => sum + p.totalCost, 0);
-    const billableCost = parts.filter(p => p.billable).reduce((sum, p) => sum + p.totalCost, 0);
+    const billableCost = parts.filter((p) => p.billable).reduce((sum, p) => sum + p.totalCost, 0);
     const nonBillableCost = totalCost - billableCost;
 
     // Top parts by cost
-    const partsTotals = new Map<string, { partNumber: string; partName: string; quantity: number; cost: number }>();
-    parts.forEach(part => {
+    const partsTotals = new Map<
+      string,
+      { partNumber: string; partName: string; quantity: number; cost: number }
+    >();
+    parts.forEach((part) => {
       const key = part.partNumber;
       const existing = partsTotals.get(key);
       if (existing) {
@@ -385,7 +394,7 @@ export class ServiceReportingService {
 
     // Cost by category
     const costByCategory: Record<string, number> = {};
-    parts.forEach(part => {
+    parts.forEach((part) => {
       costByCategory[part.category] = (costByCategory[part.category] || 0) + part.totalCost;
     });
 
@@ -410,15 +419,16 @@ export class ServiceReportingService {
    */
   static async getPersonalTimeTracking(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<TimeTrackingSummary> {
     const cacheKey = `time-tracking:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<TimeTrackingSummary>(cacheKey);
     if (cached) return cached;
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND te.entry_date BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND te.entry_date BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -452,24 +462,27 @@ export class ServiceReportingService {
 
     // Calculate summary statistics
     const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
-    const billableHours = entries.filter(e => e.billable).reduce((sum, e) => sum + e.hours, 0);
+    const billableHours = entries.filter((e) => e.billable).reduce((sum, e) => sum + e.hours, 0);
     const nonBillableHours = totalHours - billableHours;
-    const travelHours = entries.filter(e => e.activityType === 'travel').reduce((sum, e) => sum + e.hours, 0);
+    const travelHours = entries
+      .filter((e) => e.activityType === 'travel')
+      .reduce((sum, e) => sum + e.hours, 0);
     const productiveHours = entries
-      .filter(e => e.activityType === 'diagnostic' || e.activityType === 'repair')
+      .filter((e) => e.activityType === 'diagnostic' || e.activityType === 'repair')
       .reduce((sum, e) => sum + e.hours, 0);
 
     const utilizationRate = totalHours > 0 ? (billableHours / totalHours) * 100 : 0;
 
     // Hours by activity
     const hoursByActivity: Record<string, number> = {};
-    entries.forEach(entry => {
-      hoursByActivity[entry.activityType] = (hoursByActivity[entry.activityType] || 0) + entry.hours;
+    entries.forEach((entry) => {
+      hoursByActivity[entry.activityType] =
+        (hoursByActivity[entry.activityType] || 0) + entry.hours;
     });
 
     // Hours by day
     const hoursByDayMap = new Map<string, number>();
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       const dateKey = entry.date.toISOString().split('T')[0];
       hoursByDayMap.set(dateKey, (hoursByDayMap.get(dateKey) || 0) + entry.hours);
     });
@@ -505,7 +518,7 @@ export class ServiceReportingService {
       priority?: string;
       status?: string;
       assignedTo?: string;
-    }
+    },
   ): Promise<DispatchQueueSummary> {
     const cacheKey = `dispatch-queue:${userContext.id}:${JSON.stringify(filterBy)}`;
     const cached = ReportCache.get<DispatchQueueSummary>(cacheKey);
@@ -532,7 +545,9 @@ export class ServiceReportingService {
 
     const priorityFilter = filterBy?.priority ? sql`AND st.priority = ${filterBy.priority}` : sql``;
     const statusFilter = filterBy?.status ? sql`AND st.status = ${filterBy.status}` : sql``;
-    const assignedFilter = filterBy?.assignedTo ? sql`AND st.assigned_technician_id = ${filterBy.assignedTo}` : sql``;
+    const assignedFilter = filterBy?.assignedTo
+      ? sql`AND st.assigned_technician_id = ${filterBy.assignedTo}`
+      : sql``;
 
     const result = await db.execute(sql`
       SELECT
@@ -564,7 +579,7 @@ export class ServiceReportingService {
       WHERE st.tenant_id = ${userContext.tenantId}
         AND st.status IN ('open', 'scheduled', 'in_progress')
         AND (
-          st.assigned_technician_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map(id => `'${id}'`).join(',')}]`)})
+          st.assigned_technician_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
           OR st.assigned_technician_id IS NULL
         )
         ${priorityFilter}
@@ -600,28 +615,28 @@ export class ServiceReportingService {
     }));
 
     // Calculate summary statistics
-    const unassigned = queue.filter(item => !item.assignedTechnicianId).length;
-    const scheduled = queue.filter(item => item.scheduledDate !== null).length;
-    const overdue = queue.filter(item => item.slaStatus === 'overdue').length;
-    const atRisk = queue.filter(item => item.slaStatus === 'at_risk').length;
+    const unassigned = queue.filter((item) => !item.assignedTechnicianId).length;
+    const scheduled = queue.filter((item) => item.scheduledDate !== null).length;
+    const overdue = queue.filter((item) => item.slaStatus === 'overdue').length;
+    const atRisk = queue.filter((item) => item.slaStatus === 'at_risk').length;
 
     // Group by priority
     const byPriority: Record<string, number> = {};
-    queue.forEach(item => {
+    queue.forEach((item) => {
       byPriority[item.priority] = (byPriority[item.priority] || 0) + 1;
     });
 
     // Group by technician
     const byTechnician: Record<string, number> = {};
-    queue.forEach(item => {
+    queue.forEach((item) => {
       if (item.assignedTechnicianName) {
-        byTechnician[item.assignedTechnicianName] = (byTechnician[item.assignedTechnicianName] || 0) + 1;
+        byTechnician[item.assignedTechnicianName] =
+          (byTechnician[item.assignedTechnicianName] || 0) + 1;
       }
     });
 
-    const averageDaysOpen = queue.length > 0
-      ? queue.reduce((sum, item) => sum + item.daysOpen, 0) / queue.length
-      : 0;
+    const averageDaysOpen =
+      queue.length > 0 ? queue.reduce((sum, item) => sum + item.daysOpen, 0) / queue.length : 0;
 
     const summary: DispatchQueueSummary = {
       queue,

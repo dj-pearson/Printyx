@@ -2,7 +2,7 @@
 
 /**
  * End-to-End Test: Fleet Monitoring Toner Order Flow
- * 
+ *
  * This test verifies:
  * 1. Toner product lookup from catalog
  * 2. Inventory stock checking
@@ -52,7 +52,7 @@ async function setupTestData() {
         isEmailVerified: true,
       })
       .returning();
-    
+
     portalUser = newUser[0];
     console.log('   ✅ Created test user:', portalUser.id);
   }
@@ -65,8 +65,8 @@ async function setupTestData() {
     .where(
       and(
         eq(deviceRegistrations.tenantId, TEST_TENANT_ID),
-        eq(deviceRegistrations.serialNumber, 'TEST-HP-P4015-001')
-      )
+        eq(deviceRegistrations.serialNumber, 'TEST-HP-P4015-001'),
+      ),
     )
     .limit(1);
 
@@ -88,7 +88,7 @@ async function setupTestData() {
         lastSeen: new Date(),
       })
       .returning();
-    
+
     device = newDevice[0];
     console.log('   ✅ Created test device:', device.id);
   }
@@ -122,7 +122,7 @@ async function setupTestData() {
         },
       },
     });
-  
+
   console.log('   ✅ Created metrics with black toner at 15%');
 
   // 4. Create service contract (optional - for testing contract coverage)
@@ -133,37 +133,35 @@ async function setupTestData() {
     .where(
       and(
         eq(serviceContracts.tenantId, TEST_TENANT_ID),
-        eq(serviceContracts.contractNumber, 'TEST-SVC-2025-001')
-      )
+        eq(serviceContracts.contractNumber, 'TEST-SVC-2025-001'),
+      ),
     )
     .limit(1);
 
   if (existingContract.length > 0) {
     console.log('   ✅ Test contract already exists');
   } else {
-    await db
-      .insert(serviceContracts)
-      .values({
-        tenantId: TEST_TENANT_ID,
-        contractNumber: 'TEST-SVC-2025-001',
-        customerId: TEST_CUSTOMER_ID,
-        equipmentId: device.id,
-        contractType: 'full-service',
-        contractStatus: 'active',
-        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Started 30 days ago
-        endDate: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000), // Ends in 335 days
-        includesToner: true, // TONER IS COVERED
-        includesParts: true,
-        includesLabor: true,
-        monthlyBaseRate: '299.99',
-        autoRenewal: true,
-      });
-    
+    await db.insert(serviceContracts).values({
+      tenantId: TEST_TENANT_ID,
+      contractNumber: 'TEST-SVC-2025-001',
+      customerId: TEST_CUSTOMER_ID,
+      equipmentId: device.id,
+      contractType: 'full-service',
+      contractStatus: 'active',
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Started 30 days ago
+      endDate: new Date(Date.now() + 335 * 24 * 60 * 60 * 1000), // Ends in 335 days
+      includesToner: true, // TONER IS COVERED
+      includesParts: true,
+      includesLabor: true,
+      monthlyBaseRate: '299.99',
+      autoRenewal: true,
+    });
+
     console.log('   ✅ Created contract with toner coverage');
   }
 
   console.log('\n✅ Test data setup complete!\n');
-  
+
   return { portalUser, device };
 }
 
@@ -196,7 +194,7 @@ async function testTonerOrderAPI(deviceId: string, userId: string) {
 
     // Verify response structure
     console.log('\n✅ Verification:\n');
-    
+
     if (data.success) {
       console.log('   ✅ Order created successfully');
     } else {
@@ -219,7 +217,7 @@ async function testTonerOrderAPI(deviceId: string, userId: string) {
       console.log('   ✅ Notification status present');
       console.log('      Email Sent:', data.notifications.emailSent);
       console.log('      SMS Sent:', data.notifications.smsSent);
-      
+
       // Expected: both false because EMAIL_ENABLED and SMS_ENABLED are not set
       if (!data.notifications.emailSent && !data.notifications.smsSent) {
         console.log('   ℹ️  Notifications disabled (expected - EMAIL_ENABLED/SMS_ENABLED not set)');
@@ -233,7 +231,6 @@ async function testTonerOrderAPI(deviceId: string, userId: string) {
 
     console.log('\n✅ All tests passed!');
     return true;
-
   } catch (error) {
     console.error('\n❌ Test failed:', error);
     return false;
@@ -243,9 +240,9 @@ async function testTonerOrderAPI(deviceId: string, userId: string) {
 async function cleanupTestData() {
   console.log('\n🧹 Cleanup (optional - keeping test data for manual inspection)');
   console.log('   Run these commands to clean up:');
-  console.log('   DELETE FROM customer_portal_access WHERE username = \'test-fleet-user\';');
-  console.log('   DELETE FROM device_registrations WHERE serial_number = \'TEST-HP-P4015-001\';');
-  console.log('   DELETE FROM service_contracts WHERE contract_number = \'TEST-SVC-2025-001\';');
+  console.log("   DELETE FROM customer_portal_access WHERE username = 'test-fleet-user';");
+  console.log("   DELETE FROM device_registrations WHERE serial_number = 'TEST-HP-P4015-001';");
+  console.log("   DELETE FROM service_contracts WHERE contract_number = 'TEST-SVC-2025-001';");
 }
 
 async function main() {

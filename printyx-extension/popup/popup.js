@@ -66,7 +66,7 @@ async function saveConfiguration() {
   // Save configuration
   await chrome.storage.sync.set({
     apiBaseUrl: apiUrl,
-    configured: true
+    configured: true,
   });
 
   // Update API client
@@ -101,7 +101,7 @@ async function testConnection() {
       // Save tenant ID if received
       if (result.tenant?.id) {
         await chrome.storage.sync.set({
-          tenantId: result.tenant.id
+          tenantId: result.tenant.id,
         });
         apiClient.tenantId = result.tenant.id;
       }
@@ -133,7 +133,7 @@ async function checkConnectionStatus() {
       // Update tenant ID
       if (result.tenant?.id) {
         await chrome.storage.sync.set({
-          tenantId: result.tenant.id
+          tenantId: result.tenant.id,
         });
         apiClient.tenantId = result.tenant.id;
       }
@@ -181,8 +181,8 @@ function updateStats(history) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const todayCount = history.filter(item => new Date(item.importedAt) >= today).length;
-  const weekCount = history.filter(item => new Date(item.importedAt) >= weekAgo).length;
+  const todayCount = history.filter((item) => new Date(item.importedAt) >= today).length;
+  const weekCount = history.filter((item) => new Date(item.importedAt) >= weekAgo).length;
 
   document.getElementById('stat-total').textContent = history.length;
   document.getElementById('stat-today').textContent = todayCount;
@@ -203,7 +203,9 @@ function updateHistoryList(history) {
   // Show only last 10
   const recentHistory = history.slice(0, 10);
 
-  listEl.innerHTML = recentHistory.map(item => `
+  listEl.innerHTML = recentHistory
+    .map(
+      (item) => `
     <div class="import-item">
       <div class="import-info">
         <strong>${item.name}</strong>
@@ -214,7 +216,9 @@ function updateHistoryList(history) {
         ${item.enrichmentSource === 'apollo' ? '✓ Enriched' : 'Manual'}
       </div>
     </div>
-  `).join('');
+  `,
+    )
+    .join('');
 }
 
 /**
@@ -278,7 +282,7 @@ async function openCRM() {
   const baseUrl = config.apiBaseUrl || 'http://localhost:5000';
 
   chrome.tabs.create({
-    url: baseUrl
+    url: baseUrl,
   });
 }
 

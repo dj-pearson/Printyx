@@ -60,7 +60,6 @@ export interface CompanyInfo {
 // =============================================================================
 
 class PDFGenerationService {
-
   // ===========================================================================
   // INVOICE PDF GENERATION
   // ===========================================================================
@@ -71,7 +70,7 @@ class PDFGenerationService {
   async generateInvoicePDF(
     invoiceId: string,
     tenantId: string,
-    options: PDFGenerationOptions = {}
+    options: PDFGenerationOptions = {},
   ): Promise<Buffer> {
     // 1. Fetch invoice with all details
     const invoice = await this.fetchInvoiceWithDetails(invoiceId, tenantId);
@@ -93,7 +92,7 @@ class PDFGenerationService {
   async generateInvoicePDFStream(
     invoiceId: string,
     tenantId: string,
-    options: PDFGenerationOptions = {}
+    options: PDFGenerationOptions = {},
   ): Promise<Readable> {
     const invoice = await this.fetchInvoiceWithDetails(invoiceId, tenantId);
 
@@ -116,7 +115,7 @@ class PDFGenerationService {
   private async createInvoicePDF(
     invoice: InvoiceWithDetails,
     companyInfo: CompanyInfo,
-    options: PDFGenerationOptions
+    options: PDFGenerationOptions,
   ): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
@@ -136,7 +135,7 @@ class PDFGenerationService {
   private createInvoicePDFStream(
     invoice: InvoiceWithDetails,
     companyInfo: CompanyInfo,
-    options: PDFGenerationOptions
+    options: PDFGenerationOptions,
   ): Readable {
     return this.createInvoicePDFDocument(invoice, companyInfo, options);
   }
@@ -147,7 +146,7 @@ class PDFGenerationService {
   private createInvoicePDFDocument(
     invoice: InvoiceWithDetails,
     companyInfo: CompanyInfo,
-    options: PDFGenerationOptions
+    options: PDFGenerationOptions,
   ): PDFKit.PDFDocument {
     const doc = new PDFDocument({
       size: 'letter',
@@ -205,7 +204,7 @@ class PDFGenerationService {
   private renderHeader(
     doc: PDFKit.PDFDocument,
     companyInfo: CompanyInfo,
-    invoice: InvoiceWithDetails
+    invoice: InvoiceWithDetails,
   ): void {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
@@ -216,10 +215,7 @@ class PDFGenerationService {
       .text(companyInfo.name, 50, 50, { width: pageWidth / 2 });
 
     // Company details (smaller)
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .moveDown(0.3);
+    doc.fontSize(10).font('Helvetica').moveDown(0.3);
 
     if (companyInfo.address) {
       doc.text(companyInfo.address);
@@ -253,11 +249,7 @@ class PDFGenerationService {
   /**
    * Render status badge
    */
-  private renderStatusBadge(
-    doc: PDFKit.PDFDocument,
-    status: string,
-    pageWidth: number
-  ): void {
+  private renderStatusBadge(doc: PDFKit.PDFDocument, status: string, pageWidth: number): void {
     const statusColors: Record<string, string> = {
       draft: '#6B7280',
       sent: '#3B82F6',
@@ -284,17 +276,11 @@ class PDFGenerationService {
   /**
    * Render "Bill To" section
    */
-  private renderBillTo(
-    doc: PDFKit.PDFDocument,
-    invoice: InvoiceWithDetails
-  ): void {
+  private renderBillTo(doc: PDFKit.PDFDocument, invoice: InvoiceWithDetails): void {
     const startY = doc.y;
 
     // Bill To section (left side)
-    doc
-      .fontSize(12)
-      .font('Helvetica-Bold')
-      .text('BILL TO:', 50, startY);
+    doc.fontSize(12).font('Helvetica-Bold').text('BILL TO:', 50, startY);
 
     doc
       .fontSize(10)
@@ -315,22 +301,15 @@ class PDFGenerationService {
   /**
    * Render invoice details (number, date, due date, etc.)
    */
-  private renderInvoiceDetails(
-    doc: PDFKit.PDFDocument,
-    invoice: InvoiceWithDetails
-  ): void {
+  private renderInvoiceDetails(doc: PDFKit.PDFDocument, invoice: InvoiceWithDetails): void {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const startY = 180;
 
-    doc
-      .fontSize(10)
-      .font('Helvetica-Bold');
+    doc.fontSize(10).font('Helvetica-Bold');
 
     // Invoice number
     doc.text('Invoice Number:', pageWidth / 2 + 50, startY, { continued: true });
-    doc
-      .font('Helvetica')
-      .text(`  ${invoice.invoiceNumber}`, { align: 'right' });
+    doc.font('Helvetica').text(`  ${invoice.invoiceNumber}`, { align: 'right' });
 
     // Issue date
     doc
@@ -344,9 +323,7 @@ class PDFGenerationService {
     doc
       .font('Helvetica-Bold')
       .text('Due Date:', pageWidth / 2 + 50, startY + 30, { continued: true });
-    doc
-      .font('Helvetica')
-      .text(`  ${this.formatDate(invoice.dueDate)}`, { align: 'right' });
+    doc.font('Helvetica').text(`  ${this.formatDate(invoice.dueDate)}`, { align: 'right' });
 
     // Payment terms
     if (invoice.paymentTerms) {
@@ -367,7 +344,7 @@ class PDFGenerationService {
         .font('Helvetica')
         .text(
           `  ${this.formatDate(invoice.billingPeriodStart)} - ${this.formatDate(invoice.billingPeriodEnd)}`,
-          { align: 'right' }
+          { align: 'right' },
         );
     }
 
@@ -377,25 +354,19 @@ class PDFGenerationService {
   /**
    * Render line items table
    */
-  private renderLineItemsTable(
-    doc: PDFKit.PDFDocument,
-    invoice: InvoiceWithDetails
-  ): void {
+  private renderLineItemsTable(doc: PDFKit.PDFDocument, invoice: InvoiceWithDetails): void {
     const tableTop = doc.y + 20;
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
     const colWidths = {
       description: pageWidth * 0.45,
       quantity: pageWidth * 0.15,
-      unitPrice: pageWidth * 0.20,
-      total: pageWidth * 0.20,
+      unitPrice: pageWidth * 0.2,
+      total: pageWidth * 0.2,
     };
 
     // Table header
-    doc
-      .fontSize(10)
-      .font('Helvetica-Bold')
-      .fillColor('#1F2937');
+    doc.fontSize(10).font('Helvetica-Bold').fillColor('#1F2937');
 
     let xPos = 50;
     doc.text('Description', xPos, tableTop);
@@ -415,10 +386,7 @@ class PDFGenerationService {
       .stroke();
 
     // Line items
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .fillColor('#000000');
+    doc.fontSize(10).font('Helvetica').fillColor('#000000');
 
     let yPos = tableTop + 25;
     const lineItems = invoice.lineItems || [];
@@ -440,30 +408,21 @@ class PDFGenerationService {
 
       // Quantity
       xPos += colWidths.description;
-      doc.text(
-        item.quantity || '1',
-        xPos,
-        yPos,
-        { width: colWidths.quantity, align: 'center' }
-      );
+      doc.text(item.quantity || '1', xPos, yPos, { width: colWidths.quantity, align: 'center' });
 
       // Unit price
       xPos += colWidths.quantity;
-      doc.text(
-        this.formatCurrency(item.unitPrice),
-        xPos,
-        yPos,
-        { width: colWidths.unitPrice, align: 'right' }
-      );
+      doc.text(this.formatCurrency(item.unitPrice), xPos, yPos, {
+        width: colWidths.unitPrice,
+        align: 'right',
+      });
 
       // Total
       xPos += colWidths.unitPrice;
-      doc.text(
-        this.formatCurrency(item.total),
-        xPos,
-        yPos,
-        { width: colWidths.total, align: 'right' }
-      );
+      doc.text(this.formatCurrency(item.total), xPos, yPos, {
+        width: colWidths.total,
+        align: 'right',
+      });
 
       yPos += 20;
     }
@@ -482,10 +441,7 @@ class PDFGenerationService {
   /**
    * Render totals section
    */
-  private renderTotals(
-    doc: PDFKit.PDFDocument,
-    invoice: InvoiceWithDetails
-  ): void {
+  private renderTotals(doc: PDFKit.PDFDocument, invoice: InvoiceWithDetails): void {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
     const rightColX = pageWidth * 0.65 + 50;
     const valueColX = pageWidth * 0.85 + 50;
@@ -498,24 +454,20 @@ class PDFGenerationService {
     // Subtotal
     if (invoice.subtotal) {
       doc.text('Subtotal:', rightColX, yPos);
-      doc.text(
-        this.formatCurrency(invoice.subtotal),
-        valueColX,
-        yPos,
-        { width: valueColWidth, align: 'right' }
-      );
+      doc.text(this.formatCurrency(invoice.subtotal), valueColX, yPos, {
+        width: valueColWidth,
+        align: 'right',
+      });
       yPos += 20;
     }
 
     // Tax
     if (invoice.tax && parseFloat(invoice.tax) > 0) {
       doc.text('Tax:', rightColX, yPos);
-      doc.text(
-        this.formatCurrency(invoice.tax),
-        valueColX,
-        yPos,
-        { width: valueColWidth, align: 'right' }
-      );
+      doc.text(this.formatCurrency(invoice.tax), valueColX, yPos, {
+        width: valueColWidth,
+        align: 'right',
+      });
       yPos += 20;
     }
 
@@ -530,31 +482,21 @@ class PDFGenerationService {
     yPos += 10;
 
     // Total (bold and larger)
-    doc
-      .fontSize(14)
-      .font('Helvetica-Bold')
-      .text('Total:', rightColX, yPos);
-    doc.text(
-      this.formatCurrency(invoice.totalAmount || invoice.total),
-      valueColX,
-      yPos,
-      { width: valueColWidth, align: 'right' }
-    );
+    doc.fontSize(14).font('Helvetica-Bold').text('Total:', rightColX, yPos);
+    doc.text(this.formatCurrency(invoice.totalAmount || invoice.total), valueColX, yPos, {
+      width: valueColWidth,
+      align: 'right',
+    });
 
     yPos += 25;
 
     // Amount paid
     if (invoice.paid && parseFloat(invoice.paid) > 0) {
-      doc
-        .fontSize(10)
-        .font('Helvetica')
-        .text('Amount Paid:', rightColX, yPos);
-      doc.text(
-        this.formatCurrency(invoice.paid),
-        valueColX,
-        yPos,
-        { width: valueColWidth, align: 'right' }
-      );
+      doc.fontSize(10).font('Helvetica').text('Amount Paid:', rightColX, yPos);
+      doc.text(this.formatCurrency(invoice.paid), valueColX, yPos, {
+        width: valueColWidth,
+        align: 'right',
+      });
       yPos += 20;
     }
 
@@ -565,12 +507,10 @@ class PDFGenerationService {
         .font('Helvetica-Bold')
         .fillColor('#EF4444')
         .text('Balance Due:', rightColX, yPos);
-      doc.text(
-        this.formatCurrency(invoice.balance),
-        valueColX,
-        yPos,
-        { width: valueColWidth, align: 'right' }
-      );
+      doc.text(this.formatCurrency(invoice.balance), valueColX, yPos, {
+        width: valueColWidth,
+        align: 'right',
+      });
       doc.fillColor('#000000');
     }
 
@@ -581,10 +521,7 @@ class PDFGenerationService {
    * Render notes section
    */
   private renderNotes(doc: PDFKit.PDFDocument, notes: string): void {
-    doc
-      .fontSize(10)
-      .font('Helvetica-Bold')
-      .text('Notes:', 50);
+    doc.fontSize(10).font('Helvetica-Bold').text('Notes:', 50);
 
     doc
       .fontSize(9)
@@ -600,21 +537,12 @@ class PDFGenerationService {
   /**
    * Render payment terms section
    */
-  private renderPaymentTerms(
-    doc: PDFKit.PDFDocument,
-    invoice: InvoiceWithDetails
-  ): void {
-    doc
-      .fontSize(10)
-      .font('Helvetica-Bold')
-      .text('Payment Terms:', 50);
+  private renderPaymentTerms(doc: PDFKit.PDFDocument, invoice: InvoiceWithDetails): void {
+    doc.fontSize(10).font('Helvetica-Bold').text('Payment Terms:', 50);
 
     const terms = this.formatPaymentTerms(invoice.paymentTerms || 'net30');
 
-    doc
-      .fontSize(9)
-      .font('Helvetica')
-      .text(`Payment is due ${terms.toLowerCase()}`, 50);
+    doc.fontSize(9).font('Helvetica').text(`Payment is due ${terms.toLowerCase()}`, 50);
 
     doc.moveDown(1);
   }
@@ -622,10 +550,7 @@ class PDFGenerationService {
   /**
    * Render footer with page numbers and additional info
    */
-  private renderFooter(
-    doc: PDFKit.PDFDocument,
-    companyInfo: CompanyInfo
-  ): void {
+  private renderFooter(doc: PDFKit.PDFDocument, companyInfo: CompanyInfo): void {
     const pageHeight = doc.page.height;
     const footerY = pageHeight - 50;
 
@@ -633,20 +558,16 @@ class PDFGenerationService {
       .fontSize(8)
       .font('Helvetica')
       .fillColor('#6B7280')
-      .text(
-        'Thank you for your business!',
-        50,
-        footerY,
-        { align: 'center', width: doc.page.width - 100 }
-      );
+      .text('Thank you for your business!', 50, footerY, {
+        align: 'center',
+        width: doc.page.width - 100,
+      });
 
     if (companyInfo.website) {
-      doc.text(
-        companyInfo.website,
-        50,
-        footerY + 12,
-        { align: 'center', width: doc.page.width - 100 }
-      );
+      doc.text(companyInfo.website, 50, footerY + 12, {
+        align: 'center',
+        width: doc.page.width - 100,
+      });
     }
 
     doc.fillColor('#000000');
@@ -684,7 +605,7 @@ class PDFGenerationService {
    */
   private async fetchInvoiceWithDetails(
     invoiceId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<InvoiceWithDetails | null> {
     // Fetch invoice
     const [invoice] = await db

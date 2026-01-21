@@ -12,20 +12,22 @@ vi.mock('../../db', () => ({
   db: {
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([{
-          id: 'test-key-id',
-          tenantId: 'test-tenant',
-          name: 'Test Key',
-          keyType: 'service',
-          keyPrefix: 'pk_live_abcd1234',
-          keyHash: 'testhash',
-          keySalt: 'testsalt',
-          scopes: ['customers:read'],
-          permissions: [],
-          status: 'active',
-          isActive: true,
-          createdAt: new Date(),
-        }]),
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: 'test-key-id',
+            tenantId: 'test-tenant',
+            name: 'Test Key',
+            keyType: 'service',
+            keyPrefix: 'pk_live_abcd1234',
+            keyHash: 'testhash',
+            keySalt: 'testsalt',
+            scopes: ['customers:read'],
+            permissions: [],
+            status: 'active',
+            isActive: true,
+            createdAt: new Date(),
+          },
+        ]),
       }),
     }),
     select: vi.fn().mockReturnValue({
@@ -75,17 +77,12 @@ describe('API Key Service', () => {
 
   describe('Key Validation', () => {
     it('should reject keys without proper prefix', () => {
-      const invalidKeys = [
-        'invalid_key',
-        'sk_live_12345',
-        'pk_12345',
-        '',
-        null,
-        undefined,
-      ];
+      const invalidKeys = ['invalid_key', 'sk_live_12345', 'pk_12345', '', null, undefined];
 
-      invalidKeys.forEach(key => {
-        const isValid = key && typeof key === 'string' &&
+      invalidKeys.forEach((key) => {
+        const isValid =
+          key &&
+          typeof key === 'string' &&
           (key.startsWith('pk_live_') || key.startsWith('pk_test_')) &&
           key.length > 20;
         expect(isValid).toBe(false);
@@ -98,10 +95,9 @@ describe('API Key Service', () => {
         'pk_test_abcd1234efgh5678ijkl9012mnop3456',
       ];
 
-      validKeys.forEach(key => {
-        const isValid = key &&
-          (key.startsWith('pk_live_') || key.startsWith('pk_test_')) &&
-          key.length > 20;
+      validKeys.forEach((key) => {
+        const isValid =
+          key && (key.startsWith('pk_live_') || key.startsWith('pk_test_')) && key.length > 20;
         expect(isValid).toBe(true);
       });
     });
@@ -158,8 +154,8 @@ describe('API Key Service', () => {
       const keyScopes = ['customers:read', 'products:read', 'orders:write'];
       const requiredScopes = ['customers:read', 'products:read'];
 
-      const hasAllScopes = requiredScopes.every(scope =>
-        keyScopes.includes(scope) || keyScopes.includes('*')
+      const hasAllScopes = requiredScopes.every(
+        (scope) => keyScopes.includes(scope) || keyScopes.includes('*'),
       );
       expect(hasAllScopes).toBe(true);
     });
@@ -168,8 +164,8 @@ describe('API Key Service', () => {
       const keyScopes = ['customers:read'];
       const requiredScopes = ['customers:read', 'products:read'];
 
-      const hasAllScopes = requiredScopes.every(scope =>
-        keyScopes.includes(scope) || keyScopes.includes('*')
+      const hasAllScopes = requiredScopes.every(
+        (scope) => keyScopes.includes(scope) || keyScopes.includes('*'),
       );
       expect(hasAllScopes).toBe(false);
     });
@@ -178,8 +174,8 @@ describe('API Key Service', () => {
       const keyScopes = ['*'];
       const requiredScopes = ['customers:read', 'products:write', 'admin:users'];
 
-      const hasAllScopes = requiredScopes.every(scope =>
-        keyScopes.includes(scope) || keyScopes.includes('*')
+      const hasAllScopes = requiredScopes.every(
+        (scope) => keyScopes.includes(scope) || keyScopes.includes('*'),
       );
       expect(hasAllScopes).toBe(true);
     });

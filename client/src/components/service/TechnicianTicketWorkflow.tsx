@@ -1,27 +1,21 @@
-import { useState, useEffect } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
 import {
   MapPin,
   Clock,
@@ -43,18 +37,18 @@ import {
   Send,
   DollarSign,
   ArrowRight,
-} from "lucide-react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
-import { 
-  type ServiceTicket, 
-  type ServiceSession, 
+} from 'lucide-react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useLocation } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
+import {
+  type ServiceTicket,
+  type ServiceSession,
   type InsertServiceSession,
-  insertServiceSessionSchema 
-} from "@shared/schema";
+  insertServiceSessionSchema,
+} from '@shared/schema';
 
 interface TechnicianTicketWorkflowProps {
   ticket: ServiceTicket;
@@ -63,39 +57,39 @@ interface TechnicianTicketWorkflowProps {
 
 const workflowSteps = [
   {
-    id: "check_in",
-    name: "Check-In",
-    description: "Arrive and check-in at customer location",
+    id: 'check_in',
+    name: 'Check-In',
+    description: 'Arrive and check-in at customer location',
   },
   {
-    id: "initial_assessment",
-    name: "Initial Assessment",
-    description: "Assess the situation and equipment",
+    id: 'initial_assessment',
+    name: 'Initial Assessment',
+    description: 'Assess the situation and equipment',
   },
   {
-    id: "diagnosis",
-    name: "Diagnosis",
-    description: "Diagnose the issue and identify solution",
+    id: 'diagnosis',
+    name: 'Diagnosis',
+    description: 'Diagnose the issue and identify solution',
   },
   {
-    id: "customer_approval",
-    name: "Customer Approval",
-    description: "Get customer approval for work and costs",
+    id: 'customer_approval',
+    name: 'Customer Approval',
+    description: 'Get customer approval for work and costs',
   },
   {
-    id: "work_execution",
-    name: "Work Execution",
-    description: "Perform the actual repair/service work",
+    id: 'work_execution',
+    name: 'Work Execution',
+    description: 'Perform the actual repair/service work',
   },
   {
-    id: "testing",
-    name: "Testing",
-    description: "Test the solution and verify functionality",
+    id: 'testing',
+    name: 'Testing',
+    description: 'Test the solution and verify functionality',
   },
   {
-    id: "completion",
-    name: "Completion",
-    description: "Complete the work and get customer sign-off",
+    id: 'completion',
+    name: 'Completion',
+    description: 'Complete the work and get customer sign-off',
   },
 ];
 
@@ -107,7 +101,7 @@ const checkInSchema = z.object({
 
 const assessmentSchema = z.object({
   issueConfirmed: z.boolean(),
-  equipmentCondition: z.enum(["good", "fair", "poor", "critical"]),
+  equipmentCondition: z.enum(['good', 'fair', 'poor', 'critical']),
   initialFindings: z.string(),
   estimatedDuration: z.number(),
   photosUploaded: z.boolean().default(false),
@@ -123,7 +117,7 @@ const diagnosisSchema = z.object({
         description: z.string(),
         quantity: z.number(),
         estimatedCost: z.number().optional(),
-      })
+      }),
     )
     .default([]),
   laborHours: z.number(),
@@ -147,7 +141,7 @@ const workExecutionSchema = z.object({
         partNumber: z.string(),
         quantity: z.number(),
         serialNumber: z.string().optional(),
-      })
+      }),
     )
     .default([]),
   actualLaborHours: z.number(),
@@ -166,11 +160,11 @@ const testingSchema = z.object({
 const completionSchema = z.object({
   workCompleted: z.boolean(),
   customerSatisfaction: z.enum([
-    "very_satisfied",
-    "satisfied",
-    "neutral",
-    "dissatisfied",
-    "very_dissatisfied",
+    'very_satisfied',
+    'satisfied',
+    'neutral',
+    'dissatisfied',
+    'very_dissatisfied',
   ]),
   customerSignature: z.string(),
   followUpRequired: z.boolean().default(false),
@@ -192,13 +186,13 @@ export default function TechnicianTicketWorkflow({
 
   // Get current session data
   const { data: session } = useQuery({
-    queryKey: ["/api/technician-sessions", ticket.id],
+    queryKey: ['/api/technician-sessions', ticket.id],
     enabled: !!ticket.id,
   });
 
   // Get workflow steps for this session
   const { data: workflowStepsData } = useQuery({
-    queryKey: ["/api/technician-sessions", sessionId, "workflow-steps"],
+    queryKey: ['/api/technician-sessions', sessionId, 'workflow-steps'],
     enabled: !!sessionId,
   });
 
@@ -212,9 +206,7 @@ export default function TechnicianTicketWorkflow({
         setCompletedSteps(completed);
 
         // Set current step to first incomplete step
-        const nextStepIndex = workflowSteps.findIndex(
-          (step) => !completed.includes(step.id)
-        );
+        const nextStepIndex = workflowSteps.findIndex((step) => !completed.includes(step.id));
         if (nextStepIndex !== -1) {
           setCurrentStep(nextStepIndex);
         }
@@ -229,8 +221,8 @@ export default function TechnicianTicketWorkflow({
         // Create new session first
         const sessionData = await apiRequest(
           `/api/service-tickets/${ticket.id}/check-in`,
-          "POST",
-          data
+          'POST',
+          data,
         );
         setSessionId(sessionData.sessionId);
         return sessionData;
@@ -238,42 +230,35 @@ export default function TechnicianTicketWorkflow({
       return { sessionId };
     },
     onSuccess: () => {
-      setCompletedSteps((prev) => [...prev, "check_in"]);
+      setCompletedSteps((prev) => [...prev, 'check_in']);
       setCurrentStep(1);
-      toast({ title: "Success", description: "Checked in successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/technician-sessions"] });
+      toast({ title: 'Success', description: 'Checked in successfully' });
+      queryClient.invalidateQueries({ queryKey: ['/api/technician-sessions'] });
     },
   });
 
   // Step completion mutation
   const completeStepMutation = useMutation({
-    mutationFn: async ({
-      stepName,
-      stepData,
-    }: {
-      stepName: string;
-      stepData: any;
-    }) =>
-      apiRequest(
-        `/api/technician-sessions/${sessionId}/complete-step`,
-        "POST",
-        { stepName, stepData }
-      ),
+    mutationFn: async ({ stepName, stepData }: { stepName: string; stepData: any }) =>
+      apiRequest(`/api/technician-sessions/${sessionId}/complete-step`, 'POST', {
+        stepName,
+        stepData,
+      }),
     onSuccess: (_, { stepName }) => {
       setCompletedSteps((prev) => [...prev, stepName]);
       const nextStepIndex = currentStep + 1;
       if (nextStepIndex < workflowSteps.length) {
         setCurrentStep(nextStepIndex);
       }
-      
+
       // If completion step is finished, trigger billing workflow
-      if (stepName === "completion") {
+      if (stepName === 'completion') {
         createBillingEntryMutation.mutate(ticket);
       } else {
-        toast({ title: "Success", description: "Step completed successfully" });
+        toast({ title: 'Success', description: 'Step completed successfully' });
       }
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/technician-sessions"] });
+
+      queryClient.invalidateQueries({ queryKey: ['/api/technician-sessions'] });
     },
   });
 
@@ -286,14 +271,14 @@ export default function TechnicianTicketWorkflow({
         serviceDate: new Date().toISOString(),
         description: `Service call: ${ticketData.description || 'Equipment service'}`,
         laborHours: session?.totalDuration || 1, // Use session duration or default
-        laborRate: 85.00, // Standard service rate
+        laborRate: 85.0, // Standard service rate
         partsCost: 0, // To be updated if parts were used
-        totalAmount: (session?.totalDuration || 1) * 85.00,
+        totalAmount: (session?.totalDuration || 1) * 85.0,
         status: 'pending_review',
         billingType: 'service_call',
         invoiceRequired: true,
       };
-      
+
       return apiRequest('/api/billing/service-entries', {
         method: 'POST',
         body: billingEntry,
@@ -301,17 +286,17 @@ export default function TechnicianTicketWorkflow({
     },
     onSuccess: (data) => {
       toast({
-        title: "Service Complete!",
-        description: "Billing entry created. Customer will receive invoice within 24 hours.",
+        title: 'Service Complete!',
+        description: 'Billing entry created. Customer will receive invoice within 24 hours.',
       });
       // Navigate to billing page with the new entry
       setLocation(`/advanced-billing?serviceEntryId=${data.id}`);
     },
     onError: () => {
       toast({
-        title: "Service Complete",
-        description: "Service finished successfully. Billing entry will be processed manually.",
-        variant: "destructive",
+        title: 'Service Complete',
+        description: 'Service finished successfully. Billing entry will be processed manually.',
+        variant: 'destructive',
       });
     },
   });
@@ -321,8 +306,8 @@ export default function TechnicianTicketWorkflow({
     resolver: zodResolver(checkInSchema),
     defaultValues: {
       arrivalTime: new Date().toISOString().slice(0, 16),
-      gpsLocation: "",
-      notes: "",
+      gpsLocation: '',
+      notes: '',
     },
   });
 
@@ -331,8 +316,8 @@ export default function TechnicianTicketWorkflow({
     resolver: zodResolver(assessmentSchema),
     defaultValues: {
       issueConfirmed: true,
-      equipmentCondition: "fair" as const,
-      initialFindings: "",
+      equipmentCondition: 'fair' as const,
+      initialFindings: '',
       estimatedDuration: 1,
       photosUploaded: false,
     },
@@ -342,12 +327,12 @@ export default function TechnicianTicketWorkflow({
   const diagnosisForm = useForm({
     resolver: zodResolver(diagnosisSchema),
     defaultValues: {
-      rootCause: "",
-      proposedSolution: "",
+      rootCause: '',
+      proposedSolution: '',
       partsNeeded: [],
       laborHours: 1,
       totalEstimatedCost: 0,
-      customerCommunication: "",
+      customerCommunication: '',
     },
   });
 
@@ -356,9 +341,9 @@ export default function TechnicianTicketWorkflow({
     resolver: zodResolver(approvalSchema),
     defaultValues: {
       customerApproval: true,
-      approvedBy: "",
-      approvalNotes: "",
-      modifications: "",
+      approvedBy: '',
+      approvalNotes: '',
+      modifications: '',
     },
   });
 
@@ -367,10 +352,10 @@ export default function TechnicianTicketWorkflow({
     resolver: zodResolver(workExecutionSchema),
     defaultValues: {
       workStartTime: new Date().toISOString().slice(0, 16),
-      workDescription: "",
+      workDescription: '',
       partsUsed: [],
       actualLaborHours: 1,
-      complications: "",
+      complications: '',
       photosUploaded: false,
     },
   });
@@ -380,9 +365,9 @@ export default function TechnicianTicketWorkflow({
     resolver: zodResolver(testingSchema),
     defaultValues: {
       functionalityVerified: true,
-      testResults: "",
+      testResults: '',
       customerDemo: false,
-      issuesFound: "",
+      issuesFound: '',
       additionalWorkNeeded: false,
     },
   });
@@ -392,11 +377,11 @@ export default function TechnicianTicketWorkflow({
     resolver: zodResolver(completionSchema),
     defaultValues: {
       workCompleted: true,
-      customerSatisfaction: "satisfied" as const,
-      customerSignature: "",
+      customerSatisfaction: 'satisfied' as const,
+      customerSignature: '',
       followUpRequired: false,
-      followUpReason: "",
-      notes: "",
+      followUpReason: '',
+      notes: '',
       endTime: new Date().toISOString().slice(0, 16),
     },
   });
@@ -414,7 +399,7 @@ export default function TechnicianTicketWorkflow({
     if (!step) return null;
 
     switch (step.id) {
-      case "check_in":
+      case 'check_in':
         return (
           <Card>
             <CardHeader>
@@ -422,34 +407,26 @@ export default function TechnicianTicketWorkflow({
                 <MapPin className="h-5 w-5" />
                 Check-In at Customer Location
               </CardTitle>
-              <CardDescription>
-                Confirm your arrival and begin the service call
-              </CardDescription>
+              <CardDescription>Confirm your arrival and begin the service call</CardDescription>
             </CardHeader>
             <CardContent>
-              <form
-                onSubmit={checkInForm.handleSubmit(handleCheckIn)}
-                className="space-y-4"
-              >
+              <form onSubmit={checkInForm.handleSubmit(handleCheckIn)} className="space-y-4">
                 <div>
                   <Label>Arrival Time</Label>
-                  <Input
-                    type="datetime-local"
-                    {...checkInForm.register("arrivalTime")}
-                  />
+                  <Input type="datetime-local" {...checkInForm.register('arrivalTime')} />
                 </div>
                 <div>
                   <Label>GPS Location (Optional)</Label>
                   <Input
                     placeholder="Current location coordinates"
-                    {...checkInForm.register("gpsLocation")}
+                    {...checkInForm.register('gpsLocation')}
                   />
                 </div>
                 <div>
                   <Label>Initial Notes</Label>
                   <Textarea
                     placeholder="Any initial observations or notes"
-                    {...checkInForm.register("notes")}
+                    {...checkInForm.register('notes')}
                   />
                 </div>
                 <Button type="submit" disabled={checkInMutation.isPending}>
@@ -461,7 +438,7 @@ export default function TechnicianTicketWorkflow({
           </Card>
         );
 
-      case "initial_assessment":
+      case 'initial_assessment':
         return (
           <Card>
             <CardHeader>
@@ -469,14 +446,12 @@ export default function TechnicianTicketWorkflow({
                 <Clipboard className="h-5 w-5" />
                 Initial Assessment
               </CardTitle>
-              <CardDescription>
-                Assess the equipment and confirm the reported issue
-              </CardDescription>
+              <CardDescription>Assess the equipment and confirm the reported issue</CardDescription>
             </CardHeader>
             <CardContent>
               <form
                 onSubmit={assessmentForm.handleSubmit((data) =>
-                  handleStepCompletion("initial_assessment", data)
+                  handleStepCompletion('initial_assessment', data),
                 )}
                 className="space-y-4"
               >
@@ -485,10 +460,7 @@ export default function TechnicianTicketWorkflow({
                     name="issueConfirmed"
                     control={assessmentForm.control}
                     render={({ field }) => (
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     )}
                   />
                   <Label>Issue confirmed as reported</Label>
@@ -500,10 +472,7 @@ export default function TechnicianTicketWorkflow({
                     name="equipmentCondition"
                     control={assessmentForm.control}
                     render={({ field }) => (
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -522,7 +491,7 @@ export default function TechnicianTicketWorkflow({
                   <Label>Initial Findings</Label>
                   <Textarea
                     placeholder="Describe what you've found during initial assessment"
-                    {...assessmentForm.register("initialFindings")}
+                    {...assessmentForm.register('initialFindings')}
                   />
                 </div>
 
@@ -531,7 +500,7 @@ export default function TechnicianTicketWorkflow({
                   <Input
                     type="number"
                     step="0.5"
-                    {...assessmentForm.register("estimatedDuration", {
+                    {...assessmentForm.register('estimatedDuration', {
                       valueAsNumber: true,
                     })}
                   />
@@ -542,10 +511,7 @@ export default function TechnicianTicketWorkflow({
                     name="photosUploaded"
                     control={assessmentForm.control}
                     render={({ field }) => (
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
                     )}
                   />
                   <Label>Photos uploaded</Label>
@@ -568,7 +534,7 @@ export default function TechnicianTicketWorkflow({
               <CardDescription>{step.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              {step.id === "completion" ? (
+              {step.id === 'completion' ? (
                 <>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                     <div className="flex items-center gap-2 mb-2">
@@ -576,13 +542,12 @@ export default function TechnicianTicketWorkflow({
                       <span className="font-medium text-blue-900">Automated Billing</span>
                     </div>
                     <p className="text-sm text-blue-800">
-                      Completing this step will automatically create a billing entry and generate an invoice for the customer. 
-                      The billing will include labor hours, standard service rates, and any parts used during the service call.
+                      Completing this step will automatically create a billing entry and generate an
+                      invoice for the customer. The billing will include labor hours, standard
+                      service rates, and any parts used during the service call.
                     </p>
                   </div>
-                  <p className="text-gray-600 mb-4">
-                    Final step includes:
-                  </p>
+                  <p className="text-gray-600 mb-4">Final step includes:</p>
                   <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 mb-4">
                     <li>Customer satisfaction survey</li>
                     <li>Work completion verification</li>
@@ -605,13 +570,11 @@ export default function TechnicianTicketWorkflow({
                 </>
               )}
               <Button
-                onClick={() =>
-                  handleStepCompletion(step.id, { completed: true })
-                }
-                className={`mt-4 ${step.id === "completion" ? "bg-green-600 hover:bg-green-700" : ""}`}
+                onClick={() => handleStepCompletion(step.id, { completed: true })}
+                className={`mt-4 ${step.id === 'completion' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                 disabled={completeStepMutation.isPending || createBillingEntryMutation.isPending}
               >
-                {step.id === "completion" ? (
+                {step.id === 'completion' ? (
                   <>
                     <DollarSign className="h-4 w-4 mr-2" />
                     Complete Service & Create Invoice
@@ -662,13 +625,13 @@ export default function TechnicianTicketWorkflow({
               <div>
                 <span className="font-medium">Priority:</span>
                 <Badge variant="secondary" className="ml-2">
-                  {ticket.priority || "Medium"}
+                  {ticket.priority || 'Medium'}
                 </Badge>
               </div>
               <div>
                 <span className="font-medium">Status:</span>
                 <Badge variant="outline" className="ml-2">
-                  {ticket.status?.replace("_", " ") || "New"}
+                  {ticket.status?.replace('_', ' ') || 'New'}
                 </Badge>
               </div>
               <div>
@@ -677,9 +640,7 @@ export default function TechnicianTicketWorkflow({
               </div>
               <div>
                 <span className="font-medium">Address:</span>
-                <span className="ml-2">
-                  {ticket.customerAddress || "Not specified"}
-                </span>
+                <span className="ml-2">{ticket.customerAddress || 'Not specified'}</span>
               </div>
             </div>
           </div>
@@ -698,17 +659,15 @@ export default function TechnicianTicketWorkflow({
                 key={step.id}
                 variant={
                   completedSteps.includes(step.id)
-                    ? "default"
+                    ? 'default'
                     : index === currentStep
-                    ? "outline"
-                    : "ghost"
+                      ? 'outline'
+                      : 'ghost'
                 }
                 size="sm"
                 onClick={() => setCurrentStep(index)}
                 className={`flex items-center gap-2 ${
-                  completedSteps.includes(step.id)
-                    ? "bg-green-600 hover:bg-green-700"
-                    : ""
+                  completedSteps.includes(step.id) ? 'bg-green-600 hover:bg-green-700' : ''
                 }`}
               >
                 {completedSteps.includes(step.id) ? (
@@ -755,7 +714,10 @@ export default function TechnicianTicketWorkflow({
               <Settings className="h-4 w-4 mr-2" />
               Equipment Info
             </Button>
-            <Button size="sm" onClick={() => setLocation(`/advanced-billing?ticketId=${ticket.id}`)}>
+            <Button
+              size="sm"
+              onClick={() => setLocation(`/advanced-billing?ticketId=${ticket.id}`)}
+            >
               Complete & Bill
             </Button>
           </div>

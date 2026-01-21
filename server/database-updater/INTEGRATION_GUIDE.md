@@ -15,16 +15,19 @@ npm install node-cron commander
 ### 2. Basic Usage
 
 #### Start the System (Production)
+
 ```bash
 npm run updater:start
 ```
 
 #### Get System Status
+
 ```bash
 npm run updater:status
 ```
 
 #### Test in Dry-Run Mode
+
 ```bash
 npm run updater:test
 ```
@@ -72,11 +75,11 @@ Updaters:
 
 ### Default Schedule
 
-| Updater | Schedule | Description |
-|---------|----------|-------------|
+| Updater             | Schedule             | Description                         |
+| ------------------- | -------------------- | ----------------------------------- |
 | Business Activities | `0 */2 9-17 * * 1-5` | Every 2 hours, 9 AM - 5 PM, Mon-Fri |
-| Service Tickets | `0 0 */6 * * *` | Every 6 hours |
-| New Leads | `0 0 10 * * 1-5` | Daily at 10 AM, Mon-Fri |
+| Service Tickets     | `0 0 */6 * * *`      | Every 6 hours                       |
+| New Leads           | `0 0 10 * * 1-5`     | Daily at 10 AM, Mon-Fri             |
 
 ## API Endpoints
 
@@ -92,17 +95,17 @@ app.use('/api/database-updater', updaterRoutes);
 
 #### Available Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/database-updater/status` | Get system status |
-| POST | `/api/database-updater/start` | Start the system |
-| POST | `/api/database-updater/stop` | Stop the system |
-| POST | `/api/database-updater/execute/:updaterName` | Execute specific updater |
-| PUT | `/api/database-updater/config` | Update configuration |
-| GET | `/api/database-updater/logs` | Get recent logs |
-| GET | `/api/database-updater/metrics` | Get system metrics |
-| POST | `/api/database-updater/dry-run/:updaterName` | Test updater |
-| GET | `/api/database-updater/health` | Health check |
+| Method | Endpoint                                     | Description              |
+| ------ | -------------------------------------------- | ------------------------ |
+| GET    | `/api/database-updater/status`               | Get system status        |
+| POST   | `/api/database-updater/start`                | Start the system         |
+| POST   | `/api/database-updater/stop`                 | Stop the system          |
+| POST   | `/api/database-updater/execute/:updaterName` | Execute specific updater |
+| PUT    | `/api/database-updater/config`               | Update configuration     |
+| GET    | `/api/database-updater/logs`                 | Get recent logs          |
+| GET    | `/api/database-updater/metrics`              | Get system metrics       |
+| POST   | `/api/database-updater/dry-run/:updaterName` | Test updater             |
+| GET    | `/api/database-updater/health`               | Health check             |
 
 #### Example API Usage
 
@@ -181,8 +184,8 @@ const manager = new DatabaseUpdaterManager({
   configOverrides: {
     scheduleConfig: {
       businessActivities: '0 */1 9-17 * * 1-5', // Every hour
-      serviceTickets: '0 0 */4 * * *',           // Every 4 hours
-      newLeads: '0 0 8 * * 1-5',                 // Daily at 8 AM
+      serviceTickets: '0 0 */4 * * *', // Every 4 hours
+      newLeads: '0 0 8 * * 1-5', // Daily at 8 AM
     },
     executionConfig: {
       enabledUpdaters: {
@@ -232,6 +235,7 @@ const manager = new DatabaseUpdaterManager({
 ### Log Files
 
 Logs are stored in the `logs/` directory:
+
 ```
 logs/
 ├── database-updater-2024-01-15.log
@@ -242,6 +246,7 @@ logs/
 ### Metrics Tracking
 
 Each updater tracks:
+
 - Total executions
 - Successful executions
 - Failed executions
@@ -263,6 +268,7 @@ console.log('Health status:', health.status);
 ### Common Issues
 
 #### 1. System Won't Start
+
 ```bash
 # Check logs
 npm run updater logs
@@ -275,6 +281,7 @@ npm run updater test
 ```
 
 #### 2. Updaters Not Executing
+
 ```bash
 # Check if system is running
 npm run updater status
@@ -287,11 +294,13 @@ npm run updater logs --count 50
 ```
 
 #### 3. Database Connection Issues
+
 - Verify database credentials in environment
 - Check network connectivity
 - Ensure tables exist in target tenant
 
 #### 4. Permission Issues
+
 - Verify user permissions for target tenant
 - Check table access permissions
 - Ensure proper RBAC configuration

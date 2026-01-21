@@ -212,7 +212,11 @@ async function createPrice(
 }
 
 // Create a payment link
-async function createPaymentLink(priceId: string, plan: PlanConfig, billing: string): Promise<string> {
+async function createPaymentLink(
+  priceId: string,
+  plan: PlanConfig,
+  billing: string,
+): Promise<string> {
   if (isDryRun) {
     console.log(`  [DRY RUN] Would create payment link for ${plan.slug} ${billing}`);
     return `https://pay.stripe.com/dry_run_${plan.slug}_${billing}`;

@@ -18,8 +18,8 @@ async function runTaskMigration() {
 
     const statements = migrationSQL
       .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+      .map((stmt) => stmt.trim())
+      .filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'));
 
     console.log(`📊 Found ${statements.length} SQL statements to execute`);
 
@@ -31,9 +31,11 @@ async function runTaskMigration() {
           console.log(`⚡ Executing statement ${i + 1}/${statements.length}...`);
           await db.execute(statement);
         } catch (error: any) {
-          if (error.message?.includes('already exists') ||
-              error.message?.includes('duplicate column name') ||
-              error.message?.includes('duplicate key value')) {
+          if (
+            error.message?.includes('already exists') ||
+            error.message?.includes('duplicate column name') ||
+            error.message?.includes('duplicate key value')
+          ) {
             console.log(`⚠️  Skipped statement ${i + 1} (already exists)`);
             continue;
           } else {
@@ -49,7 +51,6 @@ async function runTaskMigration() {
     console.log('1. Visit /tasks to see the new task management interface');
     console.log('2. Test AI-powered task scheduling and prioritization');
     console.log('3. Create tasks and see AI suggestions in action');
-
   } catch (error) {
     console.error('❌ Migration failed:', error);
     process.exit(1);
@@ -57,13 +58,15 @@ async function runTaskMigration() {
 }
 
 if (require.main === module) {
-  runTaskMigration().then(() => {
-    console.log('Task management migration script completed');
-    process.exit(0);
-  }).catch((error) => {
-    console.error('Task management migration script failed:', error);
-    process.exit(1);
-  });
+  runTaskMigration()
+    .then(() => {
+      console.log('Task management migration script completed');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Task management migration script failed:', error);
+      process.exit(1);
+    });
 }
 
 export { runTaskMigration };

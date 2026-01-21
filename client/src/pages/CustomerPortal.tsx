@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Bell, 
-  FileText, 
-  Wrench, 
-  Package, 
-  CreditCard, 
+import {
+  Bell,
+  FileText,
+  Wrench,
+  Package,
+  CreditCard,
   History,
   Settings,
   LogOut,
@@ -18,7 +18,7 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  TrendingUp
+  TrendingUp,
 } from 'lucide-react';
 import { CustomerPortalLogin } from '@/components/customer-portal/CustomerPortalLogin';
 import { CustomerDashboard } from '@/components/customer-portal/CustomerDashboard';
@@ -44,7 +44,10 @@ interface CustomerUser {
 interface CustomerPortalContextType {
   user: CustomerUser | null;
   sessionToken: string | null;
-  login: (credentials: { username: string; password: string }) => Promise<{ success: boolean; error?: string }>;
+  login: (credentials: {
+    username: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -68,7 +71,7 @@ const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Check for existing session on mount
     const storedToken = localStorage.getItem('customerSessionToken');
     const storedUser = localStorage.getItem('customerUser');
-    
+
     if (storedToken && storedUser) {
       try {
         setSessionToken(storedToken);
@@ -79,7 +82,7 @@ const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = ({ child
         localStorage.removeItem('customerUser');
       }
     }
-    
+
     setIsLoading(false);
   }, []);
 
@@ -116,7 +119,7 @@ const CustomerPortalProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await fetch('/api/customer-portal/auth/logout', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${sessionToken}`,
+            Authorization: `Bearer ${sessionToken}`,
           },
         });
       }
@@ -153,7 +156,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       const { sessionToken } = useCustomerPortal();
       const response = await fetch('/api/customer-portal/notifications?unreadOnly=true', {
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
       const data = await response.json();
@@ -178,7 +181,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">Customer Portal</h1>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -193,12 +196,12 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
                   </Badge>
                 )}
               </Button>
-              
+
               <div className="flex items-center space-x-2">
                 <User className="h-5 w-5 text-gray-400" />
                 <span className="text-sm text-gray-700">{user?.username}</span>
               </div>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -206,12 +209,8 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               >
                 <Settings className="h-4 w-4" />
               </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-              >
+
+              <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -231,7 +230,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <BarChart3 className="h-4 w-4" />
               <span>Dashboard</span>
             </Button>
-            
+
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
@@ -240,7 +239,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <Wrench className="h-4 w-4" />
               <span>Service Requests</span>
             </Button>
-            
+
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
@@ -249,7 +248,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <FileText className="h-4 w-4" />
               <span>Meter Readings</span>
             </Button>
-            
+
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
@@ -258,7 +257,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
               <Package className="h-4 w-4" />
               <span>Supplies</span>
             </Button>
-            
+
             <Button
               variant="ghost"
               className="flex items-center space-x-2 py-4 px-0"
@@ -272,9 +271,7 @@ const CustomerPortalLayout: React.FC<{ children: React.ReactNode }> = ({ childre
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
     </div>
   );
 };
@@ -307,62 +304,74 @@ const CustomerPortalRoutes: React.FC = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/customer-portal/dashboard" replace />} />
         <Route path="/dashboard" element={<CustomerDashboard />} />
-        <Route path="/service-requests" element={
-          <Tabs defaultValue="list" className="w-full">
-            <TabsList>
-              <TabsTrigger value="list">My Requests</TabsTrigger>
-              <TabsTrigger value="new">New Request</TabsTrigger>
-            </TabsList>
-            <TabsContent value="list">
-              <ServiceRequestList />
-            </TabsContent>
-            <TabsContent value="new">
-              <ServiceRequestForm />
-            </TabsContent>
-          </Tabs>
-        } />
-        <Route path="/meter-readings" element={
-          <Tabs defaultValue="submit" className="w-full">
-            <TabsList>
-              <TabsTrigger value="submit">Submit Reading</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-            <TabsContent value="submit">
-              <MeterReadingForm />
-            </TabsContent>
-            <TabsContent value="history">
-              <MeterReadingHistory />
-            </TabsContent>
-          </Tabs>
-        } />
-        <Route path="/supplies" element={
-          <Tabs defaultValue="order" className="w-full">
-            <TabsList>
-              <TabsTrigger value="order">Place Order</TabsTrigger>
-              <TabsTrigger value="orders">My Orders</TabsTrigger>
-            </TabsList>
-            <TabsContent value="order">
-              <SupplyOrderForm />
-            </TabsContent>
-            <TabsContent value="orders">
-              <SupplyOrderList />
-            </TabsContent>
-          </Tabs>
-        } />
-        <Route path="/payments" element={
-          <Tabs defaultValue="pay" className="w-full">
-            <TabsList>
-              <TabsTrigger value="pay">Make Payment</TabsTrigger>
-              <TabsTrigger value="history">Payment History</TabsTrigger>
-            </TabsList>
-            <TabsContent value="pay">
-              <PaymentForm />
-            </TabsContent>
-            <TabsContent value="history">
-              <PaymentHistory />
-            </TabsContent>
-          </Tabs>
-        } />
+        <Route
+          path="/service-requests"
+          element={
+            <Tabs defaultValue="list" className="w-full">
+              <TabsList>
+                <TabsTrigger value="list">My Requests</TabsTrigger>
+                <TabsTrigger value="new">New Request</TabsTrigger>
+              </TabsList>
+              <TabsContent value="list">
+                <ServiceRequestList />
+              </TabsContent>
+              <TabsContent value="new">
+                <ServiceRequestForm />
+              </TabsContent>
+            </Tabs>
+          }
+        />
+        <Route
+          path="/meter-readings"
+          element={
+            <Tabs defaultValue="submit" className="w-full">
+              <TabsList>
+                <TabsTrigger value="submit">Submit Reading</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
+              <TabsContent value="submit">
+                <MeterReadingForm />
+              </TabsContent>
+              <TabsContent value="history">
+                <MeterReadingHistory />
+              </TabsContent>
+            </Tabs>
+          }
+        />
+        <Route
+          path="/supplies"
+          element={
+            <Tabs defaultValue="order" className="w-full">
+              <TabsList>
+                <TabsTrigger value="order">Place Order</TabsTrigger>
+                <TabsTrigger value="orders">My Orders</TabsTrigger>
+              </TabsList>
+              <TabsContent value="order">
+                <SupplyOrderForm />
+              </TabsContent>
+              <TabsContent value="orders">
+                <SupplyOrderList />
+              </TabsContent>
+            </Tabs>
+          }
+        />
+        <Route
+          path="/payments"
+          element={
+            <Tabs defaultValue="pay" className="w-full">
+              <TabsList>
+                <TabsTrigger value="pay">Make Payment</TabsTrigger>
+                <TabsTrigger value="history">Payment History</TabsTrigger>
+              </TabsList>
+              <TabsContent value="pay">
+                <PaymentForm />
+              </TabsContent>
+              <TabsContent value="history">
+                <PaymentHistory />
+              </TabsContent>
+            </Tabs>
+          }
+        />
         <Route path="/notifications" element={<NotificationCenter />} />
         <Route path="/settings" element={<CustomerSettings />} />
       </Routes>

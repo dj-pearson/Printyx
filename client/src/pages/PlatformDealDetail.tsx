@@ -1,22 +1,22 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useParams, useLocation } from 'wouter';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft,
   Briefcase,
@@ -38,10 +38,10 @@ import {
   AlertTriangle,
   RefreshCw,
   Award,
-  Gauge
-} from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
+  Gauge,
+} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
 
 interface Deal {
   id: string;
@@ -139,8 +139,8 @@ export default function PlatformDealDetail() {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
       setIsEditing(false);
       toast({
-        title: "Success",
-        description: "Deal updated successfully",
+        title: 'Success',
+        description: 'Deal updated successfully',
       });
     },
   });
@@ -159,8 +159,8 @@ export default function PlatformDealDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
       toast({
-        title: "Success",
-        description: "Deal stage updated",
+        title: 'Success',
+        description: 'Deal stage updated',
       });
     },
   });
@@ -179,8 +179,8 @@ export default function PlatformDealDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
       toast({
-        title: "Success",
-        description: "Deal marked as won! 🎉",
+        title: 'Success',
+        description: 'Deal marked as won! 🎉',
       });
     },
   });
@@ -199,8 +199,8 @@ export default function PlatformDealDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/platform-deals/${id}`] });
       toast({
-        title: "Deal Closed",
-        description: "Deal marked as lost",
+        title: 'Deal Closed',
+        description: 'Deal marked as lost',
       });
     },
   });
@@ -245,7 +245,7 @@ export default function PlatformDealDetail() {
     }).format(num);
   };
 
-  const currentStageIndex = STAGE_CONFIG.findIndex(s => s.stage === deal.stage);
+  const currentStageIndex = STAGE_CONFIG.findIndex((s) => s.stage === deal.stage);
   const currentStage = STAGE_CONFIG[currentStageIndex];
   const nextStage = STAGE_CONFIG[currentStageIndex + 1];
 
@@ -284,11 +284,7 @@ export default function PlatformDealDetail() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation('/platform-crm/pipeline')}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setLocation('/platform-crm/pipeline')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -385,9 +381,7 @@ export default function PlatformDealDetail() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {deal.expectedCloseDate
-                  ? format(new Date(deal.expectedCloseDate), 'MMM d')
-                  : 'TBD'}
+                {deal.expectedCloseDate ? format(new Date(deal.expectedCloseDate), 'MMM d') : 'TBD'}
               </div>
               {deal.expectedCloseDate && (
                 <p className="text-xs text-muted-foreground">
@@ -420,29 +414,41 @@ export default function PlatformDealDetail() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  {STAGE_CONFIG.filter(s => s.stage !== 'closed_won' && s.stage !== 'closed_lost').map((stage, idx) => (
+                  {STAGE_CONFIG.filter(
+                    (s) => s.stage !== 'closed_won' && s.stage !== 'closed_lost',
+                  ).map((stage, idx) => (
                     <div key={stage.stage} className="flex items-center">
-                      <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                        stage.stage === deal.stage
-                          ? 'bg-primary text-white'
-                          : currentStageIndex > idx
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-200 text-gray-600'
-                      }`}>
+                      <div
+                        className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                          stage.stage === deal.stage
+                            ? 'bg-primary text-white'
+                            : currentStageIndex > idx
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
                         {currentStageIndex > idx ? (
                           <CheckCircle2 className="w-5 h-5" />
                         ) : (
                           <span className="text-sm font-semibold">{idx + 1}</span>
                         )}
                       </div>
-                      {idx < STAGE_CONFIG.filter(s => s.stage !== 'closed_won' && s.stage !== 'closed_lost').length - 1 && (
-                        <div className={`h-1 w-16 ${currentStageIndex > idx ? 'bg-green-600' : 'bg-gray-200'}`} />
+                      {idx <
+                        STAGE_CONFIG.filter(
+                          (s) => s.stage !== 'closed_won' && s.stage !== 'closed_lost',
+                        ).length -
+                          1 && (
+                        <div
+                          className={`h-1 w-16 ${currentStageIndex > idx ? 'bg-green-600' : 'bg-gray-200'}`}
+                        />
                       )}
                     </div>
                   ))}
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  {STAGE_CONFIG.filter(s => s.stage !== 'closed_won' && s.stage !== 'closed_lost').map((stage) => (
+                  {STAGE_CONFIG.filter(
+                    (s) => s.stage !== 'closed_won' && s.stage !== 'closed_lost',
+                  ).map((stage) => (
                     <div key={stage.stage} className="text-center w-24">
                       {stage.displayName}
                     </div>
@@ -494,8 +500,12 @@ export default function PlatformDealDetail() {
                         <Label>Expected Close Date</Label>
                         <Input
                           type="date"
-                          value={formData.expectedCloseDate ?? deal.expectedCloseDate?.split('T')[0]}
-                          onChange={(e) => setFormData({ ...formData, expectedCloseDate: e.target.value })}
+                          value={
+                            formData.expectedCloseDate ?? deal.expectedCloseDate?.split('T')[0]
+                          }
+                          onChange={(e) =>
+                            setFormData({ ...formData, expectedCloseDate: e.target.value })
+                          }
                         />
                       </div>
                     </>
@@ -506,7 +516,9 @@ export default function PlatformDealDetail() {
                         <span className="text-muted-foreground">Company:</span>
                         <span
                           className="font-semibold text-primary hover:underline cursor-pointer"
-                          onClick={() => setLocation(`/platform-crm/business-records/${deal.businessRecordId}`)}
+                          onClick={() =>
+                            setLocation(`/platform-crm/business-records/${deal.businessRecordId}`)
+                          }
                         >
                           {deal.businessRecordName || 'Unknown'}
                         </span>
@@ -735,12 +747,17 @@ export default function PlatformDealDetail() {
                   <Progress value={bant?.totalBantScore || 0} />
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Status:</span>
-                    <Badge variant={
-                      bant?.qualificationStatus === 'highly_qualified' ? 'default' :
-                      bant?.qualificationStatus === 'qualified' ? 'default' :
-                      bant?.qualificationStatus === 'partially_qualified' ? 'secondary' :
-                      'destructive'
-                    }>
+                    <Badge
+                      variant={
+                        bant?.qualificationStatus === 'highly_qualified'
+                          ? 'default'
+                          : bant?.qualificationStatus === 'qualified'
+                            ? 'default'
+                            : bant?.qualificationStatus === 'partially_qualified'
+                              ? 'secondary'
+                              : 'destructive'
+                      }
+                    >
                       {bant?.qualificationStatus || 'Not assessed'}
                     </Badge>
                   </div>
@@ -779,11 +796,15 @@ export default function PlatformDealDetail() {
                                 <span className="font-semibold text-sm">{activity.subject}</span>
                               </div>
                               {activity.description && (
-                                <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {activity.description}
+                                </p>
                               )}
                             </div>
                             <span className="text-xs text-muted-foreground shrink-0">
-                              {formatDistanceToNow(new Date(activity.activityDate), { addSuffix: true })}
+                              {formatDistanceToNow(new Date(activity.activityDate), {
+                                addSuffix: true,
+                              })}
                             </span>
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">

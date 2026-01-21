@@ -80,10 +80,7 @@ interface CircuitBreakerStats {
 /**
  * Calculate exponential backoff delay with jitter
  */
-export function calculateBackoffDelay(
-  attempt: number,
-  config: RetryConfig
-): number {
+export function calculateBackoffDelay(attempt: number, config: RetryConfig): number {
   // Exponential backoff: baseDelay * 2^attempt
   const exponentialDelay = config.baseDelayMs * Math.pow(2, attempt);
 
@@ -107,10 +104,7 @@ export function isRetryableError(error: any, config: RetryConfig): boolean {
 
   // Check against retryable error patterns
   for (const pattern of config.retryableErrors || []) {
-    if (
-      errorCode.includes(pattern) ||
-      errorMessage.includes(pattern)
-    ) {
+    if (errorCode.includes(pattern) || errorMessage.includes(pattern)) {
       return true;
     }
   }
@@ -133,7 +127,7 @@ export function isRetryableError(error: any, config: RetryConfig): boolean {
  * Sleep for a specified duration
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -161,7 +155,7 @@ export class CircuitBreaker extends EventEmitter {
 
   constructor(
     public readonly name: string,
-    private readonly config: CircuitBreakerConfig = DEFAULT_CIRCUIT_BREAKER_CONFIG
+    private readonly config: CircuitBreakerConfig = DEFAULT_CIRCUIT_BREAKER_CONFIG,
   ) {
     super();
   }
@@ -189,7 +183,7 @@ export class CircuitBreaker extends EventEmitter {
   private getRecentFailures(): number {
     const now = Date.now();
     const windowStart = now - this.config.monitoringWindow;
-    this.failures = this.failures.filter(time => time > windowStart);
+    this.failures = this.failures.filter((time) => time > windowStart);
     return this.failures.length;
   }
 
@@ -295,9 +289,7 @@ export class CircuitBreaker extends EventEmitter {
       timestamp: this.lastStateChange,
     });
 
-    console.log(
-      `[CircuitBreaker:${this.name}] State transition: ${oldState} -> ${newState}`
-    );
+    console.log(`[CircuitBreaker:${this.name}] State transition: ${oldState} -> ${newState}`);
   }
 
   /**
@@ -348,10 +340,7 @@ export class RetryWithBackoff<T> {
   private readonly config: RetryConfig;
   private readonly circuitBreaker?: CircuitBreaker;
 
-  constructor(
-    config: Partial<RetryConfig> = {},
-    circuitBreaker?: CircuitBreaker
-  ) {
+  constructor(config: Partial<RetryConfig> = {}, circuitBreaker?: CircuitBreaker) {
     this.config = { ...DEFAULT_RETRY_CONFIG, ...config };
     this.circuitBreaker = circuitBreaker;
   }
@@ -364,7 +353,7 @@ export class RetryWithBackoff<T> {
     options: {
       operationName?: string;
       onRetry?: (error: Error, attempt: number, delay: number) => void;
-    } = {}
+    } = {},
   ): Promise<T> {
     const { operationName = 'operation', onRetry } = options;
     let lastError: Error | null = null;
@@ -374,7 +363,7 @@ export class RetryWithBackoff<T> {
       if (this.circuitBreaker && !this.circuitBreaker.canExecute()) {
         throw new CircuitOpenError(
           `Circuit breaker is open for ${operationName}`,
-          this.circuitBreaker.getStats()
+          this.circuitBreaker.getStats(),
         );
       }
 
@@ -387,9 +376,7 @@ export class RetryWithBackoff<T> {
         }
 
         if (attempt > 0) {
-          console.log(
-            `[RetryWithBackoff] ${operationName} succeeded after ${attempt} retries`
-          );
+          console.log(`[RetryWithBackoff] ${operationName} succeeded after ${attempt} retries`);
         }
 
         return result;
@@ -402,15 +389,12 @@ export class RetryWithBackoff<T> {
         }
 
         // Check if error is retryable and we have retries left
-        if (
-          attempt < this.config.maxRetries &&
-          isRetryableError(error, this.config)
-        ) {
+        if (attempt < this.config.maxRetries && isRetryableError(error, this.config)) {
           const delay = calculateBackoffDelay(attempt, this.config);
 
           console.warn(
             `[RetryWithBackoff] ${operationName} failed (attempt ${attempt + 1}/${this.config.maxRetries + 1}), ` +
-            `retrying in ${delay}ms: ${error.message}`
+              `retrying in ${delay}ms: ${error.message}`,
           );
 
           if (onRetry) {
@@ -427,7 +411,7 @@ export class RetryWithBackoff<T> {
 
     // All retries exhausted
     console.error(
-      `[RetryWithBackoff] ${operationName} failed after ${this.config.maxRetries + 1} attempts`
+      `[RetryWithBackoff] ${operationName} failed after ${this.config.maxRetries + 1} attempts`,
     );
 
     throw lastError;
@@ -440,7 +424,7 @@ export class RetryWithBackoff<T> {
 export class CircuitOpenError extends Error {
   constructor(
     message: string,
-    public readonly stats: CircuitBreakerStats
+    public readonly stats: CircuitBreakerStats,
   ) {
     super(message);
     this.name = 'CircuitOpenError';
@@ -461,12 +445,9 @@ export class ResilientConnectionPool<TPool> {
     private readonly createPool: () => Promise<TPool>,
     private readonly destroyPool: (pool: TPool) => Promise<void>,
     public readonly circuitBreaker: CircuitBreaker,
-    retryConfig: Partial<RetryConfig> = {}
+    retryConfig: Partial<RetryConfig> = {},
   ) {
-    this.retryHandler = new RetryWithBackoff(
-      retryConfig,
-      circuitBreaker
-    );
+    this.retryHandler = new RetryWithBackoff(retryConfig, circuitBreaker);
   }
 
   /**
@@ -488,7 +469,7 @@ export class ResilientConnectionPool<TPool> {
         this.pool = pool;
         return pool;
       },
-      { operationName: 'database connection' }
+      { operationName: 'database connection' },
     );
 
     try {
@@ -504,14 +485,14 @@ export class ResilientConnectionPool<TPool> {
    */
   async execute<TResult>(
     queryFn: (pool: TPool) => Promise<TResult>,
-    operationName = 'database query'
+    operationName = 'database query',
   ): Promise<TResult> {
     return this.retryHandler.execute(
       async () => {
         const pool = await this.getPool();
         return queryFn(pool);
       },
-      { operationName }
+      { operationName },
     );
   }
 
@@ -561,15 +542,12 @@ export class ResilientConnectionPool<TPool> {
 export function createResilientClient<T extends (...args: any[]) => Promise<any>>(
   client: T,
   circuitBreaker: CircuitBreaker,
-  retryConfig: Partial<RetryConfig> = {}
+  retryConfig: Partial<RetryConfig> = {},
 ): T {
   const retryHandler = new RetryWithBackoff(retryConfig, circuitBreaker);
 
   return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
-    return retryHandler.execute(
-      () => client(...args),
-      { operationName: 'API call' }
-    );
+    return retryHandler.execute(() => client(...args), { operationName: 'API call' });
   }) as T;
 }
 
@@ -581,14 +559,11 @@ const circuitBreakers = new Map<string, CircuitBreaker>();
  */
 export function getCircuitBreaker(
   name: string,
-  config?: Partial<CircuitBreakerConfig>
+  config?: Partial<CircuitBreakerConfig>,
 ): CircuitBreaker {
   let breaker = circuitBreakers.get(name);
   if (!breaker) {
-    breaker = new CircuitBreaker(
-      name,
-      { ...DEFAULT_CIRCUIT_BREAKER_CONFIG, ...config }
-    );
+    breaker = new CircuitBreaker(name, { ...DEFAULT_CIRCUIT_BREAKER_CONFIG, ...config });
     circuitBreakers.set(name, breaker);
   }
   return breaker;
@@ -637,12 +612,9 @@ export async function withRetry<T>(
     retryConfig?: Partial<RetryConfig>;
     circuitBreaker?: CircuitBreaker;
     onRetry?: (error: Error, attempt: number, delay: number) => void;
-  } = {}
+  } = {},
 ): Promise<T> {
-  const retryHandler = new RetryWithBackoff(
-    options.retryConfig,
-    options.circuitBreaker
-  );
+  const retryHandler = new RetryWithBackoff(options.retryConfig, options.circuitBreaker);
 
   return retryHandler.execute(operation, {
     operationName: options.operationName,
@@ -653,27 +625,17 @@ export async function withRetry<T>(
 /**
  * Decorator for adding resilience to class methods
  */
-export function Resilient(
-  circuitBreakerName: string,
-  retryConfig?: Partial<RetryConfig>
-) {
-  return function (
-    _target: any,
-    propertyKey: string,
-    descriptor: PropertyDescriptor
-  ) {
+export function Resilient(circuitBreakerName: string, retryConfig?: Partial<RetryConfig>) {
+  return function (_target: any, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
       const breaker = getCircuitBreaker(circuitBreakerName);
-      return withRetry(
-        () => originalMethod.apply(this, args),
-        {
-          operationName: propertyKey,
-          retryConfig,
-          circuitBreaker: breaker,
-        }
-      );
+      return withRetry(() => originalMethod.apply(this, args), {
+        operationName: propertyKey,
+        retryConfig,
+        circuitBreaker: breaker,
+      });
     };
 
     return descriptor;

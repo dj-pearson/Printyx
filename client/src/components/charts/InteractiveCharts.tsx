@@ -7,7 +7,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -22,10 +22,10 @@ import {
   ComposedChart,
   MetricCard,
   BRAND_COLORS,
-  ChartWrapper
+  ChartWrapper,
 } from './ChartComponents';
 import { getThemeForCategory } from '@/lib/brandTheme';
-import { 
+import {
   Calendar,
   Filter,
   TrendingUp,
@@ -34,7 +34,7 @@ import {
   Building,
   ChevronLeft,
   Layers,
-  ZoomIn
+  ZoomIn,
 } from 'lucide-react';
 
 interface DrillDownLevel {
@@ -69,7 +69,7 @@ export function InteractiveChart({
   onDataPointClick,
   height = 400,
   loading = false,
-  className
+  className,
 }: InteractiveChartProps) {
   const [drillDownPath, setDrillDownPath] = useState<DrillDownLevel[]>([]);
   const [filteredData, setFilteredData] = useState(data);
@@ -80,72 +80,82 @@ export function InteractiveChart({
   // Get current data based on drill-down path
   const currentData = useMemo(() => {
     if (drillDownPath.length === 0) return data;
-    
+
     let filtered = data;
-    drillDownPath.forEach(level => {
-      filtered = filtered.filter(item => item[level.field] === level.value);
+    drillDownPath.forEach((level) => {
+      filtered = filtered.filter((item) => item[level.field] === level.value);
     });
-    
+
     return filtered;
   }, [data, drillDownPath]);
 
   // Handle drill-down
-  const handleDrillDown = useCallback((field: string, value: any) => {
-    const newLevel: DrillDownLevel = {
-      id: `${field}-${value}`,
-      name: `${field}: ${value}`,
-      field,
-      value
-    };
-    
-    const newPath = [...drillDownPath, newLevel];
-    setDrillDownPath(newPath);
-    
-    if (onDrillDown) {
-      onDrillDown(field, value, newPath);
-    }
-  }, [drillDownPath, onDrillDown]);
+  const handleDrillDown = useCallback(
+    (field: string, value: any) => {
+      const newLevel: DrillDownLevel = {
+        id: `${field}-${value}`,
+        name: `${field}: ${value}`,
+        field,
+        value,
+      };
+
+      const newPath = [...drillDownPath, newLevel];
+      setDrillDownPath(newPath);
+
+      if (onDrillDown) {
+        onDrillDown(field, value, newPath);
+      }
+    },
+    [drillDownPath, onDrillDown],
+  );
 
   // Handle breadcrumb navigation
-  const handleBreadcrumbClick = useCallback((levelIndex: number) => {
-    const newPath = drillDownPath.slice(0, levelIndex + 1);
-    setDrillDownPath(newPath);
-  }, [drillDownPath]);
+  const handleBreadcrumbClick = useCallback(
+    (levelIndex: number) => {
+      const newPath = drillDownPath.slice(0, levelIndex + 1);
+      setDrillDownPath(newPath);
+    },
+    [drillDownPath],
+  );
 
   // Handle chart click events
-  const handleChartClick = useCallback((data: any, index: number) => {
-    if (!enableDrillDown) return;
+  const handleChartClick = useCallback(
+    (data: any, index: number) => {
+      if (!enableDrillDown) return;
 
-    // Find the next available drill-down field
-    const availableFields = drillDownFields.filter(field => 
-      !drillDownPath.some(level => level.field === field)
-    );
+      // Find the next available drill-down field
+      const availableFields = drillDownFields.filter(
+        (field) => !drillDownPath.some((level) => level.field === field),
+      );
 
-    if (availableFields.length > 0 && data && data.activeLabel) {
-      const nextField = availableFields[0];
-      if (data.activePayload && data.activePayload.length > 0) {
-        const clickedData = data.activePayload[0].payload;
-        
-        if (clickedData[nextField]) {
-          handleDrillDown(nextField, clickedData[nextField]);
+      if (availableFields.length > 0 && data && data.activeLabel) {
+        const nextField = availableFields[0];
+        if (data.activePayload && data.activePayload.length > 0) {
+          const clickedData = data.activePayload[0].payload;
+
+          if (clickedData[nextField]) {
+            handleDrillDown(nextField, clickedData[nextField]);
+          }
         }
       }
-    }
 
-    if (onDataPointClick) {
-      onDataPointClick(data, drillDownPath);
-    }
-  }, [enableDrillDown, drillDownFields, drillDownPath, handleDrillDown, onDataPointClick]);
+      if (onDataPointClick) {
+        onDataPointClick(data, drillDownPath);
+      }
+    },
+    [enableDrillDown, drillDownFields, drillDownPath, handleDrillDown, onDataPointClick],
+  );
 
   // Get available metrics for the chart
   const availableMetrics = useMemo(() => {
     if (currentData.length === 0) return [];
-    
+
     const firstItem = currentData[0];
-    return Object.keys(firstItem).filter(key => 
-      typeof firstItem[key] === 'number' &&
-      !key.toLowerCase().includes('id') &&
-      !key.toLowerCase().includes('index')
+    return Object.keys(firstItem).filter(
+      (key) =>
+        typeof firstItem[key] === 'number' &&
+        !key.toLowerCase().includes('id') &&
+        !key.toLowerCase().includes('index'),
     );
   }, [currentData]);
 
@@ -155,16 +165,11 @@ export function InteractiveChart({
 
     return (
       <div className="flex items-center space-x-2 mb-4 p-2 bg-gray-50 rounded-lg">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setDrillDownPath([])}
-          className="text-sm"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setDrillDownPath([])} className="text-sm">
           <ChevronLeft className="h-4 w-4 mr-1" />
           All Data
         </Button>
-        
+
         {drillDownPath.map((level, index) => (
           <React.Fragment key={level.id}>
             <span className="text-gray-400">/</span>
@@ -195,9 +200,9 @@ export function InteractiveChart({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableMetrics.map(metric => (
+                  {availableMetrics.map((metric) => (
                     <SelectItem key={metric} value={metric}>
-                      {metric.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {metric.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -213,7 +218,7 @@ export function InteractiveChart({
               Click to drill down
             </Badge>
           )}
-          
+
           <Badge variant="outline" className="text-xs">
             {currentData.length} records
           </Badge>
@@ -224,10 +229,10 @@ export function InteractiveChart({
 
   // Format chart data based on selected metric
   const chartData = useMemo(() => {
-    return currentData.map(item => ({
+    return currentData.map((item) => ({
       ...item,
       value: item[selectedMetric] || 0,
-      name: item.name || item.label || 'Unknown'
+      name: item.name || item.label || 'Unknown',
     }));
   }, [currentData, selectedMetric]);
 
@@ -237,8 +242,8 @@ export function InteractiveChart({
     height,
     loading,
     onClick: handleChartClick,
-    title: `${title}${drillDownPath.length > 0 ? ` - ${drillDownPath.map(l => l.name).join(' > ')}` : ''}`,
-    className
+    title: `${title}${drillDownPath.length > 0 ? ` - ${drillDownPath.map((l) => l.name).join(' > ')}` : ''}`,
+    className,
   };
 
   // Render appropriate chart type
@@ -249,9 +254,7 @@ export function InteractiveChart({
           <LineChart
             {...chartProps}
             xDataKey="name"
-            lines={[
-              { dataKey: 'value', name: selectedMetric, color: theme.primary }
-            ]}
+            lines={[{ dataKey: 'value', name: selectedMetric, color: theme.primary }]}
             showGrid={true}
             showLegend={false}
           />
@@ -273,9 +276,7 @@ export function InteractiveChart({
           <AreaChart
             {...chartProps}
             xDataKey="name"
-            areas={[
-              { dataKey: 'value', name: selectedMetric, color: theme.primary }
-            ]}
+            areas={[{ dataKey: 'value', name: selectedMetric, color: theme.primary }]}
             showGrid={true}
             showLegend={false}
           />
@@ -298,9 +299,7 @@ export function InteractiveChart({
           <BarChart
             {...chartProps}
             xDataKey="name"
-            bars={[
-              { dataKey: 'value', name: selectedMetric, color: theme.primary }
-            ]}
+            bars={[{ dataKey: 'value', name: selectedMetric, color: theme.primary }]}
             showGrid={true}
             showLegend={false}
           />
@@ -315,18 +314,16 @@ export function InteractiveChart({
           <span>{title}</span>
           <div className="flex items-center space-x-2">
             <Layers className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-500">
-              Level {drillDownPath.length + 1}
-            </span>
+            <span className="text-sm text-gray-500">Level {drillDownPath.length + 1}</span>
           </div>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent>
         {renderBreadcrumbs()}
         {renderControls()}
         {renderChart()}
-        
+
         {/* Drill-down suggestions */}
         {enableDrillDown && drillDownPath.length < drillDownFields.length && (
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
@@ -335,11 +332,11 @@ export function InteractiveChart({
             </p>
             <div className="flex flex-wrap gap-2">
               {drillDownFields
-                .filter(field => !drillDownPath.some(level => level.field === field))
+                .filter((field) => !drillDownPath.some((level) => level.field === field))
                 .slice(0, 3)
-                .map(field => (
+                .map((field) => (
                   <Badge key={field} variant="outline" className="text-xs">
-                    {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {field.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
                   </Badge>
                 ))}
             </div>
@@ -372,14 +369,16 @@ export function DashboardCharts({
   charts,
   onChartDrillDown,
   loading = false,
-  className
+  className,
 }: DashboardChartsProps) {
-  const handleDrillDown = useCallback((chartId: string) => 
-    (field: string, value: any, path: DrillDownLevel[]) => {
+  const handleDrillDown = useCallback(
+    (chartId: string) => (field: string, value: any, path: DrillDownLevel[]) => {
       if (onChartDrillDown) {
         onChartDrillDown(chartId, field, value);
       }
-    }, [onChartDrillDown]);
+    },
+    [onChartDrillDown],
+  );
 
   if (loading) {
     return (
@@ -400,11 +399,8 @@ export function DashboardCharts({
 
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${className}`}>
-      {charts.map(chart => (
-        <div
-          key={chart.id}
-          className={chart.span === 2 ? 'lg:col-span-2' : ''}
-        >
+      {charts.map((chart) => (
+        <div key={chart.id} className={chart.span === 2 ? 'lg:col-span-2' : ''}>
           <InteractiveChart
             data={chart.data}
             title={chart.title}

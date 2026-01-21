@@ -1,5 +1,5 @@
-import * as React from "react";
-import { Button } from "@/components/ui/button";
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,20 +25,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Star,
-  StarOff,
-  Save,
-  Trash2,
-  Filter,
-  Check,
-  ChevronDown,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Star, StarOff, Save, Trash2, Filter, Check, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface FilterState {
   [key: string]: any;
@@ -79,7 +71,7 @@ export function SavedFilters({
 }: SavedFiltersProps) {
   const [savedFilters, setSavedFilters] = React.useState<SavedFilter[]>([]);
   const [showSaveDialog, setShowSaveDialog] = React.useState(false);
-  const [filterName, setFilterName] = React.useState("");
+  const [filterName, setFilterName] = React.useState('');
   const [deleteFilterId, setDeleteFilterId] = React.useState<string | null>(null);
 
   // Load saved filters from localStorage on mount
@@ -89,7 +81,7 @@ export function SavedFilters({
       try {
         setSavedFilters(JSON.parse(stored));
       } catch (e) {
-        console.error("Failed to load saved filters:", e);
+        console.error('Failed to load saved filters:', e);
       }
     }
   }, [storageKey]);
@@ -111,7 +103,7 @@ export function SavedFilters({
     };
 
     persistFilters([...savedFilters, newFilter]);
-    setFilterName("");
+    setFilterName('');
     setShowSaveDialog(false);
   };
 
@@ -125,7 +117,7 @@ export function SavedFilters({
       savedFilters.map((f) => ({
         ...f,
         isDefault: f.id === id,
-      }))
+      })),
     );
   };
 
@@ -144,7 +136,7 @@ export function SavedFilters({
 
   return (
     <>
-      <div className={cn("flex items-center gap-2", className)}>
+      <div className={cn('flex items-center gap-2', className)}>
         {/* Active Filters Badge */}
         {activeFilterCount > 0 && (
           <Badge variant="secondary" className="gap-1">
@@ -180,7 +172,7 @@ export function SavedFilters({
                     <button
                       onClick={() => handleSetDefault(filter.id)}
                       className="p-2 hover:bg-muted rounded-sm"
-                      title={filter.isDefault ? "Remove as default" : "Set as default"}
+                      title={filter.isDefault ? 'Remove as default' : 'Set as default'}
                     >
                       {filter.isDefault ? (
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -246,7 +238,7 @@ export function SavedFilters({
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === 'Enter') {
                     handleSaveFilter();
                   }
                 }}
@@ -284,8 +276,7 @@ export function SavedFilters({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Saved Filter</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this saved filter? This action
-              cannot be undone.
+              Are you sure you want to delete this saved filter? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -328,7 +319,13 @@ export function useFilterState<T extends FilterState>(initialState: T) {
   // Count active filters (non-default values)
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
     const initialValue = initialState[key as keyof T];
-    return value !== initialValue && value !== '' && value !== 'all' && value !== null && value !== undefined;
+    return (
+      value !== initialValue &&
+      value !== '' &&
+      value !== 'all' &&
+      value !== null &&
+      value !== undefined
+    );
   }).length;
 
   return {

@@ -23,7 +23,7 @@ router.post('/teams', async (req, res) => {
     const teamData = {
       ...req.body,
       tenantId: req.user.tenantId,
-      createdBy: req.user.id
+      createdBy: req.user.id,
     };
 
     const team = await TeamCollaborationService.createTeam(teamData);
@@ -54,16 +54,16 @@ router.get('/teams', async (req, res) => {
         settings: {
           autoTaskAssignment: true,
           workloadBalancing: true,
-          skillBasedAssignment: true
+          skillBasedAssignment: true,
         },
         performance: {
           teamHealthScore: 0.87,
           averageUtilization: 78,
-          completionRate: 0.92
+          completionRate: 0.92,
         },
         isActive: true,
         createdAt: new Date('2025-01-15'),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'team-2',
@@ -77,16 +77,16 @@ router.get('/teams', async (req, res) => {
         settings: {
           autoTaskAssignment: true,
           workloadBalancing: true,
-          skillBasedAssignment: true
+          skillBasedAssignment: true,
         },
         performance: {
           teamHealthScore: 0.91,
           averageUtilization: 85,
-          completionRate: 0.89
+          completionRate: 0.89,
         },
         isActive: true,
         createdAt: new Date('2025-01-10'),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'team-3',
@@ -100,17 +100,17 @@ router.get('/teams', async (req, res) => {
         settings: {
           autoTaskAssignment: true,
           workloadBalancing: true,
-          skillBasedAssignment: false
+          skillBasedAssignment: false,
         },
         performance: {
           teamHealthScore: 0.83,
           averageUtilization: 72,
-          completionRate: 0.95
+          completionRate: 0.95,
         },
         isActive: true,
         createdAt: new Date('2025-02-01'),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     ];
 
     res.json(teams);
@@ -127,7 +127,7 @@ router.get('/teams', async (req, res) => {
 router.get('/teams/:teamId', async (req, res) => {
   try {
     const { teamId } = req.params;
-    
+
     // Mock detailed team data
     const team = {
       id: teamId,
@@ -141,7 +141,7 @@ router.get('/teams/:teamId', async (req, res) => {
         workloadBalancing: true,
         skillBasedAssignment: true,
         burnoutPrevention: true,
-        collaborationOptimization: true
+        collaborationOptimization: true,
       },
       members: [
         {
@@ -151,12 +151,12 @@ router.get('/teams/:teamId', async (req, res) => {
           role: 'manager',
           permissions: ['all'],
           workloadCapacity: 1.0,
-          hourlyRate: 75.00,
+          hourlyRate: 75.0,
           skills: ['leadership', 'sales', 'project_management', 'negotiation'],
           currentUtilization: 82,
           activeTasksCount: 6,
           joinedAt: new Date('2025-01-15'),
-          isActive: true
+          isActive: true,
         },
         {
           id: 'member-2',
@@ -165,12 +165,12 @@ router.get('/teams/:teamId', async (req, res) => {
           role: 'lead',
           permissions: ['manage_tasks', 'assign_tasks', 'view_reports'],
           workloadCapacity: 1.1,
-          hourlyRate: 65.00,
+          hourlyRate: 65.0,
           skills: ['sales', 'customer_relations', 'proposal_writing', 'presentation'],
           currentUtilization: 75,
           activeTasksCount: 8,
           joinedAt: new Date('2025-01-20'),
-          isActive: true
+          isActive: true,
         },
         {
           id: 'member-3',
@@ -179,13 +179,13 @@ router.get('/teams/:teamId', async (req, res) => {
           role: 'member',
           permissions: ['view_tasks', 'edit_own_tasks', 'comment'],
           workloadCapacity: 0.9,
-          hourlyRate: 55.00,
+          hourlyRate: 55.0,
           skills: ['sales', 'technical_sales', 'product_knowledge'],
           currentUtilization: 68,
           activeTasksCount: 5,
           joinedAt: new Date('2025-02-01'),
-          isActive: true
-        }
+          isActive: true,
+        },
       ],
       performance: {
         teamHealthScore: 0.87,
@@ -195,11 +195,11 @@ router.get('/teams/:teamId', async (req, res) => {
         knowledgeSharingScore: 0.79,
         averageUtilization: 75,
         completionRate: 0.92,
-        onTimeDeliveryRate: 0.88
+        onTimeDeliveryRate: 0.88,
       },
       isActive: true,
       createdAt: new Date('2025-01-15'),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     res.json(team);
@@ -233,7 +233,7 @@ router.post('/teams/:teamId/members', async (req, res) => {
 router.get('/teams/:teamId/capacity', async (req, res) => {
   try {
     const { teamId } = req.params;
-    
+
     const capacityAnalysis = await TeamCollaborationService.analyzeTeamCapacity(teamId);
     res.json(capacityAnalysis);
   } catch (error) {
@@ -249,7 +249,7 @@ router.get('/teams/:teamId/capacity', async (req, res) => {
 router.get('/teams/:teamId/insights', async (req, res) => {
   try {
     const { teamId } = req.params;
-    
+
     const insights = await TeamCollaborationService.generateCollaborationInsights(teamId);
     res.json(insights);
   } catch (error) {
@@ -267,7 +267,7 @@ router.post('/projects', async (req, res) => {
     const projectData = {
       ...req.body,
       tenantId: req.user.tenantId,
-      createdBy: req.user.id
+      createdBy: req.user.id,
     };
 
     const project = await TeamCollaborationService.createProject(projectData);
@@ -285,7 +285,7 @@ router.post('/projects', async (req, res) => {
 router.get('/projects', async (req, res) => {
   try {
     const { status, teamId, priority } = req.query;
-    
+
     // Mock projects data
     const projects = [
       {
@@ -314,11 +314,11 @@ router.get('/projects', async (req, res) => {
           { name: 'Market Research', status: 'completed', dueDate: '2025-09-15' },
           { name: 'Lead Generation', status: 'in_progress', dueDate: '2025-10-15' },
           { name: 'Proposal Phase', status: 'pending', dueDate: '2025-11-15' },
-          { name: 'Contract Negotiation', status: 'pending', dueDate: '2025-12-15' }
+          { name: 'Contract Negotiation', status: 'pending', dueDate: '2025-12-15' },
         ],
         assignedMembers: 5,
         createdAt: new Date('2025-08-15'),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'project-2',
@@ -347,11 +347,11 @@ router.get('/projects', async (req, res) => {
           { name: 'Equipment Ordering', status: 'in_progress', dueDate: '2025-10-05' },
           { name: 'Installation Phase 1', status: 'pending', dueDate: '2025-10-25' },
           { name: 'Installation Phase 2', status: 'pending', dueDate: '2025-11-15' },
-          { name: 'Training & Handover', status: 'pending', dueDate: '2025-11-30' }
+          { name: 'Training & Handover', status: 'pending', dueDate: '2025-11-30' },
         ],
         assignedMembers: 8,
         createdAt: new Date('2025-08-25'),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       },
       {
         id: 'project-3',
@@ -379,13 +379,13 @@ router.get('/projects', async (req, res) => {
           { name: 'Process Design', status: 'in_progress', dueDate: '2025-10-15' },
           { name: 'Documentation', status: 'pending', dueDate: '2025-10-30' },
           { name: 'Team Training', status: 'pending', dueDate: '2025-11-15' },
-          { name: 'Pilot Program', status: 'pending', dueDate: '2025-11-30' }
+          { name: 'Pilot Program', status: 'pending', dueDate: '2025-11-30' },
         ],
         assignedMembers: 4,
         createdAt: new Date('2025-09-20'),
-        updatedAt: new Date()
-      }
-    ].filter(p => {
+        updatedAt: new Date(),
+      },
+    ].filter((p) => {
       if (status && p.status !== status) return false;
       if (teamId && p.teamId !== teamId) return false;
       if (priority && p.priority !== priority) return false;
@@ -406,7 +406,7 @@ router.get('/projects', async (req, res) => {
 router.get('/projects/:projectId', async (req, res) => {
   try {
     const { projectId } = req.params;
-    
+
     // Mock detailed project data
     const project = {
       id: projectId,
@@ -423,7 +423,7 @@ router.get('/projects/:projectId', async (req, res) => {
       estimatedHours: 320,
       actualHours: 180,
       completionPercentage: 56,
-      
+
       // AI insights
       aiComplexityScore: 8.2,
       aiRiskScore: 4.1,
@@ -432,15 +432,15 @@ router.get('/projects/:projectId', async (req, res) => {
         salesReps: 3,
         salesEngineers: 2,
         marketingSupport: 1,
-        projectManager: 1
+        projectManager: 1,
       },
-      
+
       // Business context
       clientId: 'client-enterprise-1',
       clientName: 'Global Manufacturing Corp',
       budget: 150000,
       revenuePotential: 2500000,
-      
+
       // Milestones with AI insights
       milestones: [
         {
@@ -454,7 +454,7 @@ router.get('/projects/:projectId', async (req, res) => {
           aiCriticalPath: true,
           aiDelayRisk: 0.1,
           tasks: 8,
-          completedTasks: 8
+          completedTasks: 8,
         },
         {
           id: 'milestone-2',
@@ -466,7 +466,7 @@ router.get('/projects/:projectId', async (req, res) => {
           aiCriticalPath: true,
           aiDelayRisk: 0.3,
           tasks: 12,
-          completedTasks: 9
+          completedTasks: 9,
         },
         {
           id: 'milestone-3',
@@ -478,7 +478,7 @@ router.get('/projects/:projectId', async (req, res) => {
           aiCriticalPath: true,
           aiDelayRisk: 0.4,
           tasks: 15,
-          completedTasks: 0
+          completedTasks: 0,
         },
         {
           id: 'milestone-4',
@@ -490,10 +490,10 @@ router.get('/projects/:projectId', async (req, res) => {
           aiCriticalPath: true,
           aiDelayRisk: 0.5,
           tasks: 10,
-          completedTasks: 0
-        }
+          completedTasks: 0,
+        },
       ],
-      
+
       // Team assignments
       assignments: [
         {
@@ -504,7 +504,7 @@ router.get('/projects/:projectId', async (req, res) => {
           estimatedEffortHours: 80,
           actualEffortHours: 45,
           workloadPercentage: 25,
-          aiSkillMatchScore: 0.95
+          aiSkillMatchScore: 0.95,
         },
         {
           userId: 'user-2',
@@ -514,7 +514,7 @@ router.get('/projects/:projectId', async (req, res) => {
           estimatedEffortHours: 120,
           actualEffortHours: 68,
           workloadPercentage: 35,
-          aiSkillMatchScore: 0.88
+          aiSkillMatchScore: 0.88,
         },
         {
           userId: 'user-3',
@@ -524,43 +524,43 @@ router.get('/projects/:projectId', async (req, res) => {
           estimatedEffortHours: 60,
           actualEffortHours: 32,
           workloadPercentage: 20,
-          aiSkillMatchScore: 0.92
-        }
+          aiSkillMatchScore: 0.92,
+        },
       ],
-      
+
       // Collaboration settings
       collaborationSettings: {
         dailyStandups: true,
         weeklyReviews: true,
         milestoneNotifications: true,
-        autoTaskAssignment: true
+        autoTaskAssignment: true,
       },
-      
+
       // Recent activity
       recentActivity: [
         {
           type: 'milestone_progress',
           description: 'Lead Generation milestone reached 75% completion',
           timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          userId: 'user-2'
+          userId: 'user-2',
         },
         {
           type: 'task_completed',
           description: 'Completed prospect research for 5 target accounts',
           timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-          userId: 'user-3'
+          userId: 'user-3',
         },
         {
           type: 'comment',
           description: 'Added notes from client discovery call',
           timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-          userId: 'user-2'
-        }
+          userId: 'user-2',
+        },
       ],
-      
+
       createdBy: 'user-1',
       createdAt: new Date('2025-08-15'),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     res.json(project);
@@ -583,7 +583,10 @@ router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
       return res.status(400).json({ error: 'Tasks array is required' });
     }
 
-    const assignments = await TeamCollaborationService.optimizeTaskAssignments(teamId || 'team-1', tasks);
+    const assignments = await TeamCollaborationService.optimizeTaskAssignments(
+      teamId || 'team-1',
+      tasks,
+    );
     res.json(assignments);
   } catch (error) {
     console.error('Error optimizing task assignments:', error);
@@ -598,8 +601,9 @@ router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
 router.get('/projects/:projectId/dependencies', async (req, res) => {
   try {
     const { projectId } = req.params;
-    
-    const dependencyData = await TeamCollaborationService.coordinateCrossTeamDependencies(projectId);
+
+    const dependencyData =
+      await TeamCollaborationService.coordinateCrossTeamDependencies(projectId);
     res.json(dependencyData);
   } catch (error) {
     console.error('Error fetching project dependencies:', error);
@@ -614,7 +618,7 @@ router.get('/projects/:projectId/dependencies', async (req, res) => {
 router.get('/collaboration/templates', async (req, res) => {
   try {
     const { category } = req.query;
-    
+
     // Mock project templates
     const templates = [
       {
@@ -632,14 +636,14 @@ router.get('/collaboration/templates', async (req, res) => {
           { name: 'Needs Assessment', estimatedDays: 3 },
           { name: 'Proposal Creation', estimatedDays: 7 },
           { name: 'Negotiation', estimatedDays: 5 },
-          { name: 'Contract Signing', estimatedDays: 2 }
+          { name: 'Contract Signing', estimatedDays: 2 },
         ],
         tasks: [
           { name: 'Research prospect', estimatedHours: 2, skills: ['research'] },
           { name: 'Schedule discovery call', estimatedHours: 1, skills: ['communication'] },
           { name: 'Create proposal', estimatedHours: 8, skills: ['proposal_writing'] },
-          { name: 'Follow up', estimatedHours: 1, skills: ['communication'] }
-        ]
+          { name: 'Follow up', estimatedHours: 1, skills: ['communication'] },
+        ],
       },
       {
         id: 'template-2',
@@ -656,15 +660,15 @@ router.get('/collaboration/templates', async (req, res) => {
           { name: 'Equipment Delivery', estimatedDays: 5 },
           { name: 'Installation', estimatedDays: 1 },
           { name: 'Testing & Training', estimatedDays: 1 },
-          { name: 'Go Live', estimatedDays: 1 }
+          { name: 'Go Live', estimatedDays: 1 },
         ],
         tasks: [
           { name: 'Conduct site survey', estimatedHours: 4, skills: ['technical'] },
           { name: 'Order equipment', estimatedHours: 1, skills: ['procurement'] },
           { name: 'Install equipment', estimatedHours: 6, skills: ['installation'] },
           { name: 'Test system', estimatedHours: 2, skills: ['technical'] },
-          { name: 'Train users', estimatedHours: 3, skills: ['training'] }
-        ]
+          { name: 'Train users', estimatedHours: 3, skills: ['training'] },
+        ],
       },
       {
         id: 'template-3',
@@ -680,17 +684,17 @@ router.get('/collaboration/templates', async (req, res) => {
           { name: 'Welcome Package', estimatedDays: 1 },
           { name: 'Account Setup', estimatedDays: 2 },
           { name: 'Training', estimatedDays: 3 },
-          { name: 'Go Live Support', estimatedDays: 5 }
+          { name: 'Go Live Support', estimatedDays: 5 },
         ],
         tasks: [
           { name: 'Send welcome materials', estimatedHours: 1, skills: ['customer_service'] },
           { name: 'Set up account', estimatedHours: 3, skills: ['technical_support'] },
           { name: 'Schedule training', estimatedHours: 1, skills: ['coordination'] },
           { name: 'Conduct training', estimatedHours: 4, skills: ['training'] },
-          { name: 'Provide go-live support', estimatedHours: 8, skills: ['technical_support'] }
-        ]
-      }
-    ].filter(t => !category || t.category === category);
+          { name: 'Provide go-live support', estimatedHours: 8, skills: ['technical_support'] },
+        ],
+      },
+    ].filter((t) => !category || t.category === category);
 
     res.json(templates);
   } catch (error) {
@@ -706,7 +710,7 @@ router.get('/collaboration/templates', async (req, res) => {
 router.get('/collaboration/analytics', async (req, res) => {
   try {
     const { timeRange = 'month' } = req.query;
-    
+
     // Mock collaboration analytics
     const analytics = {
       timeRange,
@@ -715,7 +719,7 @@ router.get('/collaboration/analytics', async (req, res) => {
         activeProjects: 35,
         completedProjects: 127,
         totalTeamMembers: 26,
-        averageTeamSize: 8.7
+        averageTeamSize: 8.7,
       },
       teamPerformance: {
         averageTeamHealthScore: 0.87,
@@ -723,7 +727,7 @@ router.get('/collaboration/analytics', async (req, res) => {
           id: 'team-2',
           name: 'Technical Services',
           healthScore: 0.91,
-          completionRate: 0.89
+          completionRate: 0.89,
         },
         improvementOpportunities: [
           {
@@ -731,42 +735,42 @@ router.get('/collaboration/analytics', async (req, res) => {
             teamName: 'Customer Success',
             issue: 'Communication frequency below optimal',
             recommendation: 'Implement daily stand-ups',
-            impact: 'medium'
-          }
-        ]
+            impact: 'medium',
+          },
+        ],
       },
       projectMetrics: {
         onTimeDeliveryRate: 0.86,
         averageProjectDuration: 42, // days
         budgetVariance: -5.2, // % under budget
         resourceUtilization: 0.78,
-        clientSatisfactionScore: 4.6 // out of 5
+        clientSatisfactionScore: 4.6, // out of 5
       },
       collaborationMetrics: {
         crossTeamProjects: 8,
         dependencyResolutionTime: 2.3, // days
         knowledgeSharingScore: 0.74,
         communicationEffectiveness: 0.81,
-        conflictResolutionTime: 1.8 // days
+        conflictResolutionTime: 1.8, // days
       },
       aiInsights: [
         'Teams with daily stand-ups show 23% higher completion rates',
         'Cross-functional projects have 15% higher client satisfaction',
         'Skill-based task assignment improves efficiency by 18%',
-        'Teams with balanced workload have 31% lower burnout rates'
+        'Teams with balanced workload have 31% lower burnout rates',
       ],
       recommendations: [
         'Implement skill-based automatic task assignment across all teams',
         'Create cross-team communication channels for better coordination',
         'Establish mentorship programs to improve knowledge sharing',
-        'Use AI-powered workload balancing to prevent team member burnout'
+        'Use AI-powered workload balancing to prevent team member burnout',
       ],
       trends: {
         teamHealthTrend: 'improving',
         productivityTrend: 'stable',
         collaborationTrend: 'improving',
-        projectSuccessTrend: 'improving'
-      }
+        projectSuccessTrend: 'improving',
+      },
     };
 
     res.json(analytics);

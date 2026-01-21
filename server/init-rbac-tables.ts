@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 
 /**
  * Initialize Enhanced RBAC Database Tables
- * 
+ *
  * This script creates all necessary tables for the Enhanced RBAC system
  * if they don't exist. Run this script to set up the database schema.
  */
@@ -180,7 +180,6 @@ async function initRBACTables() {
     console.log('  - user_role_assignments');
     console.log('  - permission_cache');
     console.log('🚀 Ready for RBAC system initialization');
-
   } catch (error) {
     console.error('❌ Error initializing RBAC tables:', error);
     throw error;

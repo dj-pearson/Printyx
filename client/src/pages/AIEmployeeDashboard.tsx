@@ -98,7 +98,8 @@ const mockEmployees: AIEmployee[] = [
     id: '1',
     employeeName: 'Sales Assistant AI',
     employeeType: 'sales_assistant',
-    employeeRole: 'AI Sales Representative specializing in lead qualification and customer engagement',
+    employeeRole:
+      'AI Sales Representative specializing in lead qualification and customer engagement',
     status: 'active',
     autonomyLevel: 'supervised',
     successRate: 0.85,
@@ -269,8 +270,8 @@ const AIEmployeeDashboard: React.FC = () => {
   };
 
   return (
-    <MainLayout 
-      title="AI Employees" 
+    <MainLayout
+      title="AI Employees"
       description="Intelligent agents and workflow automation with specialized AI employees for various business functions"
     >
       {/* Action buttons */}
@@ -536,7 +537,9 @@ const AIEmployeeDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium">Lead Scoring</p>
-                      <p className="text-sm text-gray-600">Score lead based on qualification criteria</p>
+                      <p className="text-sm text-gray-600">
+                        Score lead based on qualification criteria
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -561,7 +564,9 @@ const AIEmployeeDashboard: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Customer Support Workflow</CardTitle>
-                <CardDescription>Handle customer support requests from initial contact to resolution</CardDescription>
+                <CardDescription>
+                  Handle customer support requests from initial contact to resolution
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -571,7 +576,9 @@ const AIEmployeeDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium">Ticket Triage</p>
-                      <p className="text-sm text-gray-600">Categorize and prioritize support ticket</p>
+                      <p className="text-sm text-gray-600">
+                        Categorize and prioritize support ticket
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -580,7 +587,9 @@ const AIEmployeeDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium">Initial Response</p>
-                      <p className="text-sm text-gray-600">Send acknowledgment and initial guidance</p>
+                      <p className="text-sm text-gray-600">
+                        Send acknowledgment and initial guidance
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -589,7 +598,9 @@ const AIEmployeeDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium">Issue Investigation</p>
-                      <p className="text-sm text-gray-600">Research and analyze the customer issue</p>
+                      <p className="text-sm text-gray-600">
+                        Research and analyze the customer issue
+                      </p>
                     </div>
                   </div>
                 </div>

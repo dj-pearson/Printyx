@@ -16,6 +16,7 @@ supabase db execute -f migrations/002_data_cleanup.sql
 ```
 
 **What happens:**
+
 - Finds values like "lead-001" in company_id and contact_id columns
 - Sets them to NULL (records are preserved, just unlinked)
 - Shows you a log of what was changed
@@ -31,6 +32,7 @@ supabase db push
 ```
 
 **What happens:**
+
 - Converts column types to UUID
 - Adds foreign key constraints
 - Adds performance indexes
@@ -61,6 +63,7 @@ After these 3 steps, customer creation will work on https://printyx.net/customer
 The cleanup script **creates placeholder companies** for records with invalid IDs because `company_contacts.company_id` has a NOT NULL constraint.
 
 ### What it does:
+
 1. **For invalid UUIDs** (like "lead-001"):
    - Creates a new company named after the contact's email domain
    - Example: "Acme (Migrated from lead-001)"
@@ -72,6 +75,7 @@ The cleanup script **creates placeholder companies** for records with invalid ID
    - Example: "Acme (Recovered)"
 
 ### After cleanup:
+
 - ✅ All records are preserved (nothing deleted)
 - ✅ All relationships are valid
 - ✅ You can update placeholder company info later

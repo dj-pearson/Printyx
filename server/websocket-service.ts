@@ -58,10 +58,10 @@ export class WebSocketService {
   public initialize(server: Server): void {
     console.log('🚀 Initializing WebSocket service for real-time updates...');
 
-    this.wss = new WebSocketServer({ 
+    this.wss = new WebSocketServer({
       server,
       path: '/ws/reporting',
-      clientTracking: true
+      clientTracking: true,
     });
 
     this.wss.on('connection', (socket, request) => {
@@ -77,7 +77,7 @@ export class WebSocketService {
   // Handle new WebSocket connection
   private handleNewConnection(socket: WebSocket, request: any): void {
     const clientId = uuidv4();
-    
+
     // Extract user info from request (you'd implement proper authentication here)
     const userId = this.extractUserIdFromRequest(request);
     const tenantId = this.extractTenantIdFromRequest(request);
@@ -95,12 +95,14 @@ export class WebSocketService {
       tenantId,
       subscriptions: new Set(),
       permissions,
-      lastHeartbeat: Date.now()
+      lastHeartbeat: Date.now(),
     };
 
     this.clients.set(clientId, client);
 
-    console.log(`📡 New WebSocket client connected: ${clientId} (user: ${userId}, tenant: ${tenantId})`);
+    console.log(
+      `📡 New WebSocket client connected: ${clientId} (user: ${userId}, tenant: ${tenantId})`,
+    );
 
     // Send welcome message
     this.sendToClient(client, {
@@ -108,8 +110,8 @@ export class WebSocketService {
       data: {
         clientId,
         serverTime: Date.now(),
-        supportedChannels: ['reports', 'kpis', 'dashboard']
-      }
+        supportedChannels: ['reports', 'kpis', 'dashboard'],
+      },
     });
 
     // Set up event handlers
@@ -131,36 +133,36 @@ export class WebSocketService {
   private handleClientMessage(client: WebSocketClient, message: any): void {
     try {
       const parsedMessage: ClientMessage = JSON.parse(message.toString());
-      
+
       switch (parsedMessage.type) {
         case 'subscribe':
           this.handleSubscription(client, parsedMessage.data);
           break;
-          
+
         case 'unsubscribe':
           this.handleUnsubscription(client, parsedMessage.data);
           break;
-          
+
         case 'heartbeat':
           client.lastHeartbeat = Date.now();
           this.sendToClient(client, { type: 'heartbeat', timestamp: Date.now() });
           break;
-          
+
         case 'ping':
           this.sendToClient(client, { type: 'pong', timestamp: Date.now() });
           break;
-          
+
         default:
-          this.sendToClient(client, { 
-            type: 'error', 
-            error: `Unknown message type: ${parsedMessage.type}` 
+          this.sendToClient(client, {
+            type: 'error',
+            error: `Unknown message type: ${parsedMessage.type}`,
           });
       }
     } catch (error) {
       console.error('Error parsing client message:', error);
-      this.sendToClient(client, { 
-        type: 'error', 
-        error: 'Invalid message format' 
+      this.sendToClient(client, {
+        type: 'error',
+        error: 'Invalid message format',
       });
     }
   }
@@ -170,26 +172,26 @@ export class WebSocketService {
     if (!data) return;
 
     let channel: string;
-    
+
     if (data.reportId) {
       channel = `report:${data.reportId}`;
-      
+
       // Check if user has permission for this report
       if (!this.hasReportPermission(client, data.reportId)) {
         this.sendToClient(client, {
           type: 'error',
-          error: 'Insufficient permissions for this report'
+          error: 'Insufficient permissions for this report',
         });
         return;
       }
     } else if (data.kpiId) {
       channel = `kpi:${data.kpiId}`;
-      
+
       // Check if user has permission for this KPI
       if (!this.hasKPIPermission(client, data.kpiId)) {
         this.sendToClient(client, {
           type: 'error',
-          error: 'Insufficient permissions for this KPI'
+          error: 'Insufficient permissions for this KPI',
         });
         return;
       }
@@ -198,14 +200,14 @@ export class WebSocketService {
     } else {
       this.sendToClient(client, {
         type: 'error',
-        error: 'Invalid subscription request'
+        error: 'Invalid subscription request',
       });
       return;
     }
 
     client.subscriptions.add(channel);
     console.log(`📊 Client ${client.id} subscribed to: ${channel}`);
-    
+
     // Send current data immediately
     this.sendCurrentData(client, channel, data);
   }
@@ -214,9 +216,11 @@ export class WebSocketService {
   private handleUnsubscription(client: WebSocketClient, data: any): void {
     if (!data) return;
 
-    const channel = data.reportId ? `report:${data.reportId}` :
-                   data.kpiId ? `kpi:${data.kpiId}` :
-                   data.channel;
+    const channel = data.reportId
+      ? `report:${data.reportId}`
+      : data.kpiId
+        ? `kpi:${data.kpiId}`
+        : data.channel;
 
     if (channel) {
       client.subscriptions.delete(channel);
@@ -234,28 +238,36 @@ export class WebSocketService {
   }
 
   // Send current data for a channel
-  private async sendCurrentData(client: WebSocketClient, channel: string, data: any): Promise<void> {
+  private async sendCurrentData(
+    client: WebSocketClient,
+    channel: string,
+    data: any,
+  ): Promise<void> {
     try {
       if (channel.startsWith('report:')) {
         const reportId = channel.split(':')[1];
         // Get cached report data or fetch fresh data
-        const reportData = await this.getCurrentReportData(client.tenantId, reportId, data.parameters);
-        
+        const reportData = await this.getCurrentReportData(
+          client.tenantId,
+          reportId,
+          data.parameters,
+        );
+
         this.sendToClient(client, {
           type: 'data_update',
           channel,
           data: reportData,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       } else if (channel.startsWith('kpi:')) {
         const kpiId = channel.split(':')[1];
         const kpiData = await this.getCurrentKPIData(client.tenantId, kpiId);
-        
+
         this.sendToClient(client, {
           type: 'kpi_update',
           channel,
           data: kpiData,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
     } catch (error) {
@@ -263,7 +275,7 @@ export class WebSocketService {
       this.sendToClient(client, {
         type: 'error',
         channel,
-        error: 'Failed to retrieve current data'
+        error: 'Failed to retrieve current data',
       });
     }
   }
@@ -274,16 +286,18 @@ export class WebSocketService {
       type: channel.startsWith('kpi:') ? 'kpi_update' : 'data_update',
       channel,
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    this.clients.forEach(client => {
+    this.clients.forEach((client) => {
       if (client.subscriptions.has(channel)) {
         this.sendToClient(client, message);
       }
     });
 
-    console.log(`📡 Broadcasted update to channel: ${channel} (${this.getSubscriberCount(channel)} subscribers)`);
+    console.log(
+      `📡 Broadcasted update to channel: ${channel} (${this.getSubscriberCount(channel)} subscribers)`,
+    );
   }
 
   // Send message to specific client
@@ -318,7 +332,7 @@ export class WebSocketService {
     this.dataUpdateInterval = setInterval(async () => {
       // Update real-time KPIs
       await this.updateRealTimeKPIs();
-      
+
       // Update real-time reports
       await this.updateRealTimeReports();
     }, 60000); // Update every minute
@@ -327,10 +341,10 @@ export class WebSocketService {
   // Update real-time KPIs
   private async updateRealTimeKPIs(): Promise<void> {
     const kpiChannels = new Set<string>();
-    
+
     // Collect all KPI channels that have subscribers
-    this.clients.forEach(client => {
-      client.subscriptions.forEach(subscription => {
+    this.clients.forEach((client) => {
+      client.subscriptions.forEach((subscription) => {
         if (subscription.startsWith('kpi:')) {
           kpiChannels.add(subscription);
         }
@@ -343,8 +357,8 @@ export class WebSocketService {
         const kpiId = channel.split(':')[1];
         const tenantIds = new Set(
           Array.from(this.clients.values())
-            .filter(client => client.subscriptions.has(channel))
-            .map(client => client.tenantId)
+            .filter((client) => client.subscriptions.has(channel))
+            .map((client) => client.tenantId),
         );
 
         // Update for each tenant
@@ -361,10 +375,10 @@ export class WebSocketService {
   // Update real-time reports
   private async updateRealTimeReports(): Promise<void> {
     const reportChannels = new Set<string>();
-    
+
     // Collect all report channels that have subscribers
-    this.clients.forEach(client => {
-      client.subscriptions.forEach(subscription => {
+    this.clients.forEach((client) => {
+      client.subscriptions.forEach((subscription) => {
         if (subscription.startsWith('report:')) {
           reportChannels.add(subscription);
         }
@@ -375,13 +389,13 @@ export class WebSocketService {
     for (const channel of reportChannels) {
       try {
         const reportId = channel.split(':')[1];
-        
+
         // Check if this is a real-time report
         if (await this.isRealTimeReport(reportId)) {
           const tenantIds = new Set(
             Array.from(this.clients.values())
-              .filter(client => client.subscriptions.has(channel))
-              .map(client => client.tenantId)
+              .filter((client) => client.subscriptions.has(channel))
+              .map((client) => client.tenantId),
           );
 
           // Update for each tenant
@@ -400,16 +414,16 @@ export class WebSocketService {
   private extractUserIdFromRequest(request: any): string | null {
     // Extract from query parameters, headers, or session
     // This is a simplified implementation
-    return request.url?.includes('userId=') ? 
-      new URL(request.url, 'http://localhost').searchParams.get('userId') : 
-      null;
+    return request.url?.includes('userId=')
+      ? new URL(request.url, 'http://localhost').searchParams.get('userId')
+      : null;
   }
 
   private extractTenantIdFromRequest(request: any): string | null {
     // Extract from query parameters, headers, or session
-    return request.url?.includes('tenantId=') ? 
-      new URL(request.url, 'http://localhost').searchParams.get('tenantId') : 
-      null;
+    return request.url?.includes('tenantId=')
+      ? new URL(request.url, 'http://localhost').searchParams.get('tenantId')
+      : null;
   }
 
   private extractPermissionsFromRequest(request: any): Record<string, boolean> {
@@ -418,7 +432,7 @@ export class WebSocketService {
       canViewReports: true,
       canViewKPIs: true,
       canViewSalesReports: true,
-      canViewServiceReports: true
+      canViewServiceReports: true,
     };
   }
 
@@ -432,10 +446,14 @@ export class WebSocketService {
     return client.permissions.canViewKPIs || false;
   }
 
-  private async getCurrentReportData(tenantId: string, reportId: string, parameters?: any): Promise<any> {
+  private async getCurrentReportData(
+    tenantId: string,
+    reportId: string,
+    parameters?: any,
+  ): Promise<any> {
     // Try to get from cache first
     const cached = await reportingCache.getCachedReportData(tenantId, reportId, parameters || {});
-    
+
     if (cached) {
       return cached.data;
     }
@@ -447,8 +465,8 @@ export class WebSocketService {
       rows: [
         { metric: 'Active Users', value: Math.floor(Math.random() * 1000) + 500 },
         { metric: 'Revenue', value: Math.floor(Math.random() * 50000) + 25000 },
-        { metric: 'Conversion Rate', value: (Math.random() * 10 + 5).toFixed(2) + '%' }
-      ]
+        { metric: 'Conversion Rate', value: (Math.random() * 10 + 5).toFixed(2) + '%' },
+      ],
     };
   }
 
@@ -460,9 +478,9 @@ export class WebSocketService {
       target: 1000,
       trend: {
         direction: Math.random() > 0.5 ? 'up' : 'down',
-        percentage: (Math.random() * 10).toFixed(1)
+        percentage: (Math.random() * 10).toFixed(1),
       },
-      last_updated: new Date().toISOString()
+      last_updated: new Date().toISOString(),
     };
   }
 
@@ -473,8 +491,7 @@ export class WebSocketService {
   }
 
   private getSubscriberCount(channel: string): number {
-    return Array.from(this.clients.values())
-      .filter(client => client.subscriptions.has(channel))
+    return Array.from(this.clients.values()).filter((client) => client.subscriptions.has(channel))
       .length;
   }
 
@@ -485,9 +502,9 @@ export class WebSocketService {
 
   public getActiveSubscriptions(): Record<string, number> {
     const subscriptions: Record<string, number> = {};
-    
-    this.clients.forEach(client => {
-      client.subscriptions.forEach(subscription => {
+
+    this.clients.forEach((client) => {
+      client.subscriptions.forEach((subscription) => {
         subscriptions[subscription] = (subscriptions[subscription] || 0) + 1;
       });
     });
@@ -500,15 +517,15 @@ export class WebSocketService {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
     }
-    
+
     if (this.dataUpdateInterval) {
       clearInterval(this.dataUpdateInterval);
     }
 
-    this.clients.forEach(client => {
+    this.clients.forEach((client) => {
       client.socket.close();
     });
-    
+
     this.clients.clear();
 
     if (this.wss) {

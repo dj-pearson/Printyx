@@ -3,7 +3,12 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { createPaginatedQuery, PaginationParams, PaginatedResponse, CACHE_TIMES } from '../lib/queryOptimizations';
+import {
+  createPaginatedQuery,
+  PaginationParams,
+  PaginatedResponse,
+  CACHE_TIMES,
+} from '../lib/queryOptimizations';
 
 interface UsePaginatedQueryOptions<T> extends PaginationParams {
   endpoint: string;
@@ -28,7 +33,7 @@ export function usePaginatedQuery<T>(options: UsePaginatedQueryOptions<T>) {
   const { queryKey: paginatedQueryKey, queryFn } = createPaginatedQuery<T>(
     queryKey,
     endpoint,
-    paginationParams
+    paginationParams,
   );
 
   const result = useQuery<PaginatedResponse<T>>({

@@ -6,13 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -98,9 +92,7 @@ export function TeamStatsWidget({
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Team Stats
-          </CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Team Stats</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-sm text-muted-foreground">
@@ -115,9 +107,7 @@ export function TeamStatsWidget({
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Team Stats
-          </CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">Team Stats</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="h-20 bg-muted animate-pulse rounded" />
@@ -154,12 +144,7 @@ export function TeamStatsWidget({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-medium">Team Stats</CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => refetch()}
-              className="h-7 w-7 p-0"
-            >
+            <Button variant="ghost" size="sm" onClick={() => refetch()} className="h-7 w-7 p-0">
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>
@@ -170,7 +155,7 @@ export function TeamStatsWidget({
             <span
               className={cn(
                 'font-bold',
-                getQuotaAttainmentColor(stats?.performance.quotaAttainment || 0)
+                getQuotaAttainmentColor(stats?.performance.quotaAttainment || 0),
               )}
             >
               {stats?.performance.quotaAttainment.toFixed(0)}%
@@ -178,9 +163,7 @@ export function TeamStatsWidget({
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Pipeline</span>
-            <span className="font-medium">
-              {formatCurrency(stats?.pipeline.totalValue || 0)}
-            </span>
+            <span className="font-medium">{formatCurrency(stats?.pipeline.totalValue || 0)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Team Size</span>
@@ -212,15 +195,8 @@ export function TeamStatsWidget({
             >
               {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              <RefreshCw
-                className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')}
-              />
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+              <RefreshCw className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')} />
               Refresh
             </Button>
           </div>
@@ -237,7 +213,7 @@ export function TeamStatsWidget({
             <span
               className={cn(
                 'text-2xl font-bold',
-                getQuotaAttainmentColor(stats?.performance.quotaAttainment || 0)
+                getQuotaAttainmentColor(stats?.performance.quotaAttainment || 0),
               )}
             >
               {stats?.performance.quotaAttainment.toFixed(1)}%
@@ -246,8 +222,7 @@ export function TeamStatsWidget({
           <Progress value={stats?.performance.quotaAttainment || 0} className="h-2" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              {stats?.performance.repsOnTrack} of {stats?.performance.totalReps} on
-              track
+              {stats?.performance.repsOnTrack} of {stats?.performance.totalReps} on track
             </span>
             <span>{formatCurrency(stats?.performance.revenue || 0)} MTD</span>
           </div>
@@ -278,9 +253,7 @@ export function TeamStatsWidget({
             </div>
           </div>
           {showDetails && (
-            <div className="text-xs text-muted-foreground">
-              Top: {stats?.pipeline.topRep}
-            </div>
+            <div className="text-xs text-muted-foreground">Top: {stats?.pipeline.topRep}</div>
           )}
         </div>
 
@@ -301,13 +274,13 @@ export function TeamStatsWidget({
               <div className="text-sm text-muted-foreground">
                 {stats?.activity.averagePerRep.toFixed(0)} avg/rep
               </div>
-              <div className="text-xs text-muted-foreground">Win Rate: {stats?.performance.winRate.toFixed(1)}%</div>
+              <div className="text-xs text-muted-foreground">
+                Win Rate: {stats?.performance.winRate.toFixed(1)}%
+              </div>
             </div>
           </div>
           {showDetails && (
-            <div className="text-xs text-muted-foreground">
-              Top: {stats?.activity.topRep}
-            </div>
+            <div className="text-xs text-muted-foreground">Top: {stats?.activity.topRep}</div>
           )}
         </div>
       </CardContent>

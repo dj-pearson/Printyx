@@ -4,11 +4,11 @@
  * Consolidates functionality from AITaskScheduling.tsx and TaskManagementPage.tsx
  */
 
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   Brain,
   Lightbulb,
@@ -18,7 +18,7 @@ import {
   Calendar,
   BarChart3,
   Target,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface AIInsightsViewProps {
   tasks: any[];
@@ -40,55 +40,55 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
   // Mock AI suggestions
   const aiSuggestions = [
     {
-      id: "1",
-      type: "task",
-      title: "Follow up with high-priority leads",
+      id: '1',
+      type: 'task',
+      title: 'Follow up with high-priority leads',
       description: "3 leads haven't been contacted in 5+ days",
       confidence: 0.85,
-      actionLabel: "Create Tasks",
+      actionLabel: 'Create Tasks',
     },
     {
-      id: "2",
-      type: "scheduling",
-      title: "Reschedule complex tasks to morning",
-      description: "Your productivity is 40% higher in the morning for complex tasks",
+      id: '2',
+      type: 'scheduling',
+      title: 'Reschedule complex tasks to morning',
+      description: 'Your productivity is 40% higher in the morning for complex tasks',
       confidence: 0.78,
-      actionLabel: "Apply Changes",
+      actionLabel: 'Apply Changes',
     },
     {
-      id: "3",
-      type: "optimization",
-      title: "Block focus time for proposals",
-      description: "Uninterrupted 2-hour blocks increase completion by 60%",
+      id: '3',
+      type: 'optimization',
+      title: 'Block focus time for proposals',
+      description: 'Uninterrupted 2-hour blocks increase completion by 60%',
       confidence: 0.92,
-      actionLabel: "Schedule Focus Time",
+      actionLabel: 'Schedule Focus Time',
     },
   ];
 
   const productivityMetrics = [
     {
-      label: "Avg. Completion Time",
-      value: "42 min",
+      label: 'Avg. Completion Time',
+      value: '42 min',
       icon: Clock,
-      color: "text-blue-600",
+      color: 'text-blue-600',
     },
     {
-      label: "On-Time Rate",
-      value: "87%",
+      label: 'On-Time Rate',
+      value: '87%',
       icon: Target,
-      color: "text-green-600",
+      color: 'text-green-600',
     },
     {
-      label: "Task Velocity",
-      value: "+15%",
+      label: 'Task Velocity',
+      value: '+15%',
       icon: TrendingUp,
-      color: "text-purple-600",
+      color: 'text-purple-600',
     },
     {
-      label: "Focus Score",
-      value: "8.2/10",
+      label: 'Focus Score',
+      value: '8.2/10',
       icon: Brain,
-      color: "text-orange-600",
+      color: 'text-orange-600',
     },
   ];
 
@@ -97,8 +97,8 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
       {/* AI Actions */}
       <div className="flex items-center gap-3">
         <Button onClick={handleAIScheduling} disabled={isScheduling}>
-          <Zap className={`h-4 w-4 mr-2 ${isScheduling ? "animate-pulse" : ""}`} />
-          {isScheduling ? "AI Scheduling..." : "Run AI Schedule Optimization"}
+          <Zap className={`h-4 w-4 mr-2 ${isScheduling ? 'animate-pulse' : ''}`} />
+          {isScheduling ? 'AI Scheduling...' : 'Run AI Schedule Optimization'}
         </Button>
         <Button variant="outline">
           <Brain className="h-4 w-4 mr-2" />
@@ -117,12 +117,8 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">
-                    {metric.label}
-                  </p>
-                  <p className={`text-2xl font-bold ${metric.color}`}>
-                    {metric.value}
-                  </p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{metric.label}</p>
+                  <p className={`text-2xl font-bold ${metric.color}`}>{metric.value}</p>
                 </div>
                 <metric.icon className={`h-8 w-8 ${metric.color}`} />
               </div>
@@ -150,18 +146,16 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
                       {Math.round(suggestion.confidence * 100)}% confidence
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {suggestion.description}
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">{suggestion.description}</p>
                   <div className="flex items-center justify-between">
                     <Badge
                       variant="secondary"
                       className={
-                        suggestion.type === "task"
-                          ? "bg-blue-100 text-blue-800"
-                          : suggestion.type === "scheduling"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-purple-100 text-purple-800"
+                        suggestion.type === 'task'
+                          ? 'bg-blue-100 text-blue-800'
+                          : suggestion.type === 'scheduling'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-purple-100 text-purple-800'
                       }
                     >
                       {suggestion.type}
@@ -242,12 +236,10 @@ export function AIInsightsView({ tasks, stats, isLoading }: AIInsightsViewProps)
             </CardHeader>
             <CardContent>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-sm text-yellow-800 mb-2 font-medium">
-                  🧠 Batch Similar Tasks
-                </p>
+                <p className="text-sm text-yellow-800 mb-2 font-medium">🧠 Batch Similar Tasks</p>
                 <p className="text-xs text-yellow-700">
-                  Group similar tasks like phone calls or emails together.
-                  This reduces context switching and can improve efficiency by up to 25%.
+                  Group similar tasks like phone calls or emails together. This reduces context
+                  switching and can improve efficiency by up to 25%.
                 </p>
               </div>
             </CardContent>

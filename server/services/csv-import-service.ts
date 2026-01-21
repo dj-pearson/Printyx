@@ -9,8 +9,8 @@
  * - Import execution with rollback support
  */
 
-import { db } from "../db";
-import { eq, and, or, ilike, sql } from "drizzle-orm";
+import { db } from '../db';
+import { eq, and, or, ilike, sql } from 'drizzle-orm';
 import {
   csvImportJobs,
   csvImportDuplicates,
@@ -27,14 +27,9 @@ import {
   type MatchingField,
   type MergeStrategy,
   type TemplateColumn,
-} from "@shared/csv-import-schema";
-import {
-  businessRecords,
-  enhancedContacts,
-  equipment,
-  inventoryItems,
-} from "@shared/schema";
-import { storage } from "../storage";
+} from '@shared/csv-import-schema';
+import { businessRecords, enhancedContacts, equipment, inventoryItems } from '@shared/schema';
+import { storage } from '../storage';
 
 // ============= CSV PARSING =============
 
@@ -61,7 +56,7 @@ export function parseCSVContent(content: string): ParsedCSV {
 
     const row: Record<string, any> = {};
     headers.forEach((header, index) => {
-      row[header] = values[index]?.trim() || "";
+      row[header] = values[index]?.trim() || '';
     });
     rows.push(row);
   }
@@ -71,7 +66,7 @@ export function parseCSVContent(content: string): ParsedCSV {
 
 function parseCSVLine(line: string): string[] {
   const result: string[] = [];
-  let current = "";
+  let current = '';
   let inQuotes = false;
 
   for (let i = 0; i < line.length; i++) {
@@ -85,9 +80,9 @@ function parseCSVLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (char === "," && !inQuotes) {
+    } else if (char === ',' && !inQuotes) {
       result.push(current.trim());
-      current = "";
+      current = '';
     } else {
       current += char;
     }
@@ -105,10 +100,7 @@ export interface AutoMappingResult {
   overallConfidence: number;
 }
 
-export function autoMapColumns(
-  sourceHeaders: string[],
-  entityType: string
-): AutoMappingResult {
+export function autoMapColumns(sourceHeaders: string[], entityType: string): AutoMappingResult {
   const templateColumns = ENTITY_TEMPLATES[entityType] || [];
   const mappings: ColumnMapping[] = [];
   const unmappedColumns: string[] = [];
@@ -148,7 +140,7 @@ export function autoMapColumns(
       // Fuzzy match
       const fuzzyScore = calculateSimilarity(
         normalizedSource,
-        normalizeColumnName(templateCol.name)
+        normalizeColumnName(templateCol.name),
       );
       if (fuzzyScore > bestScore && fuzzyScore >= 60) {
         bestMatch = templateCol;
@@ -183,7 +175,7 @@ export function autoMapColumns(
 function normalizeColumnName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
+    .replace(/[^a-z0-9]/g, '')
     .trim();
 }
 
@@ -207,7 +199,7 @@ function calculateSimilarity(a: string, b: string): number {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1,
           matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
+          matrix[i - 1][j] + 1,
         );
       }
     }
@@ -223,13 +215,13 @@ export function validateRow(
   row: Record<string, any>,
   mappings: ColumnMapping[],
   entityType: string,
-  rowNumber: number
+  rowNumber: number,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
   for (const mapping of mappings) {
     const value = row[mapping.sourceColumn];
-    const isEmpty = value === undefined || value === null || value === "";
+    const isEmpty = value === undefined || value === null || value === '';
 
     // Required field check
     if (mapping.isRequired && isEmpty) {
@@ -237,7 +229,7 @@ export function validateRow(
         rowNumber,
         column: mapping.sourceColumn,
         value,
-        errorType: "required",
+        errorType: 'required',
         message: `${mapping.sourceColumn} is required`,
       });
       continue;
@@ -247,92 +239,92 @@ export function validateRow(
 
     // Type validation
     switch (mapping.dataType) {
-      case "email":
+      case 'email':
         if (!isValidEmail(value)) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "format",
+            errorType: 'format',
             message: `Invalid email format`,
-            suggestion: "Ensure email is in format: name@domain.com",
+            suggestion: 'Ensure email is in format: name@domain.com',
           });
         }
         break;
 
-      case "phone":
+      case 'phone':
         if (!isValidPhone(value)) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "format",
+            errorType: 'format',
             message: `Invalid phone format`,
-            suggestion: "Use format: (555) 123-4567 or 555-123-4567",
+            suggestion: 'Use format: (555) 123-4567 or 555-123-4567',
           });
         }
         break;
 
-      case "number":
+      case 'number':
         if (isNaN(parseFloat(value))) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "type",
+            errorType: 'type',
             message: `Expected a number`,
           });
         }
         break;
 
-      case "currency":
-        const cleaned = String(value).replace(/[$,]/g, "");
+      case 'currency':
+        const cleaned = String(value).replace(/[$,]/g, '');
         if (isNaN(parseFloat(cleaned))) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "type",
+            errorType: 'type',
             message: `Invalid currency value`,
           });
         }
         break;
 
-      case "date":
+      case 'date':
         if (!isValidDate(value)) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "format",
+            errorType: 'format',
             message: `Invalid date format`,
-            suggestion: "Use format: YYYY-MM-DD or MM/DD/YYYY",
+            suggestion: 'Use format: YYYY-MM-DD or MM/DD/YYYY',
           });
         }
         break;
 
-      case "boolean":
+      case 'boolean':
         const boolVal = String(value).toLowerCase();
-        if (!["true", "false", "yes", "no", "1", "0", "y", "n"].includes(boolVal)) {
+        if (!['true', 'false', 'yes', 'no', '1', '0', 'y', 'n'].includes(boolVal)) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "type",
+            errorType: 'type',
             message: `Expected true/false, yes/no, or 1/0`,
           });
         }
         break;
 
-      case "url":
+      case 'url':
         if (!isValidUrl(value)) {
           errors.push({
             rowNumber,
             column: mapping.sourceColumn,
             value,
-            errorType: "format",
+            errorType: 'format',
             message: `Invalid URL format`,
-            suggestion: "Include http:// or https://",
+            suggestion: 'Include http:// or https://',
           });
         }
         break;
@@ -347,7 +339,7 @@ function isValidEmail(value: string): boolean {
 }
 
 function isValidPhone(value: string): boolean {
-  const digits = value.replace(/\D/g, "");
+  const digits = value.replace(/\D/g, '');
   return digits.length >= 10 && digits.length <= 15;
 }
 
@@ -375,13 +367,13 @@ function isValidUrl(value: string): boolean {
 
 export function transformRow(
   row: Record<string, any>,
-  mappings: ColumnMapping[]
+  mappings: ColumnMapping[],
 ): Record<string, any> {
   const transformed: Record<string, any> = {};
 
   for (const mapping of mappings) {
     const sourceValue = row[mapping.sourceColumn];
-    if (sourceValue === undefined || sourceValue === null || sourceValue === "") {
+    if (sourceValue === undefined || sourceValue === null || sourceValue === '') {
       continue;
     }
 
@@ -389,35 +381,35 @@ export function transformRow(
 
     // Transform based on data type
     switch (mapping.dataType) {
-      case "phone":
+      case 'phone':
         value = normalizePhone(sourceValue);
         break;
 
-      case "email":
+      case 'email':
         value = String(sourceValue).toLowerCase().trim();
         break;
 
-      case "number":
+      case 'number':
         value = parseFloat(sourceValue);
         break;
 
-      case "currency":
-        value = String(sourceValue).replace(/[$,]/g, "");
+      case 'currency':
+        value = String(sourceValue).replace(/[$,]/g, '');
         value = parseFloat(value);
         break;
 
-      case "date":
+      case 'date':
         const date = new Date(sourceValue);
-        value = date.toISOString().split("T")[0];
+        value = date.toISOString().split('T')[0];
         break;
 
-      case "boolean":
+      case 'boolean':
         const boolVal = String(sourceValue).toLowerCase();
-        value = ["true", "yes", "1", "y"].includes(boolVal);
+        value = ['true', 'yes', '1', 'y'].includes(boolVal);
         break;
 
-      case "url":
-        if (!sourceValue.startsWith("http")) {
+      case 'url':
+        if (!sourceValue.startsWith('http')) {
           value = `https://${sourceValue}`;
         }
         break;
@@ -433,11 +425,11 @@ export function transformRow(
 }
 
 function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
+  const digits = phone.replace(/\D/g, '');
   if (digits.length === 10) {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   }
-  if (digits.length === 11 && digits[0] === "1") {
+  if (digits.length === 11 && digits[0] === '1') {
     return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
   }
   return phone;
@@ -455,7 +447,7 @@ export interface DuplicateMatch {
 export async function findDuplicates(
   transformedRow: Record<string, any>,
   entityType: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<DuplicateMatch[]> {
   const config = DUPLICATE_DETECTION_CONFIG[entityType];
   if (!config) return [];
@@ -468,7 +460,7 @@ export async function findDuplicates(
   for (const field of config.primaryFields) {
     const value = transformedRow[field];
     if (value) {
-      searchConditions.push({ field, value, type: "exact" });
+      searchConditions.push({ field, value, type: 'exact' });
     }
   }
 
@@ -476,18 +468,14 @@ export async function findDuplicates(
   for (const field of config.secondaryFields) {
     const value = transformedRow[field];
     if (value) {
-      searchConditions.push({ field, value, type: "fuzzy" });
+      searchConditions.push({ field, value, type: 'fuzzy' });
     }
   }
 
   if (searchConditions.length === 0) return [];
 
   // Search for potential duplicates based on entity type
-  const existingRecords = await searchExistingRecords(
-    entityType,
-    tenantId,
-    searchConditions
-  );
+  const existingRecords = await searchExistingRecords(entityType, tenantId, searchConditions);
 
   // Score each potential match
   for (const existing of existingRecords) {
@@ -503,14 +491,14 @@ export async function findDuplicates(
         const similarity = calculateFieldSimilarity(
           importValue,
           existingValue,
-          config.fuzzyMatchFields.includes(field)
+          config.fuzzyMatchFields.includes(field),
         );
         if (similarity > 50) {
           matchingFields.push({
             fieldName: field,
             importValue,
             existingValue,
-            matchType: similarity === 100 ? "exact" : "fuzzy",
+            matchType: similarity === 100 ? 'exact' : 'fuzzy',
             similarity,
           });
           totalScore += similarity * 2; // Double weight for primary fields
@@ -527,14 +515,14 @@ export async function findDuplicates(
         const similarity = calculateFieldSimilarity(
           importValue,
           existingValue,
-          config.fuzzyMatchFields.includes(field)
+          config.fuzzyMatchFields.includes(field),
         );
         if (similarity > 50) {
           matchingFields.push({
             fieldName: field,
             importValue,
             existingValue,
-            matchType: similarity === 100 ? "exact" : "fuzzy",
+            matchType: similarity === 100 ? 'exact' : 'fuzzy',
             similarity,
           });
           totalScore += similarity;
@@ -563,39 +551,39 @@ export async function findDuplicates(
 async function searchExistingRecords(
   entityType: string,
   tenantId: string,
-  conditions: Array<{ field: string; value: any; type: string }>
+  conditions: Array<{ field: string; value: any; type: string }>,
 ): Promise<Record<string, any>[]> {
   // Build OR conditions for potential matches
   const orConditions: any[] = [];
 
   for (const condition of conditions) {
-    if (condition.type === "exact") {
+    if (condition.type === 'exact') {
       orConditions.push({
         field: condition.field,
         value: condition.value,
-        operator: "eq",
+        operator: 'eq',
       });
     } else {
       // For fuzzy, use ILIKE
       orConditions.push({
         field: condition.field,
         value: `%${condition.value}%`,
-        operator: "ilike",
+        operator: 'ilike',
       });
     }
   }
 
   switch (entityType) {
-    case "business_records":
+    case 'business_records':
       return await searchBusinessRecords(tenantId, orConditions);
 
-    case "contacts":
+    case 'contacts':
       return await searchContacts(tenantId, orConditions);
 
-    case "equipment":
+    case 'equipment':
       return await searchEquipment(tenantId, orConditions);
 
-    case "inventory":
+    case 'inventory':
       return await searchInventory(tenantId, orConditions);
 
     default:
@@ -605,21 +593,23 @@ async function searchExistingRecords(
 
 async function searchBusinessRecords(
   tenantId: string,
-  conditions: Array<{ field: string; value: any; operator: string }>
+  conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
   // Build dynamic WHERE conditions
   const whereConditions: any[] = [eq(businessRecords.tenantId, tenantId)];
 
   if (conditions.length > 0) {
-    const orClauses = conditions.map((c) => {
-      const column = (businessRecords as any)[c.field];
-      if (!column) return null;
-      if (c.operator === "eq") {
-        return eq(column, c.value);
-      } else {
-        return ilike(column, c.value);
-      }
-    }).filter(Boolean);
+    const orClauses = conditions
+      .map((c) => {
+        const column = (businessRecords as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -637,20 +627,22 @@ async function searchBusinessRecords(
 
 async function searchContacts(
   tenantId: string,
-  conditions: Array<{ field: string; value: any; operator: string }>
+  conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
   const whereConditions: any[] = [eq(enhancedContacts.tenantId, tenantId)];
 
   if (conditions.length > 0) {
-    const orClauses = conditions.map((c) => {
-      const column = (enhancedContacts as any)[c.field];
-      if (!column) return null;
-      if (c.operator === "eq") {
-        return eq(column, c.value);
-      } else {
-        return ilike(column, c.value);
-      }
-    }).filter(Boolean);
+    const orClauses = conditions
+      .map((c) => {
+        const column = (enhancedContacts as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -668,20 +660,22 @@ async function searchContacts(
 
 async function searchEquipment(
   tenantId: string,
-  conditions: Array<{ field: string; value: any; operator: string }>
+  conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
   const whereConditions: any[] = [eq(equipment.tenantId, tenantId)];
 
   if (conditions.length > 0) {
-    const orClauses = conditions.map((c) => {
-      const column = (equipment as any)[c.field];
-      if (!column) return null;
-      if (c.operator === "eq") {
-        return eq(column, c.value);
-      } else {
-        return ilike(column, c.value);
-      }
-    }).filter(Boolean);
+    const orClauses = conditions
+      .map((c) => {
+        const column = (equipment as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -699,20 +693,22 @@ async function searchEquipment(
 
 async function searchInventory(
   tenantId: string,
-  conditions: Array<{ field: string; value: any; operator: string }>
+  conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
   const whereConditions: any[] = [eq(inventoryItems.tenantId, tenantId)];
 
   if (conditions.length > 0) {
-    const orClauses = conditions.map((c) => {
-      const column = (inventoryItems as any)[c.field];
-      if (!column) return null;
-      if (c.operator === "eq") {
-        return eq(column, c.value);
-      } else {
-        return ilike(column, c.value);
-      }
-    }).filter(Boolean);
+    const orClauses = conditions
+      .map((c) => {
+        const column = (inventoryItems as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -728,11 +724,7 @@ async function searchInventory(
   return results;
 }
 
-function calculateFieldSimilarity(
-  importValue: any,
-  existingValue: any,
-  useFuzzy: boolean
-): number {
+function calculateFieldSimilarity(importValue: any, existingValue: any, useFuzzy: boolean): number {
   const a = String(importValue).toLowerCase().trim();
   const b = String(existingValue).toLowerCase().trim();
 
@@ -744,8 +736,8 @@ function calculateFieldSimilarity(
   }
 
   // Normalized comparison
-  const normalizedA = a.replace(/[^a-z0-9]/g, "");
-  const normalizedB = b.replace(/[^a-z0-9]/g, "");
+  const normalizedA = a.replace(/[^a-z0-9]/g, '');
+  const normalizedB = b.replace(/[^a-z0-9]/g, '');
 
   if (normalizedA === normalizedB) return 95;
 
@@ -758,22 +750,22 @@ function calculateFieldSimilarity(
 export function mergeRecords(
   importData: Record<string, any>,
   existingData: Record<string, any>,
-  strategy: MergeStrategy
+  strategy: MergeStrategy,
 ): Record<string, any> {
   const merged: Record<string, any> = { ...existingData };
 
   for (const [field, source] of Object.entries(strategy.fieldSources)) {
-    if (source === "import") {
-      if (importData[field] !== undefined && importData[field] !== null && importData[field] !== "") {
+    if (source === 'import') {
+      if (
+        importData[field] !== undefined &&
+        importData[field] !== null &&
+        importData[field] !== ''
+      ) {
         merged[field] = importData[field];
       }
-    } else if (source === "combine") {
-      const combineRule = strategy.combineRules?.[field] || "newer";
-      merged[field] = combineFieldValues(
-        importData[field],
-        existingData[field],
-        combineRule
-      );
+    } else if (source === 'combine') {
+      const combineRule = strategy.combineRules?.[field] || 'newer';
+      merged[field] = combineFieldValues(importData[field], existingData[field], combineRule);
     }
     // If source === "existing", keep the existing value (already in merged)
   }
@@ -781,24 +773,20 @@ export function mergeRecords(
   return merged;
 }
 
-function combineFieldValues(
-  importValue: any,
-  existingValue: any,
-  rule: string
-): any {
+function combineFieldValues(importValue: any, existingValue: any, rule: string): any {
   if (!importValue) return existingValue;
   if (!existingValue) return importValue;
 
   switch (rule) {
-    case "concat":
+    case 'concat':
       return `${existingValue}; ${importValue}`;
 
-    case "longer":
+    case 'longer':
       return String(importValue).length > String(existingValue).length
         ? importValue
         : existingValue;
 
-    case "newer":
+    case 'newer':
     default:
       return importValue;
   }
@@ -825,7 +813,7 @@ export class CsvImportService {
     // Auto-map columns
     const { mappings, unmappedColumns, overallConfidence } = autoMapColumns(
       headers,
-      params.entityType
+      params.entityType,
     );
 
     // Create the import job
@@ -837,13 +825,13 @@ export class CsvImportService {
         entityType: params.entityType as any,
         fileName: params.fileName,
         fileSize: params.fileSize,
-        status: "validating",
+        status: 'validating',
         useAiRefinement: params.useAiRefinement || false,
         originalHeaders: headers,
         columnMappings: mappings,
         unmappedColumns,
         totalRows: rowCount,
-        duplicateStrategy: params.duplicateStrategy || "prompt",
+        duplicateStrategy: params.duplicateStrategy || 'prompt',
         rawData: rows,
       })
       .returning();
@@ -860,13 +848,10 @@ export class CsvImportService {
     errors: ValidationError[];
     duplicatesDetected: number;
   }> {
-    const [job] = await db
-      .select()
-      .from(csvImportJobs)
-      .where(eq(csvImportJobs.id, jobId));
+    const [job] = await db.select().from(csvImportJobs).where(eq(csvImportJobs.id, jobId));
 
     if (!job) {
-      throw new Error("Import job not found");
+      throw new Error('Import job not found');
     }
 
     const rawData = job.rawData as Record<string, any>[];
@@ -911,7 +896,7 @@ export class CsvImportService {
             existingRecordData: duplicates[0].existingRecord,
             matchingFields: duplicates[0].matchingFields,
             matchScore: duplicates[0].matchScore,
-            resolution: "pending",
+            resolution: 'pending',
           });
         }
 
@@ -920,11 +905,12 @@ export class CsvImportService {
     }
 
     // Update job with validation results
-    const newStatus = duplicatesDetected > 0 && job.duplicateStrategy === "prompt"
-      ? "awaiting_review"
-      : errors.length === 0 || validRows / rawData.length >= 0.8
-        ? "processing"
-        : "failed";
+    const newStatus =
+      duplicatesDetected > 0 && job.duplicateStrategy === 'prompt'
+        ? 'awaiting_review'
+        : errors.length === 0 || validRows / rawData.length >= 0.8
+          ? 'processing'
+          : 'failed';
 
     await db
       .update(csvImportJobs)
@@ -952,8 +938,8 @@ export class CsvImportService {
       .where(
         and(
           eq(csvImportDuplicates.importJobId, jobId),
-          eq(csvImportDuplicates.resolution, "pending")
-        )
+          eq(csvImportDuplicates.resolution, 'pending'),
+        ),
       );
   }
 
@@ -962,7 +948,7 @@ export class CsvImportService {
    */
   static async resolveDuplicate(params: {
     duplicateId: string;
-    resolution: "skip" | "merge" | "create_new";
+    resolution: 'skip' | 'merge' | 'create_new';
     mergeStrategy?: MergeStrategy;
     userId: string;
   }): Promise<void> {
@@ -982,7 +968,7 @@ export class CsvImportService {
    */
   static async resolveAllDuplicates(params: {
     jobId: string;
-    resolution: "skip" | "merge" | "create_new";
+    resolution: 'skip' | 'merge' | 'create_new';
     userId: string;
   }): Promise<number> {
     const result = await db
@@ -995,8 +981,8 @@ export class CsvImportService {
       .where(
         and(
           eq(csvImportDuplicates.importJobId, params.jobId),
-          eq(csvImportDuplicates.resolution, "pending")
-        )
+          eq(csvImportDuplicates.resolution, 'pending'),
+        ),
       )
       .returning();
 
@@ -1012,18 +998,15 @@ export class CsvImportService {
     merged: number;
     errors: ImportError[];
   }> {
-    const [job] = await db
-      .select()
-      .from(csvImportJobs)
-      .where(eq(csvImportJobs.id, jobId));
+    const [job] = await db.select().from(csvImportJobs).where(eq(csvImportJobs.id, jobId));
 
     if (!job) {
-      throw new Error("Import job not found");
+      throw new Error('Import job not found');
     }
 
     // Check for unresolved duplicates
     const pendingDuplicates = await this.getPendingDuplicates(jobId);
-    if (pendingDuplicates.length > 0 && job.duplicateStrategy === "prompt") {
+    if (pendingDuplicates.length > 0 && job.duplicateStrategy === 'prompt') {
       throw new Error(`${pendingDuplicates.length} duplicates still need resolution`);
     }
 
@@ -1036,7 +1019,9 @@ export class CsvImportService {
     const duplicateRowNumbers = new Set(allDuplicates.map((d) => d.rowNumber));
     const duplicateMap = new Map(allDuplicates.map((d) => [d.rowNumber, d]));
 
-    const transformedData = job.transformedData as Array<Record<string, any> & { _rowNumber: number }>;
+    const transformedData = job.transformedData as Array<
+      Record<string, any> & { _rowNumber: number }
+    >;
     const entityType = job.entityType;
     const tenantId = job.tenantId;
 
@@ -1048,7 +1033,7 @@ export class CsvImportService {
     // Update status to processing
     await db
       .update(csvImportJobs)
-      .set({ status: "processing", startedAt: new Date() })
+      .set({ status: 'processing', startedAt: new Date() })
       .where(eq(csvImportJobs.id, jobId));
 
     for (const row of transformedData) {
@@ -1060,30 +1045,24 @@ export class CsvImportService {
           const duplicate = duplicateMap.get(rowNumber)!;
           const resolution = duplicate.resolution || job.duplicateStrategy;
 
-          if (resolution === "skip" || resolution === "skip_all") {
+          if (resolution === 'skip' || resolution === 'skip_all') {
             skipped++;
             continue;
           }
 
-          if (resolution === "merge" || resolution === "merge_all") {
+          if (resolution === 'merge' || resolution === 'merge_all') {
             // Merge with existing record
             const mergeStrategy = duplicate.mergeStrategy || {
-              fieldSources: Object.fromEntries(
-                Object.keys(row).map((k) => [k, "import" as const])
-              ),
+              fieldSources: Object.fromEntries(Object.keys(row).map((k) => [k, 'import' as const])),
             };
 
             const mergedData = mergeRecords(
               row,
               duplicate.existingRecordData as Record<string, any>,
-              mergeStrategy
+              mergeStrategy,
             );
 
-            await updateExistingRecord(
-              entityType,
-              duplicate.existingRecordId!,
-              mergedData
-            );
+            await updateExistingRecord(entityType, duplicate.existingRecordId!, mergedData);
 
             // Update duplicate with result
             await db
@@ -1114,8 +1093,8 @@ export class CsvImportService {
       } catch (error: any) {
         errors.push({
           rowNumber,
-          errorType: "import_error",
-          message: error.message || "Unknown error",
+          errorType: 'import_error',
+          message: error.message || 'Unknown error',
           details: { row },
         });
       }
@@ -1125,7 +1104,7 @@ export class CsvImportService {
     await db
       .update(csvImportJobs)
       .set({
-        status: errors.length > 0 && imported === 0 ? "failed" : "completed",
+        status: errors.length > 0 && imported === 0 ? 'failed' : 'completed',
         importedRows: imported,
         skippedRows: skipped,
         mergedRows: merged,
@@ -1142,10 +1121,7 @@ export class CsvImportService {
   /**
    * Update column mappings (user confirmation)
    */
-  static async updateColumnMappings(
-    jobId: string,
-    mappings: ColumnMapping[]
-  ): Promise<void> {
+  static async updateColumnMappings(jobId: string, mappings: ColumnMapping[]): Promise<void> {
     await db
       .update(csvImportJobs)
       .set({
@@ -1159,10 +1135,7 @@ export class CsvImportService {
    * Get import job by ID
    */
   static async getImportJob(jobId: string): Promise<CsvImportJob | null> {
-    const [job] = await db
-      .select()
-      .from(csvImportJobs)
-      .where(eq(csvImportJobs.id, jobId));
+    const [job] = await db.select().from(csvImportJobs).where(eq(csvImportJobs.id, jobId));
     return job || null;
   }
 
@@ -1171,7 +1144,7 @@ export class CsvImportService {
    */
   static async getImportJobs(
     tenantId: string,
-    options?: { entityType?: string; status?: string; limit?: number }
+    options?: { entityType?: string; status?: string; limit?: number },
   ): Promise<CsvImportJob[]> {
     const conditions = [eq(csvImportJobs.tenantId, tenantId)];
 
@@ -1197,7 +1170,7 @@ export class CsvImportService {
     await db
       .update(csvImportJobs)
       .set({
-        status: "cancelled",
+        status: 'cancelled',
         updatedAt: new Date(),
       })
       .where(eq(csvImportJobs.id, jobId));
@@ -1219,12 +1192,9 @@ export class CsvImportService {
     const sampleRow = columns.map((c) => c.example);
 
     // Create CSV content
-    const csvLines = [
-      headers.map(escapeCSV).join(","),
-      sampleRow.map(escapeCSV).join(","),
-    ];
+    const csvLines = [headers.map(escapeCSV).join(','), sampleRow.map(escapeCSV).join(',')];
 
-    return csvLines.join("\n");
+    return csvLines.join('\n');
   }
 
   /**
@@ -1240,10 +1210,10 @@ export class CsvImportService {
 async function createNewRecord(
   entityType: string,
   tenantId: string,
-  data: Record<string, any>
+  data: Record<string, any>,
 ): Promise<string> {
   switch (entityType) {
-    case "business_records":
+    case 'business_records':
       const [br] = await db
         .insert(businessRecords)
         .values({
@@ -1255,7 +1225,7 @@ async function createNewRecord(
         .returning({ id: businessRecords.id });
       return br.id;
 
-    case "contacts":
+    case 'contacts':
       const [contact] = await db
         .insert(enhancedContacts)
         .values({
@@ -1267,7 +1237,7 @@ async function createNewRecord(
         .returning({ id: enhancedContacts.id });
       return contact.id;
 
-    case "equipment":
+    case 'equipment':
       const [equip] = await db
         .insert(equipment)
         .values({
@@ -1279,7 +1249,7 @@ async function createNewRecord(
         .returning({ id: equipment.id });
       return equip.id;
 
-    case "inventory":
+    case 'inventory':
       const [inv] = await db
         .insert(inventoryItems)
         .values({
@@ -1299,34 +1269,34 @@ async function createNewRecord(
 async function updateExistingRecord(
   entityType: string,
   recordId: string,
-  data: Record<string, any>
+  data: Record<string, any>,
 ): Promise<void> {
   // Remove id and tenantId from update data
   const { id, tenantId, createdAt, ...updateData } = data;
 
   switch (entityType) {
-    case "business_records":
+    case 'business_records':
       await db
         .update(businessRecords)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(businessRecords.id, recordId));
       break;
 
-    case "contacts":
+    case 'contacts':
       await db
         .update(enhancedContacts)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(enhancedContacts.id, recordId));
       break;
 
-    case "equipment":
+    case 'equipment':
       await db
         .update(equipment)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(equipment.id, recordId));
       break;
 
-    case "inventory":
+    case 'inventory':
       await db
         .update(inventoryItems)
         .set({ ...updateData, updatedAt: new Date() })
@@ -1339,7 +1309,7 @@ async function updateExistingRecord(
 }
 
 function escapeCSV(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;

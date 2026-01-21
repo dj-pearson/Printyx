@@ -85,7 +85,7 @@ const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
   },
 
   day_1_standard: {
-    subject: 'The hidden cost of printer downtime (it\'s worse than you think)',
+    subject: "The hidden cost of printer downtime (it's worse than you think)",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h1>The True Cost of Printer Downtime</h1>
@@ -166,7 +166,7 @@ export async function sendEmail(
   subject: string,
   html: string,
   text: string,
-  attachments?: Array<{ filename: string; content: Buffer }>
+  attachments?: Array<{ filename: string; content: Buffer }>,
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     // TODO: Implement actual email sending using Resend or SendGrid
@@ -224,7 +224,7 @@ export async function sendCalculatorReportEmail(
   email: string,
   companyName: string,
   isDealer: boolean,
-  pdfBuffer?: Buffer
+  pdfBuffer?: Buffer,
 ): Promise<boolean> {
   const template = getEmailTemplate(0, isDealer);
 
@@ -232,7 +232,13 @@ export async function sendCalculatorReportEmail(
     ? [{ filename: `${companyName}_Print_Fleet_Analysis.pdf`, content: pdfBuffer }]
     : [];
 
-  const result = await sendEmail(email, template.subject, template.html, template.text, attachments);
+  const result = await sendEmail(
+    email,
+    template.subject,
+    template.html,
+    template.text,
+    attachments,
+  );
 
   return result.success;
 }

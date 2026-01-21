@@ -6,7 +6,7 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
 // Using inline auth middleware since requireAuth is not available
@@ -28,9 +28,9 @@ router.use(enhanceUserContext);
 router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const aiAnalyticsData = {
@@ -45,7 +45,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
         lastModelUpdate: new Date('2025-01-28T00:00:00Z'),
         computeUtilization: 67.8,
         apiCallsToday: 2456,
-        costOptimization: 23.7 // percentage saved through optimization
+        costOptimization: 23.7, // percentage saved through optimization
       },
 
       // Predictive Customer Analytics
@@ -58,7 +58,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           predictionAccuracy: 89.4,
           interventioneSuccessRate: 73.2,
           estimatedRevenueSaved: 342500,
-          
+
           highRiskCustomers: [
             {
               customerId: 'CUST-001',
@@ -69,11 +69,11 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               recommendedActions: [
                 'Schedule executive meeting',
                 'Offer service upgrade',
-                'Provide usage training'
+                'Provide usage training',
               ],
               timeToIntervene: 14, // days
               lastInteraction: new Date('2025-01-15T00:00:00Z'),
-              trend: 'deteriorating'
+              trend: 'deteriorating',
             },
             {
               customerId: 'CUST-002',
@@ -84,19 +84,19 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               recommendedActions: [
                 'Early renewal offer',
                 'Competitive analysis',
-                'ROI demonstration'
+                'ROI demonstration',
               ],
               timeToIntervene: 21,
               lastInteraction: new Date('2025-01-20T00:00:00Z'),
-              trend: 'stable'
-            }
-          ]
+              trend: 'stable',
+            },
+          ],
         },
 
         lifetimeValuePrediction: {
           averagePredictedCLV: 48750,
           clivAccuracyRate: 91.7,
-          
+
           customerSegments: [
             {
               segment: 'High Value Prospects',
@@ -104,7 +104,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               avgPredictedCLV: 125400,
               conversionProbability: 0.73,
               recommendedInvestment: 2800,
-              expectedROI: 4.2
+              expectedROI: 4.2,
             },
             {
               segment: 'Growth Potential',
@@ -112,7 +112,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               avgPredictedCLV: 67800,
               conversionProbability: 0.84,
               recommendedInvestment: 1200,
-              expectedROI: 5.8
+              expectedROI: 5.8,
             },
             {
               segment: 'Standard Value',
@@ -120,9 +120,9 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               avgPredictedCLV: 28900,
               conversionProbability: 0.91,
               recommendedInvestment: 450,
-              expectedROI: 3.9
-            }
-          ]
+              expectedROI: 3.9,
+            },
+          ],
         },
 
         upsellPredictions: [
@@ -134,7 +134,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             upsellProbability: 0.76,
             recommendedProducts: ['Document Finishing', 'Cloud Services', 'Security Package'],
             bestApproachTime: new Date('2025-02-15T00:00:00Z'),
-            confidence: 0.83
+            confidence: 0.83,
           },
           {
             customerId: 'CUST-004',
@@ -144,9 +144,9 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             upsellProbability: 0.69,
             recommendedProducts: ['High-Volume Printing', 'HIPAA Compliance', 'Managed IT'],
             bestApproachTime: new Date('2025-02-10T00:00:00Z'),
-            confidence: 0.78
-          }
-        ]
+            confidence: 0.78,
+          },
+        ],
       },
 
       // Sales Forecasting with AI
@@ -156,19 +156,19 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             predicted: 487500,
             actual: 445200,
             confidence: 0.94,
-            variance: -8.7
+            variance: -8.7,
           },
           nextMonth: {
             predicted: 523800,
             confidence: 0.89,
-            factors: ['Seasonal uptick', 'Pipeline momentum', 'New product launch']
+            factors: ['Seasonal uptick', 'Pipeline momentum', 'New product launch'],
           },
           quarterlyForecast: {
             q1: { predicted: 1560000, confidence: 0.87 },
             q2: { predicted: 1685000, confidence: 0.82 },
             q3: { predicted: 1520000, confidence: 0.76 },
-            q4: { predicted: 1780000, confidence: 0.73 }
-          }
+            q4: { predicted: 1780000, confidence: 0.73 },
+          },
         },
 
         dealProbabilityScoring: [
@@ -176,22 +176,22 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             dealId: 'DEAL-001',
             prospectName: 'Enterprise Solutions Ltd',
             dealValue: 125000,
-            originalProbability: 0.60,
+            originalProbability: 0.6,
             aiProbability: 0.78,
             probabilityFactors: [
               { factor: 'Engagement level', impact: +0.12, confidence: 0.91 },
               { factor: 'Decision timeline', impact: +0.08, confidence: 0.87 },
               { factor: 'Budget confirmed', impact: +0.15, confidence: 0.95 },
-              { factor: 'Competitive pressure', impact: -0.17, confidence: 0.83 }
+              { factor: 'Competitive pressure', impact: -0.17, confidence: 0.83 },
             ],
             recommendedActions: [
               'Schedule C-level meeting',
               'Provide competitive differentiation',
-              'Create urgency with limited-time offer'
+              'Create urgency with limited-time offer',
             ],
             nextBestAction: 'Schedule demo with decision makers',
-            optimalCloseDate: new Date('2025-03-15T00:00:00Z')
-          }
+            optimalCloseDate: new Date('2025-03-15T00:00:00Z'),
+          },
         ],
 
         marketTrendAnalysis: {
@@ -202,14 +202,14 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             'Remote work printing solutions',
             'Sustainability/green printing',
             'AI-powered document management',
-            'Healthcare compliance printing'
+            'Healthcare compliance printing',
           ],
           threatAnalysis: [
             'Digital transformation reducing print volume',
             'Supply chain disruptions',
-            'New low-cost competitors'
-          ]
-        }
+            'New low-cost competitors',
+          ],
+        },
       },
 
       // Service Optimization AI
@@ -220,7 +220,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           preventedDowntime: 1247, // hours
           costSavings: 189400,
           accuracyRate: 87.6,
-          
+
           criticalAlerts: [
             {
               equipmentId: 'EQ-001',
@@ -232,7 +232,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               recommendedAction: 'Schedule preventive replacement',
               costOfFailure: 4500,
               costOfPrevention: 850,
-              savingsPotential: 3650
+              savingsPotential: 3650,
             },
             {
               equipmentId: 'EQ-002',
@@ -244,9 +244,9 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               recommendedAction: 'Order replacement drum',
               costOfFailure: 2800,
               costOfPrevention: 420,
-              savingsPotential: 2380
-            }
-          ]
+              savingsPotential: 2380,
+            },
+          ],
         },
 
         technicianOptimization: {
@@ -254,9 +254,9 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             averageTravelTime: 23.4, // minutes reduced
             fuelSavings: 1240, // dollars per month
             serviceCapacityIncrease: 18.7, // percentage
-            customerSatisfactionImprovement: 12.3
+            customerSatisfactionImprovement: 12.3,
           },
-          
+
           skillMatching: {
             accuracyRate: 94.1,
             firstCallResolution: 87.8, // percentage
@@ -266,16 +266,16 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
                 technician: 'Mike Johnson',
                 skillGap: 'Advanced color calibration',
                 trainingPriority: 'high',
-                businessImpact: 'Reduce repeat visits by 23%'
+                businessImpact: 'Reduce repeat visits by 23%',
               },
               {
                 technician: 'Sarah Kim',
                 skillGap: 'Network integration',
                 trainingPriority: 'medium',
-                businessImpact: 'Handle 40% more IT service calls'
-              }
-            ]
-          }
+                businessImpact: 'Handle 40% more IT service calls',
+              },
+            ],
+          },
         },
 
         inventoryOptimization: {
@@ -284,7 +284,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             carryingCostReduction: 34.2, // percentage
             stockoutPrevention: 96.7,
             overStockReduction: 28.9,
-            
+
             criticalInventoryAlerts: [
               {
                 partNumber: 'PART-001',
@@ -294,7 +294,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
                 recommendedOrder: 45,
                 supplier: 'Canon Direct',
                 leadTime: 3, // days
-                demandTrend: 'increasing'
+                demandTrend: 'increasing',
               },
               {
                 partNumber: 'PART-002',
@@ -304,11 +304,11 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
                 recommendedOrder: 20,
                 supplier: 'Xerox Parts',
                 leadTime: 5,
-                demandTrend: 'stable'
-              }
-            ]
-          }
-        }
+                demandTrend: 'stable',
+              },
+            ],
+          },
+        },
       },
 
       // AI-Powered Document Intelligence
@@ -319,13 +319,13 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           categoriesIdentified: 23,
           automatedWorkflows: 156,
           processingTimeReduction: 89.4, // percentage
-          
+
           documentTypes: [
             { type: 'Contracts', count: 12456, accuracy: 99.2, automation: 92.1 },
             { type: 'Invoices', count: 18934, accuracy: 98.9, automation: 96.7 },
             { type: 'Service Reports', count: 8745, accuracy: 97.3, automation: 87.4 },
-            { type: 'Purchase Orders', count: 5537, accuracy: 99.1, automation: 94.8 }
-          ]
+            { type: 'Purchase Orders', count: 5537, accuracy: 99.1, automation: 94.8 },
+          ],
         },
 
         complianceMonitoring: {
@@ -333,7 +333,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           riskAssessment: 'low',
           violationsDetected: 3,
           automatedRemediation: 89.2,
-          
+
           complianceAlerts: [
             {
               documentId: 'DOC-001',
@@ -341,10 +341,10 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               severity: 'medium',
               autoRemediation: true,
               estimatedFine: 5000,
-              status: 'resolved'
-            }
-          ]
-        }
+              status: 'resolved',
+            },
+          ],
+        },
       },
 
       // Natural Language Processing
@@ -353,12 +353,12 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           overallSentiment: 0.72, // positive scale -1 to 1
           sentimentTrend: 'improving',
           analysisVolume: 8934, // interactions analyzed
-          
+
           sentimentByChannel: [
             { channel: 'Email', sentiment: 0.68, volume: 4567 },
             { channel: 'Phone', sentiment: 0.76, volume: 2341 },
             { channel: 'Chat', sentiment: 0.74, volume: 1456 },
-            { channel: 'Service Tickets', sentiment: 0.69, volume: 570 }
+            { channel: 'Service Tickets', sentiment: 0.69, volume: 570 },
           ],
 
           keyTopics: [
@@ -367,23 +367,23 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               sentiment: 0.81,
               volume: 1234,
               trend: 'improving',
-              keywords: ['fast response', 'professional', 'knowledgeable']
+              keywords: ['fast response', 'professional', 'knowledgeable'],
             },
             {
               topic: 'Product Reliability',
               sentiment: 0.73,
               volume: 892,
               trend: 'stable',
-              keywords: ['reliable', 'consistent', 'quality']
+              keywords: ['reliable', 'consistent', 'quality'],
             },
             {
               topic: 'Pricing',
               sentiment: 0.45,
               volume: 567,
               trend: 'declining',
-              keywords: ['expensive', 'competitive', 'value']
-            }
-          ]
+              keywords: ['expensive', 'competitive', 'value'],
+            },
+          ],
         },
 
         competitiveIntelligence: {
@@ -395,7 +395,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               sentiment: 0.42,
               winRate: 0.67,
               keyDifferentiators: ['Better service', 'Local presence', 'Faster response'],
-              threats: ['Lower pricing', 'Aggressive marketing']
+              threats: ['Lower pricing', 'Aggressive marketing'],
             },
             {
               competitor: 'Office Equipment Plus',
@@ -403,10 +403,10 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               sentiment: 0.38,
               winRate: 0.73,
               keyDifferentiators: ['Product quality', 'Training programs', 'Support'],
-              threats: ['Online presence', 'Digital solutions']
-            }
-          ]
-        }
+              threats: ['Online presence', 'Digital solutions'],
+            },
+          ],
+        },
       },
 
       // Machine Learning Model Performance
@@ -422,7 +422,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             lastTrained: new Date('2025-01-25T00:00:00Z'),
             dataPoints: 15647,
             status: 'production',
-            performanceTrend: 'improving'
+            performanceTrend: 'improving',
           },
           {
             modelName: 'Sales Probability Scorer',
@@ -434,7 +434,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             lastTrained: new Date('2025-01-20T00:00:00Z'),
             dataPoints: 8934,
             status: 'production',
-            performanceTrend: 'stable'
+            performanceTrend: 'stable',
           },
           {
             modelName: 'Equipment Failure Predictor',
@@ -446,8 +446,8 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             lastTrained: new Date('2025-01-28T00:00:00Z'),
             dataPoints: 23456,
             status: 'production',
-            performanceTrend: 'improving'
-          }
+            performanceTrend: 'improving',
+          },
         ],
 
         trainingPipeline: {
@@ -456,8 +456,8 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           dataQualityScore: 97.2,
           featureEngineering: 'automated',
           hyperparameterOptimization: 'active',
-          modelValidation: 'cross-validation'
-        }
+          modelValidation: 'cross-validation',
+        },
       },
 
       // AI Recommendations Engine
@@ -467,7 +467,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
           recommendationAccuracy: 76.8,
           uptakeRate: 23.4,
           revenueGenerated: 189400,
-          
+
           activeRecommendations: [
             {
               customerId: 'CUST-005',
@@ -477,7 +477,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               confidence: 0.83,
               estimatedValue: 12400,
               deliveryChannel: 'email',
-              optimalTiming: new Date('2025-02-07T00:00:00Z')
+              optimalTiming: new Date('2025-02-07T00:00:00Z'),
             },
             {
               customerId: 'CUST-006',
@@ -487,9 +487,9 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
               confidence: 0.71,
               estimatedValue: 8900,
               deliveryChannel: 'phone_call',
-              optimalTiming: new Date('2025-02-12T00:00:00Z')
-            }
-          ]
+              optimalTiming: new Date('2025-02-12T00:00:00Z'),
+            },
+          ],
         },
 
         contentPersonalization: {
@@ -497,21 +497,20 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
             personalizationRate: 94.7,
             openRateImprovement: 34.2,
             clickRateImprovement: 45.8,
-            conversionRateImprovement: 28.3
+            conversionRateImprovement: 28.3,
           },
-          
+
           proposalOptimization: {
             templatesOptimized: 23,
             winRateImprovement: 18.7,
             avgDealSize: 15.4, // percentage increase
-            timeToClose: -12.3 // percentage reduction
-          }
-        }
-      }
+            timeToClose: -12.3, // percentage reduction
+          },
+        },
+      },
     };
 
     res.json(aiAnalyticsData);
-    
   } catch (error) {
     console.error('Error fetching AI analytics dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch AI analytics dashboard' });
@@ -522,9 +521,9 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
 router.get('/api/ai-analytics/models/training-status', async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     const trainingStatus = {
@@ -538,7 +537,7 @@ router.get('/api/ai-analytics/models/training-status', async (req: any, res) => 
           currentEpoch: 147,
           totalEpochs: 200,
           accuracy: 86.7,
-          loss: 0.234
+          loss: 0.234,
         },
         {
           modelId: 'model-002',
@@ -549,18 +548,25 @@ router.get('/api/ai-analytics/models/training-status', async (req: any, res) => 
           currentEpoch: 91,
           totalEpochs: 150,
           accuracy: 82.1,
-          loss: 0.387
-        }
+          loss: 0.387,
+        },
       ],
-      
+
       queuedModels: [
-        { modelName: 'Pricing Optimization Model', priority: 'high', estimatedStart: new Date('2025-02-03T10:00:00Z') },
-        { modelName: 'Customer Segmentation Refiner', priority: 'medium', estimatedStart: new Date('2025-02-04T08:00:00Z') }
-      ]
+        {
+          modelName: 'Pricing Optimization Model',
+          priority: 'high',
+          estimatedStart: new Date('2025-02-03T10:00:00Z'),
+        },
+        {
+          modelName: 'Customer Segmentation Refiner',
+          priority: 'medium',
+          estimatedStart: new Date('2025-02-04T08:00:00Z'),
+        },
+      ],
     };
 
     res.json(trainingStatus);
-    
   } catch (error) {
     console.error('Error fetching training status:', error);
     res.status(500).json({ message: 'Failed to fetch training status' });
@@ -572,9 +578,9 @@ router.post('/api/ai-analytics/recommendations/execute', async (req: any, res) =
   try {
     const tenantId = req.user?.tenantId;
     const { recommendationId, customerId, action } = req.body;
-    
+
     if (!tenantId) {
-      return res.status(400).json({ message: "Tenant ID is required" });
+      return res.status(400).json({ message: 'Tenant ID is required' });
     }
 
     // Mock recommendation execution
@@ -590,12 +596,11 @@ router.post('/api/ai-analytics/recommendations/execute', async (req: any, res) =
         { step: 'Data validation', status: 'completed' },
         { step: 'Personalization', status: 'running' },
         { step: 'Delivery', status: 'pending' },
-        { step: 'Tracking setup', status: 'pending' }
-      ]
+        { step: 'Tracking setup', status: 'pending' },
+      ],
     };
 
     res.status(202).json(execution);
-    
   } catch (error) {
     console.error('Error executing recommendation:', error);
     res.status(500).json({ message: 'Failed to execute recommendation' });

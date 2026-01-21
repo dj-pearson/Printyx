@@ -1,16 +1,29 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import {
   Settings,
   Plug,
@@ -25,11 +38,11 @@ import {
   Zap,
   RefreshCw,
   Shield,
-  Activity
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ApolloCredentialManager } from "@/components/integrations/ApolloCredentialManager";
+  Activity,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { ApolloCredentialManager } from '@/components/integrations/ApolloCredentialManager';
 
 interface Integration {
   id: string;
@@ -62,33 +75,33 @@ export default function SystemIntegrations() {
   const { toast } = useToast();
 
   const { data: integrations, isLoading } = useQuery<Integration[]>({
-    queryKey: ["/api/integrations"],
+    queryKey: ['/api/integrations'],
   });
 
   const { data: webhooks } = useQuery<WebhookEndpoint[]>({
-    queryKey: ["/api/webhooks"],
+    queryKey: ['/api/webhooks'],
   });
 
   const connectIntegration = useMutation({
     mutationFn: async (data: { integrationId: string; config: any }) => {
-      return apiRequest("/api/integrations/connect", {
-        method: "POST",
+      return apiRequest('/api/integrations/connect', {
+        method: 'POST',
         body: data,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({
-        title: "Integration Connected",
-        description: "The integration has been successfully configured.",
+        title: 'Integration Connected',
+        description: 'The integration has been successfully configured.',
       });
       setIsConfigOpen(false);
     },
     onError: () => {
       toast({
-        title: "Connection Failed",
-        description: "Failed to connect the integration. Please check your configuration.",
-        variant: "destructive",
+        title: 'Connection Failed',
+        description: 'Failed to connect the integration. Please check your configuration.',
+        variant: 'destructive',
       });
     },
   });
@@ -96,14 +109,14 @@ export default function SystemIntegrations() {
   const disconnectIntegration = useMutation({
     mutationFn: async (integrationId: string) => {
       return apiRequest(`/api/integrations/${integrationId}/disconnect`, {
-        method: "POST",
+        method: 'POST',
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({
-        title: "Integration Disconnected",
-        description: "The integration has been disconnected.",
+        title: 'Integration Disconnected',
+        description: 'The integration has been disconnected.',
       });
     },
   });
@@ -111,20 +124,20 @@ export default function SystemIntegrations() {
   const testIntegration = useMutation({
     mutationFn: async (integrationId: string) => {
       return apiRequest(`/api/integrations/${integrationId}/test`, {
-        method: "POST",
+        method: 'POST',
       });
     },
     onSuccess: () => {
       toast({
-        title: "Test Successful",
-        description: "The integration is working correctly.",
+        title: 'Test Successful',
+        description: 'The integration is working correctly.',
       });
     },
     onError: () => {
       toast({
-        title: "Test Failed",
-        description: "The integration test failed. Please check your configuration.",
-        variant: "destructive",
+        title: 'Test Failed',
+        description: 'The integration test failed. Please check your configuration.',
+        variant: 'destructive',
       });
     },
   });
@@ -153,11 +166,11 @@ export default function SystemIntegrations() {
   const getStatusBadge = (status: string) => {
     const variants = {
       connected: 'default',
-      disconnected: 'secondary', 
+      disconnected: 'secondary',
       error: 'destructive',
-      pending: 'outline'
+      pending: 'outline',
     } as const;
-    
+
     return (
       <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -166,8 +179,8 @@ export default function SystemIntegrations() {
   };
 
   return (
-    <MainLayout 
-      title="System Integrations" 
+    <MainLayout
+      title="System Integrations"
       description="Manage third-party integrations and API connections"
     >
       <div className="space-y-6">
@@ -177,9 +190,11 @@ export default function SystemIntegrations() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-600">Active Integrations</p>
+                  <p className="text-xs sm:text-sm font-medium text-gray-600">
+                    Active Integrations
+                  </p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {displayIntegrations.filter(i => i.status === 'connected').length}
+                    {displayIntegrations.filter((i) => i.status === 'connected').length}
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -195,7 +210,11 @@ export default function SystemIntegrations() {
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">API Endpoints</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {displayIntegrations.filter(i => i.status === 'pending' || i.status === 'error').length}
+                    {
+                      displayIntegrations.filter(
+                        (i) => i.status === 'pending' || i.status === 'error',
+                      ).length
+                    }
                   </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -210,7 +229,9 @@ export default function SystemIntegrations() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs sm:text-sm font-medium text-gray-600">Webhooks</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">{displayWebhooks.length}</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+                    {displayWebhooks.length}
+                  </p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Webhook className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
@@ -258,9 +279,12 @@ export default function SystemIntegrations() {
                   <CardContent>
                     <div className="grid gap-4">
                       {displayIntegrations
-                        .filter(integration => integration.category === category)
+                        .filter((integration) => integration.category === category)
                         .map((integration) => (
-                          <div key={integration.id} className="flex items-center justify-between p-4 border rounded-lg">
+                          <div
+                            key={integration.id}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
                             <div className="flex items-center gap-4">
                               {getStatusIcon(integration.status)}
                               <div>
@@ -269,8 +293,10 @@ export default function SystemIntegrations() {
                                 <div className="flex items-center gap-2 mt-1">
                                   {getStatusBadge(integration.status)}
                                   <span className="text-xs text-gray-500">
-                                    Last sync: {integration.lastSync === 'Never' ? 'Never' : 
-                                      new Date(integration.lastSync).toLocaleString()}
+                                    Last sync:{' '}
+                                    {integration.lastSync === 'Never'
+                                      ? 'Never'
+                                      : new Date(integration.lastSync).toLocaleString()}
                                   </span>
                                 </div>
                               </div>
@@ -326,7 +352,9 @@ export default function SystemIntegrations() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Webhook Endpoints</CardTitle>
-                    <CardDescription>Configure webhook endpoints for real-time event notifications</CardDescription>
+                    <CardDescription>
+                      Configure webhook endpoints for real-time event notifications
+                    </CardDescription>
                   </div>
                   <Button>
                     <Webhook className="h-4 w-4 mr-2" />
@@ -337,7 +365,10 @@ export default function SystemIntegrations() {
               <CardContent>
                 <div className="space-y-4">
                   {(webhooks || []).map((webhook) => (
-                    <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={webhook.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div>
                         <h4 className="font-medium">{webhook.name}</h4>
                         <p className="text-sm text-gray-600">{webhook.url}</p>
@@ -362,7 +393,9 @@ export default function SystemIntegrations() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Switch checked={webhook.status === 'active'} />
-                        <Button variant="outline" size="sm">Edit</Button>
+                        <Button variant="outline" size="sm">
+                          Edit
+                        </Button>
                         <Button variant="ghost" size="sm">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
@@ -377,7 +410,7 @@ export default function SystemIntegrations() {
           <TabsContent value="api-keys" className="space-y-6">
             {/* Apollo.io Lead Enrichment API Configuration */}
             <ApolloCredentialManager />
-            
+
             {/* Platform API Keys - Internal use */}
             <Card>
               <CardHeader>
@@ -399,25 +432,37 @@ export default function SystemIntegrations() {
                       <div>
                         <h4 className="font-medium">Production API Key</h4>
                         <p className="text-sm text-gray-600 font-mono">pk_live_••••••••••••••••</p>
-                        <p className="text-xs text-gray-500 mt-1">Created: Dec 15, 2024 • Last used: 2 hours ago</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Created: Dec 15, 2024 • Last used: 2 hours ago
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge>Active</Badge>
-                        <Button variant="outline" size="sm">Regenerate</Button>
-                        <Button variant="ghost" size="sm" className="text-red-600">Revoke</Button>
+                        <Button variant="outline" size="sm">
+                          Regenerate
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-600">
+                          Revoke
+                        </Button>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between p-4 border rounded-lg">
                       <div>
                         <h4 className="font-medium">Development API Key</h4>
                         <p className="text-sm text-gray-600 font-mono">pk_test_••••••••••••••••</p>
-                        <p className="text-xs text-gray-500 mt-1">Created: Dec 10, 2024 • Last used: 1 day ago</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Created: Dec 10, 2024 • Last used: 1 day ago
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary">Test</Badge>
-                        <Button variant="outline" size="sm">Regenerate</Button>
-                        <Button variant="ghost" size="sm" className="text-red-600">Revoke</Button>
+                        <Button variant="outline" size="sm">
+                          Regenerate
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-600">
+                          Revoke
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -440,11 +485,7 @@ export default function SystemIntegrations() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="api-key">API Key</Label>
-              <Input
-                id="api-key"
-                placeholder="Enter your API key"
-                type="password"
-              />
+              <Input id="api-key" placeholder="Enter your API key" type="password" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="endpoint">Endpoint URL</Label>
@@ -473,11 +514,13 @@ export default function SystemIntegrations() {
             <Button variant="outline" onClick={() => setIsConfigOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={() => connectIntegration.mutate({
-                integrationId: selectedIntegration?.id || '',
-                config: { apiKey: 'test', endpoint: 'test' }
-              })}
+            <Button
+              onClick={() =>
+                connectIntegration.mutate({
+                  integrationId: selectedIntegration?.id || '',
+                  config: { apiKey: 'test', endpoint: 'test' },
+                })
+              }
               disabled={connectIntegration.isPending}
             >
               Connect Integration

@@ -31,7 +31,11 @@ export default function TeamLeadDashboard() {
   });
 
   // Fetch team performance comparison (Report 6)
-  const { data: teamPerformance, isLoading: performanceLoading, refetch: refetchPerformance } = useQuery({
+  const {
+    data: teamPerformance,
+    isLoading: performanceLoading,
+    refetch: refetchPerformance,
+  } = useQuery({
     queryKey: ['sales-reports', 'team', 'comparison', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -89,7 +93,8 @@ export default function TeamLeadDashboard() {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange.from && dateRange.to ? (
                   <>
-                    {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                    {format(dateRange.from, 'MMM dd, yyyy')} -{' '}
+                    {format(dateRange.to, 'MMM dd, yyyy')}
                   </>
                 ) : (
                   <span>Pick a date range</span>
@@ -102,7 +107,9 @@ export default function TeamLeadDashboard() {
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start"
-                  onClick={() => setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })}
+                  onClick={() =>
+                    setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) })
+                  }
                 >
                   This Month
                 </Button>
@@ -139,12 +146,8 @@ export default function TeamLeadDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {pipelineSummary?.metrics?.teamSize || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Active team members
-            </p>
+            <div className="text-2xl font-bold">{pipelineSummary?.metrics?.teamSize || 0}</div>
+            <p className="text-xs text-muted-foreground">Active team members</p>
           </CardContent>
         </Card>
 
@@ -184,9 +187,7 @@ export default function TeamLeadDashboard() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {dispatchQueue?.summary?.totalTickets || 0}
-            </div>
+            <div className="text-2xl font-bold">{dispatchQueue?.summary?.totalTickets || 0}</div>
             <p className="text-xs text-muted-foreground">
               {dispatchQueue?.summary?.unassigned || 0} unassigned
             </p>
@@ -233,9 +234,7 @@ export default function TeamLeadDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Team Performance Comparison</CardTitle>
-              <CardDescription>
-                Compare individual rep performance metrics
-              </CardDescription>
+              <CardDescription>Compare individual rep performance metrics</CardDescription>
             </CardHeader>
             <CardContent>
               {performanceLoading ? (
@@ -256,9 +255,7 @@ export default function TeamLeadDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Team Pipeline Summary</CardTitle>
-              <CardDescription>
-                Aggregated pipeline view with individual breakdowns
-              </CardDescription>
+              <CardDescription>Aggregated pipeline view with individual breakdowns</CardDescription>
             </CardHeader>
             <CardContent>
               {pipelineLoading ? (
@@ -281,9 +278,7 @@ export default function TeamLeadDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Service Dispatch Queue</CardTitle>
-              <CardDescription>
-                Manage team service tickets and assignments
-              </CardDescription>
+              <CardDescription>Manage team service tickets and assignments</CardDescription>
             </CardHeader>
             <CardContent>
               {dispatchLoading ? (

@@ -1,43 +1,32 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
+import { useEffect, useState } from 'react';
+import { useLocation } from 'wouter';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { apiRequest } from '@/lib/queryClient';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { apiRequest } from "@/lib/queryClient";
-import { 
-  type ServiceTicket, 
-  type Technician, 
+  type ServiceTicket,
+  type Technician,
   type InsertServiceTicket,
-  insertServiceTicketSchema 
-} from "@shared/schema";
+  insertServiceTicketSchema,
+} from '@shared/schema';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import PhoneInTicketCreator from "@/components/service/PhoneInTicketCreator";
-import TechnicianTicketWorkflow from "@/components/service/TechnicianTicketWorkflow";
-import { Skeleton } from "@/components/ui/skeleton";
+} from '@/components/ui/select';
+import PhoneInTicketCreator from '@/components/service/PhoneInTicketCreator';
+import TechnicianTicketWorkflow from '@/components/service/TechnicianTicketWorkflow';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Phone,
   MapPin,
@@ -58,26 +47,29 @@ import {
   Timer,
   Printer,
   Monitor,
-} from "lucide-react";
-import ContextualHelp from "@/components/contextual/ContextualHelp";
-import KpiSummaryBar from "@/components/dashboard/KpiSummaryBar";
-import MobileFAB from "@/components/layout/MobileFAB";
-import PageAlerts from "@/components/contextual/PageAlerts";
-import { useCrossModuleIntegration, useWorkflowAutomation } from "@/hooks/useCrossModuleIntegration";
-import { useMobileDetection } from "@/hooks/useExternalIntegrations";
-import { MobileServiceDispatch } from "@/components/mobile/MobileServiceDispatch";
-import { CustomerEquipmentProfile } from "@/components/CustomerEquipmentProfile";
+} from 'lucide-react';
+import ContextualHelp from '@/components/contextual/ContextualHelp';
+import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
+import MobileFAB from '@/components/layout/MobileFAB';
+import PageAlerts from '@/components/contextual/PageAlerts';
+import {
+  useCrossModuleIntegration,
+  useWorkflowAutomation,
+} from '@/hooks/useCrossModuleIntegration';
+import { useMobileDetection } from '@/hooks/useExternalIntegrations';
+import { MobileServiceDispatch } from '@/components/mobile/MobileServiceDispatch';
+import { CustomerEquipmentProfile } from '@/components/CustomerEquipmentProfile';
 
 export default function ServiceHub() {
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const [showPhoneInCreator, setShowPhoneInCreator] = useState(false);
   const [showTechWorkflow, setShowTechWorkflow] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<ServiceTicket | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [technicianFilter, setTechnicianFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [technicianFilter, setTechnicianFilter] = useState('all');
   const [showIntelligentRouting, setShowIntelligentRouting] = useState(false);
   const [showEquipmentProfile, setShowEquipmentProfile] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -95,83 +87,80 @@ export default function ServiceHub() {
     isLoading: ticketsLoading,
     refetch,
   } = useQuery<ServiceTicket[]>({
-    queryKey: ["/api/service-tickets"],
+    queryKey: ['/api/service-tickets'],
     enabled: isAuthenticated,
   });
 
   // Fetch phone-in tickets (these might need their own type)
   const { data: phoneInTickets = [], isLoading: phoneInLoading } = useQuery<any[]>({
-    queryKey: ["/api/phone-in-tickets"],
+    queryKey: ['/api/phone-in-tickets'],
     enabled: isAuthenticated,
   });
 
   // Fetch service analytics
   const { data: analytics } = useQuery({
-    queryKey: ["/api/service-analytics"],
+    queryKey: ['/api/service-analytics'],
     enabled: isAuthenticated,
   });
 
   // Convert phone-in ticket to service ticket
   const convertToServiceTicket = useMutation({
     mutationFn: async (phoneInTicketId: string) => {
-      return await apiRequest(
-        `/api/phone-in-tickets/${phoneInTicketId}/convert`,
-        "POST"
-      );
+      return await apiRequest(`/api/phone-in-tickets/${phoneInTicketId}/convert`, 'POST');
     },
     onSuccess: () => {
       toast({
-        title: "Success",
-        description: "Phone-in ticket converted to service ticket",
+        title: 'Success',
+        description: 'Phone-in ticket converted to service ticket',
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/service-tickets"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/phone-in-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/service-tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/phone-in-tickets'] });
       refetch();
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to convert ticket",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to convert ticket',
+        variant: 'destructive',
       });
     },
   });
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
-      case "new":
-        return "secondary";
-      case "assigned":
-        return "outline";
-      case "en_route":
-        return "default";
-      case "on_site":
-        return "default";
-      case "in_progress":
-        return "default";
-      case "completed":
-        return "default";
-      case "cancelled":
-        return "destructive";
+      case 'new':
+        return 'secondary';
+      case 'assigned':
+        return 'outline';
+      case 'en_route':
+        return 'default';
+      case 'on_site':
+        return 'default';
+      case 'in_progress':
+        return 'default';
+      case 'completed':
+        return 'default';
+      case 'cancelled':
+        return 'destructive';
       default:
-        return "secondary";
+        return 'secondary';
     }
   };
 
   const getPriorityBadgeVariant = (priority: string) => {
     switch (priority) {
-      case "low":
-        return "secondary";
-      case "medium":
-        return "outline";
-      case "high":
-        return "default";
-      case "urgent":
-        return "destructive";
-      case "emergency":
-        return "destructive";
+      case 'low':
+        return 'secondary';
+      case 'medium':
+        return 'outline';
+      case 'high':
+        return 'default';
+      case 'urgent':
+        return 'destructive';
+      case 'emergency':
+        return 'destructive';
       default:
-        return "secondary";
+        return 'secondary';
     }
   };
 
@@ -181,12 +170,10 @@ export default function ServiceHub() {
       ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.equipmentModel?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || ticket.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || ticket.priority === priorityFilter;
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
     const matchesTechnician =
-      technicianFilter === "all" || ticket.technicianId === technicianFilter;
+      technicianFilter === 'all' || ticket.technicianId === technicianFilter;
     return matchesSearch && matchesStatus && matchesPriority && matchesTechnician;
   });
 
@@ -195,23 +182,23 @@ export default function ServiceHub() {
     // Simulate AI-powered routing based on technician skills, location, and workload
     const suggestions = [
       {
-        technicianId: "tech-1",
-        name: "John Smith",
+        technicianId: 'tech-1',
+        name: 'John Smith',
         score: 95,
-        reason: "Expert in this equipment type, 5 min away",
-        skills: ["Canon", "Color Printers"],
-        estimatedArrival: "30 min",
-        currentWorkload: "Light"
+        reason: 'Expert in this equipment type, 5 min away',
+        skills: ['Canon', 'Color Printers'],
+        estimatedArrival: '30 min',
+        currentWorkload: 'Light',
       },
       {
-        technicianId: "tech-2", 
-        name: "Sarah Johnson",
+        technicianId: 'tech-2',
+        name: 'Sarah Johnson',
         score: 87,
-        reason: "Available immediately, nearby location",
-        skills: ["General Repair", "Maintenance"],
-        estimatedArrival: "45 min",
-        currentWorkload: "Medium"
-      }
+        reason: 'Available immediately, nearby location',
+        skills: ['General Repair', 'Maintenance'],
+        estimatedArrival: '45 min',
+        currentWorkload: 'Medium',
+      },
     ];
     return suggestions.sort((a, b) => b.score - a.score);
   };
@@ -221,12 +208,8 @@ export default function ServiceHub() {
       (ticket.issue_description || ticket.description)
         ?.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      (ticket.customer_name || ticket.title)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (ticket.caller_name || ticket.callerName)
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      (ticket.customer_name || ticket.title)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ticket.caller_name || ticket.callerName)?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -268,11 +251,18 @@ export default function ServiceHub() {
   }
 
   return (
-    <MainLayout title="Enhanced Service System" description="Comprehensive service management with phone-in tickets and guided technician workflows">
+    <MainLayout
+      title="Enhanced Service System"
+      description="Comprehensive service management with phone-in tickets and guided technician workflows"
+    >
       <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
         <ContextualHelp page="service-hub" />
         <KpiSummaryBar className="mb-4" />
-        <PageAlerts categories={["business","performance"]} severities={["medium","high","critical"]} className="-mt-2" />
+        <PageAlerts
+          categories={['business', 'performance']}
+          severities={['medium', 'high', 'critical']}
+          className="-mt-2"
+        />
         <div className="flex flex-col space-y-4 md:flex-row md:items-end md:justify-end md:space-y-0">
           <div className="flex gap-2 flex-col sm:flex-row">
             <Button
@@ -290,9 +280,7 @@ export default function ServiceHub() {
               disabled={ticketsLoading}
               className="w-full sm:w-auto"
             >
-              <RefreshCw
-                className={`h-4 w-4 ${ticketsLoading ? "animate-spin" : ""}`}
-              />
+              <RefreshCw className={`h-4 w-4 ${ticketsLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline ml-2">Refresh</span>
             </Button>
           </div>
@@ -300,31 +288,28 @@ export default function ServiceHub() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {typeof window !== 'undefined' && window.localStorage?.getItem('phoneInAutoConverted') === '1' && (
-            <div className="md:col-span-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center justify-between">
-              <span>Phone-in ticket was converted to a service ticket automatically.</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.localStorage?.removeItem('phoneInAutoConverted')}
-              >
-                Dismiss
-              </Button>
-            </div>
-          )}
+          {typeof window !== 'undefined' &&
+            window.localStorage?.getItem('phoneInAutoConverted') === '1' && (
+              <div className="md:col-span-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center justify-between">
+                <span>Phone-in ticket was converted to a service ticket automatically.</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.localStorage?.removeItem('phoneInAutoConverted')}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            )}
           <Card>
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">
-                    Active Tickets
-                  </p>
+                  <p className="text-xs md:text-sm text-gray-600">Active Tickets</p>
                   <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {
-                      tickets.filter(
-                        (t: any) =>
-                          !["completed", "cancelled"].includes(t.status)
-                      ).length
+                      tickets.filter((t: any) => !['completed', 'cancelled'].includes(t.status))
+                        .length
                     }
                   </p>
                 </div>
@@ -336,9 +321,7 @@ export default function ServiceHub() {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">
-                    Phone-In Queue
-                  </p>
+                  <p className="text-xs md:text-sm text-gray-600">Phone-In Queue</p>
                   <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {phoneInTickets.length}
                   </p>
@@ -351,11 +334,9 @@ export default function ServiceHub() {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">
-                    On-Site Techs
-                  </p>
+                  <p className="text-xs md:text-sm text-gray-600">On-Site Techs</p>
                   <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    {tickets.filter((t: any) => t.status === "on_site").length}
+                    {tickets.filter((t: any) => t.status === 'on_site').length}
                   </p>
                 </div>
                 <MapPin className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
@@ -366,16 +347,13 @@ export default function ServiceHub() {
             <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs md:text-sm text-gray-600">
-                    Completed Today
-                  </p>
+                  <p className="text-xs md:text-sm text-gray-600">Completed Today</p>
                   <p className="text-xl md:text-2xl font-bold text-gray-900">
                     {
                       tickets.filter(
                         (t: any) =>
-                          t.status === "completed" &&
-                          new Date(t.updatedAt).toDateString() ===
-                            new Date().toDateString()
+                          t.status === 'completed' &&
+                          new Date(t.updatedAt).toDateString() === new Date().toDateString(),
                       ).length
                     }
                   </p>
@@ -387,19 +365,22 @@ export default function ServiceHub() {
         </div>
 
         {/* Filter Banner */}
-        {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('filter')?.startsWith('aging_gt_') && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
-            <span>Showing tickets with aging greater than {new URLSearchParams(window.location.search).get('filter')?.split('aging_gt_')[1]} days</span>
-            <Button variant="outline" size="sm" onClick={() => setLocation('/service-hub')}>Clear Filter</Button>
-          </div>
-        )}
+        {typeof window !== 'undefined' &&
+          new URLSearchParams(window.location.search).get('filter')?.startsWith('aging_gt_') && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 flex items-center justify-between">
+              <span>
+                Showing tickets with aging greater than{' '}
+                {new URLSearchParams(window.location.search).get('filter')?.split('aging_gt_')[1]}{' '}
+                days
+              </span>
+              <Button variant="outline" size="sm" onClick={() => setLocation('/service-hub')}>
+                Clear Filter
+              </Button>
+            </div>
+          )}
 
         {/* Main Content Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-4"
-        >
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
             <TabsTrigger value="overview" className="text-xs md:text-sm py-2">
               Overview
@@ -407,16 +388,10 @@ export default function ServiceHub() {
             <TabsTrigger value="phone-in" className="text-xs md:text-sm py-2">
               Phone-In Queue
             </TabsTrigger>
-            <TabsTrigger
-              value="active-tickets"
-              className="text-xs md:text-sm py-2"
-            >
+            <TabsTrigger value="active-tickets" className="text-xs md:text-sm py-2">
               Active Tickets
             </TabsTrigger>
-            <TabsTrigger
-              value="technician-view"
-              className="text-xs md:text-sm py-2"
-            >
+            <TabsTrigger value="technician-view" className="text-xs md:text-sm py-2">
               Technician View
             </TabsTrigger>
           </TabsList>
@@ -429,9 +404,7 @@ export default function ServiceHub() {
                     <Phone className="h-5 w-5" />
                     Recent Phone-In Tickets
                   </CardTitle>
-                  <CardDescription>
-                    Latest phone calls requiring service attention
-                  </CardDescription>
+                  <CardDescription>Latest phone calls requiring service attention</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -445,7 +418,7 @@ export default function ServiceHub() {
                             {ticket.customer_name ||
                               ticket.title ||
                               ticket.companyName ||
-                              "Unknown Company"}
+                              'Unknown Company'}
                           </p>
                           <p className="text-xs md:text-sm text-gray-600">
                             {ticket.issue_description ||
@@ -472,9 +445,7 @@ export default function ServiceHub() {
                           </Badge>
                           <Button
                             size="sm"
-                            onClick={() =>
-                              convertToServiceTicket.mutate(ticket.id)
-                            }
+                            onClick={() => convertToServiceTicket.mutate(ticket.id)}
                             disabled={convertToServiceTicket.isPending}
                             className="text-xs"
                           >
@@ -484,9 +455,7 @@ export default function ServiceHub() {
                       </div>
                     ))}
                     {phoneInTickets.length === 0 && (
-                      <p className="text-center text-gray-500 py-4 text-sm">
-                        No phone-in tickets
-                      </p>
+                      <p className="text-center text-gray-500 py-4 text-sm">No phone-in tickets</p>
                     )}
                   </div>
                 </CardContent>
@@ -498,20 +467,13 @@ export default function ServiceHub() {
                     <Wrench className="h-5 w-5" />
                     Active Service Tickets
                   </CardTitle>
-                  <CardDescription>
-                    Tickets currently being worked on
-                  </CardDescription>
+                  <CardDescription>Tickets currently being worked on</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     {tickets
                       .filter((t: ServiceTicket) =>
-                        [
-                          "assigned",
-                          "en_route",
-                          "on_site",
-                          "in_progress",
-                        ].includes(t.status || "")
+                        ['assigned', 'en_route', 'on_site', 'in_progress'].includes(t.status || ''),
                       )
                       .slice(0, 5)
                       .map((ticket: ServiceTicket) => (
@@ -521,14 +483,12 @@ export default function ServiceHub() {
                         >
                           <div className="flex-1">
                             <p className="font-medium text-sm md:text-base">
-                              {ticket.customerName || "Unknown Customer"}
+                              {ticket.customerName || 'Unknown Customer'}
                             </p>
-                            <p className="text-xs md:text-sm text-gray-600">
-                              {ticket.description}
-                            </p>
+                            <p className="text-xs md:text-sm text-gray-600">{ticket.description}</p>
                             <p className="text-xs text-gray-500">
                               <User className="h-3 w-3 inline mr-1" />
-                              {ticket.assignedTechnician || "Unassigned"}
+                              {ticket.assignedTechnician || 'Unassigned'}
                             </p>
                           </div>
                           <div className="flex gap-2 flex-wrap">
@@ -536,7 +496,7 @@ export default function ServiceHub() {
                               variant={getStatusBadgeVariant(ticket.status)}
                               className="text-xs"
                             >
-                              {ticket.status?.replace("_", " ")}
+                              {ticket.status?.replace('_', ' ')}
                             </Badge>
                             <Button
                               size="sm"
@@ -553,12 +513,7 @@ export default function ServiceHub() {
                         </div>
                       ))}
                     {tickets.filter((t: any) =>
-                      [
-                        "assigned",
-                        "en_route",
-                        "on_site",
-                        "in_progress",
-                      ].includes(t.status)
+                      ['assigned', 'en_route', 'on_site', 'in_progress'].includes(t.status),
                     ).length === 0 && (
                       <p className="text-center text-gray-500 py-4 text-sm">
                         No active service tickets
@@ -575,8 +530,7 @@ export default function ServiceHub() {
               <CardHeader>
                 <CardTitle>Phone-In Ticket Queue</CardTitle>
                 <CardDescription>
-                  Manage incoming phone calls and convert them to service
-                  tickets
+                  Manage incoming phone calls and convert them to service tickets
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -599,15 +553,9 @@ export default function ServiceHub() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="font-semibold">
-                                {ticket.customer_name ||
-                                  ticket.title ||
-                                  "Phone-in Ticket"}
+                                {ticket.customer_name || ticket.title || 'Phone-in Ticket'}
                               </h3>
-                              <Badge
-                                variant={getPriorityBadgeVariant(
-                                  ticket.priority
-                                )}
-                              >
+                              <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
                                 {ticket.priority}
                               </Badge>
                             </div>
@@ -624,26 +572,20 @@ export default function ServiceHub() {
                                 <Building className="h-3 w-3" />
                                 {ticket.location_address ||
                                   ticket.locationAddress ||
-                                  "No address provided"}
+                                  'No address provided'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
                                 {ticket.created_at
-                                  ? new Date(
-                                      ticket.created_at
-                                    ).toLocaleTimeString()
-                                  : new Date(
-                                      ticket.createdAt
-                                    ).toLocaleTimeString()}
+                                  ? new Date(ticket.created_at).toLocaleTimeString()
+                                  : new Date(ticket.createdAt).toLocaleTimeString()}
                               </span>
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() =>
-                                convertToServiceTicket.mutate(ticket.id)
-                              }
+                              onClick={() => convertToServiceTicket.mutate(ticket.id)}
                               disabled={convertToServiceTicket.isPending}
                             >
                               Convert to Service Ticket
@@ -668,9 +610,7 @@ export default function ServiceHub() {
             <Card>
               <CardHeader>
                 <CardTitle>Active Service Tickets</CardTitle>
-                <CardDescription>
-                  Monitor and manage ongoing service work
-                </CardDescription>
+                <CardDescription>Monitor and manage ongoing service work</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 mb-6">
@@ -694,7 +634,7 @@ export default function ServiceHub() {
                       Smart Routing
                     </Button>
                   </div>
-                  
+
                   {/* Advanced Filtering */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -712,7 +652,7 @@ export default function ServiceHub() {
                         <SelectItem value="cancelled">Cancelled</SelectItem>
                       </SelectContent>
                     </Select>
-                    
+
                     <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                       <SelectTrigger>
                         <SelectValue placeholder="Filter by priority" />
@@ -726,7 +666,7 @@ export default function ServiceHub() {
                         <SelectItem value="emergency">Emergency</SelectItem>
                       </SelectContent>
                     </Select>
-                    
+
                     <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
                       <SelectTrigger>
                         <SelectValue placeholder="Filter by technician" />
@@ -749,41 +689,29 @@ export default function ServiceHub() {
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
-                              <h3 className="font-semibold">
-                                #{ticket.id.slice(0, 8)}
-                              </h3>
-                              <Badge
-                                variant={getStatusBadgeVariant(ticket.status)}
-                              >
-                                {ticket.status?.replace("_", " ")}
+                              <h3 className="font-semibold">#{ticket.id.slice(0, 8)}</h3>
+                              <Badge variant={getStatusBadgeVariant(ticket.status)}>
+                                {ticket.status?.replace('_', ' ')}
                               </Badge>
                               {ticket.priority && (
-                                <Badge
-                                  variant={getPriorityBadgeVariant(
-                                    ticket.priority
-                                  )}
-                                >
+                                <Badge variant={getPriorityBadgeVariant(ticket.priority)}>
                                   {ticket.priority}
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              {ticket.description}
-                            </p>
+                            <p className="text-sm text-gray-600 mb-2">{ticket.description}</p>
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <span className="flex items-center gap-1">
                                 <Building className="h-3 w-3" />
-                                {ticket.customerName || "Unknown Customer"}
+                                {ticket.customerName || 'Unknown Customer'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <User className="h-3 w-3" />
-                                {ticket.assignedTechnician || "Unassigned"}
+                                {ticket.assignedTechnician || 'Unassigned'}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(
-                                  ticket.createdAt
-                                ).toLocaleDateString()}
+                                {new Date(ticket.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
@@ -841,9 +769,7 @@ export default function ServiceHub() {
                     <div className="space-y-3">
                       {tickets
                         .filter((t: any) =>
-                          ["en_route", "on_site", "in_progress"].includes(
-                            t.status
-                          )
+                          ['en_route', 'on_site', 'in_progress'].includes(t.status),
                         )
                         .map((ticket: ServiceTicket) => (
                           <div
@@ -852,16 +778,13 @@ export default function ServiceHub() {
                           >
                             <div className="flex-1">
                               <p className="font-medium">
-                                {ticket.assignedTechnician || "Unknown Tech"}
+                                {ticket.assignedTechnician || 'Unknown Tech'}
                               </p>
                               <p className="text-sm text-gray-600">
                                 #{ticket.id.slice(0, 8)} - {ticket.customerName}
                               </p>
-                              <Badge
-                                size="sm"
-                                variant={getStatusBadgeVariant(ticket.status)}
-                              >
-                                {ticket.status?.replace("_", " ")}
+                              <Badge size="sm" variant={getStatusBadgeVariant(ticket.status)}>
+                                {ticket.status?.replace('_', ' ')}
                               </Badge>
                             </div>
                             <Button
@@ -877,13 +800,9 @@ export default function ServiceHub() {
                           </div>
                         ))}
                       {tickets.filter((t: any) =>
-                        ["en_route", "on_site", "in_progress"].includes(
-                          t.status
-                        )
+                        ['en_route', 'on_site', 'in_progress'].includes(t.status),
                       ).length === 0 && (
-                        <p className="text-center text-gray-500 py-4">
-                          No active technicians
-                        </p>
+                        <p className="text-center text-gray-500 py-4">No active technicians</p>
                       )}
                     </div>
                   </div>
@@ -894,42 +813,36 @@ export default function ServiceHub() {
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm">Initial Assessment</span>
-                          <span className="text-xs text-gray-500">
-                            Step 1/6
-                          </span>
+                          <span className="text-xs text-gray-500">Step 1/6</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: "16.6%" }}
+                            style={{ width: '16.6%' }}
                           ></div>
                         </div>
                       </div>
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm">Diagnosis</span>
-                          <span className="text-xs text-gray-500">
-                            Step 2/6
-                          </span>
+                          <span className="text-xs text-gray-500">Step 2/6</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: "33.3%" }}
+                            style={{ width: '33.3%' }}
                           ></div>
                         </div>
                       </div>
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm">Customer Approval</span>
-                          <span className="text-xs text-gray-500">
-                            Step 3/6
-                          </span>
+                          <span className="text-xs text-gray-500">Step 3/6</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: "50%" }}
+                            style={{ width: '50%' }}
                           ></div>
                         </div>
                       </div>
@@ -945,9 +858,7 @@ export default function ServiceHub() {
         <Dialog open={showPhoneInCreator} onOpenChange={setShowPhoneInCreator}>
           <DialogContent className="w-[95vw] max-w-6xl h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-0">
             <DialogHeader className="px-6 py-4 border-b bg-gray-50">
-              <DialogTitle className="text-xl font-semibold">
-                Create Phone-In Ticket
-              </DialogTitle>
+              <DialogTitle className="text-xl font-semibold">Create Phone-In Ticket</DialogTitle>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <PhoneInTicketCreator
@@ -989,67 +900,89 @@ export default function ServiceHub() {
             <div className="space-y-4">
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Service Intelligence:</strong> Our AI analyzes technician skills, location, workload, and customer history to suggest optimal assignments.
+                  <strong>Service Intelligence:</strong> Our AI analyzes technician skills,
+                  location, workload, and customer history to suggest optimal assignments.
                 </p>
               </div>
-              
+
               <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">Unassigned Tickets Requiring Attention</h3>
-                {filteredTickets.filter(t => !t.technicianId || t.technicianId === 'unassigned').slice(0, 3).map(ticket => {
-                  const suggestions = getIntelligentRoutingSuggestions(ticket);
-                  return (
-                    <Card key={ticket.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h4 className="font-medium">#{ticket.id.slice(0, 8)} - {ticket.customerName}</h4>
-                            <p className="text-sm text-gray-600">{ticket.description}</p>
-                            <div className="flex gap-2 mt-2">
-                              <Badge variant={getPriorityBadgeVariant(ticket.priority || 'medium')}>
-                                {ticket.priority || 'medium'}
-                              </Badge>
-                              <Badge variant="outline">
-                                {ticket.equipmentModel || 'General'}
-                              </Badge>
+                <h3 className="font-semibold text-gray-900">
+                  Unassigned Tickets Requiring Attention
+                </h3>
+                {filteredTickets
+                  .filter((t) => !t.technicianId || t.technicianId === 'unassigned')
+                  .slice(0, 3)
+                  .map((ticket) => {
+                    const suggestions = getIntelligentRoutingSuggestions(ticket);
+                    return (
+                      <Card key={ticket.id}>
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h4 className="font-medium">
+                                #{ticket.id.slice(0, 8)} - {ticket.customerName}
+                              </h4>
+                              <p className="text-sm text-gray-600">{ticket.description}</p>
+                              <div className="flex gap-2 mt-2">
+                                <Badge
+                                  variant={getPriorityBadgeVariant(ticket.priority || 'medium')}
+                                >
+                                  {ticket.priority || 'medium'}
+                                </Badge>
+                                <Badge variant="outline">
+                                  {ticket.equipmentModel || 'General'}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <h5 className="font-medium text-sm text-gray-700">Recommended Technicians</h5>
-                          {suggestions.map((suggestion, index) => (
-                            <div key={suggestion.technicianId} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-3 h-3 rounded-full ${
-                                      index === 0 ? 'bg-green-500' : index === 1 ? 'bg-yellow-500' : 'bg-gray-500'
-                                    }`} />
-                                    <span className="font-medium">{suggestion.name}</span>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {suggestion.score}% match
-                                    </Badge>
+
+                          <div className="space-y-3">
+                            <h5 className="font-medium text-sm text-gray-700">
+                              Recommended Technicians
+                            </h5>
+                            {suggestions.map((suggestion, index) => (
+                              <div
+                                key={suggestion.technicianId}
+                                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`w-3 h-3 rounded-full ${
+                                          index === 0
+                                            ? 'bg-green-500'
+                                            : index === 1
+                                              ? 'bg-yellow-500'
+                                              : 'bg-gray-500'
+                                        }`}
+                                      />
+                                      <span className="font-medium">{suggestion.name}</span>
+                                      <Badge variant="secondary" className="text-xs">
+                                        {suggestion.score}% match
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-600 mt-1">{suggestion.reason}</p>
+                                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                                    <span>⏱️ ETA: {suggestion.estimatedArrival}</span>
+                                    <span>💼 Workload: {suggestion.currentWorkload}</span>
+                                    <span>🔧 Skills: {suggestion.skills.join(', ')}</span>
                                   </div>
                                 </div>
-                                <p className="text-sm text-gray-600 mt-1">{suggestion.reason}</p>
-                                <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                                  <span>⏱️ ETA: {suggestion.estimatedArrival}</span>
-                                  <span>💼 Workload: {suggestion.currentWorkload}</span>
-                                  <span>🔧 Skills: {suggestion.skills.join(', ')}</span>
-                                </div>
+                                <Button size="sm" variant={index === 0 ? 'default' : 'outline'}>
+                                  Assign
+                                </Button>
                               </div>
-                              <Button size="sm" variant={index === 0 ? "default" : "outline"}>
-                                Assign
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-                
-                {filteredTickets.filter(t => !t.technicianId || t.technicianId === 'unassigned').length === 0 && (
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+
+                {filteredTickets.filter((t) => !t.technicianId || t.technicianId === 'unassigned')
+                  .length === 0 && (
                   <div className="text-center py-8">
                     <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                     <p className="text-gray-600">All tickets are currently assigned!</p>

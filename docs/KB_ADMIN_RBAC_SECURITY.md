@@ -8,45 +8,47 @@ The Knowledge Base Admin system implements comprehensive Role-Based Access Contr
 
 ### 8-Level Role System
 
-| Level | Role Name | KB Admin Permissions |
-|-------|-----------|---------------------|
-| **8** | Platform Administrator | Full platform-level access |
-| **7** | Company Executive / Root Admin | **Full KB Admin Access** |
-| **6** | Company Director | **Full KB Admin Access** |
-| **5** | System Administrator | **KB Admin Dashboard & Operations** |
-| **4** | Department Manager | Analytics view only |
-| **3** | Team Manager | Analytics view only |
-| **2** | Standard User | No KB admin access |
-| **1** | Guest / Read-Only | No KB admin access |
+| Level | Role Name                      | KB Admin Permissions                |
+| ----- | ------------------------------ | ----------------------------------- |
+| **8** | Platform Administrator         | Full platform-level access          |
+| **7** | Company Executive / Root Admin | **Full KB Admin Access**            |
+| **6** | Company Director               | **Full KB Admin Access**            |
+| **5** | System Administrator           | **KB Admin Dashboard & Operations** |
+| **4** | Department Manager             | Analytics view only                 |
+| **3** | Team Manager                   | Analytics view only                 |
+| **2** | Standard User                  | No KB admin access                  |
+| **1** | Guest / Read-Only              | No KB admin access                  |
 
 ## Access Control Matrix
 
 ### Knowledge Base Admin Routes
 
-| Endpoint | Method | Min Role Level | Role Name | Reason |
-|----------|--------|----------------|-----------|--------|
-| `/dashboard` | GET | 5 | System Admin | View admin statistics |
-| `/articles/bulk-update` | POST | 5 | System Admin | Modify multiple articles |
-| `/articles/bulk-delete` | DELETE | **7** | **Root Admin** | **Destructive operation** |
-| `/feedback/pending` | GET | 5 | System Admin | View user feedback |
-| `/feedback/:id/resolve` | PUT | 5 | System Admin | Resolve feedback |
-| `/ai-queue` | GET | 5 | System Admin | View AI generation queue |
-| `/ai-queue/:id/retry` | POST | 5 | System Admin | Retry AI operations |
-| `/articles/:id/versions` | GET | 5 | System Admin | View version history |
-| `/articles/:id/restore-version` | POST | 5 | System Admin | Restore previous versions |
-| `/import` | POST | **7** | **Root Admin** | **Bulk import articles** |
-| `/export` | GET | **7** | **Root Admin** | **Export sensitive data** |
-| `/analytics/detailed` | GET | 3 | Manager | Read-only analytics |
-| `/categories/reorder` | POST | 5 | System Admin | Modify category structure |
+| Endpoint                        | Method | Min Role Level | Role Name      | Reason                    |
+| ------------------------------- | ------ | -------------- | -------------- | ------------------------- |
+| `/dashboard`                    | GET    | 5              | System Admin   | View admin statistics     |
+| `/articles/bulk-update`         | POST   | 5              | System Admin   | Modify multiple articles  |
+| `/articles/bulk-delete`         | DELETE | **7**          | **Root Admin** | **Destructive operation** |
+| `/feedback/pending`             | GET    | 5              | System Admin   | View user feedback        |
+| `/feedback/:id/resolve`         | PUT    | 5              | System Admin   | Resolve feedback          |
+| `/ai-queue`                     | GET    | 5              | System Admin   | View AI generation queue  |
+| `/ai-queue/:id/retry`           | POST   | 5              | System Admin   | Retry AI operations       |
+| `/articles/:id/versions`        | GET    | 5              | System Admin   | View version history      |
+| `/articles/:id/restore-version` | POST   | 5              | System Admin   | Restore previous versions |
+| `/import`                       | POST   | **7**          | **Root Admin** | **Bulk import articles**  |
+| `/export`                       | GET    | **7**          | **Root Admin** | **Export sensitive data** |
+| `/analytics/detailed`           | GET    | 3              | Manager        | Read-only analytics       |
+| `/categories/reorder`           | POST   | 5              | System Admin   | Modify category structure |
 
 ### Key Security Decisions
 
 **Root Admin Only (Level 7+):**
+
 - ❌ **Bulk Delete**: Permanent data loss requires highest privilege
 - ❌ **Import**: Can create/modify many articles at once
 - ❌ **Export**: Contains potentially sensitive content and metadata
 
 **System Admin (Level 5+):**
+
 - ✅ **Dashboard**: Non-destructive read access to statistics
 - ✅ **Bulk Update**: Modify existing articles (non-destructive)
 - ✅ **Feedback Management**: Customer service function
@@ -54,6 +56,7 @@ The Knowledge Base Admin system implements comprehensive Role-Based Access Contr
 - ✅ **Version Control**: Restore and review changes
 
 **Manager (Level 3+):**
+
 - ✅ **Analytics**: Read-only reporting and metrics
 
 ## Middleware Implementation
@@ -71,12 +74,13 @@ const requireSystemAdmin = requireRole(5);
 const requireManager = requireRole(3);
 
 // Example usage:
-router.delete('/articles/bulk-delete',
-  requireAuth,           // Check authentication
-  requireRootAdmin,      // Check role level 7+
+router.delete(
+  '/articles/bulk-delete',
+  requireAuth, // Check authentication
+  requireRootAdmin, // Check role level 7+
   async (req, res) => {
     // Handler code
-  }
+  },
 );
 ```
 
@@ -107,16 +111,19 @@ router.delete('/articles/bulk-delete',
 ### 1. Multi-Layer Protection
 
 **Layer 1: Authentication**
+
 - Session-based authentication
 - Token validation
 - User must be logged in
 
 **Layer 2: Authorization**
+
 - Role level checking
 - Department-based access (if applicable)
 - Tenant isolation
 
 **Layer 3: Audit Logging**
+
 - All admin actions logged
 - User ID and role recorded
 - Timestamp and action type
@@ -130,13 +137,14 @@ const tenantId = (req as any).tenantId;
 
 // All database queries filter by tenant
 await db.query.knowledgeArticles.findMany({
-  where: eq(knowledgeArticles.tenantId, tenantId)
+  where: eq(knowledgeArticles.tenantId, tenantId),
 });
 ```
 
 ### 3. Error Handling
 
 **Unauthorized (401):**
+
 ```json
 {
   "message": "Authentication required"
@@ -144,6 +152,7 @@ await db.query.knowledgeArticles.findMany({
 ```
 
 **Forbidden (403):**
+
 ```json
 {
   "message": "Access denied - Requires level 5 or higher"
@@ -151,6 +160,7 @@ await db.query.knowledgeArticles.findMany({
 ```
 
 **Root Admin Required (403):**
+
 ```json
 {
   "message": "Root admin access required - insufficient privileges"
@@ -162,16 +172,19 @@ await db.query.knowledgeArticles.findMany({
 The CLI tool bypasses RBAC as it requires direct server access. Security considerations:
 
 **Physical Security:**
+
 - CLI requires server shell access
 - Only available to infrastructure administrators
 - Not exposed via web interface
 
 **Recommendations:**
+
 - Restrict SSH access to server
 - Use sudo/privilege escalation
 - Audit CLI usage via system logs
 
 **Tenant Parameter:**
+
 ```bash
 # Explicitly require tenant ID to prevent cross-tenant operations
 npm run kb -- delete --tenant REQUIRED --id article-123
@@ -183,12 +196,14 @@ npm run kb -- delete --tenant REQUIRED --id article-123
 The Chrome extension uses API tokens with embedded role information.
 
 **Security Measures:**
+
 1. **API Token Authentication**: User provides token with role embedded
 2. **Server-Side Validation**: All API calls validate role on server
 3. **Token Expiration**: Tokens expire after configured time
 4. **Tenant Scoping**: Extension can only access assigned tenant
 
 **User Responsibility:**
+
 - Users must not share API tokens
 - Tokens should be regenerated periodically
 - Revoke tokens for ex-employees
@@ -196,6 +211,7 @@ The Chrome extension uses API tokens with embedded role information.
 ## Admin UI Security
 
 **Route Protection:**
+
 ```typescript
 // In React Router or navigation guard
 if (user.roleLevel < 3) {
@@ -375,6 +391,7 @@ Before deploying to production:
 **Problem:** User gets 403 Forbidden
 
 **Check:**
+
 1. Verify user's role level: `SELECT level FROM roles r JOIN users u ON u.roleId = r.id WHERE u.id = ?`
 2. Check required role level in route definition
 3. Verify session is active
@@ -385,6 +402,7 @@ Before deploying to production:
 **Problem:** Actions not appearing in audit.log
 
 **Check:**
+
 1. Verify audit middleware is active
 2. Check file permissions on `server/audit.log`
 3. Ensure disk space available
@@ -397,6 +415,7 @@ Before deploying to production:
 **Reason:** Direct server access implies physical/infrastructure admin
 
 **Mitigation:**
+
 - Restrict server SSH access
 - Use sudo for CLI commands
 - Monitor system logs

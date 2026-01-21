@@ -1,19 +1,10 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { 
-  DollarSign, 
-  Plus, 
-  Search, 
-  Settings, 
-  TrendingUp,
-  Edit,
-  Save,
-  X
-} from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { DollarSign, Plus, Search, Settings, TrendingUp, Edit, Save, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -29,39 +20,39 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import type { 
-  CompanyPricingSetting, 
-  ProductPricing, 
-  InsertCompanyPricingSetting, 
-  InsertProductPricing 
-} from "@shared/schema";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import type {
+  CompanyPricingSetting,
+  ProductPricing,
+  InsertCompanyPricingSetting,
+  InsertProductPricing,
+} from '@shared/schema';
 
 // Form schemas
 const companyPricingSchema = z.object({
-  defaultMarkupPercentage: z.string().min(1, "Default markup percentage is required"),
+  defaultMarkupPercentage: z.string().min(1, 'Default markup percentage is required'),
   allowSalespersonOverride: z.boolean(),
-  minimumGrossProfitPercentage: z.string().min(1, "Minimum gross profit percentage is required"),
+  minimumGrossProfitPercentage: z.string().min(1, 'Minimum gross profit percentage is required'),
 });
 
 const productPricingSchema = z.object({
-  productId: z.string().min(1, "Product is required"),
-  productType: z.string().min(1, "Product type is required"),
-  dealerCost: z.string().min(1, "Dealer cost is required"),
+  productId: z.string().min(1, 'Product is required'),
+  productType: z.string().min(1, 'Product type is required'),
+  dealerCost: z.string().min(1, 'Dealer cost is required'),
   companyMarkupPercentage: z.string().optional(),
   minimumSalePrice: z.string().optional(),
   suggestedRetailPrice: z.string().optional(),
@@ -71,7 +62,7 @@ type CompanyPricingFormData = z.infer<typeof companyPricingSchema>;
 type ProductPricingFormData = z.infer<typeof productPricingSchema>;
 
 export default function PricingManagement() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [isCompanyDialogOpen, setIsCompanyDialogOpen] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [editingPricing, setEditingPricing] = useState<ProductPricing | null>(null);
@@ -80,29 +71,29 @@ export default function PricingManagement() {
 
   // Fetch company pricing settings
   const { data: companySettings, isLoading: isLoadingSettings } = useQuery<CompanyPricingSetting>({
-    queryKey: ["/api/pricing/company-settings"],
+    queryKey: ['/api/pricing/company-settings'],
   });
 
   // Fetch product pricing
   const { data: productPricing = [], isLoading: isLoadingProducts } = useQuery<ProductPricing[]>({
-    queryKey: ["/api/pricing/products"],
+    queryKey: ['/api/pricing/products'],
   });
 
   // Fetch available products for selection
   const { data: availableProducts = [] } = useQuery({
-    queryKey: ["/api/products/all"],
+    queryKey: ['/api/products/all'],
   });
 
   // Company settings mutation
   const updateCompanySettingsMutation = useMutation({
     mutationFn: async (data: CompanyPricingFormData) => {
-      return apiRequest("/api/pricing/company-settings", "POST", data);
+      return apiRequest('/api/pricing/company-settings', 'POST', data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pricing/company-settings"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pricing/company-settings'] });
       toast({
-        title: "Success",
-        description: "Company pricing settings updated successfully",
+        title: 'Success',
+        description: 'Company pricing settings updated successfully',
       });
       setIsCompanyDialogOpen(false);
     },
@@ -113,19 +104,23 @@ export default function PricingManagement() {
     mutationFn: async (data: ProductPricingFormData) => {
       const companyPrice = calculateCompanyPrice(
         parseFloat(data.dealerCost),
-        data.companyMarkupPercentage ? parseFloat(data.companyMarkupPercentage) : (companySettings?.defaultMarkupPercentage ? parseFloat(companySettings.defaultMarkupPercentage) : 20)
+        data.companyMarkupPercentage
+          ? parseFloat(data.companyMarkupPercentage)
+          : companySettings?.defaultMarkupPercentage
+            ? parseFloat(companySettings.defaultMarkupPercentage)
+            : 20,
       );
-      
-      return apiRequest("/api/pricing/products", "POST", {
+
+      return apiRequest('/api/pricing/products', 'POST', {
         ...data,
         companyPrice: companyPrice.toString(),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pricing/products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pricing/products'] });
       toast({
-        title: "Success",
-        description: "Product pricing created successfully",
+        title: 'Success',
+        description: 'Product pricing created successfully',
       });
       setIsProductDialogOpen(false);
       productForm.reset();
@@ -136,19 +131,23 @@ export default function PricingManagement() {
     mutationFn: async ({ id, data }: { id: string; data: ProductPricingFormData }) => {
       const companyPrice = calculateCompanyPrice(
         parseFloat(data.dealerCost),
-        data.companyMarkupPercentage ? parseFloat(data.companyMarkupPercentage) : (companySettings?.defaultMarkupPercentage ? parseFloat(companySettings.defaultMarkupPercentage) : 20)
+        data.companyMarkupPercentage
+          ? parseFloat(data.companyMarkupPercentage)
+          : companySettings?.defaultMarkupPercentage
+            ? parseFloat(companySettings.defaultMarkupPercentage)
+            : 20,
       );
-      
-      return apiRequest(`/api/pricing/products/${id}`, "PUT", {
+
+      return apiRequest(`/api/pricing/products/${id}`, 'PUT', {
         ...data,
         companyPrice: companyPrice.toString(),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pricing/products"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pricing/products'] });
       toast({
-        title: "Success",
-        description: "Product pricing updated successfully",
+        title: 'Success',
+        description: 'Product pricing updated successfully',
       });
       setEditingPricing(null);
     },
@@ -158,9 +157,9 @@ export default function PricingManagement() {
   const companyForm = useForm<CompanyPricingFormData>({
     resolver: zodResolver(companyPricingSchema),
     defaultValues: {
-      defaultMarkupPercentage: "20.00",
+      defaultMarkupPercentage: '20.00',
       allowSalespersonOverride: true,
-      minimumGrossProfitPercentage: "5.00",
+      minimumGrossProfitPercentage: '5.00',
     },
   });
 
@@ -168,9 +167,9 @@ export default function PricingManagement() {
   useEffect(() => {
     if (companySettings) {
       companyForm.reset({
-        defaultMarkupPercentage: companySettings.defaultMarkupPercentage || "20.00",
+        defaultMarkupPercentage: companySettings.defaultMarkupPercentage || '20.00',
         allowSalespersonOverride: companySettings.allowSalespersonOverride ?? true,
-        minimumGrossProfitPercentage: companySettings.minimumGrossProfitPercentage || "5.00",
+        minimumGrossProfitPercentage: companySettings.minimumGrossProfitPercentage || '5.00',
       });
     }
   }, [companySettings, companyForm]);
@@ -178,12 +177,12 @@ export default function PricingManagement() {
   const productForm = useForm<ProductPricingFormData>({
     resolver: zodResolver(productPricingSchema),
     defaultValues: {
-      productId: "",
-      productType: "",
-      dealerCost: "",
-      companyMarkupPercentage: "",
-      minimumSalePrice: "",
-      suggestedRetailPrice: "",
+      productId: '',
+      productType: '',
+      dealerCost: '',
+      companyMarkupPercentage: '',
+      minimumSalePrice: '',
+      suggestedRetailPrice: '',
     },
   });
 
@@ -224,10 +223,10 @@ export default function PricingManagement() {
     productForm.reset({
       productId: pricing.productId,
       productType: pricing.productType,
-      dealerCost: pricing.dealerCost || "",
-      companyMarkupPercentage: pricing.companyMarkupPercentage || "",
-      minimumSalePrice: pricing.minimumSalePrice || "",
-      suggestedRetailPrice: pricing.suggestedRetailPrice || "",
+      dealerCost: pricing.dealerCost || '',
+      companyMarkupPercentage: pricing.companyMarkupPercentage || '',
+      minimumSalePrice: pricing.minimumSalePrice || '',
+      suggestedRetailPrice: pricing.suggestedRetailPrice || '',
     });
     setIsProductDialogOpen(true);
   };
@@ -239,13 +238,18 @@ export default function PricingManagement() {
   };
 
   return (
-    <MainLayout title="Pricing Management" description="Manage multi-layered pricing for products and quotes">
+    <MainLayout
+      title="Pricing Management"
+      description="Manage multi-layered pricing for products and quotes"
+    >
       <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Pricing Management</h1>
-            <p className="text-gray-600">Configure dealer costs, company markups, and salesperson profit margins</p>
+            <p className="text-gray-600">
+              Configure dealer costs, company markups, and salesperson profit margins
+            </p>
           </div>
           <div className="flex gap-2">
             <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
@@ -277,7 +281,7 @@ export default function PricingManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={companyForm.control}
                       name="minimumGrossProfitPercentage"
@@ -291,7 +295,7 @@ export default function PricingManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={companyForm.control}
                       name="allowSalespersonOverride"
@@ -304,9 +308,13 @@ export default function PricingManagement() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => setIsCompanyDialogOpen(false)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCompanyDialogOpen(false)}
+                      >
                         Cancel
                       </Button>
                       <Button type="submit" disabled={updateCompanySettingsMutation.isPending}>
@@ -318,7 +326,7 @@ export default function PricingManagement() {
                 </Form>
               </DialogContent>
             </Dialog>
-            
+
             <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
               <DialogTrigger asChild>
                 <Button onClick={() => setEditingPricing(null)}>
@@ -329,7 +337,7 @@ export default function PricingManagement() {
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
                   <DialogTitle>
-                    {editingPricing ? "Edit Product Pricing" : "Add Product Pricing"}
+                    {editingPricing ? 'Edit Product Pricing' : 'Add Product Pricing'}
                   </DialogTitle>
                   <DialogDescription>
                     Set dealer cost, company markup, and pricing rules for products
@@ -362,7 +370,7 @@ export default function PricingManagement() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="productId"
@@ -377,7 +385,7 @@ export default function PricingManagement() {
                         )}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={productForm.control}
@@ -392,7 +400,7 @@ export default function PricingManagement() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="companyMarkupPercentage"
@@ -400,14 +408,19 @@ export default function PricingManagement() {
                           <FormItem>
                             <FormLabel>Company Markup (%) - Optional</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Use default" type="number" step="0.01" />
+                              <Input
+                                {...field}
+                                placeholder="Use default"
+                                type="number"
+                                step="0.01"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
                       <FormField
                         control={productForm.control}
@@ -422,7 +435,7 @@ export default function PricingManagement() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={productForm.control}
                         name="suggestedRetailPrice"
@@ -437,15 +450,21 @@ export default function PricingManagement() {
                         )}
                       />
                     </div>
-                    
+
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={closeProductDialog}>
                         <X className="h-4 w-4 mr-2" />
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={createProductPricingMutation.isPending || updateProductPricingMutation.isPending}>
+                      <Button
+                        type="submit"
+                        disabled={
+                          createProductPricingMutation.isPending ||
+                          updateProductPricingMutation.isPending
+                        }
+                      >
                         <Save className="h-4 w-4 mr-2" />
-                        {editingPricing ? "Update" : "Create"} Pricing
+                        {editingPricing ? 'Update' : 'Create'} Pricing
                       </Button>
                     </div>
                   </form>
@@ -468,16 +487,22 @@ export default function PricingManagement() {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Default Markup</p>
-                  <p className="text-lg font-semibold">{companySettings.defaultMarkupPercentage}%</p>
+                  <p className="text-lg font-semibold">
+                    {companySettings.defaultMarkupPercentage}%
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Minimum Profit</p>
-                  <p className="text-lg font-semibold">{companySettings.minimumGrossProfitPercentage}%</p>
+                  <p className="text-lg font-semibold">
+                    {companySettings.minimumGrossProfitPercentage}%
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Salesperson Override</p>
-                  <Badge variant={companySettings.allowSalespersonOverride ? "default" : "secondary"}>
-                    {companySettings.allowSalespersonOverride ? "Allowed" : "Restricted"}
+                  <Badge
+                    variant={companySettings.allowSalespersonOverride ? 'default' : 'secondary'}
+                  >
+                    {companySettings.allowSalespersonOverride ? 'Allowed' : 'Restricted'}
                   </Badge>
                 </div>
               </div>
@@ -509,7 +534,9 @@ export default function PricingManagement() {
               <CardContent className="py-8 text-center">
                 <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">No product pricing configured yet</p>
-                <p className="text-sm text-gray-500">Add product pricing to get started with multi-layered pricing</p>
+                <p className="text-sm text-gray-500">
+                  Add product pricing to get started with multi-layered pricing
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -521,11 +548,11 @@ export default function PricingManagement() {
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="font-semibold">{pricing.productId}</h3>
                         <Badge variant="outline">{pricing.productType}</Badge>
-                        <Badge variant={pricing.isActive ? "default" : "secondary"}>
-                          {pricing.isActive ? "Active" : "Inactive"}
+                        <Badge variant={pricing.isActive ? 'default' : 'secondary'}>
+                          {pricing.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                         <div>
                           <p className="text-sm text-gray-600">Dealer Cost</p>
@@ -535,25 +562,25 @@ export default function PricingManagement() {
                           <p className="text-sm text-gray-600">Company Price</p>
                           <p className="font-semibold text-blue-600">${pricing.companyPrice}</p>
                           {pricing.companyMarkupPercentage && (
-                            <p className="text-xs text-gray-500">+{pricing.companyMarkupPercentage}%</p>
+                            <p className="text-xs text-gray-500">
+                              +{pricing.companyMarkupPercentage}%
+                            </p>
                           )}
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Min Sale Price</p>
-                          <p className="font-semibold">${pricing.minimumSalePrice || "N/A"}</p>
+                          <p className="font-semibold">${pricing.minimumSalePrice || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Suggested Retail</p>
-                          <p className="font-semibold text-green-600">${pricing.suggestedRetailPrice || "N/A"}</p>
+                          <p className="font-semibold text-green-600">
+                            ${pricing.suggestedRetailPrice || 'N/A'}
+                          </p>
                         </div>
                       </div>
                     </div>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(pricing)}
-                    >
+
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(pricing)}>
                       <Edit className="h-4 w-4" />
                     </Button>
                   </div>

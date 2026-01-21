@@ -12,8 +12,8 @@ const CONFIG = {
     surveyId: 'survey-123',
     questionId1: 'question-1',
     questionId2: 'question-2',
-    portalSessionToken: 'mock-portal-session-token'
-  }
+    portalSessionToken: 'mock-portal-session-token',
+  },
 };
 
 class SatisfactionRatingAPITest {
@@ -24,19 +24,24 @@ class SatisfactionRatingAPITest {
         passed: 0,
         failed: 0,
         skipped: 0,
-        startTime: new Date()
+        startTime: new Date(),
       },
-      tests: []
+      tests: [],
     };
   }
 
   async getCsrfToken() {
     // Get CSRF token from a GET request first
     try {
-      const response = await this.makeRequestRaw('GET', '/api/customer-portal/satisfaction/surveys', null, {
-        'x-portal-session': CONFIG.mockData.portalSessionToken
-      });
-      
+      const response = await this.makeRequestRaw(
+        'GET',
+        '/api/customer-portal/satisfaction/surveys',
+        null,
+        {
+          'x-portal-session': CONFIG.mockData.portalSessionToken,
+        },
+      );
+
       // Extract CSRF token from cookies or response headers
       const setCookieHeader = response.headers['set-cookie'];
       if (setCookieHeader) {
@@ -49,13 +54,13 @@ class SatisfactionRatingAPITest {
           }
         }
       }
-      
+
       // Try to get from response headers
       const csrfHeader = response.headers['x-csrf-token'] || response.headers['csrf-token'];
       if (csrfHeader) {
         return csrfHeader;
       }
-      
+
       return null;
     } catch (error) {
       return null;
@@ -65,7 +70,7 @@ class SatisfactionRatingAPITest {
   async makeRequestRaw(method, path, data = null, headers = {}) {
     return new Promise((resolve, reject) => {
       const url = new URL(path, CONFIG.baseUrl);
-      
+
       const options = {
         hostname: url.hostname,
         port: url.port || 5000,
@@ -74,9 +79,9 @@ class SatisfactionRatingAPITest {
         headers: {
           'Content-Type': 'application/json',
           'x-portal-session': CONFIG.mockData.portalSessionToken,
-          ...headers
+          ...headers,
         },
-        timeout: CONFIG.timeout
+        timeout: CONFIG.timeout,
       };
 
       const req = http.request(options, (res) => {
@@ -84,7 +89,7 @@ class SatisfactionRatingAPITest {
         res.on('data', (chunk) => {
           body += chunk;
         });
-        
+
         res.on('end', () => {
           try {
             const parsedBody = body ? JSON.parse(body) : {};
@@ -92,14 +97,14 @@ class SatisfactionRatingAPITest {
               status: res.statusCode,
               headers: res.headers,
               data: parsedBody,
-              rawBody: body
+              rawBody: body,
             });
           } catch (error) {
             resolve({
               status: res.statusCode,
               headers: res.headers,
               data: { parseError: error.message },
-              rawBody: body
+              rawBody: body,
             });
           }
         });
@@ -143,7 +148,7 @@ class SatisfactionRatingAPITest {
       startTime: new Date(),
       endTime: null,
       error: null,
-      details: {}
+      details: {},
     };
 
     this.results.summary.totalTests++;
@@ -173,13 +178,15 @@ class SatisfactionRatingAPITest {
     // Test 1: List available surveys with authentication
     await this.runTest('GET /satisfaction/surveys - with authentication', async () => {
       const response = await this.makeRequest('GET', '/api/customer-portal/satisfaction/surveys');
-      
+
       if (response.status !== 200) {
         // If 401, that's expected behavior - no real auth in demo mode
         if (response.status === 401) {
           return { expected: true, message: 'Authentication required (expected in demo mode)' };
         }
-        throw new Error(`Expected 200 or 401, got ${response.status}: ${JSON.stringify(response.data)}`);
+        throw new Error(
+          `Expected 200 or 401, got ${response.status}: ${JSON.stringify(response.data)}`,
+        );
       }
 
       if (!response.data.hasOwnProperty('success')) {
@@ -195,15 +202,23 @@ class SatisfactionRatingAPITest {
 
     // Test 2: List surveys without authentication
     await this.runTest('GET /satisfaction/surveys - without authentication', async () => {
-      const response = await this.makeRequest('GET', '/api/customer-portal/satisfaction/surveys', null, {
-        'x-portal-session': '' // Remove session token
-      });
-      
+      const response = await this.makeRequest(
+        'GET',
+        '/api/customer-portal/satisfaction/surveys',
+        null,
+        {
+          'x-portal-session': '', // Remove session token
+        },
+      );
+
       if (response.status !== 401) {
         throw new Error(`Expected 401 unauthorized, got ${response.status}`);
       }
 
-      if (!response.data.message || !response.data.message.toLowerCase().includes('authentication')) {
+      if (
+        !response.data.message ||
+        !response.data.message.toLowerCase().includes('authentication')
+      ) {
         throw new Error('Expected authentication error message');
       }
 
@@ -212,8 +227,11 @@ class SatisfactionRatingAPITest {
 
     // Test 3: Get specific survey details
     await this.runTest('GET /satisfaction/surveys/:surveyId - survey details', async () => {
-      const response = await this.makeRequest('GET', `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}`);
-      
+      const response = await this.makeRequest(
+        'GET',
+        `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}`,
+      );
+
       // Expected responses: 401 (no auth), 404 (survey not found), or 200 (survey exists)
       if (![200, 401, 404, 410].includes(response.status)) {
         throw new Error(`Unexpected status code: ${response.status}`);
@@ -244,8 +262,11 @@ class SatisfactionRatingAPITest {
 
     // Test 4: Start a survey
     await this.runTest('POST /satisfaction/surveys/:surveyId/start - start survey', async () => {
-      const response = await this.makeRequest('POST', `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}/start`);
-      
+      const response = await this.makeRequest(
+        'POST',
+        `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}/start`,
+      );
+
       // Expected: 401 (no auth), 404 (not found), 400 (already completed), 410 (expired), or 200 (success)
       if (![200, 400, 401, 404, 410].includes(response.status)) {
         throw new Error(`Unexpected status code: ${response.status}`);
@@ -276,97 +297,116 @@ class SatisfactionRatingAPITest {
     });
 
     // Test 5: Submit survey responses with invalid data
-    await this.runTest('POST /satisfaction/surveys/:surveyId/submit - invalid responses', async () => {
-      const response = await this.makeRequest('POST', `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}/submit`, {
-        responses: 'invalid-format' // Should be array
-      });
-      
-      if (response.status === 401) {
-        return { expected: true, message: 'Authentication required (expected)' };
-      }
+    await this.runTest(
+      'POST /satisfaction/surveys/:surveyId/submit - invalid responses',
+      async () => {
+        const response = await this.makeRequest(
+          'POST',
+          `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}/submit`,
+          {
+            responses: 'invalid-format', // Should be array
+          },
+        );
 
-      if (response.status !== 400) {
-        throw new Error(`Expected 400 bad request, got ${response.status}`);
-      }
+        if (response.status === 401) {
+          return { expected: true, message: 'Authentication required (expected)' };
+        }
 
-      if (!response.data.message?.includes('array')) {
-        throw new Error('Expected validation error about responses array');
-      }
+        if (response.status !== 400) {
+          throw new Error(`Expected 400 bad request, got ${response.status}`);
+        }
 
-      return { status: response.status, validationWorking: true };
-    });
+        if (!response.data.message?.includes('array')) {
+          throw new Error('Expected validation error about responses array');
+        }
+
+        return { status: response.status, validationWorking: true };
+      },
+    );
 
     // Test 6: Submit survey responses with valid structure
-    await this.runTest('POST /satisfaction/surveys/:surveyId/submit - valid responses', async () => {
-      const validResponses = [
-        {
-          questionId: CONFIG.mockData.questionId1,
-          ratingValue: 5,
-          timeSpentSeconds: 30,
-          responseOrder: 1
-        },
-        {
-          questionId: CONFIG.mockData.questionId2,
-          textValue: 'Great service!',
-          timeSpentSeconds: 45,
-          responseOrder: 2
+    await this.runTest(
+      'POST /satisfaction/surveys/:surveyId/submit - valid responses',
+      async () => {
+        const validResponses = [
+          {
+            questionId: CONFIG.mockData.questionId1,
+            ratingValue: 5,
+            timeSpentSeconds: 30,
+            responseOrder: 1,
+          },
+          {
+            questionId: CONFIG.mockData.questionId2,
+            textValue: 'Great service!',
+            timeSpentSeconds: 45,
+            responseOrder: 2,
+          },
+        ];
+
+        const response = await this.makeRequest(
+          'POST',
+          `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}/submit`,
+          {
+            responses: validResponses,
+          },
+        );
+
+        // Expected: 401 (no auth), 404 (not found), 400 (validation error/completed), 410 (expired), or 200 (success)
+        if (![200, 400, 401, 404, 410].includes(response.status)) {
+          throw new Error(`Unexpected status code: ${response.status}`);
         }
-      ];
 
-      const response = await this.makeRequest('POST', `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}/submit`, {
-        responses: validResponses
-      });
-      
-      // Expected: 401 (no auth), 404 (not found), 400 (validation error/completed), 410 (expired), or 200 (success)
-      if (![200, 400, 401, 404, 410].includes(response.status)) {
-        throw new Error(`Unexpected status code: ${response.status}`);
-      }
+        if (response.status === 401) {
+          return { expected: true, message: 'Authentication required (expected)' };
+        }
 
-      if (response.status === 401) {
-        return { expected: true, message: 'Authentication required (expected)' };
-      }
+        if (response.status === 404) {
+          return { expected: true, message: 'Survey not found (expected for mock ID)' };
+        }
 
-      if (response.status === 404) {
-        return { expected: true, message: 'Survey not found (expected for mock ID)' };
-      }
+        if (response.status === 400) {
+          return {
+            expected: true,
+            message: `Validation error (expected): ${response.data.message}`,
+          };
+        }
 
-      if (response.status === 400) {
-        return { expected: true, message: `Validation error (expected): ${response.data.message}` };
-      }
+        if (response.status === 410) {
+          return { expected: true, message: 'Survey expired (expected behavior)' };
+        }
 
-      if (response.status === 410) {
-        return { expected: true, message: 'Survey expired (expected behavior)' };
-      }
-
-      // If 200, validate response structure
-      if (response.status === 200) {
-        const requiredKeys = ['survey', 'responsesSubmitted'];
-        for (const key of requiredKeys) {
-          if (!response.data.data.hasOwnProperty(key)) {
-            throw new Error(`Response missing required key: ${key}`);
+        // If 200, validate response structure
+        if (response.status === 200) {
+          const requiredKeys = ['survey', 'responsesSubmitted'];
+          for (const key of requiredKeys) {
+            if (!response.data.data.hasOwnProperty(key)) {
+              throw new Error(`Response missing required key: ${key}`);
+            }
           }
+
+          return {
+            status: response.status,
+            responsesSubmitted: response.data.data.responsesSubmitted,
+            hasScoring: response.data.data.overallScore !== undefined,
+          };
         }
 
-        return { 
-          status: response.status, 
-          responsesSubmitted: response.data.data.responsesSubmitted,
-          hasScoring: response.data.data.overallScore !== undefined
-        };
-      }
-
-      return { status: response.status };
-    });
+        return { status: response.status };
+      },
+    );
 
     // Test 7: Get satisfaction analytics
     await this.runTest('GET /satisfaction/analytics - customer analytics', async () => {
       const response = await this.makeRequest('GET', '/api/customer-portal/satisfaction/analytics');
-      
+
       if (response.status === 401) {
         return { expected: true, message: 'Authentication required (expected)' };
       }
 
       if (response.status !== 200) {
-        throw new Error(`Expected 200 or 401, got ${response.status}: ${JSON.stringify(response.data)}`);
+        throw new Error(
+          `Expected 200 or 401, got ${response.status}: ${JSON.stringify(response.data)}`,
+        );
       }
 
       // Validate analytics structure
@@ -385,10 +425,10 @@ class SatisfactionRatingAPITest {
         }
       }
 
-      return { 
-        status: response.status, 
+      return {
+        status: response.status,
         totalSurveys: response.data.data.summary.totalSurveys,
-        hasValidStructure: true 
+        hasValidStructure: true,
       };
     });
 
@@ -396,10 +436,13 @@ class SatisfactionRatingAPITest {
     await this.runTest('GET /satisfaction/analytics - time range filtering', async () => {
       const timeRanges = ['30d', '90d', '6m', '1y'];
       const results = {};
-      
+
       for (const timeRange of timeRanges) {
-        const response = await this.makeRequest('GET', `/api/customer-portal/satisfaction/analytics?timeRange=${timeRange}`);
-        
+        const response = await this.makeRequest(
+          'GET',
+          `/api/customer-portal/satisfaction/analytics?timeRange=${timeRange}`,
+        );
+
         if (response.status === 401) {
           results[timeRange] = { expected: true, message: 'Authentication required' };
           continue;
@@ -421,10 +464,15 @@ class SatisfactionRatingAPITest {
 
     // Test 9: Access control - different customer context
     await this.runTest('Access control - tenant/customer isolation', async () => {
-      const response = await this.makeRequest('GET', '/api/customer-portal/satisfaction/surveys', null, {
-        'x-portal-session': 'different-customer-token'
-      });
-      
+      const response = await this.makeRequest(
+        'GET',
+        '/api/customer-portal/satisfaction/surveys',
+        null,
+        {
+          'x-portal-session': 'different-customer-token',
+        },
+      );
+
       // Should be rejected with 401, 403, or similar
       if (![401, 403, 404].includes(response.status)) {
         throw new Error(`Expected access control rejection, got ${response.status}`);
@@ -438,17 +486,19 @@ class SatisfactionRatingAPITest {
       const endpoints = [
         '/api/customer-portal/satisfaction/surveys',
         `/api/customer-portal/satisfaction/surveys/${CONFIG.mockData.surveyId}`,
-        '/api/customer-portal/satisfaction/analytics'
+        '/api/customer-portal/satisfaction/analytics',
       ];
 
       const results = {};
       for (const endpoint of endpoints) {
         try {
-          const response = await this.makeRequest('GET', endpoint, null, { 'x-portal-session': '' });
-          results[endpoint] = { 
-            status: response.status, 
+          const response = await this.makeRequest('GET', endpoint, null, {
+            'x-portal-session': '',
+          });
+          results[endpoint] = {
+            status: response.status,
             reachable: true,
-            hasExpectedAuthBehavior: [401, 403].includes(response.status)
+            hasExpectedAuthBehavior: [401, 403].includes(response.status),
           };
         } catch (error) {
           results[endpoint] = { reachable: false, error: error.message };
@@ -456,9 +506,13 @@ class SatisfactionRatingAPITest {
       }
 
       // All endpoints should be reachable (even if they return auth errors)
-      const unreachableEndpoints = Object.entries(results).filter(([_, result]) => !result.reachable);
+      const unreachableEndpoints = Object.entries(results).filter(
+        ([_, result]) => !result.reachable,
+      );
       if (unreachableEndpoints.length > 0) {
-        throw new Error(`Unreachable endpoints: ${unreachableEndpoints.map(([ep]) => ep).join(', ')}`);
+        throw new Error(
+          `Unreachable endpoints: ${unreachableEndpoints.map(([ep]) => ep).join(', ')}`,
+        );
       }
 
       return { allEndpointsReachable: true, results };
@@ -470,7 +524,7 @@ class SatisfactionRatingAPITest {
   printSummary() {
     const endTime = new Date();
     const duration = Math.round((endTime - this.results.summary.startTime) / 1000);
-    
+
     console.log('\n' + '='.repeat(60));
     console.log('📊 SATISFACTION RATING API TEST SUMMARY');
     console.log('='.repeat(60));
@@ -478,26 +532,28 @@ class SatisfactionRatingAPITest {
     console.log(`✅ Passed: ${this.results.summary.passed}`);
     console.log(`❌ Failed: ${this.results.summary.failed}`);
     console.log(`⏱️  Duration: ${duration}s`);
-    console.log(`📈 Success Rate: ${((this.results.summary.passed / this.results.summary.totalTests) * 100).toFixed(1)}%`);
-    
+    console.log(
+      `📈 Success Rate: ${((this.results.summary.passed / this.results.summary.totalTests) * 100).toFixed(1)}%`,
+    );
+
     if (this.results.summary.failed > 0) {
       console.log('\n❌ FAILED TESTS:');
       this.results.tests
-        .filter(test => test.status === 'failed')
-        .forEach(test => {
+        .filter((test) => test.status === 'failed')
+        .forEach((test) => {
           console.log(`  - ${test.name}: ${test.error}`);
         });
     }
 
     console.log('\n✅ PASSED TESTS:');
     this.results.tests
-      .filter(test => test.status === 'passed')
-      .forEach(test => {
+      .filter((test) => test.status === 'passed')
+      .forEach((test) => {
         console.log(`  - ${test.name}`);
       });
 
     console.log('='.repeat(60));
-    
+
     // Return non-zero exit code if any tests failed
     if (this.results.summary.failed > 0) {
       process.exit(1);
@@ -508,7 +564,7 @@ class SatisfactionRatingAPITest {
 // Main execution
 async function main() {
   const tester = new SatisfactionRatingAPITest();
-  
+
   try {
     await tester.runAllTests();
   } catch (error) {

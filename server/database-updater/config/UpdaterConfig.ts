@@ -4,9 +4,9 @@
  */
 
 export interface ScheduleConfig {
-  businessActivities: string;  // CRON expression for business activities
-  serviceTickets: string;      // CRON expression for service tickets
-  newLeads: string;           // CRON expression for new leads
+  businessActivities: string; // CRON expression for business activities
+  serviceTickets: string; // CRON expression for service tickets
+  newLeads: string; // CRON expression for new leads
 }
 
 export interface DatabaseConfig {
@@ -30,13 +30,13 @@ export interface DataGenerationConfig {
   };
   serviceTickets: {
     priorityDistribution: Record<string, number>; // Priority probabilities
-    statusDistribution: Record<string, number>;   // Status probabilities
+    statusDistribution: Record<string, number>; // Status probabilities
     minEstimatedDuration: number;
     maxEstimatedDuration: number;
     includeWeekends: boolean;
   };
   newLeads: {
-    sourceDistribution: Record<string, number>;   // Lead source probabilities
+    sourceDistribution: Record<string, number>; // Lead source probabilities
     industryDistribution: Record<string, number>; // Industry probabilities
     scoreRange: { min: number; max: number };
     revenueRange: { min: number; max: number };
@@ -51,8 +51,8 @@ export class UpdaterConfig {
   // Schedule configuration (CRON expressions)
   public scheduleConfig: ScheduleConfig = {
     businessActivities: '0 */2 9-17 * * 1-5', // Every 2 hours, 9 AM - 5 PM, Mon-Fri
-    serviceTickets: '0 0 */6 * * *',           // Every 6 hours
-    newLeads: '0 0 10 * * 1-5',               // Daily at 10 AM, Mon-Fri
+    serviceTickets: '0 0 */6 * * *', // Every 6 hours
+    newLeads: '0 0 10 * * 1-5', // Daily at 10 AM, Mon-Fri
   };
 
   // Database configuration
@@ -72,13 +72,13 @@ export class UpdaterConfig {
   public dataGenerationConfig: DataGenerationConfig = {
     businessActivities: {
       typesDistribution: {
-        'call': 0.35,
-        'email': 0.25,
-        'meeting': 0.15,
-        'demo': 0.10,
-        'proposal': 0.05,
-        'task': 0.05,
-        'note': 0.05,
+        call: 0.35,
+        email: 0.25,
+        meeting: 0.15,
+        demo: 0.1,
+        proposal: 0.05,
+        task: 0.05,
+        note: 0.05,
       },
       minDurationMinutes: 5,
       maxDurationMinutes: 120,
@@ -86,16 +86,16 @@ export class UpdaterConfig {
     },
     serviceTickets: {
       priorityDistribution: {
-        'low': 0.40,
-        'medium': 0.35,
-        'high': 0.20,
-        'urgent': 0.05,
+        low: 0.4,
+        medium: 0.35,
+        high: 0.2,
+        urgent: 0.05,
       },
       statusDistribution: {
-        'open': 0.30,
-        'assigned': 0.25,
+        open: 0.3,
+        assigned: 0.25,
         'in-progress': 0.25,
-        'completed': 0.20,
+        completed: 0.2,
       },
       minEstimatedDuration: 30,
       maxEstimatedDuration: 480, // 8 hours max
@@ -103,24 +103,24 @@ export class UpdaterConfig {
     },
     newLeads: {
       sourceDistribution: {
-        'website': 0.30,
-        'referral': 0.25,
-        'cold_call': 0.15,
-        'trade_show': 0.10,
-        'social_media': 0.10,
-        'advertisement': 0.05,
-        'partner': 0.05,
+        website: 0.3,
+        referral: 0.25,
+        cold_call: 0.15,
+        trade_show: 0.1,
+        social_media: 0.1,
+        advertisement: 0.05,
+        partner: 0.05,
       },
       industryDistribution: {
-        'healthcare': 0.20,
-        'legal': 0.15,
-        'education': 0.15,
-        'manufacturing': 0.12,
-        'retail': 0.10,
-        'professional_services': 0.10,
-        'government': 0.08,
-        'non_profit': 0.05,
-        'real_estate': 0.05,
+        healthcare: 0.2,
+        legal: 0.15,
+        education: 0.15,
+        manufacturing: 0.12,
+        retail: 0.1,
+        professional_services: 0.1,
+        government: 0.08,
+        non_profit: 0.05,
+        real_estate: 0.05,
       },
       scoreRange: { min: 10, max: 95 },
       revenueRange: { min: 100000, max: 10000000 },
@@ -144,8 +144,8 @@ export class UpdaterConfig {
   public timezoneConfig = {
     timezone: 'America/New_York',
     businessHours: {
-      start: 9,  // 9 AM
-      end: 17,   // 5 PM
+      start: 9, // 9 AM
+      end: 17, // 5 PM
     },
     businessDays: [1, 2, 3, 4, 5], // Monday to Friday
   };
@@ -167,7 +167,10 @@ export class UpdaterConfig {
       this.databaseConfig = { ...this.databaseConfig, ...updates.databaseConfig };
     }
     if (updates.dataGenerationConfig) {
-      this.dataGenerationConfig = this.mergeDeep(this.dataGenerationConfig, updates.dataGenerationConfig);
+      this.dataGenerationConfig = this.mergeDeep(
+        this.dataGenerationConfig,
+        updates.dataGenerationConfig,
+      );
     }
     if (updates.executionConfig) {
       this.executionConfig = { ...this.executionConfig, ...updates.executionConfig };
@@ -235,7 +238,11 @@ export class UpdaterConfig {
 
     // Validate business hours
     const { businessHours } = this.timezoneConfig;
-    if (businessHours.start >= businessHours.end || businessHours.start < 0 || businessHours.end > 24) {
+    if (
+      businessHours.start >= businessHours.end ||
+      businessHours.start < 0 ||
+      businessHours.end > 24
+    ) {
       errors.push('Invalid business hours configuration');
     }
 
@@ -253,8 +260,9 @@ export class UpdaterConfig {
     const hour = date.getHours();
 
     const isBusinessDay = this.timezoneConfig.businessDays.includes(day);
-    const isBusinessHour = hour >= this.timezoneConfig.businessHours.start && 
-                          hour < this.timezoneConfig.businessHours.end;
+    const isBusinessHour =
+      hour >= this.timezoneConfig.businessHours.start &&
+      hour < this.timezoneConfig.businessHours.end;
 
     return isBusinessDay && isBusinessHour;
   }
@@ -292,7 +300,7 @@ export class UpdaterConfig {
    */
   private mergeDeep(target: any, source: any): any {
     const result = { ...target };
-    
+
     for (const key in source) {
       if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
         result[key] = this.mergeDeep(target[key] || {}, source[key]);
@@ -300,7 +308,7 @@ export class UpdaterConfig {
         result[key] = source[key];
       }
     }
-    
+
     return result;
   }
 

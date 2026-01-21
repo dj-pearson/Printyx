@@ -24,7 +24,7 @@ async function setupAndTest() {
     WHERE tenant_id = ${TEST_TENANT_ID} AND integration_name = 'Test HP Integration'
     LIMIT 1
   `);
-  
+
   if (integrationResult.rows.length === 0) {
     integrationResult = await db.execute(sql`
       INSERT INTO manufacturer_integrations (
@@ -69,7 +69,7 @@ async function setupAndTest() {
     WHERE tenant_id = ${TEST_TENANT_ID} AND serial_number = 'TEST-HP-P4015-001'
     LIMIT 1
   `);
-  
+
   if (deviceResult.rows.length === 0) {
     deviceResult = await db.execute(sql`
       INSERT INTO device_registrations (
@@ -127,13 +127,13 @@ async function setupAndTest() {
   // Test the API
   try {
     const userId = (userResult.rows[0] as any).id;
-    
+
     // Mock a simple API call using fetch
     const response = await fetch(`http://localhost:5000/api/devices/${deviceId}/order-toner`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `connect.sid=test-session` // Simulate auth
+        Cookie: `connect.sid=test-session`, // Simulate auth
       },
       body: JSON.stringify({
         colors: ['black'],
@@ -143,21 +143,21 @@ async function setupAndTest() {
     });
 
     const result = await response.json();
-    
+
     console.log('📋 API Response:');
     console.log(JSON.stringify(result, null, 2));
-    
+
     console.log('\n✅ Test Verification:\n');
-    
+
     if (result.success || result.message) {
       console.log('   ✅ API responded (status:', response.status, ')');
-      
+
       if (result.order) {
         console.log('   ✅ Order object present');
         console.log('      Order Number:', result.order.orderNumber);
         console.log('      Status:', result.order.status);
       }
-      
+
       if (result.notifications) {
         console.log('   ✅ Notification status included');
         console.log('      Email Sent:', result.notifications.emailSent);
@@ -167,11 +167,10 @@ async function setupAndTest() {
         console.log('   💡 The endpoint is working but requires proper session auth');
       }
     }
-    
+
     console.log('\n═══════════════════════════════════════════════════════════');
     console.log('  ✅ TEST COMPLETE');
     console.log('═══════════════════════════════════════════════════════════\n');
-    
   } catch (error) {
     console.error('\n❌ Test failed:', error);
     console.log('\n═══════════════════════════════════════════════════════════');

@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
-import { db } from "./db";
-import { onboardingChecklists, onboardingEquipment } from "../shared/schema";
-import { eq } from "drizzle-orm";
+import { Request, Response } from 'express';
+import { db } from './db';
+import { onboardingChecklists, onboardingEquipment } from '../shared/schema';
+import { eq } from 'drizzle-orm';
 
 export async function exportChecklistPDF(req: Request, res: Response) {
   try {
@@ -9,7 +9,7 @@ export async function exportChecklistPDF(req: Request, res: Response) {
     const user = req.user as any;
 
     if (!user?.tenantId) {
-      return res.status(400).json({ error: "Tenant ID is required" });
+      return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
     // Get checklist with equipment
@@ -19,7 +19,7 @@ export async function exportChecklistPDF(req: Request, res: Response) {
       .where(eq(onboardingChecklists.id, id));
 
     if (!checklist || checklist.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: "Checklist not found" });
+      return res.status(404).json({ error: 'Checklist not found' });
     }
 
     const equipment = await db
@@ -29,13 +29,13 @@ export async function exportChecklistPDF(req: Request, res: Response) {
 
     // Generate PDF content
     const pdfContent = generatePDFContent(checklist, equipment);
-    
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${checklist.id}.pdf"`);
     res.send(pdfContent);
   } catch (error) {
-    console.error("Error exporting PDF:", error);
-    res.status(500).json({ error: "Failed to export PDF" });
+    console.error('Error exporting PDF:', error);
+    res.status(500).json({ error: 'Failed to export PDF' });
   }
 }
 
@@ -45,7 +45,7 @@ export async function exportChecklistExcel(req: Request, res: Response) {
     const user = req.user as any;
 
     if (!user?.tenantId) {
-      return res.status(400).json({ error: "Tenant ID is required" });
+      return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
     // Get checklist with equipment
@@ -55,7 +55,7 @@ export async function exportChecklistExcel(req: Request, res: Response) {
       .where(eq(onboardingChecklists.id, id));
 
     if (!checklist || checklist.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: "Checklist not found" });
+      return res.status(404).json({ error: 'Checklist not found' });
     }
 
     const equipment = await db
@@ -65,13 +65,16 @@ export async function exportChecklistExcel(req: Request, res: Response) {
 
     // Generate Excel content
     const excelContent = generateExcelContent(checklist, equipment);
-    
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${checklist.id}.xlsx"`);
     res.send(excelContent);
   } catch (error) {
-    console.error("Error exporting Excel:", error);
-    res.status(500).json({ error: "Failed to export Excel" });
+    console.error('Error exporting Excel:', error);
+    res.status(500).json({ error: 'Failed to export Excel' });
   }
 }
 
@@ -81,7 +84,7 @@ export async function exportChecklistCSV(req: Request, res: Response) {
     const user = req.user as any;
 
     if (!user?.tenantId) {
-      return res.status(400).json({ error: "Tenant ID is required" });
+      return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
     // Get checklist with equipment
@@ -91,7 +94,7 @@ export async function exportChecklistCSV(req: Request, res: Response) {
       .where(eq(onboardingChecklists.id, id));
 
     if (!checklist || checklist.tenantId !== user.tenantId) {
-      return res.status(404).json({ error: "Checklist not found" });
+      return res.status(404).json({ error: 'Checklist not found' });
     }
 
     const equipment = await db
@@ -101,13 +104,13 @@ export async function exportChecklistCSV(req: Request, res: Response) {
 
     // Generate CSV content
     const csvContent = generateCSVContent(checklist, equipment);
-    
+
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${checklist.id}.csv"`);
     res.send(csvContent);
   } catch (error) {
-    console.error("Error exporting CSV:", error);
-    res.status(500).json({ error: "Failed to export CSV" });
+    console.error('Error exporting CSV:', error);
+    res.status(500).json({ error: 'Failed to export CSV' });
   }
 }
 
@@ -175,7 +178,9 @@ function generatePDFContent(checklist: any, equipment: any[]) {
             </tr>
           </thead>
           <tbody>
-            ${equipment.map(item => `
+            ${equipment
+              .map(
+                (item) => `
               <tr>
                 <td>${item.equipmentType}</td>
                 <td>${item.manufacturer || ''}</td>
@@ -184,7 +189,9 @@ function generatePDFContent(checklist: any, equipment: any[]) {
                 <td>${item.location || ''}</td>
                 <td>${item.isReplacement ? 'Yes' : 'No'}</td>
               </tr>
-            `).join('')}
+            `,
+              )
+              .join('')}
           </tbody>
         </table>
       </div>
@@ -197,7 +204,7 @@ function generatePDFContent(checklist: any, equipment: any[]) {
     </body>
     </html>
   `;
-  
+
   // Return HTML content (in production, convert to PDF using puppeteer)
   return html;
 }
@@ -211,9 +218,9 @@ function generateExcelContent(checklist: any, equipment: any[]) {
       createdAt: checklist.createdAt,
       customer: checklist.customerData,
       site: checklist.siteInformation,
-      scheduledDate: checklist.scheduledInstallDate
+      scheduledDate: checklist.scheduledInstallDate,
     },
-    equipment: equipment.map(item => ({
+    equipment: equipment.map((item) => ({
       type: item.equipmentType,
       manufacturer: item.manufacturer,
       model: item.model,
@@ -221,8 +228,8 @@ function generateExcelContent(checklist: any, equipment: any[]) {
       location: item.location,
       isReplacement: item.isReplacement,
       macAddress: item.macAddress,
-      assetTag: item.assetTag
-    }))
+      assetTag: item.assetTag,
+    })),
   };
 
   // Simple JSON format (in production, use a library like xlsx to generate actual Excel)
@@ -232,7 +239,7 @@ function generateExcelContent(checklist: any, equipment: any[]) {
 function generateCSVContent(checklist: any, equipment: any[]) {
   const headers = [
     'Checklist Title',
-    'Customer Company', 
+    'Customer Company',
     'Contact Person',
     'Equipment Type',
     'Manufacturer',
@@ -241,10 +248,10 @@ function generateCSVContent(checklist: any, equipment: any[]) {
     'Location',
     'Is Replacement',
     'Status',
-    'Created Date'
+    'Created Date',
   ];
 
-  const rows = equipment.map(item => [
+  const rows = equipment.map((item) => [
     checklist.checklistTitle,
     checklist.customerData?.companyName || '',
     checklist.customerData?.primaryContact || '',
@@ -255,12 +262,12 @@ function generateCSVContent(checklist: any, equipment: any[]) {
     item.location || '',
     item.isReplacement ? 'Yes' : 'No',
     checklist.status,
-    new Date(checklist.createdAt).toLocaleDateString()
+    new Date(checklist.createdAt).toLocaleDateString(),
   ]);
 
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(field => `"${field}"`).join(','))
+    ...rows.map((row) => row.map((field) => `"${field}"`).join(',')),
   ].join('\n');
 
   return csvContent;

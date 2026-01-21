@@ -26,7 +26,7 @@ import {
   Target,
   Award,
   BarChart3,
-  Rocket
+  Rocket,
 } from 'lucide-react';
 
 export default function CompareEAutomate() {
@@ -60,7 +60,7 @@ export default function CompareEAutomate() {
       timeSavings: Math.round(timeSavings),
       churnSavings: Math.round(annualChurnSavings),
       revenueIncrease: Math.round(revenueIncrease),
-      totalAnnualBenefit: Math.round(totalAnnualBenefit)
+      totalAnnualBenefit: Math.round(totalAnnualBenefit),
     };
   };
 
@@ -75,39 +75,40 @@ export default function CompareEAutomate() {
           name: 'AI Lead Scoring & Auto-Routing',
           printyx: true,
           eautomate: false,
-          description: 'AI scores leads and auto-assigns to best rep in under 5 minutes'
+          description: 'AI scores leads and auto-assigns to best rep in under 5 minutes',
         },
         {
           name: 'Predictive Service Dispatch',
           printyx: true,
           eautomate: false,
-          description: 'AI predicts maintenance needs and auto-schedules technicians'
+          description: 'AI predicts maintenance needs and auto-schedules technicians',
         },
         {
           name: 'Workflow Automation (56+ action types)',
           printyx: true,
           eautomate: false,
-          description: 'Email, SMS, tasks, approvals, conditional logic, and more'
+          description: 'Email, SMS, tasks, approvals, conditional logic, and more',
         },
         {
           name: 'AI Meeting Notes → Proposal Pipeline',
           printyx: true,
           eautomate: false,
-          description: 'Upload meeting notes, AI extracts requirements and generates full proposals with pricing'
+          description:
+            'Upload meeting notes, AI extracts requirements and generates full proposals with pricing',
         },
         {
           name: 'Smart Churn Prediction',
           printyx: true,
           eautomate: false,
-          description: 'ML-powered prediction of which customers will leave (68-82% accuracy)'
+          description: 'ML-powered prediction of which customers will leave (68-82% accuracy)',
         },
         {
           name: 'Manual Lead Assignment',
           printyx: false,
           eautomate: true,
-          description: 'Dispatcher manually assigns leads to reps'
-        }
-      ]
+          description: 'Dispatcher manually assigns leads to reps',
+        },
+      ],
     },
     {
       category: 'Customer Portal (B2B2C)',
@@ -117,45 +118,45 @@ export default function CompareEAutomate() {
           name: 'White-Label Customer Portal',
           printyx: true,
           eautomate: false,
-          description: 'Customers get branded self-service portal with your logo/domain'
+          description: 'Customers get branded self-service portal with your logo/domain',
         },
         {
           name: 'Self-Service Request Management',
           printyx: true,
           eautomate: false,
-          description: 'Customers submit service requests, track status, rate satisfaction'
+          description: 'Customers submit service requests, track status, rate satisfaction',
         },
         {
           name: 'Real-Time Equipment Health Dashboards',
           printyx: true,
           eautomate: false,
-          description: 'Customers see toner levels, status, usage analytics 24/7'
+          description: 'Customers see toner levels, status, usage analytics 24/7',
         },
         {
           name: 'Online Supply Ordering',
           printyx: true,
           eautomate: false,
-          description: 'Customers order supplies directly with auto-pricing'
+          description: 'Customers order supplies directly with auto-pricing',
         },
         {
           name: 'Meter Reading Submissions (Photo Upload)',
           printyx: true,
           eautomate: false,
-          description: 'Customers submit meter readings via photo or manual entry'
+          description: 'Customers submit meter readings via photo or manual entry',
         },
         {
           name: 'Customer Health Scoring',
           printyx: true,
           eautomate: false,
-          description: 'Track customer health (0-100) with churn risk alerts'
+          description: 'Track customer health (0-100) with churn risk alerts',
         },
         {
           name: 'Customer Portal',
           printyx: false,
           eautomate: false,
-          description: 'E-Automate has no customer-facing portal'
-        }
-      ]
+          description: 'E-Automate has no customer-facing portal',
+        },
+      ],
     },
     {
       category: 'Mobile & Modern UX',
@@ -165,33 +166,33 @@ export default function CompareEAutomate() {
           name: 'Mobile-First Design',
           printyx: true,
           eautomate: false,
-          description: 'Optimized for mobile with touch interactions and responsive design'
+          description: 'Optimized for mobile with touch interactions and responsive design',
         },
         {
           name: 'Progressive Web App (PWA)',
           printyx: true,
           eautomate: false,
-          description: 'Install on mobile devices, works offline'
+          description: 'Install on mobile devices, works offline',
         },
         {
           name: 'Modern React UI',
           printyx: true,
           eautomate: false,
-          description: 'Fast, intuitive interface with real-time updates'
+          description: 'Fast, intuitive interface with real-time updates',
         },
         {
           name: 'Real-Time WebSocket Updates',
           printyx: true,
           eautomate: false,
-          description: 'Live notifications and data updates without page refresh'
+          description: 'Live notifications and data updates without page refresh',
         },
         {
           name: 'Desktop Application Only',
           printyx: false,
           eautomate: true,
-          description: 'E-Automate requires desktop software installation'
-        }
-      ]
+          description: 'E-Automate requires desktop software installation',
+        },
+      ],
     },
     {
       category: 'Analytics & Reporting',
@@ -201,39 +202,39 @@ export default function CompareEAutomate() {
           name: 'AI-Powered Sales Forecasting',
           printyx: true,
           eautomate: false,
-          description: 'Predictive revenue forecasting with ML models'
+          description: 'Predictive revenue forecasting with ML models',
         },
         {
           name: 'Customer Success Analytics',
           printyx: true,
           eautomate: false,
-          description: 'Health scores, churn trends, intervention tracking'
+          description: 'Health scores, churn trends, intervention tracking',
         },
         {
           name: 'Real-Time Dashboards',
           printyx: true,
           eautomate: false,
-          description: 'Live metrics updating in real-time via WebSocket'
+          description: 'Live metrics updating in real-time via WebSocket',
         },
         {
           name: 'Custom Report Builder',
           printyx: true,
           eautomate: true,
-          description: 'Both platforms support custom reporting'
+          description: 'Both platforms support custom reporting',
         },
         {
           name: 'Conversational Analytics (AI Queries)',
           printyx: true,
           eautomate: false,
-          description: 'Ask questions in plain English, get instant answers'
+          description: 'Ask questions in plain English, get instant answers',
         },
         {
           name: 'Scheduled Reports with Email Delivery',
           printyx: true,
           eautomate: false,
-          description: 'Auto-generate and email reports on daily/weekly/monthly schedules'
-        }
-      ]
+          description: 'Auto-generate and email reports on daily/weekly/monthly schedules',
+        },
+      ],
     },
     {
       category: 'Core Dealer Features',
@@ -243,39 +244,39 @@ export default function CompareEAutomate() {
           name: 'CRM & Lead Management',
           printyx: true,
           eautomate: true,
-          description: 'Both platforms support CRM functionality'
+          description: 'Both platforms support CRM functionality',
         },
         {
           name: 'Service Dispatch & Field Service',
           printyx: true,
           eautomate: true,
-          description: 'Both support service dispatch'
+          description: 'Both support service dispatch',
         },
         {
           name: 'Inventory Management',
           printyx: true,
           eautomate: true,
-          description: 'Both support inventory tracking'
+          description: 'Both support inventory tracking',
         },
         {
           name: 'Meter Billing',
           printyx: true,
           eautomate: true,
-          description: 'Both support meter-based billing'
+          description: 'Both support meter-based billing',
         },
         {
           name: 'Contract Management',
           printyx: true,
           eautomate: true,
-          description: 'Both support contract tracking'
+          description: 'Both support contract tracking',
         },
         {
           name: 'QuickBooks Integration',
           printyx: true,
           eautomate: true,
-          description: 'Both integrate with QuickBooks'
-        }
-      ]
+          description: 'Both integrate with QuickBooks',
+        },
+      ],
     },
     {
       category: 'Platform & Technology',
@@ -285,46 +286,47 @@ export default function CompareEAutomate() {
           name: 'Cloud-Native (Serverless)',
           printyx: true,
           eautomate: false,
-          description: 'Scales automatically, no server management'
+          description: 'Scales automatically, no server management',
         },
         {
           name: 'Modern Tech Stack',
           printyx: true,
           eautomate: false,
-          description: 'React, TypeScript, PostgreSQL, Node.js'
+          description: 'React, TypeScript, PostgreSQL, Node.js',
         },
         {
           name: 'API-First Architecture',
           printyx: true,
           eautomate: false,
-          description: 'RESTful APIs for all features, easy integrations'
+          description: 'RESTful APIs for all features, easy integrations',
         },
         {
           name: 'Integration Marketplace (16+ Integrations)',
           printyx: true,
           eautomate: false,
-          description: 'Pre-built integrations with QuickBooks, Salesforce, Stripe, DocuSign, and more'
+          description:
+            'Pre-built integrations with QuickBooks, Salesforce, Stripe, DocuSign, and more',
         },
         {
           name: 'Multi-Tenant SaaS',
           printyx: true,
           eautomate: true,
-          description: 'Both are multi-tenant systems'
+          description: 'Both are multi-tenant systems',
         },
         {
           name: 'Regular Updates & Features',
           printyx: true,
           eautomate: false,
-          description: 'New features released monthly vs. yearly'
+          description: 'New features released monthly vs. yearly',
         },
         {
           name: 'Legacy .NET Architecture',
           printyx: false,
           eautomate: true,
-          description: 'E-Automate built on older technology'
-        }
-      ]
-    }
+          description: 'E-Automate built on older technology',
+        },
+      ],
+    },
   ];
 
   return (
@@ -333,18 +335,16 @@ export default function CompareEAutomate() {
       description="See how Printyx outperforms E-Automate with AI automation and customer success features"
     >
       <div className="container mx-auto p-6 space-y-8">
-
         {/* Hero Section */}
         <div className="text-center max-w-4xl mx-auto">
           <Badge variant="secondary" className="mb-4">
             <Sparkles className="h-3 w-3 mr-1" />
             Competitive Comparison
           </Badge>
-          <h1 className="text-5xl font-bold mb-4">
-            Printyx vs E-Automate
-          </h1>
+          <h1 className="text-5xl font-bold mb-4">Printyx vs E-Automate</h1>
           <p className="text-xl text-muted-foreground mb-8">
-            E-Automate manages your dealership. Printyx <span className="font-bold text-primary">runs it for you</span>.
+            E-Automate manages your dealership. Printyx{' '}
+            <span className="font-bold text-primary">runs it for you</span>.
           </p>
           <div className="flex justify-center gap-8 mb-8">
             <div className="text-center">
@@ -419,9 +419,7 @@ export default function CompareEAutomate() {
                   <div className="text-3xl font-bold text-blue-600">
                     ${roi.timeSavings.toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    40 hrs/week @ $35/hr
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">40 hrs/week @ $35/hr</p>
                 </CardContent>
               </Card>
 
@@ -435,9 +433,7 @@ export default function CompareEAutomate() {
                   <div className="text-3xl font-bold text-pink-600">
                     ${roi.churnSavings.toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    8% → 3% churn reduction
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">8% → 3% churn reduction</p>
                 </CardContent>
               </Card>
 
@@ -451,9 +447,7 @@ export default function CompareEAutomate() {
                   <div className="text-3xl font-bold text-green-600">
                     ${roi.revenueIncrease.toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    +15% better close rates
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">+15% better close rates</p>
                 </CardContent>
               </Card>
             </div>
@@ -508,7 +502,11 @@ export default function CompareEAutomate() {
               </TabsList>
 
               {featureComparison.map((category) => (
-                <TabsContent key={category.category} value={category.category} className="space-y-3">
+                <TabsContent
+                  key={category.category}
+                  value={category.category}
+                  className="space-y-3"
+                >
                   {category.features.map((feature, index) => (
                     <div
                       key={index}
@@ -567,35 +565,45 @@ export default function CompareEAutomate() {
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">AI Automation = 40+ Hours Saved/Week</p>
-                    <p className="text-sm text-muted-foreground">Autopilot runs your dealership while you focus on growth</p>
+                    <p className="text-sm text-muted-foreground">
+                      Autopilot runs your dealership while you focus on growth
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Customer Portal = 25-30% Less Churn</p>
-                    <p className="text-sm text-muted-foreground">Connect prevents customers from leaving before they cancel</p>
+                    <p className="text-sm text-muted-foreground">
+                      Connect prevents customers from leaving before they cancel
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Modern Technology = Faster Innovation</p>
-                    <p className="text-sm text-muted-foreground">New features monthly vs. yearly with E-Automate</p>
+                    <p className="text-sm text-muted-foreground">
+                      New features monthly vs. yearly with E-Automate
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Mobile-First = Work from Anywhere</p>
-                    <p className="text-sm text-muted-foreground">Full functionality on phone/tablet, not just desktop</p>
+                    <p className="text-sm text-muted-foreground">
+                      Full functionality on phone/tablet, not just desktop
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Predictive Analytics = Stay Ahead</p>
-                    <p className="text-sm text-muted-foreground">Know what will happen before it does</p>
+                    <p className="text-sm text-muted-foreground">
+                      Know what will happen before it does
+                    </p>
                   </div>
                 </li>
               </ul>
@@ -615,35 +623,45 @@ export default function CompareEAutomate() {
                   <X className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Manual Workflows = Wasted Time</p>
-                    <p className="text-sm text-muted-foreground">No AI automation, everything requires human intervention</p>
+                    <p className="text-sm text-muted-foreground">
+                      No AI automation, everything requires human intervention
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <X className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">No Customer Portal = Higher Churn</p>
-                    <p className="text-sm text-muted-foreground">Customers call/email for everything, no self-service</p>
+                    <p className="text-sm text-muted-foreground">
+                      Customers call/email for everything, no self-service
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <X className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Legacy Technology = Slow Updates</p>
-                    <p className="text-sm text-muted-foreground">Built on old .NET stack, yearly release cycles</p>
+                    <p className="text-sm text-muted-foreground">
+                      Built on old .NET stack, yearly release cycles
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <X className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Desktop-Only = Limited Mobility</p>
-                    <p className="text-sm text-muted-foreground">No mobile optimization, poor remote access</p>
+                    <p className="text-sm text-muted-foreground">
+                      No mobile optimization, poor remote access
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
                   <X className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold">Reactive Only = Always Behind</p>
-                    <p className="text-sm text-muted-foreground">No churn prediction or proactive maintenance</p>
+                    <p className="text-sm text-muted-foreground">
+                      No churn prediction or proactive maintenance
+                    </p>
                   </div>
                 </li>
               </ul>
@@ -658,8 +676,8 @@ export default function CompareEAutomate() {
               <div>
                 <h2 className="text-3xl font-bold mb-4">Ready to Make the Switch?</h2>
                 <p className="text-lg mb-6 text-white/90">
-                  Join forward-thinking dealers who are saving 40+ hours per week and retaining 25-30% more customers
-                  with Printyx.
+                  Join forward-thinking dealers who are saving 40+ hours per week and retaining
+                  25-30% more customers with Printyx.
                 </p>
                 <ul className="space-y-2 text-white/90 mb-6">
                   <li className="flex items-center gap-2">
@@ -683,7 +701,9 @@ export default function CompareEAutomate() {
               <div className="space-y-4">
                 <Card className="bg-white/10 border-white/20 text-white">
                   <CardContent className="p-6">
-                    <div className="text-4xl font-bold mb-2">${roi.totalAnnualBenefit.toLocaleString()}</div>
+                    <div className="text-4xl font-bold mb-2">
+                      ${roi.totalAnnualBenefit.toLocaleString()}
+                    </div>
                     <p className="text-white/80">Projected annual savings for your dealership</p>
                   </CardContent>
                 </Card>

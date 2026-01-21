@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Printer, TrendingUp, DollarSign, CheckCircle, ArrowRight } from "lucide-react";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Printer, TrendingUp, DollarSign, CheckCircle, ArrowRight } from 'lucide-react';
 
 const ROICalculator = () => {
   const [technicians, setTechnicians] = useState(15);
@@ -17,7 +17,7 @@ const ROICalculator = () => {
   const emergencyReduction = emergencyCalls * 12 * 0.35; // 35% reduction annually
   const emergencySavings = emergencyReduction * avgServiceCost;
 
-  const serviceCostReduction = technicians * 12000 * 0.20; // 20% efficiency gain per tech
+  const serviceCostReduction = technicians * 12000 * 0.2; // 20% efficiency gain per tech
 
   const contractProfitabilityGain = contracts * avgContractValue * 0.18; // 18% margin improvement
 
@@ -27,19 +27,20 @@ const ROICalculator = () => {
   const annualCost = technicians * 1200; // $100/user/month
 
   const firstYearROI = totalAnnualSavings - implementation - annualCost;
-  const roi = ((firstYearROI / (implementation + annualCost)) * 100);
-  const paybackMonths = ((implementation + annualCost) / (totalAnnualSavings / 12));
+  const roi = (firstYearROI / (implementation + annualCost)) * 100;
+  const paybackMonths = (implementation + annualCost) / (totalAnnualSavings / 12);
 
   return (
     <>
       {/* Schema.org WebPage Markup */}
       <script type="application/ld+json">
         {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "ROI Calculator - Calculate Your Printyx Savings",
-          "description": "Calculate your potential savings with Printyx. See how predictive intelligence, modern architecture, and AI-powered features impact your bottom line.",
-          "url": "https://printyx.com/roi-calculator"
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: 'ROI Calculator - Calculate Your Printyx Savings',
+          description:
+            'Calculate your potential savings with Printyx. See how predictive intelligence, modern architecture, and AI-powered features impact your bottom line.',
+          url: 'https://printyx.com/roi-calculator',
         })}
       </script>
 
@@ -51,7 +52,7 @@ const ROICalculator = () => {
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="hover:bg-gray-100"
                 >
                   <Printer className="h-6 w-6 text-blue-600 mr-2" />
@@ -59,15 +60,12 @@ const ROICalculator = () => {
                 </Button>
               </div>
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/login'}
-                >
+                <Button variant="outline" onClick={() => (window.location.href = '/login')}>
                   Login
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                 </Button>
@@ -87,7 +85,8 @@ const ROICalculator = () => {
                 Calculate Your Printyx Savings
               </h1>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-                See exactly how much your dealership could save with predictive intelligence, modern architecture, and AI-powered automation.
+                See exactly how much your dealership could save with predictive intelligence, modern
+                architecture, and AI-powered automation.
               </p>
             </div>
           </div>
@@ -116,7 +115,9 @@ const ROICalculator = () => {
                       className="mt-2 text-lg"
                       min="1"
                     />
-                    <p className="text-sm text-gray-600 mt-1">Full-time field service technicians</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Full-time field service technicians
+                    </p>
                   </div>
 
                   <div>
@@ -131,7 +132,9 @@ const ROICalculator = () => {
                       className="mt-2 text-lg"
                       min="0"
                     />
-                    <p className="text-sm text-gray-600 mt-1">Unplanned service calls requiring immediate response</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Unplanned service calls requiring immediate response
+                    </p>
                   </div>
 
                   <div>
@@ -146,7 +149,9 @@ const ROICalculator = () => {
                       className="mt-2 text-lg"
                       min="0"
                     />
-                    <p className="text-sm text-gray-600 mt-1">Labor, parts, and overhead per emergency call</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Labor, parts, and overhead per emergency call
+                    </p>
                   </div>
 
                   <div>
@@ -176,7 +181,9 @@ const ROICalculator = () => {
                       className="mt-2 text-lg"
                       min="0"
                     />
-                    <p className="text-sm text-gray-600 mt-1">Average yearly revenue per contract</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Average yearly revenue per contract
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -203,7 +210,9 @@ const ROICalculator = () => {
                         <div className="text-sm text-gray-600 mt-1">First Year ROI</div>
                       </div>
                       <div className="text-center p-4 bg-white rounded-lg border">
-                        <div className="text-3xl font-bold text-purple-600">{paybackMonths.toFixed(1)}</div>
+                        <div className="text-3xl font-bold text-purple-600">
+                          {paybackMonths.toFixed(1)}
+                        </div>
                         <div className="text-sm text-gray-600 mt-1">Months to Payback</div>
                       </div>
                     </div>
@@ -214,7 +223,9 @@ const ROICalculator = () => {
                           <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
                           <span className="text-sm font-medium">Emergency Call Reduction</span>
                         </div>
-                        <span className="font-bold text-green-600">${emergencySavings.toLocaleString()}</span>
+                        <span className="font-bold text-green-600">
+                          ${emergencySavings.toLocaleString()}
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg">
@@ -222,7 +233,9 @@ const ROICalculator = () => {
                           <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
                           <span className="text-sm font-medium">Service Efficiency Gains</span>
                         </div>
-                        <span className="font-bold text-blue-600">${serviceCostReduction.toLocaleString()}</span>
+                        <span className="font-bold text-blue-600">
+                          ${serviceCostReduction.toLocaleString()}
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg">
@@ -230,7 +243,9 @@ const ROICalculator = () => {
                           <DollarSign className="h-5 w-5 text-purple-600 mr-2" />
                           <span className="text-sm font-medium">Contract Profitability</span>
                         </div>
-                        <span className="font-bold text-purple-600">${contractProfitabilityGain.toLocaleString()}</span>
+                        <span className="font-bold text-purple-600">
+                          ${contractProfitabilityGain.toLocaleString()}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
@@ -251,7 +266,9 @@ const ROICalculator = () => {
                     </div>
                     <div className="border-t pt-3 flex justify-between items-center">
                       <span className="font-bold text-gray-900">First Year Net Benefit</span>
-                      <span className="font-bold text-green-600 text-xl">${firstYearROI.toLocaleString()}</span>
+                      <span className="font-bold text-green-600 text-xl">
+                        ${firstYearROI.toLocaleString()}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -273,7 +290,9 @@ const ROICalculator = () => {
                   <CardTitle className="text-lg">Predictive Maintenance</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-gray-700">
-                  <p className="mb-3">35% reduction in emergency service calls through AI-powered failure prediction.</p>
+                  <p className="mb-3">
+                    35% reduction in emergency service calls through AI-powered failure prediction.
+                  </p>
                   <ul className="space-y-1">
                     <li>• Proactive part replacement</li>
                     <li>• Optimized scheduling</li>
@@ -287,7 +306,9 @@ const ROICalculator = () => {
                   <CardTitle className="text-lg">Service Efficiency</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-gray-700">
-                  <p className="mb-3">20% improvement in technician productivity with mobile-first tools.</p>
+                  <p className="mb-3">
+                    20% improvement in technician productivity with mobile-first tools.
+                  </p>
                   <ul className="space-y-1">
                     <li>• Optimized routing</li>
                     <li>• Offline capability</li>
@@ -314,9 +335,10 @@ const ROICalculator = () => {
             <div className="mt-8 p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
               <h3 className="font-bold text-gray-900 mb-3">Conservative Estimates</h3>
               <p className="text-gray-700 text-sm">
-                These calculations use conservative industry benchmarks based on actual dealer results.
-                Many dealers see 40-50% emergency call reductions and 25%+ profitability gains. Your actual
-                results may vary based on current operational efficiency and implementation timeline.
+                These calculations use conservative industry benchmarks based on actual dealer
+                results. Many dealers see 40-50% emergency call reductions and 25%+ profitability
+                gains. Your actual results may vary based on current operational efficiency and
+                implementation timeline.
               </p>
             </div>
           </div>
@@ -325,9 +347,7 @@ const ROICalculator = () => {
         {/* CTA Section */}
         <section className="py-16 bg-gradient-to-r from-blue-600 to-purple-600">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Ready to Realize These Savings?
-            </h2>
+            <h2 className="text-4xl font-bold text-white mb-4">Ready to Realize These Savings?</h2>
             <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
               Start your free 14-day trial and see these results in your own dealership.
             </p>
@@ -335,7 +355,7 @@ const ROICalculator = () => {
               <Button
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                onClick={() => window.location.href = '/signup'}
+                onClick={() => (window.location.href = '/signup')}
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -344,7 +364,7 @@ const ROICalculator = () => {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => window.location.href = '/login'}
+                onClick={() => (window.location.href = '/login')}
               >
                 Schedule Demo
               </Button>

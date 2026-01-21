@@ -35,7 +35,7 @@ export abstract class BaseUpdater {
   protected logger: Logger;
   protected customerId?: string;
   protected enabled = true;
-  
+
   private metrics: UpdaterMetrics = {
     totalExecutions: 0,
     successfulExecutions: 0,
@@ -68,7 +68,7 @@ export abstract class BaseUpdater {
     }
 
     const startTime = Date.now();
-    
+
     try {
       this.logger.info(`Starting execution for updater: ${this.name}`, {
         tenantId: this.tenantId,
@@ -81,7 +81,7 @@ export abstract class BaseUpdater {
 
       // Generate data
       const dataToInsert = await this.generateData();
-      
+
       if (!dataToInsert || dataToInsert.length === 0) {
         this.logger.info(`No data generated for updater: ${this.name}`);
         return {
@@ -116,7 +116,7 @@ export abstract class BaseUpdater {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       // Update metrics
       this.updateMetrics(false, executionTime, errorMessage);
 
@@ -218,7 +218,8 @@ export abstract class BaseUpdater {
     }
 
     // Update average execution time
-    const totalTime = (this.metrics.averageExecutionTime * (this.metrics.totalExecutions - 1)) + executionTime;
+    const totalTime =
+      this.metrics.averageExecutionTime * (this.metrics.totalExecutions - 1) + executionTime;
     this.metrics.averageExecutionTime = totalTime / this.metrics.totalExecutions;
   }
 
@@ -228,14 +229,14 @@ export abstract class BaseUpdater {
   protected selectFromDistribution(distribution: Record<string, number>): string {
     const random = Math.random();
     let cumulative = 0;
-    
+
     for (const [value, probability] of Object.entries(distribution)) {
       cumulative += probability;
       if (random <= cumulative) {
         return value;
       }
     }
-    
+
     // Fallback to first key if distribution doesn't sum to 1
     return Object.keys(distribution)[0];
   }
@@ -278,21 +279,23 @@ export abstract class BaseUpdater {
   protected generateBusinessHoursDate(daysFromNow = 0): Date {
     const date = new Date();
     date.setDate(date.getDate() + daysFromNow);
-    
+
     // Set to random business hour (9 AM to 5 PM)
     const businessHour = this.randomInRange(9, 17);
     const minute = this.randomInRange(0, 59);
-    
+
     date.setHours(businessHour, minute, 0, 0);
-    
+
     // If it's weekend, move to next Monday
     const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0) { // Sunday
+    if (dayOfWeek === 0) {
+      // Sunday
       date.setDate(date.getDate() + 1);
-    } else if (dayOfWeek === 6) { // Saturday
+    } else if (dayOfWeek === 6) {
+      // Saturday
       date.setDate(date.getDate() + 2);
     }
-    
+
     return date;
   }
 
@@ -300,9 +303,9 @@ export abstract class BaseUpdater {
    * Generate UUID v4
    */
   protected generateUuid(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
   }

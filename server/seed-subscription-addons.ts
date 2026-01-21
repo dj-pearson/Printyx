@@ -17,7 +17,8 @@ const addons: NewSubscriptionAddon[] = [
   {
     name: 'Professional Implementation',
     slug: 'professional_implementation',
-    description: 'White-glove implementation service with dedicated project manager, custom configuration, and data migration assistance',
+    description:
+      'White-glove implementation service with dedicated project manager, custom configuration, and data migration assistance',
     category: 'one_time',
     price: '3000.00',
     billingCycle: 'one_time',
@@ -41,7 +42,8 @@ const addons: NewSubscriptionAddon[] = [
   {
     name: 'Data Migration Service',
     slug: 'data_migration',
-    description: 'Expert data migration from your existing systems to Printyx, including data cleansing and validation',
+    description:
+      'Expert data migration from your existing systems to Printyx, including data cleansing and validation',
     category: 'one_time',
     price: '2000.00',
     billingCycle: 'one_time',
@@ -65,7 +67,8 @@ const addons: NewSubscriptionAddon[] = [
   {
     name: 'Advanced Training Package',
     slug: 'advanced_training',
-    description: 'Comprehensive training for your team, including admin training, end-user training, and custom workflow training',
+    description:
+      'Comprehensive training for your team, including admin training, end-user training, and custom workflow training',
     category: 'one_time',
     price: '1500.00',
     billingCycle: 'one_time',
@@ -200,7 +203,8 @@ const addons: NewSubscriptionAddon[] = [
   {
     name: 'Custom Integration Development',
     slug: 'custom_integration',
-    description: 'Build a custom integration with your proprietary systems or third-party applications',
+    description:
+      'Build a custom integration with your proprietary systems or third-party applications',
     category: 'one_time',
     price: '5000.00',
     billingCycle: 'one_time',

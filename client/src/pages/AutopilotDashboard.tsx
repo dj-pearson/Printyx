@@ -31,7 +31,7 @@ import {
   ChevronRight,
   DollarSign,
   Timer,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
@@ -61,63 +61,79 @@ export default function AutopilotDashboard() {
     {
       id: 'lead-routing',
       name: 'Auto Lead Routing',
-      description: 'Automatically score and assign leads to the best sales rep based on territory, expertise, and workload',
+      description:
+        'Automatically score and assign leads to the best sales rep based on territory, expertise, and workload',
       icon: Users,
       category: 'Sales',
       timeSaved: '5 hrs/week',
       color: 'bg-blue-500',
-      features: ['AI Lead Scoring', 'Auto Assignment', 'Email Notifications', 'Performance Tracking']
+      features: [
+        'AI Lead Scoring',
+        'Auto Assignment',
+        'Email Notifications',
+        'Performance Tracking',
+      ],
     },
     {
       id: 'service-dispatch',
       name: 'Smart Service Dispatch',
-      description: 'Predict maintenance needs and auto-schedule technicians based on location, skills, and availability',
+      description:
+        'Predict maintenance needs and auto-schedule technicians based on location, skills, and availability',
       icon: Wrench,
       category: 'Service',
       timeSaved: '10 hrs/week',
       color: 'bg-green-500',
-      features: ['Predictive Maintenance', 'Auto Scheduling', 'Route Optimization', 'Parts Ordering']
+      features: [
+        'Predictive Maintenance',
+        'Auto Scheduling',
+        'Route Optimization',
+        'Parts Ordering',
+      ],
     },
     {
       id: 'supply-replenishment',
       name: 'Supply Auto-Replenishment',
-      description: 'Monitor toner levels and automatically create supply orders when inventory is low',
+      description:
+        'Monitor toner levels and automatically create supply orders when inventory is low',
       icon: Package,
       category: 'Inventory',
       timeSaved: '8 hrs/week',
       color: 'bg-purple-500',
-      features: ['Real-time Monitoring', 'Auto Orders', 'Customer Approval', 'Inventory Sync']
+      features: ['Real-time Monitoring', 'Auto Orders', 'Customer Approval', 'Inventory Sync'],
     },
     {
       id: 'contract-renewal',
       name: 'Contract Renewal Autopilot',
-      description: 'Automatically track contract renewals, predict churn risk, and trigger retention campaigns',
+      description:
+        'Automatically track contract renewals, predict churn risk, and trigger retention campaigns',
       icon: FileText,
       category: 'Customer Success',
       timeSaved: '12 hrs/week',
       color: 'bg-orange-500',
-      features: ['Churn Prediction', 'Auto Reminders', 'Proposal Generation', 'Success Tracking']
+      features: ['Churn Prediction', 'Auto Reminders', 'Proposal Generation', 'Success Tracking'],
     },
     {
       id: 'customer-onboarding',
       name: 'Customer Onboarding Flow',
-      description: 'Welcome new customers with automated email sequences, task creation, and installation scheduling',
+      description:
+        'Welcome new customers with automated email sequences, task creation, and installation scheduling',
       icon: Sparkles,
       category: 'Customer Success',
       timeSaved: '6 hrs/week',
       color: 'bg-pink-500',
-      features: ['Welcome Emails', 'Task Creation', 'Install Scheduling', 'Training Setup']
+      features: ['Welcome Emails', 'Task Creation', 'Install Scheduling', 'Training Setup'],
     },
     {
       id: 'invoice-collection',
       name: 'Invoice Collection Workflow',
-      description: 'Automatically send payment reminders, track overdue invoices, and escalate to collections',
+      description:
+        'Automatically send payment reminders, track overdue invoices, and escalate to collections',
       icon: DollarSign,
       category: 'Finance',
       timeSaved: '4 hrs/week',
       color: 'bg-yellow-500',
-      features: ['Payment Reminders', 'Overdue Tracking', 'Auto Escalation', 'Collection Reports']
-    }
+      features: ['Payment Reminders', 'Overdue Tracking', 'Auto Escalation', 'Collection Reports'],
+    },
   ];
 
   if (isLoading) {
@@ -139,7 +155,6 @@ export default function AutopilotDashboard() {
       description="The first self-running dealer management system"
     >
       <div className="container mx-auto p-6 space-y-8">
-
         {/* Hero Section */}
         <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-white p-8 md:p-12">
           <div className="relative z-10">
@@ -151,7 +166,8 @@ export default function AutopilotDashboard() {
               </Badge>
             </div>
             <p className="text-xl mb-6 max-w-2xl text-white/90">
-              The first dealer management system that runs itself. While E-Automate manages your business,
+              The first dealer management system that runs itself. While E-Automate manages your
+              business,
               <span className="font-bold"> Printyx runs it for you</span>.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -161,7 +177,12 @@ export default function AutopilotDashboard() {
                   Configure Workflows
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20" asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                asChild
+              >
                 <Link href="/compare-eautomate">
                   Compare with E-Automate
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -188,7 +209,10 @@ export default function AutopilotDashboard() {
               <p className="text-xs text-muted-foreground mt-1">
                 {overview?.pausedWorkflows || 0} paused • {overview?.totalWorkflows || 0} total
               </p>
-              <Progress value={(overview?.activeWorkflows / overview?.totalWorkflows) * 100 || 0} className="mt-2" />
+              <Progress
+                value={(overview?.activeWorkflows / overview?.totalWorkflows) * 100 || 0}
+                className="mt-2"
+              />
             </CardContent>
           </Card>
 
@@ -235,10 +259,10 @@ export default function AutopilotDashboard() {
               <Target className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{overview?.automationCoverage?.toFixed(1) || 0}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                of processes automated
-              </p>
+              <div className="text-3xl font-bold">
+                {overview?.automationCoverage?.toFixed(1) || 0}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">of processes automated</p>
               <Progress value={overview?.automationCoverage || 0} className="mt-2" />
             </CardContent>
           </Card>
@@ -267,8 +291,8 @@ export default function AutopilotDashboard() {
               <CardHeader>
                 <CardTitle>Quick Start Templates</CardTitle>
                 <CardDescription>
-                  Pre-built automation workflows that you can activate in minutes. These are the exact workflows
-                  that top-performing dealers use to save 40+ hours per week.
+                  Pre-built automation workflows that you can activate in minutes. These are the
+                  exact workflows that top-performing dealers use to save 40+ hours per week.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -284,7 +308,9 @@ export default function AutopilotDashboard() {
                         <CardHeader>
                           <div className="flex items-start justify-between">
                             <div className={`p-3 rounded-lg ${template.color} bg-opacity-10`}>
-                              <Icon className={`h-6 w-6 ${template.color.replace('bg-', 'text-')}`} />
+                              <Icon
+                                className={`h-6 w-6 ${template.color.replace('bg-', 'text-')}`}
+                              />
                             </div>
                             <Badge variant="secondary">{template.category}</Badge>
                           </div>
@@ -297,7 +323,9 @@ export default function AutopilotDashboard() {
                           <div className="space-y-3">
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-muted-foreground">Time Saved:</span>
-                              <span className="font-semibold text-green-600">{template.timeSaved}</span>
+                              <span className="font-semibold text-green-600">
+                                {template.timeSaved}
+                              </span>
                             </div>
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground font-medium">Features:</p>
@@ -363,27 +391,39 @@ export default function AutopilotDashboard() {
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-green-700 mb-3">✅ Printyx Autopilot (AI-Powered)</h4>
+                    <h4 className="font-semibold text-green-700 mb-3">
+                      ✅ Printyx Autopilot (AI-Powered)
+                    </h4>
                     <ul className="space-y-2 text-sm">
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">AI scores and auto-assigns leads in under 5 minutes</span>
+                        <span className="font-medium">
+                          AI scores and auto-assigns leads in under 5 minutes
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">Predictive maintenance schedules techs automatically</span>
+                        <span className="font-medium">
+                          Predictive maintenance schedules techs automatically
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">Auto-creates supply orders when toner drops below 15%</span>
+                        <span className="font-medium">
+                          Auto-creates supply orders when toner drops below 15%
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">AI-powered renewal campaigns with churn prediction</span>
+                        <span className="font-medium">
+                          AI-powered renewal campaigns with churn prediction
+                        </span>
                       </li>
                       <li className="flex items-start gap-2">
                         <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
-                        <span className="font-medium">Prevents churn before customers leave (20-30% reduction)</span>
+                        <span className="font-medium">
+                          Prevents churn before customers leave (20-30% reduction)
+                        </span>
                       </li>
                     </ul>
                   </div>
@@ -391,7 +431,8 @@ export default function AutopilotDashboard() {
                 <div className="mt-6 p-4 bg-white rounded-lg border border-orange-200">
                   <p className="text-sm font-semibold text-center">
                     <Timer className="inline h-4 w-4 mr-1 text-orange-600" />
-                    Average dealer saves <span className="text-orange-600">40-50 hours per week</span> with Autopilot
+                    Average dealer saves{' '}
+                    <span className="text-orange-600">40-50 hours per week</span> with Autopilot
                     (equivalent to 1+ full-time employee)
                   </p>
                 </div>
@@ -420,12 +461,17 @@ export default function AutopilotDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {activeWorkflows.slice(0, 5).map((workflow: any) => (
-                      <div key={workflow.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={workflow.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h4 className="font-semibold">{workflow.name}</h4>
-                              <Badge variant={workflow.status === 'active' ? 'default' : 'secondary'}>
+                              <Badge
+                                variant={workflow.status === 'active' ? 'default' : 'secondary'}
+                              >
                                 {workflow.status}
                               </Badge>
                               <Badge variant="outline">{workflow.category}</Badge>
@@ -433,20 +479,28 @@ export default function AutopilotDashboard() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3">
                               <div>
                                 <p className="text-muted-foreground">Success Rate</p>
-                                <p className="font-semibold text-green-600">{workflow.successRate}%</p>
+                                <p className="font-semibold text-green-600">
+                                  {workflow.successRate}%
+                                </p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Executions</p>
-                                <p className="font-semibold">{workflow.executionCount?.toLocaleString()}</p>
+                                <p className="font-semibold">
+                                  {workflow.executionCount?.toLocaleString()}
+                                </p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Time Saved</p>
-                                <p className="font-semibold">{workflow.estimatedTimeSaved} hrs/mo</p>
+                                <p className="font-semibold">
+                                  {workflow.estimatedTimeSaved} hrs/mo
+                                </p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Last Run</p>
                                 <p className="font-semibold">
-                                  {workflow.lastExecution ? format(new Date(workflow.lastExecution), 'MMM d, h:mm a') : 'Never'}
+                                  {workflow.lastExecution
+                                    ? format(new Date(workflow.lastExecution), 'MMM d, h:mm a')
+                                    : 'Never'}
                                 </p>
                               </div>
                             </div>
@@ -507,9 +561,7 @@ export default function AutopilotDashboard() {
                         <CardTitle className="text-lg">Revenue Impact</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold text-green-600">
-                          +15%
-                        </div>
+                        <div className="text-3xl font-bold text-green-600">+15%</div>
                         <p className="text-sm text-muted-foreground mt-1">average close rate</p>
                         <div className="mt-4 text-sm space-y-2">
                           <div className="flex justify-between">
@@ -533,16 +585,12 @@ export default function AutopilotDashboard() {
                         <CardTitle className="text-lg">Churn Reduction</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold text-purple-600">
-                          -25%
-                        </div>
+                        <div className="text-3xl font-bold text-purple-600">-25%</div>
                         <p className="text-sm text-muted-foreground mt-1">customer churn</p>
                         <div className="mt-4 text-sm">
                           <p className="text-muted-foreground">For avg dealer with:</p>
                           <p className="text-muted-foreground">200 customers @ $500 MRR</p>
-                          <p className="text-2xl font-bold text-purple-600 mt-2">
-                            $300K
-                          </p>
+                          <p className="text-2xl font-bold text-purple-600 mt-2">$300K</p>
                           <p className="text-xs text-muted-foreground">annual revenue saved</p>
                         </div>
                       </CardContent>

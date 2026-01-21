@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,14 +26,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   FileText,
   Plus,
@@ -48,8 +48,8 @@ import {
   Edit,
   RefreshCcw,
   Calculator,
-} from "lucide-react";
-import { format, isAfter, isBefore, addMonths } from "date-fns";
+} from 'lucide-react';
+import { format, isAfter, isBefore, addMonths } from 'date-fns';
 
 interface Contract {
   id: string;
@@ -80,41 +80,45 @@ interface CustomerContractsProps {
 }
 
 const contractTypeLabels = {
-  cost_per_click: "Cost Per Click",
-  flat_rate: "Flat Rate",
-  hybrid: "Hybrid",
-  maintenance_only: "Maintenance Only",
-  full_service: "Full Service",
+  cost_per_click: 'Cost Per Click',
+  flat_rate: 'Flat Rate',
+  hybrid: 'Hybrid',
+  maintenance_only: 'Maintenance Only',
+  full_service: 'Full Service',
 };
 
 const statusColors = {
-  active: "bg-green-100 text-green-800",
-  pending: "bg-yellow-100 text-yellow-800",
-  expired: "bg-red-100 text-red-800",
-  cancelled: "bg-gray-100 text-gray-800",
-  renewal_pending: "bg-blue-100 text-blue-800",
+  active: 'bg-green-100 text-green-800',
+  pending: 'bg-yellow-100 text-yellow-800',
+  expired: 'bg-red-100 text-red-800',
+  cancelled: 'bg-gray-100 text-gray-800',
+  renewal_pending: 'bg-blue-100 text-blue-800',
 };
 
 export function CustomerContracts({ customerId, customerName }: CustomerContractsProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
   // Fetch contracts for this customer
-  const { data: contracts = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/contracts", "customer", customerId],
+  const {
+    data: contracts = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['/api/contracts', 'customer', customerId],
     enabled: !!customerId,
   });
 
   // Filter contracts based on search and status
   const filteredContracts = contracts.filter((contract: Contract) => {
-    const matchesSearch = 
+    const matchesSearch =
       contract.contractNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contract.contractType?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || contract.status === statusFilter;
-    
+
+    const matchesStatus = statusFilter === 'all' || contract.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -122,33 +126,33 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
     const now = new Date();
     const endDate = new Date(contract.endDate);
     const startDate = new Date(contract.startDate);
-    
-    if (isBefore(now, startDate)) return "pending";
+
+    if (isBefore(now, startDate)) return 'pending';
     if (isAfter(now, endDate)) {
-      if (contract.autoRenewal) return "renewal_pending";
-      return "expired";
+      if (contract.autoRenewal) return 'renewal_pending';
+      return 'expired';
     }
-    return "active";
+    return 'active';
   };
 
   const getRenewalAlert = (contract: Contract) => {
     if (!contract.autoRenewal) return null;
-    
+
     const now = new Date();
     const endDate = new Date(contract.endDate);
     const threeMonthsOut = addMonths(now, 3);
-    
+
     if (isAfter(threeMonthsOut, endDate)) {
-      return "Renewal coming up";
+      return 'Renewal coming up';
     }
     return null;
   };
 
   const formatCurrency = (amount?: number) => {
-    if (!amount) return "N/A";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    if (!amount) return 'N/A';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount);
   };
 
@@ -166,9 +170,7 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Contracts</h2>
-          <p className="text-sm text-gray-600">
-            Manage service contracts for {customerName}
-          </p>
+          <p className="text-sm text-gray-600">Manage service contracts for {customerName}</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => refetch()}>
@@ -226,12 +228,10 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
           {filteredContracts.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No contracts found
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No contracts found</h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm || statusFilter !== "all"
-                  ? "No contracts match your current filters."
+                {searchTerm || statusFilter !== 'all'
+                  ? 'No contracts match your current filters.'
                   : "This customer doesn't have any contracts yet."}
               </p>
               <Button>
@@ -259,31 +259,25 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                   {filteredContracts.map((contract: Contract) => {
                     const status = getContractStatus(contract);
                     const renewalAlert = getRenewalAlert(contract);
-                    
+
                     return (
                       <TableRow key={contract.id}>
-                        <TableCell className="font-medium">
-                          {contract.contractNumber}
-                        </TableCell>
+                        <TableCell className="font-medium">{contract.contractNumber}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {contractTypeLabels[contract.contractType as keyof typeof contractTypeLabels] || contract.contractType}
+                            {contractTypeLabels[
+                              contract.contractType as keyof typeof contractTypeLabels
+                            ] || contract.contractType}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          {format(new Date(contract.startDate), "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(contract.endDate), "MMM d, yyyy")}
-                        </TableCell>
+                        <TableCell>{format(new Date(contract.startDate), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>{format(new Date(contract.endDate), 'MMM d, yyyy')}</TableCell>
                         <TableCell>
                           <Badge className={statusColors[status as keyof typeof statusColors]}>
-                            {status.replace("_", " ")}
+                            {status.replace('_', ' ')}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          {formatCurrency(contract.monthlyBase)}
-                        </TableCell>
+                        <TableCell>{formatCurrency(contract.monthlyBase)}</TableCell>
                         <TableCell>
                           {contract.autoRenewal ? (
                             <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -295,9 +289,7 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                           {renewalAlert && (
                             <div className="flex items-center">
                               <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" />
-                              <span className="text-xs text-amber-700">
-                                {renewalAlert}
-                              </span>
+                              <span className="text-xs text-amber-700">{renewalAlert}</span>
                             </div>
                           )}
                         </TableCell>
@@ -361,19 +353,21 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                 <div>
                   <h4 className="font-medium text-gray-900">Type</h4>
                   <p className="text-gray-600">
-                    {contractTypeLabels[selectedContract.contractType as keyof typeof contractTypeLabels] || selectedContract.contractType}
+                    {contractTypeLabels[
+                      selectedContract.contractType as keyof typeof contractTypeLabels
+                    ] || selectedContract.contractType}
                   </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">Start Date</h4>
                   <p className="text-gray-600">
-                    {format(new Date(selectedContract.startDate), "MMMM d, yyyy")}
+                    {format(new Date(selectedContract.startDate), 'MMMM d, yyyy')}
                   </p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">End Date</h4>
                   <p className="text-gray-600">
-                    {format(new Date(selectedContract.endDate), "MMMM d, yyyy")}
+                    {format(new Date(selectedContract.endDate), 'MMMM d, yyyy')}
                   </p>
                 </div>
                 <div>
@@ -383,14 +377,14 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
                 <div>
                   <h4 className="font-medium text-gray-900">Auto Renewal</h4>
                   <p className="text-gray-600">
-                    {selectedContract.autoRenewal 
-                      ? `Yes (${selectedContract.renewalTerms} months)` 
-                      : "No"}
+                    {selectedContract.autoRenewal
+                      ? `Yes (${selectedContract.renewalTerms} months)`
+                      : 'No'}
                   </p>
                 </div>
               </div>
 
-              {selectedContract.contractType === "cost_per_click" && (
+              {selectedContract.contractType === 'cost_per_click' && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Per-Click Rates</h4>
                   <div className="grid grid-cols-2 gap-4">

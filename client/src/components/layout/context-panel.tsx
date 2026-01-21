@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   PanelRight,
   X,
@@ -15,19 +15,19 @@ import {
   Building2,
   ChevronRight,
   ExternalLink,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { apiRequest } from "@/lib/queryClient";
-import { formatDistanceToNow } from "date-fns";
-import { Link } from "wouter";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
+import { formatDistanceToNow } from 'date-fns';
+import { Link } from 'wouter';
 
 export interface ContextPanelProps {
-  entityType: "customer" | "equipment" | "ticket" | "invoice" | "contract";
+  entityType: 'customer' | 'equipment' | 'ticket' | 'invoice' | 'contract';
   entityId: string;
   entityName: string;
   onClose?: () => void;
@@ -35,7 +35,7 @@ export interface ContextPanelProps {
 
 interface Activity {
   id: string;
-  type: "service" | "invoice" | "meter" | "note" | "status_change" | "equipment";
+  type: 'service' | 'invoice' | 'meter' | 'note' | 'status_change' | 'equipment';
   title: string;
   description?: string;
   timestamp: string;
@@ -46,7 +46,7 @@ interface Activity {
 interface QuickStat {
   label: string;
   value: string | number;
-  trend?: "up" | "down" | "neutral";
+  trend?: 'up' | 'down' | 'neutral';
   trendValue?: string;
   icon?: React.ReactNode;
 }
@@ -56,7 +56,7 @@ interface QuickAction {
   icon: React.ReactNode;
   href?: string;
   onClick?: () => void;
-  variant?: "default" | "secondary" | "outline";
+  variant?: 'default' | 'secondary' | 'outline';
 }
 
 interface RelatedRecord {
@@ -67,12 +67,7 @@ interface RelatedRecord {
   href?: string;
 }
 
-export function ContextPanel({
-  entityType,
-  entityId,
-  entityName,
-  onClose,
-}: ContextPanelProps) {
+export function ContextPanel({ entityType, entityId, entityName, onClose }: ContextPanelProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Fetch context data
@@ -104,33 +99,31 @@ export function ContextPanel({
 
     try {
       // Fetch activities/timeline
-      if (entityType === "customer") {
-        const activities = await apiRequest(
-          `/api/customers/${entityId}/activities`
-        );
+      if (entityType === 'customer') {
+        const activities = await apiRequest(`/api/customers/${entityId}/activities`);
         data.activities = activities || [];
 
         // Get customer stats
         const customer = await apiRequest(`/api/customers/${entityId}`);
         data.stats = [
           {
-            label: "Total Revenue",
+            label: 'Total Revenue',
             value: `$${customer.totalRevenue || 0}`,
             icon: <DollarSign className="h-4 w-4" />,
           },
           {
-            label: "Equipment Count",
+            label: 'Equipment Count',
             value: customer.equipmentCount || 0,
             icon: <Package className="h-4 w-4" />,
           },
           {
-            label: "Open Tickets",
+            label: 'Open Tickets',
             value: customer.openTickets || 0,
             icon: <Wrench className="h-4 w-4" />,
           },
           {
-            label: "Contract Status",
-            value: customer.contractStatus || "Active",
+            label: 'Contract Status',
+            value: customer.contractStatus || 'Active',
             icon: <FileText className="h-4 w-4" />,
           },
         ];
@@ -138,115 +131,113 @@ export function ContextPanel({
         // Get quick actions for customer
         data.actions = [
           {
-            label: "Create Service Request",
+            label: 'Create Service Request',
             icon: <Wrench className="h-4 w-4" />,
             href: `/service-hub?customerId=${entityId}`,
           },
           {
-            label: "Generate Invoice",
+            label: 'Generate Invoice',
             icon: <DollarSign className="h-4 w-4" />,
             href: `/invoices?customerId=${entityId}`,
           },
           {
-            label: "Submit Meter Reading",
+            label: 'Submit Meter Reading',
             icon: <FileText className="h-4 w-4" />,
             href: `/meter-readings?customerId=${entityId}`,
           },
         ];
 
         // Get related equipment
-        const equipment = await apiRequest(
-          `/api/equipment?customerId=${entityId}`
-        );
+        const equipment = await apiRequest(`/api/equipment?customerId=${entityId}`);
         data.relatedRecords = equipment.map((e: any) => ({
           id: e.id,
-          type: "Equipment",
+          type: 'Equipment',
           name: e.equipmentName || e.model,
           status: e.status,
           href: `/equipment/${e.id}`,
         }));
-      } else if (entityType === "equipment") {
+      } else if (entityType === 'equipment') {
         // Equipment context
         const equipment = await apiRequest(`/api/equipment/${entityId}`);
 
         data.stats = [
           {
-            label: "Current Meter",
+            label: 'Current Meter',
             value: equipment.currentMeter || 0,
-            trend: "up",
-            trendValue: "+1,240 this month",
+            trend: 'up',
+            trendValue: '+1,240 this month',
           },
           {
-            label: "Next PM",
-            value: equipment.nextPM || "Not scheduled",
+            label: 'Next PM',
+            value: equipment.nextPM || 'Not scheduled',
             icon: <Calendar className="h-4 w-4" />,
           },
           {
-            label: "Health Score",
+            label: 'Health Score',
             value: `${equipment.healthScore || 85}%`,
-            trend: equipment.healthScore > 80 ? "up" : "down",
+            trend: equipment.healthScore > 80 ? 'up' : 'down',
           },
         ];
 
         data.actions = [
           {
-            label: "Create Service Request",
+            label: 'Create Service Request',
             icon: <Wrench className="h-4 w-4" />,
             href: `/service-hub?equipmentId=${entityId}`,
           },
           {
-            label: "Submit Meter Reading",
+            label: 'Submit Meter Reading',
             icon: <FileText className="h-4 w-4" />,
             href: `/meter-readings?equipmentId=${entityId}`,
           },
           {
-            label: "View Service History",
+            label: 'View Service History',
             icon: <Clock className="h-4 w-4" />,
             href: `/service-hub?equipmentId=${entityId}&view=history`,
           },
         ];
-      } else if (entityType === "ticket") {
+      } else if (entityType === 'ticket') {
         // Service ticket context
         const ticket = await apiRequest(`/api/service-tickets/${entityId}`);
 
         data.stats = [
           {
-            label: "Status",
-            value: ticket.status || "Open",
+            label: 'Status',
+            value: ticket.status || 'Open',
             icon: <AlertCircle className="h-4 w-4" />,
           },
           {
-            label: "Priority",
-            value: ticket.priority || "Medium",
+            label: 'Priority',
+            value: ticket.priority || 'Medium',
             icon: <TrendingUp className="h-4 w-4" />,
           },
           {
-            label: "Assigned To",
-            value: ticket.assignedTo || "Unassigned",
+            label: 'Assigned To',
+            value: ticket.assignedTo || 'Unassigned',
             icon: <User className="h-4 w-4" />,
           },
         ];
 
         data.actions = [
           {
-            label: "Update Status",
+            label: 'Update Status',
             icon: <AlertCircle className="h-4 w-4" />,
-            onClick: () => console.log("Update status"),
+            onClick: () => console.log('Update status'),
           },
           {
-            label: "Add Note",
+            label: 'Add Note',
             icon: <FileText className="h-4 w-4" />,
-            onClick: () => console.log("Add note"),
+            onClick: () => console.log('Add note'),
           },
           {
-            label: "View Customer",
+            label: 'View Customer',
             icon: <Building2 className="h-4 w-4" />,
             href: `/customers/${ticket.customerId}`,
           },
         ];
       }
     } catch (err) {
-      console.error("Error constructing context data:", err);
+      console.error('Error constructing context data:', err);
     }
 
     return data;
@@ -279,9 +270,7 @@ export function ContextPanel({
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-2 w-2 rounded-full bg-blue-500" />
           <div className="min-w-0">
-            <div className="text-xs text-muted-foreground capitalize">
-              {entityType}
-            </div>
+            <div className="text-xs text-muted-foreground capitalize">{entityType}</div>
             <div className="text-sm font-medium truncate">{entityName}</div>
           </div>
         </div>
@@ -295,12 +284,7 @@ export function ContextPanel({
             <ChevronRight className="h-4 w-4" />
           </Button>
           {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={onClose}
-            >
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -318,31 +302,25 @@ export function ContextPanel({
                   <Card key={idx} className="p-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="text-xs text-muted-foreground">
-                          {stat.label}
-                        </div>
-                        <div className="text-lg font-semibold">
-                          {stat.value}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{stat.label}</div>
+                        <div className="text-lg font-semibold">{stat.value}</div>
                         {stat.trendValue && (
                           <div
                             className={cn(
-                              "text-xs flex items-center gap-1",
-                              stat.trend === "up"
-                                ? "text-green-600"
-                                : stat.trend === "down"
-                                ? "text-red-600"
-                                : "text-muted-foreground"
+                              'text-xs flex items-center gap-1',
+                              stat.trend === 'up'
+                                ? 'text-green-600'
+                                : stat.trend === 'down'
+                                  ? 'text-red-600'
+                                  : 'text-muted-foreground',
                             )}
                           >
-                            {stat.trend === "up" ? "↑" : stat.trend === "down" ? "↓" : ""}
+                            {stat.trend === 'up' ? '↑' : stat.trend === 'down' ? '↓' : ''}
                             {stat.trendValue}
                           </div>
                         )}
                       </div>
-                      {stat.icon && (
-                        <div className="text-muted-foreground">{stat.icon}</div>
-                      )}
+                      {stat.icon && <div className="text-muted-foreground">{stat.icon}</div>}
                     </div>
                   </Card>
                 ))}
@@ -358,7 +336,7 @@ export function ContextPanel({
                 {actions.map((action, idx) => (
                   <Button
                     key={idx}
-                    variant={action.variant || "outline"}
+                    variant={action.variant || 'outline'}
                     className="w-full justify-start"
                     size="sm"
                     asChild={!!action.href}
@@ -426,12 +404,10 @@ export function ContextPanel({
               <h3 className="text-sm font-semibold mb-3">Related Items</h3>
               <div className="space-y-2">
                 {relatedRecords.map((record) => (
-                  <Link key={record.id} href={record.href || "#"}>
+                  <Link key={record.id} href={record.href || '#'}>
                     <div className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="text-xs text-muted-foreground">
-                          {record.type}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{record.type}</div>
                         <div className="text-sm truncate">{record.name}</div>
                       </div>
                       {record.status && (
@@ -449,40 +425,35 @@ export function ContextPanel({
 
           {/* Loading State */}
           {isLoading && (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              Loading context...
-            </div>
+            <div className="text-center py-8 text-sm text-muted-foreground">Loading context...</div>
           )}
 
           {/* Empty State */}
-          {!isLoading &&
-            activities.length === 0 &&
-            stats.length === 0 &&
-            actions.length === 0 && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                <PanelRight className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>No additional context available</p>
-              </div>
-            )}
+          {!isLoading && activities.length === 0 && stats.length === 0 && actions.length === 0 && (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              <PanelRight className="h-12 w-12 mx-auto mb-2 opacity-20" />
+              <p>No additional context available</p>
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>
   );
 }
 
-function getActivityIcon(type: Activity["type"]) {
+function getActivityIcon(type: Activity['type']) {
   switch (type) {
-    case "service":
+    case 'service':
       return <Wrench className="h-4 w-4" />;
-    case "invoice":
+    case 'invoice':
       return <DollarSign className="h-4 w-4" />;
-    case "meter":
+    case 'meter':
       return <FileText className="h-4 w-4" />;
-    case "note":
+    case 'note':
       return <FileText className="h-4 w-4" />;
-    case "status_change":
+    case 'status_change':
       return <AlertCircle className="h-4 w-4" />;
-    case "equipment":
+    case 'equipment':
       return <Package className="h-4 w-4" />;
     default:
       return <Clock className="h-4 w-4" />;
@@ -492,15 +463,15 @@ function getActivityIcon(type: Activity["type"]) {
 // Hook to use context panel
 export function useContextPanel() {
   const [contextPanel, setContextPanel] = useState<{
-    entityType: ContextPanelProps["entityType"];
+    entityType: ContextPanelProps['entityType'];
     entityId: string;
     entityName: string;
   } | null>(null);
 
   const openContextPanel = (
-    entityType: ContextPanelProps["entityType"],
+    entityType: ContextPanelProps['entityType'],
     entityId: string,
-    entityName: string
+    entityName: string,
   ) => {
     setContextPanel({ entityType, entityId, entityName });
   };

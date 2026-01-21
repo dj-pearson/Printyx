@@ -371,7 +371,8 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
   {
     path: '/eula',
     title: 'End User License Agreement | Printyx',
-    description: 'Printyx End User License Agreement. Terms and conditions for using the Printyx platform.',
+    description:
+      'Printyx End User License Agreement. Terms and conditions for using the Printyx platform.',
     ogType: 'website',
     schema: 'WebPage',
     priority: 0.3,
@@ -503,7 +504,11 @@ export function getSEOConfig(path: string): SEORouteConfig | null {
       schema: 'BlogPosting',
       priority: 0.7,
       changefreq: 'monthly',
-      breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Blog', path: '/blog' }, { label: 'Article' }],
+      breadcrumbs: [
+        { label: 'Home', path: '/' },
+        { label: 'Blog', path: '/blog' },
+        { label: 'Article' },
+      ],
     };
   }
 

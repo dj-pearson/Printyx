@@ -70,10 +70,12 @@ Default Category ID: <knowledge-base-category-id>
 ### Context Menu Capture
 
 **Full Page:**
+
 1. Right-click anywhere on the page
 2. Select **"Capture entire page to Printyx KB"**
 
 **Selected Text:**
+
 1. Highlight the text you want to capture
 2. Right-click on the selection
 3. Select **"Capture to Printyx KB"**
@@ -216,6 +218,7 @@ Articles are automatically tagged with:
 **Problem**: Nothing happens when clicking capture
 
 **Solutions:**
+
 1. Refresh the page and try again
 2. Check that you're on a webpage (not chrome:// or extension pages)
 3. Verify your API credentials in Settings
@@ -226,6 +229,7 @@ Articles are automatically tagged with:
 **Problem**: "Not authenticated" or 401 errors
 
 **Solutions:**
+
 1. Verify your Auth Token is correct
 2. Check that your token hasn't expired
 3. Ensure Tenant ID and User ID are accurate
@@ -236,6 +240,7 @@ Articles are automatically tagged with:
 **Problem**: Capture succeeds but article is empty
 
 **Solutions:**
+
 1. Check that the page has readable content
 2. Some sites use dynamic loading - wait for content to load
 3. Try custom capture and paste content manually
@@ -246,6 +251,7 @@ Articles are automatically tagged with:
 **Problem**: "CORS policy" errors in console
 
 **Solutions:**
+
 1. Verify KB_EXTENSION_ALLOWED_ORIGINS in server .env
 2. Ensure your API URL is correct in extension settings
 3. Check that the server is running and accessible
@@ -309,6 +315,7 @@ Enable debug mode:
 ### Permissions Security
 
 The extension requests minimal permissions:
+
 - **activeTab**: Only accesses the current tab when you trigger capture
 - **storage**: Only stores your API settings
 - **contextMenus**: Only adds menu items

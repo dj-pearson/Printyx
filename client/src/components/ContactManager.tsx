@@ -1,24 +1,24 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,11 +34,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 import {
   Users,
   Plus,
@@ -63,9 +63,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
-} from "lucide-react";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Contact {
   id: string;
@@ -100,22 +100,18 @@ interface ContactManagerProps {
 }
 
 const statusColors = {
-  new: "bg-blue-100 text-blue-800",
-  contacted: "bg-yellow-100 text-yellow-800",
-  qualified: "bg-green-100 text-green-800",
-  unqualified: "bg-red-100 text-red-800",
-  customer: "bg-purple-100 text-purple-800",
+  new: 'bg-blue-100 text-blue-800',
+  contacted: 'bg-yellow-100 text-yellow-800',
+  qualified: 'bg-green-100 text-green-800',
+  unqualified: 'bg-red-100 text-red-800',
+  customer: 'bg-purple-100 text-purple-800',
 };
 
-export function ContactManager({
-  companyId,
-  companyName,
-  className,
-}: ContactManagerProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+export function ContactManager({ companyId, companyName, className }: ContactManagerProps) {
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isCreateContactOpen, setIsCreateContactOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
 
@@ -125,8 +121,7 @@ export function ContactManager({
   // Fetch contacts for this company - using standardized endpoint
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: [`/api/company-contacts`, { companyId }],
-    queryFn: async () =>
-      apiRequest(`/api/company-contacts?companyId=${companyId}`),
+    queryFn: async () => apiRequest(`/api/company-contacts?companyId=${companyId}`),
   });
 
   // Create contact mutation - using standardized endpoint
@@ -137,20 +132,20 @@ export function ContactManager({
         companyId,
       };
       delete payload.companyName;
-      return apiRequest(`/api/company-contacts`, "POST", payload);
+      return apiRequest(`/api/company-contacts`, 'POST', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
       });
       setIsCreateContactOpen(false);
-      toast({ title: "Success", description: "Contact created successfully" });
+      toast({ title: 'Success', description: 'Contact created successfully' });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: 'Error',
         description: `Failed to create contact: ${error.message || 'Unknown error'}`,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -158,19 +153,19 @@ export function ContactManager({
   // Update contact mutation - using standardized endpoint
   const updateContactMutation = useMutation({
     mutationFn: async ({ id, ...data }: Partial<Contact> & { id: string }) =>
-      apiRequest(`/api/company-contacts/${id}`, "PUT", data),
+      apiRequest(`/api/company-contacts/${id}`, 'PUT', data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
       });
       setEditingContact(null);
-      toast({ title: "Success", description: "Contact updated successfully" });
+      toast({ title: 'Success', description: 'Contact updated successfully' });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to update contact",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update contact',
+        variant: 'destructive',
       });
     },
   });
@@ -178,18 +173,18 @@ export function ContactManager({
   // Delete contact mutation - using standardized endpoint
   const deleteContactMutation = useMutation({
     mutationFn: async (contactId: string) =>
-      apiRequest(`/api/company-contacts/${contactId}`, "DELETE"),
+      apiRequest(`/api/company-contacts/${contactId}`, 'DELETE'),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/company-contacts`, { companyId }],
       });
-      toast({ title: "Success", description: "Contact deleted successfully" });
+      toast({ title: 'Success', description: 'Contact deleted successfully' });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to delete contact",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to delete contact',
+        variant: 'destructive',
       });
     },
   });
@@ -202,17 +197,14 @@ export function ContactManager({
       contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.title.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || contact.leadStatus === statusFilter;
+    const matchesStatus = statusFilter === 'all' || contact.leadStatus === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
   const toggleContactSelection = (contactId: string) => {
     setSelectedContacts((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId]
+      prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId],
     );
   };
 
@@ -225,8 +217,8 @@ export function ContactManager({
   };
 
   const formatDate = (date: string) => {
-    if (!date) return "Never";
-    return format(new Date(date), "MMM dd, yyyy");
+    if (!date) return 'Never';
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -236,14 +228,14 @@ export function ContactManager({
   const handleBulkAction = (action: string) => {
     if (selectedContacts.length === 0) {
       toast({
-        title: "No contacts selected",
-        description: "Please select contacts to perform bulk actions",
-        variant: "destructive",
+        title: 'No contacts selected',
+        description: 'Please select contacts to perform bulk actions',
+        variant: 'destructive',
       });
       return;
     }
     toast({
-      title: "Bulk Action",
+      title: 'Bulk Action',
       description: `${action} applied to ${selectedContacts.length} contacts`,
     });
   };
@@ -266,10 +258,7 @@ export function ContactManager({
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Dialog
-            open={isCreateContactOpen}
-            onOpenChange={setIsCreateContactOpen}
-          >
+          <Dialog open={isCreateContactOpen} onOpenChange={setIsCreateContactOpen}>
             <DialogTrigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
@@ -322,17 +311,17 @@ export function ContactManager({
               </Select>
               <div className="flex border rounded">
                 <Button
-                  variant={viewMode === "table" ? "default" : "ghost"}
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode("table")}
+                  onClick={() => setViewMode('table')}
                   className="rounded-r-none"
                 >
                   Table
                 </Button>
                 <Button
-                  variant={viewMode === "cards" ? "default" : "ghost"}
+                  variant={viewMode === 'cards' ? 'default' : 'ghost'}
                   size="sm"
-                  onClick={() => setViewMode("cards")}
+                  onClick={() => setViewMode('cards')}
                   className="rounded-l-none"
                 >
                   Cards
@@ -346,28 +335,24 @@ export function ContactManager({
             <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
               <span className="text-sm text-blue-800">
                 {selectedContacts.length} contact
-                {selectedContacts.length === 1 ? "" : "s"} selected
+                {selectedContacts.length === 1 ? '' : 's'} selected
               </span>
               <div className="flex gap-2">
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleBulkAction("update_status")}
+                  onClick={() => handleBulkAction('update_status')}
                 >
                   Update Status
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleBulkAction("assign_owner")}
+                  onClick={() => handleBulkAction('assign_owner')}
                 >
                   Assign Owner
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleBulkAction("export")}
-                >
+                <Button size="sm" variant="outline" onClick={() => handleBulkAction('export')}>
                   Export
                 </Button>
               </div>
@@ -381,7 +366,7 @@ export function ContactManager({
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
-      ) : viewMode === "table" ? (
+      ) : viewMode === 'table' ? (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -402,12 +387,8 @@ export function ContactManager({
                     <TableHead className="min-w-[120px]">Status</TableHead>
                     <TableHead className="min-w-[150px]">Phone</TableHead>
                     <TableHead className="min-w-[200px]">Email</TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Last Contact
-                    </TableHead>
-                    <TableHead className="min-w-[120px]">
-                      Next Follow-up
-                    </TableHead>
+                    <TableHead className="min-w-[120px]">Last Contact</TableHead>
+                    <TableHead className="min-w-[120px]">Next Follow-up</TableHead>
                     <TableHead className="min-w-[100px]">Owner</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
@@ -418,9 +399,7 @@ export function ContactManager({
                       <TableCell>
                         <Checkbox
                           checked={selectedContacts.includes(contact.id)}
-                          onCheckedChange={() =>
-                            toggleContactSelection(contact.id)
-                          }
+                          onCheckedChange={() => toggleContactSelection(contact.id)}
                         />
                       </TableCell>
                       <TableCell>
@@ -440,9 +419,7 @@ export function ContactManager({
                                 <Crown className="h-4 w-4 text-yellow-500" />
                               )}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {contact.department}
-                            </div>
+                            <div className="text-sm text-gray-500">{contact.department}</div>
                           </div>
                         </div>
                       </TableCell>
@@ -452,9 +429,8 @@ export function ContactManager({
                       <TableCell>
                         <Badge
                           className={
-                            statusColors[
-                              contact.leadStatus as keyof typeof statusColors
-                            ] || "bg-gray-100"
+                            statusColors[contact.leadStatus as keyof typeof statusColors] ||
+                            'bg-gray-100'
                           }
                         >
                           {contact.leadStatus}
@@ -483,19 +459,13 @@ export function ContactManager({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">
-                          {formatDate(contact.lastContactDate)}
-                        </span>
+                        <span className="text-sm">{formatDate(contact.lastContactDate)}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">
-                          {formatDate(contact.nextFollowUpDate)}
-                        </span>
+                        <span className="text-sm">{formatDate(contact.nextFollowUpDate)}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">
-                          {contact.ownerName || "Unassigned"}
-                        </span>
+                        <span className="text-sm">{contact.ownerName || 'Unassigned'}</span>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -506,9 +476,7 @@ export function ContactManager({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => setEditingContact(contact)}
-                            >
+                            <DropdownMenuItem onClick={() => setEditingContact(contact)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Contact
                             </DropdownMenuItem>
@@ -531,7 +499,7 @@ export function ContactManager({
                               onClick={() => {
                                 if (
                                   confirm(
-                                    `Delete ${contact.firstName} ${contact.lastName}? This cannot be undone.`
+                                    `Delete ${contact.firstName} ${contact.lastName}? This cannot be undone.`,
                                   )
                                 ) {
                                   deleteContactMutation.mutate(contact.id);
@@ -554,10 +522,7 @@ export function ContactManager({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredContacts.map((contact) => (
-            <Card
-              key={contact.id}
-              className="hover:shadow-lg transition-shadow"
-            >
+            <Card key={contact.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
@@ -572,9 +537,7 @@ export function ContactManager({
                           {contact.salutation && `${contact.salutation} `}
                           {contact.firstName} {contact.lastName}
                         </CardTitle>
-                        {contact.isPrimaryContact && (
-                          <Crown className="h-4 w-4 text-yellow-500" />
-                        )}
+                        {contact.isPrimaryContact && <Crown className="h-4 w-4 text-yellow-500" />}
                       </div>
                       <p className="text-sm text-gray-600">{contact.title}</p>
                     </div>
@@ -606,9 +569,8 @@ export function ContactManager({
                   <div className="flex items-center justify-between pt-2">
                     <Badge
                       className={
-                        statusColors[
-                          contact.leadStatus as keyof typeof statusColors
-                        ] || "bg-gray-100"
+                        statusColors[contact.leadStatus as keyof typeof statusColors] ||
+                        'bg-gray-100'
                       }
                     >
                       {contact.leadStatus}
@@ -620,9 +582,7 @@ export function ContactManager({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => setEditingContact(contact)}
-                        >
+                        <DropdownMenuItem onClick={() => setEditingContact(contact)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
@@ -649,13 +609,11 @@ export function ContactManager({
         <Card>
           <CardContent className="p-12 text-center">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No contacts found
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No contacts found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm
-                ? "No contacts match your search criteria."
-                : "Start building your contact database by adding your first contact."}
+                ? 'No contacts match your search criteria.'
+                : 'Start building your contact database by adding your first contact.'}
             </p>
             <Button onClick={() => setIsCreateContactOpen(true)}>
               <UserPlus className="w-4 h-4 mr-2" />
@@ -667,19 +625,14 @@ export function ContactManager({
 
       {/* Edit Contact Dialog */}
       {editingContact && (
-        <Dialog
-          open={!!editingContact}
-          onOpenChange={() => setEditingContact(null)}
-        >
+        <Dialog open={!!editingContact} onOpenChange={() => setEditingContact(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Contact</DialogTitle>
             </DialogHeader>
             <ContactForm
               initialData={editingContact}
-              onSubmit={(data) =>
-                updateContactMutation.mutate({ ...data, id: editingContact.id })
-              }
+              onSubmit={(data) => updateContactMutation.mutate({ ...data, id: editingContact.id })}
               isLoading={updateContactMutation.isPending}
               companyId={companyId}
               companyName={companyName}
@@ -706,15 +659,15 @@ function ContactForm({
   companyName: string;
 }) {
   const [formData, setFormData] = useState({
-    salutation: initialData?.salutation || "",
-    firstName: initialData?.firstName || "",
-    lastName: initialData?.lastName || "",
-    title: initialData?.title || "",
-    department: initialData?.department || "",
-    phone: initialData?.phone || "",
-    mobile: initialData?.mobile || "",
-    email: initialData?.email || "",
-    leadStatus: initialData?.leadStatus || "new",
+    salutation: initialData?.salutation || '',
+    firstName: initialData?.firstName || '',
+    lastName: initialData?.lastName || '',
+    title: initialData?.title || '',
+    department: initialData?.department || '',
+    phone: initialData?.phone || '',
+    mobile: initialData?.mobile || '',
+    email: initialData?.email || '',
+    leadStatus: initialData?.leadStatus || 'new',
     isPrimaryContact: initialData?.isPrimaryContact || false,
     companyId: companyId,
     companyName: companyName,
@@ -726,18 +679,13 @@ function ContactForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 max-h-[60vh] overflow-y-auto"
-    >
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="space-y-2">
           <Label htmlFor="salutation">Salutation</Label>
           <Select
             value={formData.salutation}
-            onValueChange={(value) =>
-              setFormData({ ...formData, salutation: value })
-            }
+            onValueChange={(value) => setFormData({ ...formData, salutation: value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select..." />
@@ -756,9 +704,7 @@ function ContactForm({
           <Input
             id="firstName"
             value={formData.firstName}
-            onChange={(e) =>
-              setFormData({ ...formData, firstName: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
             required
           />
         </div>
@@ -767,9 +713,7 @@ function ContactForm({
           <Input
             id="lastName"
             value={formData.lastName}
-            onChange={(e) =>
-              setFormData({ ...formData, lastName: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
             required
           />
         </div>
@@ -778,9 +722,7 @@ function ContactForm({
           <Input
             id="title"
             value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           />
         </div>
       </div>
@@ -790,9 +732,7 @@ function ContactForm({
           <Label htmlFor="department">Department</Label>
           <Select
             value={formData.department}
-            onValueChange={(value) =>
-              setFormData({ ...formData, department: value })
-            }
+            onValueChange={(value) => setFormData({ ...formData, department: value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select department" />
@@ -815,9 +755,7 @@ function ContactForm({
           <Input
             id="phone"
             value={formData.phone}
-            onChange={(e) =>
-              setFormData({ ...formData, phone: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             type="tel"
           />
         </div>
@@ -826,9 +764,7 @@ function ContactForm({
           <Input
             id="mobile"
             value={formData.mobile}
-            onChange={(e) =>
-              setFormData({ ...formData, mobile: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
             type="tel"
           />
         </div>
@@ -841,18 +777,14 @@ function ContactForm({
             id="email"
             type="email"
             value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
         </div>
         <div className="space-y-2">
           <Label htmlFor="leadStatus">Status</Label>
           <Select
             value={formData.leadStatus}
-            onValueChange={(value) =>
-              setFormData({ ...formData, leadStatus: value })
-            }
+            onValueChange={(value) => setFormData({ ...formData, leadStatus: value })}
           >
             <SelectTrigger>
               <SelectValue />
@@ -872,20 +804,14 @@ function ContactForm({
         <Checkbox
           id="isPrimaryContact"
           checked={formData.isPrimaryContact}
-          onCheckedChange={(checked) =>
-            setFormData({ ...formData, isPrimaryContact: !!checked })
-          }
+          onCheckedChange={(checked) => setFormData({ ...formData, isPrimaryContact: !!checked })}
         />
         <Label htmlFor="isPrimaryContact">Set as primary contact</Label>
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
         <Button type="submit" disabled={isLoading}>
-          {isLoading
-            ? "Saving..."
-            : initialData
-            ? "Update Contact"
-            : "Create Contact"}
+          {isLoading ? 'Saving...' : initialData ? 'Update Contact' : 'Create Contact'}
         </Button>
       </div>
     </form>

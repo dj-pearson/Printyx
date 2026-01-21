@@ -3,20 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  LineChart, 
-  BarChart, 
+import {
+  LineChart,
+  BarChart,
   PieChart,
-  ComposedChart, 
-  MetricCard, 
-  CHART_COLORS 
+  ComposedChart,
+  MetricCard,
+  CHART_COLORS,
 } from '@/components/charts/ChartComponents';
-import { 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  TrendingUp,
+  TrendingDown,
   Minus,
   DollarSign,
   BarChart3,
@@ -29,7 +35,7 @@ import {
   Printer,
   FileText,
   Target,
-  Lightbulb
+  Lightbulb,
 } from 'lucide-react';
 import type { UsageAnalytics } from '../../../shared/customer-portal-schema';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -41,19 +47,25 @@ interface UsageAnalyticsDashboardProps {
   tenantId?: string;
 }
 
-export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ customerId, tenantId }: UsageAnalyticsDashboardProps) {
+export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
+  customerId,
+  tenantId,
+}: UsageAnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [periodType, setPeriodType] = useState<string>('daily');
 
   // Fetch usage analytics - Optimized for performance
-  const { 
-    data: analyticsData, 
-    isLoading, 
-    isError, 
+  const {
+    data: analyticsData,
+    isLoading,
+    isError,
     error,
-    refetch
+    refetch,
   } = useQuery({
-    queryKey: ['/api/customer-portal/usage-analytics', { timeRange, periodType, customerId, tenantId }],
+    queryKey: [
+      '/api/customer-portal/usage-analytics',
+      { timeRange, periodType, customerId, tenantId },
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         timeRange,
@@ -62,9 +74,9 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
         includeCosts: 'true',
         includeRecommendations: 'true',
         // Optimize payload - only fetch necessary fields
-        fields: 'metrics,trends,costBreakdown,equipmentUsage,peakUsage,recommendations'
+        fields: 'metrics,trends,costBreakdown,equipmentUsage,peakUsage,recommendations',
       });
-      
+
       return await apiRequest(`/api/customer-portal/usage-analytics?${params}`);
     },
     staleTime: 2 * 60 * 1000, // 2 minutes for analytics data
@@ -89,11 +101,11 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
   // Memoized expensive chart data calculations to prevent recalculations
   const memoizedChartData = useMemo(() => {
     if (!analytics) return null;
-    
+
     return {
       // Memoize usage trends data transformation
       usageTrendsData: analytics.trends,
-      
+
       // Memoize cost breakdown pie chart data
       costBreakdownData: [
         { name: 'Black & White', value: analytics.costBreakdown.blackWhiteCost },
@@ -101,42 +113,56 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
         { name: 'Large Format', value: analytics.costBreakdown.largeFormatCost },
         { name: 'Scanning', value: analytics.costBreakdown.scanCost },
         { name: 'Maintenance', value: analytics.costBreakdown.maintenanceCost },
-        { name: 'Supplies', value: analytics.costBreakdown.supplyCost }
+        { name: 'Supplies', value: analytics.costBreakdown.supplyCost },
       ],
-      
-      // Memoize daily patterns data transformation 
-      dailyPatternsData: analytics.peakUsage.dailyPeaks.map(peak => ({
+
+      // Memoize daily patterns data transformation
+      dailyPatternsData: analytics.peakUsage.dailyPeaks.map((peak) => ({
         name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
-        value: peak.averageVolume
+        value: peak.averageVolume,
       })),
-      
+
       // Memoize hourly patterns data transformation
-      hourlyPatternsData: analytics.peakUsage.hourlyPeaks.map(peak => ({
+      hourlyPatternsData: analytics.peakUsage.hourlyPeaks.map((peak) => ({
         hour: `${peak.hour}:00`,
-        volume: peak.averageVolume
-      }))
+        volume: peak.averageVolume,
+      })),
     };
   }, [analytics]);
 
   // Memoized metric calculations to prevent expensive recalculations
   const memoizedMetrics = useMemo(() => {
     if (!analytics) return null;
-    
+
     return {
       totalVolumeFormatted: analytics.metrics.totalVolume.toLocaleString(),
       averageDailyFormatted: Math.round(analytics.metrics.averageDaily).toLocaleString(),
       totalCostFormatted: `$${analytics.metrics.totalCost.toFixed(2)}`,
       efficiencyScoreFormatted: `${Math.round(analytics.metrics.efficiencyScore)}%`,
-      
+
       // Calculate trend changes with memoization
-      averageDailyChange: analytics.comparison.previous.averageDaily > 0 ? 
-        ((analytics.comparison.current.averageDaily - analytics.comparison.previous.averageDaily) / analytics.comparison.previous.averageDaily) * 100 : 0,
-      
-      totalCostChange: analytics.comparison.previous.totalCost > 0 ?
-        ((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) / analytics.comparison.previous.totalCost) * 100 : 0,
-        
-      efficiencyScoreChange: analytics.comparison.previous.efficiencyScore > 0 ?
-        ((analytics.comparison.current.efficiencyScore - analytics.comparison.previous.efficiencyScore) / analytics.comparison.previous.efficiencyScore) * 100 : 0
+      averageDailyChange:
+        analytics.comparison.previous.averageDaily > 0
+          ? ((analytics.comparison.current.averageDaily -
+              analytics.comparison.previous.averageDaily) /
+              analytics.comparison.previous.averageDaily) *
+            100
+          : 0,
+
+      totalCostChange:
+        analytics.comparison.previous.totalCost > 0
+          ? ((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) /
+              analytics.comparison.previous.totalCost) *
+            100
+          : 0,
+
+      efficiencyScoreChange:
+        analytics.comparison.previous.efficiencyScore > 0
+          ? ((analytics.comparison.current.efficiencyScore -
+              analytics.comparison.previous.efficiencyScore) /
+              analytics.comparison.previous.efficiencyScore) *
+            100
+          : 0,
     };
   }, [analytics]);
 
@@ -170,7 +196,9 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
           <div className="text-center text-gray-500 dark:text-gray-400">
             <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <h3 className="font-medium mb-2">No usage data available</h3>
-            <p className="text-sm">Usage analytics will appear here once meter readings are submitted.</p>
+            <p className="text-sm">
+              Usage analytics will appear here once meter readings are submitted.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -182,14 +210,17 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
       {/* Header Controls */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100" data-testid="title-usage-analytics">
+          <h2
+            className="text-2xl font-bold text-gray-900 dark:text-gray-100"
+            data-testid="title-usage-analytics"
+          >
             Usage Analytics
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Track printing patterns, costs, and efficiency across your fleet
           </p>
         </div>
-        
+
         <div className="flex gap-3">
           <Select value={timeRange} onValueChange={setTimeRange} data-testid="select-time-range">
             <SelectTrigger className="w-32">
@@ -203,7 +234,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Select value={periodType} onValueChange={setPeriodType} data-testid="select-period-type">
             <SelectTrigger className="w-28">
               <SelectValue />
@@ -228,32 +259,67 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
           color={CHART_COLORS[0]}
           data-testid="metric-total-volume"
         />
-        
+
         <MetricCard
           title="Average Daily"
           value={Math.round(analytics.metrics.averageDaily).toLocaleString()}
-          change={((analytics.comparison.current.averageDaily - analytics.comparison.previous.averageDaily) / analytics.comparison.previous.averageDaily) * 100}
-          trend={analytics.comparison.current.averageDaily > analytics.comparison.previous.averageDaily ? 'up' : analytics.comparison.current.averageDaily < analytics.comparison.previous.averageDaily ? 'down' : 'stable'}
+          change={
+            ((analytics.comparison.current.averageDaily -
+              analytics.comparison.previous.averageDaily) /
+              analytics.comparison.previous.averageDaily) *
+            100
+          }
+          trend={
+            analytics.comparison.current.averageDaily > analytics.comparison.previous.averageDaily
+              ? 'up'
+              : analytics.comparison.current.averageDaily <
+                  analytics.comparison.previous.averageDaily
+                ? 'down'
+                : 'stable'
+          }
           icon={<BarChart3 className="h-4 w-4" />}
           color={CHART_COLORS[1]}
           data-testid="metric-average-daily"
         />
-        
+
         <MetricCard
           title="Total Cost"
           value={`$${analytics.metrics.totalCost.toFixed(2)}`}
-          change={((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) / analytics.comparison.previous.totalCost) * 100}
-          trend={analytics.comparison.current.totalCost > analytics.comparison.previous.totalCost ? 'up' : analytics.comparison.current.totalCost < analytics.comparison.previous.totalCost ? 'down' : 'stable'}
+          change={
+            ((analytics.comparison.current.totalCost - analytics.comparison.previous.totalCost) /
+              analytics.comparison.previous.totalCost) *
+            100
+          }
+          trend={
+            analytics.comparison.current.totalCost > analytics.comparison.previous.totalCost
+              ? 'up'
+              : analytics.comparison.current.totalCost < analytics.comparison.previous.totalCost
+                ? 'down'
+                : 'stable'
+          }
           icon={<DollarSign className="h-4 w-4" />}
           color={CHART_COLORS[2]}
           data-testid="metric-total-cost"
         />
-        
+
         <MetricCard
           title="Efficiency Score"
           value={`${Math.round(analytics.metrics.efficiencyScore)}%`}
-          change={((analytics.comparison.current.efficiencyScore - analytics.comparison.previous.efficiencyScore) / analytics.comparison.previous.efficiencyScore) * 100}
-          trend={analytics.comparison.current.efficiencyScore > analytics.comparison.previous.efficiencyScore ? 'up' : analytics.comparison.current.efficiencyScore < analytics.comparison.previous.efficiencyScore ? 'down' : 'stable'}
+          change={
+            ((analytics.comparison.current.efficiencyScore -
+              analytics.comparison.previous.efficiencyScore) /
+              analytics.comparison.previous.efficiencyScore) *
+            100
+          }
+          trend={
+            analytics.comparison.current.efficiencyScore >
+            analytics.comparison.previous.efficiencyScore
+              ? 'up'
+              : analytics.comparison.current.efficiencyScore <
+                  analytics.comparison.previous.efficiencyScore
+                ? 'down'
+                : 'stable'
+          }
           icon={<Zap className="h-4 w-4" />}
           color={CHART_COLORS[3]}
           target={100}
@@ -264,11 +330,21 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
       {/* Analytics Tabs */}
       <Tabs defaultValue="trends" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="trends" data-testid="tab-trends">Trends</TabsTrigger>
-          <TabsTrigger value="costs" data-testid="tab-costs">Costs</TabsTrigger>
-          <TabsTrigger value="equipment" data-testid="tab-equipment">Equipment</TabsTrigger>
-          <TabsTrigger value="patterns" data-testid="tab-patterns">Patterns</TabsTrigger>
-          <TabsTrigger value="recommendations" data-testid="tab-recommendations">Insights</TabsTrigger>
+          <TabsTrigger value="trends" data-testid="tab-trends">
+            Trends
+          </TabsTrigger>
+          <TabsTrigger value="costs" data-testid="tab-costs">
+            Costs
+          </TabsTrigger>
+          <TabsTrigger value="equipment" data-testid="tab-equipment">
+            Equipment
+          </TabsTrigger>
+          <TabsTrigger value="patterns" data-testid="tab-patterns">
+            Patterns
+          </TabsTrigger>
+          <TabsTrigger value="recommendations" data-testid="tab-recommendations">
+            Insights
+          </TabsTrigger>
         </TabsList>
 
         {/* Usage Trends */}
@@ -280,9 +356,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                   <TrendingUp className="h-5 w-5" />
                   Usage Trends
                 </CardTitle>
-                <CardDescription>
-                  Volume trends over time by print type
-                </CardDescription>
+                <CardDescription>Volume trends over time by print type</CardDescription>
               </CardHeader>
               <CardContent>
                 <ComposedChart
@@ -291,7 +365,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                   lines={[
                     { key: 'totalImpressions', name: 'Total', color: CHART_COLORS[0] },
                     { key: 'blackWhiteImpressions', name: 'B&W', color: CHART_COLORS[1] },
-                    { key: 'colorImpressions', name: 'Color', color: CHART_COLORS[2] }
+                    { key: 'colorImpressions', name: 'Color', color: CHART_COLORS[2] },
                   ]}
                   height={300}
                   data-testid="chart-usage-trends"
@@ -305,20 +379,14 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                   <DollarSign className="h-5 w-5" />
                   Cost & Efficiency Trends
                 </CardTitle>
-                <CardDescription>
-                  Cost estimates and efficiency over time
-                </CardDescription>
+                <CardDescription>Cost estimates and efficiency over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <ComposedChart
                   data={analytics.trends}
                   xKey="date"
-                  lines={[
-                    { key: 'costEstimate', name: 'Cost ($)', color: CHART_COLORS[2] }
-                  ]}
-                  bars={[
-                    { key: 'efficiency', name: 'Efficiency (%)', color: CHART_COLORS[4] }
-                  ]}
+                  lines={[{ key: 'costEstimate', name: 'Cost ($)', color: CHART_COLORS[2] }]}
+                  bars={[{ key: 'efficiency', name: 'Efficiency (%)', color: CHART_COLORS[4] }]}
                   height={300}
                   data-testid="chart-cost-efficiency"
                 />
@@ -336,9 +404,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                   <DollarSign className="h-5 w-5" />
                   Cost Breakdown
                 </CardTitle>
-                <CardDescription>
-                  Distribution of printing costs
-                </CardDescription>
+                <CardDescription>Distribution of printing costs</CardDescription>
               </CardHeader>
               <CardContent>
                 <PieChart
@@ -348,7 +414,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                     { name: 'Large Format', value: analytics.costBreakdown.largeFormatCost },
                     { name: 'Scanning', value: analytics.costBreakdown.scanCost },
                     { name: 'Maintenance', value: analytics.costBreakdown.maintenanceCost },
-                    { name: 'Supplies', value: analytics.costBreakdown.supplyCost }
+                    { name: 'Supplies', value: analytics.costBreakdown.supplyCost },
                   ]}
                   height={300}
                   data-testid="chart-cost-breakdown"
@@ -359,29 +425,35 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
             <Card>
               <CardHeader>
                 <CardTitle>Cost Metrics</CardTitle>
-                <CardDescription>
-                  Key cost indicators and comparisons
-                </CardDescription>
+                <CardDescription>Key cost indicators and comparisons</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <span className="font-medium">Cost per Page</span>
-                    <span className="text-lg font-bold">${analytics.metrics.costPerPage.toFixed(3)}</span>
+                    <span className="text-lg font-bold">
+                      ${analytics.metrics.costPerPage.toFixed(3)}
+                    </span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <span className="font-medium">Color Ratio</span>
-                    <span className="text-lg font-bold">{analytics.metrics.colorRatio.toFixed(1)}%</span>
+                    <span className="text-lg font-bold">
+                      {analytics.metrics.colorRatio.toFixed(1)}%
+                    </span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <span className="font-medium">Carbon Footprint</span>
-                    <span className="text-lg font-bold">{analytics.metrics.carbonFootprint.toFixed(1)}kg CO₂</span>
+                    <span className="text-lg font-bold">
+                      {analytics.metrics.carbonFootprint.toFixed(1)}kg CO₂
+                    </span>
                   </div>
-                  
+
                   <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <span className="font-medium text-green-700 dark:text-green-300">Paper Saved</span>
+                    <span className="font-medium text-green-700 dark:text-green-300">
+                      Paper Saved
+                    </span>
                     <span className="text-lg font-bold text-green-700 dark:text-green-300">
                       {analytics.metrics.paperSaved.toFixed(1)} sheets
                     </span>
@@ -400,15 +472,13 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                 <Printer className="h-5 w-5" />
                 Equipment Performance
               </CardTitle>
-              <CardDescription>
-                Usage statistics and efficiency by device
-              </CardDescription>
+              <CardDescription>Usage statistics and efficiency by device</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {analytics.equipmentUsage.map((equipment) => (
-                  <div 
-                    key={equipment.equipmentId} 
+                  <div
+                    key={equipment.equipmentId}
                     className="p-4 border rounded-lg space-y-3"
                     data-testid={`equipment-card-${equipment.equipmentId}`}
                   >
@@ -420,16 +490,27 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={equipment.trendDirection === 'up' ? 'default' : 
-                                     equipment.trendDirection === 'down' ? 'destructive' : 'secondary'}>
-                          {equipment.trendDirection === 'up' ? <TrendingUp className="h-3 w-3" /> :
-                           equipment.trendDirection === 'down' ? <TrendingDown className="h-3 w-3" /> :
-                           <Minus className="h-3 w-3" />}
+                        <Badge
+                          variant={
+                            equipment.trendDirection === 'up'
+                              ? 'default'
+                              : equipment.trendDirection === 'down'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
+                        >
+                          {equipment.trendDirection === 'up' ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : equipment.trendDirection === 'down' ? (
+                            <TrendingDown className="h-3 w-3" />
+                          ) : (
+                            <Minus className="h-3 w-3" />
+                          )}
                           {equipment.trendDirection}
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-gray-600 dark:text-gray-400">Total Volume</p>
@@ -437,7 +518,9 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                       </div>
                       <div>
                         <p className="text-gray-600 dark:text-gray-400">Monthly Avg</p>
-                        <p className="font-medium">{Math.round(equipment.monthlyAverage).toLocaleString()}</p>
+                        <p className="font-medium">
+                          {Math.round(equipment.monthlyAverage).toLocaleString()}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-600 dark:text-gray-400">Utilization</p>
@@ -464,15 +547,13 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                   <Calendar className="h-5 w-5" />
                   Daily Usage Patterns
                 </CardTitle>
-                <CardDescription>
-                  Average volume by day of week
-                </CardDescription>
+                <CardDescription>Average volume by day of week</CardDescription>
               </CardHeader>
               <CardContent>
                 <BarChart
-                  data={analytics.peakUsage.dailyPeaks.map(peak => ({
+                  data={analytics.peakUsage.dailyPeaks.map((peak) => ({
                     name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
-                    value: peak.averageVolume
+                    value: peak.averageVolume,
                   }))}
                   xKey="name"
                   yKey="value"
@@ -488,15 +569,13 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
                   <TrendingUp className="h-5 w-5" />
                   Peak Usage Hours
                 </CardTitle>
-                <CardDescription>
-                  Average volume by hour of day
-                </CardDescription>
+                <CardDescription>Average volume by hour of day</CardDescription>
               </CardHeader>
               <CardContent>
                 <LineChart
-                  data={analytics.peakUsage.hourlyPeaks.map(peak => ({
+                  data={analytics.peakUsage.hourlyPeaks.map((peak) => ({
                     hour: `${peak.hour}:00`,
-                    volume: peak.averageVolume
+                    volume: peak.averageVolume,
                   }))}
                   xKey="hour"
                   yKey="volume"
@@ -523,44 +602,73 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({ c
             <CardContent>
               <div className="space-y-4">
                 {analytics.recommendations.map((rec, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`p-4 rounded-lg border-l-4 ${
-                      rec.type === 'cost_saving' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
-                      rec.type === 'efficiency' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
-                      rec.type === 'environmental' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' :
-                      'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
+                      rec.type === 'cost_saving'
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : rec.type === 'efficiency'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : rec.type === 'environmental'
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
+                            : 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
                     }`}
                     data-testid={`recommendation-${index}`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          {rec.type === 'cost_saving' && <DollarSign className="h-4 w-4 text-green-600" />}
+                          {rec.type === 'cost_saving' && (
+                            <DollarSign className="h-4 w-4 text-green-600" />
+                          )}
                           {rec.type === 'efficiency' && <Zap className="h-4 w-4 text-blue-600" />}
-                          {rec.type === 'environmental' && <Leaf className="h-4 w-4 text-emerald-600" />}
-                          {rec.type === 'maintenance' && <Target className="h-4 w-4 text-yellow-600" />}
+                          {rec.type === 'environmental' && (
+                            <Leaf className="h-4 w-4 text-emerald-600" />
+                          )}
+                          {rec.type === 'maintenance' && (
+                            <Target className="h-4 w-4 text-yellow-600" />
+                          )}
                           <h4 className="font-medium">{rec.title}</h4>
                         </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300">{rec.description}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          {rec.description}
+                        </p>
                       </div>
                       <div className="flex gap-2 ml-4">
-                        <Badge variant={rec.impact === 'high' ? 'default' : rec.impact === 'medium' ? 'secondary' : 'outline'}>
+                        <Badge
+                          variant={
+                            rec.impact === 'high'
+                              ? 'default'
+                              : rec.impact === 'medium'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                        >
                           {rec.impact} impact
                         </Badge>
-                        <Badge variant={rec.effort === 'low' ? 'default' : rec.effort === 'medium' ? 'secondary' : 'outline'}>
+                        <Badge
+                          variant={
+                            rec.effort === 'low'
+                              ? 'default'
+                              : rec.effort === 'medium'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                        >
                           {rec.effort} effort
                         </Badge>
                       </div>
                     </div>
                   </div>
                 ))}
-                
+
                 {analytics.recommendations.length === 0 && (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <h3 className="font-medium mb-2">All systems optimized!</h3>
-                    <p className="text-sm">Your usage patterns look efficient. Keep up the good work!</p>
+                    <p className="text-sm">
+                      Your usage patterns look efficient. Keep up the good work!
+                    </p>
                   </div>
                 )}
               </div>
@@ -586,7 +694,7 @@ function AnalyticsLoadingSkeleton() {
           <Skeleton className="h-10 w-28" />
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[...Array(4)].map((_, i) => (
           <Card key={i}>
@@ -598,7 +706,7 @@ function AnalyticsLoadingSkeleton() {
           </Card>
         ))}
       </div>
-      
+
       <Card>
         <CardContent className="p-6">
           <Skeleton className="h-6 w-32 mb-4" />

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,16 +26,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Wrench,
   Plus,
@@ -52,8 +52,8 @@ import {
   Phone,
   MessageSquare,
   Activity,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface ServiceCall {
   id: string;
@@ -106,77 +106,64 @@ interface CustomerServiceHistoryProps {
 }
 
 const priorityColors = {
-  low: "bg-green-100 text-green-800",
-  medium: "bg-yellow-100 text-yellow-800",
-  high: "bg-orange-100 text-orange-800",
-  urgent: "bg-red-100 text-red-800",
+  low: 'bg-green-100 text-green-800',
+  medium: 'bg-yellow-100 text-yellow-800',
+  high: 'bg-orange-100 text-orange-800',
+  urgent: 'bg-red-100 text-red-800',
 };
 
 const statusColors = {
-  open: "bg-blue-100 text-blue-800",
-  assigned: "bg-yellow-100 text-yellow-800",
-  dispatched: "bg-orange-100 text-orange-800",
-  "in-progress": "bg-purple-100 text-purple-800",
-  completed: "bg-green-100 text-green-800",
-  cancelled: "bg-gray-100 text-gray-800",
+  open: 'bg-blue-100 text-blue-800',
+  assigned: 'bg-yellow-100 text-yellow-800',
+  dispatched: 'bg-orange-100 text-orange-800',
+  'in-progress': 'bg-purple-100 text-purple-800',
+  completed: 'bg-green-100 text-green-800',
+  cancelled: 'bg-gray-100 text-gray-800',
 };
 
 const callTypeColors = {
-  warranty: "bg-green-100 text-green-800",
-  contract: "bg-blue-100 text-blue-800",
-  billable: "bg-orange-100 text-orange-800",
-  internal: "bg-gray-100 text-gray-800",
+  warranty: 'bg-green-100 text-green-800',
+  contract: 'bg-blue-100 text-blue-800',
+  billable: 'bg-orange-100 text-orange-800',
+  internal: 'bg-gray-100 text-gray-800',
 };
 
-export function CustomerServiceHistory({
-  customerId,
-  customerName,
-}: CustomerServiceHistoryProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState("tickets");
+export function CustomerServiceHistory({ customerId, customerName }: CustomerServiceHistoryProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('tickets');
 
   // Fetch service tickets
-  const { data: serviceTickets = [], isLoading: loadingTickets } = useQuery<
-    ServiceTicket[]
-  >({
+  const { data: serviceTickets = [], isLoading: loadingTickets } = useQuery<ServiceTicket[]>({
     queryKey: [`/api/customers/${customerId}/service-tickets`],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/customers/${customerId}/service-tickets`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch service tickets");
+      const response = await fetch(`/api/customers/${customerId}/service-tickets`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch service tickets');
       return response.json();
     },
   });
 
   // Fetch service calls
-  const { data: serviceCalls = [], isLoading: loadingCalls } = useQuery<
-    ServiceCall[]
-  >({
+  const { data: serviceCalls = [], isLoading: loadingCalls } = useQuery<ServiceCall[]>({
     queryKey: [`/api/customers/${customerId}/service-calls`],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/customers/${customerId}/service-calls`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch service calls");
+      const response = await fetch(`/api/customers/${customerId}/service-calls`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch service calls');
       return response.json();
     },
   });
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   const formatDateTime = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy h:mm a");
+    return format(new Date(date), 'MMM dd, yyyy h:mm a');
   };
 
   const formatDuration = (minutes: number) => {
@@ -193,10 +180,8 @@ export function CustomerServiceHistory({
       ticket.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ticket.technicianName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || ticket.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || ticket.priority === priorityFilter;
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
 
     return matchesSearch && matchesStatus && matchesPriority;
   });
@@ -205,15 +190,11 @@ export function CustomerServiceHistory({
   const filteredCalls = serviceCalls.filter((call) => {
     const matchesSearch =
       call.serviceCallNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      call.problemDescription
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
+      call.problemDescription?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       call.technicianName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || call.callStatus === statusFilter;
-    const matchesPriority =
-      priorityFilter === "all" || call.priorityLevel === priorityFilter;
+    const matchesStatus = statusFilter === 'all' || call.callStatus === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || call.priorityLevel === priorityFilter;
 
     return matchesSearch && matchesStatus && matchesPriority;
   });
@@ -221,15 +202,14 @@ export function CustomerServiceHistory({
   // Calculate statistics
   const ticketStats = {
     total: serviceTickets.length,
-    open: serviceTickets.filter((t) => t.status === "open").length,
-    inProgress: serviceTickets.filter((t) => t.status === "in-progress").length,
-    completed: serviceTickets.filter((t) => t.status === "completed").length,
+    open: serviceTickets.filter((t) => t.status === 'open').length,
+    inProgress: serviceTickets.filter((t) => t.status === 'in-progress').length,
+    completed: serviceTickets.filter((t) => t.status === 'completed').length,
     avgResolutionTime:
       serviceTickets
         .filter((t) => t.resolvedAt && t.createdAt)
         .reduce((acc, t) => {
-          const diff =
-            new Date(t.resolvedAt!).getTime() - new Date(t.createdAt).getTime();
+          const diff = new Date(t.resolvedAt!).getTime() - new Date(t.createdAt).getTime();
           return acc + diff / (1000 * 60 * 60); // Convert to hours
         }, 0) / serviceTickets.filter((t) => t.resolvedAt).length || 0,
   };
@@ -254,9 +234,7 @@ export function CustomerServiceHistory({
             <div className="flex items-center">
               <Clock className="h-8 w-8 text-orange-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {ticketStats.open + ticketStats.inProgress}
-                </p>
+                <p className="text-2xl font-bold">{ticketStats.open + ticketStats.inProgress}</p>
                 <p className="text-sm text-gray-600">Active Tickets</p>
               </div>
             </div>
@@ -278,9 +256,7 @@ export function CustomerServiceHistory({
             <div className="flex items-center">
               <Activity className="h-8 w-8 text-purple-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {Math.round(ticketStats.avgResolutionTime)}h
-                </p>
+                <p className="text-2xl font-bold">{Math.round(ticketStats.avgResolutionTime)}h</p>
                 <p className="text-sm text-gray-600">Avg Resolution</p>
               </div>
             </div>
@@ -341,9 +317,7 @@ export function CustomerServiceHistory({
                     <DialogTitle>Create Service Ticket</DialogTitle>
                   </DialogHeader>
                   <div className="p-4">
-                    <p className="text-gray-600">
-                      Service ticket creation form would go here...
-                    </p>
+                    <p className="text-gray-600">Service ticket creation form would go here...</p>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -371,9 +345,7 @@ export function CustomerServiceHistory({
                       <TableHead className="min-w-[100px]">Category</TableHead>
                       <TableHead className="min-w-[100px]">Priority</TableHead>
                       <TableHead className="min-w-[100px]">Status</TableHead>
-                      <TableHead className="min-w-[150px]">
-                        Technician
-                      </TableHead>
+                      <TableHead className="min-w-[150px]">Technician</TableHead>
                       <TableHead className="min-w-[120px]">Created</TableHead>
                       <TableHead className="min-w-[120px]">Scheduled</TableHead>
                       <TableHead className="min-w-[100px]">Duration</TableHead>
@@ -393,9 +365,7 @@ export function CustomerServiceHistory({
                       filteredTickets.map((ticket) => (
                         <TableRow key={ticket.id} className="hover:bg-gray-50">
                           <TableCell>
-                            <div className="font-medium text-blue-600">
-                              {ticket.ticketNumber}
-                            </div>
+                            <div className="font-medium text-blue-600">{ticket.ticketNumber}</div>
                           </TableCell>
                           <TableCell>
                             <div>
@@ -406,16 +376,12 @@ export function CustomerServiceHistory({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm capitalize">
-                              {ticket.category || '-'}
-                            </span>
+                            <span className="text-sm capitalize">{ticket.category || '-'}</span>
                           </TableCell>
                           <TableCell>
                             <Badge
                               className={
-                                priorityColors[
-                                  ticket.priority as keyof typeof priorityColors
-                                ]
+                                priorityColors[ticket.priority as keyof typeof priorityColors]
                               }
                             >
                               {ticket.priority}
@@ -423,11 +389,7 @@ export function CustomerServiceHistory({
                           </TableCell>
                           <TableCell>
                             <Badge
-                              className={
-                                statusColors[
-                                  ticket.status as keyof typeof statusColors
-                                ]
-                              }
+                              className={statusColors[ticket.status as keyof typeof statusColors]}
                             >
                               {ticket.status}
                             </Badge>
@@ -436,39 +398,34 @@ export function CustomerServiceHistory({
                             <div className="flex items-center space-x-2">
                               <Avatar className="h-6 w-6">
                                 <AvatarFallback className="text-xs">
-                                  {ticket.technicianName?.charAt(0) || "U"}
+                                  {ticket.technicianName?.charAt(0) || 'U'}
                                 </AvatarFallback>
                               </Avatar>
                               <span className="text-sm">
-                                {ticket.technicianName || "Unassigned"}
+                                {ticket.technicianName || 'Unassigned'}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell>{formatDate(ticket.createdAt)}</TableCell>
                           <TableCell>
-                            {ticket.scheduledDate
-                              ? formatDate(ticket.scheduledDate)
-                              : "-"}
+                            {ticket.scheduledDate ? formatDate(ticket.scheduledDate) : '-'}
                           </TableCell>
                           <TableCell>
                             {ticket.estimatedDuration
                               ? formatDuration(ticket.estimatedDuration)
-                              : "-"}
+                              : '-'}
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              {ticket.laborHours ? 
-                                `${ticket.laborHours}h` : 
-                                ticket.actualHours ? 
-                                `${ticket.actualHours}h` : 
-                                "-"
-                              }
+                              {ticket.laborHours
+                                ? `${ticket.laborHours}h`
+                                : ticket.actualHours
+                                  ? `${ticket.actualHours}h`
+                                  : '-'}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="text-sm">
-                              {ticket.equipmentDescription || "-"}
-                            </span>
+                            <span className="text-sm">{ticket.equipmentDescription || '-'}</span>
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
@@ -522,12 +479,8 @@ export function CustomerServiceHistory({
                       <TableHead className="min-w-[100px]">Priority</TableHead>
                       <TableHead className="min-w-[100px]">Status</TableHead>
                       <TableHead className="min-w-[200px]">Problem</TableHead>
-                      <TableHead className="min-w-[150px]">
-                        Technician
-                      </TableHead>
-                      <TableHead className="min-w-[100px]">
-                        Time On Site
-                      </TableHead>
+                      <TableHead className="min-w-[150px]">Technician</TableHead>
+                      <TableHead className="min-w-[100px]">Time On Site</TableHead>
                       <TableHead className="min-w-[120px]">Completed</TableHead>
                       <TableHead className="w-20">Actions</TableHead>
                     </TableRow>
@@ -551,9 +504,7 @@ export function CustomerServiceHistory({
                           <TableCell>
                             <Badge
                               className={
-                                callTypeColors[
-                                  call.callType as keyof typeof callTypeColors
-                                ]
+                                callTypeColors[call.callType as keyof typeof callTypeColors]
                               }
                             >
                               {call.callType}
@@ -562,9 +513,7 @@ export function CustomerServiceHistory({
                           <TableCell>
                             <Badge
                               className={
-                                priorityColors[
-                                  call.priorityLevel as keyof typeof priorityColors
-                                ]
+                                priorityColors[call.priorityLevel as keyof typeof priorityColors]
                               }
                             >
                               {call.priorityLevel}
@@ -572,11 +521,7 @@ export function CustomerServiceHistory({
                           </TableCell>
                           <TableCell>
                             <Badge
-                              className={
-                                statusColors[
-                                  call.callStatus as keyof typeof statusColors
-                                ]
-                              }
+                              className={statusColors[call.callStatus as keyof typeof statusColors]}
                             >
                               {call.callStatus}
                             </Badge>
@@ -590,23 +535,17 @@ export function CustomerServiceHistory({
                             <div className="flex items-center space-x-2">
                               <Avatar className="h-6 w-6">
                                 <AvatarFallback className="text-xs">
-                                  {call.technicianName?.charAt(0) || "U"}
+                                  {call.technicianName?.charAt(0) || 'U'}
                                 </AvatarFallback>
                               </Avatar>
-                              <span className="text-sm">
-                                {call.technicianName || "Unassigned"}
-                              </span>
+                              <span className="text-sm">{call.technicianName || 'Unassigned'}</span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            {call.timeOnSiteMinutes
-                              ? formatDuration(call.timeOnSiteMinutes)
-                              : "-"}
+                            {call.timeOnSiteMinutes ? formatDuration(call.timeOnSiteMinutes) : '-'}
                           </TableCell>
                           <TableCell>
-                            {call.completedDate
-                              ? formatDate(call.completedDate)
-                              : "-"}
+                            {call.completedDate ? formatDate(call.completedDate) : '-'}
                           </TableCell>
                           <TableCell>
                             <DropdownMenu>
@@ -640,33 +579,28 @@ export function CustomerServiceHistory({
       </Tabs>
 
       {/* No data state */}
-      {((activeTab === "tickets" && filteredTickets.length === 0) ||
-        (activeTab === "calls" && filteredCalls.length === 0)) &&
+      {((activeTab === 'tickets' && filteredTickets.length === 0) ||
+        (activeTab === 'calls' && filteredCalls.length === 0)) &&
         !loadingTickets &&
         !loadingCalls && (
           <Card>
             <CardContent className="p-12 text-center">
               <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No{" "}
-                {activeTab === "tickets" ? "service tickets" : "service calls"}{" "}
-                found
+                No {activeTab === 'tickets' ? 'service tickets' : 'service calls'} found
               </h3>
               <p className="text-gray-600 mb-4">
                 {searchTerm
                   ? `No ${
-                      activeTab === "tickets" ? "tickets" : "calls"
+                      activeTab === 'tickets' ? 'tickets' : 'calls'
                     } match your search criteria.`
                   : `No ${
-                      activeTab === "tickets"
-                        ? "service tickets"
-                        : "service calls"
+                      activeTab === 'tickets' ? 'service tickets' : 'service calls'
                     } have been created for this customer yet.`}
               </p>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
-                Create First{" "}
-                {activeTab === "tickets" ? "Ticket" : "Service Call"}
+                Create First {activeTab === 'tickets' ? 'Ticket' : 'Service Call'}
               </Button>
             </CardContent>
           </Card>

@@ -1,19 +1,19 @@
-import { useState, useEffect } from "react";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { useState, useEffect } from 'react';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 interface ReadingProgressIndicatorProps {
   className?: string;
   showPercentage?: boolean;
-  position?: "top" | "bottom";
-  color?: "blue" | "green" | "purple";
+  position?: 'top' | 'bottom';
+  color?: 'blue' | 'green' | 'purple';
 }
 
 export default function ReadingProgressIndicator({
   className,
   showPercentage = false,
-  position = "top",
-  color = "blue",
+  position = 'top',
+  color = 'blue',
 }: ReadingProgressIndicatorProps) {
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -25,8 +25,7 @@ export default function ReadingProgressIndicator({
       const scrollTop = window.scrollY;
 
       // Calculate how far through the document we've scrolled
-      const scrollPercentage =
-        (scrollTop / (documentHeight - windowHeight)) * 100;
+      const scrollPercentage = (scrollTop / (documentHeight - windowHeight)) * 100;
 
       setProgress(Math.min(100, Math.max(0, scrollPercentage)));
 
@@ -38,20 +37,20 @@ export default function ReadingProgressIndicator({
     calculateProgress();
 
     // Update on scroll
-    window.addEventListener("scroll", calculateProgress);
+    window.addEventListener('scroll', calculateProgress);
     // Update on resize (content height might change)
-    window.addEventListener("resize", calculateProgress);
+    window.addEventListener('resize', calculateProgress);
 
     return () => {
-      window.removeEventListener("scroll", calculateProgress);
-      window.removeEventListener("resize", calculateProgress);
+      window.removeEventListener('scroll', calculateProgress);
+      window.removeEventListener('resize', calculateProgress);
     };
   }, []);
 
   const colorClasses = {
-    blue: "bg-blue-500",
-    green: "bg-green-500",
-    purple: "bg-purple-500",
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    purple: 'bg-purple-500',
   };
 
   return (
@@ -59,18 +58,15 @@ export default function ReadingProgressIndicator({
       {/* Fixed Progress Bar */}
       <div
         className={cn(
-          "fixed left-0 right-0 z-50 transition-opacity duration-300",
-          position === "top" ? "top-0" : "bottom-0",
-          isVisible ? "opacity-100" : "opacity-0",
-          className
+          'fixed left-0 right-0 z-50 transition-opacity duration-300',
+          position === 'top' ? 'top-0' : 'bottom-0',
+          isVisible ? 'opacity-100' : 'opacity-0',
+          className,
         )}
       >
         <div className="h-1 bg-gray-200 dark:bg-gray-800">
           <div
-            className={cn(
-              "h-full transition-all duration-150 ease-out",
-              colorClasses[color]
-            )}
+            className={cn('h-full transition-all duration-150 ease-out', colorClasses[color])}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -80,12 +76,12 @@ export default function ReadingProgressIndicator({
       {showPercentage && isVisible && (
         <div
           className={cn(
-            "fixed right-4 z-50 bg-white dark:bg-gray-800 shadow-lg rounded-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 transition-all duration-300",
-            position === "top" ? "top-4" : "bottom-4"
+            'fixed right-4 z-50 bg-white dark:bg-gray-800 shadow-lg rounded-full px-3 py-1.5 border border-gray-200 dark:border-gray-700 transition-all duration-300',
+            position === 'top' ? 'top-4' : 'bottom-4',
           )}
         >
           <div className="flex items-center gap-2">
-            <div className={cn("w-2 h-2 rounded-full", colorClasses[color])} />
+            <div className={cn('w-2 h-2 rounded-full', colorClasses[color])} />
             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
               {Math.round(progress)}%
             </span>
@@ -102,11 +98,11 @@ export default function ReadingProgressIndicator({
 export function CircularReadingProgress({
   size = 60,
   strokeWidth = 4,
-  color = "blue",
+  color = 'blue',
 }: {
   size?: number;
   strokeWidth?: number;
-  color?: "blue" | "green" | "purple";
+  color?: 'blue' | 'green' | 'purple';
 }) {
   const [progress, setProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -117,27 +113,26 @@ export function CircularReadingProgress({
       const documentHeight = document.documentElement.scrollHeight;
       const scrollTop = window.scrollY;
 
-      const scrollPercentage =
-        (scrollTop / (documentHeight - windowHeight)) * 100;
+      const scrollPercentage = (scrollTop / (documentHeight - windowHeight)) * 100;
 
       setProgress(Math.min(100, Math.max(0, scrollPercentage)));
       setIsVisible(scrollTop > 100);
     };
 
     calculateProgress();
-    window.addEventListener("scroll", calculateProgress);
-    window.addEventListener("resize", calculateProgress);
+    window.addEventListener('scroll', calculateProgress);
+    window.addEventListener('resize', calculateProgress);
 
     return () => {
-      window.removeEventListener("scroll", calculateProgress);
-      window.removeEventListener("resize", calculateProgress);
+      window.removeEventListener('scroll', calculateProgress);
+      window.removeEventListener('resize', calculateProgress);
     };
   }, []);
 
   const colorMap = {
-    blue: "#3b82f6",
-    green: "#10b981",
-    purple: "#a855f7",
+    blue: '#3b82f6',
+    green: '#10b981',
+    purple: '#a855f7',
   };
 
   const radius = (size - strokeWidth) / 2;
@@ -147,12 +142,12 @@ export function CircularReadingProgress({
   return (
     <div
       className={cn(
-        "fixed bottom-8 right-8 z-50 transition-all duration-300",
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
+        'fixed bottom-8 right-8 z-50 transition-all duration-300',
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none',
       )}
     >
       <button
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className="relative group"
         aria-label="Scroll to top"
       >

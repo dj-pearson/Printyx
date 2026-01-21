@@ -1,32 +1,56 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Edit3, Trash2, CheckSquare, Square, DollarSign } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProductModelSchema, type ProductModel, type InsertProductModel } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import ManagementToolbar from "@/components/product-management/ManagementToolbar";
-import { ProductPricingForm } from "@/components/product-management/ProductPricingForm";
-import { ProductPricingDisplay } from "@/components/product-management/ProductPricingDisplay";
-import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Edit3, Trash2, CheckSquare, Square, DollarSign } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  insertProductModelSchema,
+  type ProductModel,
+  type InsertProductModel,
+} from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import ManagementToolbar from '@/components/product-management/ManagementToolbar';
+import { ProductPricingForm } from '@/components/product-management/ProductPricingForm';
+import { ProductPricingDisplay } from '@/components/product-management/ProductPricingDisplay';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
 export default function EnhancedProductModels() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<ProductModel | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
@@ -39,26 +63,26 @@ export default function EnhancedProductModels() {
   // Pricing tier states
   const [newTier, setNewTier] = useState({
     active: false,
-    dealerCost: "",
-    repMarkupPercentage: "",
-    repCost: "",
-    suggestedRetail: "",
+    dealerCost: '',
+    repMarkupPercentage: '',
+    repCost: '',
+    suggestedRetail: '',
   });
 
   const [upgradeTier, setUpgradeTier] = useState({
     active: false,
-    dealerCost: "",
-    repMarkupPercentage: "",
-    repCost: "",
-    suggestedRetail: "",
+    dealerCost: '',
+    repMarkupPercentage: '',
+    repCost: '',
+    suggestedRetail: '',
   });
 
   const [lexmarkTier, setLexmarkTier] = useState({
     active: false,
-    dealerCost: "",
-    repMarkupPercentage: "",
-    repCost: "",
-    suggestedRetail: "",
+    dealerCost: '',
+    repMarkupPercentage: '',
+    repCost: '',
+    suggestedRetail: '',
   });
 
   const { data: models = [], isLoading } = useQuery<ProductModel[]>({
@@ -74,15 +98,15 @@ export default function EnhancedProductModels() {
       setDialogOpen(false);
       resetForm();
       toast({
-        title: "Success",
-        description: "Product model created successfully",
+        title: 'Success',
+        description: 'Product model created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create product model",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create product model',
+        variant: 'destructive',
       });
     },
   });
@@ -95,15 +119,15 @@ export default function EnhancedProductModels() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
       setSelectedModel(null);
       toast({
-        title: "Success",
-        description: "Product model updated successfully",
+        title: 'Success',
+        description: 'Product model updated successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to update product model",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to update product model',
+        variant: 'destructive',
       });
     },
   });
@@ -116,15 +140,15 @@ export default function EnhancedProductModels() {
       queryClient.invalidateQueries({ queryKey: ['/api/product-models'] });
       setSelectedModel(null);
       toast({
-        title: "Success",
-        description: "Product model deleted successfully",
+        title: 'Success',
+        description: 'Product model deleted successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to delete product model",
-        variant: "destructive",
+        title: 'Error',
+        description: error?.message || 'Failed to delete product model',
+        variant: 'destructive',
       });
     },
   });
@@ -138,15 +162,15 @@ export default function EnhancedProductModels() {
       setSelectedIds(new Set());
       setBulkMode(false);
       toast({
-        title: "Success",
+        title: 'Success',
         description: `Successfully deleted ${selectedIds.size} product models`,
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to delete product models",
-        variant: "destructive",
+        title: 'Error',
+        description: error?.message || 'Failed to delete product models',
+        variant: 'destructive',
       });
     },
   });
@@ -154,11 +178,11 @@ export default function EnhancedProductModels() {
   const form = useForm<InsertProductModel>({
     resolver: zodResolver(insertProductModelSchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
-      category: "MFP",
-      manufacturer: "Canon",
+      tenantId: '',
+      productCode: '',
+      productName: '',
+      category: 'MFP',
+      manufacturer: 'Canon',
       description: null,
       msrp: null,
       colorSpeed: null,
@@ -169,9 +193,27 @@ export default function EnhancedProductModels() {
 
   const resetForm = () => {
     form.reset();
-    setNewTier({ active: false, dealerCost: "", repMarkupPercentage: "", repCost: "", suggestedRetail: "" });
-    setUpgradeTier({ active: false, dealerCost: "", repMarkupPercentage: "", repCost: "", suggestedRetail: "" });
-    setLexmarkTier({ active: false, dealerCost: "", repMarkupPercentage: "", repCost: "", suggestedRetail: "" });
+    setNewTier({
+      active: false,
+      dealerCost: '',
+      repMarkupPercentage: '',
+      repCost: '',
+      suggestedRetail: '',
+    });
+    setUpgradeTier({
+      active: false,
+      dealerCost: '',
+      repMarkupPercentage: '',
+      repCost: '',
+      suggestedRetail: '',
+    });
+    setLexmarkTier({
+      active: false,
+      dealerCost: '',
+      repMarkupPercentage: '',
+      repCost: '',
+      suggestedRetail: '',
+    });
   };
 
   const onSubmit = (data: InsertProductModel) => {
@@ -201,17 +243,20 @@ export default function EnhancedProductModels() {
   };
 
   // Filter and search
-  const filteredModels = models.filter(model => {
-    const matchesSearch = !searchTerm ||
-      (model.productName || model.modelName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (model.productCode || model.modelCode || "").toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredModels = models.filter((model) => {
+    const matchesSearch =
+      !searchTerm ||
+      (model.productName || model.modelName || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (model.productCode || model.modelCode || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesCategory = selectedCategory === "all" || model.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || model.category === selectedCategory;
 
     return matchesSearch && matchesCategory;
   });
 
-  const categories = Array.from(new Set(models.map(m => m.category).filter(Boolean)));
+  const categories = Array.from(new Set(models.map((m) => m.category).filter(Boolean)));
 
   const toggleItemSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -227,7 +272,7 @@ export default function EnhancedProductModels() {
     if (selectedIds.size === filteredModels.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredModels.map(m => m.id)));
+      setSelectedIds(new Set(filteredModels.map((m) => m.id)));
     }
   };
 
@@ -237,12 +282,12 @@ export default function EnhancedProductModels() {
   };
 
   const formatCurrency = (value?: string | number | null): string => {
-    if (value === null || value === undefined || value === "") return "—";
-    const num = typeof value === "string" ? parseFloat(value) : value;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    if (value === null || value === undefined || value === '') return '—';
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return '—';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(num);
@@ -272,7 +317,8 @@ export default function EnhancedProductModels() {
             <DialogHeader>
               <DialogTitle>Add New Product Model</DialogTitle>
               <DialogDescription>
-                Create a new product model with three-tier pricing (Dealer Cost → Rep Cost → Customer Price)
+                Create a new product model with three-tier pricing (Dealer Cost → Rep Cost →
+                Customer Price)
               </DialogDescription>
             </DialogHeader>
 
@@ -330,7 +376,9 @@ export default function EnhancedProductModels() {
                                 </FormControl>
                                 <SelectContent>
                                   <SelectItem value="MFP">MFP</SelectItem>
-                                  <SelectItem value="Production Printer">Production Printer</SelectItem>
+                                  <SelectItem value="Production Printer">
+                                    Production Printer
+                                  </SelectItem>
                                   <SelectItem value="Production">Production</SelectItem>
                                   <SelectItem value="Wide Format">Wide Format</SelectItem>
                                   <SelectItem value="Desktop">Desktop</SelectItem>
@@ -347,7 +395,7 @@ export default function EnhancedProductModels() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Manufacturer</FormLabel>
-                              <Select value={field.value || ""} onValueChange={field.onChange}>
+                              <Select value={field.value || ''} onValueChange={field.onChange}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue />
@@ -373,7 +421,7 @@ export default function EnhancedProductModels() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Color Mode</FormLabel>
-                              <Select value={field.value || ""} onValueChange={field.onChange}>
+                              <Select value={field.value || ''} onValueChange={field.onChange}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue />
@@ -400,7 +448,7 @@ export default function EnhancedProductModels() {
                             <FormControl>
                               <Textarea
                                 placeholder="High-performance production printer..."
-                                value={field.value || ""}
+                                value={field.value || ''}
                                 onChange={field.onChange}
                                 rows={3}
                               />
@@ -418,7 +466,11 @@ export default function EnhancedProductModels() {
                             <FormItem>
                               <FormLabel>Color Speed (ppm)</FormLabel>
                               <FormControl>
-                                <Input placeholder="100" value={field.value || ""} onChange={field.onChange} />
+                                <Input
+                                  placeholder="100"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -431,7 +483,11 @@ export default function EnhancedProductModels() {
                             <FormItem>
                               <FormLabel>B/W Speed (ppm)</FormLabel>
                               <FormControl>
-                                <Input placeholder="120" value={field.value || ""} onChange={field.onChange} />
+                                <Input
+                                  placeholder="120"
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -446,7 +502,13 @@ export default function EnhancedProductModels() {
                           <FormItem>
                             <FormLabel>MSRP ($) - Reference Only</FormLabel>
                             <FormControl>
-                              <Input type="number" step="0.01" placeholder="171930.00" value={field.value || ""} onChange={field.onChange} />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="171930.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -460,7 +522,7 @@ export default function EnhancedProductModels() {
                         tierLabel="New"
                         values={newTier}
                         onChange={setNewTier}
-                        productCategory={form.watch("category")}
+                        productCategory={form.watch('category')}
                       />
 
                       <ProductPricingForm
@@ -468,7 +530,7 @@ export default function EnhancedProductModels() {
                         tierLabel="Upgrade"
                         values={upgradeTier}
                         onChange={setUpgradeTier}
-                        productCategory={form.watch("category")}
+                        productCategory={form.watch('category')}
                       />
 
                       <ProductPricingForm
@@ -476,7 +538,7 @@ export default function EnhancedProductModels() {
                         tierLabel="Lexmark"
                         values={lexmarkTier}
                         onChange={setLexmarkTier}
-                        productCategory={form.watch("category")}
+                        productCategory={form.watch('category')}
                       />
                     </TabsContent>
                   </Tabs>
@@ -484,14 +546,18 @@ export default function EnhancedProductModels() {
                   <Separator />
 
                   <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => {
-                      setDialogOpen(false);
-                      resetForm();
-                    }}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setDialogOpen(false);
+                        resetForm();
+                      }}
+                    >
                       Cancel
                     </Button>
                     <Button type="submit" disabled={createModelMutation.isPending}>
-                      {createModelMutation.isPending ? "Creating..." : "Create Model"}
+                      {createModelMutation.isPending ? 'Creating...' : 'Create Model'}
                     </Button>
                   </div>
                 </form>
@@ -510,7 +576,9 @@ export default function EnhancedProductModels() {
             <div className="col-span-full flex flex-col items-center justify-center p-12 text-center">
               <p className="text-lg font-medium">No products found</p>
               <p className="text-sm text-muted-foreground mt-2">
-                {searchTerm ? "Try adjusting your search" : "Add your first product model to get started"}
+                {searchTerm
+                  ? 'Try adjusting your search'
+                  : 'Add your first product model to get started'}
               </p>
             </div>
           ) : (
@@ -524,10 +592,12 @@ export default function EnhancedProductModels() {
                     />
                   </div>
                 )}
-                <CardHeader className={bulkMode ? "pl-12" : ""}>
+                <CardHeader className={bulkMode ? 'pl-12' : ''}>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">{model.productName || model.modelName}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {model.productName || model.modelName}
+                      </CardTitle>
                       <CardDescription>
                         <span className="font-medium">{model.productCode || model.modelCode}</span>
                         {model.manufacturer && <span className="ml-2">• {model.manufacturer}</span>}
@@ -535,7 +605,9 @@ export default function EnhancedProductModels() {
                     </div>
                     <div className="flex items-center gap-2">
                       {model.isActive ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          Active
+                        </Badge>
                       ) : (
                         <Badge variant="secondary">Inactive</Badge>
                       )}
@@ -585,11 +657,7 @@ export default function EnhancedProductModels() {
                   <Separator />
 
                   <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedModel(model)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setSelectedModel(model)}>
                       <Edit3 className="h-4 w-4 mr-1" />
                       Edit
                     </Button>

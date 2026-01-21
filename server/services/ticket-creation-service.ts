@@ -57,10 +57,7 @@ export class TicketCreationService {
     let equipmentId = ticketData.equipmentId || null;
 
     if (!equipmentId && ticketData.equipmentIdentifier) {
-      equipmentId = await this.findEquipment(
-        customerId,
-        ticketData.equipmentIdentifier
-      );
+      equipmentId = await this.findEquipment(customerId, ticketData.equipmentIdentifier);
     }
 
     // Step 3: Create service ticket
@@ -81,14 +78,12 @@ export class TicketCreationService {
   /**
    * Find existing customer or create new one
    */
-  private async findOrCreateCustomer(
-    ticketData: ParsedTicketData
-  ): Promise<string> {
+  private async findOrCreateCustomer(ticketData: ParsedTicketData): Promise<string> {
     // Try to find existing customer by email
     let customer = await db.query.businessRecords.findFirst({
       where: and(
         eq(businessRecords.tenantId, this.tenantId),
-        eq(businessRecords.email, ticketData.customerEmail)
+        eq(businessRecords.email, ticketData.customerEmail),
       ),
     });
 
@@ -122,18 +117,12 @@ export class TicketCreationService {
   /**
    * Try to find equipment by identifier
    */
-  private async findEquipment(
-    customerId: string,
-    identifier: string
-  ): Promise<string | null> {
+  private async findEquipment(customerId: string, identifier: string): Promise<string | null> {
     const identifierLower = identifier.toLowerCase();
 
     // Get customer's equipment
     const customerEquipment = await db.query.equipment.findMany({
-      where: and(
-        eq(equipment.tenantId, this.tenantId),
-        eq(equipment.customerId, customerId)
-      ),
+      where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customerId)),
     });
 
     // Try fuzzy matching
@@ -141,11 +130,13 @@ export class TicketCreationService {
       (e) =>
         e.serialNumber?.toLowerCase().includes(identifierLower) ||
         e.model?.toLowerCase().includes(identifierLower) ||
-        e.location?.toLowerCase().includes(identifierLower)
+        e.location?.toLowerCase().includes(identifierLower),
     );
 
     if (match) {
-      console.log(`[TicketCreation] Matched equipment: ${match.manufacturer} ${match.model} (${match.id})`);
+      console.log(
+        `[TicketCreation] Matched equipment: ${match.manufacturer} ${match.model} (${match.id})`,
+      );
       return match.id;
     }
 
@@ -176,9 +167,7 @@ export class TicketCreationService {
     };
 
     // Build ticket title
-    const titleParts = [
-      data.issueCategory.replace(/_/g, ' ').toUpperCase(),
-    ];
+    const titleParts = [data.issueCategory.replace(/_/g, ' ').toUpperCase()];
     if (data.equipmentId) {
       titleParts.push('- Equipment Service');
     }
@@ -270,7 +259,7 @@ export class TicketCreationService {
   private async autoAssignTechnician(
     ticketId: string,
     customerId: string,
-    equipmentId: string | null
+    equipmentId: string | null,
   ): Promise<void> {
     try {
       console.log('[SmartDispatch] Starting AI-powered technician assignment...');
@@ -280,7 +269,7 @@ export class TicketCreationService {
         where: and(
           eq(users.tenantId, this.tenantId),
           eq(users.role, 'Technician'),
-          eq(users.status, 'active')
+          eq(users.status, 'active'),
         ),
       });
 
@@ -320,7 +309,7 @@ export class TicketCreationService {
           const skillsScore = await this.calculateSkillsScore(
             tech,
             equipmentData?.make || '',
-            equipmentData?.model || ''
+            equipmentData?.model || '',
           );
           score += skillsScore;
           if (skillsScore > 15) {
@@ -330,20 +319,14 @@ export class TicketCreationService {
           }
 
           // 3. Geographic Proximity (15 points max)
-          const proximityScore = await this.calculateProximityScore(
-            tech,
-            customer?.address || ''
-          );
+          const proximityScore = await this.calculateProximityScore(tech, customer?.address || '');
           score += proximityScore;
           if (proximityScore > 10) {
             reasons.push('Close proximity to customer');
           }
 
           // 4. Customer History (10 points max)
-          const historyScore = await this.calculateCustomerHistoryScore(
-            tech.id,
-            customerId
-          );
+          const historyScore = await this.calculateCustomerHistoryScore(tech.id, customerId);
           score += historyScore;
           if (historyScore > 5) {
             reasons.push('Previous successful service with this customer');
@@ -354,7 +337,7 @@ export class TicketCreationService {
             score,
             reasons,
           };
-        })
+        }),
       );
 
       // Sort by score (highest first)
@@ -364,7 +347,9 @@ export class TicketCreationService {
 
       // Auto-assign if confidence is high enough (>= 80 points)
       if (bestMatch.score >= 80) {
-        console.log(`[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${bestMatch.technician.name} (Score: ${bestMatch.score}/100)`);
+        console.log(
+          `[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${bestMatch.technician.name} (Score: ${bestMatch.score}/100)`,
+        );
         console.log(`[SmartDispatch] Reasons: ${bestMatch.reasons.join(', ')}`);
 
         // Update ticket with assignment
@@ -381,16 +366,19 @@ export class TicketCreationService {
         // Send notification to technician
         // await this.notifyTechnician(bestMatch.technician.id, ticketId);
       } else {
-        console.log(`[SmartDispatch] ⚠️  Confidence too low (${bestMatch.score}/100) - queuing for manual assignment`);
+        console.log(
+          `[SmartDispatch] ⚠️  Confidence too low (${bestMatch.score}/100) - queuing for manual assignment`,
+        );
         console.log(`[SmartDispatch] Top candidates:`);
         scoredTechnicians.slice(0, 3).forEach((match, i) => {
-          console.log(`  ${i + 1}. ${match.technician.name} (${match.score} pts) - ${match.reasons.join(', ')}`);
+          console.log(
+            `  ${i + 1}. ${match.technician.name} (${match.score} pts) - ${match.reasons.join(', ')}`,
+          );
         });
 
         // Queue for manual assignment
         // TODO: Create assignment review queue
       }
-
     } catch (error) {
       console.error('[SmartDispatch] Error in AI assignment:', error);
       // Don't fail ticket creation if assignment fails
@@ -412,8 +400,8 @@ export class TicketCreationService {
           and(
             eq(serviceTickets.tenantId, this.tenantId),
             eq(serviceTickets.technicianId, technicianId),
-            sql`status IN ('open', 'in_progress', 'pending')`
-          )
+            sql`status IN ('open', 'in_progress', 'pending')`,
+          ),
         );
 
       const count = activeTickets[0]?.count || 0;
@@ -437,7 +425,7 @@ export class TicketCreationService {
   private async calculateSkillsScore(
     technician: any,
     make: string,
-    model: string
+    model: string,
   ): Promise<number> {
     let score = 0;
 
@@ -449,15 +437,21 @@ export class TicketCreationService {
     const makeLower = make.toLowerCase();
     if (skills.some((s: string) => s.toLowerCase().includes(makeLower))) {
       score += 15;
-    } else if (skills.some((s: string) => s.toLowerCase().includes('service') || s.toLowerCase().includes('repair'))) {
+    } else if (
+      skills.some(
+        (s: string) => s.toLowerCase().includes('service') || s.toLowerCase().includes('repair'),
+      )
+    ) {
       score += 10;
     }
 
     // Match certifications
     const certificationKeywords = ['certified', 'cct', 'xct', 'ase', makeLower];
-    if (certifications.some((c: string) =>
-      certificationKeywords.some(kw => c.toLowerCase().includes(kw))
-    )) {
+    if (
+      certifications.some((c: string) =>
+        certificationKeywords.some((kw) => c.toLowerCase().includes(kw)),
+      )
+    ) {
       score += 10;
     }
 
@@ -468,10 +462,7 @@ export class TicketCreationService {
    * Calculate proximity score (0-15 points)
    * Closer technicians get higher scores
    */
-  private async calculateProximityScore(
-    technician: any,
-    customerAddress: string
-  ): Promise<number> {
+  private async calculateProximityScore(technician: any, customerAddress: string): Promise<number> {
     // TODO: Implement actual GPS distance calculation
     // For now, return a placeholder score
     // In production, integrate with Google Maps Distance Matrix API or similar
@@ -490,7 +481,7 @@ export class TicketCreationService {
    */
   private async calculateCustomerHistoryScore(
     technicianId: string,
-    customerId: string
+    customerId: string,
   ): Promise<number> {
     try {
       const { serviceTickets } = await import('@shared/schema');
@@ -504,8 +495,8 @@ export class TicketCreationService {
             eq(serviceTickets.tenantId, this.tenantId),
             eq(serviceTickets.technicianId, technicianId),
             eq(serviceTickets.customerId, customerId),
-            eq(serviceTickets.status, 'completed')
-          )
+            eq(serviceTickets.status, 'completed'),
+          ),
         );
 
       const count = previousServices[0]?.count || 0;
@@ -521,10 +512,7 @@ export class TicketCreationService {
   /**
    * Send confirmation email to customer
    */
-  async sendConfirmationEmail(
-    customerEmail: string,
-    ticket: any
-  ): Promise<void> {
+  async sendConfirmationEmail(customerEmail: string, ticket: any): Promise<void> {
     try {
       const subject = `Service Request Received - Ticket #${ticket.id}`;
 

@@ -1,19 +1,32 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  Shield, 
-  Users, 
-  Server, 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Shield,
+  Users,
+  Server,
+  Activity,
+  AlertTriangle,
+  CheckCircle,
   TrendingUp,
   TrendingDown,
   Database,
@@ -33,10 +46,10 @@ import {
   HardDrive,
   Wifi,
   Cpu,
-  MemoryStick
-} from "lucide-react";
-import { format } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
+  MemoryStick,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
 
 interface SystemOverview {
   totalTenants: number;
@@ -83,29 +96,29 @@ interface SystemResource {
 export default function RootAdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedTimeRange, setSelectedTimeRange] = useState("24h");
-  
+  const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
+
   // Fetch real system overview data
   const { data: systemOverview, isLoading: overviewLoading } = useQuery({
-    queryKey: ["/api/root-admin/overview"],
+    queryKey: ['/api/root-admin/overview'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch real tenant metrics
   const { data: tenantMetrics, isLoading: tenantsLoading } = useQuery({
-    queryKey: ["/api/root-admin/tenants"],
+    queryKey: ['/api/root-admin/tenants'],
     refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch real security alerts
   const { data: securityAlerts, isLoading: alertsLoading } = useQuery({
-    queryKey: ["/api/root-admin/security-alerts"],
+    queryKey: ['/api/root-admin/security-alerts'],
     refetchInterval: 15000, // Refresh every 15 seconds
   });
 
   // Fetch real system resources
   const { data: systemResources, isLoading: resourcesLoading } = useQuery({
-    queryKey: ["/api/root-admin/system-resources"],
+    queryKey: ['/api/root-admin/system-resources'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -132,7 +145,7 @@ export default function RootAdminDashboard() {
     systemUptime: 0,
     criticalAlerts: 0,
     pendingActions: 0,
-    systemHealth: 'unknown' as const
+    systemHealth: 'unknown' as const,
   };
 
   const currentOverview = systemOverview || defaultOverview;
@@ -161,36 +174,50 @@ export default function RootAdminDashboard() {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-100 text-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'critical':
+        return 'bg-red-100 text-red-800';
+      case 'high':
+        return 'bg-orange-100 text-orange-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUp className="w-4 h-4 text-red-600" />;
-      case 'down': return <TrendingDown className="w-4 h-4 text-green-600" />;
-      default: return <Activity className="w-4 h-4 text-gray-600" />;
+      case 'up':
+        return <TrendingUp className="w-4 h-4 text-red-600" />;
+      case 'down':
+        return <TrendingDown className="w-4 h-4 text-green-600" />;
+      default:
+        return <Activity className="w-4 h-4 text-gray-600" />;
     }
   };
 
   const getResourceIcon = (name: string) => {
     switch (name.toLowerCase()) {
-      case 'cpu usage': return <Cpu className="w-5 h-5" />;
-      case 'memory usage': return <MemoryStick className="w-5 h-5" />;
-      case 'disk usage': return <HardDrive className="w-5 h-5" />;
-      case 'active connections': return <Wifi className="w-5 h-5" />;
-      case 'api rate': return <Globe className="w-5 h-5" />;
-      default: return <Activity className="w-5 h-5" />;
+      case 'cpu usage':
+        return <Cpu className="w-5 h-5" />;
+      case 'memory usage':
+        return <MemoryStick className="w-5 h-5" />;
+      case 'disk usage':
+        return <HardDrive className="w-5 h-5" />;
+      case 'active connections':
+        return <Wifi className="w-5 h-5" />;
+      case 'api rate':
+        return <Globe className="w-5 h-5" />;
+      default:
+        return <Activity className="w-5 h-5" />;
     }
   };
 
   return (
-    <MainLayout 
-      title="Root Admin Dashboard" 
+    <MainLayout
+      title="Root Admin Dashboard"
       description="Platform-wide monitoring and administration"
     >
       <div className="container mx-auto p-6 space-y-6">
@@ -260,8 +287,12 @@ export default function RootAdminDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Critical Alerts</p>
-                  <p className="text-2xl font-bold text-red-600">{currentOverview.criticalAlerts}</p>
-                  <p className="text-xs text-orange-600">{currentOverview.pendingActions} pending</p>
+                  <p className="text-2xl font-bold text-red-600">
+                    {currentOverview.criticalAlerts}
+                  </p>
+                  <p className="text-xs text-orange-600">
+                    {currentOverview.pendingActions} pending
+                  </p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
@@ -316,7 +347,9 @@ export default function RootAdminDashboard() {
                         <AlertTriangle className="w-5 h-5 text-red-600" />
                         <span>Security Alerts</span>
                       </div>
-                      <Badge className="bg-red-100 text-red-800">{currentOverview.criticalAlerts} Critical</Badge>
+                      <Badge className="bg-red-100 text-red-800">
+                        {currentOverview.criticalAlerts} Critical
+                      </Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -339,15 +372,21 @@ export default function RootAdminDashboard() {
                             <span className="font-medium">{resource.name}</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <span className="text-sm">{resource.current}{resource.unit}</span>
+                            <span className="text-sm">
+                              {resource.current}
+                              {resource.unit}
+                            </span>
                             {getTrendIcon(resource.trend)}
                           </div>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
+                          <div
                             className={`h-2 rounded-full ${
-                              resource.status === 'normal' ? 'bg-green-600' :
-                              resource.status === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
+                              resource.status === 'normal'
+                                ? 'bg-green-600'
+                                : resource.status === 'warning'
+                                  ? 'bg-yellow-600'
+                                  : 'bg-red-600'
                             }`}
                             style={{ width: `${(resource.current / resource.threshold) * 100}%` }}
                           />
@@ -392,9 +431,7 @@ export default function RootAdminDashboard() {
                         </TableCell>
                         <TableCell>{tenant.userCount}</TableCell>
                         <TableCell>
-                          <Badge className={getStatusColor(tenant.status)}>
-                            {tenant.status}
-                          </Badge>
+                          <Badge className={getStatusColor(tenant.status)}>{tenant.status}</Badge>
                         </TableCell>
                         <TableCell>{tenant.subscription}</TableCell>
                         <TableCell>{tenant.storageUsed} GB</TableCell>
@@ -445,12 +482,8 @@ export default function RootAdminDashboard() {
                               <Badge className={getSeverityColor(alert.severity)}>
                                 {alert.severity}
                               </Badge>
-                              <Badge variant="outline">
-                                {alert.type.replace('_', ' ')}
-                              </Badge>
-                              <Badge variant="outline">
-                                {alert.tenant}
-                              </Badge>
+                              <Badge variant="outline">{alert.type.replace('_', ' ')}</Badge>
+                              <Badge variant="outline">{alert.tenant}</Badge>
                             </div>
                             <p className="font-medium mb-1">{alert.message}</p>
                             <p className="text-sm text-gray-500">
@@ -458,9 +491,7 @@ export default function RootAdminDashboard() {
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <Badge className={getStatusColor(alert.status)}>
-                              {alert.status}
-                            </Badge>
+                            <Badge className={getStatusColor(alert.status)}>{alert.status}</Badge>
                             <Button size="sm">Investigate</Button>
                           </div>
                         </div>
@@ -483,28 +514,33 @@ export default function RootAdminDashboard() {
                         {getResourceIcon(resource.name)}
                         <span className="font-medium">{resource.name}</span>
                       </div>
-                      <Badge className={getStatusColor(resource.status)}>
-                        {resource.status}
-                      </Badge>
+                      <Badge className={getStatusColor(resource.status)}>{resource.status}</Badge>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold">
-                          {resource.current}{resource.unit}
+                          {resource.current}
+                          {resource.unit}
                         </span>
                         {getTrendIcon(resource.trend)}
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className={`h-2 rounded-full ${
-                            resource.status === 'normal' ? 'bg-green-600' :
-                            resource.status === 'warning' ? 'bg-yellow-600' : 'bg-red-600'
+                            resource.status === 'normal'
+                              ? 'bg-green-600'
+                              : resource.status === 'warning'
+                                ? 'bg-yellow-600'
+                                : 'bg-red-600'
                           }`}
-                          style={{ width: `${Math.min((resource.current / resource.threshold) * 100, 100)}%` }}
+                          style={{
+                            width: `${Math.min((resource.current / resource.threshold) * 100, 100)}%`,
+                          }}
                         />
                       </div>
                       <p className="text-xs text-gray-500">
-                        Threshold: {resource.threshold}{resource.unit}
+                        Threshold: {resource.threshold}
+                        {resource.unit}
                       </p>
                     </div>
                   </CardContent>

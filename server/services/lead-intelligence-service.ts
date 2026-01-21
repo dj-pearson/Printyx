@@ -15,7 +15,14 @@
 
 import { db } from '../db';
 import { businessRecords } from '@shared/schema';
-import { leadScoringRules, leadScoreCalculations, bantQualificationCriteria, leadEngagementTracking, leadScoringFactors, leadQualificationHistory } from '@shared/lead-scoring-schema';
+import {
+  leadScoringRules,
+  leadScoreCalculations,
+  bantQualificationCriteria,
+  leadEngagementTracking,
+  leadScoringFactors,
+  leadQualificationHistory,
+} from '@shared/lead-scoring-schema';
 import { centralizedApolloContacts, tenantApolloLeads } from '@shared/apollo-schema';
 import { eq, and, desc, gte, sql, inArray } from 'drizzle-orm';
 import { storage } from '../storage';
@@ -66,7 +73,11 @@ class LeadIntelligenceService {
   /**
    * Calculate lead score using active scoring rules
    */
-  async calculateLeadScore(leadId: string, tenantId: string, userId?: string): Promise<LeadScoreResult> {
+  async calculateLeadScore(
+    leadId: string,
+    tenantId: string,
+    userId?: string,
+  ): Promise<LeadScoreResult> {
     const startTime = Date.now();
 
     // Get the lead
@@ -76,12 +87,10 @@ class LeadIntelligenceService {
     }
 
     // Get active scoring rules
-    const rules = await db.select()
+    const rules = await db
+      .select()
       .from(leadScoringRules)
-      .where(and(
-        eq(leadScoringRules.tenantId, tenantId),
-        eq(leadScoringRules.isActive, true)
-      ))
+      .where(and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)))
       .orderBy(desc(leadScoringRules.priority));
 
     // Initialize scores
@@ -94,8 +103,7 @@ class LeadIntelligenceService {
     const factors: LeadScoreResult['factors'] = [];
 
     // Clear previous scoring factors
-    await db.delete(leadScoringFactors)
-      .where(eq(leadScoringFactors.leadId, leadId));
+    await db.delete(leadScoringFactors).where(eq(leadScoringFactors.leadId, leadId));
 
     // Apply each scoring rule
     for (const rule of rules) {
@@ -122,7 +130,9 @@ class LeadIntelligenceService {
           ruleMatches = Number(fieldValue) <= Number(rule.value);
           break;
         case 'contains':
-          ruleMatches = String(fieldValue || '').toLowerCase().includes(String(rule.value).toLowerCase());
+          ruleMatches = String(fieldValue || '')
+            .toLowerCase()
+            .includes(String(rule.value).toLowerCase());
           break;
         case 'in_list':
           ruleMatches = Array.isArray(rule.value) && rule.value.includes(fieldValue);
@@ -134,10 +144,14 @@ class LeadIntelligenceService {
           ruleMatches = fieldValue !== null && fieldValue !== undefined;
           break;
         case 'starts_with':
-          ruleMatches = String(fieldValue || '').toLowerCase().startsWith(String(rule.value).toLowerCase());
+          ruleMatches = String(fieldValue || '')
+            .toLowerCase()
+            .startsWith(String(rule.value).toLowerCase());
           break;
         case 'ends_with':
-          ruleMatches = String(fieldValue || '').toLowerCase().endsWith(String(rule.value).toLowerCase());
+          ruleMatches = String(fieldValue || '')
+            .toLowerCase()
+            .endsWith(String(rule.value).toLowerCase());
           break;
       }
 
@@ -187,7 +201,8 @@ class LeadIntelligenceService {
     }
 
     // Get BANT score if exists
-    const [bantQual] = await db.select()
+    const [bantQual] = await db
+      .select()
       .from(bantQualificationCriteria)
       .where(eq(bantQualificationCriteria.leadId, leadId))
       .limit(1);
@@ -198,12 +213,15 @@ class LeadIntelligenceService {
 
     // Get engagement score from recent activities (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const recentEngagements = await db.select()
+    const recentEngagements = await db
+      .select()
       .from(leadEngagementTracking)
-      .where(and(
-        eq(leadEngagementTracking.leadId, leadId),
-        gte(leadEngagementTracking.engagedAt, thirtyDaysAgo)
-      ));
+      .where(
+        and(
+          eq(leadEngagementTracking.leadId, leadId),
+          gte(leadEngagementTracking.engagedAt, thirtyDaysAgo),
+        ),
+      );
 
     for (const engagement of recentEngagements) {
       engagementScore += engagement.engagementValue || 1;
@@ -218,8 +236,10 @@ class LeadIntelligenceService {
 
     // Calculate total score (0-100)
     const totalScore = Math.min(
-      Math.round(demographicScore + firmographicScore + behavioralScore + engagementScore + (bantScore * 0.8)),
-      100
+      Math.round(
+        demographicScore + firmographicScore + behavioralScore + engagementScore + bantScore * 0.8,
+      ),
+      100,
     );
 
     // Determine lead grade
@@ -246,7 +266,8 @@ class LeadIntelligenceService {
     else recommendedAction = 'disqualify';
 
     // Get previous score for comparison
-    const [previousCalc] = await db.select()
+    const [previousCalc] = await db
+      .select()
       .from(leadScoreCalculations)
       .where(eq(leadScoreCalculations.leadId, leadId))
       .orderBy(desc(leadScoreCalculations.calculatedAt))
@@ -277,7 +298,8 @@ class LeadIntelligenceService {
     });
 
     // Update lead record with score
-    await db.update(businessRecords)
+    await db
+      .update(businessRecords)
       .set({
         leadScore: totalScore,
         priority: leadTier === 'hot' ? 'high' : leadTier === 'warm' ? 'medium' : 'low',
@@ -302,7 +324,11 @@ class LeadIntelligenceService {
   /**
    * Auto-enrich lead from Apollo.io
    */
-  async enrichLeadFromApollo(leadId: string, tenantId: string, userId?: string): Promise<EnrichmentResult> {
+  async enrichLeadFromApollo(
+    leadId: string,
+    tenantId: string,
+    userId?: string,
+  ): Promise<EnrichmentResult> {
     const lead = await storage.getBusinessRecord(leadId);
     if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
@@ -317,7 +343,8 @@ class LeadIntelligenceService {
     try {
       // Try to find matching Apollo contact by email
       if (lead.email) {
-        const [apolloContact] = await db.select()
+        const [apolloContact] = await db
+          .select()
           .from(centralizedApolloContacts)
           .where(eq(centralizedApolloContacts.email, lead.email))
           .limit(1);
@@ -374,20 +401,21 @@ class LeadIntelligenceService {
             updates.enrichedFromApollo = true;
             updates.apolloEnrichedAt = new Date();
 
-            await db.update(businessRecords)
-              .set(updates)
-              .where(eq(businessRecords.id, leadId));
+            await db.update(businessRecords).set(updates).where(eq(businessRecords.id, leadId));
 
             enriched = true;
           }
 
           // Create or update tenant lead record
-          const [existingTenantLead] = await db.select()
+          const [existingTenantLead] = await db
+            .select()
             .from(tenantApolloLeads)
-            .where(and(
-              eq(tenantApolloLeads.tenantId, tenantId),
-              eq(tenantApolloLeads.apolloId, apolloContact.apolloId)
-            ))
+            .where(
+              and(
+                eq(tenantApolloLeads.tenantId, tenantId),
+                eq(tenantApolloLeads.apolloId, apolloContact.apolloId),
+              ),
+            )
             .limit(1);
 
           if (!existingTenantLead) {
@@ -403,7 +431,8 @@ class LeadIntelligenceService {
               addedBy: userId,
             });
           } else if (!existingTenantLead.businessRecordId) {
-            await db.update(tenantApolloLeads)
+            await db
+              .update(tenantApolloLeads)
               .set({
                 businessRecordId: leadId,
                 status: 'added_to_crm',
@@ -416,7 +445,8 @@ class LeadIntelligenceService {
           }
 
           // Update access count in centralized cache
-          await db.update(centralizedApolloContacts)
+          await db
+            .update(centralizedApolloContacts)
             .set({
               accessCount: sql`${centralizedApolloContacts.accessCount} + 1`,
               updatedAt: new Date(),
@@ -427,9 +457,12 @@ class LeadIntelligenceService {
 
       // Try to match by company domain if no email match
       if (!enriched && lead.website) {
-        const domain = new URL(lead.website.startsWith('http') ? lead.website : `https://${lead.website}`).hostname.replace('www.', '');
+        const domain = new URL(
+          lead.website.startsWith('http') ? lead.website : `https://${lead.website}`,
+        ).hostname.replace('www.', '');
 
-        const [apolloContact] = await db.select()
+        const [apolloContact] = await db
+          .select()
           .from(centralizedApolloContacts)
           .where(eq(centralizedApolloContacts.companyDomain, domain))
           .limit(1);
@@ -451,9 +484,7 @@ class LeadIntelligenceService {
 
           if (Object.keys(updates).length > 0) {
             updates.updatedAt = new Date();
-            await db.update(businessRecords)
-              .set(updates)
-              .where(eq(businessRecords.id, leadId));
+            await db.update(businessRecords).set(updates).where(eq(businessRecords.id, leadId));
             enriched = true;
           }
         }
@@ -481,79 +512,93 @@ class LeadIntelligenceService {
     }
 
     // Get latest score
-    const [latestScore] = await db.select()
+    const [latestScore] = await db
+      .select()
       .from(leadScoreCalculations)
       .where(eq(leadScoreCalculations.leadId, leadId))
       .orderBy(desc(leadScoreCalculations.calculatedAt))
       .limit(1);
 
     // Get scoring factors
-    const scoringFactors = await db.select()
+    const scoringFactors = await db
+      .select()
       .from(leadScoringFactors)
       .where(eq(leadScoringFactors.leadId, leadId));
 
     // Get BANT qualification
-    const [bantQual] = await db.select()
+    const [bantQual] = await db
+      .select()
       .from(bantQualificationCriteria)
       .where(eq(bantQualificationCriteria.leadId, leadId))
       .limit(1);
 
     // Get recent engagements (last 90 days)
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    const recentEngagements = await db.select()
+    const recentEngagements = await db
+      .select()
       .from(leadEngagementTracking)
-      .where(and(
-        eq(leadEngagementTracking.leadId, leadId),
-        gte(leadEngagementTracking.engagedAt, ninetyDaysAgo)
-      ))
+      .where(
+        and(
+          eq(leadEngagementTracking.leadId, leadId),
+          gte(leadEngagementTracking.engagedAt, ninetyDaysAgo),
+        ),
+      )
       .orderBy(desc(leadEngagementTracking.engagedAt))
       .limit(50);
 
     // Get qualification history
-    const qualificationHistory = await db.select()
+    const qualificationHistory = await db
+      .select()
       .from(leadQualificationHistory)
       .where(eq(leadQualificationHistory.leadId, leadId))
       .orderBy(desc(leadQualificationHistory.changedAt))
       .limit(20);
 
     // Check Apollo sync status
-    const [apolloLead] = await db.select()
+    const [apolloLead] = await db
+      .select()
       .from(tenantApolloLeads)
-      .where(and(
-        eq(tenantApolloLeads.tenantId, tenantId),
-        eq(tenantApolloLeads.businessRecordId, leadId)
-      ))
+      .where(
+        and(
+          eq(tenantApolloLeads.tenantId, tenantId),
+          eq(tenantApolloLeads.businessRecordId, leadId),
+        ),
+      )
       .limit(1);
 
-    const scoreResult: LeadScoreResult | null = latestScore ? {
-      totalScore: latestScore.totalScore,
-      demographicScore: latestScore.demographicScore || 0,
-      firmographicScore: latestScore.firmographicScore || 0,
-      behavioralScore: latestScore.behavioralScore || 0,
-      engagementScore: latestScore.engagementScore || 0,
-      bantScore: latestScore.bantScore || 0,
-      leadGrade: latestScore.leadGrade || 'D',
-      leadTier: (latestScore.leadTier as 'hot' | 'warm' | 'cold') || 'cold',
-      recommendedAction: latestScore.recommendedAction || 'request_more_info',
-      factors: scoringFactors.map(f => ({
-        ruleName: f.factorName,
-        category: f.factorCategory,
-        points: f.pointsAwarded,
-        field: f.evaluatedField || '',
-        value: f.evaluatedValue,
-      })),
-    } : null;
+    const scoreResult: LeadScoreResult | null = latestScore
+      ? {
+          totalScore: latestScore.totalScore,
+          demographicScore: latestScore.demographicScore || 0,
+          firmographicScore: latestScore.firmographicScore || 0,
+          behavioralScore: latestScore.behavioralScore || 0,
+          engagementScore: latestScore.engagementScore || 0,
+          bantScore: latestScore.bantScore || 0,
+          leadGrade: latestScore.leadGrade || 'D',
+          leadTier: (latestScore.leadTier as 'hot' | 'warm' | 'cold') || 'cold',
+          recommendedAction: latestScore.recommendedAction || 'request_more_info',
+          factors: scoringFactors.map((f) => ({
+            ruleName: f.factorName,
+            category: f.factorCategory,
+            points: f.pointsAwarded,
+            field: f.evaluatedField || '',
+            value: f.evaluatedValue,
+          })),
+        }
+      : null;
 
     return {
       leadId,
       score: scoreResult,
-      enrichment: apolloLead ? {
-        enriched: true,
-        source: 'apollo',
-        fieldsUpdated: [],
-        apolloContactId: apolloLead.apolloContactId,
-        confidence: 1.0,
-      } : null,
+      enrichment: apolloLead
+        ? {
+            enriched: true,
+            source: 'apollo',
+            fieldsUpdated: [],
+            apolloContactId: apolloLead.apolloContactId,
+            confidence: 1.0,
+          }
+        : null,
       bantQualification: bantQual || null,
       recentEngagements,
       qualificationHistory,
@@ -568,7 +613,11 @@ class LeadIntelligenceService {
   /**
    * Process lead on creation - auto-score and auto-enrich
    */
-  async processNewLead(leadId: string, tenantId: string, userId?: string): Promise<{
+  async processNewLead(
+    leadId: string,
+    tenantId: string,
+    userId?: string,
+  ): Promise<{
     score: LeadScoreResult;
     enrichment: EnrichmentResult;
   }> {
@@ -595,7 +644,11 @@ class LeadIntelligenceService {
   /**
    * Batch process multiple leads
    */
-  async batchProcessLeads(leadIds: string[], tenantId: string, userId?: string): Promise<{
+  async batchProcessLeads(
+    leadIds: string[],
+    tenantId: string,
+    userId?: string,
+  ): Promise<{
     processed: number;
     errors: string[];
   }> {
@@ -630,10 +683,7 @@ class LeadIntelligenceService {
     const [totalResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(businessRecords)
-      .where(and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.recordType, 'lead')
-      ));
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')));
 
     // Get scored leads with latest score
     const scoredLeadsData = await db
@@ -685,25 +735,28 @@ class LeadIntelligenceService {
         averageScore: sql<number>`avg(${leadScoreCalculations.totalScore})`,
       })
       .from(leadScoreCalculations)
-      .where(and(
-        eq(leadScoreCalculations.tenantId, tenantId),
-        gte(leadScoreCalculations.calculatedAt, thirtyDaysAgo)
-      ))
+      .where(
+        and(
+          eq(leadScoreCalculations.tenantId, tenantId),
+          gte(leadScoreCalculations.calculatedAt, thirtyDaysAgo),
+        ),
+      )
       .groupBy(sql`date(${leadScoreCalculations.calculatedAt})`)
       .orderBy(desc(sql`date(${leadScoreCalculations.calculatedAt})`));
 
     return {
       totalLeads: totalResult?.count || 0,
       scoredLeads: scoredLeadsData.length,
-      averageScore: scoredLeadsData.length > 0 ? Math.round(totalScore / scoredLeadsData.length) : 0,
+      averageScore:
+        scoredLeadsData.length > 0 ? Math.round(totalScore / scoredLeadsData.length) : 0,
       scoreDistribution: Object.entries(tierCounts).map(([tier, count]) => ({ tier, count })),
       gradeDistribution: Object.entries(gradeCounts).map(([grade, count]) => ({ grade, count })),
-      topRules: topRulesData.map(r => ({
+      topRules: topRulesData.map((r) => ({
         ruleName: r.ruleName,
         timesApplied: Number(r.timesApplied),
         totalPoints: Number(r.totalPoints),
       })),
-      recentActivity: recentActivityData.map(r => ({
+      recentActivity: recentActivityData.map((r) => ({
         date: r.date,
         leadsScored: Number(r.leadsScored),
         averageScore: Math.round(Number(r.averageScore)),
@@ -728,10 +781,12 @@ class LeadIntelligenceService {
         calculatedAt: leadScoreCalculations.calculatedAt,
       })
       .from(leadScoreCalculations)
-      .where(and(
-        eq(leadScoreCalculations.tenantId, tenantId),
-        eq(leadScoreCalculations.leadTier, 'hot')
-      ))
+      .where(
+        and(
+          eq(leadScoreCalculations.tenantId, tenantId),
+          eq(leadScoreCalculations.leadTier, 'hot'),
+        ),
+      )
       .orderBy(leadScoreCalculations.leadId, desc(leadScoreCalculations.calculatedAt))
       .limit(limit);
 
@@ -741,22 +796,24 @@ class LeadIntelligenceService {
         const lead = await storage.getBusinessRecord(score.leadId);
         return {
           ...score,
-          lead: lead ? {
-            id: lead.id,
-            companyName: lead.companyName,
-            firstName: lead.firstName,
-            lastName: lead.lastName,
-            email: lead.email,
-            phone: lead.phone,
-            status: lead.status,
-            ownerId: lead.ownerId,
-            lastActivityDate: (lead as any).lastActivityDate,
-          } : null,
+          lead: lead
+            ? {
+                id: lead.id,
+                companyName: lead.companyName,
+                firstName: lead.firstName,
+                lastName: lead.lastName,
+                email: lead.email,
+                phone: lead.phone,
+                status: lead.status,
+                ownerId: lead.ownerId,
+                lastActivityDate: (lead as any).lastActivityDate,
+              }
+            : null,
         };
-      })
+      }),
     );
 
-    return enrichedLeads.filter(l => l.lead !== null);
+    return enrichedLeads.filter((l) => l.lead !== null);
   }
 }
 

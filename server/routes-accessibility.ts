@@ -323,10 +323,7 @@ router.post('/audit', async (req: Request, res: Response) => {
       });
     }
 
-    const audit = await db
-      .insert(accessibilityAuditLog)
-      .values(validation.data)
-      .returning();
+    const audit = await db.insert(accessibilityAuditLog).values(validation.data).returning();
 
     return res.status(201).json(audit[0]);
   } catch (error) {

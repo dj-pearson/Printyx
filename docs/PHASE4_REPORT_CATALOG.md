@@ -5,12 +5,14 @@
 This catalog documents all 75 reports available in the Printyx RBAC Reporting System, organized by department and role level.
 
 **Report Distribution by Level**:
+
 - Level 1-2 (Individual Contributors): 8 reports
 - Level 3-4 (Supervisors & Managers): 24 reports
 - Level 5-6 (Directors): 35 reports
 - Level 7-8 (Executives & Platform Admins): 75 reports (all)
 
 **Report Distribution by Department**:
+
 - Sales: 24 reports
 - Service: 19 reports
 - Operations: 11 reports
@@ -26,6 +28,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 1: Individual Contributors (4 reports)
 
 #### SALES_PIPELINE_INDIVIDUAL
+
 **Name**: My Sales Pipeline
 **Access**: Sales Rep, Senior Sales Rep
 **Permissions**: `sales.lead.view_own`
@@ -34,12 +37,14 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: View your personal sales pipeline with all open opportunities organized by stage.
 
 **Metrics**:
+
 - Total opportunity value
 - Count by stage (Discovery, Proposal, Negotiation, Closed Won/Lost)
 - Average deal size
 - Win rate
 
 **Use Cases**:
+
 - Daily pipeline review
 - Identify stalled deals
 - Prioritize follow-ups
@@ -48,6 +53,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_ACTIVITY_INDIVIDUAL
+
 **Name**: My Activity Report
 **Access**: Sales Rep, Senior Sales Rep
 **Permissions**: `sales.activity.view_own`
@@ -56,6 +62,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Track your daily sales activities including calls, meetings, emails, and demos.
 
 **Metrics**:
+
 - Calls made (outbound/inbound)
 - Meetings scheduled/completed
 - Emails sent/received
@@ -63,6 +70,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 - Activity trend (vs previous period)
 
 **Use Cases**:
+
 - Daily activity tracking
 - Ensure adequate outreach
 - Compare to team averages
@@ -71,6 +79,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_WINLOSS_INDIVIDUAL
+
 **Name**: My Win/Loss Analysis
 **Access**: Sales Rep, Senior Sales Rep
 **Permissions**: `sales.opportunity.view_own`
@@ -79,6 +88,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Analyze your closed deals to understand what's working and improve.
 
 **Metrics**:
+
 - Win rate percentage
 - Common objections (AI-analyzed)
 - Competitive losses breakdown
@@ -86,6 +96,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 - Deal value won vs lost
 
 **Use Cases**:
+
 - Identify successful patterns
 - Understand loss reasons
 - Improve pitch and objection handling
@@ -94,6 +105,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_PERFORMANCE_INDIVIDUAL
+
 **Name**: My Monthly Performance
 **Access**: Sales Rep, Senior Sales Rep
 **Permissions**: `sales.performance.view_own`
@@ -102,6 +114,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Track your quota attainment and monthly performance metrics.
 
 **Metrics**:
+
 - Quota attainment % (MTD, QTD, YTD)
 - Revenue closed this month
 - Pipeline coverage ratio
@@ -109,6 +122,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 - Trend over past 6 months
 
 **Use Cases**:
+
 - Monitor progress to quota
 - Identify acceleration/deceleration trends
 - Plan end-of-month push
@@ -119,6 +133,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 3: Supervisors (4 reports)
 
 #### SALES_TEAM_DASHBOARD
+
 **Name**: Team Sales Dashboard
 **Access**: Sales Supervisor
 **Permissions**: `sales.lead.view_team`
@@ -127,6 +142,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Overview of your team's sales performance and pipeline health.
 
 **Metrics**:
+
 - Team quota attainment
 - Total pipeline value
 - Win rate (team average)
@@ -136,6 +152,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_TEAM_ACTIVITY
+
 **Name**: Team Activity Summary
 **Access**: Sales Supervisor
 **Permissions**: `sales.activity.view_team`
@@ -144,6 +161,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Aggregate activity metrics for your team with individual breakdowns.
 
 **Metrics**:
+
 - Team total activities
 - Individual activity counts
 - Activity leaderboard
@@ -153,6 +171,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_COACHING_OPPORTUNITIES
+
 **Name**: Coaching Opportunities
 **Access**: Sales Supervisor
 **Permissions**: `sales.coaching.view_team`
@@ -161,6 +180,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Identify team members who need coaching based on performance data.
 
 **Metrics**:
+
 - Low activity alerts
 - Below-average win rates
 - Stalled pipeline deals
@@ -169,6 +189,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_TEAM_FORECAST
+
 **Name**: Team Sales Forecast
 **Access**: Sales Supervisor
 **Permissions**: `sales.forecast.view_team`
@@ -177,6 +198,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Predicted revenue for your team for next 30/60/90 days.
 
 **Metrics**:
+
 - Forecast by stage probability
 - Upside/downside scenarios
 - Forecast vs quota gap
@@ -187,6 +209,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 4: Managers (8 reports)
 
 #### SALES_LOCATION_DASHBOARD
+
 **Name**: Location Sales Performance
 **Access**: Sales Manager, Branch Manager
 **Permissions**: `sales.lead.view_location`
@@ -195,6 +218,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Comprehensive sales metrics for your entire location.
 
 **Metrics**:
+
 - Location quota attainment
 - All team pipelines aggregated
 - Month-over-month growth
@@ -204,6 +228,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_FORECAST_LOCATION
+
 **Name**: Sales Forecast - Location
 **Access**: Sales Manager
 **Permissions**: `sales.forecast.view_location`
@@ -212,6 +237,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: AI-powered revenue forecast for your location.
 
 **Metrics**:
+
 - 30/60/90 day forecast
 - Confidence intervals
 - Historical accuracy
@@ -220,6 +246,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_REP_COMPARISON
+
 **Name**: Rep Performance Comparison
 **Access**: Sales Manager
 **Permissions**: `sales.performance.view_location`
@@ -228,6 +255,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Side-by-side comparison of all sales reps at your location.
 
 **Metrics**:
+
 - Quota attainment ranking
 - Win rate comparison
 - Activity levels
@@ -237,6 +265,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_STAGE_VELOCITY_LOCATION
+
 **Name**: Deal Stage Velocity
 **Access**: Sales Manager
 **Permissions**: `sales.pipeline.view_location`
@@ -245,6 +274,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Analyze how quickly deals move through your pipeline stages.
 
 **Metrics**:
+
 - Average days in each stage
 - Bottleneck identification
 - Stage conversion rates
@@ -253,6 +283,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_LOST_ANALYSIS_LOCATION
+
 **Name**: Lost Deal Analysis
 **Access**: Sales Manager
 **Permissions**: `sales.opportunity.view_location`
@@ -261,6 +292,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Understand why deals are being lost at your location.
 
 **Metrics**:
+
 - Loss reasons breakdown
 - Competitive losses by competitor
 - Pricing-related losses
@@ -269,6 +301,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_TERRITORY_COVERAGE
+
 **Name**: Territory Coverage
 **Access**: Sales Manager
 **Permissions**: `sales.territory.view_location`
@@ -277,6 +310,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Geographic coverage analysis and opportunity mapping.
 
 **Metrics**:
+
 - Coverage heat map
 - Untapped zip codes
 - Territory balance
@@ -285,6 +319,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_PRODUCT_MIX_LOCATION
+
 **Name**: Product Mix Analysis
 **Access**: Sales Manager
 **Permissions**: `sales.product.view_location`
@@ -293,6 +328,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: What products are selling at your location and cross-sell opportunities.
 
 **Metrics**:
+
 - Revenue by product line
 - Attach rates
 - Product penetration
@@ -301,6 +337,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_COMMISSION_LOCATION
+
 **Name**: Commission Report
 **Access**: Sales Manager
 **Permissions**: `sales.commission.view_location`
@@ -309,6 +346,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Commission payouts and cost of sale for your location.
 
 **Metrics**:
+
 - Total commissions paid
 - Cost of sale percentage
 - Individual payout details
@@ -319,6 +357,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 5: Regional Directors (4 reports)
 
 #### SALES_REGIONAL_DASHBOARD
+
 **Name**: Regional Sales Dashboard
 **Access**: Regional Sales Director
 **Permissions**: `sales.lead.view_regional`
@@ -327,6 +366,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Aggregate sales metrics across all locations in your region.
 
 **Metrics**:
+
 - Regional quota attainment
 - Location-by-location breakdown
 - Regional win rate
@@ -336,6 +376,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_LOCATION_COMPARISON
+
 **Name**: Location Comparison
 **Access**: Regional Sales Director
 **Permissions**: `sales.performance.view_regional`
@@ -344,6 +385,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Benchmark locations against each other within your region.
 
 **Metrics**:
+
 - Quota attainment ranking
 - Growth rates
 - Efficiency metrics (revenue per rep)
@@ -352,6 +394,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_TERRITORY_PLANNING_REGIONAL
+
 **Name**: Territory Planning
 **Access**: Regional Sales Director
 **Permissions**: `sales.territory.manage_regional`
@@ -360,6 +403,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Strategic territory planning and rebalancing recommendations.
 
 **Metrics**:
+
 - Territory coverage gaps
 - Imbalance score
 - Rebalancing suggestions
@@ -368,6 +412,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_FORECAST_ACCURACY_REGIONAL
+
 **Name**: Forecast Accuracy
 **Access**: Regional Sales Director
 **Permissions**: `sales.forecast.view_regional`
@@ -376,6 +421,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Track forecast accuracy across your region to improve planning.
 
 **Metrics**:
+
 - Forecast vs actual (by location)
 - Accuracy percentage
 - Bias analysis (over/under forecasting)
@@ -386,6 +432,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 6: Company Directors (4 reports)
 
 #### SALES_VP_DASHBOARD
+
 **Name**: VP Sales Dashboard
 **Access**: VP Sales
 **Permissions**: `sales.lead.view_company`
@@ -394,6 +441,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Company-wide sales performance across all regions and locations.
 
 **Metrics**:
+
 - Company quota attainment
 - Revenue by region
 - Growth trends
@@ -402,6 +450,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_MARKET_SHARE
+
 **Name**: Market Share Analysis
 **Access**: VP Sales
 **Permissions**: `sales.market.view_company`
@@ -410,6 +459,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Your company's market position and competitive intelligence.
 
 **Metrics**:
+
 - Market share percentage
 - Share gain/loss trends
 - Competitive win rates
@@ -418,6 +468,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_CUSTOMER_CONCENTRATION
+
 **Name**: Customer Concentration
 **Access**: VP Sales
 **Permissions**: `sales.customer.view_company`
@@ -426,6 +477,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Revenue concentration risk and customer retention analysis.
 
 **Metrics**:
+
 - Top 10 customer revenue %
 - Customer churn rate
 - Revenue at risk
@@ -434,6 +486,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SALES_COMPENSATION_ANALYSIS
+
 **Name**: Compensation Analysis
 **Access**: VP Sales
 **Permissions**: `sales.compensation.manage_company`
@@ -442,6 +495,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Company-wide commission costs and plan effectiveness.
 
 **Metrics**:
+
 - Total commission expense
 - Cost of sale by region
 - Plan ROI
@@ -454,6 +508,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 1: Field Technicians (4 reports)
 
 #### SERVICE_CALLS_INDIVIDUAL
+
 **Name**: My Service Calls
 **Access**: Field Technician
 **Permissions**: `service.call.view_own`
@@ -463,6 +518,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Your assigned service calls with schedule and status.
 
 **Metrics**:
+
 - Today's schedule
 - Pending calls
 - Completed calls
@@ -471,6 +527,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SERVICE_PRODUCTIVITY_INDIVIDUAL
+
 **Name**: My Productivity
 **Access**: Field Technician
 **Permissions**: `service.performance.view_own`
@@ -479,6 +536,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Your efficiency metrics and productivity scores.
 
 **Metrics**:
+
 - First-time fix rate
 - Average call duration
 - Calls per day
@@ -487,6 +545,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SERVICE_PARTS_INDIVIDUAL
+
 **Name**: My Parts Usage
 **Access**: Field Technician
 **Permissions**: `service.parts.view_own`
@@ -495,6 +554,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Parts you've used and your inventory status.
 
 **Metrics**:
+
 - Parts used this month
 - Inventory on truck
 - High-value items
@@ -503,6 +563,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SERVICE_CSAT_INDIVIDUAL
+
 **Name**: My Customer Satisfaction
 **Access**: Field Technician
 **Permissions**: `service.feedback.view_own`
@@ -511,6 +572,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Customer ratings and feedback for your service calls.
 
 **Metrics**:
+
 - Average CSAT score
 - 5-star rating distribution
 - Recent feedback comments
@@ -521,6 +583,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Level 3-4: Service Managers (8 reports)
 
 #### SERVICE_TEAM_DASHBOARD
+
 **Name**: Team Service Dashboard
 **Access**: Service Supervisor, Service Manager
 **Permissions**: `service.call.view_team`, `service.call.view_location`
@@ -529,6 +592,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Team/location service metrics and performance.
 
 **Metrics**:
+
 - Team FTF rate
 - Average response time
 - CSAT score
@@ -538,6 +602,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SERVICE_SLA_LOCATION
+
 **Name**: SLA Compliance
 **Access**: Service Manager
 **Permissions**: `service.sla.view_location`
@@ -546,6 +611,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: SLA compliance tracking by priority level.
 
 **Metrics**:
+
 - On-time response %
 - SLA breach count
 - Response time by priority
@@ -554,6 +620,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SERVICE_PARTS_LOCATION
+
 **Name**: Parts Inventory
 **Access**: Service Manager
 **Permissions**: `service.parts.view_location`
@@ -562,6 +629,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Parts inventory levels and optimization at your location.
 
 **Metrics**:
+
 - Stock levels
 - Stock-out incidents
 - Slow-moving items
@@ -570,6 +638,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ---
 
 #### SERVICE_REVENUE_LOCATION
+
 **Name**: Service Revenue
 **Access**: Service Manager
 **Permissions**: `service.revenue.view_location`
@@ -578,6 +647,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Revenue analysis by service type and profitability.
 
 **Metrics**:
+
 - Revenue by service type
 - Billable hours
 - Labor cost percentage
@@ -585,7 +655,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 
 ---
 
-*(Continuing with remaining service, operations, finance, executive, and platform admin reports...)*
+_(Continuing with remaining service, operations, finance, executive, and platform admin reports...)_
 
 ---
 
@@ -594,6 +664,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### Warehouse Reports (5 reports)
 
 #### WAREHOUSE_FPY_LOCATION
+
 **Name**: First Pass Yield
 **Access**: Warehouse Supervisor, Operations Manager
 **Permissions**: `warehouse.metrics.view_location`
@@ -601,6 +672,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Equipment preparation quality metrics.
 
 **Metrics**:
+
 - FPY percentage
 - Defect categories
 - Rework time
@@ -613,6 +685,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ### AR/AP Reports (4 reports)
 
 #### FINANCE_AR_AGING
+
 **Name**: AR Aging Report
 **Access**: Accounts Receivable Clerk, Controller
 **Permissions**: `finance.ar.view_location`, `finance.ar.view_company`
@@ -620,6 +693,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Accounts receivable aging analysis.
 
 **Metrics**:
+
 - Current, 30, 60, 90+ days
 - Total AR balance
 - Collection effectiveness
@@ -630,6 +704,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ## Executive Reports (4 Total)
 
 #### EXECUTIVE_CEO_DASHBOARD
+
 **Name**: CEO Dashboard
 **Access**: CEO
 **Permissions**: `executive.dashboard.view`
@@ -637,6 +712,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: Top-level KPIs across all business functions.
 
 **Metrics**:
+
 - Revenue & Growth
 - Profitability
 - CAC & CLV
@@ -648,6 +724,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ## Platform Admin Reports (4 Total)
 
 #### PLATFORM_SYSTEM_METRICS
+
 **Name**: Platform Health
 **Access**: Platform Administrator
 **Permissions**: `platform.admin.full_access`
@@ -655,6 +732,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 **Description**: System uptime, performance, and health metrics.
 
 **Metrics**:
+
 - Uptime percentage
 - API response times
 - Error rates
@@ -665,6 +743,7 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 ## Report Features Summary
 
 ### Caching Strategy
+
 - **Real-time**: 0 seconds (SERVICE_CALLS_INDIVIDUAL, SERVICE_PARTS_INDIVIDUAL)
 - **5 minutes**: SALES_PIPELINE_INDIVIDUAL
 - **10-15 minutes**: Dashboards (SALES_TEAM_DASHBOARD, SERVICE_TEAM_DASHBOARD)
@@ -673,13 +752,17 @@ This catalog documents all 75 reports available in the Printyx RBAC Reporting Sy
 - **Monthly**: Executive reports (SALES_MARKET_SHARE, FINANCE_PROFITABILITY)
 
 ### Export Support
+
 All reports support:
+
 - CSV export (all users)
 - Excel export (Manager+ with `report.export` permission)
 - PDF export (Director+ with `report.export` permission)
 
 ### Mobile Optimization
+
 Fully mobile-optimized reports:
+
 - SERVICE_CALLS_INDIVIDUAL
 - SERVICE_PRODUCTIVITY_INDIVIDUAL
 - SALES_PIPELINE_INDIVIDUAL

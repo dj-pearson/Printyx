@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -11,10 +11,17 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { FileText, AlertTriangle, TrendingUp, DollarSign, CheckCircle, RefreshCw } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+} from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
+import {
+  FileText,
+  AlertTriangle,
+  TrendingUp,
+  DollarSign,
+  CheckCircle,
+  RefreshCw,
+} from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * Contract Renewal Autopilot Dashboard
@@ -29,51 +36,51 @@ export default function ContractRenewalDashboard() {
 
   // Fetch dashboard metrics
   const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ["/api/contract-renewal/dashboard"],
+    queryKey: ['/api/contract-renewal/dashboard'],
     refetchInterval: 60000, // Refresh every 60 seconds
   });
 
   // Fetch contracts at risk
   const { data: atRiskContracts, isLoading: atRiskLoading } = useQuery({
-    queryKey: ["/api/contract-renewal/at-risk"],
+    queryKey: ['/api/contract-renewal/at-risk'],
   });
 
   // Fetch expiring contracts
   const { data: expiringContracts, isLoading: expiringLoading } = useQuery({
-    queryKey: ["/api/contract-renewal/expiring", { days: 90 }],
+    queryKey: ['/api/contract-renewal/expiring', { days: 90 }],
   });
 
   // Fetch proposals
   const { data: proposals, isLoading: proposalsLoading } = useQuery({
-    queryKey: ["/api/contract-renewal/proposals"],
+    queryKey: ['/api/contract-renewal/proposals'],
   });
 
   // Analyze all contracts mutation
   const analyzeAllMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/contract-renewal/analyze-all", {
-        method: "POST",
-        credentials: "include",
+      const response = await fetch('/api/contract-renewal/analyze-all', {
+        method: 'POST',
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Analysis failed");
+      if (!response.ok) throw new Error('Analysis failed');
       return response.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Analysis Complete",
+        title: 'Analysis Complete',
         description: `Analyzed ${data.analyzed} contracts. Created ${data.proposalsCreated} renewal proposals.`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/contract-renewal/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contract-renewal/at-risk"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contract-renewal/expiring"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contract-renewal/proposals"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/at-risk'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/expiring'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contract-renewal/proposals'] });
       setIsAnalyzing(false);
     },
     onError: (error: Error) => {
       toast({
-        title: "Analysis Failed",
+        title: 'Analysis Failed',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
       setIsAnalyzing(false);
     },
@@ -86,23 +93,23 @@ export default function ContractRenewalDashboard() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case "very_high":
-        return "destructive";
-      case "high":
-        return "destructive";
-      case "medium":
-        return "default";
-      case "low":
-        return "secondary";
+      case 'very_high':
+        return 'destructive';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'default';
+      case 'low':
+        return 'secondary';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
   const getRenewalProbabilityColor = (probability: number) => {
-    if (probability >= 70) return "text-green-600";
-    if (probability >= 50) return "text-yellow-600";
-    return "text-red-600";
+    if (probability >= 70) return 'text-green-600';
+    if (probability >= 50) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   return (
@@ -114,13 +121,9 @@ export default function ContractRenewalDashboard() {
             AI-powered renewal automation and churn prevention
           </p>
         </div>
-        <Button
-          onClick={handleAnalyzeAll}
-          disabled={isAnalyzing}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isAnalyzing ? "animate-spin" : ""}`} />
-          {isAnalyzing ? "Analyzing..." : "Analyze All Contracts"}
+        <Button onClick={handleAnalyzeAll} disabled={isAnalyzing} className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${isAnalyzing ? 'animate-spin' : ''}`} />
+          {isAnalyzing ? 'Analyzing...' : 'Analyze All Contracts'}
         </Button>
       </div>
 
@@ -145,11 +148,9 @@ export default function ContractRenewalDashboard() {
             <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {metrics?.atRisk || 0}
-            </div>
+            <div className="text-2xl font-bold text-red-600">{metrics?.atRisk || 0}</div>
             <p className="text-xs text-muted-foreground">
-              ${metrics?.mrrAtRisk?.toFixed(2) || "0.00"} MRR at risk
+              ${metrics?.mrrAtRisk?.toFixed(2) || '0.00'} MRR at risk
             </p>
           </CardContent>
         </Card>
@@ -161,10 +162,10 @@ export default function ContractRenewalDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {metrics?.renewalRate?.toFixed(1) || "0"}%
+              {metrics?.renewalRate?.toFixed(1) || '0'}%
             </div>
             <p className="text-xs text-muted-foreground">
-              ${metrics?.mrrRetained?.toFixed(2) || "0.00"} MRR retained
+              ${metrics?.mrrRetained?.toFixed(2) || '0.00'} MRR retained
             </p>
           </CardContent>
         </Card>
@@ -176,7 +177,7 @@ export default function ContractRenewalDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {metrics?.autoRenewalSuccessRate?.toFixed(1) || "0"}%
+              {metrics?.autoRenewalSuccessRate?.toFixed(1) || '0'}%
             </div>
             <p className="text-xs text-muted-foreground">
               {metrics?.proposalsOutstanding || 0} proposals outstanding
@@ -236,9 +237,10 @@ export default function ContractRenewalDashboard() {
                         </TableCell>
                         <TableCell>{contract.contractType}</TableCell>
                         <TableCell>
-                          ${contract.monthlyRecurringRevenue
+                          $
+                          {contract.monthlyRecurringRevenue
                             ? parseFloat(contract.monthlyRecurringRevenue).toFixed(2)
-                            : "0.00"}
+                            : '0.00'}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -252,7 +254,7 @@ export default function ContractRenewalDashboard() {
                           <div className="space-y-1">
                             <div
                               className={`font-bold ${getRenewalProbabilityColor(
-                                contract.renewalProbability || 0
+                                contract.renewalProbability || 0,
                               )}`}
                             >
                               {contract.renewalProbability || 0}%
@@ -282,9 +284,7 @@ export default function ContractRenewalDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Expiring Contracts</CardTitle>
-              <CardDescription>
-                Contracts expiring within the next 90 days
-              </CardDescription>
+              <CardDescription>Contracts expiring within the next 90 days</CardDescription>
             </CardHeader>
             <CardContent>
               {expiringLoading ? (
@@ -318,12 +318,15 @@ export default function ContractRenewalDashboard() {
                         </TableCell>
                         <TableCell>{contract.contractType}</TableCell>
                         <TableCell>
-                          ${contract.annualContractValue
+                          $
+                          {contract.annualContractValue
                             ? parseFloat(contract.annualContractValue).toFixed(2)
-                            : "0.00"}
+                            : '0.00'}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={contract.daysUntilExpiration < 30 ? "destructive" : "outline"}>
+                          <Badge
+                            variant={contract.daysUntilExpiration < 30 ? 'destructive' : 'outline'}
+                          >
                             {contract.daysUntilExpiration} days
                           </Badge>
                         </TableCell>
@@ -381,19 +384,21 @@ export default function ContractRenewalDashboard() {
                         </TableCell>
                         <TableCell>{proposal.customerName}</TableCell>
                         <TableCell>
-                          ${proposal.currentAcv
+                          $
+                          {proposal.currentAcv
                             ? parseFloat(proposal.currentAcv).toFixed(2)
-                            : "0.00"}
+                            : '0.00'}
                         </TableCell>
                         <TableCell>
-                          ${proposal.proposedAcv
+                          $
+                          {proposal.proposedAcv
                             ? parseFloat(proposal.proposedAcv).toFixed(2)
-                            : "0.00"}
+                            : '0.00'}
                         </TableCell>
                         <TableCell>
                           {proposal.discountPercentage
                             ? `${parseFloat(proposal.discountPercentage).toFixed(1)}%`
-                            : "None"}
+                            : 'None'}
                         </TableCell>
                         <TableCell>
                           {new Date(proposal.proposalDate).toLocaleDateString()}

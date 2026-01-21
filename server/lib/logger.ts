@@ -150,9 +150,7 @@ function createDestinations(): DestinationStream | undefined {
 const destination = createDestinations();
 const loggerOptions = buildLoggerOptions();
 
-export const logger: Logger = destination
-  ? pino(loggerOptions, destination)
-  : pino(loggerOptions);
+export const logger: Logger = destination ? pino(loggerOptions, destination) : pino(loggerOptions);
 
 // Extended logger type with custom levels
 type ExtendedLogger = Logger & {

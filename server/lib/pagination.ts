@@ -102,7 +102,7 @@ export function parsePagination(query: Record<string, any>): PaginationParams {
   // Parse limit (support legacy 'pageSize' param)
   let limit = parseInt(
     query.limit || query.pageSize || String(PAGINATION_DEFAULTS.DEFAULT_LIMIT),
-    10
+    10,
   );
   if (isNaN(limit) || limit < 1) {
     limit = PAGINATION_DEFAULTS.DEFAULT_LIMIT;
@@ -135,9 +135,17 @@ export function parsePagination(query: Record<string, any>): PaginationParams {
 
   // Extract filters (exclude pagination params)
   const paginationParams = [
-    'page', 'limit', 'pageSize', 'offset',
-    'sortBy', 'sort_by', 'sortDirection', 'sort_direction', 'order',
-    'search', 'q',
+    'page',
+    'limit',
+    'pageSize',
+    'offset',
+    'sortBy',
+    'sort_by',
+    'sortDirection',
+    'sort_direction',
+    'order',
+    'search',
+    'q',
   ];
   const filters: Record<string, any> = {};
   for (const [key, value] of Object.entries(query)) {
@@ -166,7 +174,7 @@ export function parsePagination(query: Record<string, any>): PaginationParams {
  */
 export function createPaginationMeta(
   totalItems: number,
-  params: Pick<PaginationParams, 'page' | 'limit'>
+  params: Pick<PaginationParams, 'page' | 'limit'>,
 ): PaginationMeta {
   const totalPages = Math.ceil(totalItems / params.limit);
 
@@ -191,7 +199,7 @@ export function createPaginationMeta(
 export function paginatedResponse<T>(
   data: T[],
   totalCount: number,
-  params: Pick<PaginationParams, 'page' | 'limit'>
+  params: Pick<PaginationParams, 'page' | 'limit'>,
 ): PaginatedResponse<T> {
   return {
     data,
@@ -221,7 +229,7 @@ export function getSortOrder<T>(column: T, direction: 'asc' | 'desc'): SQL {
 export async function executePaginatedQuery<T>(
   dataQuery: { limit: (n: number) => { offset: (n: number) => Promise<T[]> } },
   countQuery: Promise<{ count: number }[]>,
-  params: PaginationParams
+  params: PaginationParams,
 ): Promise<{ data: T[]; meta: PaginationMeta }> {
   // Execute both queries in parallel
   const [data, countResult] = await Promise.all([
@@ -244,12 +252,13 @@ export async function executePaginatedQuery<T>(
  * @param params - Raw pagination parameters
  * @returns Sanitized parameters safe for logging/external use
  */
-export function sanitizePaginationParams(
-  params: Partial<PaginationParams>
-): Record<string, any> {
+export function sanitizePaginationParams(params: Partial<PaginationParams>): Record<string, any> {
   return {
     page: params.page ?? 1,
-    limit: Math.min(params.limit ?? PAGINATION_DEFAULTS.DEFAULT_LIMIT, PAGINATION_DEFAULTS.MAX_LIMIT),
+    limit: Math.min(
+      params.limit ?? PAGINATION_DEFAULTS.DEFAULT_LIMIT,
+      PAGINATION_DEFAULTS.MAX_LIMIT,
+    ),
     sortBy: params.sortBy ?? PAGINATION_DEFAULTS.DEFAULT_SORT_FIELD,
     sortDirection: params.sortDirection ?? PAGINATION_DEFAULTS.DEFAULT_SORT_DIRECTION,
     hasSearch: !!params.search,
@@ -290,7 +299,7 @@ export function parseCursorPagination(query: Record<string, any>): {
 export function cursorPaginatedResponse<T>(
   data: T[],
   getCursor: (item: T) => string,
-  hasMore: boolean
+  hasMore: boolean,
 ): {
   data: T[];
   pageInfo: {

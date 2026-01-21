@@ -1,8 +1,14 @@
-import { useState } from "react";
-import { Search, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from 'react';
+import { Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface MobileSearchProps {
   className?: string;
@@ -10,13 +16,13 @@ interface MobileSearchProps {
 
 export default function MobileSearch({ className }: MobileSearchProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       // Implement search functionality here
-      console.log("Searching for:", searchQuery);
+      console.log('Searching for:', searchQuery);
       setIsOpen(false);
     }
   };
@@ -24,12 +30,7 @@ export default function MobileSearch({ className }: MobileSearchProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className={className}
-          aria-label="Search"
-        >
+        <Button variant="ghost" size="icon" className={className} aria-label="Search">
           <Search className="h-5 w-5" />
         </Button>
       </DialogTrigger>
@@ -37,7 +38,7 @@ export default function MobileSearch({ className }: MobileSearchProps) {
         <DialogHeader>
           <DialogTitle>Search</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSearch} className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
@@ -49,21 +50,17 @@ export default function MobileSearch({ className }: MobileSearchProps) {
               autoFocus
             />
           </div>
-          
+
           <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
-            <Button 
-              type="button" 
-              variant="ghost" 
+            <Button
+              type="button"
+              variant="ghost"
               onClick={() => setIsOpen(false)}
               className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={!searchQuery.trim()}
-              className="w-full sm:w-auto"
-            >
+            <Button type="submit" disabled={!searchQuery.trim()} className="w-full sm:w-auto">
               Search
             </Button>
           </div>

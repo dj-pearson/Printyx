@@ -2,8 +2,8 @@
  * Enhanced form field components with consistent validation display
  */
 
-import React from "react";
-import { Control, FieldPath, FieldValues } from "react-hook-form";
+import React from 'react';
+import { Control, FieldPath, FieldValues } from 'react-hook-form';
 import {
   FormControl,
   FormField as ShadcnFormField,
@@ -11,13 +11,19 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 
 interface BaseFormFieldProps<T extends FieldValues> {
   control: Control<T>;
@@ -29,12 +35,12 @@ interface BaseFormFieldProps<T extends FieldValues> {
 }
 
 interface TextFieldProps<T extends FieldValues> extends BaseFormFieldProps<T> {
-  type?: "text" | "email" | "password" | "number" | "tel" | "url";
+  type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url';
   placeholder?: string;
   disabled?: boolean;
   maxLength?: number;
   autoComplete?: string;
-  inputMode?: "text" | "decimal" | "numeric" | "tel" | "search" | "email" | "url";
+  inputMode?: 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url';
 }
 
 export function TextField<T extends FieldValues>({
@@ -44,7 +50,7 @@ export function TextField<T extends FieldValues>({
   description,
   required,
   className,
-  type = "text",
+  type = 'text',
   placeholder,
   disabled,
   maxLength,
@@ -69,10 +75,19 @@ export function TextField<T extends FieldValues>({
               disabled={disabled}
               maxLength={maxLength}
               autoComplete={autoComplete}
-              inputMode={inputMode || (type === "email" ? "email" : type === "tel" ? "tel" : type === "number" ? "numeric" : "text")}
+              inputMode={
+                inputMode ||
+                (type === 'email'
+                  ? 'email'
+                  : type === 'tel'
+                    ? 'tel'
+                    : type === 'number'
+                      ? 'numeric'
+                      : 'text')
+              }
               className={cn(
-                "min-h-11 text-base sm:text-sm touch-manipulation",
-                fieldState.error && "border-destructive focus:border-destructive"
+                'min-h-11 text-base sm:text-sm touch-manipulation',
+                fieldState.error && 'border-destructive focus:border-destructive',
               )}
             />
           </FormControl>
@@ -121,8 +136,8 @@ export function TextAreaField<T extends FieldValues>({
               rows={rows}
               maxLength={maxLength}
               className={cn(
-                "min-h-20 text-base sm:text-sm touch-manipulation resize-y",
-                fieldState.error && "border-destructive focus:border-destructive"
+                'min-h-20 text-base sm:text-sm touch-manipulation resize-y',
+                fieldState.error && 'border-destructive focus:border-destructive',
               )}
             />
           </FormControl>
@@ -153,7 +168,7 @@ export function SelectField<T extends FieldValues>({
   description,
   required,
   className,
-  placeholder = "Select an option",
+  placeholder = 'Select an option',
   options,
   disabled,
 }: SelectFieldProps<T>) {
@@ -167,11 +182,7 @@ export function SelectField<T extends FieldValues>({
             {label}
             {required && <span className="text-destructive ml-1">*</span>}
           </FormLabel>
-          <Select
-            onValueChange={field.onChange}
-            defaultValue={field.value}
-            disabled={disabled}
-          >
+          <Select onValueChange={field.onChange} defaultValue={field.value} disabled={disabled}>
             <FormControl>
               <SelectTrigger className="min-h-11 text-base sm:text-sm touch-manipulation">
                 <SelectValue placeholder={placeholder} />
@@ -179,11 +190,7 @@ export function SelectField<T extends FieldValues>({
             </FormControl>
             <SelectContent>
               {options.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.disabled}
-                >
+                <SelectItem key={option.value} value={option.value} disabled={option.disabled}>
                   {option.label}
                 </SelectItem>
               ))}
@@ -214,7 +221,7 @@ export function CheckboxField<T extends FieldValues>({
       control={control}
       name={name}
       render={({ field }) => (
-        <FormItem className={cn("flex flex-row items-start space-x-3 space-y-0 py-2", className)}>
+        <FormItem className={cn('flex flex-row items-start space-x-3 space-y-0 py-2', className)}>
           <FormControl>
             <Checkbox
               checked={field.value}
@@ -224,7 +231,9 @@ export function CheckboxField<T extends FieldValues>({
             />
           </FormControl>
           <div className="space-y-1 leading-none">
-            <FormLabel className="cursor-pointer text-base sm:text-sm leading-relaxed">{label}</FormLabel>
+            <FormLabel className="cursor-pointer text-base sm:text-sm leading-relaxed">
+              {label}
+            </FormLabel>
             {description && <FormDescription>{description}</FormDescription>}
           </div>
           <FormMessage />
@@ -244,7 +253,7 @@ interface RadioOption {
 interface RadioFieldProps<T extends FieldValues> extends BaseFormFieldProps<T> {
   options: RadioOption[];
   disabled?: boolean;
-  orientation?: "horizontal" | "vertical";
+  orientation?: 'horizontal' | 'vertical';
 }
 
 export function RadioField<T extends FieldValues>({
@@ -256,7 +265,7 @@ export function RadioField<T extends FieldValues>({
   className,
   options,
   disabled,
-  orientation = "vertical",
+  orientation = 'vertical',
 }: RadioFieldProps<T>) {
   return (
     <ShadcnFormField
@@ -272,9 +281,7 @@ export function RadioField<T extends FieldValues>({
             <RadioGroup
               onValueChange={field.onChange}
               defaultValue={field.value}
-              className={cn(
-                orientation === "horizontal" && "flex flex-row space-x-4"
-              )}
+              className={cn(orientation === 'horizontal' && 'flex flex-row space-x-4')}
               disabled={disabled}
             >
               {options.map((option) => (
@@ -292,9 +299,7 @@ export function RadioField<T extends FieldValues>({
                     {option.label}
                   </label>
                   {option.description && (
-                    <FormDescription className="mt-0 ml-6">
-                      {option.description}
-                    </FormDescription>
+                    <FormDescription className="mt-0 ml-6">{option.description}</FormDescription>
                   )}
                 </div>
               ))}
@@ -346,8 +351,8 @@ export function DateField<T extends FieldValues>({
               min={min}
               max={max}
               className={cn(
-                "min-h-11 text-base sm:text-sm touch-manipulation",
-                fieldState.error && "border-destructive focus:border-destructive"
+                'min-h-11 text-base sm:text-sm touch-manipulation',
+                fieldState.error && 'border-destructive focus:border-destructive',
               )}
             />
           </FormControl>
@@ -378,7 +383,7 @@ export function CurrencyField<T extends FieldValues>({
   disabled,
   min = 0,
   max,
-  currency = "USD",
+  currency = 'USD',
 }: CurrencyFieldProps<T>) {
   return (
     <ShadcnFormField
@@ -405,8 +410,8 @@ export function CurrencyField<T extends FieldValues>({
                 max={max}
                 step="0.01"
                 className={cn(
-                  "pl-8 min-h-11 text-base sm:text-sm touch-manipulation",
-                  fieldState.error && "border-destructive focus:border-destructive"
+                  'pl-8 min-h-11 text-base sm:text-sm touch-manipulation',
+                  fieldState.error && 'border-destructive focus:border-destructive',
                 )}
               />
             </div>

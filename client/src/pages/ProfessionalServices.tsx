@@ -1,28 +1,52 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Briefcase, Edit3, Tag, DollarSign, Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertProfessionalServiceSchema, type ProfessionalService, type InsertProfessionalService } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import MainLayout from "@/components/layout/main-layout";
-import ManagementToolbar from "@/components/product-management/ManagementToolbar";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Briefcase, Edit3, Tag, DollarSign, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  insertProfessionalServiceSchema,
+  type ProfessionalService,
+  type InsertProfessionalService,
+} from '@shared/schema';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import ManagementToolbar from '@/components/product-management/ManagementToolbar';
 
 export default function ProfessionalServices() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<ProfessionalService | null>(null);
   const [bulkMode, setBulkMode] = useState(false);
@@ -44,15 +68,15 @@ export default function ProfessionalServices() {
       setDialogOpen(false);
       form.reset();
       toast({
-        title: "Success",
-        description: "Professional service created successfully",
+        title: 'Success',
+        description: 'Professional service created successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create professional service",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create professional service',
+        variant: 'destructive',
       });
     },
   });
@@ -60,10 +84,10 @@ export default function ProfessionalServices() {
   const form = useForm<InsertProfessionalService>({
     resolver: zodResolver(insertProfessionalServiceSchema),
     defaultValues: {
-      tenantId: "",
-      productCode: "",
-      productName: "",
-      category: "Professional Services",
+      tenantId: '',
+      productCode: '',
+      productName: '',
+      category: 'Professional Services',
       accessoryType: null,
       description: null,
       summary: null,
@@ -113,19 +137,22 @@ export default function ProfessionalServices() {
     },
     onError: () => {
       toast({ title: 'Error', description: 'Failed to delete service', variant: 'destructive' });
-    }
+    },
   });
 
   const toggleItemSelection = (id: string) => {
     const copy = new Set(selectedIds);
-    if (copy.has(id)) copy.delete(id); else copy.add(id);
+    if (copy.has(id)) copy.delete(id);
+    else copy.add(id);
     setSelectedIds(copy);
   };
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
     for (const id of ids) {
-      try { await apiRequest(`/api/professional-services/${id}`, 'DELETE'); } catch {}
+      try {
+        await apiRequest(`/api/professional-services/${id}`, 'DELETE');
+      } catch {}
     }
     queryClient.invalidateQueries({ queryKey: ['/api/professional-services'] });
     setSelectedIds(new Set());
@@ -134,23 +161,24 @@ export default function ProfessionalServices() {
   };
 
   // Get unique categories from services
-  const categories = Array.from(new Set(services.map(s => s.category).filter(Boolean)));
+  const categories = Array.from(new Set(services.map((s) => s.category).filter(Boolean)));
 
   // Filter services by search and category
-  const filteredServices = services.filter(service => {
-    const matchesSearch = service.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         service.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    if (selectedCategory === "all") return matchesSearch;
-    
+  const filteredServices = services.filter((service) => {
+    const matchesSearch =
+      service.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (selectedCategory === 'all') return matchesSearch;
+
     const matchesCategory = service.category === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
   const formatCurrency = (value: string | null) => {
-    if (!value) return "$0.00";
+    if (!value) return '$0.00';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -164,19 +192,26 @@ export default function ProfessionalServices() {
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3">
               {bulkMode && (
-                <Checkbox checked={selectedIds.has(service.id)} onCheckedChange={() => toggleItemSelection(service.id)} />
+                <Checkbox
+                  checked={selectedIds.has(service.id)}
+                  onCheckedChange={() => toggleItemSelection(service.id)}
+                />
               )}
               <div className="space-y-1">
-              <CardTitle className="text-lg">{service.productName}</CardTitle>
-              <CardDescription>
-                <span className="font-medium">{service.productCode}</span>
-                {service.category && <span className="ml-2 text-muted-foreground">• {service.category}</span>}
-              </CardDescription>
+                <CardTitle className="text-lg">{service.productName}</CardTitle>
+                <CardDescription>
+                  <span className="font-medium">{service.productCode}</span>
+                  {service.category && (
+                    <span className="ml-2 text-muted-foreground">• {service.category}</span>
+                  )}
+                </CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {service.isActive ? (
-                <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  Active
+                </Badge>
               ) : (
                 <Badge variant="secondary">Inactive</Badge>
               )}
@@ -191,9 +226,7 @@ export default function ProfessionalServices() {
           </div>
 
           {service.summary && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {service.summary}
-            </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">{service.summary}</p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
@@ -208,7 +241,7 @@ export default function ProfessionalServices() {
             <div className="space-y-2">
               <span className="text-sm font-medium">Rep Price</span>
               <p className="text-lg font-bold text-green-600">
-                {service.newActive ? formatCurrency(service.newRepPrice) : "Not Set"}
+                {service.newActive ? formatCurrency(service.newRepPrice) : 'Not Set'}
               </p>
             </div>
           </div>
@@ -221,16 +254,12 @@ export default function ProfessionalServices() {
               {service.units && <div>Units: {service.units}</div>}
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setSelectedService(service)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setSelectedService(service)}>
                 <Edit3 className="h-4 w-4 mr-1" />
                 View
               </Button>
-              <Button 
-                variant="destructive" 
+              <Button
+                variant="destructive"
                 size="sm"
                 onClick={() => deleteServiceMutation.mutate(service.id)}
               >
@@ -244,7 +273,10 @@ export default function ProfessionalServices() {
   };
 
   return (
-    <MainLayout title="Professional Services" description="Manage professional service offerings and pricing">
+    <MainLayout
+      title="Professional Services"
+      description="Manage professional service offerings and pricing"
+    >
       <div className="space-y-6">
         <ManagementToolbar
           title="Professional Services"
@@ -265,659 +297,665 @@ export default function ProfessionalServices() {
             <span />
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>New Price Book List: Professional Service</DialogTitle>
-                <DialogDescription>
-                  Create a new professional service offering for your catalog
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  {/* Information Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Information</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="productName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+            <DialogHeader>
+              <DialogTitle>New Price Book List: Professional Service</DialogTitle>
+              <DialogDescription>
+                Create a new professional service offering for your catalog
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Information Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Information</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="productName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Product Name <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Setup and Configuration"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Product Type</label>
+                      <Select value="Professional Services" disabled>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Professional Services">
+                            Professional Services
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="productCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            Product Code <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="SETUP-CONFIG-001"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Record Type</label>
+                      <div className="text-sm text-blue-600">Professional Service</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="accessoryType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Accessory Type</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
                             <FormControl>
-                              <Input placeholder="Setup and Configuration" value={field.value || ""} onChange={field.onChange} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="Installation">Installation</SelectItem>
+                              <SelectItem value="Training">Training</SelectItem>
+                              <SelectItem value="Maintenance">Maintenance</SelectItem>
+                              <SelectItem value="Consulting">Consulting</SelectItem>
+                              <SelectItem value="Support">Support</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium">Options</label>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Product Type</label>
-                        <Select value="Professional Services" disabled>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Professional Services">Professional Services</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormField
+                          control={form.control}
+                          name="repostEdit"
+                          render={({ field }) => (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                              <label className="text-sm">Repost Edit</label>
+                            </div>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="salesRepCredit"
+                          render={({ field }) => (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                              <label className="text-sm">Sales Rep Credit</label>
+                            </div>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="funding"
+                          render={({ field }) => (
+                            <div className="flex items-center space-x-2">
+                              <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                              <label className="text-sm">Funding</label>
+                            </div>
+                          )}
+                        />
                       </div>
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="productCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Product Code <span className="text-red-500">*</span></FormLabel>
-                            <FormControl>
-                              <Input placeholder="SETUP-CONFIG-001" value={field.value || ""} onChange={field.onChange} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Record Type</label>
-                        <div className="text-sm text-blue-600">Professional Service</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="accessoryType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Accessory Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="--None--" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">--None--</SelectItem>
-                                <SelectItem value="Installation">Installation</SelectItem>
-                                <SelectItem value="Training">Training</SelectItem>
-                                <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                <SelectItem value="Consulting">Consulting</SelectItem>
-                                <SelectItem value="Support">Support</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="space-y-3">
-                        <label className="text-sm font-medium">Options</label>
-                        <div className="space-y-2">
-                          <FormField
-                            control={form.control}
-                            name="repostEdit"
-                            render={({ field }) => (
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                                <label className="text-sm">Repost Edit</label>
-                              </div>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="salesRepCredit"
-                            render={({ field }) => (
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                                <label className="text-sm">Sales Rep Credit</label>
-                              </div>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="funding"
-                            render={({ field }) => (
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  checked={!!field.value}
-                                  onCheckedChange={field.onChange}
-                                />
-                                <label className="text-sm">Funding</label>
-                              </div>
-                            )}
-                          />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                          <label className="text-sm font-medium">Active</label>
                         </div>
-                      </div>
-                    </div>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="availableForAll"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                          <label className="text-sm font-medium">Available for All</label>
+                        </div>
+                      )}
+                    />
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                <Separator />
+
+                {/* Detail Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Detail</h3>
+
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Detailed description of the professional service..."
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            rows={4}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="summary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Summary</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Brief summary of the service..."
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            rows={3}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="note"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Note</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Additional notes..."
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            rows={2}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="eaNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>EA Notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="EA specific notes..."
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            rows={2}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="relatedProducts"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Related Products</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Related products and services..."
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                            rows={2}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Separator />
+
+                {/* Pricing Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Pricing Information</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="lease"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                          <label className="text-sm font-medium">Lease</label>
+                        </div>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="paymentType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Type</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="One-time">One-time</SelectItem>
+                              <SelectItem value="Monthly">Monthly</SelectItem>
+                              <SelectItem value="Hourly">Hourly</SelectItem>
+                              <SelectItem value="Project">Project</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="msrp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>MSRP</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="1500.00"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Pricing Tiers */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <FormField
                         control={form.control}
-                        name="isActive"
+                        name="newActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                            <label className="text-sm font-medium">Active</label>
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                            <label className="text-sm font-medium">New Active</label>
                           </div>
                         )}
                       />
                       <FormField
                         control={form.control}
-                        name="availableForAll"
+                        name="newRepPrice"
                         render={({ field }) => (
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                            <label className="text-sm font-medium">Available for All</label>
-                          </div>
+                          <FormItem>
+                            <FormLabel>New Rep Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="1200.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
                       />
                     </div>
-                  </div>
 
-                  <Separator />
-
-                  {/* Detail Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Detail</h3>
-                    
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Detailed description of the professional service..."
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              rows={4}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="summary"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Summary</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Brief summary of the service..."
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              rows={3}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="note"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Note</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Additional notes..."
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              rows={2}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="eaNotes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>EA Notes</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="EA specific notes..."
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              rows={2}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="relatedProducts"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Related Products</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Related products and services..."
-                              value={field.value || ""}
-                              onChange={field.onChange}
-                              rows={2}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Separator />
-
-                  {/* Pricing Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Pricing Information</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <FormField
                         control={form.control}
-                        name="lease"
+                        name="upgradeActive"
                         render={({ field }) => (
                           <div className="flex items-center space-x-2">
-                            <Checkbox
-                              checked={!!field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                            <label className="text-sm font-medium">Lease</label>
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                            <label className="text-sm font-medium">Upgrade Active</label>
                           </div>
                         )}
                       />
                       <FormField
                         control={form.control}
-                        name="paymentType"
+                        name="upgradeRepPrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Payment Type</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="--None--" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">--None--</SelectItem>
-                                <SelectItem value="One-time">One-time</SelectItem>
-                                <SelectItem value="Monthly">Monthly</SelectItem>
-                                <SelectItem value="Hourly">Hourly</SelectItem>
-                                <SelectItem value="Project">Project</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormLabel>Upgrade Rep Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="1100.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <FormField
+                        control={form.control}
+                        name="lexmarkActive"
+                        render={({ field }) => (
+                          <div className="flex items-center space-x-2">
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                            <label className="text-sm font-medium">Lexmark Active</label>
+                          </div>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="lexmarkRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lexmark Rep Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="1000.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     </div>
 
+                    <div className="space-y-2">
+                      <FormField
+                        control={form.control}
+                        name="graphicActive"
+                        render={({ field }) => (
+                          <div className="flex items-center space-x-2">
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                            <label className="text-sm font-medium">Graphic Active</label>
+                          </div>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="graphicRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Graphic Rep Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="1300.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Product Tags */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Product Tags</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="msrp"
+                      name="manufacturer"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>MSRP</FormLabel>
+                          <FormLabel>Manufacturer</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="Canon">Canon</SelectItem>
+                              <SelectItem value="HP">HP</SelectItem>
+                              <SelectItem value="Xerox">Xerox</SelectItem>
+                              <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="manufacturerProductCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Manufacturer Product Code</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              placeholder="1500.00" 
-                              value={field.value || ""} 
-                              onChange={field.onChange} 
+                            <Input
+                              placeholder="MFR-SETUP-001"
+                              value={field.value || ''}
+                              onChange={field.onChange}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    {/* Pricing Tiers */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <FormField
-                          control={form.control}
-                          name="newActive"
-                          render={({ field }) => (
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                              <label className="text-sm font-medium">New Active</label>
-                            </div>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="newRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>New Rep Price</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="1200.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <FormField
-                          control={form.control}
-                          name="upgradeActive"
-                          render={({ field }) => (
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                              <label className="text-sm font-medium">Upgrade Active</label>
-                            </div>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="upgradeRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Upgrade Rep Price</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="1100.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <FormField
-                          control={form.control}
-                          name="lexmarkActive"
-                          render={({ field }) => (
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                              <label className="text-sm font-medium">Lexmark Active</label>
-                            </div>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="lexmarkRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Lexmark Rep Price</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="1000.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <FormField
-                          control={form.control}
-                          name="graphicActive"
-                          render={({ field }) => (
-                            <div className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={!!field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                              <label className="text-sm font-medium">Graphic Active</label>
-                            </div>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="graphicRepPrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Graphic Rep Price</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  step="0.01" 
-                                  placeholder="1300.00" 
-                                  value={field.value || ""} 
-                                  onChange={field.onChange} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
                   </div>
 
-                  <Separator />
-
-                  {/* Product Tags */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Product Tags</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="manufacturer"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Manufacturer</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="--None--" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">--None--</SelectItem>
-                                <SelectItem value="Canon">Canon</SelectItem>
-                                <SelectItem value="HP">HP</SelectItem>
-                                <SelectItem value="Xerox">Xerox</SelectItem>
-                                <SelectItem value="Konica Minolta">Konica Minolta</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="manufacturerProductCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Manufacturer Product Code</FormLabel>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="model"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Model</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Professional Setup"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
                             <FormControl>
-                              <Input placeholder="MFR-SETUP-001" value={field.value || ""} onChange={field.onChange} />
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="model"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Model</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Professional Setup" value={field.value || ""} onChange={field.onChange} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Professional Services">Professional Services</SelectItem>
-                                <SelectItem value="Installation">Installation</SelectItem>
-                                <SelectItem value="Training">Training</SelectItem>
-                                <SelectItem value="Consulting">Consulting</SelectItem>
-                                <SelectItem value="Support">Support</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="units"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Units</FormLabel>
-                            <Select value={field.value || ""} onValueChange={field.onChange}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="--None--" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">--None--</SelectItem>
-                                <SelectItem value="Each">Each</SelectItem>
-                                <SelectItem value="Hour">Hour</SelectItem>
-                                <SelectItem value="Day">Day</SelectItem>
-                                <SelectItem value="Project">Project</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="eaItemNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>EA Item Number</FormLabel>
-                            <FormControl>
-                              <Input placeholder="EA-SETUP-001" value={field.value || ""} onChange={field.onChange} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                            <SelectContent>
+                              <SelectItem value="Professional Services">
+                                Professional Services
+                              </SelectItem>
+                              <SelectItem value="Installation">Installation</SelectItem>
+                              <SelectItem value="Training">Training</SelectItem>
+                              <SelectItem value="Consulting">Consulting</SelectItem>
+                              <SelectItem value="Support">Support</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
-                  <Separator />
-
-                  {/* System Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">System Information</h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="priceBookId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Price Book ID</FormLabel>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="units"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Units</FormLabel>
+                          <Select value={field.value || ''} onValueChange={field.onChange}>
                             <FormControl>
-                              <Input placeholder="PB-001" value={field.value || ""} onChange={field.onChange} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="--None--" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="tempKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Temp Key</FormLabel>
-                            <FormControl>
-                              <Input placeholder="TK-001" value={field.value || ""} onChange={field.onChange} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                            <SelectContent>
+                              <SelectItem value="none">--None--</SelectItem>
+                              <SelectItem value="Each">Each</SelectItem>
+                              <SelectItem value="Hour">Hour</SelectItem>
+                              <SelectItem value="Day">Day</SelectItem>
+                              <SelectItem value="Project">Project</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="eaItemNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>EA Item Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="EA-SETUP-001"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
+                </div>
 
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="button" variant="outline">
-                      Save & New
-                    </Button>
-                    <Button type="submit" disabled={createServiceMutation.isPending}>
-                      {createServiceMutation.isPending ? "Saving..." : "Save"}
-                    </Button>
+                <Separator />
+
+                {/* System Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">System Information</h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="priceBookId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Price Book ID</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="PB-001"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tempKey"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Temp Key</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="TK-001"
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                </div>
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="button" variant="outline">
+                    Save & New
+                  </Button>
+                  <Button type="submit" disabled={createServiceMutation.isPending}>
+                    {createServiceMutation.isPending ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
 
         {/* Search and Filter Bar */}
         <div className="flex items-center gap-4">
@@ -937,8 +975,10 @@ export default function ProfessionalServices() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -967,12 +1007,11 @@ export default function ProfessionalServices() {
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Services Found</h3>
             <p className="text-muted-foreground text-center mb-4">
-              {searchTerm || selectedCategory !== "all" 
-                ? "No services match your current filters. Try adjusting your search criteria."
-                : "Get started by adding your first professional service to the catalog."
-              }
+              {searchTerm || selectedCategory !== 'all'
+                ? 'No services match your current filters. Try adjusting your search criteria.'
+                : 'Get started by adding your first professional service to the catalog.'}
             </p>
-            {!searchTerm && selectedCategory === "all" && (
+            {!searchTerm && selectedCategory === 'all' && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Service
@@ -992,9 +1031,7 @@ export default function ProfessionalServices() {
           <span>
             {filteredServices.length} of {services.length} services
           </span>
-          <span>
-            {services.filter(s => s.isActive).length} active services
-          </span>
+          <span>{services.filter((s) => s.isActive).length} active services</span>
         </div>
       </div>
     </MainLayout>

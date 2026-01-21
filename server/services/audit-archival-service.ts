@@ -4,11 +4,11 @@
  * Supports compliance requirements for long-term audit log retention
  */
 
-import { db } from "../db";
-import { eq, and, desc, gte, lte, lt, sql, inArray, between } from "drizzle-orm";
-import { createHash, createCipheriv, createDecipheriv, randomBytes } from "crypto";
-import { gzip, gunzip } from "zlib";
-import { promisify } from "util";
+import { db } from '../db';
+import { eq, and, desc, gte, lte, lt, sql, inArray, between } from 'drizzle-orm';
+import { createHash, createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { gzip, gunzip } from 'zlib';
+import { promisify } from 'util';
 import {
   auditLogArchives,
   auditArchiveJobs,
@@ -16,8 +16,8 @@ import {
   type InsertAuditLogArchive,
   type AuditArchiveJob,
   type InsertAuditArchiveJob,
-} from "@shared/soc2-compliance-schema";
-import { auditLogs, type AuditLog } from "@shared/security-schema";
+} from '@shared/soc2-compliance-schema';
+import { auditLogs, type AuditLog } from '@shared/security-schema';
 
 // Promisify zlib functions
 const gzipAsync = promisify(gzip);
@@ -49,7 +49,7 @@ export async function createArchive(
   startDate: Date,
   endDate: Date,
   archivedBy: string,
-  options: ArchiveOptions = {}
+  options: ArchiveOptions = {},
 ): Promise<AuditLogArchive> {
   const {
     compress = true,
@@ -70,14 +70,14 @@ export async function createArchive(
       and(
         eq(auditLogs.tenantId, tenantId),
         gte(auditLogs.timestamp, startDate),
-        lte(auditLogs.timestamp, endDate)
-      )
+        lte(auditLogs.timestamp, endDate),
+      ),
     );
 
   const recordCount = countResult?.count || 0;
 
   if (recordCount === 0) {
-    throw new Error("No audit logs found in the specified date range");
+    throw new Error('No audit logs found in the specified date range');
   }
 
   // Calculate retention date
@@ -110,17 +110,12 @@ export async function createArchive(
  */
 export async function getArchive(
   archiveId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<AuditLogArchive | null> {
   const [archive] = await db
     .select()
     .from(auditLogArchives)
-    .where(
-      and(
-        eq(auditLogArchives.id, archiveId),
-        eq(auditLogArchives.tenantId, tenantId)
-      )
-    );
+    .where(and(eq(auditLogArchives.id, archiveId), eq(auditLogArchives.tenantId, tenantId)));
 
   return archive || null;
 }
@@ -137,7 +132,7 @@ export async function listArchives(
     includeDeleted?: boolean;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: AuditLogArchive[]; total: number }> {
   const conditions = [eq(auditLogArchives.tenantId, tenantId)];
 
@@ -183,11 +178,11 @@ export async function executeArchive(
   archiveId: string,
   tenantId: string,
   triggeredBy: string,
-  options: ArchiveOptions = {}
+  options: ArchiveOptions = {},
 ): Promise<AuditArchiveJob> {
   const archive = await getArchive(archiveId, tenantId);
   if (!archive) {
-    throw new Error("Archive not found");
+    throw new Error('Archive not found');
   }
 
   if (archive.status !== 'pending') {
@@ -219,7 +214,7 @@ export async function executeArchive(
 async function executeArchiveAsync(
   jobId: string,
   archive: AuditLogArchive,
-  options: ArchiveOptions
+  options: ArchiveOptions,
 ): Promise<void> {
   const { compress = true, encrypt = true } = options;
 
@@ -246,8 +241,8 @@ async function executeArchiveAsync(
           and(
             eq(auditLogs.tenantId, archive.tenantId),
             gte(auditLogs.timestamp, archive.startDate),
-            lte(auditLogs.timestamp, archive.endDate)
-          )
+            lte(auditLogs.timestamp, archive.endDate),
+          ),
         )
         .orderBy(auditLogs.timestamp)
         .limit(ARCHIVE_BATCH_SIZE)
@@ -319,7 +314,6 @@ async function executeArchiveAsync(
     // Optionally delete archived logs from main table
     // This should be controlled by policy
     // await deleteArchivedLogs(archive.tenantId, archive.startDate, archive.endDate);
-
   } catch (error: any) {
     await updateJobStatus(jobId, 'failed', {
       errorMessage: error.message,
@@ -364,11 +358,7 @@ async function encryptData(data: string): Promise<{ encrypted: string; keyId: st
 async function decryptData(encryptedJson: string, key: Buffer): Promise<string> {
   const { iv, authTag, data } = JSON.parse(encryptedJson);
 
-  const decipher = createDecipheriv(
-    ENCRYPTION_ALGORITHM,
-    key,
-    Buffer.from(iv, 'hex')
-  );
+  const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, key, Buffer.from(iv, 'hex'));
   decipher.setAuthTag(Buffer.from(authTag, 'hex'));
 
   let decrypted = decipher.update(data, 'hex', 'utf8');
@@ -386,11 +376,11 @@ export async function restoreArchive(
   archiveId: string,
   tenantId: string,
   triggeredBy: string,
-  restoreToTable: boolean = false
+  restoreToTable: boolean = false,
 ): Promise<AuditArchiveJob> {
   const archive = await getArchive(archiveId, tenantId);
   if (!archive) {
-    throw new Error("Archive not found");
+    throw new Error('Archive not found');
   }
 
   if (archive.status !== 'completed') {
@@ -437,10 +427,7 @@ export async function restoreArchive(
 /**
  * Execute restore asynchronously
  */
-async function executeRestoreAsync(
-  jobId: string,
-  archive: AuditLogArchive
-): Promise<void> {
+async function executeRestoreAsync(jobId: string, archive: AuditLogArchive): Promise<void> {
   try {
     await updateJobStatus(jobId, 'in_progress', { startedAt: new Date() });
 
@@ -474,16 +461,16 @@ export async function deleteArchive(
   archiveId: string,
   tenantId: string,
   deletedBy: string,
-  reason?: string
+  reason?: string,
 ): Promise<AuditLogArchive> {
   const archive = await getArchive(archiveId, tenantId);
   if (!archive) {
-    throw new Error("Archive not found");
+    throw new Error('Archive not found');
   }
 
   // Check if archive is under legal hold
   if (archive.legalHold) {
-    throw new Error("Cannot delete archive under legal hold");
+    throw new Error('Cannot delete archive under legal hold');
   }
 
   // Check retention period
@@ -528,17 +515,12 @@ export async function deleteArchive(
 export async function setArchiveLegalHold(
   archiveId: string,
   tenantId: string,
-  hold: boolean
+  hold: boolean,
 ): Promise<AuditLogArchive | null> {
   const [updated] = await db
     .update(auditLogArchives)
     .set({ legalHold: hold })
-    .where(
-      and(
-        eq(auditLogArchives.id, archiveId),
-        eq(auditLogArchives.tenantId, tenantId)
-      )
-    )
+    .where(and(eq(auditLogArchives.id, archiveId), eq(auditLogArchives.tenantId, tenantId)))
     .returning();
 
   return updated || null;
@@ -558,7 +540,7 @@ async function updateJobStatus(
     resultMessage: string;
     errorMessage: string;
     startedAt: Date;
-  }>
+  }>,
 ): Promise<void> {
   const updateData: any = {
     status,
@@ -570,10 +552,7 @@ async function updateJobStatus(
     updateData.completedAt = new Date();
   }
 
-  await db
-    .update(auditArchiveJobs)
-    .set(updateData)
-    .where(eq(auditArchiveJobs.id, jobId));
+  await db.update(auditArchiveJobs).set(updateData).where(eq(auditArchiveJobs.id, jobId));
 }
 
 /**
@@ -581,17 +560,12 @@ async function updateJobStatus(
  */
 export async function getArchiveJob(
   jobId: string,
-  tenantId: string
+  tenantId: string,
 ): Promise<AuditArchiveJob | null> {
   const [job] = await db
     .select()
     .from(auditArchiveJobs)
-    .where(
-      and(
-        eq(auditArchiveJobs.id, jobId),
-        eq(auditArchiveJobs.tenantId, tenantId)
-      )
-    );
+    .where(and(eq(auditArchiveJobs.id, jobId), eq(auditArchiveJobs.tenantId, tenantId)));
 
   return job || null;
 }
@@ -607,7 +581,7 @@ export async function listArchiveJobs(
     status?: ('pending' | 'in_progress' | 'completed' | 'failed' | 'restored')[];
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: AuditArchiveJob[]; total: number }> {
   const conditions = [eq(auditArchiveJobs.tenantId, tenantId)];
 
@@ -649,7 +623,7 @@ export async function listArchiveJobs(
 export async function archiveOldAuditLogs(
   tenantId: string,
   archiveAfterDays: number = 90,
-  triggeredBy: string
+  triggeredBy: string,
 ): Promise<AuditLogArchive | null> {
   const endDate = new Date();
   endDate.setDate(endDate.getDate() - archiveAfterDays);
@@ -658,12 +632,7 @@ export async function archiveOldAuditLogs(
   const [oldest] = await db
     .select({ minDate: sql<Date>`MIN(${auditLogs.timestamp})` })
     .from(auditLogs)
-    .where(
-      and(
-        eq(auditLogs.tenantId, tenantId),
-        lt(auditLogs.timestamp, endDate)
-      )
-    );
+    .where(and(eq(auditLogs.tenantId, tenantId), lt(auditLogs.timestamp, endDate)));
 
   if (!oldest?.minDate) {
     return null; // No logs to archive
@@ -692,8 +661,8 @@ export async function getArchivesDueForDeletion(): Promise<AuditLogArchive[]> {
         eq(auditLogArchives.status, 'completed'),
         eq(auditLogArchives.legalHold, false),
         lt(auditLogArchives.retainUntil, now),
-        sql`${auditLogArchives.deletedAt} IS NULL`
-      )
+        sql`${auditLogArchives.deletedAt} IS NULL`,
+      ),
     );
 }
 
@@ -702,9 +671,7 @@ export async function getArchivesDueForDeletion(): Promise<AuditLogArchive[]> {
 /**
  * Get archival metrics
  */
-export async function getArchivalMetrics(
-  tenantId: string
-): Promise<{
+export async function getArchivalMetrics(tenantId: string): Promise<{
   totalArchives: number;
   totalRecordsArchived: number;
   totalStorageBytes: number;
@@ -718,10 +685,7 @@ export async function getArchivalMetrics(
     .select()
     .from(auditLogArchives)
     .where(
-      and(
-        eq(auditLogArchives.tenantId, tenantId),
-        sql`${auditLogArchives.deletedAt} IS NULL`
-      )
+      and(eq(auditLogArchives.tenantId, tenantId), sql`${auditLogArchives.deletedAt} IS NULL`),
     );
 
   let totalRecordsArchived = 0;
@@ -753,9 +717,8 @@ export async function getArchivalMetrics(
     totalArchives: archives.length,
     totalRecordsArchived,
     totalStorageBytes,
-    averageCompressionRatio: archives.length > 0
-      ? Math.round(totalCompressionRatio / archives.length)
-      : 0,
+    averageCompressionRatio:
+      archives.length > 0 ? Math.round(totalCompressionRatio / archives.length) : 0,
     archivesUnderLegalHold,
     archivesByStatus,
     oldestArchive,
@@ -774,7 +737,7 @@ export async function searchArchivedLogs(
     action?: string;
     userId?: string;
     resource?: string;
-  }
+  },
 ): Promise<AuditLogArchive[]> {
   const conditions = [
     eq(auditLogArchives.tenantId, tenantId),

@@ -206,3 +206,19 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   // No valid authentication found
   return res.status(401).json({ message: 'Unauthorized' });
 };
+
+/**
+ * Alias for isAuthenticated middleware
+ * This is the STANDARD auth middleware - import and use this instead of defining locally
+ *
+ * Usage:
+ *   import { requireAuth } from './replitAuth';
+ *   router.get('/api/resource', requireAuth, handler);
+ *
+ * For Supabase-only auth (stricter), use:
+ *   import { requireSupabaseAuth } from './middleware/supabase-auth';
+ *
+ * For routes requiring tenant context, use:
+ *   import { protectedRoute } from './middleware/supabase-auth';
+ */
+export const requireAuth = isAuthenticated;

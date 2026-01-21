@@ -21,16 +21,19 @@ We're excited to announce the launch of **Printyx's new Role-Based Reporting Sys
 ### Available Now
 
 **For Individual Contributors**:
+
 - My Sales Pipeline / My Service Calls
 - Personal activity and performance tracking
 - Customer satisfaction scores
 
 **For Managers**:
+
 - Team dashboards and performance comparisons
 - Location-wide metrics and forecasting
 - Coaching opportunities identification
 
 **For Directors & Executives**:
+
 - Multi-location and regional analysis
 - Executive dashboards with company-wide KPIs
 - Strategic planning and market analysis
@@ -53,6 +56,7 @@ We're excited to announce the launch of **Printyx's new Role-Based Reporting Sys
 ### Live Training Webinars
 
 Join us for role-specific training sessions:
+
 - **Individual Contributors**: Tuesday, Dec 3 @ 2 PM ET
 - **Managers**: Wednesday, Dec 4 @ 2 PM ET
 - **Directors & Executives**: Thursday, Dec 5 @ 10 AM ET
@@ -62,6 +66,7 @@ Join us for role-specific training sessions:
 ### We Want Your Feedback!
 
 This is just the beginning. We'll continue enhancing the reporting system based on your feedback. Share your thoughts:
+
 - 📝 **Quick Survey** (2 min): [Survey Link]
 - 💡 **Feature Requests**: Click "Suggest Feature" in Reports menu
 - 🐛 **Report Issues**: Use "Report Issue" button or email support
@@ -69,6 +74,7 @@ This is just the beginning. We'll continue enhancing the reporting system based 
 ### What's Next?
 
 Stay tuned for upcoming features:
+
 - Custom dashboard builder (Q1 2026)
 - Predictive analytics and AI insights (Q2 2026)
 - Advanced visualization options (Q2 2026)
@@ -81,7 +87,6 @@ The Printyx Team
 
 ---
 
-*P.S. Check out our blog post for a deep dive into the new reporting features: [Blog Link]*
+_P.S. Check out our blog post for a deep dive into the new reporting features: [Blog Link]_
 
 ---
-

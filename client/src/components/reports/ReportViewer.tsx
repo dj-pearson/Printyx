@@ -9,15 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -26,10 +26,10 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Download, 
-  Filter, 
-  RefreshCw, 
+import {
+  Download,
+  Filter,
+  RefreshCw,
   Calendar,
   BarChart3,
   PieChart,
@@ -39,7 +39,7 @@ import {
   ChevronRight,
   AlertCircle,
   Clock,
-  Users
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
@@ -88,37 +88,38 @@ export function ReportViewer({
   category,
   initialFilters = {},
   onDrillDown,
-  height = "500px",
+  height = '500px',
   showExport = true,
   showFilters = true,
   autoRefresh = false,
-  refreshInterval = 300 // 5 minutes default
+  refreshInterval = 300, // 5 minutes default
 }: ReportViewerProps) {
   const [filters, setFilters] = useState<FilterState>({
     page: 1,
     limit: 100,
     sortDirection: 'desc',
-    ...initialFilters
+    ...initialFilters,
   });
   const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Fetch report data
-  const { 
-    data: reportData, 
-    isLoading, 
-    error, 
+  const {
+    data: reportData,
+    isLoading,
+    error,
     refetch,
-    dataUpdatedAt 
+    dataUpdatedAt,
   } = useQuery<ReportData>({
     queryKey: ['report', reportId, filters],
-    queryFn: () => apiRequest(`/api/reporting/reports/${reportId}/data`, {
-      params: {
-        ...filters,
-        from_date: filters.dateRange?.from?.toISOString(),
-        to_date: filters.dateRange?.to?.toISOString()
-      }
-    }),
+    queryFn: () =>
+      apiRequest(`/api/reporting/reports/${reportId}/data`, {
+        params: {
+          ...filters,
+          from_date: filters.dateRange?.from?.toISOString(),
+          to_date: filters.dateRange?.to?.toISOString(),
+        },
+      }),
     refetchInterval: autoRefresh ? refreshInterval * 1000 : false,
     staleTime: 30000, // 30 seconds
   });
@@ -126,14 +127,14 @@ export function ReportViewer({
   // Auto-refresh indicator
   const nextRefresh = useMemo(() => {
     if (!autoRefresh || !dataUpdatedAt) return null;
-    return new Date(dataUpdatedAt + (refreshInterval * 1000));
+    return new Date(dataUpdatedAt + refreshInterval * 1000);
   }, [autoRefresh, dataUpdatedAt, refreshInterval]);
 
   const handleFilterChange = (key: string, value: any) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [key]: value,
-      page: 1 // Reset to first page when filtering
+      page: 1, // Reset to first page when filtering
     }));
   };
 
@@ -144,10 +145,10 @@ export function ReportViewer({
         body: {
           report_id: reportId,
           parameters: filters,
-          format
-        }
+          format,
+        },
       });
-      
+
       if (response.download_url) {
         window.open(response.download_url, '_blank');
       }
@@ -166,7 +167,7 @@ export function ReportViewer({
   };
 
   const toggleRowExpansion = (rowId: string) => {
-    setExpandedRows(prev => {
+    setExpandedRows((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(rowId)) {
         newSet.delete(rowId);
@@ -184,11 +185,7 @@ export function ReportViewer({
           <AlertCircle className="h-5 w-5" />
           <span>Failed to load report: {error.message}</span>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => refetch()} 
-          className="mt-4"
-        >
+        <Button variant="outline" onClick={() => refetch()} className="mt-4">
           <RefreshCw className="h-4 w-4 mr-2" />
           Retry
         </Button>
@@ -210,7 +207,7 @@ export function ReportViewer({
             </Badge>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {/* Auto-refresh indicator */}
           {autoRefresh && nextRefresh && (
@@ -219,7 +216,7 @@ export function ReportViewer({
               Next refresh: {nextRefresh.toLocaleTimeString()}
             </div>
           )}
-          
+
           {/* View mode toggle */}
           <Tabs value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
             <TabsList>
@@ -233,13 +230,8 @@ export function ReportViewer({
           </Tabs>
 
           {/* Refresh button */}
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
           </Button>
 
           {/* Export dropdown */}
@@ -275,8 +267,8 @@ export function ReportViewer({
             {/* Group By */}
             <div>
               <Label>Group By</Label>
-              <Select 
-                value={filters.groupBy} 
+              <Select
+                value={filters.groupBy}
                 onValueChange={(value) => handleFilterChange('groupBy', value)}
               >
                 <SelectTrigger>
@@ -295,8 +287,8 @@ export function ReportViewer({
             {/* Sort By */}
             <div>
               <Label>Sort By</Label>
-              <Select 
-                value={filters.sortBy} 
+              <Select
+                value={filters.sortBy}
                 onValueChange={(value) => handleFilterChange('sortBy', value)}
               >
                 <SelectTrigger>
@@ -313,8 +305,8 @@ export function ReportViewer({
             {/* Sort Direction */}
             <div>
               <Label>Direction</Label>
-              <Select 
-                value={filters.sortDirection} 
+              <Select
+                value={filters.sortDirection}
                 onValueChange={(value) => handleFilterChange('sortDirection', value)}
               >
                 <SelectTrigger>
@@ -343,7 +335,7 @@ export function ReportViewer({
           ) : (
             <Tabs value={viewMode} className="h-full">
               <TabsContent value="table" className="h-full">
-                <ReportTable 
+                <ReportTable
                   data={reportData?.data || []}
                   metadata={reportData?.metadata}
                   onDrillDown={handleDrillDown}
@@ -352,10 +344,7 @@ export function ReportViewer({
                 />
               </TabsContent>
               <TabsContent value="chart" className="h-full">
-                <ReportChart 
-                  data={reportData?.data || []}
-                  metadata={reportData?.metadata}
-                />
+                <ReportChart data={reportData?.data || []} metadata={reportData?.metadata} />
               </TabsContent>
             </Tabs>
           )}
@@ -374,9 +363,7 @@ export function ReportViewer({
               </Badge>
             )}
           </div>
-          <div>
-            Last updated: {new Date(reportData.metadata.data_freshness).toLocaleString()}
-          </div>
+          <div>Last updated: {new Date(reportData.metadata.data_freshness).toLocaleString()}</div>
         </div>
       )}
     </div>
@@ -392,18 +379,10 @@ interface ReportTableProps {
   onToggleRow: (rowId: string) => void;
 }
 
-function ReportTable({ 
-  data, 
-  metadata, 
-  onDrillDown, 
-  expandedRows, 
-  onToggleRow 
-}: ReportTableProps) {
+function ReportTable({ data, metadata, onDrillDown, expandedRows, onToggleRow }: ReportTableProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        No data available
-      </div>
+      <div className="flex items-center justify-center h-full text-gray-500">No data available</div>
     );
   }
 
@@ -418,7 +397,7 @@ function ReportTable({
             <TableHead className="w-8"></TableHead>
             {columns.map((column) => (
               <TableHead key={column} className="font-medium">
-                {column.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                {column.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
               </TableHead>
             ))}
           </TableRow>
@@ -427,7 +406,7 @@ function ReportTable({
           {data.map((row, index) => {
             const rowId = row.id || index.toString();
             const isExpanded = expandedRows.has(rowId);
-            
+
             return (
               <React.Fragment key={rowId}>
                 <TableRow className="hover:bg-gray-50">
@@ -494,9 +473,14 @@ interface ReportChartProps {
 }
 
 function ReportChart({ data, metadata }: ReportChartProps) {
-  const { LineChart, BarChart, PieChart, AreaChart } = require('@/components/charts/ChartComponents');
+  const {
+    LineChart,
+    BarChart,
+    PieChart,
+    AreaChart,
+  } = require('@/components/charts/ChartComponents');
   const { getThemeForCategory } = require('@/lib/brandTheme');
-  
+
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -525,7 +509,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           xDataKey="name"
           lines={[
             { dataKey: 'value', name: 'Value', color: theme.primary },
-            { dataKey: 'target', name: 'Target', color: theme.secondary, strokeDasharray: '5 5' }
+            { dataKey: 'target', name: 'Target', color: theme.secondary, strokeDasharray: '5 5' },
           ]}
           showGrid={true}
           showLegend={true}
@@ -533,7 +517,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
             if (typeof value === 'number' && value > 1000) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
-                currency: 'USD'
+                currency: 'USD',
               }).format(value);
             }
             return value?.toLocaleString();
@@ -549,7 +533,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           xDataKey="name"
           bars={[
             { dataKey: 'value', name: 'Value', color: theme.primary },
-            { dataKey: 'comparison', name: 'Previous Period', color: theme.secondary }
+            { dataKey: 'comparison', name: 'Previous Period', color: theme.secondary },
           ]}
           showGrid={true}
           showLegend={true}
@@ -557,7 +541,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
             if (typeof value === 'number' && value > 1000) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
-                currency: 'USD'
+                currency: 'USD',
               }).format(value);
             }
             return value?.toLocaleString();
@@ -590,7 +574,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           xDataKey="name"
           areas={[
             { dataKey: 'value', name: 'Value', color: theme.primary },
-            { dataKey: 'cumulative', name: 'Cumulative', color: theme.secondary }
+            { dataKey: 'cumulative', name: 'Cumulative', color: theme.secondary },
           ]}
           showGrid={true}
           showLegend={true}
@@ -598,7 +582,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
             if (typeof value === 'number' && value > 1000) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
-                currency: 'USD'
+                currency: 'USD',
               }).format(value);
             }
             return value?.toLocaleString();
@@ -623,25 +607,27 @@ function ReportChart({ data, metadata }: ReportChartProps) {
 // Helper function to detect appropriate chart type
 function detectChartType(data: any[]): string {
   if (!data || data.length === 0) return 'bar';
-  
+
   const firstItem = data[0];
   const keys = Object.keys(firstItem);
-  
+
   // Check for time-series data
-  const hasDateField = keys.some(key => 
-    key.toLowerCase().includes('date') || 
-    key.toLowerCase().includes('time') ||
-    key.toLowerCase().includes('month') ||
-    key.toLowerCase().includes('day')
+  const hasDateField = keys.some(
+    (key) =>
+      key.toLowerCase().includes('date') ||
+      key.toLowerCase().includes('time') ||
+      key.toLowerCase().includes('month') ||
+      key.toLowerCase().includes('day'),
   );
-  
+
   // Check for categorical data with percentages
-  const hasPercentageField = keys.some(key => 
-    key.toLowerCase().includes('percentage') ||
-    key.toLowerCase().includes('percent') ||
-    key.toLowerCase().includes('share')
+  const hasPercentageField = keys.some(
+    (key) =>
+      key.toLowerCase().includes('percentage') ||
+      key.toLowerCase().includes('percent') ||
+      key.toLowerCase().includes('share'),
   );
-  
+
   // Detect chart type based on data characteristics
   if (hasDateField && data.length > 5) {
     return 'line'; // Time series data
@@ -657,50 +643,53 @@ function detectChartType(data: any[]): string {
 // Helper function to format data for charts
 function formatDataForChart(data: any[], chartType: string): any[] {
   if (!data || data.length === 0) return [];
-  
+
   return data.map((item, index) => {
     const keys = Object.keys(item);
-    
+
     // Find the main value field
-    const valueField = keys.find(key => 
-      typeof item[key] === 'number' && 
-      !key.toLowerCase().includes('id') &&
-      !key.toLowerCase().includes('index')
-    ) || keys[1];
-    
+    const valueField =
+      keys.find(
+        (key) =>
+          typeof item[key] === 'number' &&
+          !key.toLowerCase().includes('id') &&
+          !key.toLowerCase().includes('index'),
+      ) || keys[1];
+
     // Find the name/label field
-    const nameField = keys.find(key => 
-      typeof item[key] === 'string' &&
-      !key.toLowerCase().includes('id')
-    ) || keys[0];
-    
+    const nameField =
+      keys.find((key) => typeof item[key] === 'string' && !key.toLowerCase().includes('id')) ||
+      keys[0];
+
     // Format the chart data point
     const formatted: any = {
       name: item[nameField] || `Item ${index + 1}`,
-      value: item[valueField] || 0
+      value: item[valueField] || 0,
     };
-    
+
     // Add additional fields based on chart type
     if (chartType === 'line' || chartType === 'bar') {
       // Look for comparison values
-      const comparisonField = keys.find(key => 
-        key.toLowerCase().includes('previous') ||
-        key.toLowerCase().includes('target') ||
-        key.toLowerCase().includes('goal')
+      const comparisonField = keys.find(
+        (key) =>
+          key.toLowerCase().includes('previous') ||
+          key.toLowerCase().includes('target') ||
+          key.toLowerCase().includes('goal'),
       );
-      
+
       if (comparisonField) {
         formatted.comparison = item[comparisonField];
         formatted.target = item[comparisonField];
       }
     }
-    
+
     if (chartType === 'area') {
       // Calculate cumulative values
-      formatted.cumulative = data.slice(0, index + 1)
+      formatted.cumulative = data
+        .slice(0, index + 1)
         .reduce((sum, d) => sum + (d[valueField] || 0), 0);
     }
-    
+
     return formatted;
   });
 }

@@ -19,10 +19,11 @@ postgresql://postgres:YOUR_PASSWORD@YOUR_HOST:5432/postgres
 Your Supabase is likely hosted at your own infrastructure. Check:
 
 1. **Docker Compose file** (if using Docker):
+
    ```bash
    # Look for database settings
    cat docker-compose.yml
-   
+
    # Look for:
    # - POSTGRES_HOST
    # - POSTGRES_PORT (usually 5432)
@@ -98,21 +99,25 @@ If successful, you'll see:
 ## 📋 Common Connection String Formats
 
 ### Self-Hosted (Docker)
+
 ```
 postgresql://postgres:your_password@localhost:5432/postgres
 ```
 
 ### Self-Hosted (Remote)
+
 ```
 postgresql://postgres:your_password@db.printyx.net:5432/postgres
 ```
 
 ### Supabase Cloud (if you were using it)
+
 ```
 postgresql://postgres.xxxxxxxxxxxx:password@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 ```
 
 ### With Supavisor Pooler (connection pooling)
+
 ```
 postgresql://postgres.xxxxxxxxxxxx:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
 ```
@@ -124,10 +129,11 @@ postgresql://postgres.xxxxxxxxxxxx:password@aws-0-us-east-1.pooler.supabase.com:
 ### If You Don't Know Your Password:
 
 1. **Check deployment files**:
+
    ```bash
    # Docker Compose
    cat docker-compose.yml | grep POSTGRES_PASSWORD
-   
+
    # Environment file
    cat .env | grep POSTGRES_PASSWORD
    ```
@@ -137,10 +143,11 @@ postgresql://postgres.xxxxxxxxxxxx:password@aws-0-us-east-1.pooler.supabase.com:
    - Look for `POSTGRES_PASSWORD`
 
 3. **Reset it** (if you have access):
+
    ```bash
    # Connect to your Supabase container
    docker exec -it supabase-db psql -U postgres
-   
+
    # Reset password
    ALTER USER postgres PASSWORD 'new_password_here';
    ```

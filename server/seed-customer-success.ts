@@ -1,30 +1,27 @@
-import { db } from "./db";
+import { db } from './db';
 import {
   customerHealthScores,
   churnPredictions,
   successInterventions,
   customerJourneys,
   renewalOpportunities,
-} from "@shared/customer-success-schema";
-import { businessRecords, contracts } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+} from '@shared/customer-success-schema';
+import { businessRecords, contracts } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
 
 export async function seedCustomerSuccessData(tenantId: string) {
-  console.log("Seeding customer success data...");
+  console.log('Seeding customer success data...');
 
   try {
     // Get existing business records (customers)
     const customers = await db
       .select()
       .from(businessRecords)
-      .where(and(
-        eq(businessRecords.tenantId, tenantId),
-        eq(businessRecords.status, 'active')
-      ))
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.status, 'active')))
       .limit(10);
 
     if (customers.length === 0) {
-      console.log("No customers found for tenant, skipping customer success seeding");
+      console.log('No customers found for tenant, skipping customer success seeding');
       return;
     }
 
@@ -76,9 +73,18 @@ export async function seedCustomerSuccessData(tenantId: string) {
         overdueInvoicesCount: 2,
         npsScore: 2,
         csat: '2.5',
-        riskFactors: ['Payment delays', 'Multiple open tickets', 'Usage declining', 'No recent engagement'],
+        riskFactors: [
+          'Payment delays',
+          'Multiple open tickets',
+          'Usage declining',
+          'No recent engagement',
+        ],
         strengthFactors: ['Long-term customer'],
-        recommendations: ['Immediate CSM outreach', 'Address open tickets', 'Review contract terms'],
+        recommendations: [
+          'Immediate CSM outreach',
+          'Address open tickets',
+          'Review contract terms',
+        ],
         calculatedAt: new Date(),
         calculatedBy: 'system',
         nextCalculationDue: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
@@ -99,9 +105,18 @@ export async function seedCustomerSuccessData(tenantId: string) {
         overdueInvoicesCount: 4,
         npsScore: -5,
         csat: '1.8',
-        riskFactors: ['Critical payment issues', 'No service in 4 months', 'Negative NPS', 'Multiple unresolved tickets'],
+        riskFactors: [
+          'Critical payment issues',
+          'No service in 4 months',
+          'Negative NPS',
+          'Multiple unresolved tickets',
+        ],
         strengthFactors: [],
-        recommendations: ['Executive escalation', 'Immediate intervention', 'Account review meeting'],
+        recommendations: [
+          'Executive escalation',
+          'Immediate intervention',
+          'Account review meeting',
+        ],
         calculatedAt: new Date(),
         calculatedBy: 'system',
         nextCalculationDue: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // 1 day
@@ -123,8 +138,17 @@ export async function seedCustomerSuccessData(tenantId: string) {
         npsScore: 10,
         csat: '4.8',
         riskFactors: [],
-        strengthFactors: ['Perfect payment history', 'High engagement', 'Excellent satisfaction', 'Active equipment use'],
-        recommendations: ['Explore upsell opportunities', 'Request referral', 'Case study candidate'],
+        strengthFactors: [
+          'Perfect payment history',
+          'High engagement',
+          'Excellent satisfaction',
+          'Active equipment use',
+        ],
+        recommendations: [
+          'Explore upsell opportunities',
+          'Request referral',
+          'Case study candidate',
+        ],
         calculatedAt: new Date(),
         calculatedBy: 'system',
         nextCalculationDue: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
@@ -171,12 +195,18 @@ export async function seedCustomerSuccessData(tenantId: string) {
         confidenceLevel: '0.8500',
         predictedChurnDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
         daysUntilChurn: 60,
-        contractEndDate: existingContracts[0]?.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        contractEndDate:
+          existingContracts[0]?.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         primaryRiskFactors: ['Payment delays', 'Declining usage', 'Low satisfaction scores'],
         secondaryRiskFactors: ['Multiple support tickets', 'Long time since last service'],
         modelVersion: 'v2.1',
         modelType: 'ml_random_forest',
-        featureImportance: JSON.stringify({ payment_score: 0.35, satisfaction: 0.28, usage: 0.22, support: 0.15 }),
+        featureImportance: JSON.stringify({
+          payment_score: 0.35,
+          satisfaction: 0.28,
+          usage: 0.22,
+          support: 0.15,
+        }),
         estimatedMrr: '2500.00',
         estimatedLtv: '30000.00',
         retentionCost: '500.00',
@@ -193,12 +223,18 @@ export async function seedCustomerSuccessData(tenantId: string) {
         confidenceLevel: '0.9100',
         predictedChurnDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         daysUntilChurn: 30,
-        contractEndDate: existingContracts[1]?.endDate || new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+        contractEndDate:
+          existingContracts[1]?.endDate || new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
         primaryRiskFactors: ['Critical payment issues', 'No recent service', 'Negative NPS'],
         secondaryRiskFactors: ['Multiple unresolved tickets', 'Minimal equipment usage'],
         modelVersion: 'v2.1',
         modelType: 'ensemble',
-        featureImportance: JSON.stringify({ payment_score: 0.42, nps: 0.30, tickets: 0.18, usage: 0.10 }),
+        featureImportance: JSON.stringify({
+          payment_score: 0.42,
+          nps: 0.3,
+          tickets: 0.18,
+          usage: 0.1,
+        }),
         estimatedMrr: '3200.00',
         estimatedLtv: '38400.00',
         retentionCost: '800.00',
@@ -215,12 +251,18 @@ export async function seedCustomerSuccessData(tenantId: string) {
         confidenceLevel: '0.8000',
         predictedChurnDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
         daysUntilChurn: 365,
-        contractEndDate: existingContracts[2]?.endDate || new Date(Date.now() + 400 * 24 * 60 * 60 * 1000),
+        contractEndDate:
+          existingContracts[2]?.endDate || new Date(Date.now() + 400 * 24 * 60 * 60 * 1000),
         primaryRiskFactors: ['Slight engagement decline'],
         secondaryRiskFactors: [],
         modelVersion: 'v2.1',
         modelType: 'ml_logistic',
-        featureImportance: JSON.stringify({ engagement: 0.40, usage: 0.35, payment: 0.15, satisfaction: 0.10 }),
+        featureImportance: JSON.stringify({
+          engagement: 0.4,
+          usage: 0.35,
+          payment: 0.15,
+          satisfaction: 0.1,
+        }),
         estimatedMrr: '1800.00',
         estimatedLtv: '21600.00',
         retentionCost: '200.00',
@@ -237,12 +279,18 @@ export async function seedCustomerSuccessData(tenantId: string) {
         confidenceLevel: '0.8800',
         predictedChurnDate: new Date(Date.now() + 730 * 24 * 60 * 60 * 1000), // 2 years
         daysUntilChurn: 730,
-        contractEndDate: existingContracts[3]?.endDate || new Date(Date.now() + 750 * 24 * 60 * 60 * 1000),
+        contractEndDate:
+          existingContracts[3]?.endDate || new Date(Date.now() + 750 * 24 * 60 * 60 * 1000),
         primaryRiskFactors: [],
         secondaryRiskFactors: [],
         modelVersion: 'v2.1',
         modelType: 'ml_random_forest',
-        featureImportance: JSON.stringify({ satisfaction: 0.30, payment: 0.30, usage: 0.25, engagement: 0.15 }),
+        featureImportance: JSON.stringify({
+          satisfaction: 0.3,
+          payment: 0.3,
+          usage: 0.25,
+          engagement: 0.15,
+        }),
         estimatedMrr: '2200.00',
         estimatedLtv: '52800.00',
         retentionCost: '100.00',
@@ -270,8 +318,13 @@ export async function seedCustomerSuccessData(tenantId: string) {
         priority: 'high',
         status: 'pending',
         title: 'High Churn Risk - Immediate Outreach Required',
-        description: 'Customer showing strong churn signals. Schedule urgent call to understand concerns.',
-        actionItems: ['Schedule call within 48 hours', 'Review account history', 'Prepare retention offer'],
+        description:
+          'Customer showing strong churn signals. Schedule urgent call to understand concerns.',
+        actionItems: [
+          'Schedule call within 48 hours',
+          'Review account history',
+          'Prepare retention offer',
+        ],
         dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days
         automatedAction: true,
         healthScoreBefore: 45,
@@ -286,7 +339,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         scheduledDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
         title: 'Critical Account - Executive Review',
         description: 'Account health critically low. Executive intervention needed immediately.',
-        actionItems: ['Executive call scheduled', 'Account audit complete', 'Prepare recovery plan'],
+        actionItems: [
+          'Executive call scheduled',
+          'Account audit complete',
+          'Prepare recovery plan',
+        ],
         dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
         automatedAction: false,
         healthScoreBefore: 25,
@@ -399,7 +456,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         engagementTrend: 'decreasing',
         nextExpectedStage: 'churned',
         predictedStageChangeDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
-        recommendedActions: ['Immediate CSM intervention', 'Review service quality', 'Address payment issues'],
+        recommendedActions: [
+          'Immediate CSM intervention',
+          'Review service quality',
+          'Address payment issues',
+        ],
         journeyHealth: 'off_track',
         blockers: ['Payment delays', 'Unresolved support tickets'],
       },
@@ -425,7 +486,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         engagementTrend: 'decreasing',
         nextExpectedStage: 'churned',
         predictedStageChangeDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        recommendedActions: ['Executive escalation', 'Account recovery plan', 'Service improvement'],
+        recommendedActions: [
+          'Executive escalation',
+          'Account recovery plan',
+          'Service improvement',
+        ],
         journeyHealth: 'off_track',
         blockers: ['Critical payment issues', 'Multiple service failures'],
       },
@@ -451,7 +516,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         engagementTrend: 'increasing',
         nextExpectedStage: 'maturity',
         predictedStageChangeDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-        recommendedActions: ['Explore upsell opportunities', 'Request case study', 'Ask for referrals'],
+        recommendedActions: [
+          'Explore upsell opportunities',
+          'Request case study',
+          'Ask for referrals',
+        ],
         journeyHealth: 'on_track',
         blockers: [],
       },
@@ -476,7 +545,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         engagementTrend: 'stable',
         nextExpectedStage: 'maturity',
         predictedStageChangeDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-        recommendedActions: ['Finalize renewal terms', 'Address any concerns', 'Schedule renewal meeting'],
+        recommendedActions: [
+          'Finalize renewal terms',
+          'Address any concerns',
+          'Schedule renewal meeting',
+        ],
         journeyHealth: 'needs_attention',
         blockers: ['Contract terms under review'],
       },
@@ -544,7 +617,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         riskFactors: ['Low health score', 'Payment issues', 'Declining usage'],
         strengthFactors: ['Long relationship'],
         contactFrequency: 'weekly',
-        actionPlan: ['Address payment issues', 'Resolve support tickets', 'Negotiate favorable terms'],
+        actionPlan: [
+          'Address payment issues',
+          'Resolve support tickets',
+          'Negotiate favorable terms',
+        ],
         internalNotes: 'High risk renewal - needs executive attention',
         competitorThreats: ['Competitor A showing interest'],
       },
@@ -599,7 +676,12 @@ export async function seedCustomerSuccessData(tenantId: string) {
         estimatedExpansionValue: '15600.00',
         renewalRisk: 'very_low',
         riskFactors: [],
-        strengthFactors: ['Excellent health', 'High satisfaction', 'Growth trajectory', 'Strong champion'],
+        strengthFactors: [
+          'Excellent health',
+          'High satisfaction',
+          'Growth trajectory',
+          'Strong champion',
+        ],
         contactFrequency: 'monthly',
         actionPlan: ['Present expansion proposal', 'Demo new features', 'Prepare ROI analysis'],
         internalNotes: 'Ideal expansion candidate - high success probability',
@@ -640,9 +722,9 @@ export async function seedCustomerSuccessData(tenantId: string) {
     }
     console.log(`✅ Seeded ${renewals.length} renewal opportunities`);
 
-    console.log("✅ Customer success data seeding completed successfully!");
+    console.log('✅ Customer success data seeding completed successfully!');
   } catch (error) {
-    console.error("Error seeding customer success data:", error);
+    console.error('Error seeding customer success data:', error);
     throw error;
   }
 }

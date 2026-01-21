@@ -3,16 +3,16 @@
  */
 
 // Tab switching
-document.querySelectorAll('.tab').forEach(tab => {
+document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     const tabName = tab.dataset.tab;
 
     // Update active tab
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
     tab.classList.add('active');
 
     // Update active content
-    document.querySelectorAll('.tab-content').forEach(content => {
+    document.querySelectorAll('.tab-content').forEach((content) => {
       content.classList.remove('active');
     });
     document.getElementById(`${tabName}-tab`).classList.add('active');
@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (settings.authToken) document.getElementById('authToken').value = settings.authToken;
   if (settings.tenantId) document.getElementById('tenantId').value = settings.tenantId;
   if (settings.userId) document.getElementById('userId').value = settings.userId;
-  if (settings.defaultCategoryId) document.getElementById('defaultCategoryId').value = settings.defaultCategoryId;
+  if (settings.defaultCategoryId)
+    document.getElementById('defaultCategoryId').value = settings.defaultCategoryId;
 
   // Load categories
   await loadCategories(settings);
@@ -91,7 +92,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     const title = document.getElementById('title').value;
     const content = document.getElementById('content').value;
     const categoryId = document.getElementById('category').value;
-    const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(Boolean);
+    const tags = document
+      .getElementById('tags')
+      .value.split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
 
     if (!title || !content) {
       showStatus('❌ Title and content are required', 'error');
@@ -170,7 +175,7 @@ async function loadCategories(settings) {
 
     const response = await fetch(`${apiUrl}/knowledge-base/categories`, {
       headers: {
-        'Authorization': `Bearer ${settings.authToken}`,
+        Authorization: `Bearer ${settings.authToken}`,
         'X-Tenant-ID': settings.tenantId,
       },
     });
@@ -179,7 +184,7 @@ async function loadCategories(settings) {
       const categories = await response.json();
       const select = document.getElementById('category');
 
-      categories.forEach(category => {
+      categories.forEach((category) => {
         const option = document.createElement('option');
         option.value = category.id;
         option.textContent = category.name;

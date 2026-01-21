@@ -24,7 +24,12 @@ interface TeamPipelineViewProps {
   metrics?: any;
 }
 
-export default function TeamPipelineView({ teamPipeline, individualPipelines, summary, metrics }: TeamPipelineViewProps) {
+export default function TeamPipelineView({
+  teamPipeline,
+  individualPipelines,
+  summary,
+  metrics,
+}: TeamPipelineViewProps) {
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
@@ -43,25 +48,33 @@ export default function TeamPipelineView({ teamPipeline, individualPipelines, su
       {summary && (
         <div className="grid grid-cols-4 gap-4">
           <div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <div className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">Total Value</div>
+            <div className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+              Total Value
+            </div>
             <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
               {formatCurrency(summary.totalTeamValue)}
             </div>
           </div>
           <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-            <div className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">Total Deals</div>
+            <div className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+              Total Deals
+            </div>
             <div className="text-2xl font-bold text-green-700 dark:text-green-300">
               {summary.totalTeamDeals}
             </div>
           </div>
           <div className="p-4 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <div className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-1">Avg Deal</div>
+            <div className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-1">
+              Avg Deal
+            </div>
             <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
               {formatCurrency(summary.averageDealSize)}
             </div>
           </div>
           <div className="p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
-            <div className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-1">Conversion</div>
+            <div className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-1">
+              Conversion
+            </div>
             <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
               {summary.teamConversionRate?.toFixed(0)}%
             </div>

@@ -34,9 +34,14 @@ interface KPIWidgetProps {
   size?: 'small' | 'medium' | 'large';
 }
 
-const formatValue = (value: string | number, format?: string, suffix?: string, prefix?: string): string => {
+const formatValue = (
+  value: string | number,
+  format?: string,
+  suffix?: string,
+  prefix?: string,
+): string => {
   if (typeof value === 'string') return value;
-  
+
   switch (format) {
     case 'currency':
       return new Intl.NumberFormat('en-US', {
@@ -45,13 +50,13 @@ const formatValue = (value: string | number, format?: string, suffix?: string, p
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }).format(value);
-      
+
     case 'percentage':
       return `${value.toFixed(1)}%`;
-      
+
     case 'decimal':
       return value.toFixed(2);
-      
+
     default:
       return value.toLocaleString();
   }
@@ -90,21 +95,21 @@ const getSizeClasses = (size?: string) => {
         card: 'p-3',
         title: 'text-sm font-medium',
         value: 'text-lg font-bold',
-        description: 'text-xs'
+        description: 'text-xs',
       };
     case 'large':
       return {
         card: 'p-6',
         title: 'text-lg font-semibold',
         value: 'text-3xl font-bold',
-        description: 'text-base'
+        description: 'text-base',
       };
     default: // medium
       return {
         card: 'p-4',
         title: 'text-base font-medium',
         value: 'text-2xl font-bold',
-        description: 'text-sm'
+        description: 'text-sm',
       };
   }
 };
@@ -122,7 +127,7 @@ export function KPIWidget({
   drillDownPath,
   performanceLevel,
   description,
-  size = 'medium'
+  size = 'medium',
 }: KPIWidgetProps) {
   const sizeClasses = getSizeClasses(size);
   const performanceColor = getPerformanceColor(performanceLevel);
@@ -139,7 +144,7 @@ export function KPIWidget({
 
   if (isLoading) {
     return (
-      <Card className={cn("animate-pulse", sizeClasses.card)}>
+      <Card className={cn('animate-pulse', sizeClasses.card)}>
         <CardHeader className="pb-2">
           <div className="h-4 bg-gray-200 rounded w-3/4"></div>
         </CardHeader>
@@ -152,47 +157,38 @@ export function KPIWidget({
   }
 
   return (
-    <Card 
+    <Card
       className={cn(
-        "transition-all duration-200",
+        'transition-all duration-200',
         sizeClasses.card,
         performanceLevel && `border-2 ${performanceColor}`,
-        isClickable && "hover:shadow-md hover:scale-[1.02] cursor-pointer"
+        isClickable && 'hover:shadow-md hover:scale-[1.02] cursor-pointer',
       )}
       onClick={isClickable ? handleClick : undefined}
     >
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className={cn(sizeClasses.title, "text-gray-700")}>
-            {title}
-          </CardTitle>
+          <CardTitle className={cn(sizeClasses.title, 'text-gray-700')}>{title}</CardTitle>
           {performanceLevel && (
-            <Badge 
-              variant="outline" 
-              className={cn("text-xs", performanceColor)}
-            >
+            <Badge variant="outline" className={cn('text-xs', performanceColor)}>
               {performanceLevel}
             </Badge>
           )}
         </div>
         {description && (
-          <p className={cn(sizeClasses.description, "text-gray-500 mt-1")}>
-            {description}
-          </p>
+          <p className={cn(sizeClasses.description, 'text-gray-500 mt-1')}>{description}</p>
         )}
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-2">
           {/* Main Value */}
           <div className="flex items-baseline space-x-2">
-            <span className={cn(sizeClasses.value, "text-gray-900")}>
+            <span className={cn(sizeClasses.value, 'text-gray-900')}>
               {formatValue(value, format)}
             </span>
             {target && (
-              <span className="text-sm text-gray-500">
-                / {formatValue(target, format)}
-              </span>
+              <span className="text-sm text-gray-500">/ {formatValue(target, format)}</span>
             )}
           </div>
 
@@ -201,11 +197,14 @@ export function KPIWidget({
             {trend && (
               <div className="flex items-center space-x-1">
                 {getTrendIcon(trend.direction)}
-                <span 
+                <span
                   className={cn(
-                    "text-xs font-medium",
-                    trend.direction === 'up' ? 'text-green-600' :
-                    trend.direction === 'down' ? 'text-red-600' : 'text-gray-500'
+                    'text-xs font-medium',
+                    trend.direction === 'up'
+                      ? 'text-green-600'
+                      : trend.direction === 'down'
+                        ? 'text-red-600'
+                        : 'text-gray-500',
                   )}
                 >
                   {Math.abs(trend.percentage).toFixed(1)}%
@@ -228,16 +227,21 @@ export function KPIWidget({
           {target && typeof value === 'number' && typeof target === 'number' && (
             <div className="w-full">
               <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
+                <div
                   className={cn(
-                    "h-1.5 rounded-full transition-all duration-300",
-                    performanceLevel === 'excellent' ? 'bg-green-500' :
-                    performanceLevel === 'good' ? 'bg-blue-500' :
-                    performanceLevel === 'warning' ? 'bg-yellow-500' :
-                    performanceLevel === 'critical' ? 'bg-red-500' : 'bg-gray-400'
+                    'h-1.5 rounded-full transition-all duration-300',
+                    performanceLevel === 'excellent'
+                      ? 'bg-green-500'
+                      : performanceLevel === 'good'
+                        ? 'bg-blue-500'
+                        : performanceLevel === 'warning'
+                          ? 'bg-yellow-500'
+                          : performanceLevel === 'critical'
+                            ? 'bg-red-500'
+                            : 'bg-gray-400',
                   )}
-                  style={{ 
-                    width: `${Math.min((value / target) * 100, 100)}%` 
+                  style={{
+                    width: `${Math.min((value / target) * 100, 100)}%`,
                   }}
                 />
               </div>
@@ -261,7 +265,7 @@ const formatLastUpdated = (timestamp: string): string => {
   const date = new Date(timestamp);
   const now = new Date();
   const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-  
+
   if (diffInMinutes < 1) return 'Just now';
   if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
   if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
@@ -276,22 +280,17 @@ interface KPIGridProps {
   emptyMessage?: string;
 }
 
-export function KPIGrid({ 
-  kpis, 
-  columns = 4, 
-  isLoading = false, 
-  emptyMessage = "No KPIs available" 
+export function KPIGrid({
+  kpis,
+  columns = 4,
+  isLoading = false,
+  emptyMessage = 'No KPIs available',
 }: KPIGridProps) {
   if (isLoading) {
     return (
       <div className={`grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns}`}>
         {Array.from({ length: 4 }).map((_, index) => (
-          <KPIWidget
-            key={index}
-            title=""
-            value=""
-            isLoading={true}
-          />
+          <KPIWidget key={index} title="" value="" isLoading={true} />
         ))}
       </div>
     );
@@ -308,10 +307,7 @@ export function KPIGrid({
   return (
     <div className={`grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns}`}>
       {kpis.map((kpi) => (
-        <KPIWidget
-          key={kpi.id}
-          {...kpi}
-        />
+        <KPIWidget key={kpi.id} {...kpi} />
       ))}
     </div>
   );

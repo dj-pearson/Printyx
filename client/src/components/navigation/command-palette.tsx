@@ -1,5 +1,5 @@
-import * as React from "react";
-import { useLocation } from "wouter";
+import * as React from 'react';
+import { useLocation } from 'wouter';
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,7 +8,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Building,
   DollarSign,
@@ -29,13 +29,13 @@ import {
   UserPlus,
   CheckSquare,
   type LucideIcon,
-} from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
+} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
 
 interface SearchResult {
   id: string;
-  type: "customer" | "lead" | "deal" | "activity" | "quote" | "page" | "action";
+  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote' | 'page' | 'action';
   title: string;
   subtitle?: string;
   path?: string;
@@ -56,165 +56,165 @@ interface CommandPaletteProps {
 // Quick action definitions
 const QUICK_ACTIONS: SearchResult[] = [
   {
-    id: "new-lead",
-    type: "action",
-    title: "New Lead",
-    subtitle: "Create a new lead",
+    id: 'new-lead',
+    type: 'action',
+    title: 'New Lead',
+    subtitle: 'Create a new lead',
     icon: UserPlus,
-    path: "/business-records?action=create&type=lead",
+    path: '/business-records?action=create&type=lead',
   },
   {
-    id: "new-customer",
-    type: "action",
-    title: "New Customer",
-    subtitle: "Create a new customer",
+    id: 'new-customer',
+    type: 'action',
+    title: 'New Customer',
+    subtitle: 'Create a new customer',
     icon: Building,
-    path: "/business-records?action=create&type=customer",
+    path: '/business-records?action=create&type=customer',
   },
   {
-    id: "new-deal",
-    type: "action",
-    title: "New Deal",
-    subtitle: "Create a new deal",
+    id: 'new-deal',
+    type: 'action',
+    title: 'New Deal',
+    subtitle: 'Create a new deal',
     icon: DollarSign,
-    path: "/deals?action=create",
+    path: '/deals?action=create',
   },
   {
-    id: "log-call",
-    type: "action",
-    title: "Log Call",
-    subtitle: "Record a phone call",
+    id: 'log-call',
+    type: 'action',
+    title: 'Log Call',
+    subtitle: 'Record a phone call',
     icon: Phone,
-    path: "/activities?action=create&type=call",
+    path: '/activities?action=create&type=call',
   },
   {
-    id: "send-email",
-    type: "action",
-    title: "Send Email",
-    subtitle: "Compose an email",
+    id: 'send-email',
+    type: 'action',
+    title: 'Send Email',
+    subtitle: 'Compose an email',
     icon: Mail,
-    path: "/activities?action=create&type=email",
+    path: '/activities?action=create&type=email',
   },
   {
-    id: "schedule-meeting",
-    type: "action",
-    title: "Schedule Meeting",
-    subtitle: "Create a new meeting",
+    id: 'schedule-meeting',
+    type: 'action',
+    title: 'Schedule Meeting',
+    subtitle: 'Create a new meeting',
     icon: Calendar,
-    path: "/activities?action=create&type=meeting",
+    path: '/activities?action=create&type=meeting',
   },
   {
-    id: "new-quote",
-    type: "action",
-    title: "New Quote",
-    subtitle: "Create a quote",
+    id: 'new-quote',
+    type: 'action',
+    title: 'New Quote',
+    subtitle: 'Create a quote',
     icon: FileText,
-    path: "/quotes?action=create",
+    path: '/quotes?action=create',
   },
 ];
 
 // Page navigation definitions
 const PAGE_NAVIGATION: SearchResult[] = [
   {
-    id: "dashboard",
-    type: "page",
-    title: "Dashboard",
-    subtitle: "Go to dashboard",
+    id: 'dashboard',
+    type: 'page',
+    title: 'Dashboard',
+    subtitle: 'Go to dashboard',
     icon: BarChart3,
-    path: "/dashboard",
+    path: '/dashboard',
   },
   {
-    id: "customers",
-    type: "page",
-    title: "Customers",
-    subtitle: "View all customers",
+    id: 'customers',
+    type: 'page',
+    title: 'Customers',
+    subtitle: 'View all customers',
     icon: Users,
-    path: "/customers",
+    path: '/customers',
   },
   {
-    id: "leads",
-    type: "page",
-    title: "Leads",
-    subtitle: "Manage leads",
+    id: 'leads',
+    type: 'page',
+    title: 'Leads',
+    subtitle: 'Manage leads',
     icon: Target,
-    path: "/leads-management",
+    path: '/leads-management',
   },
   {
-    id: "deals",
-    type: "page",
-    title: "Deals & Pipeline",
-    subtitle: "View sales pipeline",
+    id: 'deals',
+    type: 'page',
+    title: 'Deals & Pipeline',
+    subtitle: 'View sales pipeline',
     icon: TrendingUp,
-    path: "/deals",
+    path: '/deals',
   },
   {
-    id: "activities",
-    type: "page",
-    title: "Activities",
-    subtitle: "View all activities",
+    id: 'activities',
+    type: 'page',
+    title: 'Activities',
+    subtitle: 'View all activities',
     icon: CheckSquare,
-    path: "/activities",
+    path: '/activities',
   },
   {
-    id: "quotes",
-    type: "page",
-    title: "Quotes",
-    subtitle: "Manage quotes",
+    id: 'quotes',
+    type: 'page',
+    title: 'Quotes',
+    subtitle: 'Manage quotes',
     icon: FileText,
-    path: "/quotes",
+    path: '/quotes',
   },
   {
-    id: "reports",
-    type: "page",
-    title: "Reports",
-    subtitle: "View reports",
+    id: 'reports',
+    type: 'page',
+    title: 'Reports',
+    subtitle: 'View reports',
     icon: BarChart3,
-    path: "/reports",
+    path: '/reports',
   },
   {
-    id: "inventory",
-    type: "page",
-    title: "Inventory",
-    subtitle: "Manage inventory",
+    id: 'inventory',
+    type: 'page',
+    title: 'Inventory',
+    subtitle: 'Manage inventory',
     icon: Package,
-    path: "/inventory",
+    path: '/inventory',
   },
   {
-    id: "crm-goals",
-    type: "page",
-    title: "CRM Goals",
-    subtitle: "Track sales goals",
+    id: 'crm-goals',
+    type: 'page',
+    title: 'CRM Goals',
+    subtitle: 'Track sales goals',
     icon: Target,
-    path: "/crm-goals",
+    path: '/crm-goals',
   },
   {
-    id: "settings",
-    type: "page",
-    title: "Settings",
-    subtitle: "Application settings",
+    id: 'settings',
+    type: 'page',
+    title: 'Settings',
+    subtitle: 'Application settings',
     icon: Settings,
-    path: "/settings",
+    path: '/settings',
   },
 ];
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [, navigate] = useLocation();
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   // Fetch search results from API when query changes
   const { data: searchResults, isLoading } = useQuery({
-    queryKey: ["/api/universal-search", searchQuery],
+    queryKey: ['/api/universal-search', searchQuery],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) {
         return [];
       }
 
       const response = await fetch(
-        `/api/universal-search?q=${encodeURIComponent(searchQuery)}&limit=20`
+        `/api/universal-search?q=${encodeURIComponent(searchQuery)}&limit=20`,
       );
 
       if (!response.ok) {
-        throw new Error("Search failed");
+        throw new Error('Search failed');
       }
 
       return response.json() as Promise<SearchResult[]>;
@@ -226,7 +226,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   // Get recent items from localStorage
   const [recentItems, setRecentItems] = React.useState<SearchResult[]>(() => {
     try {
-      const stored = localStorage.getItem("commandPalette:recent");
+      const stored = localStorage.getItem('commandPalette:recent');
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -236,13 +236,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const handleSelect = React.useCallback(
     (result: SearchResult) => {
       // Add to recent items
-      const newRecent = [
-        result,
-        ...recentItems.filter((item) => item.id !== result.id),
-      ].slice(0, 5);
+      const newRecent = [result, ...recentItems.filter((item) => item.id !== result.id)].slice(
+        0,
+        5,
+      );
 
       setRecentItems(newRecent);
-      localStorage.setItem("commandPalette:recent", JSON.stringify(newRecent));
+      localStorage.setItem('commandPalette:recent', JSON.stringify(newRecent));
 
       // Execute action or navigate
       if (result.action) {
@@ -253,28 +253,28 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
       // Close the palette
       onOpenChange(false);
-      setSearchQuery("");
+      setSearchQuery('');
     },
-    [onOpenChange, recentItems]
+    [onOpenChange, recentItems],
   );
 
   const getIcon = (result: SearchResult): LucideIcon => {
     if (result.icon) return result.icon;
 
     switch (result.type) {
-      case "customer":
+      case 'customer':
         return Building;
-      case "lead":
+      case 'lead':
         return UserPlus;
-      case "deal":
+      case 'deal':
         return DollarSign;
-      case "activity":
+      case 'activity':
         return CheckSquare;
-      case "quote":
+      case 'quote':
         return FileText;
-      case "page":
+      case 'page':
         return BarChart3;
-      case "action":
+      case 'action':
         return Plus;
       default:
         return Search;
@@ -283,22 +283,22 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
-      case "active":
-      case "won":
-      case "completed":
-        return "bg-green-500/10 text-green-700 dark:text-green-400";
-      case "lead":
-      case "prospect":
-      case "open":
-        return "bg-blue-500/10 text-blue-700 dark:text-blue-400";
-      case "proposal":
-      case "negotiation":
-        return "bg-purple-500/10 text-purple-700 dark:text-purple-400";
-      case "lost":
-      case "inactive":
-        return "bg-gray-500/10 text-gray-700 dark:text-gray-400";
+      case 'active':
+      case 'won':
+      case 'completed':
+        return 'bg-green-500/10 text-green-700 dark:text-green-400';
+      case 'lead':
+      case 'prospect':
+      case 'open':
+        return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
+      case 'proposal':
+      case 'negotiation':
+        return 'bg-purple-500/10 text-purple-700 dark:text-purple-400';
+      case 'lost':
+      case 'inactive':
+        return 'bg-gray-500/10 text-gray-700 dark:text-gray-400';
       default:
-        return "bg-gray-500/10 text-gray-700 dark:text-gray-400";
+        return 'bg-gray-500/10 text-gray-700 dark:text-gray-400';
     }
   };
 
@@ -310,9 +310,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         onValueChange={setSearchQuery}
       />
       <CommandList>
-        <CommandEmpty>
-          {isLoading ? "Searching..." : "No results found."}
-        </CommandEmpty>
+        <CommandEmpty>{isLoading ? 'Searching...' : 'No results found.'}</CommandEmpty>
 
         {/* Search Results from API */}
         {searchResults && searchResults.length > 0 && (
@@ -330,9 +328,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     <div className="flex-1">
                       <div className="font-medium">{result.title}</div>
                       {result.subtitle && (
-                        <div className="text-xs text-muted-foreground">
-                          {result.subtitle}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{result.subtitle}</div>
                       )}
                     </div>
                     {result.metadata && (
@@ -404,9 +400,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                     <Icon className="mr-2 h-4 w-4" />
                     <span>{action.title}</span>
                     {action.subtitle && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {action.subtitle}
-                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">{action.subtitle}</span>
                     )}
                   </CommandItem>
                 );
@@ -419,11 +413,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               {PAGE_NAVIGATION.map((page) => {
                 const Icon = page.icon || BarChart3;
                 return (
-                  <CommandItem
-                    key={page.id}
-                    value={page.title}
-                    onSelect={() => handleSelect(page)}
-                  >
+                  <CommandItem key={page.id} value={page.title} onSelect={() => handleSelect(page)}>
                     <Icon className="mr-2 h-4 w-4" />
                     <span>{page.title}</span>
                   </CommandItem>

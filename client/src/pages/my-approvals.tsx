@@ -57,7 +57,15 @@ export default function MyApprovals() {
 
   // Respond to approval mutation
   const respondMutation = useMutation({
-    mutationFn: async ({ id, approved, comment }: { id: string; approved: boolean; comment: string }) => {
+    mutationFn: async ({
+      id,
+      approved,
+      comment,
+    }: {
+      id: string;
+      approved: boolean;
+      comment: string;
+    }) => {
       const response = await fetch(`/api/approvals/${id}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,9 +158,7 @@ export default function MyApprovals() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">My Approvals</h1>
-          <p className="text-muted-foreground mt-1">
-            Approval requests requiring your review
-          </p>
+          <p className="text-muted-foreground mt-1">Approval requests requiring your review</p>
         </div>
       </div>
 
@@ -262,9 +268,7 @@ export default function MyApprovals() {
                       <div>
                         <div className="font-medium flex items-center gap-2">
                           Workflow Approval Request
-                          {isOverdue(approval) && (
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                          )}
+                          {isOverdue(approval) && <AlertCircle className="w-4 h-4 text-red-500" />}
                         </div>
                         {approval.contextData?.approvalMessage && (
                           <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
@@ -402,7 +406,10 @@ export default function MyApprovals() {
                 <div>
                   <h4 className="font-medium mb-2">Response</h4>
                   <p className="text-sm">
-                    Responded {formatDistanceToNow(new Date(selectedApproval.respondedAt), { addSuffix: true })}
+                    Responded{' '}
+                    {formatDistanceToNow(new Date(selectedApproval.respondedAt), {
+                      addSuffix: true,
+                    })}
                   </p>
                   {selectedApproval.approvalComment && (
                     <div className="bg-muted p-3 rounded text-sm mt-2">
@@ -489,7 +496,11 @@ export default function MyApprovals() {
               onClick={handleSubmitResponse}
               disabled={respondMutation.isPending}
             >
-              {respondMutation.isPending ? 'Submitting...' : responseType === 'approve' ? 'Approve' : 'Reject'}
+              {respondMutation.isPending
+                ? 'Submitting...'
+                : responseType === 'approve'
+                  ? 'Approve'
+                  : 'Reject'}
             </Button>
           </DialogFooter>
         </DialogContent>

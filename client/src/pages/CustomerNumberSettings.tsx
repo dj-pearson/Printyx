@@ -1,37 +1,22 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import {
-  Settings,
-  Hash,
-  Eye,
-  Save,
-  Plus,
-  History,
-  FileText,
-  Zap,
-} from "lucide-react";
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import { Settings, Hash, Eye, Save, Plus, History, FileText, Zap } from 'lucide-react';
 
 interface CustomerNumberConfig {
   id: string;
@@ -56,10 +41,10 @@ interface CustomerNumberHistory {
 
 export default function CustomerNumberSettings() {
   const [formData, setFormData] = useState({
-    prefix: "CUST",
+    prefix: 'CUST',
     currentSequence: 1000,
     sequenceLength: 4,
-    separatorChar: "-",
+    separatorChar: '-',
     isActive: true,
   });
   const [previewData, setPreviewData] = useState<{
@@ -72,66 +57,64 @@ export default function CustomerNumberSettings() {
 
   // Fetch current configurations
   const { data: configs = [], isLoading } = useQuery({
-    queryKey: ["/api/customer-numbers/config"],
+    queryKey: ['/api/customer-numbers/config'],
   });
 
   // Fetch customer number history
   const { data: history = [] } = useQuery({
-    queryKey: ["/api/customer-numbers/history"],
+    queryKey: ['/api/customer-numbers/history'],
   });
 
   // Create configuration mutation
   const createConfigMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest("/api/customer-numbers/config", "POST", data),
+    mutationFn: (data: any) => apiRequest('/api/customer-numbers/config', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-numbers/config"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-numbers/config'] });
       toast({
-        title: "Configuration Created",
-        description: "Customer number configuration saved successfully",
+        title: 'Configuration Created',
+        description: 'Customer number configuration saved successfully',
       });
       // Reset form
       setFormData({
-        prefix: "CUST",
+        prefix: 'CUST',
         currentSequence: 1000,
         sequenceLength: 4,
-        separatorChar: "-",
+        separatorChar: '-',
         isActive: true,
       });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to create configuration",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create configuration',
+        variant: 'destructive',
       });
     },
   });
 
   // Generate customer number mutation
   const generateNumberMutation = useMutation({
-    mutationFn: () => apiRequest("/api/customer-numbers/generate", "POST"),
+    mutationFn: () => apiRequest('/api/customer-numbers/generate', 'POST'),
     onSuccess: (data) => {
       toast({
-        title: "Customer Number Generated",
+        title: 'Customer Number Generated',
         description: `Generated: ${data.customerNumber}`,
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-numbers/history"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/customer-numbers/config"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-numbers/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/customer-numbers/config'] });
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: "Failed to generate customer number",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to generate customer number',
+        variant: 'destructive',
       });
     },
   });
 
   // Preview customer number mutation
   const previewMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest("/api/customer-numbers/preview", "POST", data),
+    mutationFn: (data: any) => apiRequest('/api/customer-numbers/preview', 'POST', data),
     onSuccess: (data) => {
       setPreviewData(data);
     },
@@ -140,13 +123,13 @@ export default function CustomerNumberSettings() {
   const handleFormChange = (field: string, value: any) => {
     let processedValue = value;
     // Convert "none" separator to empty string
-    if (field === "separatorChar" && value === "none") {
-      processedValue = "";
+    if (field === 'separatorChar' && value === 'none') {
+      processedValue = '';
     }
-    
+
     const newFormData = { ...formData, [field]: processedValue };
     setFormData(newFormData);
-    
+
     // Auto-preview on changes
     previewMutation.mutate(newFormData);
   };
@@ -193,7 +176,7 @@ export default function CustomerNumberSettings() {
                   <Input
                     id="prefix"
                     value={formData.prefix}
-                    onChange={(e) => handleFormChange("prefix", e.target.value)}
+                    onChange={(e) => handleFormChange('prefix', e.target.value)}
                     placeholder="CUST"
                     maxLength={10}
                   />
@@ -205,8 +188,8 @@ export default function CustomerNumberSettings() {
                 <div className="space-y-2">
                   <Label htmlFor="separator">Separator</Label>
                   <Select
-                    value={formData.separatorChar === "" ? "none" : formData.separatorChar}
-                    onValueChange={(value) => handleFormChange("separatorChar", value)}
+                    value={formData.separatorChar === '' ? 'none' : formData.separatorChar}
+                    onValueChange={(value) => handleFormChange('separatorChar', value)}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -225,19 +208,19 @@ export default function CustomerNumberSettings() {
                     id="sequence"
                     type="number"
                     value={formData.currentSequence}
-                    onChange={(e) => handleFormChange("currentSequence", parseInt(e.target.value) || 1000)}
+                    onChange={(e) =>
+                      handleFormChange('currentSequence', parseInt(e.target.value) || 1000)
+                    }
                     min={1}
                   />
-                  <p className="text-sm text-muted-foreground">
-                    Next customer number to generate
-                  </p>
+                  <p className="text-sm text-muted-foreground">Next customer number to generate</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="length">Minimum Digits</Label>
                   <Select
                     value={formData.sequenceLength.toString()}
-                    onValueChange={(value) => handleFormChange("sequenceLength", parseInt(value))}
+                    onValueChange={(value) => handleFormChange('sequenceLength', parseInt(value))}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -249,25 +232,19 @@ export default function CustomerNumberSettings() {
                       <SelectItem value="6">6 digits</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Pad with zeros if needed
-                  </p>
+                  <p className="text-sm text-muted-foreground">Pad with zeros if needed</p>
                 </div>
 
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="active"
                     checked={formData.isActive}
-                    onCheckedChange={(checked) => handleFormChange("isActive", checked)}
+                    onCheckedChange={(checked) => handleFormChange('isActive', checked)}
                   />
                   <Label htmlFor="active">Set as active configuration</Label>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full"
-                  disabled={createConfigMutation.isPending}
-                >
+                <Button type="submit" className="w-full" disabled={createConfigMutation.isPending}>
                   <Save className="h-4 w-4 mr-2" />
                   Save Configuration
                 </Button>
@@ -282,9 +259,7 @@ export default function CustomerNumberSettings() {
                 <Eye className="h-5 w-5" />
                 Preview
               </CardTitle>
-              <CardDescription>
-                See how your customer numbers will look
-              </CardDescription>
+              <CardDescription>See how your customer numbers will look</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {previewData ? (
@@ -293,7 +268,7 @@ export default function CustomerNumberSettings() {
                     <div className="text-sm text-muted-foreground mb-2">Current format:</div>
                     <div className="text-2xl font-mono font-bold">{previewData.preview}</div>
                   </div>
-                  
+
                   <div>
                     <div className="text-sm text-muted-foreground mb-2">Next numbers:</div>
                     <div className="space-y-1">
@@ -323,9 +298,7 @@ export default function CustomerNumberSettings() {
                 <Zap className="h-5 w-5" />
                 Active Configuration
               </CardTitle>
-              <CardDescription>
-                Currently active customer number settings
-              </CardDescription>
+              <CardDescription>Currently active customer number settings</CardDescription>
             </CardHeader>
             <CardContent>
               {activeConfig ? (
@@ -333,8 +306,11 @@ export default function CustomerNumberSettings() {
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Format:</span>
                     <span className="font-mono font-bold">
-                      {activeConfig.prefix}{activeConfig.separatorChar}
-                      {activeConfig.currentSequence.toString().padStart(activeConfig.sequenceLength, "0")}
+                      {activeConfig.prefix}
+                      {activeConfig.separatorChar}
+                      {activeConfig.currentSequence
+                        .toString()
+                        .padStart(activeConfig.sequenceLength, '0')}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -345,7 +321,7 @@ export default function CustomerNumberSettings() {
                     <span className="text-sm text-muted-foreground">Status:</span>
                     <Badge variant="default">Active</Badge>
                   </div>
-                  <Button 
+                  <Button
                     onClick={generateTestNumber}
                     className="w-full mt-4"
                     disabled={generateNumberMutation.isPending}
@@ -371,15 +347,16 @@ export default function CustomerNumberSettings() {
                 <History className="h-5 w-5" />
                 Recent Customer Numbers
               </CardTitle>
-              <CardDescription>
-                Recently generated customer numbers
-              </CardDescription>
+              <CardDescription>Recently generated customer numbers</CardDescription>
             </CardHeader>
             <CardContent>
               {history.length > 0 ? (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {history.slice(0, 10).map((item: CustomerNumberHistory) => (
-                    <div key={item.id} className="flex justify-between items-center p-2 bg-secondary rounded">
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center p-2 bg-secondary rounded"
+                    >
                       <span className="font-mono font-bold">{item.customerNumber}</span>
                       <span className="text-xs text-muted-foreground">
                         {new Date(item.generatedAt).toLocaleDateString()}
@@ -405,7 +382,8 @@ export default function CustomerNumberSettings() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Customer numbers automatically appear on all invoices for easy reference and payment attribution.
+                Customer numbers automatically appear on all invoices for easy reference and payment
+                attribution.
               </p>
             </CardContent>
           </Card>
@@ -416,7 +394,8 @@ export default function CustomerNumberSettings() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                OCR systems can read customer numbers from uploaded documents to automatically attribute them to the correct account.
+                OCR systems can read customer numbers from uploaded documents to automatically
+                attribute them to the correct account.
               </p>
             </CardContent>
           </Card>
@@ -427,7 +406,8 @@ export default function CustomerNumberSettings() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Each customer gets a unique, sequential number that never changes, making account management easier.
+                Each customer gets a unique, sequential number that never changes, making account
+                management easier.
               </p>
             </CardContent>
           </Card>

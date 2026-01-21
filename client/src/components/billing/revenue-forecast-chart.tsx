@@ -9,7 +9,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
+} from 'recharts';
 
 interface RevenueForecastChartProps {
   data: any[];
@@ -58,7 +58,9 @@ export function RevenueForecastChart({ data }: RevenueForecastChartProps) {
             </div>
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Lower Bound:</span>
-              <span className="font-medium text-orange-600">{formatCurrency(payload[2].value)}</span>
+              <span className="font-medium text-orange-600">
+                {formatCurrency(payload[2].value)}
+              </span>
             </div>
             {payload[0].payload.confidence && (
               <div className="flex justify-between gap-4 pt-1 border-t">
@@ -90,23 +92,23 @@ export function RevenueForecastChart({ data }: RevenueForecastChartProps) {
             dataKey="period"
             tick={{ fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "#e5e7eb" }}
+            axisLine={{ stroke: '#e5e7eb' }}
           />
           <YAxis
             tick={{ fontSize: 12 }}
             tickLine={false}
-            axisLine={{ stroke: "#e5e7eb" }}
+            axisLine={{ stroke: '#e5e7eb' }}
             tickFormatter={formatCurrency}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend
-            wrapperStyle={{ paddingTop: "20px" }}
+            wrapperStyle={{ paddingTop: '20px' }}
             iconType="line"
             formatter={(value) => {
               const labels: Record<string, string> = {
-                forecasted: "Forecasted Revenue",
-                upper: "Upper Bound (95%)",
-                lower: "Lower Bound (95%)",
+                forecasted: 'Forecasted Revenue',
+                upper: 'Upper Bound (95%)',
+                lower: 'Lower Bound (95%)',
               };
               return labels[value] || value;
             }}
@@ -136,7 +138,7 @@ export function RevenueForecastChart({ data }: RevenueForecastChartProps) {
             dataKey="forecasted"
             stroke="#3b82f6"
             strokeWidth={3}
-            dot={{ fill: "#3b82f6", strokeWidth: 2, r: 5 }}
+            dot={{ fill: '#3b82f6', strokeWidth: 2, r: 5 }}
             activeDot={{ r: 7 }}
           />
 

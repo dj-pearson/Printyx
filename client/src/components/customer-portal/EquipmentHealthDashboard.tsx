@@ -5,22 +5,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Activity, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
-  Gauge, 
-  Heart, 
-  Settings, 
-  TrendingUp, 
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Gauge,
+  Heart,
+  Settings,
+  TrendingUp,
   Wrench,
   Calendar,
   Zap,
   Thermometer,
   Wifi,
   Battery,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { LineChart, BarChart, PieChart } from '@/components/charts/ChartComponents';
 import { apiRequest } from '@/lib/queryClient';
@@ -74,13 +74,20 @@ interface EquipmentHealthDashboardProps {
   customerId?: string;
 }
 
-export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({ tenantId, customerId }: EquipmentHealthDashboardProps) {
+export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
+  tenantId,
+  customerId,
+}: EquipmentHealthDashboardProps) {
   const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState('30d');
 
   // Fetch equipment health data - server will use authenticated user context
   // Optimized with longer staleTime to reduce unnecessary refetches
-  const { data: equipmentHealthResponse, isLoading, error } = useQuery({
+  const {
+    data: equipmentHealthResponse,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['/api/customer-portal/equipment-health', timeRange, tenantId, customerId],
     queryFn: () => apiRequest(`/api/customer-portal/equipment-health?timeRange=${timeRange}`),
     staleTime: 2 * 60 * 1000, // 2 minutes - health data doesn't change rapidly
@@ -92,12 +99,12 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
   // Old format: { success: true, data: [...] } or just [...] array
   const equipmentHealth = useMemo(() => {
     if (!equipmentHealthResponse) return [];
-    
+
     // Handle array response (legacy format)
     if (Array.isArray(equipmentHealthResponse)) {
       return equipmentHealthResponse;
     }
-    
+
     // Handle object response with data property (new format)
     return equipmentHealthResponse?.data || [];
   }, [equipmentHealthResponse]);
@@ -118,23 +125,35 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
 
   const getHealthBadgeVariant = useCallback((status: string) => {
     switch (status) {
-      case 'excellent': return 'default';
-      case 'good': return 'secondary';
-      case 'warning': return 'outline';
-      case 'critical': return 'destructive';
-      case 'offline': return 'outline';
-      default: return 'default';
+      case 'excellent':
+        return 'default';
+      case 'good':
+        return 'secondary';
+      case 'warning':
+        return 'outline';
+      case 'critical':
+        return 'destructive';
+      case 'offline':
+        return 'outline';
+      default:
+        return 'default';
     }
   }, []);
 
   const getStatusIcon = useCallback((status: string) => {
     switch (status) {
-      case 'excellent': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'good': return <CheckCircle className="h-4 w-4 text-blue-600" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-      case 'critical': return <AlertCircle className="h-4 w-4 text-red-600" />;
-      case 'offline': return <Wifi className="h-4 w-4 text-gray-400" />;
-      default: return <Activity className="h-4 w-4" />;
+      case 'excellent':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'good':
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      case 'critical':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      case 'offline':
+        return <Wifi className="h-4 w-4 text-gray-400" />;
+      default:
+        return <Activity className="h-4 w-4" />;
     }
   }, []);
 
@@ -169,32 +188,36 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
 
   // Memoized selected equipment data to prevent unnecessary recalculations
   const selectedEquipmentData = useMemo(() => {
-    return selectedEquipment 
-      ? equipmentHealth.find(eq => eq.id === selectedEquipment)
+    return selectedEquipment
+      ? equipmentHealth.find((eq) => eq.id === selectedEquipment)
       : equipmentHealth[0];
   }, [selectedEquipment, equipmentHealth]);
 
   // Memoized heavy calculations - these were causing performance issues
   const overallFleetHealth = useMemo(() => {
     if (equipmentHealth.length === 0) return 0;
-    return Math.round(equipmentHealth.reduce((sum, eq) => sum + eq.overallHealthScore, 0) / equipmentHealth.length);
+    return Math.round(
+      equipmentHealth.reduce((sum, eq) => sum + eq.overallHealthScore, 0) / equipmentHealth.length,
+    );
   }, [equipmentHealth]);
 
   const criticalAlertsCount = useMemo(() => {
-    return equipmentHealth.reduce((sum, eq) => 
-      sum + eq.alerts.filter(alert => alert.type === 'critical' && !alert.resolved).length, 0
+    return equipmentHealth.reduce(
+      (sum, eq) =>
+        sum + eq.alerts.filter((alert) => alert.type === 'critical' && !alert.resolved).length,
+      0,
     );
   }, [equipmentHealth]);
 
   // Memoized online devices count
   const onlineDevicesCount = useMemo(() => {
-    return equipmentHealth.filter(eq => eq.connectionStatus.isOnline).length;
+    return equipmentHealth.filter((eq) => eq.connectionStatus.isOnline).length;
   }, [equipmentHealth]);
 
-  // Memoized service due count 
+  // Memoized service due count
   const serviceDueCount = useMemo(() => {
     const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    return equipmentHealth.filter(eq => new Date(eq.nextServiceDue) <= thirtyDaysFromNow).length;
+    return equipmentHealth.filter((eq) => new Date(eq.nextServiceDue) <= thirtyDaysFromNow).length;
   }, [equipmentHealth]);
 
   return (
@@ -222,9 +245,7 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
             <Wifi className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {onlineDevicesCount}
-            </div>
+            <div className="text-2xl font-bold">{onlineDevicesCount}</div>
             <p className="text-xs text-muted-foreground">
               of {equipmentHealth.length} total devices
             </p>
@@ -237,12 +258,12 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${criticalAlertsCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <div
+              className={`text-2xl font-bold ${criticalAlertsCount > 0 ? 'text-red-600' : 'text-green-600'}`}
+            >
               {criticalAlertsCount}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Require immediate attention
-            </p>
+            <p className="text-xs text-muted-foreground">Require immediate attention</p>
           </CardContent>
         </Card>
 
@@ -252,12 +273,8 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {serviceDueCount}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Within 30 days
-            </p>
+            <div className="text-2xl font-bold text-orange-600">{serviceDueCount}</div>
+            <p className="text-xs text-muted-foreground">Within 30 days</p>
           </CardContent>
         </Card>
       </div>
@@ -293,7 +310,9 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <div className={`text-lg font-semibold ${getHealthColor(equipment.overallHealthScore)}`}>
+                      <div
+                        className={`text-lg font-semibold ${getHealthColor(equipment.overallHealthScore)}`}
+                      >
                         {equipment.overallHealthScore}%
                       </div>
                       <Badge variant={getHealthBadgeVariant(equipment.status)}>
@@ -341,7 +360,9 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Model</p>
-                      <p className="font-medium">{selectedEquipmentData.make} {selectedEquipmentData.model}</p>
+                      <p className="font-medium">
+                        {selectedEquipmentData.make} {selectedEquipmentData.model}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Serial Number</p>
@@ -353,7 +374,9 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Prints</p>
-                      <p className="font-medium">{selectedEquipmentData.totalPrintCount.toLocaleString()}</p>
+                      <p className="font-medium">
+                        {selectedEquipmentData.totalPrintCount.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -367,15 +390,23 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Last Service</span>
-                      <span className="font-medium">{new Date(selectedEquipmentData.lastServiceDate).toLocaleDateString()}</span>
+                      <span className="font-medium">
+                        {new Date(selectedEquipmentData.lastServiceDate).toLocaleDateString()}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Next Service Due</span>
-                      <span className="font-medium">{new Date(selectedEquipmentData.nextServiceDue).toLocaleDateString()}</span>
+                      <span className="font-medium">
+                        {new Date(selectedEquipmentData.nextServiceDue).toLocaleDateString()}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Predicted Maintenance</span>
-                      <span className="font-medium">{new Date(selectedEquipmentData.predictedMaintenanceDate).toLocaleDateString()}</span>
+                      <span className="font-medium">
+                        {new Date(
+                          selectedEquipmentData.predictedMaintenanceDate,
+                        ).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                   <Button className="w-full" data-testid="button-schedule-service">
@@ -401,8 +432,8 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                         <span className="capitalize">{toner.color}</span>
                         <span>{toner.level}%</span>
                       </div>
-                      <Progress 
-                        value={toner.level} 
+                      <Progress
+                        value={toner.level}
                         className={`h-2 ${toner.level < 20 ? 'bg-red-100' : toner.level < 50 ? 'bg-yellow-100' : 'bg-green-100'}`}
                       />
                     </div>
@@ -421,21 +452,30 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                       <span>Drum Life</span>
                       <span>{selectedEquipmentData.healthMetrics.drumLifeRemaining}%</span>
                     </div>
-                    <Progress value={selectedEquipmentData.healthMetrics.drumLifeRemaining} className="h-2" />
+                    <Progress
+                      value={selectedEquipmentData.healthMetrics.drumLifeRemaining}
+                      className="h-2"
+                    />
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Fuser Life</span>
                       <span>{selectedEquipmentData.healthMetrics.fuserLifeRemaining}%</span>
                     </div>
-                    <Progress value={selectedEquipmentData.healthMetrics.fuserLifeRemaining} className="h-2" />
+                    <Progress
+                      value={selectedEquipmentData.healthMetrics.fuserLifeRemaining}
+                      className="h-2"
+                    />
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Paper Level</span>
                       <span>{selectedEquipmentData.healthMetrics.paperLevels}%</span>
                     </div>
-                    <Progress value={selectedEquipmentData.healthMetrics.paperLevels} className="h-2" />
+                    <Progress
+                      value={selectedEquipmentData.healthMetrics.paperLevels}
+                      className="h-2"
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -451,21 +491,27 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                       <Thermometer className="h-4 w-4 text-orange-500" />
                       <span className="text-sm">Temperature</span>
                     </div>
-                    <span className="font-medium">{selectedEquipmentData.healthMetrics.temperature}°F</span>
+                    <span className="font-medium">
+                      {selectedEquipmentData.healthMetrics.temperature}°F
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Gauge className="h-4 w-4 text-blue-500" />
                       <span className="text-sm">Humidity</span>
                     </div>
-                    <span className="font-medium">{selectedEquipmentData.healthMetrics.humidity}%</span>
+                    <span className="font-medium">
+                      {selectedEquipmentData.healthMetrics.humidity}%
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <AlertTriangle className="h-4 w-4 text-red-500" />
                       <span className="text-sm">Error Count</span>
                     </div>
-                    <span className="font-medium">{selectedEquipmentData.healthMetrics.errorCount}</span>
+                    <span className="font-medium">
+                      {selectedEquipmentData.healthMetrics.errorCount}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -484,9 +530,7 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                     data={selectedEquipmentData.recentActivity}
                     title="Daily Usage"
                     xDataKey="date"
-                    lines={[
-                      { dataKey: 'count', name: 'Total Activity', color: '#3b82f6' }
-                    ]}
+                    lines={[{ dataKey: 'count', name: 'Total Activity', color: '#3b82f6' }]}
                     height={300}
                     showGrid={true}
                     showLegend={true}
@@ -502,10 +546,30 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                 <CardContent>
                   <PieChart
                     data={[
-                      { name: 'Print', value: selectedEquipmentData.recentActivity.filter(a => a.type === 'print').reduce((sum, a) => sum + a.count, 0) },
-                      { name: 'Copy', value: selectedEquipmentData.recentActivity.filter(a => a.type === 'copy').reduce((sum, a) => sum + a.count, 0) },
-                      { name: 'Scan', value: selectedEquipmentData.recentActivity.filter(a => a.type === 'scan').reduce((sum, a) => sum + a.count, 0) },
-                      { name: 'Fax', value: selectedEquipmentData.recentActivity.filter(a => a.type === 'fax').reduce((sum, a) => sum + a.count, 0) }
+                      {
+                        name: 'Print',
+                        value: selectedEquipmentData.recentActivity
+                          .filter((a) => a.type === 'print')
+                          .reduce((sum, a) => sum + a.count, 0),
+                      },
+                      {
+                        name: 'Copy',
+                        value: selectedEquipmentData.recentActivity
+                          .filter((a) => a.type === 'copy')
+                          .reduce((sum, a) => sum + a.count, 0),
+                      },
+                      {
+                        name: 'Scan',
+                        value: selectedEquipmentData.recentActivity
+                          .filter((a) => a.type === 'scan')
+                          .reduce((sum, a) => sum + a.count, 0),
+                      },
+                      {
+                        name: 'Fax',
+                        value: selectedEquipmentData.recentActivity
+                          .filter((a) => a.type === 'fax')
+                          .reduce((sum, a) => sum + a.count, 0),
+                      },
                     ]}
                     title="Function Usage"
                     height={300}
@@ -524,29 +588,49 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {selectedEquipmentData.alerts.filter(alert => !alert.resolved).map((alert) => (
-                    <div key={alert.id} className="p-3 border rounded-lg" data-testid={`alert-${alert.id}`}>
-                      <div className="flex items-start space-x-3">
-                        <div className="mt-1">
-                          {alert.type === 'critical' && <AlertCircle className="h-4 w-4 text-red-500" />}
-                          {alert.type === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
-                          {alert.type === 'info' && <CheckCircle className="h-4 w-4 text-blue-500" />}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">{alert.message}</p>
-                            <Badge variant={alert.type === 'critical' ? 'destructive' : alert.type === 'warning' ? 'outline' : 'secondary'}>
-                              {alert.type}
-                            </Badge>
+                  {selectedEquipmentData.alerts
+                    .filter((alert) => !alert.resolved)
+                    .map((alert) => (
+                      <div
+                        key={alert.id}
+                        className="p-3 border rounded-lg"
+                        data-testid={`alert-${alert.id}`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="mt-1">
+                            {alert.type === 'critical' && (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            {alert.type === 'warning' && (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            )}
+                            {alert.type === 'info' && (
+                              <CheckCircle className="h-4 w-4 text-blue-500" />
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(alert.timestamp).toLocaleString()}
-                          </p>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">{alert.message}</p>
+                              <Badge
+                                variant={
+                                  alert.type === 'critical'
+                                    ? 'destructive'
+                                    : alert.type === 'warning'
+                                      ? 'outline'
+                                      : 'secondary'
+                                }
+                              >
+                                {alert.type}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(alert.timestamp).toLocaleString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {selectedEquipmentData.alerts.filter(alert => !alert.resolved).length === 0 && (
+                    ))}
+                  {selectedEquipmentData.alerts.filter((alert) => !alert.resolved).length === 0 && (
                     <div className="text-center py-6">
                       <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold mb-2">No Active Alerts</h3>

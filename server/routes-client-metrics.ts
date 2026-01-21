@@ -9,7 +9,7 @@ import {
   type ClientCollectedMetric,
   type NewClientCollectedMetric,
   type NewClientActivityLog,
-  type NewTonerAlert
+  type NewTonerAlert,
 } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
@@ -18,9 +18,12 @@ import {
   enhanceUserContext,
   requirePermission,
   PERMISSIONS,
-  type AuthenticatedRequest
+  type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
-const requireAuth = (req: any, res: any, next: any) => { if (!req.user) return res.status(401).json({ error: 'Unauthorized' }); next(); };
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+};
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -92,7 +95,7 @@ interface SubmitMetricsResponse {
 async function processTonerAlerts(
   tenantId: number,
   clientId: string,
-  devices: DeviceMetricsPayload[]
+  devices: DeviceMetricsPayload[],
 ): Promise<void> {
   const alertPromises: Promise<any>[] = [];
   const TONER_THRESHOLD = 15; // Can be configured per device later
@@ -112,8 +115,8 @@ async function processTonerAlerts(
             eq(tonerAlerts.tenantId, tenantId),
             eq(tonerAlerts.serialNumber, device.serialNumber),
             eq(tonerAlerts.supplyType, color),
-            eq(tonerAlerts.status, 'active')
-          )
+            eq(tonerAlerts.status, 'active'),
+          ),
         });
 
         if (!existingAlert) {
@@ -126,33 +129,37 @@ async function processTonerAlerts(
             supplyType: color,
             currentLevel: level,
             threshold: TONER_THRESHOLD,
-            status: 'active'
+            status: 'active',
           };
 
           alertPromises.push(db.insert(tonerAlerts).values(newAlert));
         } else if (existingAlert.currentLevel !== level) {
           // Update existing alert with new level
           alertPromises.push(
-            db.update(tonerAlerts)
+            db
+              .update(tonerAlerts)
               .set({
                 currentLevel: level,
                 alertType: level === 0 ? 'toner_empty' : 'toner_low',
-                updatedAt: new Date()
+                updatedAt: new Date(),
               })
-              .where(eq(tonerAlerts.id, existingAlert.id))
+              .where(eq(tonerAlerts.id, existingAlert.id)),
           );
         }
       } else if (level !== undefined && level > TONER_THRESHOLD + 5) {
         // Toner level recovered, resolve any active alerts
         alertPromises.push(
-          db.update(tonerAlerts)
+          db
+            .update(tonerAlerts)
             .set({ status: 'resolved', resolvedAt: new Date() })
-            .where(and(
-              eq(tonerAlerts.tenantId, tenantId),
-              eq(tonerAlerts.serialNumber, device.serialNumber),
-              eq(tonerAlerts.supplyType, color),
-              eq(tonerAlerts.status, 'active')
-            ))
+            .where(
+              and(
+                eq(tonerAlerts.tenantId, tenantId),
+                eq(tonerAlerts.serialNumber, device.serialNumber),
+                eq(tonerAlerts.supplyType, color),
+                eq(tonerAlerts.status, 'active'),
+              ),
+            ),
         );
       }
     }
@@ -181,8 +188,8 @@ async function authenticateClient(apiKey: string | undefined, tenantIdHeader: st
       where: and(
         eq(clientRegistrations.apiKey, apiKey),
         eq(clientRegistrations.tenantId, tenantId),
-        eq(clientRegistrations.status, 'active')
-      )
+        eq(clientRegistrations.status, 'active'),
+      ),
     });
 
     return client;
@@ -209,7 +216,7 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
         message: 'Invalid API key or tenant ID',
         processed: 0,
         errors: 0,
-        details: { successful: [], failed: [] }
+        details: { successful: [], failed: [] },
       });
     }
 
@@ -221,13 +228,13 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
         message: 'No devices provided',
         processed: 0,
         errors: 0,
-        details: { successful: [], failed: [] }
+        details: { successful: [], failed: [] },
       });
     }
 
     // Insert metrics for each device
     const results = await Promise.allSettled(
-      devices.map(device => {
+      devices.map((device) => {
         const metricData: NewClientCollectedMetric = {
           tenantId: client.tenantId,
           clientId: client.clientId,
@@ -255,33 +262,33 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
           errorCodes: device.errorCodes,
           warningCodes: device.warningCodes,
           collectionTimestamp: new Date(device.collectionTimestamp),
-          rawData: device.rawData
+          rawData: device.rawData,
         };
 
         return db.insert(clientCollectedMetrics).values(metricData);
-      })
+      }),
     );
 
-    const successful = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
+    const successful = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results.filter((r) => r.status === 'rejected').length;
 
     const successfulDevices = devices
       .filter((_, i) => results[i].status === 'fulfilled')
-      .map(d => d.serialNumber);
+      .map((d) => d.serialNumber);
 
     const failedDevices = devices
       .map((d, i) => ({
         device: d,
-        result: results[i]
+        result: results[i],
       }))
       .filter(({ result }) => result.status === 'rejected')
       .map(({ device, result }) => ({
         serialNumber: device.serialNumber,
-        error: result.status === 'rejected' ? result.reason.message : 'Unknown error'
+        error: result.status === 'rejected' ? result.reason.message : 'Unknown error',
       }));
 
     // Process toner alerts (fire and forget, don't block response)
-    processTonerAlerts(client.tenantId, client.clientId, devices).catch(err => {
+    processTonerAlerts(client.tenantId, client.clientId, devices).catch((err) => {
       console.error('Error processing toner alerts:', err);
     });
 
@@ -292,12 +299,15 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
       eventType: 'metrics',
       eventData: { deviceCount: devices.length, successful, failed, clientVersion },
       severity: failed > 0 ? 'warning' : 'info',
-      message: `Submitted metrics for ${successful} devices (${failed} failed)`
+      message: `Submitted metrics for ${successful} devices (${failed} failed)`,
     };
 
-    await db.insert(clientActivityLogs).values(activityLog).catch(err => {
-      console.error('Error logging activity:', err);
-    });
+    await db
+      .insert(clientActivityLogs)
+      .values(activityLog)
+      .catch((err) => {
+        console.error('Error logging activity:', err);
+      });
 
     res.status(200).json({
       message: 'Metrics received',
@@ -305,17 +315,16 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
       errors: failed,
       details: {
         successful: successfulDevices,
-        failed: failedDevices
-      }
+        failed: failedDevices,
+      },
     });
-
   } catch (error) {
     console.error('Error submitting metrics:', error);
     res.status(500).json({
       message: 'Internal server error',
       processed: 0,
       errors: 0,
-      details: { successful: [], failed: [] }
+      details: { successful: [], failed: [] },
     });
   }
 });
@@ -338,10 +347,11 @@ router.post('/heartbeat', async (req, res) => {
     const { clientVersion, bufferSize } = req.body;
 
     // Update last heartbeat
-    await db.update(clientRegistrations)
+    await db
+      .update(clientRegistrations)
       .set({
         lastHeartbeat: new Date(),
-        clientVersion: clientVersion || client.clientVersion
+        clientVersion: clientVersion || client.clientVersion,
       })
       .where(eq(clientRegistrations.id, client.id));
 
@@ -353,20 +363,22 @@ router.post('/heartbeat', async (req, res) => {
         eventType: 'heartbeat',
         eventData: { clientVersion, bufferSize },
         severity: bufferSize > 50 ? 'warning' : 'info',
-        message: `Heartbeat received (buffer: ${bufferSize} pending)`
+        message: `Heartbeat received (buffer: ${bufferSize} pending)`,
       };
 
-      await db.insert(clientActivityLogs).values(activityLog).catch(err => {
-        console.error('Error logging heartbeat:', err);
-      });
+      await db
+        .insert(clientActivityLogs)
+        .values(activityLog)
+        .catch((err) => {
+          console.error('Error logging heartbeat:', err);
+        });
     }
 
     res.status(200).json({
       message: 'Heartbeat acknowledged',
       serverTime: new Date().toISOString(),
-      status: 'healthy'
+      status: 'healthy',
     });
-
   } catch (error) {
     console.error('Error processing heartbeat:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -393,8 +405,8 @@ router.get('/config', async (req, res) => {
       where: and(
         eq(monitoredDevices.tenantId, client.tenantId),
         eq(monitoredDevices.clientId, client.clientId),
-        eq(monitoredDevices.enabled, true)
-      )
+        eq(monitoredDevices.enabled, true),
+      ),
     });
 
     res.status(200).json({
@@ -406,17 +418,16 @@ router.get('/config', async (req, res) => {
         tonerThreshold: 15,
         paperThreshold: 20,
         discoveryEnabled: true,
-        devices: devices.map(d => ({
+        devices: devices.map((d) => ({
           ipAddress: d.ipAddress,
           protocol: d.protocol,
           snmpVersion: d.snmpVersion,
           snmpPort: d.snmpPort,
-          pollingInterval: d.pollingInterval || 300
-        }))
+          pollingInterval: d.pollingInterval || 300,
+        })),
       },
-      serverTime: new Date().toISOString()
+      serverTime: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('Error fetching config:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -448,14 +459,17 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
     const apiKey = `pk_${crypto.randomBytes(32).toString('base64url')}`;
 
     // Create client registration
-    const [newClient] = await db.insert(clientRegistrations).values({
-      tenantId,
-      clientId,
-      clientName,
-      location,
-      apiKey,
-      status: 'active'
-    }).returning();
+    const [newClient] = await db
+      .insert(clientRegistrations)
+      .values({
+        tenantId,
+        clientId,
+        clientName,
+        location,
+        apiKey,
+        status: 'active',
+      })
+      .returning();
 
     // Log activity
     const activityLog: NewClientActivityLog = {
@@ -464,7 +478,7 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
       eventType: 'config_update',
       eventData: { action: 'client_registered', by: req.user?.id },
       severity: 'info',
-      message: `Client '${clientName}' registered`
+      message: `Client '${clientName}' registered`,
     };
 
     await db.insert(clientActivityLogs).values(activityLog);
@@ -478,10 +492,9 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
         apiKey: newClient.apiKey, // Only show on creation
         tenantId: newClient.tenantId,
         status: newClient.status,
-        createdAt: newClient.createdAt
-      }
+        createdAt: newClient.createdAt,
+      },
     });
-
   } catch (error) {
     console.error('Error registering client:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -498,14 +511,13 @@ router.get('/clients', resolveTenant, requireTenant, async (req: TenantRequest, 
 
     const clients = await db.query.clientRegistrations.findMany({
       where: eq(clientRegistrations.tenantId, tenantId),
-      orderBy: [desc(clientRegistrations.createdAt)]
+      orderBy: [desc(clientRegistrations.createdAt)],
     });
 
     // Don't return API keys in list view
     const clientsWithoutKeys = clients.map(({ apiKey, ...client }) => client);
 
     res.status(200).json({ clients: clientsWithoutKeys });
-
   } catch (error) {
     console.error('Error fetching clients:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -524,8 +536,8 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
     const client = await db.query.clientRegistrations.findFirst({
       where: and(
         eq(clientRegistrations.clientId, clientId),
-        eq(clientRegistrations.tenantId, tenantId)
-      )
+        eq(clientRegistrations.tenantId, tenantId),
+      ),
     });
 
     if (!client) {
@@ -536,10 +548,10 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
     const activity = await db.query.clientActivityLogs.findMany({
       where: and(
         eq(clientActivityLogs.clientId, clientId),
-        eq(clientActivityLogs.tenantId, tenantId)
+        eq(clientActivityLogs.tenantId, tenantId),
       ),
       orderBy: [desc(clientActivityLogs.timestamp)],
-      limit: 100
+      limit: 100,
     });
 
     // Get device count
@@ -547,8 +559,8 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
       where: and(
         eq(monitoredDevices.clientId, clientId),
         eq(monitoredDevices.tenantId, tenantId),
-        eq(monitoredDevices.enabled, true)
-      )
+        eq(monitoredDevices.enabled, true),
+      ),
     });
 
     // Get active alerts
@@ -556,10 +568,10 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
       where: and(
         eq(tonerAlerts.clientId, clientId),
         eq(tonerAlerts.tenantId, tenantId),
-        eq(tonerAlerts.status, 'active')
+        eq(tonerAlerts.status, 'active'),
       ),
       orderBy: [desc(tonerAlerts.createdAt)],
-      limit: 50
+      limit: 50,
     });
 
     const { apiKey, ...clientWithoutKey } = client;
@@ -568,12 +580,11 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
       client: {
         ...clientWithoutKey,
         deviceCount: deviceCount.length,
-        activeAlertsCount: activeAlerts.length
+        activeAlertsCount: activeAlerts.length,
       },
       activity,
-      activeAlerts
+      activeAlerts,
     });
-
   } catch (error) {
     console.error('Error fetching client details:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -584,50 +595,55 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
  * Regenerate API key for client
  * POST /api/client-metrics/clients/:clientId/regenerate-key
  */
-router.post('/clients/:clientId/regenerate-key', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
-  try {
-    const { clientId } = req.params;
-    const tenantId = req.tenantId!;
+router.post(
+  '/clients/:clientId/regenerate-key',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const { clientId } = req.params;
+      const tenantId = req.tenantId!;
 
-    const client = await db.query.clientRegistrations.findFirst({
-      where: and(
-        eq(clientRegistrations.clientId, clientId),
-        eq(clientRegistrations.tenantId, tenantId)
-      )
-    });
+      const client = await db.query.clientRegistrations.findFirst({
+        where: and(
+          eq(clientRegistrations.clientId, clientId),
+          eq(clientRegistrations.tenantId, tenantId),
+        ),
+      });
 
-    if (!client) {
-      return res.status(404).json({ message: 'Client not found' });
+      if (!client) {
+        return res.status(404).json({ message: 'Client not found' });
+      }
+
+      // Generate new API key
+      const newApiKey = `pk_${crypto.randomBytes(32).toString('base64url')}`;
+
+      await db
+        .update(clientRegistrations)
+        .set({ apiKey: newApiKey, updatedAt: new Date() })
+        .where(eq(clientRegistrations.id, client.id));
+
+      // Log activity
+      const activityLog: NewClientActivityLog = {
+        tenantId,
+        clientId: client.clientId,
+        eventType: 'config_update',
+        eventData: { action: 'api_key_regenerated', by: req.user?.id },
+        severity: 'warning',
+        message: 'API key regenerated',
+      };
+
+      await db.insert(clientActivityLogs).values(activityLog);
+
+      res.status(200).json({
+        message: 'API key regenerated successfully',
+        apiKey: newApiKey,
+      });
+    } catch (error) {
+      console.error('Error regenerating API key:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
-
-    // Generate new API key
-    const newApiKey = `pk_${crypto.randomBytes(32).toString('base64url')}`;
-
-    await db.update(clientRegistrations)
-      .set({ apiKey: newApiKey, updatedAt: new Date() })
-      .where(eq(clientRegistrations.id, client.id));
-
-    // Log activity
-    const activityLog: NewClientActivityLog = {
-      tenantId,
-      clientId: client.clientId,
-      eventType: 'config_update',
-      eventData: { action: 'api_key_regenerated', by: req.user?.id },
-      severity: 'warning',
-      message: 'API key regenerated'
-    };
-
-    await db.insert(clientActivityLogs).values(activityLog);
-
-    res.status(200).json({
-      message: 'API key regenerated successfully',
-      apiKey: newApiKey
-    });
-
-  } catch (error) {
-    console.error('Error regenerating API key:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
+  },
+);
 
 export default router;

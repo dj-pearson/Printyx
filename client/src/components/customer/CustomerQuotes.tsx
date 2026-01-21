@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,14 +26,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   FileText,
   Plus,
@@ -52,8 +52,8 @@ import {
   RefreshCcw,
   Calculator,
   XCircle,
-} from "lucide-react";
-import { format, isAfter, isBefore } from "date-fns";
+} from 'lucide-react';
+import { format, isAfter, isBefore } from 'date-fns';
 
 interface Quote {
   id: string;
@@ -88,72 +88,76 @@ interface CustomerQuotesProps {
 }
 
 const statusColors = {
-  draft: "bg-gray-100 text-gray-800",
-  sent: "bg-blue-100 text-blue-800",
-  accepted: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-  expired: "bg-yellow-100 text-yellow-800",
-  converted: "bg-purple-100 text-purple-800",
+  draft: 'bg-gray-100 text-gray-800',
+  sent: 'bg-blue-100 text-blue-800',
+  accepted: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  expired: 'bg-yellow-100 text-yellow-800',
+  converted: 'bg-purple-100 text-purple-800',
 };
 
 const statusLabels = {
-  draft: "Draft",
-  sent: "Sent",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  expired: "Expired",
-  converted: "Converted",
+  draft: 'Draft',
+  sent: 'Sent',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  expired: 'Expired',
+  converted: 'Converted',
 };
 
 export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
   // Fetch quotes for this customer
-  const { data: quotes = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/quotes", "customer", customerId],
+  const {
+    data: quotes = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['/api/quotes', 'customer', customerId],
     enabled: !!customerId,
   });
 
   // Filter quotes based on search and status
   const filteredQuotes = quotes.filter((quote: Quote) => {
-    const matchesSearch = 
+    const matchesSearch =
       quote.quoteNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       quote.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || quote.status === statusFilter;
-    
+
+    const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
+
     return matchesSearch && matchesStatus;
   });
 
   const getQuoteStatus = (quote: Quote) => {
-    if (quote.status === "sent") {
+    if (quote.status === 'sent') {
       const now = new Date();
       const validUntil = new Date(quote.validUntil);
       if (isAfter(now, validUntil)) {
-        return "expired";
+        return 'expired';
       }
     }
     return quote.status;
   };
 
   const isExpiring = (quote: Quote) => {
-    if (quote.status !== "sent") return false;
-    
+    if (quote.status !== 'sent') return false;
+
     const now = new Date();
     const validUntil = new Date(quote.validUntil);
     const threeDaysFromNow = new Date();
     threeDaysFromNow.setDate(now.getDate() + 3);
-    
+
     return isAfter(validUntil, now) && isBefore(validUntil, threeDaysFromNow);
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount);
   };
 
@@ -171,9 +175,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Quotes</h2>
-          <p className="text-sm text-gray-600">
-            Manage quotes for {customerName}
-          </p>
+          <p className="text-sm text-gray-600">Manage quotes for {customerName}</p>
         </div>
         <div className="flex gap-2">
           <Button size="sm" onClick={() => refetch()}>
@@ -240,7 +242,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Accepted</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {filteredQuotes.filter((q: Quote) => q.status === "accepted").length}
+                  {filteredQuotes.filter((q: Quote) => q.status === 'accepted').length}
                 </p>
               </div>
             </div>
@@ -253,7 +255,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pending</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {filteredQuotes.filter((q: Quote) => q.status === "sent").length}
+                  {filteredQuotes.filter((q: Quote) => q.status === 'sent').length}
                 </p>
               </div>
             </div>
@@ -267,7 +269,10 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                 <p className="text-sm font-medium text-gray-600">Total Value</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(
-                    filteredQuotes.reduce((sum: number, quote: Quote) => sum + quote.totalAmount, 0)
+                    filteredQuotes.reduce(
+                      (sum: number, quote: Quote) => sum + quote.totalAmount,
+                      0,
+                    ),
                   )}
                 </p>
               </div>
@@ -288,12 +293,10 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
           {filteredQuotes.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No quotes found
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No quotes found</h3>
               <p className="text-gray-600 mb-4">
-                {searchTerm || statusFilter !== "all"
-                  ? "No quotes match your current filters."
+                {searchTerm || statusFilter !== 'all'
+                  ? 'No quotes match your current filters.'
                   : "This customer doesn't have any quotes yet."}
               </p>
               <Button>
@@ -320,12 +323,10 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                   {filteredQuotes.map((quote: Quote) => {
                     const status = getQuoteStatus(quote);
                     const expiring = isExpiring(quote);
-                    
+
                     return (
                       <TableRow key={quote.id}>
-                        <TableCell className="font-medium">
-                          {quote.quoteNumber}
-                        </TableCell>
+                        <TableCell className="font-medium">{quote.quoteNumber}</TableCell>
                         <TableCell>{quote.title}</TableCell>
                         <TableCell className="font-medium">
                           {formatCurrency(quote.totalAmount)}
@@ -335,27 +336,19 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                             {statusLabels[status as keyof typeof statusLabels]}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          {format(new Date(quote.validUntil), "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(quote.createdAt), "MMM d, yyyy")}
-                        </TableCell>
+                        <TableCell>{format(new Date(quote.validUntil), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>{format(new Date(quote.createdAt), 'MMM d, yyyy')}</TableCell>
                         <TableCell>
                           {expiring && (
                             <div className="flex items-center">
                               <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" />
-                              <span className="text-xs text-amber-700">
-                                Expiring soon
-                              </span>
+                              <span className="text-xs text-amber-700">Expiring soon</span>
                             </div>
                           )}
-                          {status === "expired" && (
+                          {status === 'expired' && (
                             <div className="flex items-center">
                               <XCircle className="h-4 w-4 text-red-500 mr-1" />
-                              <span className="text-xs text-red-700">
-                                Expired
-                              </span>
+                              <span className="text-xs text-red-700">Expired</span>
                             </div>
                           )}
                         </TableCell>
@@ -382,7 +375,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                                 Edit Quote
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {quote.status === "draft" && (
+                              {quote.status === 'draft' && (
                                 <DropdownMenuItem>
                                   <Send className="h-4 w-4 mr-2" />
                                   Send Quote
@@ -396,7 +389,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                                 <Download className="h-4 w-4 mr-2" />
                                 Download PDF
                               </DropdownMenuItem>
-                              {quote.status === "accepted" && (
+                              {quote.status === 'accepted' && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem>
@@ -433,7 +426,11 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">Status</h4>
-                  <Badge className={statusColors[getQuoteStatus(selectedQuote) as keyof typeof statusColors]}>
+                  <Badge
+                    className={
+                      statusColors[getQuoteStatus(selectedQuote) as keyof typeof statusColors]
+                    }
+                  >
                     {statusLabels[getQuoteStatus(selectedQuote) as keyof typeof statusLabels]}
                   </Badge>
                 </div>
@@ -446,7 +443,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
                 <div>
                   <h4 className="font-medium text-gray-900">Valid Until</h4>
                   <p className="text-gray-600">
-                    {format(new Date(selectedQuote.validUntil), "MMMM d, yyyy")}
+                    {format(new Date(selectedQuote.validUntil), 'MMMM d, yyyy')}
                   </p>
                 </div>
                 <div className="col-span-2">
@@ -458,18 +455,14 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
               {selectedQuote.terms && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Terms & Conditions</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                    {selectedQuote.terms}
-                  </p>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedQuote.terms}</p>
                 </div>
               )}
 
               {selectedQuote.notes && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Notes</h4>
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                    {selectedQuote.notes}
-                  </p>
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedQuote.notes}</p>
                 </div>
               )}
 
