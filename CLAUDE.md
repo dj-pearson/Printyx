@@ -115,19 +115,70 @@ npm run kb:create        # Create new KB article
 
 Leads and customers share the same `business_records` table. Status field determines state. Lead-to-customer conversion is a status update, preserving all history.
 
-### Authentication Pattern
+### Authentication Middleware (STANDARD PATTERN)
+
+**IMPORTANT**: Never define `requireAuth` locally in route files. Always import from centralized locations.
+
+#### Standard Auth Middleware
 
 ```typescript
-import { getUserId, getTenantId, isAuthenticated } from '../utils/auth-helpers';
+// CORRECT - Import from centralized location
+import { requireAuth } from '../replitAuth';
+// OR
+import { requireAuth } from '../auth-setup';
 
-app.get('/api/resource', requireAuth, requireTenant, async (req, res) => {
-  const userId = getUserId(req); // Supports JWT + session fallback
+// WRONG - Don't define locally!
+// const requireAuth = (req, res, next) => { ... }  // NO!
+```
+
+#### Available Middleware Options
+
+| Middleware | Import From | Use Case |
+|------------|-------------|----------|
+| `requireAuth` | `./replitAuth` or `./auth-setup` | Standard auth (JWT + session fallback) |
+| `requireSupabaseAuth` | `./middleware/supabase-auth` | Strict Supabase JWT only |
+| `protectedRoute` | `./middleware/supabase-auth` | JWT + Auth + Tenant context (combined) |
+| `platformAdminRoute` | `./middleware/supabase-auth` | Platform admin only access |
+| `requirePermission` | `./middleware/enhanced-rbac-middleware` | RBAC permission checks |
+
+#### Route Protection Examples
+
+```typescript
+import { requireAuth } from '../replitAuth';
+import { protectedRoute, requireSupabaseAuth } from '../middleware/supabase-auth';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
+
+// Standard protected route
+app.get('/api/resource', requireAuth, async (req, res) => {
+  const userId = getUserId(req);    // Supports JWT + session fallback
   const tenantId = getTenantId(req);
   // Always filter by tenantId!
   const data = await db.query.table.findMany({
     where: eq(table.tenantId, tenantId),
   });
 });
+
+// Full protection with tenant context (recommended for most routes)
+app.get('/api/dashboard', protectedRoute, async (req, res) => {
+  const tenantId = req.supabaseUser?.tenantId;
+  // ...
+});
+
+// Strict Supabase JWT only (no session fallback)
+app.post('/api/sensitive', requireSupabaseAuth, async (req, res) => {
+  // ...
+});
+```
+
+#### Auth Helper Functions
+
+```typescript
+import { getUserId, getTenantId, isAuthenticated, isPlatformAdmin } from '../utils/auth-helpers';
+
+const userId = getUserId(req);          // Get user ID from any auth source
+const tenantId = getTenantId(req);      // Get tenant ID from any source
+const isAuth = isAuthenticated(req);    // Check if request is authenticated
+const isAdmin = isPlatformAdmin(req);   // Check if user is platform admin
 ```
 
 ### RBAC Permission Format

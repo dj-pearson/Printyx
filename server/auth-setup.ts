@@ -4,6 +4,12 @@ import { users, roles, teams, tenants } from '@shared/schema';
 import { and, eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 
+/**
+ * Re-export standard auth middleware for convenience
+ * Routes can import from either './replitAuth' or './auth-setup'
+ */
+export { requireAuth, isAuthenticated } from './replitAuth';
+
 // Demo users with different role levels for testing
 const demoUsers = [
   {
