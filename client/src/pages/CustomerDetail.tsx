@@ -166,7 +166,10 @@ export default function CustomerDetailHubspot() {
     if (!customerData) return null;
 
     // Handle if API returns an array instead of single object
-    const data = Array.isArray(customerData) ? customerData[0] : customerData;
+    // IMPORTANT: When array is returned, find the customer matching the slug (ID)
+    const data = Array.isArray(customerData)
+      ? customerData.find((c: any) => c.id === slug) || customerData[0]
+      : customerData;
     if (!data) return null;
 
     // Extract nested company and contact data
