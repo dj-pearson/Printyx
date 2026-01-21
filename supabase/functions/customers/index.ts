@@ -75,7 +75,7 @@ export default async function handler(req: Request) {
             email,
             phone,
             title,
-            is_primary
+            is_primary_contact
           )
         `,
         )
