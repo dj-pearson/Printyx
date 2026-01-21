@@ -2,7 +2,7 @@
 // This is the main entry point for all Edge Functions
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { getCorsHeaders } from './_shared/cors.ts';
+import { getCorsHeaders } from '/app/functions/_shared/cors.ts';
 
 const port = parseInt(Deno.env.get('PORT') || '3001');
 
