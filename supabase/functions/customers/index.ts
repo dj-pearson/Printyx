@@ -95,8 +95,19 @@ export default async function handler(req: Request) {
       const { data: customers, error } = await query;
 
       if (error) {
-        console.error('Error fetching customers:', error);
+        console.error('[CUSTOMERS] Error fetching customers:', error);
         return createCorsResponse({ error: 'Failed to fetch customers' }, 500, req);
+      }
+
+      console.log(
+        `[CUSTOMERS] Query returned ${customers?.length || 0} customers for tenant ${tenantId}`,
+      );
+      if (customers && customers.length > 0) {
+        console.log('[CUSTOMERS] First customer:', {
+          id: customers[0].id,
+          company_name: customers[0].companies?.business_name,
+          has_contacts: !!customers[0].company_contacts,
+        });
       }
 
       return createCorsResponse(customers || [], 200, req);
