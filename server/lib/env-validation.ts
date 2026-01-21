@@ -27,6 +27,7 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().optional(),
   SUPABASE_ANON_KEY: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  SUPABASE_JWT_SECRET: z.string().optional(),
 
   // Stripe (optional but recommended for billing)
   STRIPE_SECRET_KEY: z.string().optional(),
@@ -93,6 +94,9 @@ export function validateEnvironment(): ValidationResult {
     }
     if (!process.env.SUPABASE_ANON_KEY) {
       errors.push('SUPABASE_ANON_KEY: Required in production for authentication');
+    }
+    if (!process.env.SUPABASE_JWT_SECRET) {
+      errors.push('SUPABASE_JWT_SECRET: Required in production for JWT verification');
     }
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       warnings.push('SUPABASE_SERVICE_ROLE_KEY: Recommended for server-side auth operations');
