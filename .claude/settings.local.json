@@ -19,7 +19,9 @@
       "Bash(findstr:*)",
       "Bash(npm run test:unit:*)",
       "Bash(npm run lint:*)",
-      "Bash(npm run format:write:*)"
+      "Bash(npm run format:write:*)",
+      "Bash(npx vitest:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
