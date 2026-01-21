@@ -13,7 +13,8 @@
       "Bash(set NODE_OPTIONS=--max-old-space-size=8192)",
       "Bash(npx tsc:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\pears\\\\Documents\\\\Printyx\\\\Printyx\\\\supabase\\\\functions\\\\me\"\" 2>/dev/null || echo \"Directory does not exist \")"
     ],
     "deny": [],
     "ask": []
