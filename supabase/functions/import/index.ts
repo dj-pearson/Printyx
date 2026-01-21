@@ -370,14 +370,27 @@ export default async function handler(req: Request) {
                   }
                 } else {
                   // Check for existing customer relationship
-                  const { data: existingCustomer } = await admin
+                  console.log(`[IMPORT] Checking customer relationship for ${businessName}`);
+
+                  const { data: existingCustomer, error: customerCheckError } = await admin
                     .from('customers')
                     .select('id')
                     .eq('tenant_id', job.tenantId)
                     .eq('company_id', existingCompany.id)
                     .maybeSingle();
 
+                  if (customerCheckError) {
+                    console.error(
+                      `[IMPORT] Error checking customer relationship:`,
+                      customerCheckError,
+                    );
+                  }
+
+                  console.log(`[IMPORT] Customer relationship exists: ${!!existingCustomer}`);
+
                   if (!existingCustomer) {
+                    console.log(`[IMPORT] Creating customer relationship for ${businessName}`);
+
                     const { error: customerInsertError } = await admin.from('customers').insert({
                       tenant_id: job.tenantId,
                       company_id: existingCompany.id,
@@ -387,7 +400,17 @@ export default async function handler(req: Request) {
 
                     if (!customerInsertError) {
                       relationshipCreated = true;
+                      console.log(`[IMPORT] ✅ Customer relationship created for ${businessName}`);
+                    } else {
+                      console.error(
+                        `[IMPORT] ❌ Failed to create customer relationship:`,
+                        customerInsertError,
+                      );
                     }
+                  } else {
+                    console.log(
+                      `[IMPORT] Customer relationship already exists for ${businessName}`,
+                    );
                   }
 
                   // ALWAYS check for missing contact (whether relationship exists or not)
