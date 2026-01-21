@@ -374,7 +374,7 @@ export default async function handler(req: Request) {
 
                   const { data: existingCustomer, error: customerCheckError } = await admin
                     .from('customers')
-                    .select('id')
+                    .select('id, contact_id')
                     .eq('tenant_id', job.tenantId)
                     .eq('company_id', existingCompany.id)
                     .maybeSingle();
@@ -388,12 +388,73 @@ export default async function handler(req: Request) {
 
                   console.log(`[IMPORT] Customer relationship exists: ${!!existingCustomer}`);
 
-                  if (!existingCustomer) {
-                    console.log(`[IMPORT] Creating customer relationship for ${businessName}`);
+                  // FIRST: Ensure contact exists (required for customer)
+                  let contactId = existingCustomer?.contact_id || null;
+
+                  if (!contactId) {
+                    // Check for existing contact
+                    const { data: existingContacts } = await admin
+                      .from('company_contacts')
+                      .select('id')
+                      .eq('company_id', existingCompany.id)
+                      .limit(1);
+
+                    console.log(
+                      `[IMPORT] Checking contacts for ${businessName}: found ${existingContacts?.length || 0} contacts`,
+                    );
+
+                    if (existingContacts && existingContacts.length > 0) {
+                      // Use existing contact
+                      contactId = existingContacts[0].id;
+                      console.log(
+                        `[IMPORT] Using existing contact for ${businessName}: ${contactId}`,
+                      );
+                    } else {
+                      // Create new contact
+                      console.log(`[IMPORT] Creating contact for ${businessName}`);
+
+                      const { data: newContact, error: contactInsertError } = await admin
+                        .from('company_contacts')
+                        .insert({
+                          company_id: existingCompany.id,
+                          tenant_id: job.tenantId,
+                          first_name: mappedData.primaryContactFirstName || 'Primary',
+                          last_name: mappedData.primaryContactLastName || 'Contact',
+                          email: contactEmail || null,
+                          phone: phone || null,
+                          is_primary_contact: true,
+                        })
+                        .select('id')
+                        .single();
+
+                      if (!contactInsertError && newContact) {
+                        contactId = newContact.id;
+                        contactCreated = true;
+                        console.log(
+                          `[IMPORT] ✅ Contact created for ${businessName}: ${contactId}`,
+                        );
+                      } else {
+                        console.error(
+                          `[IMPORT] ❌ Failed to create contact for ${businessName}:`,
+                          contactInsertError,
+                        );
+                        // Skip this row if we can't create a contact
+                        skippedRows++;
+                        continue;
+                      }
+                    }
+                  }
+
+                  // SECOND: Create customer relationship with contact_id
+                  if (!existingCustomer && contactId) {
+                    console.log(
+                      `[IMPORT] Creating customer relationship for ${businessName} with contact ${contactId}`,
+                    );
 
                     const { error: customerInsertError } = await admin.from('customers').insert({
                       tenant_id: job.tenantId,
                       company_id: existingCompany.id,
+                      contact_id: contactId,
                     });
 
                     if (!customerInsertError) {
@@ -405,51 +466,9 @@ export default async function handler(req: Request) {
                         customerInsertError,
                       );
                     }
-                  } else {
+                  } else if (existingCustomer) {
                     console.log(
                       `[IMPORT] Customer relationship already exists for ${businessName}`,
-                    );
-                  }
-
-                  // ALWAYS check for missing contact (whether relationship exists or not)
-                  const { data: existingContacts } = await admin
-                    .from('company_contacts')
-                    .select('id')
-                    .eq('company_id', existingCompany.id)
-                    .limit(1);
-
-                  console.log(
-                    `[IMPORT] Checking contacts for ${businessName}: found ${existingContacts?.length || 0} contacts`,
-                  );
-
-                  if (!existingContacts || existingContacts.length === 0) {
-                    console.log(`[IMPORT] Creating contact for ${businessName}`);
-
-                    // Create a default primary contact
-                    const { error: contactInsertError } = await admin
-                      .from('company_contacts')
-                      .insert({
-                        company_id: existingCompany.id,
-                        tenant_id: job.tenantId,
-                        first_name: mappedData.primaryContactFirstName || 'Primary',
-                        last_name: mappedData.primaryContactLastName || 'Contact',
-                        email: contactEmail || null,
-                        phone: phone || null,
-                        is_primary_contact: true,
-                      });
-
-                    if (!contactInsertError) {
-                      contactCreated = true;
-                      console.log(`[IMPORT] ✅ Contact created for ${businessName}`);
-                    } else {
-                      console.error(
-                        `[IMPORT] ❌ Failed to create contact for ${businessName}:`,
-                        contactInsertError,
-                      );
-                    }
-                  } else {
-                    console.log(
-                      `[IMPORT] Contact already exists for ${businessName}, skipping contact creation`,
                     );
                   }
                 }
@@ -607,16 +626,10 @@ export default async function handler(req: Request) {
                       console.error('Lead relationship error:', leadError);
                     }
                   } else {
-                    const { error: customerError } = await admin.from('customers').insert({
-                      tenant_id: job.tenantId,
-                      company_id: newCompany.id,
-                    });
-
-                    if (customerError) {
-                      console.error('Customer relationship error:', customerError);
-                    } else {
-                      // Create a default primary contact (required for customers page)
-                      await admin.from('company_contacts').insert({
+                    // FIRST: Create contact (required for customer relationship)
+                    const { data: newContact, error: contactError } = await admin
+                      .from('company_contacts')
+                      .insert({
                         company_id: newCompany.id,
                         tenant_id: job.tenantId,
                         first_name: mappedData.primaryContactFirstName || 'Primary',
@@ -624,7 +637,27 @@ export default async function handler(req: Request) {
                         email: mappedData.primaryContactEmail || mappedData.email || null,
                         phone: phone || null,
                         is_primary_contact: true,
-                      });
+                      })
+                      .select('id')
+                      .single();
+
+                    if (contactError || !newContact) {
+                      console.error('Contact creation error:', contactError);
+                      skippedRows++;
+                      continue;
+                    }
+
+                    // SECOND: Create customer with contact_id
+                    const { error: customerError } = await admin.from('customers').insert({
+                      tenant_id: job.tenantId,
+                      company_id: newCompany.id,
+                      contact_id: newContact.id,
+                    });
+
+                    if (customerError) {
+                      console.error('Customer relationship error:', customerError);
+                      skippedRows++;
+                      continue;
                     }
                   }
 
