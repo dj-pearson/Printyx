@@ -455,6 +455,7 @@ export default async function handler(req: Request) {
                       tenant_id: job.tenantId,
                       company_id: existingCompany.id,
                       contact_id: contactId,
+                      created_by: job.userId,
                     });
 
                     if (!customerInsertError) {
@@ -652,6 +653,7 @@ export default async function handler(req: Request) {
                       tenant_id: job.tenantId,
                       company_id: newCompany.id,
                       contact_id: newContact.id,
+                      created_by: job.userId,
                     });
 
                     if (customerError) {
