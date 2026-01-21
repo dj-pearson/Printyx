@@ -36,15 +36,59 @@ const TENANT_CONFIG = {
 export const resolveTenant = async (req: TenantRequest, res: Response, next: NextFunction) => {
   try {
     // Priority 1: Supabase JWT tenant (from supabase-auth middleware)
-    if (req.supabaseUser?.tenantId) {
-      req.tenantId = req.supabaseUser.tenantId;
+    const jwtTenantId = req.supabaseUser?.tenantId;
+    const headerTenantId = req.get('x-tenant-id');
+    const isPlatformAdmin =
+      req.supabaseUser?.isPlatformUser ||
+      (req.supabaseUser?.roleLevel && req.supabaseUser.roleLevel >= 8);
+
+    if (jwtTenantId) {
+      // Security: If JWT has a tenant, validate x-tenant-id header against it
+      if (headerTenantId && headerTenantId !== jwtTenantId) {
+        // Only platform admins can access different tenants via header
+        if (isPlatformAdmin) {
+          req.tenantId = headerTenantId;
+          console.log(
+            `[TENANT SECURITY] Platform admin accessing tenant ${headerTenantId} (own: ${jwtTenantId})`,
+          );
+          return next();
+        } else {
+          // Log the security violation attempt
+          console.warn(
+            `[TENANT SECURITY] User ${req.supabaseUser?.id} attempted tenant override: header=${headerTenantId}, jwt=${jwtTenantId}`,
+          );
+          return res.status(403).json({
+            error: 'Forbidden',
+            message: 'You do not have permission to access this tenant.',
+            code: 'TENANT_ACCESS_DENIED',
+          });
+        }
+      }
+
+      req.tenantId = jwtTenantId;
       // console.log(`[TENANT DEBUG] Using Supabase JWT tenant: ${req.tenantId}`);
       return next();
     }
 
-    // Priority 2: x-tenant-id header (for self-hosted and API scenarios)
-    const headerTenantId = req.get('x-tenant-id');
+    // Priority 2: x-tenant-id header (only when no JWT tenant - for API key auth scenarios)
+    // Note: API key validation should set req.user.tenantId if authenticated
     if (headerTenantId && headerTenantId.length > 0) {
+      // If user is authenticated but has no JWT tenant, validate header against user's DB tenant
+      if (req.user?.tenantId && req.user.tenantId !== headerTenantId) {
+        const userIsPlatformAdmin =
+          req.user?.isPlatformUser || (req.user?.role?.level && req.user.role.level >= 8);
+        if (!userIsPlatformAdmin) {
+          console.warn(
+            `[TENANT SECURITY] User ${req.user?.id} header tenant mismatch: header=${headerTenantId}, user=${req.user.tenantId}`,
+          );
+          return res.status(403).json({
+            error: 'Forbidden',
+            message: 'You do not have permission to access this tenant.',
+            code: 'TENANT_ACCESS_DENIED',
+          });
+        }
+      }
+
       req.tenantId = headerTenantId;
       // console.log(`[TENANT DEBUG] Using x-tenant-id header: ${req.tenantId}`);
       return next();

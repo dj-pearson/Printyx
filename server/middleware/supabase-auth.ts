@@ -22,6 +22,7 @@ export interface SupabaseUser {
   email: string;
   tenantId?: string;
   roleId?: string;
+  roleLevel?: number;
   teamId?: string;
   accessScope?: string;
   isPlatformUser?: boolean;
@@ -41,6 +42,7 @@ interface JWTPayload {
   app_metadata?: {
     tenantId?: string;
     roleId?: string;
+    roleLevel?: number;
     teamId?: string;
     accessScope?: string;
     isPlatformUser?: boolean;
@@ -113,6 +115,7 @@ function transformPayloadToUser(payload: JWTPayload): SupabaseUser {
     email: payload.email || '',
     tenantId: appMetadata.tenantId,
     roleId: appMetadata.roleId,
+    roleLevel: appMetadata.roleLevel,
     teamId: appMetadata.teamId,
     accessScope: appMetadata.accessScope || 'own',
     isPlatformUser: appMetadata.isPlatformUser || false,
@@ -149,7 +152,7 @@ export const authenticateSupabaseJWT: RequestHandler = async (
     // This ensures we have the most up-to-date role data
     try {
       const { db } = await import('../db');
-      const { users } = await import('../../shared/schema');
+      const { users, roles } = await import('../../shared/schema');
       const { eq } = await import('drizzle-orm');
 
       const [userRecord] = await db
@@ -187,6 +190,27 @@ export const authenticateSupabaseJWT: RequestHandler = async (
         supabaseUser.teamId = userRecord.teamId || supabaseUser.teamId;
         supabaseUser.firstName = userRecord.firstName || supabaseUser.firstName;
         supabaseUser.lastName = userRecord.lastName || supabaseUser.lastName;
+
+        // Fetch role level if user has a roleId
+        if (userRecord.roleId) {
+          try {
+            const [roleRecord] = await db
+              .select({ level: roles.level })
+              .from(roles)
+              .where(eq(roles.id, userRecord.roleId))
+              .limit(1);
+
+            if (roleRecord) {
+              supabaseUser.roleLevel = roleRecord.level;
+              // Also update isPlatformUser based on role level (8 = platform admin)
+              if (roleRecord.level >= 8) {
+                supabaseUser.isPlatformUser = true;
+              }
+            }
+          } catch (roleError) {
+            console.warn('[Auth] Could not fetch role level:', roleError);
+          }
+        }
       }
     } catch (dbError) {
       console.warn('[Auth] Could not fetch user from database:', dbError);
