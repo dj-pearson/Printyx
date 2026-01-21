@@ -397,7 +397,13 @@ export default async function handler(req: Request) {
                     .eq('company_id', existingCompany.id)
                     .limit(1);
 
+                  console.log(
+                    `[IMPORT] Checking contacts for ${businessName}: found ${existingContacts?.length || 0} contacts`,
+                  );
+
                   if (!existingContacts || existingContacts.length === 0) {
+                    console.log(`[IMPORT] Creating contact for ${businessName}`);
+
                     // Create a default primary contact
                     const { error: contactInsertError } = await admin
                       .from('company_contacts')
@@ -414,7 +420,17 @@ export default async function handler(req: Request) {
 
                     if (!contactInsertError) {
                       contactCreated = true;
+                      console.log(`[IMPORT] ✅ Contact created for ${businessName}`);
+                    } else {
+                      console.error(
+                        `[IMPORT] ❌ Failed to create contact for ${businessName}:`,
+                        contactInsertError,
+                      );
                     }
+                  } else {
+                    console.log(
+                      `[IMPORT] Contact already exists for ${businessName}, skipping contact creation`,
+                    );
                   }
                 }
 
@@ -502,13 +518,18 @@ export default async function handler(req: Request) {
                     console.error('Update error:', updateError);
                     skippedRows++;
                   } else {
+                    console.log(`[IMPORT] ✅ Merged (field updates): ${businessName}`);
                     mergedRows++;
                   }
                 } else if (relationshipCreated || contactCreated) {
                   // No company updates but relationship or contact was created
+                  console.log(
+                    `[IMPORT] ✅ Merged (relationship=${relationshipCreated}, contact=${contactCreated}): ${businessName}`,
+                  );
                   mergedRows++;
                 } else {
                   // Duplicate with no new info, relationship, or contact
+                  console.log(`[IMPORT] ⏭️  Skipped (no changes needed): ${businessName}`);
                   skippedRows++;
                 }
               } else {
