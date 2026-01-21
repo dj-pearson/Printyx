@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { db } from './db';
 import { users, roles, tenants, activityReports, auditLogs } from '../shared/schema';
-import { eq, desc, sql, count, and, gte, lte } from 'drizzle-orm';
+import { rbacAuditLog } from './enhanced-rbac-schema';
+import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
@@ -510,5 +511,231 @@ router.post(
     }
   },
 );
+
+// =====================================================================
+// RBAC AUDIT LOGS - Security monitoring for admin bypass actions
+// =====================================================================
+
+/**
+ * GET /rbac-audit-logs - Get RBAC audit logs with filtering
+ * Supports filtering by event type, user, date range, and route
+ */
+router.get('/rbac-audit-logs', requireRootAdmin, async (req, res) => {
+  try {
+    const {
+      eventType,
+      userId,
+      startDate,
+      endDate,
+      route,
+      limit: limitParam = '100',
+      offset: offsetParam = '0',
+    } = req.query;
+
+    const conditions: any[] = [];
+
+    // Filter by event type(s)
+    if (eventType) {
+      const types = (eventType as string).split(',');
+      conditions.push(inArray(rbacAuditLog.eventType, types));
+    }
+
+    // Filter by user ID
+    if (userId) {
+      conditions.push(eq(rbacAuditLog.userId, userId as string));
+    }
+
+    // Filter by date range
+    if (startDate) {
+      conditions.push(gte(rbacAuditLog.createdAt, new Date(startDate as string)));
+    }
+    if (endDate) {
+      conditions.push(lte(rbacAuditLog.createdAt, new Date(endDate as string)));
+    }
+
+    // Filter by route (partial match)
+    if (route) {
+      conditions.push(like(rbacAuditLog.route, `%${route}%`));
+    }
+
+    const limitNum = Math.min(parseInt(limitParam as string, 10) || 100, 1000);
+    const offsetNum = parseInt(offsetParam as string, 10) || 0;
+
+    // Get logs with conditions
+    const logs = await db
+      .select()
+      .from(rbacAuditLog)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(rbacAuditLog.createdAt))
+      .limit(limitNum)
+      .offset(offsetNum);
+
+    // Get total count
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(rbacAuditLog)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    // Enrich with user information
+    const enrichedLogs = await Promise.all(
+      logs.map(async (log) => {
+        const user = log.userId
+          ? await db
+              .select({ name: users.name, email: users.email })
+              .from(users)
+              .where(eq(users.id, log.userId))
+              .limit(1)
+          : null;
+
+        return {
+          ...log,
+          userName: user?.[0]?.name || 'System',
+          userEmail: user?.[0]?.email || 'system@printyx.com',
+        };
+      }),
+    );
+
+    res.json({
+      data: enrichedLogs,
+      total: countResult?.count || 0,
+      limit: limitNum,
+      offset: offsetNum,
+    });
+  } catch (error) {
+    console.error('Error fetching RBAC audit logs:', error);
+    res.status(500).json({ message: 'Failed to fetch RBAC audit logs' });
+  }
+});
+
+/**
+ * GET /rbac-audit-logs/stats - Get RBAC audit log statistics
+ * Returns counts by event type for security monitoring dashboards
+ */
+router.get('/rbac-audit-logs/stats', requireRootAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const conditions: any[] = [];
+
+    if (startDate) {
+      conditions.push(gte(rbacAuditLog.createdAt, new Date(startDate as string)));
+    }
+    if (endDate) {
+      conditions.push(lte(rbacAuditLog.createdAt, new Date(endDate as string)));
+    }
+
+    // Get counts by event type
+    const eventTypeCounts = await db
+      .select({
+        eventType: rbacAuditLog.eventType,
+        count: count(),
+      })
+      .from(rbacAuditLog)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(rbacAuditLog.eventType)
+      .orderBy(desc(count()));
+
+    // Get total count
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(rbacAuditLog)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+    // Get admin bypass count specifically (for security alerting)
+    const [adminBypassCount] = await db
+      .select({ count: count() })
+      .from(rbacAuditLog)
+      .where(
+        conditions.length > 0
+          ? and(eq(rbacAuditLog.eventType, 'ADMIN_BYPASS'), ...conditions)
+          : eq(rbacAuditLog.eventType, 'ADMIN_BYPASS'),
+      );
+
+    // Get recent admin bypass activity (last 24 hours)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const [recentAdminBypassCount] = await db
+      .select({ count: count() })
+      .from(rbacAuditLog)
+      .where(
+        and(eq(rbacAuditLog.eventType, 'ADMIN_BYPASS'), gte(rbacAuditLog.createdAt, yesterday)),
+      );
+
+    res.json({
+      total: totalResult?.count || 0,
+      byEventType: eventTypeCounts,
+      adminBypass: {
+        total: adminBypassCount?.count || 0,
+        last24Hours: recentAdminBypassCount?.count || 0,
+      },
+      dateRange: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching RBAC audit stats:', error);
+    res.status(500).json({ message: 'Failed to fetch RBAC audit stats' });
+  }
+});
+
+/**
+ * GET /rbac-audit-logs/admin-bypass - Get only admin bypass events
+ * Specialized endpoint for security monitoring of admin actions
+ */
+router.get('/rbac-audit-logs/admin-bypass', requireRootAdmin, async (req, res) => {
+  try {
+    const { userId, startDate, endDate, limit: limitParam = '50' } = req.query;
+
+    const conditions: any[] = [eq(rbacAuditLog.eventType, 'ADMIN_BYPASS')];
+
+    if (userId) {
+      conditions.push(eq(rbacAuditLog.userId, userId as string));
+    }
+    if (startDate) {
+      conditions.push(gte(rbacAuditLog.createdAt, new Date(startDate as string)));
+    }
+    if (endDate) {
+      conditions.push(lte(rbacAuditLog.createdAt, new Date(endDate as string)));
+    }
+
+    const limitNum = Math.min(parseInt(limitParam as string, 10) || 50, 500);
+
+    const logs = await db
+      .select()
+      .from(rbacAuditLog)
+      .where(and(...conditions))
+      .orderBy(desc(rbacAuditLog.createdAt))
+      .limit(limitNum);
+
+    // Enrich with user information
+    const enrichedLogs = await Promise.all(
+      logs.map(async (log) => {
+        const user = log.userId
+          ? await db
+              .select({ name: users.name, email: users.email })
+              .from(users)
+              .where(eq(users.id, log.userId))
+              .limit(1)
+          : null;
+
+        return {
+          ...log,
+          userName: user?.[0]?.name || 'Unknown',
+          userEmail: user?.[0]?.email || 'unknown',
+        };
+      }),
+    );
+
+    res.json({
+      data: enrichedLogs,
+      count: enrichedLogs.length,
+    });
+  } catch (error) {
+    console.error('Error fetching admin bypass logs:', error);
+    res.status(500).json({ message: 'Failed to fetch admin bypass logs' });
+  }
+});
 
 export default router;
