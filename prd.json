@@ -196,10 +196,17 @@
         "Document required environment variables",
         "Add health check for JWT configuration"
       ],
-      "files": ["server/middleware/supabase-auth.ts", "server/lib/env-validation.ts"],
-      "passes": false,
+      "files": [
+        "server/middleware/supabase-auth.ts",
+        "server/lib/env-validation.ts",
+        "server/routes/health-routes.ts",
+        "server/tests/unit/env-validation.test.ts"
+      ],
+      "passes": true,
       "priority": 2,
-      "severity": "high"
+      "severity": "high",
+      "completedAt": "2026-01-21",
+      "resolution": "Added SUPABASE_JWT_SECRET to env-validation.ts as required in production. getJwtSecret() returns null gracefully instead of throwing. Added JwtConfigurationError class. Health endpoint /health includes JWT configuration status. 13 unit tests added."
     },
     {
       "id": "AUTH-003",

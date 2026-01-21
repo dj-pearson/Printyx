@@ -15,6 +15,7 @@
 import type { Express, Request, Response } from 'express';
 import { pool } from '../db';
 import { getMonitoringHealth, getQueryStats } from '../lib/monitoring';
+import { checkJwtConfiguration, type JwtConfigStatus } from '../lib/env-validation';
 
 // Track server start time for uptime calculation
 const serverStartTime = Date.now();
@@ -108,6 +109,17 @@ interface HealthCheckResponse {
       responseTimeMs: number;
       error?: string;
     };
+    jwt: {
+      status: 'healthy' | 'degraded' | 'unhealthy';
+      configured: boolean;
+      components: {
+        supabaseUrl: boolean;
+        anonKey: boolean;
+        jwtSecret: boolean;
+        serviceRoleKey: boolean;
+      };
+      errors?: string[];
+    };
     monitoring: {
       status: 'healthy' | 'degraded';
       initialized: boolean;
@@ -135,6 +147,7 @@ export function registerHealthRoutes(app: Express): void {
    */
   app.get('/health', async (_req: Request, res: Response) => {
     const dbHealth = await checkDatabaseHealth();
+    const jwtConfig = checkJwtConfiguration();
     const monitoringHealth = getMonitoringHealth();
     const systemMetrics = getSystemMetrics();
 
@@ -150,11 +163,22 @@ export function registerHealthRoutes(app: Express): void {
       memoryStatus = 'warning';
     }
 
+    // Determine JWT health status
+    const isProduction = process.env.NODE_ENV === 'production';
+    let jwtStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+    if (!jwtConfig.configured) {
+      jwtStatus = isProduction ? 'unhealthy' : 'degraded';
+    }
+
     // Determine overall status
     let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-    if (!dbHealth.healthy) {
+    if (!dbHealth.healthy || (isProduction && !jwtConfig.configured)) {
       overallStatus = 'unhealthy';
-    } else if (memoryStatus === 'critical' || !monitoringHealth.initialized) {
+    } else if (
+      memoryStatus === 'critical' ||
+      !monitoringHealth.initialized ||
+      !jwtConfig.configured
+    ) {
       overallStatus = 'degraded';
     }
 
@@ -169,6 +193,17 @@ export function registerHealthRoutes(app: Express): void {
           status: dbHealth.healthy ? 'healthy' : 'unhealthy',
           responseTimeMs: dbHealth.responseTimeMs,
           ...(dbHealth.error && { error: dbHealth.error }),
+        },
+        jwt: {
+          status: jwtStatus,
+          configured: jwtConfig.configured,
+          components: {
+            supabaseUrl: jwtConfig.supabaseUrl,
+            anonKey: jwtConfig.anonKey,
+            jwtSecret: jwtConfig.jwtSecret,
+            serviceRoleKey: jwtConfig.serviceRoleKey,
+          },
+          ...(jwtConfig.errors.length > 0 && { errors: jwtConfig.errors }),
         },
         monitoring: {
           status: monitoringHealth.initialized ? 'healthy' : 'degraded',

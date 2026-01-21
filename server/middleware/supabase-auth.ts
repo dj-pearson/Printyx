@@ -55,15 +55,42 @@ interface JWTPayload {
 
 // Cache the JWT secret as a Uint8Array for jose
 let jwtSecretKey: Uint8Array | null = null;
+let jwtSecretMissing = false;
 
-function getJwtSecret(): Uint8Array {
+/**
+ * Check if JWT secret is configured
+ */
+export function isJwtConfigured(): boolean {
+  return !!process.env.SUPABASE_JWT_SECRET;
+}
+
+/**
+ * Get the JWT secret, with graceful error handling
+ * Returns null if secret is not configured (instead of throwing)
+ */
+function getJwtSecret(): Uint8Array | null {
   if (jwtSecretKey) {
     return jwtSecretKey;
   }
 
   const secret = process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    throw new Error('SUPABASE_JWT_SECRET environment variable is not set');
+    // Log warning only once to avoid log spam
+    if (!jwtSecretMissing) {
+      jwtSecretMissing = true;
+      const isProduction = process.env.NODE_ENV === 'production';
+
+      if (isProduction) {
+        console.error(
+          '[Auth] CRITICAL: SUPABASE_JWT_SECRET is not set. JWT authentication will not work!',
+        );
+        console.error('[Auth] Please set SUPABASE_JWT_SECRET in your environment variables.');
+      } else {
+        console.warn('[Auth] SUPABASE_JWT_SECRET is not set. JWT authentication is disabled.');
+        console.warn('[Auth] Set SUPABASE_JWT_SECRET to enable Supabase JWT authentication.');
+      }
+    }
+    return null;
   }
 
   jwtSecretKey = new TextEncoder().encode(secret);
@@ -89,10 +116,27 @@ function extractToken(req: Request): string | null {
 }
 
 /**
+ * Custom error for JWT configuration issues
+ */
+class JwtConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'JwtConfigurationError';
+  }
+}
+
+/**
  * Verify and decode Supabase JWT
+ * Throws JwtConfigurationError if JWT secret is not configured
  */
 async function verifySupabaseJWT(token: string): Promise<JWTPayload> {
   const secret = getJwtSecret();
+
+  if (!secret) {
+    throw new JwtConfigurationError(
+      'JWT verification failed: SUPABASE_JWT_SECRET is not configured',
+    );
+  }
 
   const { payload } = await jose.jwtVerify(token, secret, {
     algorithms: ['HS256'],
@@ -203,12 +247,16 @@ export const authenticateSupabaseJWT: RequestHandler = async (
     next();
   } catch (error) {
     // Log but don't reject - let requireSupabaseAuth handle rejection
-    if (error instanceof jose.errors.JWTExpired) {
-      console.warn('Supabase JWT expired');
+    if (error instanceof JwtConfigurationError) {
+      // JWT not configured - log once and continue without auth
+      // This allows the server to start without JWT configured in dev mode
+      console.debug('[Auth] JWT verification skipped: secret not configured');
+    } else if (error instanceof jose.errors.JWTExpired) {
+      console.warn('[Auth] Supabase JWT expired');
     } else if (error instanceof jose.errors.JWTInvalid) {
-      console.warn('Invalid Supabase JWT:', (error as Error).message);
+      console.warn('[Auth] Invalid Supabase JWT:', (error as Error).message);
     } else {
-      console.error('JWT verification error:', error);
+      console.error('[Auth] JWT verification error:', error);
     }
 
     // Clear any partial user data
