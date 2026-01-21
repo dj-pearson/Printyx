@@ -253,11 +253,14 @@
       ],
       "files": [
         "server/services/intelligent-alerts-service.ts",
-        "shared/intelligent-alerts-schema.ts"
+        "shared/intelligent-alerts-schema.ts",
+        "server/tests/unit/intelligent-alerts.test.ts"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2,
-      "severity": "high"
+      "severity": "high",
+      "completedAt": "2026-01-21",
+      "resolution": "Implemented all 10 security containment actions: suspend_user (sets isActive=false), terminate_session (updates securitySessions), block_ip (audit log + firewall flag), quarantine_file (audit log), disable_integration (audit log), rate_limit (audit log), force_password_reset (clears password hash + email), enable_mfa (audit log + email), restrict_permissions (sets accessScope to location), notify_team (sends email to security team). Created 28 unit tests covering action validation, containment generation, auto-containment thresholds, and risk score calculation."
     },
     {
       "id": "AUTH-005",
