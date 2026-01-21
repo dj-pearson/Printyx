@@ -5,7 +5,14 @@
 
 import React, { useState } from 'react';
 import MainLayout from '@/components/layout/main-layout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -52,7 +59,7 @@ import {
   FileDown,
   Send,
   Zap,
-  Target
+  Target,
 } from 'lucide-react';
 
 interface ScheduledReport {
@@ -82,13 +89,14 @@ const mockScheduledReports: ScheduledReport[] = [
   {
     id: '1',
     name: 'Weekly Sales Performance',
-    description: 'Comprehensive sales metrics and pipeline analysis sent to sales team every Monday',
+    description:
+      'Comprehensive sales metrics and pipeline analysis sent to sales team every Monday',
     reportType: 'sales-dashboard',
     schedule: {
       frequency: 'weekly',
       time: '08:00',
       dayOfWeek: 1,
-      timezone: 'America/New_York'
+      timezone: 'America/New_York',
     },
     recipients: ['sales@company.com', 'manager@company.com'],
     format: 'pdf',
@@ -98,7 +106,7 @@ const mockScheduledReports: ScheduledReport[] = [
     nextRun: new Date('2025-11-25T08:00:00'),
     runCount: 47,
     createdBy: 'John Doe',
-    createdAt: new Date('2025-01-15')
+    createdAt: new Date('2025-01-15'),
   },
   {
     id: '2',
@@ -109,7 +117,7 @@ const mockScheduledReports: ScheduledReport[] = [
       frequency: 'monthly',
       time: '09:00',
       dayOfMonth: 1,
-      timezone: 'America/New_York'
+      timezone: 'America/New_York',
     },
     recipients: ['cfo@company.com', 'ceo@company.com'],
     format: 'excel',
@@ -119,7 +127,7 @@ const mockScheduledReports: ScheduledReport[] = [
     nextRun: new Date('2025-12-01T09:00:00'),
     runCount: 10,
     createdBy: 'Jane Smith',
-    createdAt: new Date('2025-02-01')
+    createdAt: new Date('2025-02-01'),
   },
   {
     id: '3',
@@ -129,7 +137,7 @@ const mockScheduledReports: ScheduledReport[] = [
     schedule: {
       frequency: 'daily',
       time: '17:00',
-      timezone: 'America/New_York'
+      timezone: 'America/New_York',
     },
     recipients: ['service@company.com'],
     format: 'csv',
@@ -139,7 +147,7 @@ const mockScheduledReports: ScheduledReport[] = [
     nextRun: new Date('2025-11-23T17:00:00'),
     runCount: 234,
     createdBy: 'Mike Johnson',
-    createdAt: new Date('2025-03-10')
+    createdAt: new Date('2025-03-10'),
   },
   {
     id: '4',
@@ -150,7 +158,7 @@ const mockScheduledReports: ScheduledReport[] = [
       frequency: 'weekly',
       time: '10:00',
       dayOfWeek: 5,
-      timezone: 'America/New_York'
+      timezone: 'America/New_York',
     },
     recipients: ['csm@company.com', 'sales@company.com'],
     format: 'pdf',
@@ -160,8 +168,8 @@ const mockScheduledReports: ScheduledReport[] = [
     nextRun: new Date('2025-11-29T10:00:00'),
     runCount: 12,
     createdBy: 'Sarah Lee',
-    createdAt: new Date('2025-09-01')
-  }
+    createdAt: new Date('2025-09-01'),
+  },
 ];
 
 const reportTypes = [
@@ -170,7 +178,7 @@ const reportTypes = [
   { value: 'service-metrics', label: 'Service Metrics', icon: Settings },
   { value: 'customer-health', label: 'Customer Health', icon: Users },
   { value: 'inventory-report', label: 'Inventory Report', icon: FileText },
-  { value: 'equipment-status', label: 'Equipment Status', icon: Target }
+  { value: 'equipment-status', label: 'Equipment Status', icon: Target },
 ];
 
 export default function ScheduledReportsDashboard() {
@@ -180,17 +188,19 @@ export default function ScheduledReportsDashboard() {
 
   const stats = {
     total: reports.length,
-    active: reports.filter(r => r.status === 'active').length,
-    paused: reports.filter(r => r.status === 'paused').length,
-    totalDeliveries: reports.reduce((sum, r) => sum + r.runCount, 0)
+    active: reports.filter((r) => r.status === 'active').length,
+    paused: reports.filter((r) => r.status === 'paused').length,
+    totalDeliveries: reports.reduce((sum, r) => sum + r.runCount, 0),
   };
 
   const toggleReportStatus = (reportId: string) => {
-    setReports(reports.map(r =>
-      r.id === reportId
-        ? { ...r, status: r.status === 'active' ? 'paused' : 'active' as any }
-        : r
-    ));
+    setReports(
+      reports.map((r) =>
+        r.id === reportId
+          ? { ...r, status: r.status === 'active' ? 'paused' : ('active' as any) }
+          : r,
+      ),
+    );
   };
 
   const runReportNow = (reportId: string) => {
@@ -204,7 +214,6 @@ export default function ScheduledReportsDashboard() {
       description="Automate report delivery to your team via email"
     >
       <div className="container mx-auto p-6 space-y-6">
-
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -283,14 +292,16 @@ export default function ScheduledReportsDashboard() {
                       <CardTitle>{report.name}</CardTitle>
                       <Badge variant={report.status === 'active' ? 'default' : 'secondary'}>
                         {report.status === 'active' ? (
-                          <><CheckCircle2 className="h-3 w-3 mr-1" /> Active</>
+                          <>
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+                          </>
                         ) : (
-                          <><Pause className="h-3 w-3 mr-1" /> Paused</>
+                          <>
+                            <Pause className="h-3 w-3 mr-1" /> Paused
+                          </>
                         )}
                       </Badge>
-                      <Badge variant="outline">
-                        {report.format.toUpperCase()}
-                      </Badge>
+                      <Badge variant="outline">{report.format.toUpperCase()}</Badge>
                     </div>
                     <CardDescription>{report.description}</CardDescription>
                   </div>
@@ -322,7 +333,9 @@ export default function ScheduledReportsDashboard() {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
                       <span className="font-medium">
-                        {report.schedule.frequency.charAt(0).toUpperCase() + report.schedule.frequency.slice(1)} at {report.schedule.time}
+                        {report.schedule.frequency.charAt(0).toUpperCase() +
+                          report.schedule.frequency.slice(1)}{' '}
+                        at {report.schedule.time}
                       </span>
                     </div>
                   </div>
@@ -330,16 +343,17 @@ export default function ScheduledReportsDashboard() {
                     <p className="text-muted-foreground mb-1">Recipients</p>
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4" />
-                      <span className="font-medium">{report.recipients.length} recipient{report.recipients.length !== 1 ? 's' : ''}</span>
+                      <span className="font-medium">
+                        {report.recipients.length} recipient
+                        {report.recipients.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
                   <div>
                     <p className="text-muted-foreground mb-1">Next Run</p>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
-                      <span className="font-medium">
-                        {report.nextRun.toLocaleDateString()}
-                      </span>
+                      <span className="font-medium">{report.nextRun.toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div>
@@ -395,7 +409,9 @@ export default function ScheduledReportsDashboard() {
                     <Target className="h-5 w-5 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold">Drive Accountability</p>
-                      <p className="text-sm text-white/90">Regular metrics reviews improve performance</p>
+                      <p className="text-sm text-white/90">
+                        Regular metrics reviews improve performance
+                      </p>
                     </div>
                   </li>
                 </ul>
@@ -404,7 +420,9 @@ export default function ScheduledReportsDashboard() {
                 <div className="text-center">
                   <div className="text-6xl font-bold mb-2">{stats.totalDeliveries}</div>
                   <p className="text-lg text-white/90">Reports Delivered Automatically</p>
-                  <p className="text-sm text-white/80 mt-2">Saving ~{Math.round(stats.totalDeliveries * 0.25)} hours of manual work</p>
+                  <p className="text-sm text-white/80 mt-2">
+                    Saving ~{Math.round(stats.totalDeliveries * 0.25)} hours of manual work
+                  </p>
                 </div>
               </div>
             </div>
@@ -425,7 +443,7 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
     time: '09:00',
     dayOfWeek: '1',
     recipients: '',
-    format: 'pdf'
+    format: 'pdf',
   });
 
   const handleCreate = () => {
@@ -437,9 +455,7 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Schedule New Report</DialogTitle>
-        <DialogDescription>
-          Automate report delivery to keep your team informed
-        </DialogDescription>
+        <DialogDescription>Automate report delivery to keep your team informed</DialogDescription>
       </DialogHeader>
 
       <Tabs value={`step-${step}`} onValueChange={(v) => setStep(parseInt(v.split('-')[1]))}>
@@ -470,7 +486,10 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <Label htmlFor="reportType">Report Type</Label>
-            <Select value={formData.reportType} onValueChange={(v) => setFormData({ ...formData, reportType: v })}>
+            <Select
+              value={formData.reportType}
+              onValueChange={(v) => setFormData({ ...formData, reportType: v })}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select report type" />
               </SelectTrigger>
@@ -494,7 +513,10 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
         <TabsContent value="step-2" className="space-y-4">
           <div>
             <Label htmlFor="frequency">Frequency</Label>
-            <Select value={formData.frequency} onValueChange={(v) => setFormData({ ...formData, frequency: v })}>
+            <Select
+              value={formData.frequency}
+              onValueChange={(v) => setFormData({ ...formData, frequency: v })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -509,7 +531,10 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
           {formData.frequency === 'weekly' && (
             <div>
               <Label htmlFor="dayOfWeek">Day of Week</Label>
-              <Select value={formData.dayOfWeek} onValueChange={(v) => setFormData({ ...formData, dayOfWeek: v })}>
+              <Select
+                value={formData.dayOfWeek}
+                onValueChange={(v) => setFormData({ ...formData, dayOfWeek: v })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -548,7 +573,10 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <Label htmlFor="format">Report Format</Label>
-            <Select value={formData.format} onValueChange={(v) => setFormData({ ...formData, format: v })}>
+            <Select
+              value={formData.format}
+              onValueChange={(v) => setFormData({ ...formData, format: v })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -578,7 +606,9 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
       </Tabs>
 
       <DialogFooter className="flex justify-between">
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
         <div className="flex gap-2">
           {step > 1 && (
             <Button variant="outline" onClick={() => setStep(step - 1)}>

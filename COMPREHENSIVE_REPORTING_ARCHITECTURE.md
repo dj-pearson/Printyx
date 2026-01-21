@@ -1,5 +1,6 @@
 # Comprehensive Multi-Department Reporting Architecture
-*Building upon existing Printyx RBAC and hierarchy systems*
+
+_Building upon existing Printyx RBAC and hierarchy systems_
 
 ## Executive Summary
 
@@ -25,6 +26,7 @@ This document provides an A-Z implementation guide for building comprehensive re
 ## Current System Analysis
 
 ### ✅ Existing Strengths
+
 - **Hierarchical RBAC**: 8-level role hierarchy (Platform → Company → Regional → Location)
 - **Multi-Location Support**: Comprehensive location/region management
 - **Tenant Isolation**: Full multi-tenant architecture with proper data segregation
@@ -33,6 +35,7 @@ This document provides an A-Z implementation guide for building comprehensive re
 - **Basic Reporting Framework**: ReportsHub with role-based access control
 
 ### 🔧 Areas to Extend
+
 - **Unified Reporting Engine**: Single API for all departments
 - **Cross-Department Analytics**: Executive dashboards spanning multiple departments
 - **Advanced Drill-Down**: Deep hierarchy navigation in reports
@@ -62,37 +65,37 @@ graph TB
         ED[Executive Dashboard]
         AD[Analytics Dashboard]
     end
-    
+
     subgraph "API Layer"
         RE[Reports Engine API]
         AE[Analytics Engine]
         EE[Export Engine]
         SE[Scheduling Engine]
     end
-    
+
     subgraph "Business Logic Layer"
         RM[Report Manager]
         PM[Permission Manager]
         DM[Data Manager]
         CM[Cache Manager]
     end
-    
+
     subgraph "Data Layer"
         DB[(Printyx Database)]
         DW[(Data Warehouse)]
         RC[(Redis Cache)]
     end
-    
+
     RH --> RE
     DD --> RE
     ED --> AE
     AD --> AE
-    
+
     RE --> RM
     AE --> PM
     EE --> DM
     SE --> CM
-    
+
     RM --> DB
     PM --> DB
     DM --> DW
@@ -106,6 +109,7 @@ graph TB
 ### 1. Sales Department
 
 #### Key Stakeholders & Hierarchy
+
 - **VP Sales** (Level 6): Company-wide sales strategy and performance
 - **Regional Sales Director** (Level 5): Multi-location sales coordination
 - **Sales Manager** (Level 4): Location-specific team management
@@ -116,6 +120,7 @@ graph TB
 #### Critical Reports & KPIs
 
 **Pipeline Management**
+
 ```javascript
 SALES_REPORTS = {
   pipeline_overview: {
@@ -123,37 +128,38 @@ SALES_REPORTS = {
     dimensions: ['stage', 'rep', 'location', 'time_period'],
     drill_paths: ['pipeline → stage → rep → opportunity → activities'],
     permissions: {
-      'sales_rep': 'own_pipeline',
-      'sales_supervisor': 'team_pipeline', 
-      'sales_manager': 'location_pipeline',
-      'regional_sales_director': 'regional_pipeline',
-      'vp_sales': 'company_pipeline'
-    }
+      sales_rep: 'own_pipeline',
+      sales_supervisor: 'team_pipeline',
+      sales_manager: 'location_pipeline',
+      regional_sales_director: 'regional_pipeline',
+      vp_sales: 'company_pipeline',
+    },
   },
-  
+
   territory_performance: {
     metrics: ['revenue_per_territory', 'market_penetration', 'customer_acquisition'],
     geo_mapping: true,
     heat_maps: ['performance', 'activity', 'potential'],
-    comparisons: ['territory_vs_territory', 'period_over_period']
+    comparisons: ['territory_vs_territory', 'period_over_period'],
   },
-  
+
   forecast_accuracy: {
     metrics: ['forecast_vs_actual', 'variance_analysis', 'prediction_confidence'],
     time_horizons: ['weekly', 'monthly', 'quarterly'],
-    accuracy_trends: true
+    accuracy_trends: true,
   },
-  
+
   rep_productivity: {
     metrics: ['activities_per_outcome', 'call_to_meeting_ratio', 'demo_to_close'],
     coaching_insights: true,
     performance_rankings: true,
-    goal_attainment: true
-  }
-}
+    goal_attainment: true,
+  },
+};
 ```
 
 **Quote & Proposal Analytics**
+
 - Quote-to-close conversion rates by rep/manager/location
 - Discount impact analysis and margin protection
 - Proposal aging and acceptance timeframes
@@ -162,6 +168,7 @@ SALES_REPORTS = {
 ### 2. Service Department
 
 #### Key Stakeholders & Hierarchy
+
 - **VP Service** (Level 6): Company-wide service operations
 - **Regional Service Manager** (Level 5): Multi-location coordination
 - **Service Manager** (Level 4): Location operations and team management
@@ -172,6 +179,7 @@ SALES_REPORTS = {
 #### Critical Reports & KPIs
 
 **Service Level Agreement (SLA) Performance**
+
 ```javascript
 SERVICE_REPORTS = {
   sla_performance: {
@@ -179,36 +187,37 @@ SERVICE_REPORTS = {
     dimensions: ['priority', 'ticket_type', 'technician', 'location', 'customer'],
     real_time_monitoring: true,
     alert_thresholds: {
-      'response_time_breach': '< 95%',
-      'resolution_backlog': '> 24 hours',
-      'technician_utilization': '< 70%'
-    }
+      response_time_breach: '< 95%',
+      resolution_backlog: '> 24 hours',
+      technician_utilization: '< 70%',
+    },
   },
-  
+
   technician_productivity: {
     metrics: ['tickets_per_day', 'billable_hours', 'travel_efficiency', 'first_time_fix'],
     mobile_integration: true,
     gps_tracking: true,
-    photo_documentation: true
+    photo_documentation: true,
   },
-  
+
   preventive_maintenance: {
     metrics: ['pm_compliance', 'overdue_maintenance', 'equipment_health'],
     scheduling_optimization: true,
-    cost_avoidance_analysis: true
+    cost_avoidance_analysis: true,
   },
-  
+
   parts_management: {
     metrics: ['parts_usage', 'inventory_turns', 'cost_recovery', 'stockouts'],
     supplier_performance: true,
-    demand_forecasting: true
-  }
-}
+    demand_forecasting: true,
+  },
+};
 ```
 
 ### 3. Finance Department
 
 #### Key Stakeholders & Hierarchy
+
 - **CFO** (Level 7): Company-wide financial strategy
 - **VP Finance** (Level 6): Financial operations oversight
 - **Corporate Controller** (Level 6): Accounting and compliance
@@ -220,40 +229,42 @@ SERVICE_REPORTS = {
 #### Critical Reports & KPIs
 
 **Accounts Receivable & Collections**
+
 ```javascript
 FINANCE_REPORTS = {
   ar_aging_analysis: {
     metrics: ['dso', 'aging_buckets', 'collection_effectiveness', 'bad_debt_rate'],
     dimensions: ['customer', 'location', 'payment_terms', 'collector'],
     risk_scoring: true,
-    automated_workflows: ['dunning_letters', 'collection_calls', 'legal_referrals']
+    automated_workflows: ['dunning_letters', 'collection_calls', 'legal_referrals'],
   },
-  
+
   cash_flow_management: {
     metrics: ['operating_cash_flow', 'days_cash_on_hand', 'cash_conversion_cycle'],
     forecasting: ['13_week_rolling', 'monthly_projections'],
-    scenario_analysis: ['best_case', 'worst_case', 'most_likely']
+    scenario_analysis: ['best_case', 'worst_case', 'most_likely'],
   },
-  
+
   profitability_analysis: {
     metrics: ['gross_margin', 'contribution_margin', 'ebitda', 'net_margin'],
     dimensions: ['customer', 'contract', 'location', 'service_line'],
     variance_analysis: true,
-    budget_vs_actual: true
+    budget_vs_actual: true,
   },
-  
+
   commission_management: {
     metrics: ['commission_expense', 'payout_timing', 'dispute_tracking'],
     plan_effectiveness: true,
     rep_rankings: true,
-    audit_trails: true
-  }
-}
+    audit_trails: true,
+  },
+};
 ```
 
 ### 4. Operations Department
 
 #### Key Stakeholders & Hierarchy
+
 - **COO** (Level 7): Company-wide operations strategy
 - **Operations Director** (Level 6): Cross-functional operations
 - **Regional Operations Manager** (Level 5): Regional coordination
@@ -264,32 +275,34 @@ FINANCE_REPORTS = {
 #### Critical Reports & KPIs
 
 **Operational Efficiency**
+
 ```javascript
 OPERATIONS_REPORTS = {
   location_performance: {
     metrics: ['revenue_per_employee', 'cost_per_transaction', 'efficiency_ratios'],
     benchmarking: ['location_vs_location', 'industry_standards'],
-    trend_analysis: true
+    trend_analysis: true,
   },
-  
+
   inventory_management: {
     metrics: ['inventory_turns', 'carrying_costs', 'obsolescence_rate'],
     abc_analysis: true,
     reorder_optimization: true,
-    supplier_performance: true
+    supplier_performance: true,
   },
-  
+
   process_optimization: {
     metrics: ['cycle_times', 'error_rates', 'rework_costs'],
     lean_metrics: ['waste_reduction', 'value_stream_efficiency'],
-    six_sigma_analytics: true
-  }
-}
+    six_sigma_analytics: true,
+  },
+};
 ```
 
 ### 5. Human Resources Department
 
 #### Key Stakeholders & Hierarchy
+
 - **HR Director** (Level 6): Company-wide HR strategy
 - **Regional HR Manager** (Level 5): Regional HR coordination
 - **Location HR Coordinator** (Level 4): Site-specific HR support
@@ -297,76 +310,81 @@ OPERATIONS_REPORTS = {
 #### Critical Reports & KPIs
 
 **Workforce Analytics**
+
 ```javascript
 HR_REPORTS = {
   talent_management: {
     metrics: ['turnover_rate', 'time_to_fill', 'retention_by_manager'],
     demographics: ['diversity', 'age_distribution', 'tenure_analysis'],
-    performance_correlation: true
+    performance_correlation: true,
   },
-  
+
   compensation_analysis: {
     metrics: ['pay_equity', 'market_positioning', 'total_rewards'],
     benchmarking: true,
-    budget_planning: true
+    budget_planning: true,
   },
-  
+
   training_effectiveness: {
     metrics: ['training_hours', 'certification_rates', 'skill_assessments'],
     roi_analysis: true,
-    performance_impact: true
-  }
-}
+    performance_impact: true,
+  },
+};
 ```
 
 ### 6. IT Department
 
 #### Key Stakeholders & Hierarchy
+
 - **IT Director** (Level 6): Technology strategy
 - **Location IT Specialist** (Level 4): Site technical support
 
 #### Critical Reports & KPIs
 
 **Technology Performance**
+
 ```javascript
 IT_REPORTS = {
   system_performance: {
     metrics: ['uptime', 'response_times', 'user_satisfaction'],
     incident_tracking: true,
-    capacity_planning: true
+    capacity_planning: true,
   },
-  
+
   security_monitoring: {
     metrics: ['security_incidents', 'compliance_status', 'vulnerability_scores'],
     threat_analysis: true,
-    audit_readiness: true
-  }
-}
+    audit_readiness: true,
+  },
+};
 ```
 
 ### 7. Compliance Department
 
 #### Key Stakeholders & Hierarchy
+
 - **Compliance Officer** (Level 6): Company-wide compliance oversight
 - **Regional QA Manager** (Level 5): Regional quality assurance
 
 #### Critical Reports & KPIs
 
 **Compliance Monitoring**
+
 ```javascript
 COMPLIANCE_REPORTS = {
   regulatory_compliance: {
     metrics: ['audit_scores', 'violation_rates', 'corrective_actions'],
     regulatory_tracking: true,
-    risk_assessments: true
+    risk_assessments: true,
   },
-  
+
   quality_management: {
     metrics: ['defect_rates', 'customer_satisfaction', 'process_compliance'],
     iso_certification: true,
-    continuous_improvement: true
-  }
-}
+    continuous_improvement: true,
+  },
+};
 ```
 
 ---
@@ -382,31 +400,31 @@ COMPLIANCE_REPORTS = {
 CREATE TABLE report_definitions (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR NOT NULL,
-    
+
     -- Report Identification
     name VARCHAR(255) NOT NULL,
     code VARCHAR(100) NOT NULL, -- e.g., 'sales_pipeline', 'service_sla'
     description TEXT,
     category VARCHAR(50) NOT NULL, -- 'sales', 'service', 'finance', etc.
-    
+
     -- Report Configuration
     sql_query TEXT NOT NULL, -- Parameterized SQL query
     default_parameters JSONB DEFAULT '{}',
     available_filters JSONB DEFAULT '{}',
     available_groupings JSONB DEFAULT '{}',
-    
+
     -- Access Control
     required_permissions JSONB NOT NULL, -- Array of required permissions
     organizational_scope VARCHAR(20) NOT NULL, -- 'location', 'regional', 'company', 'platform'
-    
+
     -- Display Configuration
     default_visualization VARCHAR(50) DEFAULT 'table', -- 'table', 'chart', 'dashboard'
     chart_config JSONB DEFAULT '{}',
-    
+
     -- Performance Settings
     cache_duration INTEGER DEFAULT 300, -- Cache duration in seconds
     query_timeout INTEGER DEFAULT 30,
-    
+
     -- Status and Metadata
     is_active BOOLEAN DEFAULT true,
     is_real_time BOOLEAN DEFAULT false,
@@ -420,17 +438,17 @@ CREATE TABLE user_report_preferences (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id VARCHAR NOT NULL REFERENCES users(id),
     report_definition_id VARCHAR NOT NULL REFERENCES report_definitions(id),
-    
+
     -- Customization Settings
     custom_filters JSONB DEFAULT '{}',
     custom_groupings JSONB DEFAULT '{}',
     custom_chart_config JSONB DEFAULT '{}',
     favorite_dashboard BOOLEAN DEFAULT false,
-    
+
     -- Access Tracking
     last_accessed TIMESTAMP,
     access_count INTEGER DEFAULT 0,
-    
+
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -440,29 +458,29 @@ CREATE TABLE report_schedules (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR NOT NULL,
     report_definition_id VARCHAR NOT NULL REFERENCES report_definitions(id),
-    
+
     -- Scheduling Configuration
     name VARCHAR(255) NOT NULL,
     description TEXT,
     cron_expression VARCHAR(100) NOT NULL, -- Standard cron format
     timezone VARCHAR(50) DEFAULT 'UTC',
-    
+
     -- Report Parameters
     parameters JSONB DEFAULT '{}',
     filters JSONB DEFAULT '{}',
-    
+
     -- Distribution Settings
     recipients JSONB NOT NULL, -- Array of email addresses and user IDs
     delivery_method VARCHAR(20) DEFAULT 'email', -- 'email', 'webhook', 'sftp'
     export_format VARCHAR(10) DEFAULT 'pdf', -- 'pdf', 'csv', 'xlsx'
-    
+
     -- Status and Execution
     is_active BOOLEAN DEFAULT true,
     last_run TIMESTAMP,
     next_run TIMESTAMP,
     run_count INTEGER DEFAULT 0,
     last_status VARCHAR(20), -- 'success', 'failed', 'running'
-    
+
     created_by VARCHAR NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -475,27 +493,27 @@ CREATE TABLE report_executions (
     report_definition_id VARCHAR NOT NULL REFERENCES report_definitions(id),
     user_id VARCHAR REFERENCES users(id), -- NULL for scheduled reports
     schedule_id VARCHAR REFERENCES report_schedules(id), -- NULL for manual reports
-    
+
     -- Execution Details
     parameters JSONB DEFAULT '{}',
     filters JSONB DEFAULT '{}',
-    
+
     -- Performance Metrics
     execution_time_ms INTEGER,
     row_count INTEGER,
     cache_hit BOOLEAN DEFAULT false,
-    
+
     -- Results and Export
     export_format VARCHAR(10),
     file_path VARCHAR(500), -- Path to exported file
     file_size_bytes INTEGER,
-    
+
     -- Status and Timestamps
     status VARCHAR(20) NOT NULL, -- 'success', 'failed', 'timeout', 'cancelled'
     error_message TEXT,
     started_at TIMESTAMP NOT NULL,
     completed_at TIMESTAMP,
-    
+
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -503,35 +521,35 @@ CREATE TABLE report_executions (
 CREATE TABLE kpi_definitions (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR NOT NULL,
-    
+
     -- KPI Identification
     name VARCHAR(255) NOT NULL,
     code VARCHAR(100) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL, -- 'sales', 'service', 'finance', etc.
-    
+
     -- Calculation Configuration
     calculation_sql TEXT NOT NULL,
     target_value DECIMAL(15,2),
     target_type VARCHAR(20), -- 'absolute', 'percentage', 'ratio'
-    
+
     -- Display Configuration
     display_format VARCHAR(20) DEFAULT 'number', -- 'number', 'currency', 'percentage'
     color_scheme JSONB DEFAULT '{}', -- Color coding for performance levels
-    
+
     -- Alert Configuration
     alert_enabled BOOLEAN DEFAULT false,
     alert_thresholds JSONB DEFAULT '{}',
     alert_recipients JSONB DEFAULT '[]',
-    
+
     -- Access Control
     required_permissions JSONB NOT NULL,
     organizational_scope VARCHAR(20) NOT NULL,
-    
+
     -- Status and Metadata
     is_active BOOLEAN DEFAULT true,
     refresh_frequency INTEGER DEFAULT 3600, -- Refresh frequency in seconds
-    
+
     created_by VARCHAR NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -542,30 +560,30 @@ CREATE TABLE kpi_values (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR NOT NULL,
     kpi_definition_id VARCHAR NOT NULL REFERENCES kpi_definitions(id),
-    
+
     -- Dimensional Data
     location_id VARCHAR REFERENCES locations(id),
     region_id VARCHAR REFERENCES regions(id),
     user_id VARCHAR REFERENCES users(id), -- For user-specific KPIs
     team_id VARCHAR REFERENCES teams(id), -- For team-specific KPIs
-    
+
     -- Time Dimensions
     date_value DATE NOT NULL,
     time_period VARCHAR(20) NOT NULL, -- 'daily', 'weekly', 'monthly', 'quarterly'
-    
+
     -- KPI Values
     actual_value DECIMAL(15,2) NOT NULL,
     target_value DECIMAL(15,2),
     variance_value DECIMAL(15,2),
     variance_percentage DECIMAL(8,4),
-    
+
     -- Performance Classification
     performance_level VARCHAR(20), -- 'excellent', 'good', 'warning', 'critical'
-    
+
     -- Metadata
     calculation_timestamp TIMESTAMP DEFAULT NOW(),
     data_freshness TIMESTAMP, -- When underlying data was last updated
-    
+
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -585,26 +603,26 @@ CREATE TABLE user_report_activity (
     id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id VARCHAR NOT NULL,
     user_id VARCHAR NOT NULL REFERENCES users(id),
-    
+
     -- Activity Details
     activity_type VARCHAR(50) NOT NULL, -- 'view_report', 'export_report', 'schedule_report', 'customize_dashboard'
     report_definition_id VARCHAR REFERENCES report_definitions(id),
     kpi_definition_id VARCHAR REFERENCES kpi_definitions(id),
-    
+
     -- Activity Context
     session_id VARCHAR,
     ip_address INET,
     user_agent TEXT,
-    
+
     -- Activity Data
     parameters JSONB DEFAULT '{}',
     duration_seconds INTEGER,
-    
+
     -- Performance Tracking
     load_time_ms INTEGER,
     error_occurred BOOLEAN DEFAULT false,
     error_message TEXT,
-    
+
     created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -635,29 +653,29 @@ interface ReportsAPIEndpoints {
       available_scopes: string[];
     };
   };
-  
+
   'GET /api/reports/:id/data': {
     query: {
       // Time Range
       from_date?: string;
       to_date?: string;
       period?: 'daily' | 'weekly' | 'monthly' | 'quarterly';
-      
+
       // Hierarchical Filters (automatically applied based on user permissions)
       location_ids?: string[];
       region_ids?: string[];
       user_ids?: string[];
       team_ids?: string[];
-      
+
       // Dynamic Grouping
       group_by?: string[];
-      
+
       // Sorting and Pagination
       sort_by?: string;
       sort_direction?: 'asc' | 'desc';
       page?: number;
       limit?: number;
-      
+
       // Export Options
       export_format?: 'json' | 'csv' | 'xlsx' | 'pdf';
     };
@@ -673,7 +691,7 @@ interface ReportsAPIEndpoints {
       summary_stats?: Record<string, number>;
     };
   };
-  
+
   // KPI Management
   'GET /api/kpis': {
     query: {
@@ -686,7 +704,7 @@ interface ReportsAPIEndpoints {
       last_updated: string;
     };
   };
-  
+
   'GET /api/kpis/:id/historical': {
     query: {
       from_date: string;
@@ -703,7 +721,7 @@ interface ReportsAPIEndpoints {
       };
     };
   };
-  
+
   // Dashboard Management
   'GET /api/dashboards/executive': {
     response: {
@@ -712,7 +730,7 @@ interface ReportsAPIEndpoints {
       alerts: Alert[];
     };
   };
-  
+
   'GET /api/dashboards/department/:department': {
     params: {
       department: 'sales' | 'service' | 'finance' | 'operations' | 'hr' | 'it' | 'compliance';
@@ -722,7 +740,7 @@ interface ReportsAPIEndpoints {
       user_customizations: UserCustomization[];
     };
   };
-  
+
   // Export and Scheduling
   'POST /api/reports/export': {
     body: {
@@ -737,7 +755,7 @@ interface ReportsAPIEndpoints {
       estimated_completion: string;
     };
   };
-  
+
   'POST /api/reports/schedule': {
     body: {
       report_id: string;
@@ -752,7 +770,7 @@ interface ReportsAPIEndpoints {
       next_run: string;
     };
   };
-  
+
   // Real-time Analytics
   'GET /api/analytics/real-time': {
     query: {
@@ -765,7 +783,7 @@ interface ReportsAPIEndpoints {
       refresh_interval: number;
     };
   };
-  
+
   // Drill-down and Navigation
   'GET /api/reports/:id/drill-down': {
     query: {
@@ -788,15 +806,15 @@ interface ReportsAPIEndpoints {
 class HierarchicalQueryBuilder {
   constructor(
     private userContext: UserContext,
-    private tenantId: string
+    private tenantId: string,
   ) {}
 
   buildBaseQuery(reportDefinition: ReportDefinition): string {
     let baseQuery = reportDefinition.sql_query;
-    
+
     // Apply tenant isolation
     baseQuery = this.applyTenantFilter(baseQuery, this.tenantId);
-    
+
     // Apply hierarchical access control
     switch (this.userContext.accessScope) {
       case 'location':
@@ -812,18 +830,18 @@ class HierarchicalQueryBuilder {
         // Platform users can access all data (for Printyx staff)
         break;
     }
-    
+
     // Apply department-specific filters
     if (this.userContext.departments.length > 0) {
       baseQuery = this.applyDepartmentFilter(baseQuery, this.userContext.departments);
     }
-    
+
     return baseQuery;
   }
 
   private applyLocationFilter(query: string, locationIds: string[]): string {
     // Inject location filter into WHERE clause
-    const locationFilter = `AND location_id IN (${locationIds.map(id => `'${id}'`).join(',')})`;
+    const locationFilter = `AND location_id IN (${locationIds.map((id) => `'${id}'`).join(',')})`;
     return query.replace(/WHERE/, `WHERE 1=1 ${locationFilter} AND`);
   }
 
@@ -831,10 +849,10 @@ class HierarchicalQueryBuilder {
     // Inject regional filter that includes all locations in the regions
     const regionalFilter = `
       AND (
-        region_id IN (${regionIds.map(id => `'${id}'`).join(',')})
+        region_id IN (${regionIds.map((id) => `'${id}'`).join(',')})
         OR location_id IN (
           SELECT id FROM locations 
-          WHERE region_id IN (${regionIds.map(id => `'${id}'`).join(',')})
+          WHERE region_id IN (${regionIds.map((id) => `'${id}'`).join(',')})
         )
       )
     `;
@@ -843,7 +861,7 @@ class HierarchicalQueryBuilder {
 
   private applyDepartmentFilter(query: string, departments: string[]): string {
     // Apply department-specific data filters
-    const deptFilter = `AND department IN (${departments.map(d => `'${d}'`).join(',')})`;
+    const deptFilter = `AND department IN (${departments.map((d) => `'${d}'`).join(',')})`;
     return query.replace(/WHERE/, `WHERE 1=1 ${deptFilter} AND`);
   }
 }
@@ -860,7 +878,7 @@ interface DashboardArchitecture {
   'src/pages/ReportsHub.tsx': 'Main reports landing page with role-based cards';
   'src/pages/ExecutiveDashboard.tsx': 'C-level cross-department overview';
   'src/pages/DepartmentDashboard.tsx': 'Department-specific analytics';
-  
+
   // Department-specific pages
   'src/pages/reports/SalesDashboard.tsx': 'Sales performance and pipeline';
   'src/pages/reports/ServiceDashboard.tsx': 'Service operations and SLA';
@@ -869,7 +887,7 @@ interface DashboardArchitecture {
   'src/pages/reports/HRDashboard.tsx': 'Workforce analytics';
   'src/pages/reports/ITDashboard.tsx': 'Technology performance';
   'src/pages/reports/ComplianceDashboard.tsx': 'Regulatory and quality metrics';
-  
+
   // Shared components
   'src/components/reports/ReportCard.tsx': 'Reusable report display component';
   'src/components/reports/KPIWidget.tsx': 'KPI display with trends';
@@ -878,7 +896,7 @@ interface DashboardArchitecture {
   'src/components/reports/ExportButton.tsx': 'Export functionality';
   'src/components/reports/DrillDownTable.tsx': 'Interactive data tables';
   'src/components/reports/RealTimeIndicator.tsx': 'Live data status';
-  
+
   // Utility components
   'src/components/reports/PermissionGate.tsx': 'Role-based component rendering';
   'src/components/reports/HierarchySelector.tsx': 'Location/region selection';
@@ -909,21 +927,22 @@ interface ExecutiveDashboardProps {
 export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboardProps) {
   const [selectedTimeRange, setSelectedTimeRange] = useState('last_30_days');
   const [selectedScope, setSelectedScope] = useState(accessScope);
-  
+
   const { accessibleLocations, accessibleRegions } = useHierarchicalAccess();
-  
+
   // Fetch executive KPIs based on user's hierarchical access
   const { data: executiveKPIs, isLoading } = useQuery({
     queryKey: ['executive-kpis', selectedTimeRange, selectedScope],
-    queryFn: () => apiRequest('/api/dashboards/executive', {
-      params: { 
-        time_range: selectedTimeRange,
-        scope: selectedScope,
-        location_ids: accessibleLocations,
-        region_ids: accessibleRegions
-      }
-    }),
-    refetchInterval: 60000 // Refresh every minute for executive dashboards
+    queryFn: () =>
+      apiRequest('/api/dashboards/executive', {
+        params: {
+          time_range: selectedTimeRange,
+          scope: selectedScope,
+          location_ids: accessibleLocations,
+          region_ids: accessibleRegions,
+        },
+      }),
+    refetchInterval: 60000, // Refresh every minute for executive dashboards
   });
 
   const departmentTabs = useMemo(() => {
@@ -932,23 +951,25 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
       { key: 'sales', label: 'Sales', permission: 'canViewSalesReports' },
       { key: 'service', label: 'Service', permission: 'canViewServiceReports' },
       { key: 'finance', label: 'Finance', permission: 'canViewFinanceReports' },
-      { key: 'operations', label: 'Operations', permission: 'canViewOperationsReports' }
+      { key: 'operations', label: 'Operations', permission: 'canViewOperationsReports' },
     ];
-    
+
     // Add advanced tabs for higher-level users
     if (userLevel >= 6) {
       baseTabs.push(
         { key: 'hr', label: 'HR', permission: 'canViewHRReports' },
         { key: 'it', label: 'IT', permission: 'canViewITReports' },
-        { key: 'compliance', label: 'Compliance', permission: 'canViewComplianceReports' }
+        { key: 'compliance', label: 'Compliance', permission: 'canViewComplianceReports' },
       );
     }
-    
+
     return baseTabs;
   }, [userLevel]);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Loading executive dashboard...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">Loading executive dashboard...</div>
+    );
   }
 
   return (
@@ -961,7 +982,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
             Company-wide performance overview across all departments
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <HierarchySelector
             value={selectedScope}
@@ -969,10 +990,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
             availableScopes={[accessScope]}
             userLevel={userLevel}
           />
-          <DateRangePicker
-            value={selectedTimeRange}
-            onChange={setSelectedTimeRange}
-          />
+          <DateRangePicker value={selectedTimeRange} onChange={setSelectedTimeRange} />
         </div>
       </div>
 
@@ -1004,7 +1022,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <OverviewDashboard 
+          <OverviewDashboard
             timeRange={selectedTimeRange}
             scope={selectedScope}
             data={executiveKPIs?.overview}
@@ -1012,7 +1030,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
         </TabsContent>
 
         <TabsContent value="sales" className="space-y-4">
-          <SalesExecutiveDashboard 
+          <SalesExecutiveDashboard
             timeRange={selectedTimeRange}
             scope={selectedScope}
             data={executiveKPIs?.sales}
@@ -1020,7 +1038,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
         </TabsContent>
 
         <TabsContent value="service" className="space-y-4">
-          <ServiceExecutiveDashboard 
+          <ServiceExecutiveDashboard
             timeRange={selectedTimeRange}
             scope={selectedScope}
             data={executiveKPIs?.service}
@@ -1028,7 +1046,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
         </TabsContent>
 
         <TabsContent value="finance" className="space-y-4">
-          <FinanceExecutiveDashboard 
+          <FinanceExecutiveDashboard
             timeRange={selectedTimeRange}
             scope={selectedScope}
             data={executiveKPIs?.finance}
@@ -1039,7 +1057,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
         {userLevel >= 6 && (
           <>
             <TabsContent value="hr" className="space-y-4">
-              <HRExecutiveDashboard 
+              <HRExecutiveDashboard
                 timeRange={selectedTimeRange}
                 scope={selectedScope}
                 data={executiveKPIs?.hr}
@@ -1047,7 +1065,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
             </TabsContent>
 
             <TabsContent value="it" className="space-y-4">
-              <ITExecutiveDashboard 
+              <ITExecutiveDashboard
                 timeRange={selectedTimeRange}
                 scope={selectedScope}
                 data={executiveKPIs?.it}
@@ -1055,7 +1073,7 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
             </TabsContent>
 
             <TabsContent value="compliance" className="space-y-4">
-              <ComplianceExecutiveDashboard 
+              <ComplianceExecutiveDashboard
                 timeRange={selectedTimeRange}
                 scope={selectedScope}
                 data={executiveKPIs?.compliance}
@@ -1071,10 +1089,12 @@ export function ExecutiveDashboard({ userLevel, accessScope }: ExecutiveDashboar
           <CardTitle>Active Alerts & Notifications</CardTitle>
         </CardHeader>
         <CardContent>
-          <AlertsPanel 
+          <AlertsPanel
             alerts={executiveKPIs?.alerts}
             userLevel={userLevel}
-            onDismiss={(alertId) => {/* Handle alert dismissal */}}
+            onDismiss={(alertId) => {
+              /* Handle alert dismissal */
+            }}
           />
         </CardContent>
       </Card>
@@ -1101,7 +1121,7 @@ interface ReportingPermissions {
   canViewITReports: boolean;
   canViewComplianceReports: boolean;
   canViewExecutiveReports: boolean;
-  
+
   // Data Scope Permissions
   canViewOwnData: boolean;
   canViewTeamData: boolean;
@@ -1109,7 +1129,7 @@ interface ReportingPermissions {
   canViewRegionalData: boolean;
   canViewCompanyData: boolean;
   canViewAllTenantData: boolean; // Platform users only
-  
+
   // Action Permissions
   canExportReports: boolean;
   canScheduleReports: boolean;
@@ -1117,7 +1137,7 @@ interface ReportingPermissions {
   canManageKPIs: boolean;
   canViewSensitiveFinancials: boolean;
   canAccessRealTimeData: boolean;
-  
+
   // Administrative Permissions
   canManageReportDefinitions: boolean;
   canManageUserAccess: boolean;
@@ -1130,36 +1150,34 @@ class ReportingPermissionService {
   static validateReportAccess(
     user: User,
     reportDefinition: ReportDefinition,
-    requestedScope: string[]
+    requestedScope: string[],
   ): ValidationResult {
     // Check basic permission for report category
     const hasBasicAccess = this.hasPermission(
       user.permissions,
-      `canView${capitalize(reportDefinition.category)}Reports`
+      `canView${capitalize(reportDefinition.category)}Reports`,
     );
-    
+
     if (!hasBasicAccess) {
       return { allowed: false, reason: 'Insufficient department access' };
     }
-    
+
     // Check organizational scope access
     const allowedScope = this.calculateAllowedScope(user);
-    const requestedScopeValid = requestedScope.every(scope => 
-      allowedScope.includes(scope)
-    );
-    
+    const requestedScopeValid = requestedScope.every((scope) => allowedScope.includes(scope));
+
     if (!requestedScopeValid) {
       return { allowed: false, reason: 'Insufficient organizational scope' };
     }
-    
+
     // Check for sensitive data access
     if (reportDefinition.containsSensitiveData && !user.permissions.canViewSensitiveFinancials) {
       return { allowed: false, reason: 'Insufficient access to sensitive data' };
     }
-    
+
     return { allowed: true };
   }
-  
+
   static calculateAllowedScope(user: User): string[] {
     switch (user.accessScope) {
       case 'platform':
@@ -1186,12 +1204,12 @@ interface DataSecurityConfig {
   maskPersonalData: boolean;
   encryptSensitiveFields: string[];
   redactFinancialData: boolean;
-  
+
   // Audit Requirements
   logAllAccess: boolean;
   retainAuditLogs: number; // Days
   requireDataAccess justification: boolean;
-  
+
   // Compliance Standards
   gdprCompliant: boolean;
   soxCompliant: boolean;
@@ -1206,7 +1224,7 @@ class ReportingSecurityService {
   ): any[] {
     return data.map(row => {
       const maskedRow = { ...row };
-      
+
       // Apply PII masking based on user permissions
       if (!user.permissions.canViewPersonalData) {
         securityConfig.encryptSensitiveFields.forEach(field => {
@@ -1215,16 +1233,16 @@ class ReportingSecurityService {
           }
         });
       }
-      
+
       // Apply financial data redaction
       if (!user.permissions.canViewSensitiveFinancials && securityConfig.redactFinancialData) {
         this.redactFinancialFields(maskedRow);
       }
-      
+
       return maskedRow;
     });
   }
-  
+
   static async logReportAccess(
     user: User,
     reportDefinition: ReportDefinition,
@@ -1259,20 +1277,20 @@ interface CachingStrategy {
     ttl: 60; // 1 minute
     keyPattern: 'kpi:{tenant}:{kpi_id}:{scope}';
   };
-  
+
   // L2 Cache: Report Results
   reportResults: {
     ttl: 300; // 5 minutes for standard reports
     ttl_sensitive: 60; // 1 minute for financial reports
     keyPattern: 'report:{tenant}:{report_id}:{params_hash}';
   };
-  
+
   // L3 Cache: Aggregated Data
   aggregatedMetrics: {
     ttl: 3600; // 1 hour
     keyPattern: 'agg:{tenant}:{metric}:{period}:{scope}';
   };
-  
+
   // L4 Cache: Static Reference Data
   referenceData: {
     ttl: 86400; // 24 hours
@@ -1282,33 +1300,33 @@ interface CachingStrategy {
 
 class ReportingCacheService {
   private redis: Redis;
-  
+
   async getCachedReport(
     tenantId: string,
     reportId: string,
-    parameters: Record<string, any>
+    parameters: Record<string, any>,
   ): Promise<CachedReport | null> {
     const cacheKey = this.generateCacheKey(tenantId, reportId, parameters);
     const cached = await this.redis.get(cacheKey);
-    
+
     if (cached) {
       const report = JSON.parse(cached) as CachedReport;
-      
+
       // Check if cache is still fresh
       if (Date.now() - report.cached_at < report.ttl * 1000) {
         return report;
       }
     }
-    
+
     return null;
   }
-  
+
   async setCachedReport(
     tenantId: string,
     reportId: string,
     parameters: Record<string, any>,
     data: any[],
-    ttl: number
+    ttl: number,
   ): Promise<void> {
     const cacheKey = this.generateCacheKey(tenantId, reportId, parameters);
     const cachedReport: CachedReport = {
@@ -1317,23 +1335,20 @@ class ReportingCacheService {
       ttl,
       metadata: {
         row_count: data.length,
-        cache_key: cacheKey
-      }
+        cache_key: cacheKey,
+      },
     };
-    
+
     await this.redis.setex(cacheKey, ttl, JSON.stringify(cachedReport));
   }
-  
+
   private generateCacheKey(
     tenantId: string,
     reportId: string,
-    parameters: Record<string, any>
+    parameters: Record<string, any>,
   ): string {
-    const paramHash = crypto
-      .createHash('md5')
-      .update(JSON.stringify(parameters))
-      .digest('hex');
-    
+    const paramHash = crypto.createHash('md5').update(JSON.stringify(parameters)).digest('hex');
+
     return `report:${tenantId}:${reportId}:${paramHash}`;
   }
 }
@@ -1344,33 +1359,33 @@ class ReportingCacheService {
 ```sql
 -- Optimized Reporting Views and Materialized Views
 CREATE MATERIALIZED VIEW mv_daily_sales_metrics AS
-SELECT 
+SELECT
     tenant_id,
     location_id,
     region_id,
     DATE(created_at) as report_date,
-    
+
     -- Sales Metrics
     COUNT(*) as total_leads,
     COUNT(*) FILTER (WHERE status = 'qualified') as qualified_leads,
     COUNT(*) FILTER (WHERE status = 'converted') as converted_leads,
-    
+
     -- Revenue Metrics
     SUM(estimated_value) as pipeline_value,
     SUM(estimated_value) FILTER (WHERE status = 'converted') as closed_value,
-    
+
     -- Performance Ratios
     ROUND(
-        COUNT(*) FILTER (WHERE status = 'qualified')::DECIMAL / 
+        COUNT(*) FILTER (WHERE status = 'qualified')::DECIMAL /
         NULLIF(COUNT(*), 0) * 100, 2
     ) as qualification_rate,
-    
+
     ROUND(
-        COUNT(*) FILTER (WHERE status = 'converted')::DECIMAL / 
+        COUNT(*) FILTER (WHERE status = 'converted')::DECIMAL /
         NULLIF(COUNT(*) FILTER (WHERE status = 'qualified'), 0) * 100, 2
     ) as conversion_rate
-    
-FROM business_records 
+
+FROM business_records
 WHERE record_type = 'lead'
 GROUP BY tenant_id, location_id, region_id, DATE(created_at);
 
@@ -1396,19 +1411,22 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
 ## Implementation Phases
 
 ### Phase 1: Foundation (Weeks 1-4)
+
 #### ✅ Goals
+
 - Extend existing database schema with reporting tables
 - Build core API endpoints for report management
 - Create permission-based query builder
 - Implement basic caching strategy
 
 #### 📋 Deliverables
+
 - [x] **Database schema migration scripts** - ✅ COMPLETED
   - Created `shared/reporting-schema.ts` with 8 comprehensive reporting tables
   - Added 14 enums for type safety and data consistency
   - Implemented proper indexing strategy for performance
   - Integrated with existing Drizzle configuration
-- [x] **Core reporting API endpoints** - ✅ COMPLETED  
+- [x] **Core reporting API endpoints** - ✅ COMPLETED
   - Created `server/routes-reporting.ts` with hierarchical access control
   - Implemented `/api/reports` for report discovery and listing
   - Implemented `/api/reports/:id/data` for report execution
@@ -1420,7 +1438,7 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
   - Role-based permission mapping for all departments and levels
   - Hierarchical query builder for data access control
   - Enhanced user context with location/region access arrays
-- [x] **Redis caching implementation** - ✅ COMPLETED  
+- [x] **Redis caching implementation** - ✅ COMPLETED
   - Created `server/cache-service.ts` with multi-level caching architecture
   - In-memory cache for Phase 1, Redis-ready for Phase 2
   - Report-specific TTL based on data sensitivity and real-time requirements
@@ -1435,13 +1453,16 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
   - Seed function to populate tenant-specific report definitions
 
 ### Phase 2: Department Dashboards (Weeks 5-8)
+
 #### ✅ Goals
+
 - Build department-specific dashboard components
 - Implement hierarchical data filtering
 - Create export functionality
 - Add real-time KPI monitoring
 
 #### 📋 Deliverables
+
 - [x] **Enhanced ReportsHub with new architecture** - ✅ COMPLETED
   - Created `client/src/pages/EnhancedReportsHub.tsx` with modern UI
   - Integrated with new reporting API endpoints
@@ -1478,13 +1499,16 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
   - Connection state management and error handling
 
 ### Phase 3: Chart Visualizations & Brand Customization (Weeks 9-12)
+
 #### ✅ Goals
+
 - Implement professional chart visualizations
 - Add comprehensive brand customization
 - Create interactive chart features
 - Ensure mobile responsiveness
 
 #### 📋 Deliverables
+
 - [x] **Professional Chart Components** - ✅ COMPLETED
   - Created `client/src/components/charts/ChartComponents.tsx` with 5 chart types
   - Line charts for time-series and trend analysis
@@ -1519,13 +1543,16 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
   - Professional tooltip formatting with currency and percentage support
 
 ### Phase 4: Advanced Features (Future Enhancement)
+
 #### 🎯 Goals
+
 - Build scheduled report delivery
 - Implement advanced analytics
 - Add scheduled reporting
 - Create alert and notification system
 
 #### 📋 Deliverables
+
 - [ ] Executive dashboard with cross-department KPIs
 - [ ] Scheduled report system with email delivery
 - [ ] Alert configuration and management
@@ -1533,13 +1560,16 @@ CREATE INDEX idx_mv_sales_region_date ON mv_daily_sales_metrics(region_id, repor
 - [ ] Performance optimization and query tuning
 
 ### Phase 4: Advanced Features (Weeks 13-16)
+
 #### ✅ Goals
+
 - Add remaining departments (Operations, HR, IT, Compliance)
 - Implement advanced analytics and forecasting
 - Build report customization tools
 - Add mobile-responsive design
 
 #### 📋 Deliverables
+
 - [ ] Complete department coverage
 - [ ] Predictive analytics integration
 - [ ] Custom report builder interface
@@ -1562,7 +1592,7 @@ interface TestingStrategy {
     dataTransformation: 'Test data masking and formatting';
     cacheOperations: 'Test cache hit/miss scenarios';
   };
-  
+
   // Integration Tests
   integrationTests: {
     apiEndpoints: 'Test all reporting API endpoints';
@@ -1570,7 +1600,7 @@ interface TestingStrategy {
     authenticationFlow: 'Test RBAC integration';
     exportFunctionality: 'Test report export in all formats';
   };
-  
+
   // Performance Tests
   performanceTests: {
     loadTesting: 'Test with 1000+ concurrent users';
@@ -1578,7 +1608,7 @@ interface TestingStrategy {
     cacheEfficiency: 'Test cache hit rates and performance';
     memoryUsage: 'Test memory consumption under load';
   };
-  
+
   // Security Tests
   securityTests: {
     accessControl: 'Test unauthorized access attempts';
@@ -1600,20 +1630,20 @@ interface QualityMetrics {
     cacheHitRate: '>80% for frequently accessed reports';
     apiResponseTime: '<500ms for KPI endpoints';
   };
-  
+
   accuracy: {
     dataConsistency: '100% consistency between reports';
     calculationAccuracy: '100% accuracy for financial calculations';
     permissionCompliance: '100% compliance with RBAC rules';
   };
-  
+
   usability: {
     dashboardLoadTime: '<5 seconds';
     exportCompletionTime: '<30 seconds for large reports';
     mobileResponsiveness: '100% mobile compatibility';
     accessibilityCompliance: 'WCAG 2.1 AA compliance';
   };
-  
+
   reliability: {
     systemUptime: '>99.9% availability';
     errorRate: '<0.1% error rate for API calls';
@@ -1667,21 +1697,21 @@ deployment:
     - [ ] Verify API endpoint compatibility
     - [ ] Test permission mappings
     - [ ] Validate report definitions
-  
+
   deployment:
     - [ ] Run database migrations
     - [ ] Deploy API changes
     - [ ] Deploy frontend updates
     - [ ] Update Redis cache configuration
     - [ ] Start background job services
-  
+
   post_deployment:
     - [ ] Verify all reports load correctly
     - [ ] Test permission enforcement
     - [ ] Validate KPI calculations
     - [ ] Check export functionality
     - [ ] Monitor performance metrics
-  
+
   rollback_plan:
     - [ ] Database rollback scripts ready
     - [ ] Previous version deployment artifacts

@@ -40,8 +40,8 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
       { resource: 'reports:finance', actions: ['read', 'export'] },
       { resource: 'reports:executive', actions: ['read', 'export'] },
       { resource: 'data:all', actions: ['read'] },
-      { resource: 'analytics:advanced', actions: ['read'] }
-    ]
+      { resource: 'analytics:advanced', actions: ['read'] },
+    ],
   },
   SALES_MANAGER: {
     id: 'sales_manager',
@@ -52,8 +52,8 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
       { resource: 'reports:sales', actions: ['read', 'export'] },
       { resource: 'reports:executive', actions: ['read'], conditions: { scope: 'sales' } },
       { resource: 'data:sales', actions: ['read'], conditions: { scope: 'team' } },
-      { resource: 'analytics:coaching', actions: ['read'] }
-    ]
+      { resource: 'analytics:coaching', actions: ['read'] },
+    ],
   },
   SERVICE_MANAGER: {
     id: 'service_manager',
@@ -64,8 +64,8 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
       { resource: 'reports:service', actions: ['read', 'export'] },
       { resource: 'reports:executive', actions: ['read'], conditions: { scope: 'service' } },
       { resource: 'data:service', actions: ['read'], conditions: { scope: 'team' } },
-      { resource: 'analytics:forecasting', actions: ['read'] }
-    ]
+      { resource: 'analytics:forecasting', actions: ['read'] },
+    ],
   },
   FINANCE_MANAGER: {
     id: 'finance_manager',
@@ -76,8 +76,8 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
       { resource: 'reports:finance', actions: ['read', 'export'] },
       { resource: 'reports:executive', actions: ['read'], conditions: { scope: 'finance' } },
       { resource: 'data:financial', actions: ['read'] },
-      { resource: 'data:customers', actions: ['read'], conditions: { fields: ['financial'] } }
-    ]
+      { resource: 'data:customers', actions: ['read'], conditions: { fields: ['financial'] } },
+    ],
   },
   SALES_REP: {
     id: 'sales_rep',
@@ -87,8 +87,8 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
     permissions: [
       { resource: 'reports:sales', actions: ['read'], conditions: { scope: 'self' } },
       { resource: 'data:sales', actions: ['read'], conditions: { scope: 'self' } },
-      { resource: 'data:customers', actions: ['read'], conditions: { scope: 'assigned' } }
-    ]
+      { resource: 'data:customers', actions: ['read'], conditions: { scope: 'assigned' } },
+    ],
   },
   TECHNICIAN: {
     id: 'technician',
@@ -98,8 +98,8 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
     permissions: [
       { resource: 'reports:service', actions: ['read'], conditions: { scope: 'self' } },
       { resource: 'data:service', actions: ['read'], conditions: { scope: 'assigned' } },
-      { resource: 'data:customers', actions: ['read'], conditions: { scope: 'assigned' } }
-    ]
+      { resource: 'data:customers', actions: ['read'], conditions: { scope: 'assigned' } },
+    ],
   },
   ADMIN: {
     id: 'admin',
@@ -110,9 +110,9 @@ export const REPORTING_ROLES: Record<string, UserRole> = {
       { resource: 'reports:*', actions: ['read', 'export', 'create', 'update', 'delete'] },
       { resource: 'data:*', actions: ['read', 'write'] },
       { resource: 'analytics:*', actions: ['read'] },
-      { resource: 'system:*', actions: ['read', 'write', 'configure'] }
-    ]
-  }
+      { resource: 'system:*', actions: ['read', 'write', 'configure'] },
+    ],
+  },
 };
 
 // RBAC utility class
@@ -126,18 +126,18 @@ export class RBACService {
   // Check if user has permission for a specific resource and action
   hasPermission(resource: string, action: string): boolean {
     const permissions = this.userContext.role.permissions;
-    
-    return permissions.some(permission => {
+
+    return permissions.some((permission) => {
       // Check for wildcard permissions
       if (permission.resource === 'reports:*' || permission.resource === 'data:*') {
         return permission.actions.includes(action) || permission.actions.includes('*');
       }
-      
+
       // Check exact resource match
       if (permission.resource === resource) {
         return permission.actions.includes(action) || permission.actions.includes('*');
       }
-      
+
       return false;
     });
   }
@@ -213,20 +213,20 @@ export class RBACService {
     if (this.userContext.role.level === 'executive') {
       return true;
     }
-    
+
     // This would typically check against a customer-territory mapping
     // For now, assuming all customers are visible to managers and assigned customers to reps
     if (this.userContext.isManager) {
       return true; // Managers can see customers in their territory
     }
-    
+
     return false; // Would need to check customer assignment
   }
 
   // Filter sensitive data fields based on permissions
   filterSensitiveData<T extends Record<string, any>>(data: T, dataType: string): Partial<T> {
     const filteredData: Partial<T> = { ...data };
-    
+
     // Remove sensitive fields based on role and permissions
     switch (this.userContext.role.level) {
       case 'rep':
@@ -241,7 +241,7 @@ export class RBACService {
           delete (filteredData as any).managerNotes;
         }
         break;
-        
+
       case 'manager':
         if (dataType === 'finance' && this.userContext.role.id !== 'finance_manager') {
           delete (filteredData as any).detailedFinancials;
@@ -259,20 +259,16 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const RBACContext = createContext<RBACService | null>(null);
 
-export function RBACProvider({ 
-  children, 
-  userContext 
-}: { 
-  children: React.ReactNode; 
+export function RBACProvider({
+  children,
+  userContext,
+}: {
+  children: React.ReactNode;
   userContext: UserContext;
 }) {
   const [rbacService] = useState(() => new RBACService(userContext));
 
-  return (
-    <RBACContext.Provider value={rbacService}>
-      {children}
-    </RBACContext.Provider>
-  );
+  return <RBACContext.Provider value={rbacService}>{children}</RBACContext.Provider>;
 }
 
 export function useRBAC(): RBACService {
@@ -290,7 +286,7 @@ export const rbacUtils = {
     return rbac.hasPermission('reports:sales', 'read');
   },
 
-  // Check if user can access service reports  
+  // Check if user can access service reports
   canAccessServiceReports: (rbac: RBACService): boolean => {
     return rbac.hasPermission('reports:service', 'read');
   },
@@ -314,18 +310,18 @@ export const rbacUtils = {
     canExportReports: rbac.hasPermission('reports:*', 'export'),
     canManageReports: rbac.hasPermission('reports:*', 'create'),
     allowedTerritories: rbac.getAllowedTerritories(),
-    allowedTeamMembers: rbac.getAllowedTeamMembers()
-  })
+    allowedTeamMembers: rbac.getAllowedTeamMembers(),
+  }),
 };
 
 // API middleware for applying RBAC filters
 export function applyRBACFilters(
-  endpoint: string, 
-  params: Record<string, any>, 
-  rbac: RBACService
+  endpoint: string,
+  params: Record<string, any>,
+  rbac: RBACService,
 ): Record<string, any> {
   const filteredParams = { ...params };
-  
+
   // Apply data filters based on endpoint
   if (endpoint.includes('/sales-reps')) {
     const filters = rbac.getDataFilters('sales');
@@ -346,5 +342,3 @@ export function applyRBACFilters(
 
   return filteredParams;
 }
-
-

@@ -1,7 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, ArrowRight, Award, Target, Users, Zap, TrendingUp, BookOpen, Printer } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  CheckCircle,
+  ArrowRight,
+  Award,
+  Target,
+  Users,
+  Zap,
+  TrendingUp,
+  BookOpen,
+  Printer,
+} from 'lucide-react';
 
 const DealerExpertise = () => {
   return (
@@ -9,16 +19,17 @@ const DealerExpertise = () => {
       {/* Schema.org WebPage Markup */}
       <script type="application/ld+json">
         {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "Dealer Expertise - Built by Dealers, for Dealers",
-          "description": "Printyx is built on deep copier dealer domain expertise. Every workflow, metric, and feature designed by people who understand your business inside-out. Defensible through superior execution.",
-          "url": "https://printyx.com/dealer-expertise",
-          "mainEntity": {
-            "@type": "SoftwareApplication",
-            "name": "Printyx",
-            "applicationCategory": "BusinessApplication"
-          }
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: 'Dealer Expertise - Built by Dealers, for Dealers',
+          description:
+            'Printyx is built on deep copier dealer domain expertise. Every workflow, metric, and feature designed by people who understand your business inside-out. Defensible through superior execution.',
+          url: 'https://printyx.com/dealer-expertise',
+          mainEntity: {
+            '@type': 'SoftwareApplication',
+            name: 'Printyx',
+            applicationCategory: 'BusinessApplication',
+          },
         })}
       </script>
 
@@ -30,7 +41,7 @@ const DealerExpertise = () => {
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="hover:bg-gray-100"
                 >
                   <Printer className="h-6 w-6 text-blue-600 mr-2" />
@@ -38,15 +49,12 @@ const DealerExpertise = () => {
                 </Button>
               </div>
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/login'}
-                >
+                <Button variant="outline" onClick={() => (window.location.href = '/login')}>
                   Login
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                 </Button>
@@ -63,20 +71,22 @@ const DealerExpertise = () => {
                 Domain Expertise Advantage
               </Badge>
               <h1 className="text-5xl md:text-6xl font-bold mb-6">
-                Built by Dealers.<br />
+                Built by Dealers.
+                <br />
                 <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
                   For Dealers.
                 </span>
               </h1>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed mb-8">
-                Generic business software doesn't understand copier dealerships. Printyx is designed by people
-                who've run dealer operations—every workflow, metric, and feature reflects deep industry expertise.
+                Generic business software doesn't understand copier dealerships. Printyx is designed
+                by people who've run dealer operations—every workflow, metric, and feature reflects
+                deep industry expertise.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
                   size="lg"
                   className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -85,7 +95,7 @@ const DealerExpertise = () => {
                   size="lg"
                   variant="outline"
                   className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                  onClick={() => window.location.href = '/login'}
+                  onClick={() => (window.location.href = '/login')}
                 >
                   Schedule Demo
                 </Button>
@@ -190,10 +200,12 @@ const DealerExpertise = () => {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4">
                     <Target className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Contract Profitability Analysis</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    Contract Profitability Analysis
+                  </h3>
                   <p className="text-gray-600">
-                    Real-time profitability tracking per contract. Factors in equipment cost, service history,
-                    supplies, and technician time. Know which contracts make money.
+                    Real-time profitability tracking per contract. Factors in equipment cost,
+                    service history, supplies, and technician time. Know which contracts make money.
                   </p>
                 </CardContent>
               </Card>
@@ -205,8 +217,9 @@ const DealerExpertise = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">Meter Billing Automation</h3>
                   <p className="text-gray-600">
-                    Automated meter collection, overage calculations, invoice generation, and payment tracking.
-                    Handles base allowances, tiered pricing, color vs. mono, everything.
+                    Automated meter collection, overage calculations, invoice generation, and
+                    payment tracking. Handles base allowances, tiered pricing, color vs. mono,
+                    everything.
                   </p>
                 </CardContent>
               </Card>
@@ -216,10 +229,12 @@ const DealerExpertise = () => {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mb-4">
                     <Users className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Technician Productivity Metrics</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    Technician Productivity Metrics
+                  </h3>
                   <p className="text-gray-600">
-                    Track pages serviced per tech, first-time fix rates, average service time, parts usage efficiency.
-                    Metrics that actually matter for service operations.
+                    Track pages serviced per tech, first-time fix rates, average service time, parts
+                    usage efficiency. Metrics that actually matter for service operations.
                   </p>
                 </CardContent>
               </Card>
@@ -229,10 +244,12 @@ const DealerExpertise = () => {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center mb-4">
                     <TrendingUp className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Equipment Lifecycle Management</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    Equipment Lifecycle Management
+                  </h3>
                   <p className="text-gray-600">
-                    From quote to installation to service to replacement. Track warranty status, service costs,
-                    meter progression, and optimal replacement timing.
+                    From quote to installation to service to replacement. Track warranty status,
+                    service costs, meter progression, and optimal replacement timing.
                   </p>
                 </CardContent>
               </Card>
@@ -242,10 +259,12 @@ const DealerExpertise = () => {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4">
                     <Award className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Dealer-Specific Dashboards</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    Dealer-Specific Dashboards
+                  </h3>
                   <p className="text-gray-600">
-                    KPIs dealers actually use: pages per technician, cost per click, contract renewal rates,
-                    equipment placement ROI, service response times.
+                    KPIs dealers actually use: pages per technician, cost per click, contract
+                    renewal rates, equipment placement ROI, service response times.
                   </p>
                 </CardContent>
               </Card>
@@ -255,10 +274,12 @@ const DealerExpertise = () => {
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mb-4">
                     <BookOpen className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">Supplies Chain Management</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    Supplies Chain Management
+                  </h3>
                   <p className="text-gray-600">
-                    Automated toner ordering based on predicted usage. Track supplies by device, customer alerts
-                    before stockouts, vendor management, margin tracking.
+                    Automated toner ordering based on predicted usage. Track supplies by device,
+                    customer alerts before stockouts, vendor management, margin tracking.
                   </p>
                 </CardContent>
               </Card>
@@ -270,9 +291,7 @@ const DealerExpertise = () => {
         <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">
-                We Speak Your Language
-              </h2>
+              <h2 className="text-4xl font-bold mb-4">We Speak Your Language</h2>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto">
                 Built by people who understand the dealer business inside-out
               </p>
@@ -340,8 +359,8 @@ const DealerExpertise = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    Monthly sessions with dealers across the country. Direct input on feature priorities,
-                    workflow design, and pain points we should address.
+                    Monthly sessions with dealers across the country. Direct input on feature
+                    priorities, workflow design, and pain points we should address.
                   </p>
                   <div className="bg-blue-50 rounded-lg p-4">
                     <p className="text-sm text-gray-700 font-semibold mb-2">Recent Impacts:</p>
@@ -360,8 +379,8 @@ const DealerExpertise = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    We analyze how dealers actually use the platform. Feature usage, workflow patterns,
-                    pain points—all inform our roadmap.
+                    We analyze how dealers actually use the platform. Feature usage, workflow
+                    patterns, pain points—all inform our roadmap.
                   </p>
                   <div className="bg-purple-50 rounded-lg p-4">
                     <p className="text-sm text-gray-700 font-semibold mb-2">Our Process:</p>
@@ -381,12 +400,13 @@ const DealerExpertise = () => {
                   Why Generic Software Can't Catch Up
                 </h3>
                 <p className="text-gray-700 mb-4">
-                  Horizontal SaaS platforms serve thousands of industries. They can't invest the engineering
-                  resources to deeply understand copier dealerships. We do nothing else.
+                  Horizontal SaaS platforms serve thousands of industries. They can't invest the
+                  engineering resources to deeply understand copier dealerships. We do nothing else.
                 </p>
                 <p className="text-gray-700">
-                  Every feature, every workflow, every metric—optimized for your business. That depth of
-                  expertise takes years to build and can't be copied by a company spread across 50 industries.
+                  Every feature, every workflow, every metric—optimized for your business. That
+                  depth of expertise takes years to build and can't be copied by a company spread
+                  across 50 industries.
                 </p>
               </CardContent>
             </Card>
@@ -407,7 +427,7 @@ const DealerExpertise = () => {
               <Button
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                onClick={() => window.location.href = '/signup'}
+                onClick={() => (window.location.href = '/signup')}
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -416,7 +436,7 @@ const DealerExpertise = () => {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => window.location.href = '/login'}
+                onClick={() => (window.location.href = '/login')}
               >
                 Schedule Demo
               </Button>

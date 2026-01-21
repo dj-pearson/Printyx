@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Download, Upload, TestTube, Edit2, Trash2, Check, X, Save, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+  Plus,
+  Download,
+  Upload,
+  TestTube,
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  Save,
+  Star,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -190,7 +195,12 @@ export default function OidManagement() {
 
   // Test mutation
   const testMutation = useMutation({
-    mutationFn: async (data: { ipAddress: string; oids: Record<string, string>; snmpCommunity: string; snmpVersion: string }) => {
+    mutationFn: async (data: {
+      ipAddress: string;
+      oids: Record<string, string>;
+      snmpCommunity: string;
+      snmpVersion: string;
+    }) => {
       const res = await fetch('/api/oid-mappings/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -380,16 +390,10 @@ export default function OidManagement() {
                 </div>
               </div>
               <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsImportDialogOpen(false)}
-                >
+                <Button variant="outline" onClick={() => setIsImportDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleImport}
-                  disabled={!importData || importMutation.isPending}
-                >
+                <Button onClick={handleImport} disabled={!importData || importMutation.isPending}>
                   Import
                 </Button>
               </DialogFooter>
@@ -521,9 +525,7 @@ export default function OidManagement() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>OID Mappings</CardTitle>
-              <CardDescription>
-                {mappings.length} mapping(s) found
-              </CardDescription>
+              <CardDescription>{mappings.length} mapping(s) found</CardDescription>
             </div>
             <div className="w-64">
               <Select value={selectedManufacturer} onValueChange={setSelectedManufacturer}>
@@ -587,18 +589,10 @@ export default function OidManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleTest(mapping)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleTest(mapping)}>
                           <TestTube className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(mapping)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(mapping)}>
                           <Edit2 className="w-4 h-4" />
                         </Button>
                         {mapping.isCustom && (
@@ -629,9 +623,7 @@ export default function OidManagement() {
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit OID Mapping</DialogTitle>
-            <DialogDescription>
-              Update the OID mapping configuration
-            </DialogDescription>
+            <DialogDescription>Update the OID mapping configuration</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -731,9 +723,7 @@ export default function OidManagement() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Test OID Mapping</DialogTitle>
-            <DialogDescription>
-              Test this OID mapping against a real device
-            </DialogDescription>
+            <DialogDescription>Test this OID mapping against a real device</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">

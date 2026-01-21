@@ -20,10 +20,12 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
 
       const result = await predictiveServiceDispatchService.analyzeAndDispatch(
         serialNumber,
-        tenantId
+        tenantId,
       );
 
-      console.log(`✅ Analysis complete in ${result.processingTimeMs}ms - Dispatch: ${result.dispatchCreated}`);
+      console.log(
+        `✅ Analysis complete in ${result.processingTimeMs}ms - Dispatch: ${result.dispatchCreated}`,
+      );
 
       res.json({
         success: true,
@@ -66,7 +68,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         try {
           const result = await predictiveServiceDispatchService.analyzeAndDispatch(
             serialNumber,
-            tenantId
+            tenantId,
           );
           results.push({ serialNumber, ...result });
         } catch (error: any) {
@@ -78,7 +80,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         success: true,
         analyzed: results.length,
         failed: errors.length,
-        dispatchesCreated: results.filter(r => r.dispatchCreated).length,
+        dispatchesCreated: results.filter((r) => r.dispatchCreated).length,
         results,
         errors,
       });
@@ -113,8 +115,8 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
           and(
             eq(serviceCallsEnhanced.tenantId, tenantId),
             eq(serviceCallsEnhanced.callType, 'preventive'),
-            gte(serviceCallsEnhanced.scheduledDate, thirtyDaysAgo)
-          )
+            gte(serviceCallsEnhanced.scheduledDate, thirtyDaysAgo),
+          ),
         );
 
       const totalPredictiveDispatches = predictiveDispatches[0]?.count || 0;
@@ -142,8 +144,8 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         .where(
           and(
             eq(equipmentMetrics.tenantId, tenantId),
-            gte(equipmentMetrics.collectedAt, yesterday)
-          )
+            gte(equipmentMetrics.collectedAt, yesterday),
+          ),
         );
 
       const devicesCheckedLast24h = recentHealthChecks[0]?.count || 0;
@@ -157,8 +159,8 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
           and(
             eq(serviceCallsEnhanced.tenantId, tenantId),
             eq(serviceCallsEnhanced.callType, 'preventive'),
-            eq(serviceCallsEnhanced.status, 'scheduled')
-          )
+            eq(serviceCallsEnhanced.status, 'scheduled'),
+          ),
         );
 
       const devicesAtRisk = atRiskDevices[0]?.count || 0;
@@ -184,8 +186,8 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
             eq(serviceCallsEnhanced.callType, 'preventive'),
             eq(serviceCallsEnhanced.status, 'scheduled'),
             gte(serviceCallsEnhanced.scheduledDate, new Date()),
-            lte(serviceCallsEnhanced.scheduledDate, nextWeek)
-          )
+            lte(serviceCallsEnhanced.scheduledDate, nextWeek),
+          ),
         )
         .orderBy(serviceCallsEnhanced.scheduledDate)
         .limit(10);
@@ -203,9 +205,10 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
       // Total possible downtime hours = devices * 30 days * 24 hours
       // Prevented downtime as percentage
       const totalPossibleDowntime = totalMonitoredDevices * 30 * 24;
-      const uptimeImprovement = totalPossibleDowntime > 0
-        ? ((totalDowntimePrevented / totalPossibleDowntime) * 100).toFixed(2)
-        : '0.00';
+      const uptimeImprovement =
+        totalPossibleDowntime > 0
+          ? ((totalDowntimePrevented / totalPossibleDowntime) * 100).toFixed(2)
+          : '0.00';
 
       res.json({
         overview: {
@@ -219,7 +222,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
           partsAutoOrdered,
           period: '30 days',
         },
-        upcomingMaintenance: upcomingMaintenance.map(m => ({
+        upcomingMaintenance: upcomingMaintenance.map((m) => ({
           id: m.id,
           equipmentId: m.equipmentId,
           scheduledDate: m.scheduledDate,
@@ -261,8 +264,8 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
           and(
             eq(serviceCallsEnhanced.tenantId, tenantId),
             eq(serviceCallsEnhanced.callType, 'preventive'),
-            eq(serviceCallsEnhanced.status, 'scheduled')
-          )
+            eq(serviceCallsEnhanced.status, 'scheduled'),
+          ),
         )
         .orderBy(desc(serviceCallsEnhanced.priority), serviceCallsEnhanced.scheduledDate);
 
@@ -272,10 +275,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
       for (const service of devicesWithScheduledMaintenance) {
         // Get device info
         const device = await db.query.equipment.findFirst({
-          where: and(
-            eq(equipment.id, service.equipmentId),
-            eq(equipment.tenantId, tenantId)
-          ),
+          where: and(eq(equipment.id, service.equipmentId), eq(equipment.tenantId, tenantId)),
         });
 
         if (!device) continue;
@@ -284,7 +284,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         const latestMetric = await db.query.equipmentMetrics.findFirst({
           where: and(
             eq(equipmentMetrics.serialNumber, device.serialNumber),
-            eq(equipmentMetrics.tenantId, tenantId)
+            eq(equipmentMetrics.tenantId, tenantId),
           ),
           orderBy: [desc(equipmentMetrics.collectedAt)],
         });
@@ -331,10 +331,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
 
       // Get device
       const device = await db.query.equipment.findFirst({
-        where: and(
-          eq(equipment.serialNumber, serialNumber),
-          eq(equipment.tenantId, tenantId)
-        ),
+        where: and(eq(equipment.serialNumber, serialNumber), eq(equipment.tenantId, tenantId)),
       });
 
       if (!device) {
@@ -349,7 +346,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         where: and(
           eq(equipmentMetrics.serialNumber, serialNumber),
           eq(equipmentMetrics.tenantId, tenantId),
-          gte(equipmentMetrics.collectedAt, thirtyDaysAgo)
+          gte(equipmentMetrics.collectedAt, thirtyDaysAgo),
         ),
         orderBy: [desc(equipmentMetrics.collectedAt)],
       });
@@ -368,7 +365,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
           eq(serviceCallsEnhanced.equipmentId, device.id),
           eq(serviceCallsEnhanced.tenantId, tenantId),
           eq(serviceCallsEnhanced.callType, 'preventive'),
-          eq(serviceCallsEnhanced.status, 'scheduled')
+          eq(serviceCallsEnhanced.status, 'scheduled'),
         ),
         orderBy: [serviceCallsEnhanced.scheduledDate],
       });
@@ -383,7 +380,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         healthAnalysis,
         metricsCount: metrics.length,
         latestMetrics: metrics[0],
-        scheduledMaintenance: scheduledMaintenance.map(s => ({
+        scheduledMaintenance: scheduledMaintenance.map((s) => ({
           id: s.id,
           scheduledDate: s.scheduledDate,
           priority: s.priority,
@@ -413,11 +410,11 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
       const technicians = await db.query.technicianResourcesEnhanced.findMany({
         where: and(
           eq(technicianResourcesEnhanced.tenantId, tenantId),
-          eq(technicianResourcesEnhanced.status, 'available')
+          eq(technicianResourcesEnhanced.status, 'available'),
         ),
       });
 
-      const performanceData = technicians.map(tech => ({
+      const performanceData = technicians.map((tech) => ({
         technicianId: tech.technicianId,
         name: tech.technicianId, // TODO: Join with users table
         skills: tech.skills || [],
@@ -468,11 +465,11 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         .where(
           and(
             eq(equipmentMetrics.tenantId, tenantId),
-            gte(equipmentMetrics.collectedAt, sevenDaysAgo)
-          )
+            gte(equipmentMetrics.collectedAt, sevenDaysAgo),
+          ),
         );
 
-      const serialNumbers = devicesWithMetrics.map(d => d.serialNumber);
+      const serialNumbers = devicesWithMetrics.map((d) => d.serialNumber);
 
       console.log(`📊 Found ${serialNumbers.length} devices to analyze`);
 
@@ -488,7 +485,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
           try {
             const result = await predictiveServiceDispatchService.analyzeAndDispatch(
               serialNumber,
-              tenantId
+              tenantId,
             );
             results.push({ serialNumber, ...result });
           } catch (error: any) {
@@ -497,17 +494,19 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         }
       }
 
-      console.log(`✅ Fleet analysis complete - ${results.length} analyzed, ${errors.length} failed`);
+      console.log(
+        `✅ Fleet analysis complete - ${results.length} analyzed, ${errors.length} failed`,
+      );
 
       res.json({
         success: true,
         analyzed: results.length,
         failed: errors.length,
-        dispatchesCreated: results.filter(r => r.dispatchCreated).length,
+        dispatchesCreated: results.filter((r) => r.dispatchCreated).length,
         summary: {
           totalDevices: serialNumbers.length,
-          requiresAttention: results.filter(r => r.dispatchCreated).length,
-          healthy: results.filter(r => !r.dispatchCreated).length,
+          requiresAttention: results.filter((r) => r.dispatchCreated).length,
+          healthy: results.filter((r) => !r.dispatchCreated).length,
         },
         results: results.slice(0, 50), // Return first 50 for display
         errors,

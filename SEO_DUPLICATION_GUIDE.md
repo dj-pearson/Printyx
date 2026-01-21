@@ -315,13 +315,13 @@ import SEODashboard from './pages/SEODashboard';
 Add SEO link to your admin sidebar:
 
 ```tsx
-import { BarChart3 } from "lucide-react";
+import { BarChart3 } from 'lucide-react';
 
 // In your sidebar component
 <Link to="/admin/seo">
   <BarChart3 className="mr-2 h-4 w-4" />
   <span>SEO Management</span>
-</Link>
+</Link>;
 ```
 
 ### 3.5. Verify Supabase Client
@@ -476,21 +476,25 @@ npm run dev
 #### Basic Tests
 
 ✅ **Audit Tab**
+
 - Enter a URL (e.g., `https://example.com`)
 - Click "Run Audit"
 - Should return scores and issue breakdown
 
 ✅ **Keywords Tab**
+
 - Add a keyword
 - Set target URL and position
 - Save keyword
 
 ✅ **Meta Tags Tab**
+
 - Update title, description
 - Save changes
 - Verify in `seo_settings` table
 
 ✅ **Site Crawler Tab**
+
 - Enter start URL
 - Set max pages to 10
 - Click "Start Crawl"
@@ -499,21 +503,25 @@ npm run dev
 #### Advanced Tests
 
 ✅ **Core Web Vitals Tab**
+
 - Enter URL
 - Click "Check Vitals"
 - Should return LCP, FID, CLS metrics
 
 ✅ **Images Tab**
+
 - Enter URL
 - Click "Analyze Images"
 - Should return image analysis
 
 ✅ **Security Tab**
+
 - Enter URL
 - Click "Check Security"
 - Should return security headers
 
 ✅ **Mobile Tab**
+
 - Enter URL
 - Click "Check Mobile"
 - Should return mobile analysis
@@ -619,6 +627,7 @@ Send SEO alerts to Slack:
 ### Issue: Build Fails with Module Errors
 
 **Solution:**
+
 ```bash
 npm install --legacy-peer-deps
 # OR
@@ -628,6 +637,7 @@ npm install --force
 ### Issue: "Function Not Found" Error
 
 **Solution:**
+
 ```bash
 # Redeploy functions
 supabase functions deploy seo-audit
@@ -641,14 +651,15 @@ supabase functions deploy crawl-site
 
 ```typescript
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 ```
 
 ### Issue: "API Key Not Configured" Error
 
 **Solution:**
+
 ```bash
 # Verify secrets are set
 supabase secrets list
@@ -688,6 +699,7 @@ VALUES (auth.uid(), 'admin');
 **Solution:**
 
 Google PageSpeed Insights has rate limits:
+
 - **Free tier:** 25,000 requests/day
 - **Paid tier:** Contact Google for higher limits
 
@@ -776,30 +788,30 @@ LIMIT 100;
 
 ### Complete Feature List
 
-| Tab | Feature | API Required | Cost |
-|-----|---------|--------------|------|
-| Audit | Comprehensive 50+ point SEO audit | None | Free |
-| Keywords | Keyword tracking & position monitoring | Optional: GSC, SERPApi | Free/Paid |
-| Competitors | Competitive SEO analysis | None | Free |
-| Pages | Individual page SEO scoring | None | Free |
-| Monitoring | Automated monitoring & alerts | None | Free |
-| Meta Tags | Global meta tag management | None | Free |
-| robots.txt | Robot exclusion management | None | Free |
-| sitemap.xml | XML sitemap generation | None | Free |
-| llms.txt | LLM exclusion file | None | Free |
-| Structured Data | JSON-LD validation | None | Free |
-| Performance | Core Web Vitals monitoring | PageSpeed API | Free |
-| Backlinks | Backlink tracking | Ahrefs/Moz | $79-99/mo |
-| Broken Links | Broken link detection | None | Free |
-| Link Structure | Internal linking analysis | None | Free |
-| Content | Content analysis & readability | None | Free |
-| Site Crawler | Full site crawling (500 pages) | None | Free |
-| Images | Image SEO analysis | None | Free |
-| Redirects | Redirect chain detection | None | Free |
-| Duplicate Content | Content duplication detection | None | Free |
-| Security | Security headers validation | None | Free |
-| Mobile Check | Mobile-first analysis | None | Free |
-| Budget | Performance budget monitoring | None | Free |
+| Tab               | Feature                                | API Required           | Cost      |
+| ----------------- | -------------------------------------- | ---------------------- | --------- |
+| Audit             | Comprehensive 50+ point SEO audit      | None                   | Free      |
+| Keywords          | Keyword tracking & position monitoring | Optional: GSC, SERPApi | Free/Paid |
+| Competitors       | Competitive SEO analysis               | None                   | Free      |
+| Pages             | Individual page SEO scoring            | None                   | Free      |
+| Monitoring        | Automated monitoring & alerts          | None                   | Free      |
+| Meta Tags         | Global meta tag management             | None                   | Free      |
+| robots.txt        | Robot exclusion management             | None                   | Free      |
+| sitemap.xml       | XML sitemap generation                 | None                   | Free      |
+| llms.txt          | LLM exclusion file                     | None                   | Free      |
+| Structured Data   | JSON-LD validation                     | None                   | Free      |
+| Performance       | Core Web Vitals monitoring             | PageSpeed API          | Free      |
+| Backlinks         | Backlink tracking                      | Ahrefs/Moz             | $79-99/mo |
+| Broken Links      | Broken link detection                  | None                   | Free      |
+| Link Structure    | Internal linking analysis              | None                   | Free      |
+| Content           | Content analysis & readability         | None                   | Free      |
+| Site Crawler      | Full site crawling (500 pages)         | None                   | Free      |
+| Images            | Image SEO analysis                     | None                   | Free      |
+| Redirects         | Redirect chain detection               | None                   | Free      |
+| Duplicate Content | Content duplication detection          | None                   | Free      |
+| Security          | Security headers validation            | None                   | Free      |
+| Mobile Check      | Mobile-first analysis                  | None                   | Free      |
+| Budget            | Performance budget monitoring          | None                   | Free      |
 
 ---
 
@@ -810,6 +822,7 @@ LIMIT 100;
 Printyx uses custom domains for self-hosted Supabase:
 
 1. Custom domains configured:
+
    ```
    api.printyx.net → Self-hosted Supabase API
    functions.printyx.net → Self-hosted Edge Functions
@@ -934,6 +947,7 @@ You now have a **complete, enterprise-grade SEO management system** that:
 **Total Cost:** FREE (except optional APIs)
 
 **Typical Monthly Cost with Optional APIs:**
+
 - PageSpeed Insights: FREE
 - Google Search Console: FREE
 - Ahrefs: $99/month (optional)
@@ -944,5 +958,5 @@ You now have a **complete, enterprise-grade SEO management system** that:
 
 ---
 
-*Last Updated: 2025-11-05*
-*Version: 1.0.0*
+_Last Updated: 2025-11-05_
+_Version: 1.0.0_

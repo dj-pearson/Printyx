@@ -23,34 +23,41 @@ The Printyx Mobile Technician App enables field technicians to:
 ## 🏗️ Tech Stack
 
 **Core Framework:**
+
 - **React Native 0.76.5**: Cross-platform mobile framework
 - **Expo ~52.0.0**: Development platform and build tools
 - **TypeScript 5.6.3**: Type-safe development
 
 **Navigation:**
+
 - **@react-navigation/native 7.0.0**: Navigation framework
 - **@react-navigation/native-stack**: Stack navigator
 - **@react-navigation/bottom-tabs**: Tab navigator
 
 **State Management:**
+
 - **@tanstack/react-query 5.60.5**: Server state management
 - **React Context**: Local state (authentication)
 
 **Offline Support:**
+
 - **@watermelondb/watermelondb 0.27.0**: Offline-first database
 - **expo-sqlite**: Local SQLite database
 
 **Device Features:**
+
 - **expo-camera 16.0.0**: QR scanning and photo capture
 - **expo-location 18.0.0**: GPS tracking
 - **expo-secure-store 13.0.2**: Secure credential storage
 - **react-native-signature-canvas 4.7.2**: Signature capture
 
 **UI Components:**
+
 - **@expo/vector-icons**: Ionicons icon set
 - **react-native-safe-area-context**: Safe area handling
 
 **API Communication:**
+
 - **axios 1.7.9**: HTTP client
 - **@tanstack/query-sync-storage-persister**: Query cache persistence
 
@@ -105,6 +112,7 @@ mobile-app/
 ### Installation
 
 1. **Install dependencies:**
+
    ```bash
    cd mobile-app
    npm install
@@ -113,10 +121,11 @@ mobile-app/
 2. **Configure API endpoint:**
 
    The API client is configured in `src/services/api.ts`:
+
    ```typescript
    const baseURL = __DEV__
-     ? 'http://localhost:5000/api'      // Development
-     : 'https://api.printyx.com/api';   // Production
+     ? 'http://localhost:5000/api' // Development
+     : 'https://api.printyx.com/api'; // Production
    ```
 
    **Important:**
@@ -125,6 +134,7 @@ mobile-app/
    - For physical device: Use your computer's IP (e.g., `http://192.168.1.100:5000`)
 
 3. **Start development server:**
+
    ```bash
    npm start
    ```
@@ -219,6 +229,7 @@ Use credentials from your Printyx platform (technician role required).
 ## 🎨 UI Design
 
 **Design System:**
+
 - Primary color: `#2563eb` (Blue)
 - Success: `#10b981` (Green)
 - Warning: `#f59e0b` (Amber)
@@ -227,10 +238,12 @@ Use credentials from your Printyx platform (technician role required).
 - Subtitle: `#6b7280` (Gray 500)
 
 **Typography:**
+
 - Default: System font (San Francisco on iOS, Roboto on Android)
 - Sizes: 12px, 14px, 16px, 20px, 24px
 
 **Spacing:**
+
 - Base unit: 4px
 - Common: 8px, 12px, 16px, 24px, 32px
 
@@ -239,16 +252,19 @@ Use credentials from your Printyx platform (technician role required).
 ## 🔐 Security
 
 **Authentication:**
+
 - JWT token stored in Expo SecureStore (encrypted)
 - Automatic token refresh on app launch
 - Session management with timeout
 
 **Data Protection:**
+
 - All API requests use HTTPS in production
 - Bearer token authentication
 - Secure credential storage
 
 **Permissions:**
+
 - Camera: For QR scanning and photos
 - Location: For GPS tracking
 - Storage: For offline data
@@ -268,6 +284,7 @@ The app will support full offline functionality:
 5. **Conflict Resolution**: Last-write-wins with timestamp comparison
 
 **Data Synced:**
+
 - Assigned tickets
 - Customer details
 - Equipment information
@@ -278,11 +295,11 @@ The app will support full offline functionality:
 
 ## 📸 Screenshots
 
-*(Coming Soon)*
+_(Coming Soon)_
 
-Dashboard | Ticket List | Ticket Detail | QR Scanner
-:--------:|:-----------:|:-------------:|:----------:
-![Dashboard](docs/screenshots/dashboard.png) | ![Tickets](docs/screenshots/tickets.png) | ![Detail](docs/screenshots/detail.png) | ![QR](docs/screenshots/qr.png)
+|                  Dashboard                   |               Ticket List                |             Ticket Detail              |           QR Scanner           |
+| :------------------------------------------: | :--------------------------------------: | :------------------------------------: | :----------------------------: |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Tickets](docs/screenshots/tickets.png) | ![Detail](docs/screenshots/detail.png) | ![QR](docs/screenshots/qr.png) |
 
 ---
 
@@ -291,11 +308,13 @@ Dashboard | Ticket List | Ticket Detail | QR Scanner
 ### iOS Build
 
 **Requirements:**
+
 - macOS with Xcode
 - Apple Developer account
 - Expo Application Services (EAS) account
 
 **Build Steps:**
+
 ```bash
 # Install EAS CLI
 npm install -g eas-cli
@@ -316,10 +335,12 @@ eas submit --platform ios
 ### Android Build
 
 **Requirements:**
+
 - Google Play Console account
 - Expo Application Services (EAS) account
 
 **Build Steps:**
+
 ```bash
 # Build for Android
 eas build --platform android
@@ -346,12 +367,14 @@ Users will receive updates automatically without App Store approval.
 ### Manual Testing Checklist
 
 **Authentication:**
+
 - [ ] Login with valid credentials
 - [ ] Login fails with invalid credentials
 - [ ] Token persists after app restart
 - [ ] Logout clears token
 
 **Tickets:**
+
 - [ ] Dashboard shows correct stats
 - [ ] Ticket list loads assigned tickets
 - [ ] Filters work correctly
@@ -359,12 +382,14 @@ Users will receive updates automatically without App Store approval.
 - [ ] Start ticket updates status
 
 **QR Scanning:**
+
 - [ ] Camera permission requested
 - [ ] QR code scans successfully
 - [ ] Equipment lookup works
 - [ ] Invalid QR shows error
 
 **Offline:**
+
 - [ ] App works without network
 - [ ] Data syncs when reconnected
 
@@ -375,29 +400,34 @@ Users will receive updates automatically without App Store approval.
 ### Common Issues
 
 **1. Metro bundler won't start**
+
 ```bash
 # Clear cache and restart
 npm start --clear
 ```
 
 **2. Cannot connect to API**
+
 - Check backend is running on `http://localhost:5000`
 - For Android emulator, use `http://10.0.2.2:5000`
 - For physical device, use your computer's IP address
 - Ensure firewall allows connections
 
 **3. Camera not working**
+
 - Check camera permissions in device settings
 - Restart Expo development server
 - For iOS Simulator, camera is not available
 
 **4. TypeScript errors**
+
 ```bash
 # Run type check
 npm run type-check
 ```
 
 **5. Build errors**
+
 ```bash
 # Clear node_modules and reinstall
 rm -rf node_modules package-lock.json
@@ -411,11 +441,13 @@ npm install
 The mobile app communicates with these endpoints:
 
 **Authentication:**
+
 - `POST /api/auth/login` - Login with email/password
 - `POST /api/auth/logout` - Logout
 - `GET /api/auth/me` - Get current user
 
 **Tickets:**
+
 - `GET /api/mobile/sync` - Initial/incremental data sync
 - `GET /api/mobile/tickets` - List assigned tickets
 - `GET /api/mobile/tickets/:id` - Get ticket details
@@ -426,13 +458,16 @@ The mobile app communicates with these endpoints:
 - `POST /api/mobile/tickets/:id/photos` - Upload photos
 
 **Equipment:**
+
 - `GET /api/mobile/equipment/:id` - Get equipment details
 - `POST /api/mobile/equipment/scan` - QR/serial lookup
 
 **Location:**
+
 - `POST /api/mobile/location` - Track GPS location
 
 **Stats:**
+
 - `GET /api/mobile/stats` - Performance metrics
 
 See `src/services/api.ts` for complete API client implementation.
@@ -467,14 +502,17 @@ Copyright © 2025 Printyx. All rights reserved.
 ## 🆘 Support
 
 **Documentation:**
+
 - Main docs: `/docs/IMPLEMENTATION_MOBILE_TECHNICIAN_APP.md`
 - Backend API: `/docs/BUILD_SESSION_SUMMARY_2025-11-23.md`
 
 **Issues:**
+
 - Report bugs in GitHub Issues
 - Feature requests welcome
 
 **Contact:**
+
 - Email: support@printyx.com
 - Website: https://printyx.com
 

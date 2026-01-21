@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Clock, BookOpen, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Clock, BookOpen, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TOCItem {
   id: string;
@@ -31,7 +31,7 @@ export default function ArticleTOCSidebar({
   currentSectionId,
   className,
 }: ArticleTOCSidebarProps) {
-  const [activeSection, setActiveSection] = useState<string>(currentSectionId || "");
+  const [activeSection, setActiveSection] = useState<string>(currentSectionId || '');
   const [readingProgress, setReadingProgress] = useState(0);
   const [isSticky, setIsSticky] = useState(false);
 
@@ -77,9 +77,9 @@ export default function ArticleTOCSidebar({
         });
       },
       {
-        rootMargin: "-20% 0px -70% 0px", // Activate when section is in middle of viewport
+        rootMargin: '-20% 0px -70% 0px', // Activate when section is in middle of viewport
         threshold: 0,
-      }
+      },
     );
 
     // Observe all headers with IDs
@@ -99,8 +99,8 @@ export default function ArticleTOCSidebar({
       setIsSticky(window.scrollY > 100);
     };
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleSectionClick = (sectionId: string) => {
@@ -112,7 +112,7 @@ export default function ArticleTOCSidebar({
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: "smooth",
+        behavior: 'smooth',
       });
 
       setActiveSection(sectionId);
@@ -128,18 +128,18 @@ export default function ArticleTOCSidebar({
         <button
           onClick={() => handleSectionClick(item.id)}
           className={cn(
-            "w-full text-left px-3 py-2 rounded-md text-sm transition-colors",
-            "hover:bg-gray-100 dark:hover:bg-gray-800",
-            isActive && "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium",
-            !isActive && "text-gray-700 dark:text-gray-300",
-            level === 0 && "font-medium",
-            level === 1 && "pl-6 text-sm",
-            level === 2 && "pl-9 text-xs"
+            'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+            'hover:bg-gray-100 dark:hover:bg-gray-800',
+            isActive && 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium',
+            !isActive && 'text-gray-700 dark:text-gray-300',
+            level === 0 && 'font-medium',
+            level === 1 && 'pl-6 text-sm',
+            level === 2 && 'pl-9 text-xs',
           )}
         >
           <div className="flex items-center gap-2">
             {isActive && <ChevronRight className="h-3 w-3 flex-shrink-0" />}
-            <span className={cn("line-clamp-2", !isActive && level > 0 && "ml-5")}>
+            <span className={cn('line-clamp-2', !isActive && level > 0 && 'ml-5')}>
               {item.title}
             </span>
           </div>
@@ -155,9 +155,9 @@ export default function ArticleTOCSidebar({
   };
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn('space-y-4', className)}>
       {/* Sticky wrapper */}
-      <div className={cn("transition-all", isSticky && "sticky top-20")}>
+      <div className={cn('transition-all', isSticky && 'sticky top-20')}>
         <Card className="p-4 bg-white dark:bg-gray-900 shadow-sm">
           {/* Header */}
           <div className="mb-4 pb-4 border-b">
@@ -206,9 +206,7 @@ export default function ArticleTOCSidebar({
                   style={{ width: `${readingProgress}%` }}
                 />
               </div>
-              <span className="min-w-[40px] text-right font-medium">
-                {readingProgress}%
-              </span>
+              <span className="min-w-[40px] text-right font-medium">{readingProgress}%</span>
             </div>
           </div>
         </Card>

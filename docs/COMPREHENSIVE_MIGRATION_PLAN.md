@@ -9,18 +9,21 @@
 ## Executive Summary
 
 The Printyx platform is currently in a **hybrid state** between old NEON database architecture and new self-hosted Supabase. This creates:
+
 - **Security Risks**: Inconsistent authentication patterns
 - **Maintenance Burden**: Duplicate code paths
 - **Performance Issues**: Unnecessary Express.js layer
 - **Deployment Complexity**: Multiple services to manage
 
 ### Current State
+
 - **Old Server Routes**: 120+ Express.js route files in `/server`
 - **Edge Functions**: Only 11 created (should be 50+)
 - **Frontend API Calls**: 748 `apiRequest()` calls across 249 files
 - **Authentication**: Mixed patterns (session vs JWT)
 
 ### Target State
+
 - **Edge Functions Only**: Serverless, scalable, secure
 - **Unified Auth**: Supabase JWT with RLS
 - **Clean Codebase**: Remove `/server` directory
@@ -31,12 +34,15 @@ The Printyx platform is currently in a **hybrid state** between old NEON databas
 ## Phase 1: Discovery & Inventory ✅ COMPLETE
 
 ### 1.1 NEON References Found
+
 All NEON references are in **documentation** and **unused scripts**:
+
 - ✅ No active code using `@neondatabase/serverless`
 - ✅ Main `server/db.ts` correctly uses standard `pg` module
 - ✅ Environment variables correctly point to self-hosted Supabase
 
 **Files to Clean (Low Priority):**
+
 - `create-test-user.ts` - Update imports
 - `test-auth-connection.ts` - Update imports
 - `export-database.js` - Update imports
@@ -48,6 +54,7 @@ All NEON references are in **documentation** and **unused scripts**:
 **Total Express Routes:** 120+ files in `/server`
 
 **Categories:**
+
 - CRM & Business Records: 12 files
 - Inventory & Products: 7 files
 - Service Management: 8 files
@@ -66,44 +73,49 @@ All NEON references are in **documentation** and **unused scripts**:
 
 **Currently Deployed:** 11 functions
 
-| Function | Status | Auth | Purpose |
-|----------|--------|------|---------|
-| `hello` | ✅ Working | No | Test function |
-| `signup` | ✅ Working | No | User registration |
-| `me` | ❌ 404 | Yes | User profile |
-| `business-records` | ✅ Working | Yes | Leads/customers CRUD |
-| `tasks` | ✅ Working | Yes | Tasks CRUD |
-| `projects` | ✅ Working | Yes | Projects CRUD |
-| `users` | ✅ Working | Yes | Users list |
-| `performance` | ✅ Working | Yes | Performance metrics |
-| `dashboard` | ❓ Untested | Yes | Dashboard data |
-| `csrf-token` | ❓ Untested | No | CSRF token generation |
-| `db-check` | ✅ Working | No | Database diagnostic |
+| Function           | Status      | Auth | Purpose               |
+| ------------------ | ----------- | ---- | --------------------- |
+| `hello`            | ✅ Working  | No   | Test function         |
+| `signup`           | ✅ Working  | No   | User registration     |
+| `me`               | ❌ 404      | Yes  | User profile          |
+| `business-records` | ✅ Working  | Yes  | Leads/customers CRUD  |
+| `tasks`            | ✅ Working  | Yes  | Tasks CRUD            |
+| `projects`         | ✅ Working  | Yes  | Projects CRUD         |
+| `users`            | ✅ Working  | Yes  | Users list            |
+| `performance`      | ✅ Working  | Yes  | Performance metrics   |
+| `dashboard`        | ❓ Untested | Yes  | Dashboard data        |
+| `csrf-token`       | ❓ Untested | No   | CSRF token generation |
+| `db-check`         | ✅ Working  | No   | Database diagnostic   |
 
 ### 1.4 Frontend API Endpoints Analysis
 
 **Sample of Most Used Endpoints (from code scan):**
 
 **Business Records:**
+
 - `/api/business-records` - GET (list), POST (create)
 - `/api/business-records/:id` - GET, PUT, DELETE
 - `/api/business-records/:id/activities` - GET, POST
 - `/api/leads/:id/contacts` - GET, POST
 
 **Tasks:**
+
 - `/api/tasks` - GET (list), POST (create)
 - `/api/tasks/:id` - GET, PATCH, DELETE
 - `/api/tasks/stats` - GET
 
 **Projects:**
+
 - `/api/projects` - GET (list), POST (create)
 - `/api/projects/:id` - GET, PUT, DELETE
 
 **Customers:**
+
 - `/api/customers` - GET (list), POST (create)
 - `/api/customers/:id` - GET, PATCH, DELETE
 
 **Reports:**
+
 - `/api/reports/executive-summary` - GET
 - `/api/reports/kpi-scorecards` - GET
 - `/api/reports/business-insights` - GET
@@ -111,46 +123,57 @@ All NEON references are in **documentation** and **unused scripts**:
 - `/api/reports/custom/preview` - POST
 
 **Territories:**
+
 - `/api/territories` - GET (list), POST (create)
 - `/api/territories/stats` - GET
 - `/api/territories/:id` - PUT, DELETE
 
 **GDPR:**
+
 - `/api/gdpr/consent/stats` - GET
 - `/api/gdpr/dpa/stats` - GET
 - `/api/gdpr/data-export/requests` - GET
 
 **Enrichment:**
+
 - `/api/enrichment/campaigns` - POST
 
 **Catalog:**
+
 - `/api/catalog/models/:id/enable` - POST
 - `/api/catalog/models/bulk-enable` - POST
 
 **Pricing:**
+
 - `/api/pricing/products` - POST
 - `/api/pricing/products/bulk-update` - POST
 
 **Import:**
+
 - `/api/import/entity-types` - GET
 - `/api/import/templates/:type` - GET
 - `/api/import/jobs/:id/validate` - POST
 - `/api/import/jobs/:id/execute` - POST
 
 **Inventory:**
+
 - `/api/inventory/:id` - DELETE
 
 **Service Tickets:**
+
 - `/api/service-tickets/:id` - DELETE
 
 **Dashboard:**
+
 - `/api/dashboard/layouts` - GET, POST
 - `/api/dashboard/layouts/default` - GET
 
 **Quotes:**
+
 - `/api/quotes` - POST
 
 **Companies:**
+
 - `/api/companies` - POST
 
 ---
@@ -181,7 +204,10 @@ export default async function handler(req: Request) {
   const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   const supabase = createSupabaseClient(req);
-  const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser(jwt);
 
   if (userError || !user) {
     console.error('Auth error:', userError);
@@ -220,6 +246,7 @@ export default async function handler(req: Request) {
 **Status:** ✅ Already implemented in database
 
 All tables with `tenant_id` have RLS policies:
+
 - SELECT: `tenant_id = auth.jwt() ->> 'tenantId'`
 - INSERT/UPDATE/DELETE: Same tenant check + ownership
 
@@ -229,47 +256,48 @@ All tables with `tenant_id` have RLS policies:
 
 ### High Priority (Week 1) - Core Functions
 
-| Endpoint | Current | Target | Complexity | Users Affected |
-|----------|---------|--------|------------|----------------|
-| `/api/business-records/*` | ✅ Edge | ✅ Done | Low | All Sales |
-| `/api/tasks/*` | ✅ Edge | ✅ Done | Low | All Users |
-| `/api/projects/*` | ✅ Edge | ✅ Done | Low | All Users |
-| `/api/users` | ✅ Edge | ✅ Done | Low | All Users |
-| `/api/me` | ❌ Express | Edge | Low | All Users |
-| `/api/customers/*` | ❌ Express | Edge | Medium | Sales |
-| `/api/leads/:id/contacts` | ❌ Express | Edge | Low | Sales |
-| `/api/service-tickets/*` | ❌ Express | Edge | High | Service |
+| Endpoint                  | Current    | Target  | Complexity | Users Affected |
+| ------------------------- | ---------- | ------- | ---------- | -------------- |
+| `/api/business-records/*` | ✅ Edge    | ✅ Done | Low        | All Sales      |
+| `/api/tasks/*`            | ✅ Edge    | ✅ Done | Low        | All Users      |
+| `/api/projects/*`         | ✅ Edge    | ✅ Done | Low        | All Users      |
+| `/api/users`              | ✅ Edge    | ✅ Done | Low        | All Users      |
+| `/api/me`                 | ❌ Express | Edge    | Low        | All Users      |
+| `/api/customers/*`        | ❌ Express | Edge    | Medium     | Sales          |
+| `/api/leads/:id/contacts` | ❌ Express | Edge    | Low        | Sales          |
+| `/api/service-tickets/*`  | ❌ Express | Edge    | High       | Service        |
 
 ### Medium Priority (Week 2) - Supporting Functions
 
-| Endpoint | Current | Target | Complexity | Users Affected |
-|----------|---------|--------|------------|----------------|
-| `/api/territories/*` | ❌ Express | Edge | Medium | Sales Mgmt |
-| `/api/catalog/*` | ❌ Express | Edge | Medium | Product Mgmt |
-| `/api/pricing/*` | ❌ Express | Edge | Medium | Sales |
-| `/api/inventory/*` | ❌ Express | Edge | Medium | Warehouse |
-| `/api/quotes/*` | ❌ Express | Edge | High | Sales |
-| `/api/proposals/*` | ❌ Express | Edge | High | Sales |
-| `/api/contacts/*` | ❌ Express | Edge | Low | Sales |
-| `/api/companies/*` | ❌ Express | Edge | Low | Sales |
+| Endpoint             | Current    | Target | Complexity | Users Affected |
+| -------------------- | ---------- | ------ | ---------- | -------------- |
+| `/api/territories/*` | ❌ Express | Edge   | Medium     | Sales Mgmt     |
+| `/api/catalog/*`     | ❌ Express | Edge   | Medium     | Product Mgmt   |
+| `/api/pricing/*`     | ❌ Express | Edge   | Medium     | Sales          |
+| `/api/inventory/*`   | ❌ Express | Edge   | Medium     | Warehouse      |
+| `/api/quotes/*`      | ❌ Express | Edge   | High       | Sales          |
+| `/api/proposals/*`   | ❌ Express | Edge   | High       | Sales          |
+| `/api/contacts/*`    | ❌ Express | Edge   | Low        | Sales          |
+| `/api/companies/*`   | ❌ Express | Edge   | Low        | Sales          |
 
 ### Low Priority (Week 3) - Admin/Advanced
 
-| Endpoint | Current | Target | Complexity | Users Affected |
-|----------|---------|--------|------------|----------------|
-| `/api/reports/*` | ❌ Express | Edge | High | Executives |
-| `/api/dashboard/*` | ❌ Express | Edge | Medium | All Users |
-| `/api/gdpr/*` | ❌ Express | Edge | Medium | Compliance |
-| `/api/import/*` | ❌ Express | Edge | High | Admins |
-| `/api/enrichment/*` | ❌ Express | Edge | Low | Sales Ops |
-| `/api/integrations/*` | ❌ Express | Edge | High | Admins |
-| `/api/ai/*` | ❌ Express | Edge | Medium | Power Users |
+| Endpoint              | Current    | Target | Complexity | Users Affected |
+| --------------------- | ---------- | ------ | ---------- | -------------- |
+| `/api/reports/*`      | ❌ Express | Edge   | High       | Executives     |
+| `/api/dashboard/*`    | ❌ Express | Edge   | Medium     | All Users      |
+| `/api/gdpr/*`         | ❌ Express | Edge   | Medium     | Compliance     |
+| `/api/import/*`       | ❌ Express | Edge   | High       | Admins         |
+| `/api/enrichment/*`   | ❌ Express | Edge   | Low        | Sales Ops      |
+| `/api/integrations/*` | ❌ Express | Edge   | High       | Admins         |
+| `/api/ai/*`           | ❌ Express | Edge   | Medium     | Power Users    |
 
 ---
 
 ## Phase 4: Detailed Migration Tasks
 
 ### Task 1: Fix `/api/me` endpoint ❌ BROKEN
+
 **Status:** Currently returning 404
 **Impact:** User profile loading fails
 **Solution:** Create or fix `supabase/functions/me/index.ts`
@@ -278,6 +306,7 @@ All tables with `tenant_id` have RLS policies:
 **Dependencies:** None
 
 ### Task 2: Create `/api/customers` Edge Function
+
 **Status:** Currently using Express route
 **Impact:** Customer management broken in places
 **Solution:** Create `supabase/functions/customers/index.ts`
@@ -287,6 +316,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from `server/routes-customers.ts`
 
 ### Task 3: Create `/api/service-tickets` Edge Function
+
 **Status:** Currently using Express route
 **Impact:** Service dispatch broken
 **Solution:** Create `supabase/functions/service-tickets/index.ts`
@@ -296,6 +326,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from `server/routes-service-dispatch.ts`
 
 ### Task 4: Create `/api/contacts` Edge Function
+
 **Status:** Lead contacts failing
 **Impact:** Cannot add contacts to leads
 **Solution:** Merge into `business-records` function or create separate
@@ -304,6 +335,7 @@ All tables with `tenant_id` have RLS policies:
 **Dependencies:** None
 
 ### Task 5: Create `/api/reports` Edge Function
+
 **Status:** Report pages not loading
 **Impact:** Executives cannot view dashboards
 **Solution:** Create `supabase/functions/reports/index.ts`
@@ -313,6 +345,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from multiple `server/routes-reports-*.ts`
 
 ### Task 6: Create `/api/territories` Edge Function
+
 **Status:** Territory management broken
 **Impact:** Sales leadership features broken
 **Solution:** Create `supabase/functions/territories/index.ts`
@@ -322,6 +355,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from `server/routes-territory-management.ts`
 
 ### Task 7: Create `/api/catalog` Edge Function
+
 **Status:** Product catalog operations broken
 **Impact:** Cannot enable/disable products
 **Solution:** Create `supabase/functions/catalog/index.ts`
@@ -331,6 +365,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from `server/routes-catalog.ts`
 
 ### Task 8: Create `/api/pricing` Edge Function
+
 **Status:** Pricing updates broken
 **Impact:** Cannot update product pricing
 **Solution:** Create `supabase/functions/pricing/index.ts`
@@ -340,6 +375,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from `server/routes-pricing.ts`
 
 ### Task 9: Create `/api/inventory` Edge Function
+
 **Status:** Inventory operations limited
 **Impact:** Warehouse operations partially broken
 **Solution:** Create `supabase/functions/inventory/index.ts`
@@ -349,6 +385,7 @@ All tables with `tenant_id` have RLS policies:
 **Migration:** Port from `server/routes-warehouse.ts`
 
 ### Task 10: Create `/api/quotes` Edge Function
+
 **Status:** Quote creation broken
 **Impact:** Cannot create quotes
 **Solution:** Create `supabase/functions/quotes/index.ts`
@@ -364,6 +401,7 @@ All tables with `tenant_id` have RLS policies:
 ### 5.1 Required Tables (from `shared/schema.ts`)
 
 **Core Tables:**
+
 - ✅ `users` - User accounts
 - ✅ `tenants` - Multi-tenant data
 - ✅ `business_records` - Leads/customers/prospects
@@ -372,6 +410,7 @@ All tables with `tenant_id` have RLS policies:
 - ✅ `projects` - Project management
 
 **Missing/Unverified Tables:**
+
 - ❓ `service_tickets` - Service dispatch
 - ❓ `inventory` - Warehouse inventory
 - ❓ `quotes` - Sales quotes
@@ -389,24 +428,29 @@ All tables with `tenant_id` have RLS policies:
 ### 6.1 Files to Delete (After Migration Complete)
 
 **Server Routes (120+ files):**
+
 - All files in `server/routes-*.ts`
 - All files in `server/routes/*.ts`
 
 **Server Services:**
+
 - `server/services/*` - Move to Edge Functions or delete
 
 **Server Middleware:**
+
 - `server/middleware/tenancy.ts` - No longer needed
 - `server/replitAuth.ts` - Remove Replit OIDC
 - Keep: `server/middleware/supabase-auth.ts` (for reference)
 
 **Server Utils:**
+
 - Keep: `server/utils/auth-helpers.ts` (convert to Deno)
 - Delete: Old session management code
 
 ### 6.2 NPM Dependencies to Remove
 
 After migration:
+
 - Remove Express.js and related packages
 - Remove session management packages
 - Keep: Drizzle ORM (for migrations only)
@@ -419,6 +463,7 @@ After migration:
 ### 7.1 Automated Tests
 
 **Create Test Suite:**
+
 ```typescript
 // tests/edge-functions/business-records.test.ts
 describe('Business Records Edge Function', () => {
@@ -432,6 +477,7 @@ describe('Business Records Edge Function', () => {
 ### 7.2 Manual Testing Checklist
 
 **Per Feature:**
+
 - [ ] Login with test user
 - [ ] Create new record
 - [ ] List records (verify tenant filtering)
@@ -442,6 +488,7 @@ describe('Business Records Edge Function', () => {
 ### 7.3 Load Testing
 
 **After All Migration:**
+
 - Concurrent users: 100+
 - Response time: < 200ms
 - Error rate: < 0.1%
@@ -470,6 +517,7 @@ describe('Business Records Edge Function', () => {
 ### 8.2 Rollback Plan
 
 **If Issues Arise:**
+
 1. Revert frontend to call Express routes
 2. Scale up Express server
 3. Debug Edge Functions
@@ -508,27 +556,32 @@ describe('Business Records Edge Function', () => {
 ## Immediate Next Steps (This Week)
 
 ### Day 1 (Today)
+
 1. ✅ Complete this assessment document
 2. ⏳ Fix `/api/me` endpoint (30 min)
 3. ⏳ Create `/api/customers` Edge Function (2 hrs)
 4. ⏳ Test core CRM flows
 
 ### Day 2
+
 1. Create `/api/contacts` Edge Function
 2. Merge or separate from business-records
 3. Test lead contact management
 
 ### Day 3
+
 1. Create `/api/service-tickets` Edge Function
 2. Port complex dispatch logic
 3. Test service workflows
 
 ### Day 4
+
 1. Create `/api/territories` Edge Function
 2. Create `/api/catalog` Edge Function
 3. Test territory and catalog management
 
 ### Day 5
+
 1. Create `/api/pricing` Edge Function
 2. Create `/api/inventory` Edge Function
 3. Test warehouse operations
@@ -551,7 +604,10 @@ export default async function handler(req: Request) {
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     const supabase = createSupabaseClient(req);
-    const { data: { user }, error: userError } = await supabase.auth.getUser(jwt);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(jwt);
 
     if (userError || !user) {
       console.error('Auth error:', userError);
@@ -559,8 +615,7 @@ export default async function handler(req: Request) {
     }
 
     const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string);
+      (user.app_metadata?.tenantId as string) || (user.app_metadata?.tenant_id as string);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -606,7 +661,7 @@ export default async function handler(req: Request) {
     // POST /function-name
     if (req.method === 'POST') {
       const body = await req.json();
-      
+
       const { data, error } = await admin
         .from('table_name')
         .insert({
@@ -628,7 +683,7 @@ export default async function handler(req: Request) {
     // PUT /function-name/:id
     if (req.method === 'PUT' && id) {
       const body = await req.json();
-      
+
       const { data, error } = await admin
         .from('table_name')
         .update({
@@ -690,4 +745,3 @@ For questions about this migration plan, contact the development team.
 
 **Last Updated:** January 13, 2026
 **Next Review:** January 20, 2026
-

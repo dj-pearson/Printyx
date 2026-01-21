@@ -31,10 +31,7 @@ export function PWAProvider({ children }: PWAProviderProps) {
       {/* Install prompt - shown on mobile when app can be installed */}
       {showInstallPrompt && (
         <div className="md:hidden">
-          <PWAInstallPrompt
-            variant="banner"
-            onDismiss={() => setShowInstallPrompt(false)}
-          />
+          <PWAInstallPrompt variant="banner" onDismiss={() => setShowInstallPrompt(false)} />
         </div>
       )}
     </>

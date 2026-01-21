@@ -1,14 +1,8 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -16,46 +10,37 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import {
-  Plus,
-  Search,
-  Edit,
-  Eye,
-  Power,
-  PowerOff,
-  Filter,
-  MoreVertical,
-} from "lucide-react";
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import { Plus, Search, Edit, Eye, Power, PowerOff, Filter, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { BillingRuleDialog } from "@/components/billing/billing-rule-dialog";
-import { BillingRulePreview } from "@/components/billing/billing-rule-preview";
-import { format } from "date-fns";
+} from '@/components/ui/dropdown-menu';
+import { BillingRuleDialog } from '@/components/billing/billing-rule-dialog';
+import { BillingRulePreview } from '@/components/billing/billing-rule-preview';
+import { format } from 'date-fns';
 
 export default function BillingRules() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [ruleTypeFilter, setRuleTypeFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ruleTypeFilter, setRuleTypeFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedRule, setSelectedRule] = useState<any>(null);
@@ -63,8 +48,11 @@ export default function BillingRules() {
   // Fetch billing rules
   const { data: rulesData, isLoading } = useQuery({
     queryKey: [
-      "/api/billing/rules",
-      { status: statusFilter !== "all" ? statusFilter : undefined, ruleType: ruleTypeFilter !== "all" ? ruleTypeFilter : undefined },
+      '/api/billing/rules',
+      {
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        ruleType: ruleTypeFilter !== 'all' ? ruleTypeFilter : undefined,
+      },
     ],
   });
 
@@ -73,21 +61,27 @@ export default function BillingRules() {
 
   // Activate/deactivate rule mutation
   const toggleRuleMutation = useMutation({
-    mutationFn: async ({ ruleId, action }: { ruleId: string; action: "activate" | "deactivate" }) => {
-      return await apiRequest(`/api/billing/rules/${ruleId}/${action}`, "PATCH");
+    mutationFn: async ({
+      ruleId,
+      action,
+    }: {
+      ruleId: string;
+      action: 'activate' | 'deactivate';
+    }) => {
+      return await apiRequest(`/api/billing/rules/${ruleId}/${action}`, 'PATCH');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/rules"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/rules'] });
       toast({
-        title: "Rule updated",
-        description: "Billing rule status has been updated successfully.",
+        title: 'Rule updated',
+        description: 'Billing rule status has been updated successfully.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to update rule",
-        description: error.message || "Please try again",
-        variant: "destructive",
+        title: 'Failed to update rule',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
       });
     },
   });
@@ -95,20 +89,20 @@ export default function BillingRules() {
   // Delete rule mutation
   const deleteRuleMutation = useMutation({
     mutationFn: async (ruleId: string) => {
-      return await apiRequest(`/api/billing/rules/${ruleId}`, "DELETE");
+      return await apiRequest(`/api/billing/rules/${ruleId}`, 'DELETE');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/billing/rules"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/rules'] });
       toast({
-        title: "Rule deleted",
-        description: "Billing rule has been deactivated successfully.",
+        title: 'Rule deleted',
+        description: 'Billing rule has been deactivated successfully.',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to delete rule",
-        description: error.message || "Please try again",
-        variant: "destructive",
+        title: 'Failed to delete rule',
+        description: error.message || 'Please try again',
+        variant: 'destructive',
       });
     },
   });
@@ -126,21 +120,21 @@ export default function BillingRules() {
 
   const getRuleTypeBadge = (type: string) => {
     const badges: Record<string, { variant: any; label: string }> = {
-      tiered: { variant: "default", label: "Tiered" },
-      volume_discount: { variant: "secondary", label: "Volume Discount" },
-      time_based: { variant: "outline", label: "Time Based" },
-      overage: { variant: "destructive", label: "Overage" },
-      flat_rate: { variant: "default", label: "Flat Rate" },
-      custom: { variant: "secondary", label: "Custom" },
+      tiered: { variant: 'default', label: 'Tiered' },
+      volume_discount: { variant: 'secondary', label: 'Volume Discount' },
+      time_based: { variant: 'outline', label: 'Time Based' },
+      overage: { variant: 'destructive', label: 'Overage' },
+      flat_rate: { variant: 'default', label: 'Flat Rate' },
+      custom: { variant: 'secondary', label: 'Custom' },
     };
-    const config = badges[type] || { variant: "default", label: type };
+    const config = badges[type] || { variant: 'default', label: type };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "active") {
+    if (status === 'active') {
       return <Badge className="bg-green-100 text-green-800">Active</Badge>;
-    } else if (status === "draft") {
+    } else if (status === 'draft') {
       return <Badge variant="outline">Draft</Badge>;
     } else {
       return <Badge variant="secondary">Inactive</Badge>;
@@ -160,7 +154,7 @@ export default function BillingRules() {
   const handleToggleRule = (rule: any) => {
     toggleRuleMutation.mutate({
       ruleId: rule.id,
-      action: rule.ruleStatus === "active" ? "deactivate" : "activate",
+      action: rule.ruleStatus === 'active' ? 'deactivate' : 'activate',
     });
   };
 
@@ -184,10 +178,12 @@ export default function BillingRules() {
               Configure automated billing rules and pricing structures
             </p>
           </div>
-          <Button onClick={() => {
-            setSelectedRule(null);
-            setIsDialogOpen(true);
-          }}>
+          <Button
+            onClick={() => {
+              setSelectedRule(null);
+              setIsDialogOpen(true);
+            }}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Create Rule
           </Button>
@@ -247,25 +243,21 @@ export default function BillingRules() {
         <Card>
           <CardHeader>
             <CardTitle>Rules ({filteredRules.length})</CardTitle>
-            <CardDescription>
-              Manage your billing rules and pricing configurations
-            </CardDescription>
+            <CardDescription>Manage your billing rules and pricing configurations</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading rules...
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Loading rules...</div>
             ) : filteredRules.length === 0 ? (
               <div className="text-center py-8">
                 <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No billing rules found</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {searchQuery || statusFilter !== "all" || ruleTypeFilter !== "all"
-                    ? "Try adjusting your filters"
-                    : "Create your first billing rule to get started"}
+                  {searchQuery || statusFilter !== 'all' || ruleTypeFilter !== 'all'
+                    ? 'Try adjusting your filters'
+                    : 'Create your first billing rule to get started'}
                 </p>
-                {!searchQuery && statusFilter === "all" && ruleTypeFilter === "all" && (
+                {!searchQuery && statusFilter === 'all' && ruleTypeFilter === 'all' && (
                   <Button
                     onClick={() => {
                       setSelectedRule(null);
@@ -312,10 +304,10 @@ export default function BillingRules() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {format(new Date(rule.effectiveStartDate), "MMM d, yyyy")}
+                            {format(new Date(rule.effectiveStartDate), 'MMM d, yyyy')}
                             {rule.effectiveEndDate && (
                               <p className="text-muted-foreground">
-                                to {format(new Date(rule.effectiveEndDate), "MMM d, yyyy")}
+                                to {format(new Date(rule.effectiveEndDate), 'MMM d, yyyy')}
                               </p>
                             )}
                           </div>
@@ -344,7 +336,7 @@ export default function BillingRules() {
                                 Edit
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleToggleRule(rule)}>
-                                {rule.ruleStatus === "active" ? (
+                                {rule.ruleStatus === 'active' ? (
                                   <>
                                     <PowerOff className="mr-2 h-4 w-4" />
                                     Deactivate
@@ -377,11 +369,7 @@ export default function BillingRules() {
       </div>
 
       {/* Create/Edit Dialog */}
-      <BillingRuleDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        rule={selectedRule}
-      />
+      <BillingRuleDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} rule={selectedRule} />
 
       {/* Preview Dialog */}
       <BillingRulePreview

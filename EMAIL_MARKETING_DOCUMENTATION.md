@@ -7,7 +7,7 @@ The Email Marketing Service Integration is a comprehensive platform-level system
 ## Key Features
 
 1. **Template Management** - Create, manage, and version email templates with variable substitution
-2. **Campaign Management** - Design and execute one-time, drip, or recurring email campaigns  
+2. **Campaign Management** - Design and execute one-time, drip, or recurring email campaigns
 3. **List Management** - Organize contacts into static or dynamic segmented lists
 4. **Email Sending** - Send emails individually or in bulk with comprehensive tracking
 5. **Event Tracking** - Monitor email delivery, opens, clicks, bounces, and unsubscribes
@@ -20,6 +20,7 @@ The Email Marketing Service Integration is a comprehensive platform-level system
 ### Platform-Level Integration Pattern
 
 This system follows Printyx's platform-level integration approach:
+
 - **Dealers configure their own SendGrid API keys** through the existing `integrationCredentials` table
 - **Provider-agnostic design** supports future email service providers
 - **Centralized credential management** with health monitoring and OAuth token refresh
@@ -30,6 +31,7 @@ This system follows Printyx's platform-level integration approach:
 The system includes 7 comprehensive database tables:
 
 #### 1. email_templates
+
 Stores reusable email templates with variable substitution support.
 
 ```typescript
@@ -56,10 +58,12 @@ Stores reusable email templates with variable substitution support.
 ```
 
 **Indexes:**
+
 - `idx_email_templates_tenant_type` on (tenantId, templateType)
 - `idx_email_templates_active` on (tenantId, isActive)
 
 #### 2. email_campaigns
+
 Manages email marketing campaigns with comprehensive metrics tracking.
 
 ```typescript
@@ -81,7 +85,7 @@ Manages email marketing campaigns with comprehensive metrics tracking.
   recurringPattern: json
   timezone: varchar
   status: varchar (draft | scheduled | sending | sent | paused | cancelled | completed)
-  
+
   // Metrics
   totalRecipients: integer
   emailsSent: integer
@@ -96,12 +100,12 @@ Manages email marketing campaigns with comprehensive metrics tracking.
   clickRate: decimal
   bounceRate: decimal
   unsubscribeRate: decimal
-  
+
   // A/B Testing
   isAbTest: boolean
   abTestVariants: json
   abTestWinner: varchar
-  
+
   ownerId: varchar (user ID)
   createdBy: varchar
   createdAt: timestamp
@@ -112,11 +116,13 @@ Manages email marketing campaigns with comprehensive metrics tracking.
 ```
 
 **Indexes:**
+
 - `idx_email_campaigns_tenant_status` on (tenantId, status)
 - `idx_email_campaigns_template` on (templateId)
 - `idx_email_campaigns_scheduled` on (tenantId, scheduleType, scheduledDate)
 
 #### 3. email_sends
+
 Tracks individual email sends to recipients with delivery status.
 
 ```typescript
@@ -144,11 +150,13 @@ Tracks individual email sends to recipients with delivery status.
 ```
 
 **Indexes:**
+
 - `idx_email_sends_campaign` on (campaignId, status)
 - `idx_email_sends_recipient` on (tenantId, recipientEmail)
 - `idx_email_sends_message_id` on (sendgridMessageId)
 
 #### 4. email_events
+
 Records detailed email engagement events (opens, clicks, bounces).
 
 ```typescript
@@ -159,11 +167,11 @@ Records detailed email engagement events (opens, clicks, bounces).
   campaignId: varchar (foreign key to email_campaigns)
   eventType: varchar (delivered | open | click | bounce | spam_report | unsubscribe)
   eventTimestamp: timestamp
-  
+
   // Click tracking
   clickedUrl: varchar
   linkLabel: varchar
-  
+
   // Device & Location data
   userAgent: varchar
   ipAddress: varchar
@@ -173,18 +181,20 @@ Records detailed email engagement events (opens, clicks, bounces).
   country: varchar
   region: varchar
   city: varchar
-  
+
   sendgridEventId: varchar (unique provider event ID)
   createdAt: timestamp
 }
 ```
 
 **Indexes:**
+
 - `idx_email_events_send` on (emailSendId, eventType)
 - `idx_email_events_campaign` on (campaignId, eventType, eventTimestamp)
 - `idx_email_events_type_time` on (tenantId, eventType, eventTimestamp)
 
 #### 5. email_lists
+
 Manages email contact lists with static or dynamic segmentation.
 
 ```typescript
@@ -208,10 +218,12 @@ Manages email contact lists with static or dynamic segmentation.
 ```
 
 **Indexes:**
+
 - `idx_email_lists_tenant_type` on (tenantId, listType)
 - `idx_email_lists_active` on (tenantId, isActive)
 
 #### 6. email_list_members
+
 Stores individual contacts within email lists.
 
 ```typescript
@@ -237,10 +249,12 @@ Stores individual contacts within email lists.
 ```
 
 **Indexes:**
+
 - `idx_email_list_members_list` on (listId, status)
 - `idx_email_list_members_email` on (tenantId, email)
 
 #### 7. email_unsubscribes
+
 Tracks global and campaign-specific unsubscribe requests.
 
 ```typescript
@@ -260,6 +274,7 @@ Tracks global and campaign-specific unsubscribe requests.
 ```
 
 **Indexes:**
+
 - `idx_email_unsubscribes_email` on (tenantId, email, unsubscribeType)
 - `idx_email_unsubscribes_campaign` on (campaignId)
 
@@ -268,6 +283,7 @@ Tracks global and campaign-specific unsubscribe requests.
 The storage interface provides 28 comprehensive methods for email marketing operations:
 
 ### Email Templates (5 methods)
+
 - `getEmailTemplates(tenantId, filters)` - List templates with optional filtering
 - `getEmailTemplateById(id, tenantId)` - Get single template
 - `createEmailTemplate(data)` - Create new template
@@ -275,6 +291,7 @@ The storage interface provides 28 comprehensive methods for email marketing oper
 - `deleteEmailTemplate(id, tenantId)` - Delete template
 
 ### Email Campaigns (6 methods)
+
 - `getEmailCampaigns(tenantId, filters)` - List campaigns with filtering
 - `getEmailCampaignById(id, tenantId)` - Get single campaign
 - `createEmailCampaign(data)` - Create new campaign
@@ -283,6 +300,7 @@ The storage interface provides 28 comprehensive methods for email marketing oper
 - `updateCampaignMetrics(campaignId, tenantId)` - Recalculate campaign metrics from events
 
 ### Email Sends (5 methods)
+
 - `getEmailSends(campaignId, tenantId)` - List sends for a campaign
 - `getEmailSendById(id, tenantId)` - Get single send
 - `createEmailSend(data)` - Create new send
@@ -290,11 +308,13 @@ The storage interface provides 28 comprehensive methods for email marketing oper
 - `updateEmailSend(id, tenantId, data)` - Update send status
 
 ### Email Events (3 methods)
+
 - `getEmailEvents(emailSendId, tenantId)` - Get events for a send
 - `getEmailEventsByCampaign(campaignId, tenantId, filters)` - Get campaign events
 - `createEmailEvent(data)` - Record new event
 
 ### Email Lists (5 methods)
+
 - `getEmailLists(tenantId, filters)` - List email lists
 - `getEmailListById(id, tenantId)` - Get single list
 - `createEmailList(data)` - Create new list
@@ -303,6 +323,7 @@ The storage interface provides 28 comprehensive methods for email marketing oper
 - `updateListMemberCounts(listId, tenantId)` - Recalculate member counts
 
 ### Email List Members (6 methods)
+
 - `getEmailListMembers(listId, tenantId, filters)` - List members in a list
 - `getEmailListMemberById(id, tenantId)` - Get single member
 - `createEmailListMember(data)` - Add member to list
@@ -311,6 +332,7 @@ The storage interface provides 28 comprehensive methods for email marketing oper
 - `deleteEmailListMember(id, tenantId)` - Remove member from list
 
 ### Email Unsubscribes (3 methods)
+
 - `getEmailUnsubscribes(tenantId, filters)` - List unsubscribes
 - `createEmailUnsubscribe(data)` - Record new unsubscribe
 - `checkUnsubscribeStatus(email, tenantId)` - Check if email is unsubscribed
@@ -320,6 +342,7 @@ The storage interface provides 28 comprehensive methods for email marketing oper
 The system provides 30+ RESTful API endpoints:
 
 ### Email Templates
+
 - `GET /api/email-templates` - List templates (supports templateType, isActive, category filters)
 - `GET /api/email-templates/:id` - Get single template
 - `POST /api/email-templates` - Create template
@@ -327,6 +350,7 @@ The system provides 30+ RESTful API endpoints:
 - `DELETE /api/email-templates/:id` - Delete template
 
 ### Email Campaigns
+
 - `GET /api/email-campaigns` - List campaigns (supports status, campaignType, ownerId filters)
 - `GET /api/email-campaigns/:id` - Get single campaign
 - `POST /api/email-campaigns` - Create campaign
@@ -337,6 +361,7 @@ The system provides 30+ RESTful API endpoints:
 - `GET /api/email-campaigns/:campaignId/events` - Get all events for campaign
 
 ### Email Sends
+
 - `GET /api/email-sends/:id` - Get single send
 - `POST /api/email-sends` - Create single send
 - `POST /api/email-sends/bulk` - Bulk create sends
@@ -344,9 +369,11 @@ The system provides 30+ RESTful API endpoints:
 - `GET /api/email-sends/:sendId/events` - Get events for a send
 
 ### Email Events
+
 - `POST /api/email-events` - Record new event
 
 ### Email Lists
+
 - `GET /api/email-lists` - List email lists (supports listType, isActive, category filters)
 - `GET /api/email-lists/:id` - Get single list
 - `POST /api/email-lists` - Create list
@@ -356,6 +383,7 @@ The system provides 30+ RESTful API endpoints:
 - `GET /api/email-lists/:listId/members` - Get list members
 
 ### Email List Members
+
 - `GET /api/email-list-members/:id` - Get single member
 - `POST /api/email-list-members` - Add member to list
 - `POST /api/email-list-members/bulk` - Bulk add members
@@ -363,11 +391,13 @@ The system provides 30+ RESTful API endpoints:
 - `DELETE /api/email-list-members/:id` - Remove member
 
 ### Email Unsubscribes
+
 - `GET /api/email-unsubscribes` - List unsubscribes
 - `POST /api/email-unsubscribes` - Record unsubscribe
 - `GET /api/email-unsubscribes/check/:email` - Check unsubscribe status
 
 ### Webhooks
+
 - `POST /api/webhooks/sendgrid` - SendGrid webhook handler for real-time events
 
 ## Integration Setup
@@ -478,6 +508,7 @@ POST /api/email-campaigns
 ## Campaign Types
 
 ### 1. One-Time Campaigns
+
 Standard email campaigns sent once to a list of recipients.
 
 ```typescript
@@ -489,6 +520,7 @@ Standard email campaigns sent once to a list of recipients.
 ```
 
 ### 2. Drip Campaigns
+
 Automated sequence of emails sent over time.
 
 ```typescript
@@ -503,6 +535,7 @@ Automated sequence of emails sent over time.
 ```
 
 ### 3. Recurring Campaigns
+
 Campaigns sent on a regular schedule.
 
 ```typescript
@@ -518,6 +551,7 @@ Campaigns sent on a regular schedule.
 ```
 
 ### 4. A/B Test Campaigns
+
 Test different email variations to optimize performance.
 
 ```typescript
@@ -603,6 +637,7 @@ GET /api/email-unsubscribes/check/customer@example.com
 ```
 
 Response:
+
 ```json
 {
   "email": "customer@example.com",
@@ -623,15 +658,19 @@ Response:
 ## Integration with Existing Systems
 
 ### Customer Success Management
+
 Link email campaigns to customer health scores and automated interventions.
 
 ### CRM System
+
 Trigger email campaigns based on lead stage changes and customer lifecycle.
 
 ### Service Dispatch
+
 Send automated service reminders and follow-up emails after technician visits.
 
 ### Prospecting Campaigns
+
 Integrate with existing prospectingCampaigns table for multi-channel outreach.
 
 ## Mock Data
@@ -647,6 +686,7 @@ The seed file creates comprehensive mock data:
 - **1 Unsubscribe**: Global unsubscribe example
 
 Run seed data:
+
 ```bash
 tsx server/seed-email-marketing-data.ts
 ```
@@ -654,6 +694,7 @@ tsx server/seed-email-marketing-data.ts
 ## Testing Endpoints
 
 ### Test Template Creation
+
 ```bash
 curl -X POST http://localhost:5000/api/email-templates \
   -H "Content-Type: application/json" \
@@ -667,6 +708,7 @@ curl -X POST http://localhost:5000/api/email-templates \
 ```
 
 ### Test Campaign Creation
+
 ```bash
 curl -X POST http://localhost:5000/api/email-campaigns \
   -H "Content-Type: application/json" \
@@ -679,6 +721,7 @@ curl -X POST http://localhost:5000/api/email-campaigns \
 ```
 
 ### Test List Management
+
 ```bash
 curl -X GET http://localhost:5000/api/email-lists
 ```
@@ -712,16 +755,19 @@ shared/
 ### Common Issues
 
 **Problem**: Emails not sending
+
 - Verify SendGrid API key is configured correctly
 - Check integrationCredentials health status
 - Ensure campaign status is "scheduled" or "sending"
 
 **Problem**: Webhook events not received
+
 - Verify webhook URL is publicly accessible
 - Check SendGrid webhook configuration
 - Review webhook event logs
 
 **Problem**: Metrics not updating
+
 - Call `/api/email-campaigns/:id/refresh-metrics` to recalculate
 - Verify email_events are being created
 

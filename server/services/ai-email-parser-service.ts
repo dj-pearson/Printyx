@@ -35,28 +35,16 @@ const TicketDataSchema = z.object({
   priority: z
     .enum(['low', 'medium', 'high', 'urgent'])
     .describe('Priority level based on urgency and business impact'),
-  issueDescription: z
-    .string()
-    .describe('Clear, concise description of the issue'),
-  errorCodes: z
-    .array(z.string())
-    .optional()
-    .describe('Any error codes mentioned in the email'),
-  requestedDate: z
-    .string()
-    .optional()
-    .describe('When customer wants service (ISO date format)'),
+  issueDescription: z.string().describe('Clear, concise description of the issue'),
+  errorCodes: z.array(z.string()).optional().describe('Any error codes mentioned in the email'),
+  requestedDate: z.string().optional().describe('When customer wants service (ISO date format)'),
   contactPhone: z.string().optional().describe('Contact phone number if provided'),
   locationDetails: z
     .string()
     .optional()
     .describe('Building, floor, room number, or other location details'),
-  attachmentsRelevant: z
-    .boolean()
-    .describe('Whether attachments should be reviewed by technician'),
-  confidence: z
-    .enum(['high', 'medium', 'low'])
-    .describe('AI confidence level in the parsing'),
+  attachmentsRelevant: z.boolean().describe('Whether attachments should be reviewed by technician'),
+  confidence: z.enum(['high', 'medium', 'low']).describe('AI confidence level in the parsing'),
 });
 
 export type TicketData = z.infer<typeof TicketDataSchema>;
@@ -146,7 +134,7 @@ export class AIEmailParserService {
         ? context.equipment
             .map(
               (e: any) =>
-                `- ${e.manufacturer || 'Unknown'} ${e.model || 'Unknown'}, Serial: ${e.serialNumber || 'N/A'}, Location: ${e.location || 'N/A'}`
+                `- ${e.manufacturer || 'Unknown'} ${e.model || 'Unknown'}, Serial: ${e.serialNumber || 'N/A'}, Location: ${e.location || 'N/A'}`,
             )
             .join('\n')
         : 'No equipment found for this customer';
@@ -238,7 +226,7 @@ Parse the email above and return ONLY the JSON:`;
     const customer = await db.query.businessRecords.findFirst({
       where: or(
         eq(businessRecords.email, fromEmail),
-        domain ? like(businessRecords.email, `%@${domain}`) : undefined
+        domain ? like(businessRecords.email, `%@${domain}`) : undefined,
       ),
     });
 
@@ -247,10 +235,7 @@ Parse the email above and return ONLY the JSON:`;
     if (customer) {
       // Get customer's equipment (limit to 20 to not overwhelm the prompt)
       equipmentList = await db.query.equipment.findMany({
-        where: and(
-          eq(equipment.tenantId, this.tenantId),
-          eq(equipment.customerId, customer.id)
-        ),
+        where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customer.id)),
         limit: 20,
       });
     }
@@ -264,10 +249,7 @@ Parse the email above and return ONLY the JSON:`;
   /**
    * Enhance parsed data with database lookups
    */
-  private async enhanceTicketData(
-    ticketData: TicketData,
-    context: any
-  ): Promise<TicketData> {
+  private async enhanceTicketData(ticketData: TicketData, context: any): Promise<TicketData> {
     const enhanced: any = { ...ticketData };
 
     // If equipment identifier provided, try to match
@@ -279,7 +261,7 @@ Parse the email above and return ONLY the JSON:`;
         (e: any) =>
           e.serialNumber?.toLowerCase().includes(identifier) ||
           e.model?.toLowerCase().includes(identifier) ||
-          e.location?.toLowerCase().includes(identifier)
+          e.location?.toLowerCase().includes(identifier),
       );
 
       if (match) {

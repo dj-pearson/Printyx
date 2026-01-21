@@ -4,8 +4,8 @@
  * Handles incident lifecycle, escalations, and post-mortem tracking
  */
 
-import { db } from "../db";
-import { eq, and, desc, gte, lte, inArray, sql, or } from "drizzle-orm";
+import { db } from '../db';
+import { eq, and, desc, gte, lte, inArray, sql, or } from 'drizzle-orm';
 import {
   incidents,
   incidentTimeline,
@@ -14,19 +14,19 @@ import {
   type InsertIncident,
   type IncidentTimeline,
   type IncidentEscalation,
-} from "@shared/soc2-compliance-schema";
+} from '@shared/soc2-compliance-schema';
 
 // ============= CONSTANTS =============
 
-const INCIDENT_NUMBER_PREFIX = "INC";
+const INCIDENT_NUMBER_PREFIX = 'INC';
 
 // SLA response times in minutes by severity
 const SLA_RESPONSE_TIMES: Record<string, number> = {
-  sev1: 15,    // 15 minutes for critical
-  sev2: 60,    // 1 hour for high
-  sev3: 240,   // 4 hours for medium
-  sev4: 1440,  // 24 hours for low
-  sev5: 2880,  // 48 hours for informational
+  sev1: 15, // 15 minutes for critical
+  sev2: 60, // 1 hour for high
+  sev3: 240, // 4 hours for medium
+  sev4: 1440, // 24 hours for low
+  sev5: 2880, // 48 hours for informational
 };
 
 // Auto-escalation thresholds in minutes
@@ -40,12 +40,12 @@ const AUTO_ESCALATION_THRESHOLDS: Record<string, number> = {
 
 // Escalation levels
 const ESCALATION_LEVELS = [
-  { level: 1, role: "on_call_engineer" },
-  { level: 2, role: "team_lead" },
-  { level: 3, role: "engineering_manager" },
-  { level: 4, role: "director" },
-  { level: 5, role: "vp_engineering" },
-  { level: 6, role: "cto" },
+  { level: 1, role: 'on_call_engineer' },
+  { level: 2, role: 'team_lead' },
+  { level: 3, role: 'engineering_manager' },
+  { level: 4, role: 'director' },
+  { level: 5, role: 'vp_engineering' },
+  { level: 6, role: 'cto' },
 ];
 
 // ============= INCIDENT MANAGEMENT =============
@@ -55,17 +55,15 @@ const ESCALATION_LEVELS = [
  */
 async function generateIncidentNumber(): Promise<string> {
   const year = new Date().getFullYear();
-  const month = String(new Date().getMonth() + 1).padStart(2, "0");
-  const day = String(new Date().getDate()).padStart(2, "0");
+  const month = String(new Date().getMonth() + 1).padStart(2, '0');
+  const day = String(new Date().getDate()).padStart(2, '0');
 
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(incidents)
-    .where(
-      sql`DATE(${incidents.createdAt}) = CURRENT_DATE`
-    );
+    .where(sql`DATE(${incidents.createdAt}) = CURRENT_DATE`);
 
-  const sequence = String((result[0]?.count || 0) + 1).padStart(4, "0");
+  const sequence = String((result[0]?.count || 0) + 1).padStart(4, '0');
   return `${INCIDENT_NUMBER_PREFIX}-${year}${month}${day}-${sequence}`;
 }
 
@@ -73,9 +71,9 @@ async function generateIncidentNumber(): Promise<string> {
  * Create a new incident
  */
 export async function createIncident(
-  data: Omit<InsertIncident, "incidentNumber">,
+  data: Omit<InsertIncident, 'incidentNumber'>,
   detectorId?: string,
-  detectorName?: string
+  detectorName?: string,
 ): Promise<Incident> {
   const incidentNumber = await generateIncidentNumber();
 
@@ -84,7 +82,7 @@ export async function createIncident(
     .values({
       ...data,
       incidentNumber,
-      status: "detected",
+      status: 'detected',
       detectedAt: data.detectedAt || new Date(),
       detectedBy: detectorId,
     })
@@ -92,8 +90,8 @@ export async function createIncident(
 
   // Add initial timeline entry
   await addTimelineEntry(incident.id, {
-    eventType: "incident_created",
-    title: "Incident Created",
+    eventType: 'incident_created',
+    title: 'Incident Created',
     description: `Incident "${incident.title}" was created with severity ${incident.severity}`,
     actorId: detectorId,
     actorName: detectorName,
@@ -106,19 +104,11 @@ export async function createIncident(
 /**
  * Get incident by ID
  */
-export async function getIncident(
-  incidentId: string,
-  tenantId: string
-): Promise<Incident | null> {
+export async function getIncident(incidentId: string, tenantId: string): Promise<Incident | null> {
   const [incident] = await db
     .select()
     .from(incidents)
-    .where(
-      and(
-        eq(incidents.id, incidentId),
-        eq(incidents.tenantId, tenantId)
-      )
-    );
+    .where(and(eq(incidents.id, incidentId), eq(incidents.tenantId, tenantId)));
 
   return incident || null;
 }
@@ -137,7 +127,7 @@ export async function listIncidents(
     includeResolved?: boolean;
     limit?: number;
     offset?: number;
-  } = {}
+  } = {},
 ): Promise<{ data: Incident[]; total: number }> {
   const conditions = [eq(incidents.tenantId, tenantId)];
 
@@ -159,13 +149,13 @@ export async function listIncidents(
   if (!options.includeResolved) {
     conditions.push(
       inArray(incidents.status, [
-        "detected",
-        "acknowledged",
-        "investigating",
-        "identified",
-        "mitigating",
-        "reopened",
-      ] as any)
+        'detected',
+        'acknowledged',
+        'investigating',
+        'identified',
+        'mitigating',
+        'reopened',
+      ] as any),
     );
   }
 
@@ -192,9 +182,7 @@ export async function listIncidents(
 /**
  * Get active incidents (not resolved/closed)
  */
-export async function getActiveIncidents(
-  tenantId: string
-): Promise<Incident[]> {
+export async function getActiveIncidents(tenantId: string): Promise<Incident[]> {
   return db
     .select()
     .from(incidents)
@@ -202,14 +190,14 @@ export async function getActiveIncidents(
       and(
         eq(incidents.tenantId, tenantId),
         inArray(incidents.status, [
-          "detected",
-          "acknowledged",
-          "investigating",
-          "identified",
-          "mitigating",
-          "reopened",
-        ] as any)
-      )
+          'detected',
+          'acknowledged',
+          'investigating',
+          'identified',
+          'mitigating',
+          'reopened',
+        ] as any),
+      ),
     )
     .orderBy(incidents.severity, desc(incidents.detectedAt));
 }
@@ -223,25 +211,25 @@ export async function acknowledgeIncident(
   incidentId: string,
   tenantId: string,
   acknowledgerId: string,
-  acknowledgerName: string
+  acknowledgerName: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
-  if (incident.status !== "detected") {
-    throw new Error("Incident has already been acknowledged");
+  if (incident.status !== 'detected') {
+    throw new Error('Incident has already been acknowledged');
   }
 
   const timeToAcknowledge = Math.round(
-    (new Date().getTime() - incident.detectedAt.getTime()) / 60000
+    (new Date().getTime() - incident.detectedAt.getTime()) / 60000,
   );
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "acknowledged",
+      status: 'acknowledged',
       incidentCommanderId: acknowledgerId,
       timeToAcknowledge,
       updatedAt: new Date(),
@@ -250,8 +238,8 @@ export async function acknowledgeIncident(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "acknowledged",
-    title: "Incident Acknowledged",
+    eventType: 'acknowledged',
+    title: 'Incident Acknowledged',
     description: `Incident acknowledged by ${acknowledgerName}. Time to acknowledge: ${timeToAcknowledge} minutes`,
     actorId: acknowledgerId,
     actorName: acknowledgerName,
@@ -267,25 +255,25 @@ export async function startInvestigation(
   incidentId: string,
   tenantId: string,
   investigatorId: string,
-  investigatorName: string
+  investigatorName: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "investigating",
+      status: 'investigating',
       updatedAt: new Date(),
     })
     .where(eq(incidents.id, incidentId))
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "investigation_started",
-    title: "Investigation Started",
+    eventType: 'investigation_started',
+    title: 'Investigation Started',
     description: `Investigation started by ${investigatorName}`,
     actorId: investigatorId,
     actorName: investigatorName,
@@ -303,17 +291,17 @@ export async function identifyRootCause(
   rootCause: string,
   contributingFactors: string[],
   identifierId: string,
-  identifierName: string
+  identifierName: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "identified",
+      status: 'identified',
       rootCause,
       contributingFactors,
       updatedAt: new Date(),
@@ -322,8 +310,8 @@ export async function identifyRootCause(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "root_cause_identified",
-    title: "Root Cause Identified",
+    eventType: 'root_cause_identified',
+    title: 'Root Cause Identified',
     description: `Root cause identified: ${rootCause}`,
     actorId: identifierId,
     actorName: identifierName,
@@ -341,25 +329,25 @@ export async function startMitigation(
   tenantId: string,
   mitigatorId: string,
   mitigatorName: string,
-  mitigationPlan: string
+  mitigationPlan: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "mitigating",
+      status: 'mitigating',
       updatedAt: new Date(),
     })
     .where(eq(incidents.id, incidentId))
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "mitigation_started",
-    title: "Mitigation Started",
+    eventType: 'mitigation_started',
+    title: 'Mitigation Started',
     description: `Mitigation started: ${mitigationPlan}`,
     actorId: mitigatorId,
     actorName: mitigatorName,
@@ -378,22 +366,25 @@ export async function resolveIncident(
   resolverId: string,
   resolverName: string,
   resolutionSummary: string,
-  resolutionActions: Array<{ action: string; completedBy: string; completedAt: string; notes?: string }>
+  resolutionActions: Array<{
+    action: string;
+    completedBy: string;
+    completedAt: string;
+    notes?: string;
+  }>,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   const resolvedAt = new Date();
-  const timeToResolve = Math.round(
-    (resolvedAt.getTime() - incident.detectedAt.getTime()) / 60000
-  );
+  const timeToResolve = Math.round((resolvedAt.getTime() - incident.detectedAt.getTime()) / 60000);
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "resolved",
+      status: 'resolved',
       resolutionSummary,
       resolutionActions,
       resolvedAt,
@@ -405,8 +396,8 @@ export async function resolveIncident(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "resolved",
-    title: "Incident Resolved",
+    eventType: 'resolved',
+    title: 'Incident Resolved',
     description: `Incident resolved by ${resolverName}. Time to resolve: ${timeToResolve} minutes. Summary: ${resolutionSummary}`,
     actorId: resolverId,
     actorName: resolverName,
@@ -426,21 +417,21 @@ export async function closeIncident(
   closerName: string,
   lessonsLearned: string,
   preventiveMeasures: string[],
-  postMortemUrl?: string
+  postMortemUrl?: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
-  if (incident.status !== "resolved") {
-    throw new Error("Incident must be resolved before closing");
+  if (incident.status !== 'resolved') {
+    throw new Error('Incident must be resolved before closing');
   }
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "closed",
+      status: 'closed',
       lessonsLearned,
       preventiveMeasures,
       postMortemUrl,
@@ -452,8 +443,8 @@ export async function closeIncident(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "closed",
-    title: "Incident Closed",
+    eventType: 'closed',
+    title: 'Incident Closed',
     description: `Incident closed by ${closerName}. Post-mortem completed.`,
     actorId: closerId,
     actorName: closerName,
@@ -471,21 +462,21 @@ export async function reopenIncident(
   tenantId: string,
   reopenerId: string,
   reopenerName: string,
-  reason: string
+  reason: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
-  if (!["resolved", "closed"].includes(incident.status)) {
-    throw new Error("Only resolved or closed incidents can be reopened");
+  if (!['resolved', 'closed'].includes(incident.status)) {
+    throw new Error('Only resolved or closed incidents can be reopened');
   }
 
   const [updated] = await db
     .update(incidents)
     .set({
-      status: "reopened",
+      status: 'reopened',
       closedAt: null,
       resolvedAt: null,
       updatedAt: new Date(),
@@ -494,8 +485,8 @@ export async function reopenIncident(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "reopened",
-    title: "Incident Reopened",
+    eventType: 'reopened',
+    title: 'Incident Reopened',
     description: `Incident reopened by ${reopenerName}. Reason: ${reason}`,
     actorId: reopenerId,
     actorName: reopenerName,
@@ -520,7 +511,7 @@ export async function addTimelineEntry(
     actorName?: string;
     metadata?: Record<string, any>;
     isAutomated?: boolean;
-  }
+  },
 ): Promise<IncidentTimeline> {
   const [entry] = await db
     .insert(incidentTimeline)
@@ -536,9 +527,7 @@ export async function addTimelineEntry(
 /**
  * Get incident timeline
  */
-export async function getIncidentTimeline(
-  incidentId: string
-): Promise<IncidentTimeline[]> {
+export async function getIncidentTimeline(incidentId: string): Promise<IncidentTimeline[]> {
   return db
     .select()
     .from(incidentTimeline)
@@ -558,11 +547,11 @@ export async function escalateIncident(
   escalatedByName: string,
   escalatedTo: string,
   escalatedToName: string,
-  reason: string
+  reason: string,
 ): Promise<IncidentEscalation> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   // Get current escalation level
@@ -576,7 +565,7 @@ export async function escalateIncident(
   const newLevel = currentLevel + 1;
 
   if (newLevel > ESCALATION_LEVELS.length) {
-    throw new Error("Maximum escalation level reached");
+    throw new Error('Maximum escalation level reached');
   }
 
   const [escalation] = await db
@@ -593,7 +582,7 @@ export async function escalateIncident(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "escalated",
+    eventType: 'escalated',
     title: `Escalated to Level ${newLevel}`,
     description: `Incident escalated from level ${currentLevel} to level ${newLevel}. Reason: ${reason}`,
     actorId: escalatedBy,
@@ -609,7 +598,7 @@ export async function escalateIncident(
  */
 export async function acknowledgeEscalation(
   escalationId: string,
-  acknowledgerId: string
+  acknowledgerId: string,
 ): Promise<IncidentEscalation> {
   const [escalation] = await db
     .update(incidentEscalations)
@@ -626,9 +615,7 @@ export async function acknowledgeEscalation(
 /**
  * Get incident escalations
  */
-export async function getIncidentEscalations(
-  incidentId: string
-): Promise<IncidentEscalation[]> {
+export async function getIncidentEscalations(incidentId: string): Promise<IncidentEscalation[]> {
   return db
     .select()
     .from(incidentEscalations)
@@ -648,11 +635,11 @@ export async function assignTeamMember(
   userName: string,
   role: string,
   assignerId: string,
-  assignerName: string
+  assignerName: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   const currentTeam = incident.assignedTeam || [];
@@ -676,8 +663,8 @@ export async function assignTeamMember(
     .returning();
 
   await addTimelineEntry(incidentId, {
-    eventType: "team_member_assigned",
-    title: "Team Member Assigned",
+    eventType: 'team_member_assigned',
+    title: 'Team Member Assigned',
     description: `${userName} assigned as ${role} by ${assignerName}`,
     actorId: assignerId,
     actorName: assignerName,
@@ -697,11 +684,11 @@ export async function recordNotification(
   tenantId: string,
   recipient: string,
   type: string,
-  sentBy: string
+  sentBy: string,
 ): Promise<Incident> {
   const incident = await getIncident(incidentId, tenantId);
   if (!incident) {
-    throw new Error("Incident not found");
+    throw new Error('Incident not found');
   }
 
   const currentNotifications = incident.notificationsSent || [];
@@ -735,7 +722,7 @@ export async function recordNotification(
 export async function getIncidentMetrics(
   tenantId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
 ): Promise<{
   totalIncidents: number;
   bySeverity: Record<string, number>;
@@ -753,8 +740,8 @@ export async function getIncidentMetrics(
       and(
         eq(incidents.tenantId, tenantId),
         gte(incidents.detectedAt, startDate),
-        lte(incidents.detectedAt, endDate)
-      )
+        lte(incidents.detectedAt, endDate),
+      ),
     );
 
   const bySeverity: Record<string, number> = {};
@@ -800,8 +787,7 @@ export async function getIncidentMetrics(
     byStatus,
     mttr: ttrCount > 0 ? Math.round(totalTTR / ttrCount) : 0,
     mtta: ttaCount > 0 ? Math.round(totalTTA / ttaCount) : 0,
-    slaCompliance:
-      ttaCount > 0 ? Math.round((slaMetCount / ttaCount) * 100) : 100,
+    slaCompliance: ttaCount > 0 ? Math.round((slaMetCount / ttaCount) * 100) : 100,
     dataBreaches,
   };
 }
@@ -830,17 +816,17 @@ export async function getOpenIncidentsSummary(tenantId: string): Promise<{
 
   for (const incident of openIncidents) {
     switch (incident.severity) {
-      case "sev1":
+      case 'sev1':
         summary.critical++;
         break;
-      case "sev2":
+      case 'sev2':
         summary.high++;
         break;
-      case "sev3":
+      case 'sev3':
         summary.medium++;
         break;
-      case "sev4":
-      case "sev5":
+      case 'sev4':
+      case 'sev5':
         summary.low++;
         break;
     }

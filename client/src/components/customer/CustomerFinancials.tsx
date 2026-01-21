@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -9,9 +9,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import {
   DollarSign,
   TrendingUp,
@@ -24,8 +24,8 @@ import {
   BarChart3,
   PieChart,
   Activity,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface FinancialSummary {
   totalBilled: number;
@@ -74,42 +74,33 @@ interface CustomerFinancialsProps {
 }
 
 const statusColors = {
-  active: "bg-green-100 text-green-800",
-  expired: "bg-red-100 text-red-800",
-  pending: "bg-yellow-100 text-yellow-800",
-  cancelled: "bg-gray-100 text-gray-800",
+  active: 'bg-green-100 text-green-800',
+  expired: 'bg-red-100 text-red-800',
+  pending: 'bg-yellow-100 text-yellow-800',
+  cancelled: 'bg-gray-100 text-gray-800',
 };
 
-export function CustomerFinancials({
-  customerId,
-  customerName,
-}: CustomerFinancialsProps) {
+export function CustomerFinancials({ customerId, customerName }: CustomerFinancialsProps) {
   // Fetch financial summary
-  const { data: financialSummary, isLoading: loadingSummary } =
-    useQuery<FinancialSummary>({
-      queryKey: [`/api/customers/${customerId}/financial-summary`],
-      queryFn: async () => {
-        const response = await fetch(
-          `/api/customers/${customerId}/financial-summary`,
-          {
-            credentials: "include",
-          }
-        );
-        if (!response.ok) throw new Error("Failed to fetch financial summary");
-        return response.json();
-      },
-    });
+  const { data: financialSummary, isLoading: loadingSummary } = useQuery<FinancialSummary>({
+    queryKey: [`/api/customers/${customerId}/financial-summary`],
+    queryFn: async () => {
+      const response = await fetch(`/api/customers/${customerId}/financial-summary`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch financial summary');
+      return response.json();
+    },
+  });
 
   // Fetch payment history
-  const { data: paymentHistory = [], isLoading: loadingPayments } = useQuery<
-    PaymentHistory[]
-  >({
+  const { data: paymentHistory = [], isLoading: loadingPayments } = useQuery<PaymentHistory[]>({
     queryKey: [`/api/customers/${customerId}/payments`],
     queryFn: async () => {
       const response = await fetch(`/api/customers/${customerId}/payments`, {
-        credentials: "include",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to fetch payments");
+      if (!response.ok) throw new Error('Failed to fetch payments');
       return response.json();
     },
   });
@@ -119,42 +110,40 @@ export function CustomerFinancials({
     queryKey: [`/api/customers/${customerId}/aging`],
     queryFn: async () => {
       const response = await fetch(`/api/customers/${customerId}/aging`, {
-        credentials: "include",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to fetch aging data");
+      if (!response.ok) throw new Error('Failed to fetch aging data');
       return response.json();
     },
   });
 
   // Fetch contracts
-  const { data: contracts = [], isLoading: loadingContracts } = useQuery<
-    ContractInfo[]
-  >({
+  const { data: contracts = [], isLoading: loadingContracts } = useQuery<ContractInfo[]>({
     queryKey: [`/api/customers/${customerId}/contracts`],
     queryFn: async () => {
       const response = await fetch(`/api/customers/${customerId}/contracts`, {
-        credentials: "include",
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error("Failed to fetch contracts");
+      if (!response.ok) throw new Error('Failed to fetch contracts');
       return response.json();
     },
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   const getPaymentStatusColor = (days: number) => {
-    if (days <= 30) return "text-green-600";
-    if (days <= 60) return "text-yellow-600";
-    return "text-red-600";
+    if (days <= 30) return 'text-green-600';
+    if (days <= 60) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
   const calculateCreditUtilization = () => {
@@ -209,9 +198,7 @@ export function CustomerFinancials({
             <div className="flex items-center">
               <AlertTriangle
                 className={`h-8 w-8 ${
-                  (financialSummary?.balanceDue || 0) > 0
-                    ? "text-red-600"
-                    : "text-green-600"
+                  (financialSummary?.balanceDue || 0) > 0 ? 'text-red-600' : 'text-green-600'
                 }`}
               />
               <div className="ml-3">
@@ -251,9 +238,7 @@ export function CustomerFinancials({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <span className="text-sm text-gray-600">Credit Limit</span>
-                <p className="text-2xl font-bold">
-                  {formatCurrency(financialSummary.creditLimit)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(financialSummary.creditLimit)}</p>
               </div>
               <div>
                 <span className="text-sm text-gray-600">Available Credit</span>
@@ -262,19 +247,14 @@ export function CustomerFinancials({
                 </p>
               </div>
               <div>
-                <span className="text-sm text-gray-600">
-                  Credit Utilization
-                </span>
+                <span className="text-sm text-gray-600">Credit Utilization</span>
                 <div className="mt-2">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-lg font-bold">
                       {calculateCreditUtilization().toFixed(1)}%
                     </span>
                   </div>
-                  <Progress
-                    value={calculateCreditUtilization()}
-                    className="h-2"
-                  />
+                  <Progress value={calculateCreditUtilization()} className="h-2" />
                 </div>
               </div>
             </div>
@@ -343,63 +323,47 @@ export function CustomerFinancials({
                     <div className="space-y-3">
                       {[
                         {
-                          label: "Current",
+                          label: 'Current',
                           amount: agingData.current,
-                          color: "bg-green-500",
+                          color: 'bg-green-500',
                         },
                         {
-                          label: "1-30 Days",
+                          label: '1-30 Days',
                           amount: agingData.thirtyDays,
-                          color: "bg-yellow-500",
+                          color: 'bg-yellow-500',
                         },
                         {
-                          label: "31-60 Days",
+                          label: '31-60 Days',
                           amount: agingData.sixtyDays,
-                          color: "bg-orange-500",
+                          color: 'bg-orange-500',
                         },
                         {
-                          label: "61-90 Days",
+                          label: '61-90 Days',
                           amount: agingData.ninetyDays,
-                          color: "bg-red-500",
+                          color: 'bg-red-500',
                         },
                         {
-                          label: "90+ Days",
+                          label: '90+ Days',
                           amount: agingData.overNinety,
-                          color: "bg-red-800",
+                          color: 'bg-red-800',
                         },
                       ].map((item) => {
-                        const total = Object.values(agingData).reduce(
-                          (a, b) => a + b,
-                          0
-                        );
-                        const percentage =
-                          total > 0 ? (item.amount / total) * 100 : 0;
+                        const total = Object.values(agingData).reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? (item.amount / total) * 100 : 0;
 
                         return (
-                          <div
-                            key={item.label}
-                            className="flex items-center space-x-3"
-                          >
-                            <div
-                              className={`w-4 h-4 rounded ${item.color}`}
-                            ></div>
+                          <div key={item.label} className="flex items-center space-x-3">
+                            <div className={`w-4 h-4 rounded ${item.color}`}></div>
                             <div className="flex-1">
                               <div className="flex justify-between">
-                                <span className="text-sm font-medium">
-                                  {item.label}
-                                </span>
+                                <span className="text-sm font-medium">{item.label}</span>
                                 <span className="text-sm text-gray-600">
                                   {formatCurrency(item.amount)}
                                 </span>
                               </div>
-                              <Progress
-                                value={percentage}
-                                className="h-2 mt-1"
-                              />
+                              <Progress value={percentage} className="h-2 mt-1" />
                             </div>
-                            <span className="text-sm text-gray-500">
-                              {percentage.toFixed(1)}%
-                            </span>
+                            <span className="text-sm text-gray-500">{percentage.toFixed(1)}%</span>
                           </div>
                         );
                       })}
@@ -444,9 +408,7 @@ export function CustomerFinancials({
                     <TableBody>
                       {paymentHistory.map((payment) => (
                         <TableRow key={payment.id}>
-                          <TableCell>
-                            {formatDate(payment.paymentDate)}
-                          </TableCell>
+                          <TableCell>{formatDate(payment.paymentDate)}</TableCell>
                           <TableCell className="font-medium">
                             {formatCurrency(payment.amount)}
                           </TableCell>
@@ -455,13 +417,11 @@ export function CustomerFinancials({
                               {payment.paymentMethod}
                             </Badge>
                           </TableCell>
-                          <TableCell>{payment.checkNumber || "-"}</TableCell>
+                          <TableCell>{payment.checkNumber || '-'}</TableCell>
                           <TableCell className="font-mono text-sm">
                             {payment.invoiceNumber}
                           </TableCell>
-                          <TableCell className="text-sm">
-                            {payment.notes || "-"}
-                          </TableCell>
+                          <TableCell className="text-sm">{payment.notes || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -506,12 +466,8 @@ export function CustomerFinancials({
                           <TableCell className="font-mono text-sm">
                             {contract.contractNumber}
                           </TableCell>
-                          <TableCell className="capitalize">
-                            {contract.contractType}
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(contract.startDate)}
-                          </TableCell>
+                          <TableCell className="capitalize">{contract.contractType}</TableCell>
+                          <TableCell>{formatDate(contract.startDate)}</TableCell>
                           <TableCell>{formatDate(contract.endDate)}</TableCell>
                           <TableCell className="font-medium">
                             {formatCurrency(contract.monthlyValue)}
@@ -521,22 +477,14 @@ export function CustomerFinancials({
                           </TableCell>
                           <TableCell>
                             <Badge
-                              className={
-                                statusColors[
-                                  contract.status as keyof typeof statusColors
-                                ]
-                              }
+                              className={statusColors[contract.status as keyof typeof statusColors]}
                             >
                               {contract.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant={
-                                contract.autoRenewal ? "default" : "outline"
-                              }
-                            >
-                              {contract.autoRenewal ? "Yes" : "No"}
+                            <Badge variant={contract.autoRenewal ? 'default' : 'outline'}>
+                              {contract.autoRenewal ? 'Yes' : 'No'}
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -564,33 +512,27 @@ export function CustomerFinancials({
                     <span className="text-sm text-gray-600">Last Payment</span>
                     <div className="text-right">
                       <p className="font-medium">
-                        {formatCurrency(
-                          financialSummary?.lastPaymentAmount || 0
-                        )}
+                        {formatCurrency(financialSummary?.lastPaymentAmount || 0)}
                       </p>
                       <p className="text-xs text-gray-500">
                         {financialSummary?.lastPaymentDate
                           ? formatDate(financialSummary.lastPaymentDate)
-                          : "-"}
+                          : '-'}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      Average Payment Time
-                    </span>
+                    <span className="text-sm text-gray-600">Average Payment Time</span>
                     <p
                       className={`font-medium ${getPaymentStatusColor(
-                        financialSummary?.averagePaymentDays || 0
+                        financialSummary?.averagePaymentDays || 0,
                       )}`}
                     >
                       {financialSummary?.averagePaymentDays || 0} days
                     </p>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      Payment Success Rate
-                    </span>
+                    <span className="text-sm text-gray-600">Payment Success Rate</span>
                     <p className="font-medium text-green-600">98%</p>
                   </div>
                 </div>
@@ -607,12 +549,8 @@ export function CustomerFinancials({
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      Payment History
-                    </span>
-                    <Badge className="bg-green-100 text-green-800">
-                      Excellent
-                    </Badge>
+                    <span className="text-sm text-gray-600">Payment History</span>
+                    <Badge className="bg-green-100 text-green-800">Excellent</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Credit Score</span>
@@ -623,9 +561,7 @@ export function CustomerFinancials({
                     <Badge className="bg-green-100 text-green-800">Low</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      Account Standing
-                    </span>
+                    <span className="text-sm text-gray-600">Account Standing</span>
                     <Badge className="bg-green-100 text-green-800">Good</Badge>
                   </div>
                 </div>

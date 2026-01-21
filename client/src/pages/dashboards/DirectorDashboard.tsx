@@ -27,7 +27,11 @@ export default function DirectorDashboard() {
   });
 
   // Fetch company-wide sales performance
-  const { data: salesData, isLoading: salesLoading, refetch: refetchSales } = useQuery({
+  const {
+    data: salesData,
+    isLoading: salesLoading,
+    refetch: refetchSales,
+  } = useQuery({
     queryKey: ['director-reports', 'sales', 'company-performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -75,7 +79,9 @@ export default function DirectorDashboard() {
             onClick={handleRefresh}
             disabled={salesLoading || serviceLoading}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${(salesLoading || serviceLoading) ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${salesLoading || serviceLoading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
         </div>
@@ -104,9 +110,7 @@ export default function DirectorDashboard() {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {salesData?.quotaAttainment?.toFixed(1) || 0}%
-            </div>
+            <div className="text-2xl font-bold">{salesData?.quotaAttainment?.toFixed(1) || 0}%</div>
             <p className="text-xs text-muted-foreground">
               {salesData?.insights?.performanceStatus === 'exceeding' && 'Exceeding targets'}
               {salesData?.insights?.performanceStatus === 'on_track' && 'On track'}
@@ -122,9 +126,7 @@ export default function DirectorDashboard() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {serviceData?.totalCalls || 0}
-            </div>
+            <div className="text-2xl font-bold">{serviceData?.totalCalls || 0}</div>
             <p className="text-xs text-muted-foreground">
               {serviceData?.totalTechnicians || 0} technicians
             </p>
@@ -168,7 +170,10 @@ export default function DirectorDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {salesData?.regions?.map((region: any) => (
-                      <div key={region.regionId} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={region.regionId}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
                         <div>
                           <div className="font-medium">{region.regionName}</div>
                           <div className="text-sm text-muted-foreground">
@@ -176,7 +181,9 @@ export default function DirectorDashboard() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold">${(region.revenue / 1000).toFixed(0)}K</div>
+                          <div className="text-lg font-bold">
+                            ${(region.revenue / 1000).toFixed(0)}K
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             {region.quotaAttainment.toFixed(0)}% quota
                           </div>
@@ -199,12 +206,19 @@ export default function DirectorDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {salesData?.topPerformers?.slice(0, 5).map((performer: any, idx: number) => (
-                      <div key={performer.userId} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={performer.userId}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
                         <div className="flex items-center gap-2">
-                          <Award className={`h-5 w-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-muted-foreground'}`} />
+                          <Award
+                            className={`h-5 w-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}
+                          />
                           <div>
                             <div className="font-medium">{performer.userName}</div>
-                            <div className="text-sm text-muted-foreground">{performer.deals} deals</div>
+                            <div className="text-sm text-muted-foreground">
+                              {performer.deals} deals
+                            </div>
                           </div>
                         </div>
                         <div className="text-lg font-bold">
@@ -232,7 +246,10 @@ export default function DirectorDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {serviceData?.regions?.map((region: any) => (
-                      <div key={region.regionId} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={region.regionId}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
                         <div>
                           <div className="font-medium">{region.regionName}</div>
                           <div className="text-sm text-muted-foreground">
@@ -261,9 +278,14 @@ export default function DirectorDashboard() {
                 ) : (
                   <div className="space-y-2">
                     {serviceData?.topPerformers?.slice(0, 5).map((performer: any, idx: number) => (
-                      <div key={performer.userId} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={performer.userId}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
                         <div className="flex items-center gap-2">
-                          <Award className={`h-5 w-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-muted-foreground'}`} />
+                          <Award
+                            className={`h-5 w-5 ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-400' : idx === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}
+                          />
                           <div>
                             <div className="font-medium">{performer.userName}</div>
                             <div className="text-sm text-muted-foreground">
@@ -271,9 +293,7 @@ export default function DirectorDashboard() {
                             </div>
                           </div>
                         </div>
-                        <div className="text-lg font-bold">
-                          {performer.ftfRate.toFixed(1)}%
-                        </div>
+                        <div className="text-lg font-bold">{performer.ftfRate.toFixed(1)}%</div>
                       </div>
                     ))}
                   </div>
@@ -305,7 +325,9 @@ export default function DirectorDashboard() {
                     <div className="text-2xl font-bold mt-1">
                       ${((salesData?.forecast?.nextQuarter || 0) / 1000).toFixed(0)}K
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">Projected from pipeline</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Projected from pipeline
+                    </div>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <div className="text-sm text-muted-foreground">Year End</div>

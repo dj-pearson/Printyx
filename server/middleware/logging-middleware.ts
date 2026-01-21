@@ -11,12 +11,7 @@
 
 import type { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { randomUUID, createHash } from 'crypto';
-import {
-  logger,
-  withRequestContext,
-  type LogContext,
-  createModuleLogger,
-} from '../lib/logger';
+import { logger, withRequestContext, type LogContext, createModuleLogger } from '../lib/logger';
 import { getAPM } from '../lib/apm';
 
 const log = createModuleLogger('http');
@@ -265,10 +260,7 @@ export function httpLoggingMiddleware(options: LoggingMiddlewareOptions = {}) {
       if (isAuditPath && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
         logEntry.requestBodyHash = hashBody(req.body);
         if (opts.logRequestBody) {
-          logEntry.requestBody = truncateBody(
-            sanitizeBody(req.body),
-            opts.maxBodySize || 10240,
-          );
+          logEntry.requestBody = truncateBody(sanitizeBody(req.body), opts.maxBodySize || 10240);
         }
       }
 

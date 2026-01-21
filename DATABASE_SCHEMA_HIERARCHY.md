@@ -1,12 +1,15 @@
 # Printyx Database Schema Hierarchy & Reference
-*Updated: August 18, 2025*
+
+_Updated: August 18, 2025_
 
 ## Overview
+
 This document provides a comprehensive hierarchy of all database tables, their relationships, functions, and available fields in the Printyx system. Use this reference for understanding data structure and planning manual additions.
 
 **Total Tables**: 264 tables across all business modules
 
 ## Recent Schema Updates
+
 - **🎯 Comprehensive Reporting Architecture (Aug 18, 2025)**: Implemented Phase 1 reporting architecture with 8 comprehensive tables: `report_definitions` (26 columns), `kpi_definitions` (27 columns), `kpi_values` (25 columns), `report_executions` (24 columns), `report_schedules` (18 columns), `dashboard_layouts` (17 columns), `user_report_activity` (19 columns), and `user_report_preferences` (14 columns). Features advanced KPI management, real-time reporting, dashboard customization, user activity tracking, permission-based access, and comprehensive analytics. Includes working API endpoints at `/api/reporting/reports` and `/api/reporting/kpis` with proper tenant security.
 - **Enhanced Product Accessories (Aug 14, 2025)**: Implemented many-to-many relationship architecture with `accessory_model_compatibility` junction table (7 columns). Features manufacturer-based compatibility filtering, smart accessory-model relationships, bulk compatibility operations, and enhanced data structure with part numbers, weight, dimensions, and warranty information.
 - **Task Management System (Aug 11, 2025)**: Added `tasks` and `projects` tables for comprehensive task and project management. Tasks table includes priority, status, assignments, due dates, and project associations. Projects table includes budget tracking, completion percentage, and timeline management with proper tenant isolation.
@@ -20,9 +23,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### 🚀 NEW: Comprehensive Reporting Architecture (8 Tables)
 
 #### `report_definitions` (26 columns)
+
 **Purpose**: Defines available reports with metadata, permissions, and configuration
 **Function**: Report catalog management, security, and configuration storage
 **Key Fields**:
+
 - `id`, `tenant_id`, `name`, `code`, `description`, `category`
 - `sql_query` (text) - Report SQL query
 - `default_parameters`, `available_filters`, `available_groupings` (jsonb)
@@ -34,9 +39,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `version`, `tags` (jsonb), `created_by`, `created_at`, `updated_at`
 
 #### `kpi_definitions` (27 columns)
+
 **Purpose**: Defines Key Performance Indicators with calculation logic and targets
 **Function**: KPI management, calculation automation, and performance tracking
 **Key Fields**:
+
 - `id`, `tenant_id`, `name`, `code`, `description`, `category`
 - `calculation_sql` (text) - KPI calculation logic
 - `target_value` (numeric), `target_type` - Performance targets
@@ -47,9 +54,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `tags` (jsonb), `created_by`, `created_at`, `updated_at`
 
 #### `kpi_values` (25 columns)
+
 **Purpose**: Stores calculated KPI values with historical tracking
 **Function**: KPI data storage, variance analysis, and performance monitoring
 **Key Fields**:
+
 - `id`, `tenant_id`, `kpi_definition_id`
 - `location_id`, `region_id`, `user_id`, `team_id`, `department_id`
 - `date_value`, `time_period`, `fiscal_year`, `fiscal_quarter`
@@ -59,9 +68,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `data_quality_score`, `confidence_level`, `created_at`
 
 #### `report_executions` (24 columns)
+
 **Purpose**: Tracks report execution history and performance metrics
 **Function**: Audit trail, performance monitoring, and usage analytics
 **Key Fields**:
+
 - `id`, `tenant_id`, `report_definition_id`, `user_id`, `schedule_id`
 - `parameters`, `filters` (jsonb)
 - `execution_time_ms`, `row_count`, `data_size`, `cache_hit`
@@ -70,13 +81,16 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `started_at`, `completed_at`, `session_id`, `ip_address`, `user_agent`
 
 #### `report_schedules` (18 columns)
+
 **Purpose**: Manages automated report scheduling and delivery
 **Function**: Report automation, email delivery, and scheduling management
 
 #### `dashboard_layouts` (17 columns)
+
 **Purpose**: Stores custom dashboard configurations and widget arrangements
 **Function**: Dashboard personalization, layout management, and sharing
 **Key Fields**:
+
 - `id`, `tenant_id`, `user_id`, `name`, `description`, `category`
 - `layout`, `widgets` (jsonb) - Dashboard configuration
 - `is_public`, `allowed_roles`, `allowed_users` (jsonb)
@@ -84,24 +98,29 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_by`, `created_at`, `updated_at`
 
 #### `user_report_activity` (19 columns)
+
 **Purpose**: Tracks user interactions with reports and dashboards
 **Function**: Usage analytics, user behavior tracking, and engagement metrics
 **Key Fields**:
+
 - `id`, `tenant_id`, `user_id`, `activity_type`
 - `report_definition_id`, `kpi_definition_id`, `session_id`
 - `parameters` (jsonb), `duration_seconds`, `load_time_ms`
 - `error_occurred`, `scroll_depth`, `export_count`, `share_count`
 
 #### `user_report_preferences` (14 columns)
+
 **Purpose**: Stores user-specific report preferences and settings
 **Function**: Personalization, default settings, and user experience optimization
 
 ### Enhanced Product Management Architecture
 
 #### `accessory_model_compatibility` (7 columns)
+
 **Purpose**: Junction table managing many-to-many relationships between accessories and product models
 **Function**: Flexible accessory-model compatibility with manufacturer-based filtering
 **Key Fields**:
+
 - `id` (uuid), `tenant_id`, `accessory_id` (uuid), `model_id` (uuid)
 - `is_required`, `is_optional`, `installation_notes`
 - `created_at`
@@ -109,17 +128,21 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Multi-Tenancy & Authentication Layer
 
 #### `sessions` (Required for Replit Auth)
+
 **Purpose**: Stores user session data for authentication
 **Function**: Session management and user authentication persistence
 **Fields**:
+
 - `sid` (varchar, PRIMARY KEY) - Session identifier
-- `sess` (jsonb, NOT NULL) - Session data in JSON format  
+- `sess` (jsonb, NOT NULL) - Session data in JSON format
 - `expire` (timestamp, NOT NULL) - Session expiration time
 
 #### `users` (Core Authentication)
+
 **Purpose**: Stores user account information and profiles
 **Function**: User authentication, profile management, role assignment
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Unique user identifier
 - `email` (varchar) - User email address
 - `first_name` (varchar) - User's first name
@@ -133,7 +156,7 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `manager_id` (varchar, FK → users.id) - Manager assignment
 - `employee_id` (varchar) - Employee identifier
 - `primary_location_id` (varchar, FK → locations.id) - Primary location
-- `region_id` (varchar, FK → regions.id) - Region assignment  
+- `region_id` (varchar, FK → regions.id) - Region assignment
 - `access_scope` (varchar) - Access scope level
 - `is_active` (boolean) - Account status
 - `is_platform_user` (boolean) - Platform user flag
@@ -141,10 +164,12 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Account creation
 - `updated_at` (timestamp) - Last update
 
-#### `tenants` (Multi-Tenancy Core)  
+#### `tenants` (Multi-Tenancy Core)
+
 **Purpose**: Represents Printyx client companies (copier dealers)
 **Function**: Multi-tenant isolation, company-level data segregation
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Tenant identifier
 - `name` (varchar) - Company/tenant name
 - `domain` (varchar) - Company domain
@@ -158,9 +183,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Role-Based Access Control (RBAC)
 
 #### `roles` (Hierarchical Permissions)
+
 **Purpose**: Defines user roles with hierarchical permissions
 **Function**: Role-based access control across platform/company/regional/location levels  
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Role identifier
 - `name` (varchar) - Role display name
 - `code` (varchar) - Role code
@@ -177,8 +204,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `locations` (Multi-Location Support)
+
 **Purpose**: Physical business locations within tenant companies
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Location identifier
 - `name` (varchar) - Location name
 - `address` (text) - Physical address
@@ -193,10 +222,12 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `regions` (Regional Management)
+
 **Purpose**: Regional groupings of locations for management hierarchy
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Region identifier
-- `name` (varchar) - Region name  
+- `name` (varchar) - Region name
 - `description` (text) - Region description
 - `manager_id` (varchar, FK → users.id) - Regional manager
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
@@ -204,8 +235,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `teams` (Team Organization)
+
 **Purpose**: Team-based organization within locations
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Team identifier
 - `name` (varchar) - Team name
 - `description` (text) - Team description
@@ -220,9 +253,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Customer Relationship Management (CRM)
 
 #### `business_records` (Unified Leads/Customers)
+
 **Purpose**: Central table for all business relationships (leads → customers lifecycle)
 **Function**: Zero-data-loss lead-to-customer conversion, relationship management
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Record identifier
 - `record_type` (varchar) - Type: 'lead' or 'customer'
 - `lead_status` (varchar) - Lead stage progression
@@ -257,8 +292,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `business_record_activities` (CRM Activity Tracking)
+
 **Purpose**: Track all interactions and activities with business records
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Activity identifier
 - `business_record_id` (varchar, FK → business_records.id) - Related record
 - `activity_type` (varchar) - Activity type
@@ -273,8 +310,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `companies` (Business Entities)
+
 **Purpose**: Represents client companies that business_records belong to
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Company identifier
 - `name` (varchar) - Company name
 - `description` (text) - Company description
@@ -293,8 +332,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `company_contacts` (Contact Management)
+
 **Purpose**: Individual contacts within companies
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Contact identifier
 - `first_name` (varchar) - First name
 - `last_name` (varchar) - Last name
@@ -313,9 +354,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Core Task Management
 
 #### `tasks` (Task Management System) ⭐ **New Aug 11, 2025**
+
 **Purpose**: Individual task tracking and assignment
 **Function**: Task creation, assignment, status tracking, priority management
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Task identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant isolation
 - `title` (text) - Task title
@@ -332,9 +375,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `completion_percentage` (integer) - Progress tracking
 
 #### `projects` (Project Management System) ⭐ **New Aug 11, 2025**
+
 **Purpose**: Project-level organization and tracking
 **Function**: Project creation, budget tracking, timeline management
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Project identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant isolation
 - `name` (text) - Project name
@@ -351,8 +396,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Sales Pipeline Management
 
 #### `leads` (Lead Management)
+
 **Purpose**: Dedicated lead tracking and management
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Lead identifier
 - `company_name` (varchar) - Prospect company
 - `contact_name` (varchar) - Primary contact
@@ -367,8 +414,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `deals` (Deal Pipeline)
+
 **Purpose**: Sales opportunity and deal tracking
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Deal identifier
 - `title` (varchar) - Deal title
 - `description` (text) - Deal description
@@ -385,8 +434,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `deal_stages` (Pipeline Configuration)
+
 **Purpose**: Configure sales pipeline stages
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Stage identifier
 - `name` (varchar) - Stage name
 - `description` (text) - Stage description
@@ -400,9 +451,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Sales Forecasting & Analytics
 
 #### `sales_forecasts` (Forecasting Management) ⭐ **New Aug 8, 2025**
+
 **Purpose**: Master sales forecasting records with comprehensive tracking and analytics
 **Function**: Sales forecasting, territory management, goal tracking, performance analysis
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Forecast identifier
 - `forecast_name` (varchar) - Forecast name/title
 - `description` (text) - Forecast description
@@ -443,9 +496,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `forecast_pipeline_items` (Pipeline Tracking) ⭐ **New Aug 8, 2025**
+
 **Purpose**: Individual pipeline opportunities within forecasts
 **Function**: Opportunity tracking, stage progression, probability management
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Pipeline item identifier
 - `forecast_id` (varchar, FK → sales_forecasts.id) - Parent forecast
 - `opportunity_name` (varchar) - Opportunity name
@@ -490,9 +545,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `forecast_metrics` (Performance Analytics) ⭐ **New Aug 8, 2025**
+
 **Purpose**: Forecast performance metrics and KPI tracking
 **Function**: Performance analysis, accuracy tracking, goal monitoring
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Metric identifier
 - `forecast_id` (varchar, FK → sales_forecasts.id) - Parent forecast
 - `metric_type` (varchar) - Metric type: 'accuracy', 'coverage', 'velocity'
@@ -519,9 +576,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `forecast_rules` (Forecasting Rules) ⭐ **New Aug 8, 2025**
+
 **Purpose**: Automated forecasting rules and business logic
 **Function**: Rule-based forecasting, automation, consistency enforcement
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Rule identifier
 - `rule_name` (varchar) - Rule name
 - `rule_type` (varchar) - Rule type: 'probability', 'stage', 'amount', 'timeline'
@@ -546,9 +605,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Master Product Catalog System ⭐ **New Aug 9, 2025**
 
 #### `master_product_models` (Printyx Master Catalog - Equipment)
+
 **Purpose**: Printyx/Root Admin maintained master catalog of copier equipment and models
 **Function**: Central repository for manufacturer equipment data, specifications, and pricing
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Product model identifier
 - `manufacturer` (varchar(100), NOT NULL) - Equipment manufacturer (Canon, Xerox, HP, Ricoh, Lexmark)
 - `model_code` (varchar(100), NOT NULL) - Manufacturer model code/number
@@ -563,9 +624,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - **Constraints**: UNIQUE(manufacturer, model_code)
 
 #### `master_product_accessories` (Printyx Master Catalog - Accessories)
+
 **Purpose**: Printyx/Root Admin maintained master catalog of equipment accessories
 **Function**: Central repository for accessories, add-ons, and upgrade components
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Accessory identifier
 - `manufacturer` (varchar(100), NOT NULL) - Accessory manufacturer
 - `accessory_code` (varchar(100), NOT NULL) - Manufacturer accessory code
@@ -579,9 +642,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - **Constraints**: UNIQUE(manufacturer, accessory_code)
 
 #### `enabled_products` (Tenant Product Enablement)
+
 **Purpose**: Track which master catalog products are enabled for each tenant with custom pricing
 **Function**: Tenant-specific product enablement, custom pricing, SKU overrides
 **Fields**:
+
 - `enabled_product_id` (uuid, PRIMARY KEY) - Enabled product identifier
 - `tenant_id` (uuid, NOT NULL) - Tenant assignment
 - `master_product_id` (uuid, FK → master_product_models.id) - Master catalog product reference
@@ -598,9 +663,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - **Constraints**: UNIQUE(tenant_id, master_product_id)
 
 #### `tenant_catalog_settings` (Tenant Catalog Configuration)
+
 **Purpose**: Tenant-specific settings for master catalog integration and behavior
 **Function**: Control auto-enablement, approval workflows, markup defaults
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Settings identifier
 - `tenant_id` (uuid, NOT NULL) - Tenant assignment
 - `auto_enable_new_products` (boolean, DEFAULT false) - Auto-enable new catalog additions
@@ -615,8 +682,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Tenant Product Management
 
 #### `product_models` (Product Catalog - Models)
+
 **Purpose**: Copier and printer model specifications
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Model identifier
 - `model_name` (varchar) - Model name
 - `manufacturer` (varchar) - Manufacturer
@@ -629,8 +698,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `product_accessories` (Accessories Catalog)
+
 **Purpose**: Equipment accessories and add-ons
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Accessory identifier
 - `name` (varchar) - Accessory name
 - `description` (text) - Description
@@ -642,8 +713,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `supplies` (Supply Inventory)
+
 **Purpose**: Toner, paper, and supply management
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Supply identifier
 - `supply_name` (varchar) - Supply name
 - `supply_type` (varchar) - Supply type (toner/paper/parts)
@@ -658,8 +731,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `professional_services` (Professional Services)
+
 **Purpose**: Consulting and professional service offerings
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Service identifier
 - `service_name` (varchar) - Service name
 - `description` (text) - Service description
@@ -673,8 +748,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `managed_services` (Managed Service Plans)
+
 **Purpose**: Ongoing managed service offerings
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Service identifier
 - `service_name` (varchar) - Service name
 - `description` (text) - Service description
@@ -687,8 +764,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `software_products` (Software Catalog)
+
 **Purpose**: Software products and licensing
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Software identifier
 - `product_name` (varchar) - Software name
 - `vendor` (varchar) - Software vendor
@@ -704,8 +783,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Equipment & Asset Management
 
 #### `equipment` (Asset Tracking)
+
 **Purpose**: Track copiers, printers, and other equipment
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Equipment identifier
 - `serial_number` (varchar) - Manufacturer serial number
 - `model` (varchar) - Equipment model
@@ -721,8 +802,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `customer_equipment` (Customer Equipment Assignments)
+
 **Purpose**: Link equipment to specific customers
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Assignment identifier
 - `customer_id` (varchar, FK → business_records.id) - Customer
 - `equipment_id` (varchar, FK → equipment.id) - Equipment
@@ -735,8 +818,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `equipment_asset_tracking` (Asset Lifecycle)
+
 **Purpose**: Track equipment through its complete lifecycle
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Tracking identifier
 - `equipment_id` (varchar, FK → equipment.id) - Equipment reference
 - `status_change_date` (timestamp) - Status change date
@@ -755,9 +840,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Customer Portal Access & Management
 
 #### `customer_portal_access` (Portal Authentication)
+
 **Purpose**: Manages customer portal user accounts and authentication
 **Function**: Secure customer access to self-service portal with role-based permissions
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Portal user identifier
 - `tenant_id` (uuid, FK → tenants.id) - Dealer's tenant ID
 - `customer_id` (uuid, FK → business_records.id) - Associated customer record
@@ -779,9 +866,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_by` (uuid, FK → users.id) - Staff member who created access
 
 #### `customer_portal_activity_log` (Activity Tracking)
+
 **Purpose**: Comprehensive audit log of all customer portal activities
 **Function**: Security tracking, compliance monitoring, and user behavior analytics
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Activity log identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (uuid, FK → business_records.id) - Customer reference
@@ -797,9 +886,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Service Request Management
 
 #### `customer_service_requests` (Self-Service Requests)
+
 **Purpose**: Customer-initiated service requests through the portal
 **Function**: Complete service request workflow from submission to completion
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Request identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (uuid, FK → business_records.id) - Customer reference
@@ -838,9 +929,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Meter Reading Submissions
 
 #### `customer_meter_submissions` (Self-Service Meter Readings)
+
 **Purpose**: Customer-submitted meter readings for billing and monitoring
 **Function**: Multiple submission methods with validation workflow and billing integration
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Submission identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (uuid, FK → business_records.id) - Customer reference
@@ -870,9 +963,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Supply Ordering System
 
 #### `customer_supply_orders` (Self-Service Supply Orders)
+
 **Purpose**: Customer-initiated supply orders through portal
 **Function**: Complete ordering workflow from cart to delivery tracking
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Order identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (uuid, FK → business_records.id) - Customer reference
@@ -900,9 +995,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `customer_supply_order_items` (Order Line Items)
+
 **Purpose**: Individual items within customer supply orders
 **Function**: Detailed product information, pricing, and availability tracking
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Line item identifier
 - `order_id` (uuid, FK → customer_supply_orders.id, CASCADE DELETE) - Parent order
 - `product_id` (uuid, FK → supplies.id) - Product reference
@@ -920,9 +1017,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Payment Processing
 
 #### `customer_payments` (Self-Service Payments)
+
 **Purpose**: Customer-initiated payments through portal
 **Function**: Multiple payment methods with processing workflow and integration
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Payment identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (uuid, FK → business_records.id) - Customer reference
@@ -948,9 +1047,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Notification System
 
 #### `customer_notifications` (Portal Notifications)
+
 **Purpose**: Multi-channel customer notifications and communication
 **Function**: Email, SMS, and portal notifications with delivery tracking
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Notification identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (uuid, FK → business_records.id) - Customer reference
@@ -978,8 +1079,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Service Management
 
 #### `service_tickets` (Service Dispatch)
+
 **Purpose**: Track service requests and work orders
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Ticket identifier
 - `title` (varchar) - Service ticket title
 - `description` (text) - Detailed description
@@ -1002,8 +1105,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `service_ticket_updates` (Ticket Activity Log)
+
 **Purpose**: Track all updates and communications on service tickets
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Update identifier
 - `ticket_id` (varchar, FK → service_tickets.id) - Service ticket
 - `update_type` (varchar) - Update type
@@ -1015,8 +1120,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `technicians` (Technician Management)
+
 **Purpose**: Manage field service technicians
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Technician identifier
 - `user_id` (varchar, FK → users.id) - User account
 - `employee_id` (varchar) - Employee identifier
@@ -1035,9 +1142,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Customer Onboarding & Installation Management
 
 #### `onboarding_checklists` (Installation Checklists)
+
 **Purpose**: Comprehensive customer onboarding and equipment installation management
 **Function**: Multi-step workflow for managing equipment deployment, configuration, and customer training
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Checklist identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `customer_id` (varchar, FK → business_records.id) - Customer reference
@@ -1068,9 +1177,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `onboarding_dynamic_sections` (Custom Checklist Sections)
+
 **Purpose**: Configurable sections for specialized installation requirements
 **Function**: Dynamic checklist sections for custom workflows, training modules, and special configurations
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Section identifier
 - `checklist_id` (uuid, FK → onboarding_checklists.id) - Parent checklist
 - `section_title` (varchar) - Section title
@@ -1092,9 +1203,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `onboarding_equipment` (Equipment Installation Tracking)
+
 **Purpose**: Detailed tracking of individual equipment items during installation
 **Function**: Equipment-specific configuration, network setup, and testing verification
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Equipment record identifier
 - `checklist_id` (uuid, FK → onboarding_checklists.id) - Parent checklist
 - `equipment_type` (varchar) - Equipment type (printer/copier/scanner/fax/mfp/other)
@@ -1120,9 +1233,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `onboarding_tasks` (Installation Task Management)
+
 **Purpose**: Granular task tracking within onboarding checklists
 **Function**: Individual task assignment, progress tracking, and quality control
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Task identifier
 - `checklist_id` (uuid, FK → onboarding_checklists.id) - Parent checklist
 - `section_id` (uuid, FK → onboarding_dynamic_sections.id) - Parent section
@@ -1153,9 +1268,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `onboarding_network_config` (Network Configuration Templates)
+
 **Purpose**: Standardized network configuration templates and settings
 **Function**: Reusable network configurations for different customer environments
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Configuration identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `template_name` (varchar) - Configuration template name
@@ -1176,9 +1293,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `onboarding_print_management` (Print Management Templates)
+
 **Purpose**: Print management configuration templates and policies
 **Function**: Standardized print settings, user permissions, and management policies
 **Fields**:
+
 - `id` (uuid, PRIMARY KEY) - Configuration identifier
 - `tenant_id` (uuid, FK → tenants.id) - Tenant assignment
 - `template_name` (varchar) - Template name
@@ -1203,8 +1322,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Financial Management
 
 #### `contracts` (Service Agreements)
+
 **Purpose**: Manage service contracts and agreements
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Contract identifier
 - `contract_number` (varchar) - Contract reference number
 - `type` (varchar) - Contract type
@@ -1222,8 +1343,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `invoices` (Billing Management)
+
 **Purpose**: Track invoices and billing
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Invoice identifier
 - `invoice_number` (varchar) - Invoice reference number
 - `customer_id` (varchar, FK → business_records.id) - Customer
@@ -1242,8 +1365,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `invoice_line_items` (Invoice Details)
+
 **Purpose**: Detailed line items for invoices
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Line item identifier
 - `invoice_id` (varchar, FK → invoices.id) - Parent invoice
 - `line_type` (varchar) - Line item type
@@ -1259,8 +1384,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `meter_readings` (Usage Billing)
+
 **Purpose**: Track equipment usage for billing
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Reading identifier
 - `equipment_id` (varchar, FK → equipment.id) - Equipment
 - `customer_id` (varchar, FK → business_records.id) - Customer
@@ -1281,8 +1408,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Commission Management
 
 #### `commission_structures` (Commission Plans)
+
 **Purpose**: Define commission structures for sales teams
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Structure identifier
 - `structure_name` (varchar) - Plan name
 - `structure_type` (varchar) - Commission type
@@ -1296,8 +1425,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation date
 
 #### `commission_calculations` (Commission Processing)
+
 **Purpose**: Calculate and track commission payments
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Calculation identifier
 - `sales_rep_id` (varchar, FK → users.id) - Sales representative
 - `calculation_period` (varchar) - Period (monthly/quarterly)
@@ -1314,10 +1445,12 @@ This document provides a comprehensive hierarchy of all database tables, their r
 
 ### Sales & CRM Management
 
-#### `quotes` (Quote Management) 
+#### `quotes` (Quote Management)
+
 **Purpose**: Comprehensive quote management system for sales process
 **Function**: Quote generation, pricing calculations, status tracking, and quote-to-proposal conversion
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Quote identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `lead_id` (varchar, FK → business_records.id) - Lead reference (legacy)
@@ -1336,9 +1469,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `quote_line_items` (Quote Product Details)
+
 **Purpose**: Individual line items and products within quotes
 **Function**: Product specification, pricing, quantities for each quote line
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Line item identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `quote_id` (varchar, FK → quotes.id) - Parent quote
@@ -1354,9 +1489,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation timestamp
 
 #### `proposals` (Professional Proposal System)
+
 **Purpose**: Comprehensive proposal management with template system and content sections
 **Function**: Quote-to-proposal conversion, professional document generation, customer presentation
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Proposal identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `proposal_number` (varchar, UNIQUE) - Auto-generated proposal number
@@ -1389,9 +1526,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `proposal_line_items` (Proposal Product Details)
+
 **Purpose**: Individual line items and products within proposals
 **Function**: Product specification, pricing, quantities for each proposal line with service details
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Line item identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `proposal_id` (varchar, FK → proposals.id) - Parent proposal
@@ -1415,9 +1554,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update timestamp
 
 #### `proposal_comments` (Proposal Communication)
+
 **Purpose**: Internal and customer communication threads for proposals
 **Function**: Comment tracking, communication history, collaboration
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Comment identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `proposal_id` (varchar, FK → proposals.id) - Parent proposal
@@ -1431,9 +1572,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation timestamp
 
 #### `proposal_analytics` (Proposal Performance Tracking)
+
 **Purpose**: Track proposal engagement and performance metrics
 **Function**: View tracking, engagement analytics, conversion metrics
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Analytics identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `proposal_id` (varchar, FK → proposals.id) - Parent proposal
@@ -1447,9 +1590,11 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `created_at` (timestamp) - Creation timestamp
 
 #### `proposal_approvals` (Approval Workflow)
+
 **Purpose**: Proposal approval workflow and authorization tracking
 **Function**: Multi-level approval process, authorization management
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Approval identifier
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
 - `proposal_id` (varchar, FK → proposals.id) - Parent proposal
@@ -1466,8 +1611,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Business Intelligence & Analytics
 
 #### `business_intelligence_dashboards` (BI Dashboards)
+
 **Purpose**: Custom business intelligence dashboards
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Dashboard identifier
 - `dashboard_name` (varchar) - Dashboard name
 - `description` (text) - Dashboard description
@@ -1482,8 +1629,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `performance_benchmarks` (Performance Tracking)
+
 **Purpose**: Track key performance indicators and benchmarks
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Benchmark identifier
 - `metric_name` (varchar) - Metric name
 - `metric_category` (varchar) - Metric category
@@ -1501,8 +1650,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Workflow Automation
 
 #### `automation_rules` (Automation Engine)
+
 **Purpose**: Define automated business process rules
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Rule identifier
 - `rule_name` (varchar) - Rule name
 - `rule_description` (text) - Rule description
@@ -1547,8 +1698,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 - `updated_at` (timestamp) - Last update
 
 #### `workflow_executions` (Workflow History)
+
 **Purpose**: Track workflow execution history and results
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Execution identifier
 - `rule_id` (varchar, FK → automation_rules.id) - Automation rule
 - `trigger_event` (jsonb) - Triggering event data
@@ -1566,8 +1719,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ### Integration Management
 
 #### `quickbooks_integrations` (QuickBooks Integration)
+
 **Purpose**: Manage QuickBooks Online integration settings
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Integration identifier
 - `company_id` (varchar) - QB Company ID
 - `tenant_id` (varchar, FK → tenants.id) - Tenant assignment
@@ -1591,8 +1746,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ## System Security & Compliance
 
 #### `audit_logs` (Audit Trail)
+
 **Purpose**: Security audit logging for compliance
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Log entry identifier
 - `user_id` (varchar, FK → users.id) - User who performed action
 - `action` (varchar) - Action performed
@@ -1608,8 +1765,10 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ## Mobile & Field Service
 
 #### `mobile_work_orders` (Mobile Service Orders)
+
 **Purpose**: Mobile app work order management
 **Fields**:
+
 - `id` (varchar, PRIMARY KEY) - Work order identifier
 - `service_ticket_id` (varchar, FK → service_tickets.id) - Related ticket
 - `technician_id` (varchar, FK → technicians.id) - Assigned technician
@@ -1634,7 +1793,7 @@ This document provides a comprehensive hierarchy of all database tables, their r
 
 - **Core Tables**: 12 (users, tenants, roles, locations, regions, teams, sessions, etc.)
 - **Task Management Tables**: 2 (tasks, projects)
-- **CRM Tables**: 15 (business_records, companies, contacts, leads, deals, activities)  
+- **CRM Tables**: 15 (business_records, companies, contacts, leads, deals, activities)
 - **Product Tables**: 7 (models, accessories, supplies, services, software)
 - **Equipment Tables**: 8 (equipment, customer_equipment, asset_tracking, etc.)
 - **Service Tables**: 12 (tickets, technicians, work_orders, mobile_orders, etc.)
@@ -1650,18 +1809,21 @@ This document provides a comprehensive hierarchy of all database tables, their r
 ## Recent Table Additions
 
 ### Task Management System (August 11, 2025) - 2 new tables
+
 - `tasks` (13 columns) - Individual task tracking with priority, status, assignments, and project associations
 - `projects` (11 columns) - Project-level organization with budget tracking, timeline management, and progress monitoring
 
 ### Sales Forecasting System (August 8, 2025) - 4 new tables
 
 ### Sales Forecasting System (4 new tables)
+
 - `sales_forecasts` (37 columns) - Master sales forecasting with comprehensive analytics
-- `forecast_pipeline_items` (37 columns) - Individual pipeline opportunities 
+- `forecast_pipeline_items` (37 columns) - Individual pipeline opportunities
 - `forecast_metrics` (25 columns) - Forecast performance analytics and KPIs
 - `forecast_rules` (18 columns) - Automated forecasting rules and business logic
 
 These tables provide enterprise-grade sales forecasting capabilities including:
+
 - Territory-based forecasting with multi-period support
 - Pipeline opportunity tracking with BANT qualification
 - Performance analytics and accuracy measurement
@@ -1671,8 +1833,9 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 ## Complete Table Inventory (264 Tables)
 
 ### 🚀 NEW: Reporting & Analytics (8 tables)
+
 - `dashboard_layouts` - Custom dashboard configurations
-- `kpi_definitions` - Key Performance Indicator definitions  
+- `kpi_definitions` - Key Performance Indicator definitions
 - `kpi_values` - Calculated KPI values and metrics
 - `report_definitions` - Report catalog and metadata
 - `report_executions` - Report execution history and performance
@@ -1681,6 +1844,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `user_report_preferences` - User report preferences
 
 ### Core System & Authentication (15 tables)
+
 - `sessions` - User session management
 - `users` - User accounts and profiles
 - `tenants` - Multi-tenant company management
@@ -1698,6 +1862,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `security_sessions` - Enhanced security session tracking
 
 ### Product Management & Inventory (22 tables)
+
 - `master_product_models` - Master product catalog
 - `master_product_accessories` - Master accessory catalog
 - `master_product_accessory_relationships` - Product-accessory relationships
@@ -1722,6 +1887,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `parts_order_items` - Parts order line items
 
 ### CRM & Customer Management (25 tables)
+
 - `business_records` - Unified leads and customers
 - `customers` - Customer management
 - `companies` - Company profiles
@@ -1749,6 +1915,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `customer_service_requests` - Self-service request management
 
 ### Sales & Deals Management (18 tables)
+
 - `deals` - Sales deal management
 - `deal_stages` - Deal pipeline stages
 - `deal_activities` - Deal activity tracking
@@ -1769,6 +1936,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `sales_forecasts` - Sales forecasting
 
 ### Service Management (35 tables)
+
 - `service_tickets` - Service ticket management
 - `service_ticket_updates` - Ticket update tracking
 - `service_calls` - Service call management
@@ -1806,6 +1974,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `managed_services` - Managed service offerings
 
 ### Billing & Financial (30 tables)
+
 - `invoices` - Invoice management
 - `invoice_line_items` - Invoice line items
 - `billing_cycles` - Billing cycle management
@@ -1838,6 +2007,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `qb_vendors` - QuickBooks vendor sync
 
 ### Commission Management (15 tables)
+
 - `commission_plans` - Commission plan management
 - `commission_structures` - Commission structure definitions
 - `commission_calculations` - Commission calculations
@@ -1855,6 +2025,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `commission_sales_transactions` - Transaction details
 
 ### Equipment & Asset Management (25 tables)
+
 - `equipment` - Equipment management
 - `equipment_lifecycle` - Lifecycle tracking
 - `equipment_lifecycle_stages` - Lifecycle stage management
@@ -1882,6 +2053,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `gps_tracking_points` - GPS tracking data
 
 ### Task & Project Management (8 tables)
+
 - `tasks` - Task management
 - `projects` - Project management
 - `automated_tasks` - Automated task management
@@ -1892,6 +2064,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `workflow_step_executions` - Step execution tracking
 
 ### Onboarding & Installation (6 tables)
+
 - `onboarding_checklists` - Installation checklists
 - `onboarding_dynamic_sections` - Custom checklist sections
 - `onboarding_equipment` - Equipment installation tracking
@@ -1900,6 +2073,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `onboarding_print_management` - Print management setup
 
 ### Integration & External Systems (25 tables)
+
 - `manufacturer_integrations` - Manufacturer API integrations
 - `third_party_integrations` - Third-party system integrations
 - `system_integrations` - System integration management
@@ -1927,6 +2101,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `performance_metrics` - System performance metrics
 
 ### Forecasting & Analytics (15 tables)
+
 - `forecast_line_items` - Forecast line items
 - `forecast_metrics` - Forecasting metrics
 - `forecast_pipeline_items` - Pipeline forecasting
@@ -1944,6 +2119,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `contracts` - Contract management
 
 ### Document & Content Management (8 tables)
+
 - `documents` - Document management
 - `knowledge_base_articles` - Knowledge base
 - `professional_services` - Professional service offerings
@@ -1954,6 +2130,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `location_history` - Location change history
 
 ### Employee & HR Management (5 tables)
+
 - `employees` - Employee management
 - `employee_commission_assignments` - Commission assignments
 - `user_customer_assignments` - Customer assignments
@@ -1961,6 +2138,7 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 - `user_settings` - User preference settings
 
 ### Purchase Order & Procurement (10 tables)
+
 - `purchase_orders` - Purchase order management
 - `purchase_order_items` - Purchase order items
 - `po_line_items` - PO line item details
@@ -1974,4 +2152,4 @@ These tables provide enterprise-grade sales forecasting capabilities including:
 
 ---
 
-*This document serves as the comprehensive reference for the Printyx database architecture. All 264 tables are designed with multi-tenant support, proper indexing, and optimized for the specific business requirements of copier dealers. The recent addition of the comprehensive reporting architecture provides advanced analytics, KPI management, and business intelligence capabilities.*
+_This document serves as the comprehensive reference for the Printyx database architecture. All 264 tables are designed with multi-tenant support, proper indexing, and optimized for the specific business requirements of copier dealers. The recent addition of the comprehensive reporting architecture provides advanced analytics, KPI management, and business intelligence capabilities._

@@ -2,8 +2,21 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,7 +80,12 @@ const AVAILABLE_INTEGRATIONS = [
     fields: [
       { name: 'accountSid', label: 'Account SID', type: 'password' },
       { name: 'authToken', label: 'Auth Token', type: 'password' },
-      { name: 'phoneNumber', label: 'From Phone Number', type: 'text', placeholder: '+15551234567' },
+      {
+        name: 'phoneNumber',
+        label: 'From Phone Number',
+        type: 'text',
+        placeholder: '+15551234567',
+      },
     ],
   },
   {
@@ -91,7 +109,12 @@ const AVAILABLE_INTEGRATIONS = [
     category: 'CRM',
     priority: 'high',
     fields: [
-      { name: 'instanceUrl', label: 'Instance URL', type: 'text', placeholder: 'https://your-instance.salesforce.com' },
+      {
+        name: 'instanceUrl',
+        label: 'Instance URL',
+        type: 'text',
+        placeholder: 'https://your-instance.salesforce.com',
+      },
       { name: 'accessToken', label: 'Access Token', type: 'password' },
     ],
   },
@@ -103,7 +126,12 @@ const AVAILABLE_INTEGRATIONS = [
     category: 'PSA/FSM',
     priority: 'high',
     fields: [
-      { name: 'apiUrl', label: 'API URL', type: 'text', placeholder: 'https://api-na.myconnectwise.net' },
+      {
+        name: 'apiUrl',
+        label: 'API URL',
+        type: 'text',
+        placeholder: 'https://api-na.myconnectwise.net',
+      },
       { name: 'clientId', label: 'Client ID', type: 'text' },
       { name: 'apiKey', label: 'API Key', type: 'password' },
     ],
@@ -221,23 +249,33 @@ export function IntegrationsManagement() {
       toast({ title: 'Integration created', description: 'Connected successfully' });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to create integration', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to create integration',
+        variant: 'destructive',
+      });
     },
   });
 
   const testMutation = useMutation({
-    mutationFn: (integrationId: string) => apiRequest('POST', `/api/integrations/${integrationId}/test`, {}),
+    mutationFn: (integrationId: string) =>
+      apiRequest('POST', `/api/integrations/${integrationId}/test`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ title: 'Connection successful', description: 'Integration test passed' });
     },
     onError: () => {
-      toast({ title: 'Connection failed', description: 'Integration test failed', variant: 'destructive' });
+      toast({
+        title: 'Connection failed',
+        description: 'Integration test failed',
+        variant: 'destructive',
+      });
     },
   });
 
   const syncMutation = useMutation({
-    mutationFn: (integrationId: string) => apiRequest('POST', `/api/integrations/${integrationId}/sync`, {}),
+    mutationFn: (integrationId: string) =>
+      apiRequest('POST', `/api/integrations/${integrationId}/sync`, {}),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ title: 'Sync started', description: `${data.message}` });
@@ -245,7 +283,8 @@ export function IntegrationsManagement() {
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: (integrationId: string) => apiRequest('POST', `/api/integrations/${integrationId}/disconnect`, {}),
+    mutationFn: (integrationId: string) =>
+      apiRequest('POST', `/api/integrations/${integrationId}/disconnect`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/integrations'] });
       toast({ title: 'Disconnected', description: 'Integration removed' });
@@ -257,248 +296,298 @@ export function IntegrationsManagement() {
     setIsDialogOpen(true);
   };
 
-  const getConnectedIntegration = (key: string) => integrations.find((i: any) => i.integrationKey === key);
+  const getConnectedIntegration = (key: string) =>
+    integrations.find((i: any) => i.integrationKey === key);
 
   // Group integrations by priority
-  const criticalIntegrations = AVAILABLE_INTEGRATIONS.filter(i => i.priority === 'critical');
-  const highPriorityIntegrations = AVAILABLE_INTEGRATIONS.filter(i => i.priority === 'high');
-  const otherIntegrations = AVAILABLE_INTEGRATIONS.filter(i => !i.priority || i.priority === 'medium' || i.priority === 'low');
+  const criticalIntegrations = AVAILABLE_INTEGRATIONS.filter((i) => i.priority === 'critical');
+  const highPriorityIntegrations = AVAILABLE_INTEGRATIONS.filter((i) => i.priority === 'high');
+  const otherIntegrations = AVAILABLE_INTEGRATIONS.filter(
+    (i) => !i.priority || i.priority === 'medium' || i.priority === 'low',
+  );
 
   return (
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold">Integrations Management</h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">Connect Printyx with industry-standard copier dealer systems & services</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Connect Printyx with industry-standard copier dealer systems & services
+        </p>
       </div>
 
       {/* CRITICAL INTEGRATIONS */}
       <div>
-        <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-3">🔴 Critical Setup</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Start with these - required for core functionality</p>
+        <h2 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-3">
+          🔴 Critical Setup
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Start with these - required for core functionality
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {criticalIntegrations.map((integration) => {
-          const connected = getConnectedIntegration(integration.key);
+          {criticalIntegrations.map((integration) => {
+            const connected = getConnectedIntegration(integration.key);
 
-          return (
-            <Card key={integration.key} className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">{integration.icon}</span>
-                    <div>
-                      <CardTitle className="text-lg">{integration.name}</CardTitle>
-                      <CardDescription className="text-xs">{integration.category}</CardDescription>
+            return (
+              <Card
+                key={integration.key}
+                className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{integration.icon}</span>
+                      <div>
+                        <CardTitle className="text-lg">{integration.name}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {integration.category}
+                        </CardDescription>
+                      </div>
                     </div>
+                    {connected && <Check className="w-5 h-5 text-green-600" />}
                   </div>
-                  {connected && <Check className="w-5 h-5 text-green-600" />}
-                </div>
-                <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">{integration.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {connected ? (
-                  <div className="space-y-2">
-                    <div className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
-                      connected.status === 'connected'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`} />
-                      {connected.status === 'connected' ? 'Connected' : 'Error'}
+                  <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">
+                    {integration.description}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {connected ? (
+                    <div className="space-y-2">
+                      <div
+                        className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
+                          connected.status === 'connected'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`}
+                        />
+                        {connected.status === 'connected' ? 'Connected' : 'Error'}
+                      </div>
+                      {connected.lastSyncedAt && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testMutation.mutate(connected.id)}
+                          disabled={testMutation.isPending}
+                        >
+                          <Zap className="w-3 h-3 mr-1" /> Test
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => syncMutation.mutate(connected.id)}
+                          disabled={syncMutation.isPending}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" /> Sync
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => disconnectMutation.mutate(connected.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
-                    {connected.lastSyncedAt && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => testMutation.mutate(connected.id)}
-                        disabled={testMutation.isPending}
-                      >
-                        <Zap className="w-3 h-3 mr-1" /> Test
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => syncMutation.mutate(connected.id)}
-                        disabled={syncMutation.isPending}
-                      >
-                        <RefreshCw className="w-3 h-3 mr-1" /> Sync
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => disconnectMutation.mutate(connected.id)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button onClick={() => handleAddIntegration(integration)} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" /> Connect
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  ) : (
+                    <Button onClick={() => handleAddIntegration(integration)} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" /> Connect
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
       {/* HIGH PRIORITY INTEGRATIONS */}
       <div>
-        <h2 className="text-lg font-semibold text-orange-600 dark:text-orange-400 mb-3">🟠 Highly Recommended</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Enhance operations with communications, monitoring, and scheduling</p>
+        <h2 className="text-lg font-semibold text-orange-600 dark:text-orange-400 mb-3">
+          🟠 Highly Recommended
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Enhance operations with communications, monitoring, and scheduling
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {highPriorityIntegrations.map((integration) => {
-          const connected = getConnectedIntegration(integration.key);
+          {highPriorityIntegrations.map((integration) => {
+            const connected = getConnectedIntegration(integration.key);
 
-          return (
-            <Card key={integration.key} className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">{integration.icon}</span>
-                    <div>
-                      <CardTitle className="text-lg">{integration.name}</CardTitle>
-                      <CardDescription className="text-xs">{integration.category}</CardDescription>
+            return (
+              <Card
+                key={integration.key}
+                className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{integration.icon}</span>
+                      <div>
+                        <CardTitle className="text-lg">{integration.name}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {integration.category}
+                        </CardDescription>
+                      </div>
                     </div>
+                    {connected && <Check className="w-5 h-5 text-green-600" />}
                   </div>
-                  {connected && <Check className="w-5 h-5 text-green-600" />}
-                </div>
-                <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">{integration.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {connected ? (
-                  <div className="space-y-2">
-                    <div className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
-                      connected.status === 'connected'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`} />
-                      {connected.status === 'connected' ? 'Connected' : 'Error'}
+                  <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">
+                    {integration.description}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {connected ? (
+                    <div className="space-y-2">
+                      <div
+                        className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
+                          connected.status === 'connected'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`}
+                        />
+                        {connected.status === 'connected' ? 'Connected' : 'Error'}
+                      </div>
+                      {connected.lastSyncedAt && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testMutation.mutate(connected.id)}
+                          disabled={testMutation.isPending}
+                        >
+                          <Zap className="w-3 h-3 mr-1" /> Test
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => syncMutation.mutate(connected.id)}
+                          disabled={syncMutation.isPending}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" /> Sync
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => disconnectMutation.mutate(connected.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
-                    {connected.lastSyncedAt && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => testMutation.mutate(connected.id)}
-                        disabled={testMutation.isPending}
-                      >
-                        <Zap className="w-3 h-3 mr-1" /> Test
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => syncMutation.mutate(connected.id)}
-                        disabled={syncMutation.isPending}
-                      >
-                        <RefreshCw className="w-3 h-3 mr-1" /> Sync
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => disconnectMutation.mutate(connected.id)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button onClick={() => handleAddIntegration(integration)} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" /> Connect
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  ) : (
+                    <Button onClick={() => handleAddIntegration(integration)} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" /> Connect
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
       {/* OTHER INTEGRATIONS */}
       <div>
-        <h2 className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-3">🔵 Additional Services</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Optional integrations for extended functionality</p>
+        <h2 className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-3">
+          🔵 Additional Services
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Optional integrations for extended functionality
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {otherIntegrations.map((integration) => {
-          const connected = getConnectedIntegration(integration.key);
+          {otherIntegrations.map((integration) => {
+            const connected = getConnectedIntegration(integration.key);
 
-          return (
-            <Card key={integration.key} className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="text-3xl">{integration.icon}</span>
-                    <div>
-                      <CardTitle className="text-lg">{integration.name}</CardTitle>
-                      <CardDescription className="text-xs">{integration.category}</CardDescription>
+            return (
+              <Card
+                key={integration.key}
+                className={connected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="text-3xl">{integration.icon}</span>
+                      <div>
+                        <CardTitle className="text-lg">{integration.name}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {integration.category}
+                        </CardDescription>
+                      </div>
                     </div>
+                    {connected && <Check className="w-5 h-5 text-green-600" />}
                   </div>
-                  {connected && <Check className="w-5 h-5 text-green-600" />}
-                </div>
-                <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">{integration.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {connected ? (
-                  <div className="space-y-2">
-                    <div className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
-                      connected.status === 'connected'
-                        ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
-                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`} />
-                      {connected.status === 'connected' ? 'Connected' : 'Error'}
+                  <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">
+                    {integration.description}
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {connected ? (
+                    <div className="space-y-2">
+                      <div
+                        className={`text-sm px-3 py-1 rounded flex items-center gap-2 ${
+                          connected.status === 'connected'
+                            ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100'
+                            : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100'
+                        }`}
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${connected.status === 'connected' ? 'bg-green-600' : 'bg-red-600'}`}
+                        />
+                        {connected.status === 'connected' ? 'Connected' : 'Error'}
+                      </div>
+                      {connected.lastSyncedAt && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400">
+                          Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => testMutation.mutate(connected.id)}
+                          disabled={testMutation.isPending}
+                        >
+                          <Zap className="w-3 h-3 mr-1" /> Test
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => syncMutation.mutate(connected.id)}
+                          disabled={syncMutation.isPending}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" /> Sync
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => disconnectMutation.mutate(connected.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
-                    {connected.lastSyncedAt && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        Last sync: {new Date(connected.lastSyncedAt).toLocaleDateString()}
-                      </p>
-                    )}
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => testMutation.mutate(connected.id)}
-                        disabled={testMutation.isPending}
-                      >
-                        <Zap className="w-3 h-3 mr-1" /> Test
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => syncMutation.mutate(connected.id)}
-                        disabled={syncMutation.isPending}
-                      >
-                        <RefreshCw className="w-3 h-3 mr-1" /> Sync
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => disconnectMutation.mutate(connected.id)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button onClick={() => handleAddIntegration(integration)} className="w-full">
-                    <Plus className="w-4 h-4 mr-2" /> Connect
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  ) : (
+                    <Button onClick={() => handleAddIntegration(integration)} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" /> Connect
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
 

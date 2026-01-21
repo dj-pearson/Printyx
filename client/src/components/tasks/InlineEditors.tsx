@@ -1,20 +1,16 @@
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Flag,
   Calendar as CalendarIcon,
@@ -25,72 +21,72 @@ import {
   Eye,
   Clock,
   AlertTriangle,
-} from "lucide-react";
-import { format, isToday, isTomorrow, isYesterday } from "date-fns";
+} from 'lucide-react';
+import { format, isToday, isTomorrow, isYesterday } from 'date-fns';
 
 // Priority configuration
 const priorityConfig = {
   urgent: {
-    label: "Urgent",
-    color: "bg-red-500",
-    icon: "🔥",
-    bgColor: "bg-red-50 text-red-700 border-red-200",
-    hoverColor: "hover:bg-red-100",
+    label: 'Urgent',
+    color: 'bg-red-500',
+    icon: '🔥',
+    bgColor: 'bg-red-50 text-red-700 border-red-200',
+    hoverColor: 'hover:bg-red-100',
   },
   high: {
-    label: "High",
-    color: "bg-orange-500",
-    icon: "⚡",
-    bgColor: "bg-orange-50 text-orange-700 border-orange-200",
-    hoverColor: "hover:bg-orange-100",
+    label: 'High',
+    color: 'bg-orange-500',
+    icon: '⚡',
+    bgColor: 'bg-orange-50 text-orange-700 border-orange-200',
+    hoverColor: 'hover:bg-orange-100',
   },
   medium: {
-    label: "Medium",
-    color: "bg-yellow-500",
-    icon: "📌",
-    bgColor: "bg-yellow-50 text-yellow-700 border-yellow-200",
-    hoverColor: "hover:bg-yellow-100",
+    label: 'Medium',
+    color: 'bg-yellow-500',
+    icon: '📌',
+    bgColor: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    hoverColor: 'hover:bg-yellow-100',
   },
   low: {
-    label: "Low",
-    color: "bg-green-500",
-    icon: "📋",
-    bgColor: "bg-green-50 text-green-700 border-green-200",
-    hoverColor: "hover:bg-green-100",
+    label: 'Low',
+    color: 'bg-green-500',
+    icon: '📋',
+    bgColor: 'bg-green-50 text-green-700 border-green-200',
+    hoverColor: 'hover:bg-green-100',
   },
 };
 
 // Status configuration
 const statusConfig = {
   todo: {
-    label: "To Do",
-    color: "bg-gray-100 text-gray-800",
+    label: 'To Do',
+    color: 'bg-gray-100 text-gray-800',
     icon: Square,
-    hoverColor: "hover:bg-gray-200",
+    hoverColor: 'hover:bg-gray-200',
   },
   in_progress: {
-    label: "In Progress",
-    color: "bg-blue-100 text-blue-800",
+    label: 'In Progress',
+    color: 'bg-blue-100 text-blue-800',
     icon: Play,
-    hoverColor: "hover:bg-blue-200",
+    hoverColor: 'hover:bg-blue-200',
   },
   review: {
-    label: "Review",
-    color: "bg-purple-100 text-purple-800",
+    label: 'Review',
+    color: 'bg-purple-100 text-purple-800',
     icon: Eye,
-    hoverColor: "hover:bg-purple-200",
+    hoverColor: 'hover:bg-purple-200',
   },
   completed: {
-    label: "Completed",
-    color: "bg-green-100 text-green-800",
+    label: 'Completed',
+    color: 'bg-green-100 text-green-800',
     icon: CheckSquare,
-    hoverColor: "hover:bg-green-200",
+    hoverColor: 'hover:bg-green-200',
   },
   cancelled: {
-    label: "Cancelled",
-    color: "bg-red-100 text-red-800",
+    label: 'Cancelled',
+    color: 'bg-red-100 text-red-800',
     icon: Square,
-    hoverColor: "hover:bg-red-200",
+    hoverColor: 'hover:bg-red-200',
   },
 };
 
@@ -107,9 +103,7 @@ export function InlineStatusSelect({
 
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger
-        className={`w-28 h-7 text-xs border-0 ${config?.color} ${config?.hoverColor}`}
-      >
+      <SelectTrigger className={`w-28 h-7 text-xs border-0 ${config?.color} ${config?.hoverColor}`}>
         <div className="flex items-center space-x-1">
           <IconComponent className="h-3 w-3" />
           <span className="hidden sm:inline">{config?.label}</span>
@@ -180,14 +174,14 @@ export function InlineAssigneeSelect({
   const assignee = teamMembers.find((member) => member.id === value);
 
   return (
-    <Select value={value || ""} onValueChange={(val) => onChange(val || null)}>
+    <Select value={value || ''} onValueChange={(val) => onChange(val || null)}>
       <SelectTrigger className="w-32 h-7 text-xs border-0 hover:bg-gray-100">
         {assignee ? (
           <div className="flex items-center space-x-2">
             <Avatar className="h-5 w-5">
               <AvatarImage src={assignee.avatar} />
               <AvatarFallback className="text-xs">
-                {assignee.name?.charAt(0)?.toUpperCase() || "?"}
+                {assignee.name?.charAt(0)?.toUpperCase() || '?'}
               </AvatarFallback>
             </Avatar>
             <span className="hidden sm:inline truncate">{assignee.name}</span>
@@ -212,7 +206,7 @@ export function InlineAssigneeSelect({
               <Avatar className="h-5 w-5">
                 <AvatarImage src={member.avatar} />
                 <AvatarFallback className="text-xs">
-                  {member.name?.charAt(0)?.toUpperCase() || "?"}
+                  {member.name?.charAt(0)?.toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
               <span>{member.name}</span>
@@ -237,25 +231,25 @@ export function InlineDatePicker({
   const [open, setOpen] = useState(false);
 
   const formatDateDisplay = (dateStr?: string) => {
-    if (!dateStr) return "No due date";
+    if (!dateStr) return 'No due date';
 
     const date = new Date(dateStr);
-    if (isToday(date)) return "Today";
-    if (isTomorrow(date)) return "Tomorrow";
-    if (isYesterday(date)) return "Yesterday";
-    return format(date, "MMM dd");
+    if (isToday(date)) return 'Today';
+    if (isTomorrow(date)) return 'Tomorrow';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'MMM dd');
   };
 
   const getDateStyle = (status?: string | null) => {
     switch (status) {
-      case "overdue":
-        return "bg-red-50 text-red-700 border-red-200 hover:bg-red-100";
-      case "today":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100";
-      case "tomorrow":
-        return "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100";
+      case 'overdue':
+        return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100';
+      case 'today':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100';
+      case 'tomorrow':
+        return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100';
       default:
-        return "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100";
+        return 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100';
     }
   };
 
@@ -267,8 +261,8 @@ export function InlineDatePicker({
           className={`w-28 h-7 text-xs justify-start ${getDateStyle(status)}`}
         >
           <div className="flex items-center space-x-1">
-            {status === "overdue" && <AlertTriangle className="h-3 w-3" />}
-            {status !== "overdue" && <CalendarIcon className="h-3 w-3" />}
+            {status === 'overdue' && <AlertTriangle className="h-3 w-3" />}
+            {status !== 'overdue' && <CalendarIcon className="h-3 w-3" />}
             <span className="hidden sm:inline">{formatDateDisplay(value)}</span>
           </div>
         </Button>
@@ -278,7 +272,7 @@ export function InlineDatePicker({
           mode="single"
           selected={value ? new Date(value) : undefined}
           onSelect={(date) => {
-            onChange(date ? date.toISOString().split("T")[0] : null);
+            onChange(date ? date.toISOString().split('T')[0] : null);
             setOpen(false);
           }}
           initialFocus
@@ -322,23 +316,17 @@ export function InlineProgressEditor({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onBlur={() => {
-            const newValue = Math.min(
-              100,
-              Math.max(0, parseInt(inputValue) || 0)
-            );
+            const newValue = Math.min(100, Math.max(0, parseInt(inputValue) || 0));
             onChange(newValue);
             setIsEditing(false);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              const newValue = Math.min(
-                100,
-                Math.max(0, parseInt(inputValue) || 0)
-              );
+            if (e.key === 'Enter') {
+              const newValue = Math.min(100, Math.max(0, parseInt(inputValue) || 0));
               onChange(newValue);
               setIsEditing(false);
             }
-            if (e.key === "Escape") {
+            if (e.key === 'Escape') {
               setInputValue(value.toString());
               setIsEditing(false);
             }
@@ -387,9 +375,7 @@ export function InlineTimeTracker({
       <Button
         variant="ghost"
         size="sm"
-        className={`h-6 text-xs ${
-          isTracking ? "text-green-600" : "text-gray-600"
-        }`}
+        className={`h-6 text-xs ${isTracking ? 'text-green-600' : 'text-gray-600'}`}
         onClick={onToggleTracking}
       >
         <Clock className="h-3 w-3 mr-1" />
@@ -410,13 +396,13 @@ export function InlineTagsEditor({
   availableTags?: string[];
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState('');
 
   const addTag = (tag: string) => {
     if (tag && !value.includes(tag)) {
       onChange([...value, tag]);
     }
-    setInputValue("");
+    setInputValue('');
   };
 
   const removeTag = (tagToRemove: string) => {
@@ -448,14 +434,14 @@ export function InlineTagsEditor({
             setIsEditing(false);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === 'Enter') {
               if (inputValue.trim()) {
                 addTag(inputValue.trim());
               }
               setIsEditing(false);
             }
-            if (e.key === "Escape") {
-              setInputValue("");
+            if (e.key === 'Escape') {
+              setInputValue('');
               setIsEditing(false);
             }
           }}
@@ -484,8 +470,8 @@ export function getDueDateStatus(dueDate?: string): string | null {
   const due = new Date(dueDate);
   const now = new Date();
 
-  if (isToday(due)) return "today";
-  if (due < now) return "overdue";
-  if (isTomorrow(due)) return "tomorrow";
-  return "upcoming";
+  if (isToday(due)) return 'today';
+  if (due < now) return 'overdue';
+  if (isTomorrow(due)) return 'tomorrow';
+  return 'upcoming';
 }

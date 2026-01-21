@@ -6,10 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { apiKeyService } from '../services/api-key-service';
-import {
-  createApiKeyRequestSchema,
-  updateApiKeyRequestSchema,
-} from '@shared/api-key-schema';
+import { createApiKeyRequestSchema, updateApiKeyRequestSchema } from '@shared/api-key-schema';
 
 const router = Router();
 
@@ -72,7 +69,7 @@ router.get('/', async (req: Request, res: Response) => {
     });
 
     // Remove sensitive data from response
-    const sanitizedKeys = result.keys.map(key => ({
+    const sanitizedKeys = result.keys.map((key) => ({
       id: key.id,
       name: key.name,
       description: key.description,
@@ -226,7 +223,8 @@ router.post('/:id/rotate', async (req: Request, res: Response) => {
 
     res.json({
       ...newKey,
-      message: 'Key rotated. Save the new key securely. Old key will remain active during grace period.',
+      message:
+        'Key rotated. Save the new key securely. Old key will remain active during grace period.',
     });
   } catch (error: any) {
     console.error('[API Key Routes] Error rotating key:', error);

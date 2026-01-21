@@ -64,21 +64,22 @@ export class ReportExportService {
   public async exportReport(
     tenantId: string,
     userId: string,
-    exportRequest: ExportRequest
+    exportRequest: ExportRequest,
   ): Promise<ExportResult> {
     const exportId = this.generateExportId();
-    
+
     try {
       // Log export request
       console.log(`🚀 Starting export ${exportId}:`, {
         reportId: exportRequest.report_id,
         format: exportRequest.format,
         userId,
-        tenantId
+        tenantId,
       });
 
       // Generate filename if not provided
-      const filename = exportRequest.filename || 
+      const filename =
+        exportRequest.filename ||
         `report_${exportRequest.report_id}_${new Date().toISOString().split('T')[0]}.${exportRequest.format}`;
 
       const filePath = path.join(this.exportDir, `${exportId}_${filename}`);
@@ -87,28 +88,28 @@ export class ReportExportService {
       const reportData = await this.fetchReportData(
         tenantId,
         exportRequest.report_id,
-        exportRequest.parameters
+        exportRequest.parameters,
       );
 
       // Export based on format
       let downloadUrl: string | undefined;
-      
+
       switch (exportRequest.format) {
         case 'csv':
           await this.exportToCSV(reportData, filePath);
           downloadUrl = this.generateDownloadUrl(exportId, filename);
           break;
-          
+
         case 'xlsx':
           await this.exportToExcel(reportData, filePath);
           downloadUrl = this.generateDownloadUrl(exportId, filename);
           break;
-          
+
         case 'pdf':
           await this.exportToPDF(reportData, filePath, exportRequest);
           downloadUrl = this.generateDownloadUrl(exportId, filename);
           break;
-          
+
         default:
           throw new Error(`Unsupported export format: ${exportRequest.format}`);
       }
@@ -122,16 +123,15 @@ export class ReportExportService {
         export_id: exportId,
         download_url: downloadUrl,
         file_path: filePath,
-        status: 'completed'
+        status: 'completed',
       };
-
     } catch (error) {
       console.error(`❌ Export ${exportId} failed:`, error);
-      
+
       return {
         export_id: exportId,
         status: 'failed',
-        error_message: error instanceof Error ? error.message : 'Unknown error'
+        error_message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -145,21 +145,21 @@ export class ReportExportService {
       throw new Error('No data to export');
     }
 
-    const headers = Object.keys(data[0]).map(key => ({
+    const headers = Object.keys(data[0]).map((key) => ({
       id: key,
-      title: this.formatColumnHeader(key)
+      title: this.formatColumnHeader(key),
     }));
 
     const csvWriter = createObjectCsvWriter({
       path: filePath,
       header: headers,
-      encoding: 'utf8'
+      encoding: 'utf8',
     });
 
     // Format data for CSV
-    const formattedData = data.map(row => {
+    const formattedData = data.map((row) => {
       const formattedRow: any = {};
-      Object.keys(row).forEach(key => {
+      Object.keys(row).forEach((key) => {
         formattedRow[key] = this.formatCellValueForExport(row[key]);
       });
       return formattedRow;
@@ -185,31 +185,31 @@ export class ReportExportService {
 
     // Add headers
     const headers = Object.keys(data[0]);
-    const headerRow = worksheet.addRow(headers.map(h => this.formatColumnHeader(h)));
-    
+    const headerRow = worksheet.addRow(headers.map((h) => this.formatColumnHeader(h)));
+
     // Style header row
     headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: '366092' }
+      fgColor: { argb: '366092' },
     };
 
     // Add data rows
-    data.forEach(row => {
-      const values = headers.map(header => this.formatCellValueForExport(row[header]));
+    data.forEach((row) => {
+      const values = headers.map((header) => this.formatCellValueForExport(row[header]));
       worksheet.addRow(values);
     });
 
     // Auto-fit columns
-    worksheet.columns.forEach(column => {
+    worksheet.columns.forEach((column) => {
       if (column.header) {
         const maxLength = Math.max(
           column.header.toString().length,
-          ...data.map(row => {
+          ...data.map((row) => {
             const value = row[column.key as string];
             return value ? value.toString().length : 0;
-          })
+          }),
         );
         column.width = Math.min(maxLength + 2, 50); // Max width of 50
       }
@@ -222,7 +222,7 @@ export class ReportExportService {
           top: { style: 'thin' },
           left: { style: 'thin' },
           bottom: { style: 'thin' },
-          right: { style: 'thin' }
+          right: { style: 'thin' },
         };
       });
     });
@@ -242,9 +242,9 @@ export class ReportExportService {
   // =====================================================================
 
   private async exportToPDF(
-    data: any[], 
-    filePath: string, 
-    exportRequest: ExportRequest
+    data: any[],
+    filePath: string,
+    exportRequest: ExportRequest,
   ): Promise<void> {
     if (data.length === 0) {
       throw new Error('No data to export');
@@ -273,14 +273,12 @@ export class ReportExportService {
     // Draw table headers
     doc.fontSize(10).fillColor('black');
     headers.forEach((header, index) => {
-      const x = 50 + (index * columnWidth);
+      const x = 50 + index * columnWidth;
       doc.rect(x, yPosition, columnWidth, 20).fill('#366092');
-      doc.fillColor('white').text(
-        this.formatColumnHeader(header), 
-        x + 5, 
-        yPosition + 5, 
-        { width: columnWidth - 10, ellipsis: true }
-      );
+      doc.fillColor('white').text(this.formatColumnHeader(header), x + 5, yPosition + 5, {
+        width: columnWidth - 10,
+        ellipsis: true,
+      });
     });
 
     yPosition += 20;
@@ -295,17 +293,15 @@ export class ReportExportService {
       if (rowCount > 0 && rowCount % maxRowsPerPage === 0) {
         doc.addPage();
         yPosition = 50;
-        
+
         // Redraw headers on new page
         headers.forEach((header, index) => {
-          const x = 50 + (index * columnWidth);
+          const x = 50 + index * columnWidth;
           doc.rect(x, yPosition, columnWidth, 20).fill('#366092');
-          doc.fillColor('white').text(
-            this.formatColumnHeader(header), 
-            x + 5, 
-            yPosition + 5, 
-            { width: columnWidth - 10, ellipsis: true }
-          );
+          doc.fillColor('white').text(this.formatColumnHeader(header), x + 5, yPosition + 5, {
+            width: columnWidth - 10,
+            ellipsis: true,
+          });
         });
         yPosition += 20;
         doc.fillColor('black');
@@ -314,14 +310,14 @@ export class ReportExportService {
       // Draw row
       const rowColor = rowCount % 2 === 0 ? '#f9f9f9' : 'white';
       headers.forEach((header, index) => {
-        const x = 50 + (index * columnWidth);
+        const x = 50 + index * columnWidth;
         doc.rect(x, yPosition, columnWidth, 20).fill(rowColor);
-        doc.fillColor('black').text(
-          this.formatCellValueForExport(row[header]), 
-          x + 5, 
-          yPosition + 5, 
-          { width: columnWidth - 10, ellipsis: true }
-        );
+        doc
+          .fillColor('black')
+          .text(this.formatCellValueForExport(row[header]), x + 5, yPosition + 5, {
+            width: columnWidth - 10,
+            ellipsis: true,
+          });
       });
 
       yPosition += 20;
@@ -329,12 +325,14 @@ export class ReportExportService {
     }
 
     // Add footer
-    doc.fontSize(8).text(
-      `Generated by Printyx Reporting System - ${new Date().toISOString()}`,
-      50,
-      doc.page.height - 30,
-      { align: 'center' }
-    );
+    doc
+      .fontSize(8)
+      .text(
+        `Generated by Printyx Reporting System - ${new Date().toISOString()}`,
+        50,
+        doc.page.height - 30,
+        { align: 'center' },
+      );
 
     doc.end();
 
@@ -352,7 +350,7 @@ export class ReportExportService {
   private async fetchReportData(
     tenantId: string,
     reportId: string,
-    parameters: Record<string, any>
+    parameters: Record<string, any>,
   ): Promise<any[]> {
     // In production, this would execute the actual report query
     // For now, returning mock data structure
@@ -365,7 +363,7 @@ export class ReportExportService {
         owner_name: 'John Smith',
         location_name: 'New York Office',
         created_at: '2025-01-01',
-        pipeline_stage: 'Qualified'
+        pipeline_stage: 'Qualified',
       },
       {
         id: '2',
@@ -375,7 +373,7 @@ export class ReportExportService {
         owner_name: 'Jane Doe',
         location_name: 'Chicago Office',
         created_at: '2025-01-02',
-        pipeline_stage: 'Proposal'
+        pipeline_stage: 'Proposal',
       },
       {
         id: '3',
@@ -385,15 +383,13 @@ export class ReportExportService {
         owner_name: 'Mike Johnson',
         location_name: 'Los Angeles Office',
         created_at: '2025-01-03',
-        pipeline_stage: 'Negotiation'
-      }
+        pipeline_stage: 'Negotiation',
+      },
     ];
   }
 
   private formatColumnHeader(key: string): string {
-    return key
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   }
 
   private formatCellValueForExport(value: any): string {
@@ -405,7 +401,7 @@ export class ReportExportService {
       if (value > 1000) {
         return new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: 'USD'
+          currency: 'USD',
         }).format(value);
       }
       return value.toString();
@@ -434,18 +430,20 @@ export class ReportExportService {
   }
 
   // Public method to get export file
-  public async getExportFile(exportId: string): Promise<{ filePath: string; filename: string } | null> {
+  public async getExportFile(
+    exportId: string,
+  ): Promise<{ filePath: string; filename: string } | null> {
     try {
       const files = await fs.readdir(this.exportDir);
-      const exportFile = files.find(file => file.startsWith(exportId));
-      
+      const exportFile = files.find((file) => file.startsWith(exportId));
+
       if (!exportFile) {
         return null;
       }
 
       const filePath = path.join(this.exportDir, exportFile);
       const filename = exportFile.substring(exportFile.indexOf('_') + 1);
-      
+
       return { filePath, filename };
     } catch (error) {
       console.error('Error finding export file:', error);
@@ -464,10 +462,10 @@ export class ReportExportService {
       const exportsByFormat: Record<string, number> = {
         csv: 0,
         xlsx: 0,
-        pdf: 0
+        pdf: 0,
       };
 
-      files.forEach(file => {
+      files.forEach((file) => {
         const extension = path.extname(file).substring(1);
         if (exportsByFormat.hasOwnProperty(extension)) {
           exportsByFormat[extension]++;
@@ -477,13 +475,13 @@ export class ReportExportService {
       return {
         totalExports: files.length,
         activeExports: files.length,
-        exportsByFormat
+        exportsByFormat,
       };
     } catch (error) {
       return {
         totalExports: 0,
         activeExports: 0,
-        exportsByFormat: { csv: 0, xlsx: 0, pdf: 0 }
+        exportsByFormat: { csv: 0, xlsx: 0, pdf: 0 },
       };
     }
   }

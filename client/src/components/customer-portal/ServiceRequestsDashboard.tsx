@@ -1,27 +1,68 @@
-import { useState, useEffect, useMemo, memo, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Plus, Search, Filter, Bell, Clock, CheckCircle, AlertCircle,
-  FileText, User, Calendar, MessageSquare, ChevronRight, MoreVertical,
-  AlertTriangle, CheckCircle2, XCircle, Loader2, TrendingUp, Star,
-  ThumbsUp, Heart
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
-import { CustomerSatisfactionForm } from "./CustomerSatisfactionForm";
+import { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Plus,
+  Search,
+  Filter,
+  Bell,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  FileText,
+  User,
+  Calendar,
+  MessageSquare,
+  ChevronRight,
+  MoreVertical,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  TrendingUp,
+  Star,
+  ThumbsUp,
+  Heart,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import { CustomerSatisfactionForm } from './CustomerSatisfactionForm';
 
 // Types - Aligned with actual API data structure (snake_case)
 type ServiceRequest = {
@@ -31,7 +72,14 @@ type ServiceRequest = {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   subject: string;
   description: string;
-  status: 'submitted' | 'acknowledged' | 'assigned' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled';
+  status:
+    | 'submitted'
+    | 'acknowledged'
+    | 'assigned'
+    | 'in_progress'
+    | 'on_hold'
+    | 'completed'
+    | 'cancelled';
   equipment_make?: string;
   equipment_model?: string;
   equipment_serial?: string;
@@ -62,8 +110,8 @@ type ServiceRequestStatusHistory = {
 const newServiceRequestSchema = z.object({
   request_type: z.enum(['service_call', 'supply_order', 'technical_support', 'general_inquiry']),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
-  subject: z.string().min(5, "Subject must be at least 5 characters"),
-  description: z.string().min(20, "Description must be at least 20 characters"),
+  subject: z.string().min(5, 'Subject must be at least 5 characters'),
+  description: z.string().min(20, 'Description must be at least 20 characters'),
   equipment_make: z.string().optional(),
   equipment_model: z.string().optional(),
   equipment_serial: z.string().optional(),
@@ -76,109 +124,136 @@ type NewServiceRequestForm = z.infer<typeof newServiceRequestSchema>;
 // Status styling helpers
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'submitted': return 'bg-blue-100 text-blue-800';
-    case 'acknowledged': return 'bg-purple-100 text-purple-800';
-    case 'assigned': return 'bg-yellow-100 text-yellow-800';
-    case 'in_progress': return 'bg-orange-100 text-orange-800';
-    case 'on_hold': return 'bg-gray-100 text-gray-800';
-    case 'completed': return 'bg-green-100 text-green-800';
-    case 'cancelled': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
+    case 'submitted':
+      return 'bg-blue-100 text-blue-800';
+    case 'acknowledged':
+      return 'bg-purple-100 text-purple-800';
+    case 'assigned':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'in_progress':
+      return 'bg-orange-100 text-orange-800';
+    case 'on_hold':
+      return 'bg-gray-100 text-gray-800';
+    case 'completed':
+      return 'bg-green-100 text-green-800';
+    case 'cancelled':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
   }
 };
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'submitted': return <FileText className="h-4 w-4" />;
-    case 'acknowledged': return <Bell className="h-4 w-4" />;
-    case 'assigned': return <User className="h-4 w-4" />;
-    case 'in_progress': return <Loader2 className="h-4 w-4" />;
-    case 'on_hold': return <Clock className="h-4 w-4" />;
-    case 'completed': return <CheckCircle2 className="h-4 w-4" />;
-    case 'cancelled': return <XCircle className="h-4 w-4" />;
-    default: return <FileText className="h-4 w-4" />;
+    case 'submitted':
+      return <FileText className="h-4 w-4" />;
+    case 'acknowledged':
+      return <Bell className="h-4 w-4" />;
+    case 'assigned':
+      return <User className="h-4 w-4" />;
+    case 'in_progress':
+      return <Loader2 className="h-4 w-4" />;
+    case 'on_hold':
+      return <Clock className="h-4 w-4" />;
+    case 'completed':
+      return <CheckCircle2 className="h-4 w-4" />;
+    case 'cancelled':
+      return <XCircle className="h-4 w-4" />;
+    default:
+      return <FileText className="h-4 w-4" />;
   }
 };
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'urgent': return 'text-red-600 bg-red-50 border-red-200';
-    case 'high': return 'text-orange-600 bg-orange-50 border-orange-200';
-    case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    case 'low': return 'text-green-600 bg-green-50 border-green-200';
-    default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    case 'urgent':
+      return 'text-red-600 bg-red-50 border-red-200';
+    case 'high':
+      return 'text-orange-600 bg-orange-50 border-orange-200';
+    case 'medium':
+      return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+    case 'low':
+      return 'text-green-600 bg-green-50 border-green-200';
+    default:
+      return 'text-gray-600 bg-gray-50 border-gray-200';
   }
 };
 
 // Optimized MetricCard component with React.memo to prevent unnecessary re-renders
-const MetricCard = memo(({ 
-  title, 
-  value, 
-  icon, 
-  color, 
-  onClick,
-  testId 
-}: { 
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  color: string;
-  onClick?: () => void;
-  testId?: string;
-}) => (
-  <Card 
-    className={`cursor-pointer hover:shadow-md transition-shadow touch-target min-h-[44px] ${onClick ? 'hover:bg-gray-50' : ''}`}
-    onClick={onClick}
-    data-testid={testId}
-  >
-    <CardContent className="p-6">
-      <div className="flex items-center">
-        <div className={`flex items-center justify-center w-12 h-12 ${color} rounded-lg`}>
-          {icon}
+const MetricCard = memo(
+  ({
+    title,
+    value,
+    icon,
+    color,
+    onClick,
+    testId,
+  }: {
+    title: string;
+    value: string | number;
+    icon: React.ReactNode;
+    color: string;
+    onClick?: () => void;
+    testId?: string;
+  }) => (
+    <Card
+      className={`cursor-pointer hover:shadow-md transition-shadow touch-target min-h-[44px] ${onClick ? 'hover:bg-gray-50' : ''}`}
+      onClick={onClick}
+      data-testid={testId}
+    >
+      <CardContent className="p-6">
+        <div className="flex items-center">
+          <div className={`flex items-center justify-center w-12 h-12 ${color} rounded-lg`}>
+            {icon}
+          </div>
+          <div className="ml-4">
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+          </div>
         </div>
-        <div className="ml-4">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-));
+      </CardContent>
+    </Card>
+  ),
+);
 
 // Optimized StatusTimeline component with React.memo and memoized status helpers
-const StatusTimeline = memo(({ statusHistory }: { statusHistory: ServiceRequestStatusHistory[] }) => {
-  return (
-    <div className="space-y-4" data-testid="status-timeline">
-      {statusHistory.map((history, index) => (
-        <div key={history.id} className="flex items-start space-x-3">
-          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${getStatusColor(history.new_status)}`}>
-            {getStatusIcon(history.new_status)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-900">
-                {history.new_status.replace('_', ' ').toUpperCase()}
-              </p>
-              <p className="text-xs text-gray-500">
-                {format(new Date(history.created_at), 'MMM dd, yyyy HH:mm')}
-              </p>
+const StatusTimeline = memo(
+  ({ statusHistory }: { statusHistory: ServiceRequestStatusHistory[] }) => {
+    return (
+      <div className="space-y-4" data-testid="status-timeline">
+        {statusHistory.map((history, index) => (
+          <div key={history.id} className="flex items-start space-x-3">
+            <div
+              className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${getStatusColor(history.new_status)}`}
+            >
+              {getStatusIcon(history.new_status)}
             </div>
-            {history.customer_visible_notes && (
-              <p className="text-sm text-gray-600 mt-1">{history.customer_visible_notes}</p>
-            )}
-            {history.change_reason && (
-              <p className="text-xs text-gray-500 mt-1">Reason: {history.change_reason}</p>
-            )}
-            <p className="text-xs text-gray-400 mt-1">Updated by {history.changed_by_name}</p>
-            {index < statusHistory.length - 1 && (
-              <div className="w-px h-6 bg-gray-200 ml-4 mt-2"></div>
-            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-900">
+                  {history.new_status.replace('_', ' ').toUpperCase()}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {format(new Date(history.created_at), 'MMM dd, yyyy HH:mm')}
+                </p>
+              </div>
+              {history.customer_visible_notes && (
+                <p className="text-sm text-gray-600 mt-1">{history.customer_visible_notes}</p>
+              )}
+              {history.change_reason && (
+                <p className="text-xs text-gray-500 mt-1">Reason: {history.change_reason}</p>
+              )}
+              <p className="text-xs text-gray-400 mt-1">Updated by {history.changed_by_name}</p>
+              {index < statusHistory.length - 1 && (
+                <div className="w-px h-6 bg-gray-200 ml-4 mt-2"></div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-});
+        ))}
+      </div>
+    );
+  },
+);
 
 export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
@@ -188,20 +263,28 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
   const [isNewRequestDialogOpen, setIsNewRequestDialogOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [isSatisfactionFormOpen, setIsSatisfactionFormOpen] = useState(false);
-  const [selectedSurveyId, setSelectedSurveyId] = useState<string>("");
-  
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string>('');
+
   const queryClient = useQueryClient();
 
   // Optimized refresh intervals - reduced from aggressive 30s polling
   const [refreshInterval, setRefreshInterval] = useState(3 * 60 * 1000); // 3 minutes for less critical updates
   const [priorityRefreshInterval, setPriorityRefreshInterval] = useState(2 * 60 * 1000); // 2 minutes for active requests
-  
+
   // Fetch service requests with pagination - Optimized for large datasets
-  const { data: serviceRequestsResponse, isLoading: isLoadingRequests, refetch: refetchRequests } = useQuery({
-    queryKey: ['/api/customer-portal/service-requests', { page: currentPage, limit: pageSize, status: selectedStatus, search: searchQuery }],
-    queryFn: () => apiRequest(
-      `/api/customer-portal/service-requests?page=${currentPage}&limit=${pageSize}&status=${selectedStatus !== 'all' ? selectedStatus : ''}&search=${encodeURIComponent(searchQuery)}`
-    ),
+  const {
+    data: serviceRequestsResponse,
+    isLoading: isLoadingRequests,
+    refetch: refetchRequests,
+  } = useQuery({
+    queryKey: [
+      '/api/customer-portal/service-requests',
+      { page: currentPage, limit: pageSize, status: selectedStatus, search: searchQuery },
+    ],
+    queryFn: () =>
+      apiRequest(
+        `/api/customer-portal/service-requests?page=${currentPage}&limit=${pageSize}&status=${selectedStatus !== 'all' ? selectedStatus : ''}&search=${encodeURIComponent(searchQuery)}`,
+      ),
     staleTime: 60 * 1000, // Consider data fresh for 1 minute
     refetchInterval: priorityRefreshInterval, // 2 minutes instead of 30 seconds
     refetchIntervalInBackground: false, // Don't refetch when tab is not visible
@@ -213,28 +296,30 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
   // Old format: { success: true, data: [...], count: 123 } or just [...] array
   const serviceRequests = useMemo(() => {
     if (!serviceRequestsResponse) return [];
-    
+
     // Handle array response (legacy format)
     if (Array.isArray(serviceRequestsResponse)) {
       return serviceRequestsResponse;
     }
-    
+
     // Handle object response with data property
     return serviceRequestsResponse?.data || [];
   }, [serviceRequestsResponse]);
-  
+
   const totalItems = useMemo(() => {
     if (!serviceRequestsResponse) return 0;
-    
+
     // Handle array response (legacy format)
     if (Array.isArray(serviceRequestsResponse)) {
       return serviceRequestsResponse.length;
     }
-    
+
     // Handle new pagination format (total) or old format (count)
-    return serviceRequestsResponse?.total ?? serviceRequestsResponse?.count ?? serviceRequests.length;
+    return (
+      serviceRequestsResponse?.total ?? serviceRequestsResponse?.count ?? serviceRequests.length
+    );
   }, [serviceRequestsResponse, serviceRequests]);
-  
+
   const totalPages = Math.ceil(totalItems / pageSize);
 
   // Fetch status history for selected request - Only fetch when needed
@@ -255,7 +340,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
 
   // Create new service request mutation
   const createRequestMutation = useMutation({
-    mutationFn: (data: NewServiceRequestForm) => 
+    mutationFn: (data: NewServiceRequestForm) =>
       apiRequest('/api/customer-portal/service-requests', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -284,33 +369,38 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
   });
 
   // Memoized summary metrics calculation - prevents recalculation on every render
-  const summaryMetrics = useMemo(() => ({
-    total: serviceRequests.length,
-    active: serviceRequests.filter((req: ServiceRequest) => 
-      ['submitted', 'acknowledged', 'assigned', 'in_progress'].includes(req.status)
-    ).length,
-    completed: serviceRequests.filter((req: ServiceRequest) => 
-      req.status === 'completed'
-    ).length,
-    urgent: serviceRequests.filter((req: ServiceRequest) => 
-      req.priority === 'urgent' && !['completed', 'cancelled'].includes(req.status)
-    ).length,
-  }), [serviceRequests]);
+  const summaryMetrics = useMemo(
+    () => ({
+      total: serviceRequests.length,
+      active: serviceRequests.filter((req: ServiceRequest) =>
+        ['submitted', 'acknowledged', 'assigned', 'in_progress'].includes(req.status),
+      ).length,
+      completed: serviceRequests.filter((req: ServiceRequest) => req.status === 'completed').length,
+      urgent: serviceRequests.filter(
+        (req: ServiceRequest) =>
+          req.priority === 'urgent' && !['completed', 'cancelled'].includes(req.status),
+      ).length,
+    }),
+    [serviceRequests],
+  );
 
   // With server-side filtering, no need for client-side filtering
   // All filtering is now handled by the API with pagination
   const filteredRequests = serviceRequests;
 
   // Memoized pagination controls
-  const paginationInfo = useMemo(() => ({
-    currentPage,
-    totalPages,
-    totalItems,
-    hasNextPage: currentPage < totalPages,
-    hasPreviousPage: currentPage > 1,
-    startItem: (currentPage - 1) * pageSize + 1,
-    endItem: Math.min(currentPage * pageSize, totalItems)
-  }), [currentPage, totalPages, totalItems, pageSize]);
+  const paginationInfo = useMemo(
+    () => ({
+      currentPage,
+      totalPages,
+      totalItems,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
+      startItem: (currentPage - 1) * pageSize + 1,
+      endItem: Math.min(currentPage * pageSize, totalItems),
+    }),
+    [currentPage, totalPages, totalItems, pageSize],
+  );
 
   // Memoized page change handlers
   const handlePageChange = useCallback((newPage: number) => {
@@ -323,25 +413,34 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
   }, []);
 
   // Memoized callbacks to prevent unnecessary re-renders
-  const onSubmit = useCallback((data: NewServiceRequestForm) => {
-    createRequestMutation.mutate(data);
-  }, [createRequestMutation]);
+  const onSubmit = useCallback(
+    (data: NewServiceRequestForm) => {
+      createRequestMutation.mutate(data);
+    },
+    [createRequestMutation],
+  );
 
   // Memoized helper function to find satisfaction survey for a service request
-  const getSurveyForRequest = useCallback((serviceRequestId: string) => {
-    return satisfactionSurveys.find((survey: any) => 
-      survey.related_service_request_id === serviceRequestId
-    );
-  }, [satisfactionSurveys]);
+  const getSurveyForRequest = useCallback(
+    (serviceRequestId: string) => {
+      return satisfactionSurveys.find(
+        (survey: any) => survey.related_service_request_id === serviceRequestId,
+      );
+    },
+    [satisfactionSurveys],
+  );
 
   // Memoized helper function to handle satisfaction survey action
-  const handleSurveyAction = useCallback((serviceRequestId: string) => {
-    const survey = getSurveyForRequest(serviceRequestId);
-    if (survey) {
-      setSelectedSurveyId(survey.id);
-      setIsSatisfactionFormOpen(true);
-    }
-  }, [getSurveyForRequest]);
+  const handleSurveyAction = useCallback(
+    (serviceRequestId: string) => {
+      const survey = getSurveyForRequest(serviceRequestId);
+      if (survey) {
+        setSelectedSurveyId(survey.id);
+        setIsSatisfactionFormOpen(true);
+      }
+    },
+    [getSurveyForRequest],
+  );
 
   if (isLoadingRequests) {
     return (
@@ -363,7 +462,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
           color="bg-blue-100"
           testId="metric-total-requests"
         />
-        
+
         <MetricCard
           title="Active Requests"
           value={summaryMetrics.active}
@@ -372,7 +471,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
           onClick={() => setSelectedStatus('in_progress')}
           testId="metric-active-requests"
         />
-        
+
         <MetricCard
           title="Completed"
           value={summaryMetrics.completed}
@@ -381,7 +480,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
           onClick={() => setSelectedStatus('completed')}
           testId="metric-completed-requests"
         />
-        
+
         <MetricCard
           title="Urgent"
           value={summaryMetrics.urgent}
@@ -405,9 +504,12 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
               data-testid="input-search-requests"
             />
           </div>
-          
+
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-40 touch-target min-h-[44px]" data-testid="select-status-filter">
+            <SelectTrigger
+              className="w-40 touch-target min-h-[44px]"
+              data-testid="select-status-filter"
+            >
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -445,7 +547,10 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                         <FormLabel>Request Type</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-request-type" className="touch-target min-h-[44px]">
+                            <SelectTrigger
+                              data-testid="select-request-type"
+                              className="touch-target min-h-[44px]"
+                            >
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
                           </FormControl>
@@ -460,7 +565,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="priority"
@@ -469,7 +574,10 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                         <FormLabel>Priority</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-priority" className="touch-target min-h-[44px]">
+                            <SelectTrigger
+                              data-testid="select-priority"
+                              className="touch-target min-h-[44px]"
+                            >
                               <SelectValue placeholder="Select priority" />
                             </SelectTrigger>
                           </FormControl>
@@ -493,7 +601,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                     <FormItem>
                       <FormLabel>Subject</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           placeholder="Brief description of the issue..."
                           data-testid="input-subject"
                           {...field}
@@ -511,7 +619,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea 
+                        <Textarea
                           placeholder="Detailed description of the issue or request..."
                           className="min-h-20"
                           data-testid="textarea-description"
@@ -531,7 +639,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       <FormItem>
                         <FormLabel>Equipment Make</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             placeholder="Canon, HP, etc."
                             data-testid="input-equipment-make"
                             {...field}
@@ -541,7 +649,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="equipment_model"
@@ -549,7 +657,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       <FormItem>
                         <FormLabel>Equipment Model</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             placeholder="Model number"
                             data-testid="input-equipment-model"
                             {...field}
@@ -559,7 +667,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="equipment_serial"
@@ -567,7 +675,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       <FormItem>
                         <FormLabel>Serial Number</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             placeholder="Serial number"
                             data-testid="input-equipment-serial"
                             {...field}
@@ -588,7 +696,10 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                         <FormLabel>Preferred Contact Method</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-contact-method" className="touch-target min-h-[44px]">
+                            <SelectTrigger
+                              data-testid="select-contact-method"
+                              className="touch-target min-h-[44px]"
+                            >
                               <SelectValue placeholder="How should we contact you?" />
                             </SelectTrigger>
                           </FormControl>
@@ -602,7 +713,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="urgency_reason"
@@ -610,7 +721,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                       <FormItem>
                         <FormLabel>Urgency Reason (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             placeholder="Why is this urgent?"
                             data-testid="input-urgency-reason"
                             {...field}
@@ -623,17 +734,17 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setIsNewRequestDialogOpen(false)}
                     data-testid="button-cancel-request"
                     className="touch-target min-h-[44px] px-6"
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createRequestMutation.isPending}
                     data-testid="button-submit-request"
                     className="touch-target min-h-[44px] px-6"
@@ -662,9 +773,9 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Service Requests</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => refetchRequests()}
                   data-testid="button-refresh-requests"
                   className="touch-target"
@@ -678,14 +789,15 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
               {filteredRequests.length === 0 ? (
                 <div className="text-center py-8" data-testid="no-requests-message">
                   <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No service requests found</h3>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No service requests found
+                  </h3>
                   <p className="text-gray-600 mb-4">
-                    {selectedStatus === 'all' ? 
-                      "You haven't created any service requests yet." : 
-                      `No requests found with status: ${selectedStatus}`
-                    }
+                    {selectedStatus === 'all'
+                      ? "You haven't created any service requests yet."
+                      : `No requests found with status: ${selectedStatus}`}
                   </p>
-                  <Button 
+                  <Button
                     onClick={() => setIsNewRequestDialogOpen(true)}
                     className="touch-target min-h-[44px] px-6"
                     data-testid="button-create-first-request"
@@ -696,10 +808,12 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
               ) : (
                 <div className="space-y-4" data-testid="requests-list">
                   {filteredRequests.map((request: ServiceRequest) => (
-                    <div 
+                    <div
                       key={request.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 touch-target min-h-[44px] ${
-                        selectedRequestId === request.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                        selectedRequestId === request.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200'
                       }`}
                       onClick={() => setSelectedRequestId(request.id)}
                       data-testid={`request-item-${request.id}`}
@@ -716,17 +830,26 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                             </Badge>
                             <span className="text-xs text-gray-500">#{request.requestNumber}</span>
                           </div>
-                          
+
                           <h4 className="font-medium text-gray-900 mb-1">{request.subject}</h4>
-                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">{request.description}</p>
-                          
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            {request.description}
+                          </p>
+
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500">
-                            <span>Created: {format(new Date(request.createdAt), 'MMM dd, yyyy')}</span>
+                            <span>
+                              Created: {format(new Date(request.createdAt), 'MMM dd, yyyy')}
+                            </span>
                             {request.equipmentMake && (
-                              <span>Equipment: {request.equipmentMake} {request.equipmentModel}</span>
+                              <span>
+                                Equipment: {request.equipmentMake} {request.equipmentModel}
+                              </span>
                             )}
                             {request.estimatedCompletionDate && (
-                              <span>Est. completion: {format(new Date(request.estimatedCompletionDate), 'MMM dd')}</span>
+                              <span>
+                                Est. completion:{' '}
+                                {format(new Date(request.estimatedCompletionDate), 'MMM dd')}
+                              </span>
                             )}
                           </div>
 
@@ -740,14 +863,24 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2">
                                         <Heart className="h-4 w-4 text-pink-500" />
-                                        <span className="text-sm text-gray-600">Satisfaction Survey</span>
-                                        <Badge 
-                                          variant={survey.status === 'completed' ? 'secondary' : 
-                                                  survey.status === 'started' ? 'default' : 'outline'}
+                                        <span className="text-sm text-gray-600">
+                                          Satisfaction Survey
+                                        </span>
+                                        <Badge
+                                          variant={
+                                            survey.status === 'completed'
+                                              ? 'secondary'
+                                              : survey.status === 'started'
+                                                ? 'default'
+                                                : 'outline'
+                                          }
                                           className="text-xs"
                                         >
-                                          {survey.status === 'completed' ? 'Completed' :
-                                           survey.status === 'started' ? 'In Progress' : 'Available'}
+                                          {survey.status === 'completed'
+                                            ? 'Completed'
+                                            : survey.status === 'started'
+                                              ? 'In Progress'
+                                              : 'Available'}
                                         </Badge>
                                       </div>
                                       <Button
@@ -792,7 +925,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="flex flex-col items-center gap-2">
                           <ChevronRight className="h-4 w-4 text-gray-400" />
                           {/* Status indicator for completed requests with surveys */}
@@ -829,7 +962,10 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
               </CardHeader>
               <CardContent>
                 {isLoadingHistory ? (
-                  <div className="flex items-center justify-center py-8" data-testid="loading-timeline">
+                  <div
+                    className="flex items-center justify-center py-8"
+                    data-testid="loading-timeline"
+                  >
                     <Loader2 className="h-6 w-6 animate-spin" />
                     <span className="ml-2">Loading timeline...</span>
                   </div>
@@ -866,12 +1002,14 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
           isOpen={isSatisfactionFormOpen}
           onClose={() => {
             setIsSatisfactionFormOpen(false);
-            setSelectedSurveyId("");
+            setSelectedSurveyId('');
           }}
           onComplete={() => {
             // Refresh surveys and service requests data after completion
-            queryClient.invalidateQueries({ queryKey: ["/api/customer-portal/satisfaction/surveys"] });
-            queryClient.invalidateQueries({ queryKey: ["/api/customer-portal/service-requests"] });
+            queryClient.invalidateQueries({
+              queryKey: ['/api/customer-portal/satisfaction/surveys'],
+            });
+            queryClient.invalidateQueries({ queryKey: ['/api/customer-portal/service-requests'] });
           }}
         />
       )}
@@ -882,10 +1020,14 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
-                Showing {paginationInfo.startItem} to {paginationInfo.endItem} of {paginationInfo.totalItems} requests
+                Showing {paginationInfo.startItem} to {paginationInfo.endItem} of{' '}
+                {paginationInfo.totalItems} requests
               </div>
               <div className="flex items-center gap-2">
-                <Select value={pageSize.toString()} onValueChange={(value) => handlePageSizeChange(Number(value))}>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(value) => handlePageSizeChange(Number(value))}
+                >
                   <SelectTrigger className="w-20" data-testid="select-page-size">
                     <SelectValue />
                   </SelectTrigger>
@@ -895,8 +1037,8 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                     <SelectItem value="50">50</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={!paginationInfo.hasPreviousPage}
@@ -907,8 +1049,8 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                 <span className="text-sm px-2">
                   Page {currentPage} of {totalPages}
                 </span>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={!paginationInfo.hasNextPage}

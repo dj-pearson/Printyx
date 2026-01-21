@@ -1,4 +1,5 @@
 # Authentication Improvement Plan
+
 **Date:** January 7, 2026  
 **Project:** Printyx  
 **Status:** In Progress
@@ -66,12 +67,14 @@ This document outlines improvements to Printyx's authentication system to align 
 ### 1. **Email Verification Flow** (Priority: High)
 
 **Current Implementation:**
+
 - Custom token-based verification (`server/auth-routes.ts:479-485`)
 - Token stored in `email_verifications` table
 - 24-hour expiration
 - Link sent via email
 
 **Best Practice (from AUTH_SETUP_DOCUMENTATION.md):**
+
 - Use Supabase OTP (One-Time Password)
 - 6-digit code sent via email
 - Shorter expiration (10 minutes)
@@ -79,6 +82,7 @@ This document outlines improvements to Printyx's authentication system to align 
 - Better UX (user stays on page, enters code)
 
 **Recommended Changes:**
+
 ```typescript
 // Instead of custom verification token:
 await db.insert(emailVerifications).values({...});
@@ -95,6 +99,7 @@ const { data, error } = await supabase.auth.signUp({
 ```
 
 **Implementation Files to Update:**
+
 - `server/auth-routes.ts` - Remove custom verification logic
 - `client/src/pages/Signup.tsx` - Add OTP verification UI
 - Create `client/src/components/auth/OTPVerification.tsx` - New component
@@ -104,12 +109,14 @@ const { data, error } = await supabase.auth.signUp({
 ### 2. **Signup Flow Architecture** (Priority: High)
 
 **Current Implementation:**
+
 - Direct database insertion (`server/auth-routes.ts:416-519`)
 - Creates tenant first, then user
 - Custom password hashing with bcrypt
 - Custom email verification system
 
 **Best Practice:**
+
 - Use `supabase.auth.signUp()` for user creation
 - Supabase handles password hashing
 - Supabase handles email verification
@@ -117,6 +124,7 @@ const { data, error } = await supabase.auth.signUp({
 - Store tenant metadata in `auth.users.app_metadata`
 
 **Recommended Architecture:**
+
 ```typescript
 // Frontend (client/src/pages/Signup.tsx)
 const { data, error } = await supabase.auth.signUp({
@@ -128,7 +136,7 @@ const { data, error } = await supabase.auth.signUp({
       lastName: data.lastName,
     },
     // Tenant creation happens via webhook/trigger
-  }
+  },
 });
 
 // Backend: Database trigger on auth.users INSERT
@@ -136,6 +144,7 @@ const { data, error } = await supabase.auth.signUp({
 ```
 
 **Benefits:**
+
 - Single source of truth (Supabase Auth)
 - No password hash mismatch issues
 - Built-in security features
@@ -147,10 +156,12 @@ const { data, error } = await supabase.auth.signUp({
 ### 3. **Input Validation & Sanitization** (Priority: Medium)
 
 **Current Implementation:**
+
 - Zod validation for schema structure
 - No explicit sanitization utilities
 
 **Best Practice (from AUTH_SETUP_DOCUMENTATION.md):**
+
 ```typescript
 // client/src/lib/validations.ts (needs to be created)
 export function sanitizeHTML(input: string): string {
@@ -186,6 +197,7 @@ export function sanitizeURL(url: string): string {
 ```
 
 **Files to Update:**
+
 - Create `client/src/lib/validations.ts`
 - Update `client/src/pages/Login.tsx` - Use sanitization
 - Update `client/src/pages/Signup.tsx` - Use sanitization
@@ -196,16 +208,19 @@ export function sanitizeURL(url: string): string {
 ### 4. **Enhanced Open Redirect Prevention** (Priority: Medium)
 
 **Current Implementation:**
+
 - Login page has some validation (`Login.tsx:111-149`)
 - Checks for relative paths
 - Blocks javascript: and data: schemes
 
 **Best Practice:**
+
 - Whitelist of allowed redirect paths
 - Decode URL encoding to prevent bypass
 - Validate against allowed patterns
 
 **Recommended Enhancement:**
+
 ```typescript
 // client/src/lib/auth-utils.ts (new file)
 const ALLOWED_REDIRECT_PATHS = [
@@ -228,7 +243,7 @@ const BLOCKED_PREFIXES = [
 
 export function getSafeRedirectRoute(route: string | null): string {
   if (!route) return '/';
-  
+
   // Decode to prevent bypass
   let decoded: string;
   try {
@@ -236,27 +251,27 @@ export function getSafeRedirectRoute(route: string | null): string {
   } catch {
     return '/';
   }
-  
+
   // Must be relative
   if (!decoded.startsWith('/')) return '/';
   if (decoded.startsWith('//')) return '/';
-  
+
   // Block malicious schemes
   const lowercase = decoded.toLowerCase();
   if (lowercase.includes('javascript:') || lowercase.includes('data:')) {
     return '/';
   }
-  
+
   // Block auth pages
-  if (BLOCKED_PREFIXES.some(prefix => decoded.startsWith(prefix))) {
+  if (BLOCKED_PREFIXES.some((prefix) => decoded.startsWith(prefix))) {
     return '/';
   }
-  
+
   // Validate pattern
   if (!/^[a-zA-Z0-9\-_/?#&=]+$/.test(decoded)) {
     return '/';
   }
-  
+
   return decoded;
 }
 ```
@@ -266,18 +281,20 @@ export function getSafeRedirectRoute(route: string | null): string {
 ### 5. **OAuth Redirect Preservation** (Priority: Low)
 
 **Current Implementation:**
+
 - `Login.tsx:56` - Hardcoded `/auth/callback`
 - Doesn't preserve intended destination
 
 **Best Practice:**
+
 ```typescript
 const signInWithOAuth = async (provider: 'google' | 'apple') => {
   // Get the original redirect intent
   const lastRoute = localStorage.getItem('printyx_last_route') || '/';
   const redirectTo = getSafeRedirectRoute(lastRoute);
-  
+
   const callbackUrl = `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`;
-  
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -288,6 +305,7 @@ const signInWithOAuth = async (provider: 'google' | 'apple') => {
 ```
 
 **Files to Update:**
+
 - `client/src/pages/Login.tsx` - OAuth redirect preservation
 - `client/src/pages/AuthCallback.tsx` - Read redirect parameter
 
@@ -296,39 +314,44 @@ const signInWithOAuth = async (provider: 'google' | 'apple') => {
 ### 6. **Real-Time Password Strength Indicator** (Priority: Low)
 
 **Current Implementation:**
+
 - Static validation messages
 - No visual feedback during typing
 
 **Best Practice:**
+
 ```typescript
 // Real-time strength calculation
-const calculatePasswordStrength = (password: string): {
+const calculatePasswordStrength = (
+  password: string,
+): {
   score: number;
   feedback: string[];
 } => {
   let score = 0;
   const feedback: string[] = [];
-  
+
   if (password.length >= 12) score++;
   else feedback.push('At least 12 characters');
-  
+
   if (/[A-Z]/.test(password)) score++;
   else feedback.push('One uppercase letter');
-  
+
   if (/[a-z]/.test(password)) score++;
   else feedback.push('One lowercase letter');
-  
+
   if (/[0-9]/.test(password)) score++;
   else feedback.push('One number');
-  
+
   if (/[^A-Za-z0-9]/.test(password)) score++;
   else feedback.push('One special character');
-  
+
   return { score, feedback };
 };
 ```
 
 **Implementation:**
+
 - Create `client/src/components/auth/PasswordStrengthIndicator.tsx`
 - Update `client/src/pages/Signup.tsx` to use component
 - Visual progress bar with color coding (red → yellow → green)
@@ -338,19 +361,23 @@ const calculatePasswordStrength = (password: string): {
 ### 7. **Supabase Email Templates** (Priority: Medium)
 
 **Current Implementation:**
+
 - Custom email templates in `server/services/email-templates.ts`
 - Sent via custom email service
 
 **Best Practice:**
+
 - Configure Supabase email templates
 - Use Supabase Auth's built-in email system
 - Customize templates in Supabase dashboard
 
 **Configuration Location:**
+
 - Supabase Dashboard → Authentication → Email Templates
 - Or: `supabase/config.toml` for self-hosted
 
 **Templates to Configure:**
+
 1. **Confirmation** - Email verification
 2. **Magic Link** - Passwordless login
 3. **Recovery** - Password reset
@@ -358,6 +385,7 @@ const calculatePasswordStrength = (password: string): {
 5. **Invite** - Team member invitation
 
 **Example Template Variables:**
+
 ```
 {{ .ConfirmationURL }}
 {{ .Token }}
@@ -371,16 +399,19 @@ const calculatePasswordStrength = (password: string): {
 ## Implementation Priority
 
 ### Phase 1: Critical Security (Week 1)
+
 1. ✅ **Input sanitization utilities** - Prevent XSS and injection
 2. ✅ **Enhanced open redirect prevention** - Security vulnerability
 3. ✅ **Supabase signup integration** - Use auth provider properly
 
 ### Phase 2: User Experience (Week 2)
+
 4. ⏳ **OTP email verification** - Better UX than link-based
 5. ⏳ **Password strength indicator** - Real-time feedback
 6. ⏳ **OAuth redirect preservation** - Seamless flow
 
 ### Phase 3: Infrastructure (Week 3)
+
 7. ⏳ **Supabase email templates** - Leverage built-in system
 8. ⏳ **Database triggers for tenant creation** - Automated provisioning
 9. ⏳ **Audit logging enhancements** - Track all auth events
@@ -390,10 +421,12 @@ const calculatePasswordStrength = (password: string): {
 ## Migration Considerations
 
 ### Breaking Changes
+
 - Email verification flow changes (affects in-progress signups)
 - Signup endpoint response format changes
 
 ### Migration Steps
+
 1. ✅ Add new utilities and components (non-breaking)
 2. ✅ Update signup flow with backward compatibility
 3. ⏳ Test new flow in development
@@ -403,6 +436,7 @@ const calculatePasswordStrength = (password: string): {
 7. ⏳ Remove legacy code after 30 days
 
 ### Rollback Plan
+
 - Keep legacy endpoints active during migration
 - Feature flag for new vs old signup flow
 - Database rollback scripts if needed
@@ -412,12 +446,14 @@ const calculatePasswordStrength = (password: string): {
 ## Testing Requirements
 
 ### Unit Tests
+
 - [ ] Sanitization functions
 - [ ] Password strength calculation
 - [ ] Redirect validation
 - [ ] Token generation and validation
 
 ### Integration Tests
+
 - [ ] Full signup flow (email/password)
 - [ ] Full signup flow (OAuth)
 - [ ] Email verification (OTP)
@@ -426,6 +462,7 @@ const calculatePasswordStrength = (password: string): {
 - [ ] Session persistence across page reload
 
 ### E2E Tests (Playwright)
+
 - [ ] User can sign up with email/password
 - [ ] User receives and enters OTP
 - [ ] User can sign in with Google
@@ -439,6 +476,7 @@ const calculatePasswordStrength = (password: string): {
 ## Monitoring & Metrics
 
 ### Key Metrics to Track
+
 1. **Signup Success Rate** - % of signups that complete
 2. **Email Verification Rate** - % of users who verify within 24h
 3. **OAuth vs Email Signup** - Distribution of auth methods
@@ -448,6 +486,7 @@ const calculatePasswordStrength = (password: string): {
 7. **Token Refresh Failures** - Infrastructure issues
 
 ### Alerting Thresholds
+
 - Signup success rate drops below 80%
 - Email verification rate drops below 60%
 - Account lockouts spike (>10 per hour)
@@ -458,6 +497,7 @@ const calculatePasswordStrength = (password: string): {
 ## Documentation Updates
 
 ### Files to Create/Update
+
 1. ✅ `AUTH_IMPROVEMENT_PLAN.md` (this file)
 2. ⏳ `AUTH_MIGRATION_GUIDE.md` - Step-by-step migration
 3. ⏳ `AUTH_TESTING_GUIDE.md` - QA checklist

@@ -1,7 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, ArrowRight, TrendingUp, AlertTriangle, Zap, Target, Brain, BarChart3, Printer } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  CheckCircle,
+  ArrowRight,
+  TrendingUp,
+  AlertTriangle,
+  Zap,
+  Target,
+  Brain,
+  BarChart3,
+  Printer,
+} from 'lucide-react';
 
 const PredictiveIntelligence = () => {
   return (
@@ -9,22 +19,23 @@ const PredictiveIntelligence = () => {
       {/* Schema.org WebPage Markup */}
       <script type="application/ld+json">
         {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "Predictive Intelligence for Copier Dealers - Stop Reacting, Start Predicting",
-          "description": "Transform your copier dealership with AI-powered predictive intelligence. Prevent equipment failures 30 days in advance, reduce emergency calls by 30-40%, and optimize operations with machine learning.",
-          "url": "https://printyx.com/predictive-intelligence",
-          "mainEntity": {
-            "@type": "SoftwareApplication",
-            "name": "Printyx Predictive Intelligence",
-            "applicationCategory": "BusinessApplication",
-            "offers": {
-              "@type": "Offer",
-              "price": "0",
-              "priceCurrency": "USD",
-              "description": "14-day free trial"
-            }
-          }
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: 'Predictive Intelligence for Copier Dealers - Stop Reacting, Start Predicting',
+          description:
+            'Transform your copier dealership with AI-powered predictive intelligence. Prevent equipment failures 30 days in advance, reduce emergency calls by 30-40%, and optimize operations with machine learning.',
+          url: 'https://printyx.com/predictive-intelligence',
+          mainEntity: {
+            '@type': 'SoftwareApplication',
+            name: 'Printyx Predictive Intelligence',
+            applicationCategory: 'BusinessApplication',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'USD',
+              description: '14-day free trial',
+            },
+          },
         })}
       </script>
 
@@ -36,7 +47,7 @@ const PredictiveIntelligence = () => {
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="hover:bg-gray-100"
                 >
                   <Printer className="h-6 w-6 text-blue-600 mr-2" />
@@ -44,15 +55,12 @@ const PredictiveIntelligence = () => {
                 </Button>
               </div>
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/login'}
-                >
+                <Button variant="outline" onClick={() => (window.location.href = '/login')}>
                   Login
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                 </Button>
@@ -69,20 +77,22 @@ const PredictiveIntelligence = () => {
                 Our #1 Competitive Advantage
               </Badge>
               <h1 className="text-5xl md:text-6xl font-bold mb-6">
-                Stop Reacting.<br />
+                Stop Reacting.
+                <br />
                 <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
                   Start Predicting.
                 </span>
               </h1>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed mb-8">
-                While competitors scramble to fix equipment failures, you'll prevent them 30 days in advance.
-                AI-powered predictive intelligence transforms copier dealer operations from reactive chaos to proactive precision.
+                While competitors scramble to fix equipment failures, you'll prevent them 30 days in
+                advance. AI-powered predictive intelligence transforms copier dealer operations from
+                reactive chaos to proactive precision.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
                   size="lg"
                   className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -91,7 +101,9 @@ const PredictiveIntelligence = () => {
                   size="lg"
                   variant="outline"
                   className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                  onClick={() => window.location.href = '/blog/ai-predictive-maintenance-vs-reactive-service'}
+                  onClick={() =>
+                    (window.location.href = '/blog/ai-predictive-maintenance-vs-reactive-service')
+                  }
                 >
                   Read Technical Deep-Dive
                 </Button>
@@ -108,8 +120,9 @@ const PredictiveIntelligence = () => {
                 The Reactive Model is Broken
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Most dealers still operate the same way they did 20 years ago: equipment fails, customers call,
-                technicians rush out. It's expensive, inefficient, and frustrating for everyone.
+                Most dealers still operate the same way they did 20 years ago: equipment fails,
+                customers call, technicians rush out. It's expensive, inefficient, and frustrating
+                for everyone.
               </p>
             </div>
 
@@ -130,28 +143,38 @@ const PredictiveIntelligence = () => {
                       <div className="w-2 h-2 bg-red-600 rounded-full mr-3 mt-2"></div>
                       <div>
                         <strong className="text-gray-900">Emergency calls cost 2-3x more</strong>
-                        <p className="text-gray-600 text-sm">Rushed trips, overtime labor, expedited parts orders</p>
+                        <p className="text-gray-600 text-sm">
+                          Rushed trips, overtime labor, expedited parts orders
+                        </p>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <div className="w-2 h-2 bg-red-600 rounded-full mr-3 mt-2"></div>
                       <div>
-                        <strong className="text-gray-900">Customer downtime damages reputation</strong>
-                        <p className="text-gray-600 text-sm">Unexpected failures mean lost productivity and unhappy clients</p>
+                        <strong className="text-gray-900">
+                          Customer downtime damages reputation
+                        </strong>
+                        <p className="text-gray-600 text-sm">
+                          Unexpected failures mean lost productivity and unhappy clients
+                        </p>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <div className="w-2 h-2 bg-red-600 rounded-full mr-3 mt-2"></div>
                       <div>
                         <strong className="text-gray-900">Scheduling chaos wastes time</strong>
-                        <p className="text-gray-600 text-sm">Planned routes disrupted by emergency runs</p>
+                        <p className="text-gray-600 text-sm">
+                          Planned routes disrupted by emergency runs
+                        </p>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <div className="w-2 h-2 bg-red-600 rounded-full mr-3 mt-2"></div>
                       <div>
                         <strong className="text-gray-900">Inventory management nightmare</strong>
-                        <p className="text-gray-600 text-sm">Either overstocked (cash tied up) or understocked (delays)</p>
+                        <p className="text-gray-600 text-sm">
+                          Either overstocked (cash tied up) or understocked (delays)
+                        </p>
                       </div>
                     </li>
                   </ul>
@@ -173,29 +196,41 @@ const PredictiveIntelligence = () => {
                     <li className="flex items-start">
                       <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                       <div>
-                        <strong className="text-gray-900">Predict failures 30 days in advance</strong>
-                        <p className="text-gray-600 text-sm">80%+ accuracy using ML pattern recognition</p>
+                        <strong className="text-gray-900">
+                          Predict failures 30 days in advance
+                        </strong>
+                        <p className="text-gray-600 text-sm">
+                          80%+ accuracy using ML pattern recognition
+                        </p>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                       <div>
-                        <strong className="text-gray-900">30-40% reduction in emergency calls</strong>
-                        <p className="text-gray-600 text-sm">Proactive maintenance prevents catastrophic failures</p>
+                        <strong className="text-gray-900">
+                          30-40% reduction in emergency calls
+                        </strong>
+                        <p className="text-gray-600 text-sm">
+                          Proactive maintenance prevents catastrophic failures
+                        </p>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                       <div>
                         <strong className="text-gray-900">Optimized scheduling and routing</strong>
-                        <p className="text-gray-600 text-sm">Plan maintenance during convenient times</p>
+                        <p className="text-gray-600 text-sm">
+                          Plan maintenance during convenient times
+                        </p>
                       </div>
                     </li>
                     <li className="flex items-start">
                       <CheckCircle className="h-5 w-5 text-green-600 mr-2 mt-0.5" />
                       <div>
                         <strong className="text-gray-900">Automated parts ordering</strong>
-                        <p className="text-gray-600 text-sm">Order exactly what you need, when you need it</p>
+                        <p className="text-gray-600 text-sm">
+                          Order exactly what you need, when you need it
+                        </p>
                       </div>
                     </li>
                   </ul>
@@ -213,7 +248,8 @@ const PredictiveIntelligence = () => {
                 How Predictive Intelligence Works
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our AI engine analyzes multiple data sources to predict equipment failures before they happen
+                Our AI engine analyzes multiple data sources to predict equipment failures before
+                they happen
               </p>
             </div>
 
@@ -225,7 +261,8 @@ const PredictiveIntelligence = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">1. Data Collection</h3>
                   <p className="text-gray-600 mb-3">
-                    Continuously gather data from service history, meter readings, equipment specs, and technician notes.
+                    Continuously gather data from service history, meter readings, equipment specs,
+                    and technician notes.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Service request patterns</li>
@@ -243,7 +280,8 @@ const PredictiveIntelligence = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">2. Pattern Recognition</h3>
                   <p className="text-gray-600 mb-3">
-                    ML algorithms identify failure patterns invisible to humans across thousands of devices.
+                    ML algorithms identify failure patterns invisible to humans across thousands of
+                    devices.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Pre-failure indicators</li>
@@ -261,7 +299,8 @@ const PredictiveIntelligence = () => {
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-3">3. Predictive Scoring</h3>
                   <p className="text-gray-600 mb-3">
-                    Each device receives a health score (0-100) with specific failure predictions and timelines.
+                    Each device receives a health score (0-100) with specific failure predictions
+                    and timelines.
                   </p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Probability percentages</li>
@@ -297,11 +336,10 @@ const PredictiveIntelligence = () => {
         <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">
-                Real Results from Real Dealers
-              </h2>
+              <h2 className="text-4xl font-bold mb-4">Real Results from Real Dealers</h2>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-                Dealers who implement predictive intelligence see dramatic improvements across every metric
+                Dealers who implement predictive intelligence see dramatic improvements across every
+                metric
               </p>
             </div>
 
@@ -328,7 +366,8 @@ const PredictiveIntelligence = () => {
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold mb-4">Case Study: Mid-Sized Dealer</h3>
                 <p className="text-blue-100 mb-4">
-                  A 15-technician dealer in the Southeast implemented predictive intelligence in Q1 2024:
+                  A 15-technician dealer in the Southeast implemented predictive intelligence in Q1
+                  2024:
                 </p>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="flex items-center">
@@ -361,7 +400,8 @@ const PredictiveIntelligence = () => {
                 Why This is Impossible to Replicate Quickly
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                This isn't a feature you can bolt onto legacy systems. It requires fundamental architectural changes that take years to build.
+                This isn't a feature you can bolt onto legacy systems. It requires fundamental
+                architectural changes that take years to build.
               </p>
             </div>
 
@@ -372,11 +412,12 @@ const PredictiveIntelligence = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    ML models require cloud-native databases optimized for time-series analysis and pattern recognition.
+                    ML models require cloud-native databases optimized for time-series analysis and
+                    pattern recognition.
                   </p>
                   <p className="text-sm text-gray-600">
-                    Legacy systems store data in outdated formats designed for transactions, not ML training.
-                    Rebuilding data architecture takes 18-24 months minimum.
+                    Legacy systems store data in outdated formats designed for transactions, not ML
+                    training. Rebuilding data architecture takes 18-24 months minimum.
                   </p>
                 </CardContent>
               </Card>
@@ -387,11 +428,13 @@ const PredictiveIntelligence = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    Training accurate prediction models requires modern cloud infrastructure with GPU acceleration.
+                    Training accurate prediction models requires modern cloud infrastructure with
+                    GPU acceleration.
                   </p>
                   <p className="text-sm text-gray-600">
-                    On-premise legacy systems lack the computational resources for real-time predictions at scale.
-                    Building this infrastructure from scratch takes 12-18 months.
+                    On-premise legacy systems lack the computational resources for real-time
+                    predictions at scale. Building this infrastructure from scratch takes 12-18
+                    months.
                   </p>
                 </CardContent>
               </Card>
@@ -402,11 +445,13 @@ const PredictiveIntelligence = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    Effective AI improves daily through automated retraining pipelines and A/B testing infrastructure.
+                    Effective AI improves daily through automated retraining pipelines and A/B
+                    testing infrastructure.
                   </p>
                   <p className="text-sm text-gray-600">
-                    Legacy vendors update quarterly at best. Our platform iterates weekly with the latest ML techniques.
-                    Catching up requires complete development process transformation.
+                    Legacy vendors update quarterly at best. Our platform iterates weekly with the
+                    latest ML techniques. Catching up requires complete development process
+                    transformation.
                   </p>
                 </CardContent>
               </Card>
@@ -419,7 +464,8 @@ const PredictiveIntelligence = () => {
                     Our 2-3 Year Technical Advantage
                   </h3>
                   <p className="text-gray-700 max-w-2xl">
-                    We've been building this infrastructure since day one. Legacy vendors would need to:
+                    We've been building this infrastructure since day one. Legacy vendors would need
+                    to:
                   </p>
                   <ul className="text-left mt-4 space-y-2 text-gray-700">
                     <li className="flex items-center">
@@ -452,14 +498,14 @@ const PredictiveIntelligence = () => {
               Stop Reacting. Start Predicting.
             </h2>
             <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              Join forward-thinking dealers who are transforming their operations with predictive intelligence.
-              See the platform in action with a free 14-day trial.
+              Join forward-thinking dealers who are transforming their operations with predictive
+              intelligence. See the platform in action with a free 14-day trial.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                onClick={() => window.location.href = '/signup'}
+                onClick={() => (window.location.href = '/signup')}
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -468,7 +514,9 @@ const PredictiveIntelligence = () => {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => window.location.href = '/blog/ai-predictive-maintenance-vs-reactive-service'}
+                onClick={() =>
+                  (window.location.href = '/blog/ai-predictive-maintenance-vs-reactive-service')
+                }
               >
                 Read Technical Deep-Dive
               </Button>

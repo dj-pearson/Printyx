@@ -6,7 +6,7 @@ import {
   installationSchedules,
   businessRecords,
   repCapacity,
-  users
+  users,
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, lt, inArray } from 'drizzle-orm';
 
@@ -93,7 +93,7 @@ export class PredictiveServiceDispatchService {
    */
   async analyzeAndDispatch(
     serialNumber: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<PredictiveDispatchResult> {
     const startTime = Date.now();
 
@@ -106,10 +106,7 @@ export class PredictiveServiceDispatchService {
       }
 
       // Step 2: Analyze device health
-      const healthAnalysis = await this.analyzeDeviceHealth(
-        recentMetrics,
-        tenantId
-      );
+      const healthAnalysis = await this.analyzeDeviceHealth(recentMetrics, tenantId);
 
       // Step 3: Decide if dispatch is needed
       const needsDispatch =
@@ -133,11 +130,7 @@ export class PredictiveServiceDispatchService {
 
       // Step 4: Find best technician
       const device = recentMetrics[0];
-      const technician = await this.findBestTechnician(
-        device,
-        healthAnalysis,
-        tenantId
-      );
+      const technician = await this.findBestTechnician(device, healthAnalysis, tenantId);
 
       if (!technician) {
         throw new Error('No available technicians found');
@@ -145,19 +138,10 @@ export class PredictiveServiceDispatchService {
 
       // Step 5: Schedule service call
       const scheduledDate = technician.availability.nextAvailableSlot || new Date();
-      await this.createServiceCall(
-        device,
-        technician,
-        healthAnalysis,
-        scheduledDate,
-        tenantId
-      );
+      await this.createServiceCall(device, technician, healthAnalysis, scheduledDate, tenantId);
 
       // Step 6: Auto-order parts if needed
-      const partsOrdered = await this.autoOrderParts(
-        healthAnalysis,
-        tenantId
-      );
+      const partsOrdered = await this.autoOrderParts(healthAnalysis, tenantId);
 
       // Step 7: Calculate prevented downtime
       const preventedDowntime = this.calculatePreventedDowntime(healthAnalysis);
@@ -192,7 +176,7 @@ export class PredictiveServiceDispatchService {
       where: and(
         eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
         eq(clientCollectedMetrics.serialNumber, serialNumber),
-        gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo)
+        gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
       ),
       orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
       limit: 100,
@@ -204,7 +188,7 @@ export class PredictiveServiceDispatchService {
    */
   private async analyzeDeviceHealth(
     metrics: any[],
-    tenantId: string
+    tenantId: string,
   ): Promise<DeviceHealthAnalysis> {
     const latest = metrics[0];
     const issues: HealthIssue[] = [];
@@ -226,7 +210,10 @@ export class PredictiveServiceDispatchService {
           metric: `toner_${color}`,
           currentValue: level,
           threshold: 15,
-          trend: this.calculateTrend(metrics, `toner${color.charAt(0).toUpperCase() + color.slice(1)}`),
+          trend: this.calculateTrend(
+            metrics,
+            `toner${color.charAt(0).toUpperCase() + color.slice(1)}`,
+          ),
         });
       }
     }
@@ -306,7 +293,7 @@ export class PredictiveServiceDispatchService {
       daysUntilPredictedFailure: aiAnalysis.daysUntilFailure,
       issues,
       recommendations: aiAnalysis.recommendations,
-      requiresImmediateAttention: issues.some(i => i.severity === 'critical'),
+      requiresImmediateAttention: issues.some((i) => i.severity === 'critical'),
       maintenanceDue: overallHealth < 70,
     };
   }
@@ -314,14 +301,17 @@ export class PredictiveServiceDispatchService {
   /**
    * Use Claude AI to analyze device patterns and predict failures
    */
-  private async getAIPredictiveAnalysis(metrics: any[], issues: HealthIssue[]): Promise<{
+  private async getAIPredictiveAnalysis(
+    metrics: any[],
+    issues: HealthIssue[],
+  ): Promise<{
     failureRisk: number;
     daysUntilFailure: number | null;
     recommendations: string[];
   }> {
     try {
       const latest = metrics[0];
-      const metricsData = metrics.slice(0, 10).map(m => ({
+      const metricsData = metrics.slice(0, 10).map((m) => ({
         date: m.collectionTimestamp,
         status: m.deviceStatus,
         tonerBlack: m.tonerBlack,
@@ -340,7 +330,7 @@ Recent Metrics (last 10 data points):
 ${JSON.stringify(metricsData, null, 2)}
 
 Current Issues:
-${issues.map(i => `- ${i.severity.toUpperCase()}: ${i.description}`).join('\n')}
+${issues.map((i) => `- ${i.severity.toUpperCase()}: ${i.description}`).join('\n')}
 
 Provide:
 1. Failure risk score (0-100, where 100 = imminent failure)
@@ -358,10 +348,12 @@ Format as JSON:
         model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1000,
         temperature: 0.2,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
       });
 
       const content = message.content[0];
@@ -394,14 +386,11 @@ Format as JSON:
   private async findBestTechnician(
     device: any,
     health: DeviceHealthAnalysis,
-    tenantId: string
+    tenantId: string,
   ): Promise<TechnicianMatch | null> {
     // Get all available technicians
     const technicians = await db.query.repCapacity.findMany({
-      where: and(
-        eq(repCapacity.tenantId, tenantId),
-        eq(repCapacity.isAvailable, true)
-      ),
+      where: and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.isAvailable, true)),
     });
 
     if (technicians.length === 0) {
@@ -416,9 +405,11 @@ Format as JSON:
       let score = 50;
 
       // Check skills match
-      const hasRelevantSkills = tech.skills && tech.skills.some(s =>
-        s.includes('service') || s.includes(device.manufacturer?.toLowerCase())
-      );
+      const hasRelevantSkills =
+        tech.skills &&
+        tech.skills.some(
+          (s) => s.includes('service') || s.includes(device.manufacturer?.toLowerCase()),
+        );
       if (hasRelevantSkills) {
         score += 20;
         reasons.push('Relevant skills');
@@ -448,7 +439,7 @@ Format as JSON:
 
       // Calculate next available slot (simplified)
       const nextSlot = new Date();
-      nextSlot.setHours(nextSlot.getHours() + (tech.currentActiveLeads * 2)); // 2 hours per existing job
+      nextSlot.setHours(nextSlot.getHours() + tech.currentActiveLeads * 2); // 2 hours per existing job
 
       // Get technician name from users table
       const technicianName = await getUserName(tech.userId);
@@ -484,7 +475,7 @@ Format as JSON:
     technician: TechnicianMatch,
     health: DeviceHealthAnalysis,
     scheduledDate: Date,
-    tenantId: string
+    tenantId: string,
   ): Promise<void> {
     // TODO: Create service call in database
     // For now, just log
@@ -493,7 +484,7 @@ Format as JSON:
       Technician: ${technician.technicianName}
       Scheduled: ${scheduledDate.toISOString()}
       Priority: ${health.requiresImmediateAttention ? 'URGENT' : 'Normal'}
-      Issues: ${health.issues.map(i => i.type).join(', ')}
+      Issues: ${health.issues.map((i) => i.type).join(', ')}
     `);
 
     // Update technician capacity
@@ -507,10 +498,7 @@ Format as JSON:
   /**
    * Auto-order parts based on analysis
    */
-  private async autoOrderParts(
-    health: DeviceHealthAnalysis,
-    tenantId: string
-  ): Promise<string[]> {
+  private async autoOrderParts(health: DeviceHealthAnalysis, tenantId: string): Promise<string[]> {
     const partsToOrder: string[] = [];
 
     for (const issue of health.issues) {
@@ -541,7 +529,7 @@ Format as JSON:
     if (metrics.length < 3) return 'stable';
 
     const recent = metrics.slice(0, 3);
-    const values = recent.map(m => m[field]).filter(v => v !== null);
+    const values = recent.map((m) => m[field]).filter((v) => v !== null);
 
     if (values.length < 2) return 'stable';
 

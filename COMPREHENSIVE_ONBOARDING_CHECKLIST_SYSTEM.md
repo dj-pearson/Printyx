@@ -180,7 +180,7 @@ interface MachineReplacementData {
 
   // Network Configuration
   networkConfig: {
-    ipAssignmentType: "static" | "dhcp";
+    ipAssignmentType: 'static' | 'dhcp';
     subnetMask?: string;
     gateway?: string;
     dnsServers?: string[];
@@ -191,7 +191,7 @@ interface MachineReplacementData {
 
   // Print Management Integration
   printManagement: {
-    system: "papercut" | "other" | "none";
+    system: 'papercut' | 'other' | 'none';
     queueName?: string;
     costCenter?: string;
     userGroups?: string[];
@@ -201,7 +201,7 @@ interface MachineReplacementData {
 
   // Installation Details
   installation: {
-    installationType: "replacement" | "new" | "relocation";
+    installationType: 'replacement' | 'new' | 'relocation';
     scheduledDate?: Date;
     technicianAssigned?: string;
     specialInstructions?: string;
@@ -238,14 +238,7 @@ interface NetworkAssetRecord {
 
   // Device Lifecycle
   lifecycle: {
-    status:
-      | "ordered"
-      | "received"
-      | "staged"
-      | "installed"
-      | "active"
-      | "replaced"
-      | "retired";
+    status: 'ordered' | 'received' | 'staged' | 'installed' | 'active' | 'replaced' | 'retired';
     installDate?: Date;
     replacementDate?: Date;
     retirementDate?: Date;
@@ -275,7 +268,7 @@ const autoPopulateFromQuote = (quoteId: string) => {
   return {
     customerInfo: {
       companyName: quote.businessRecord.companyName,
-      primaryContact: quote.contact.firstName + " " + quote.contact.lastName,
+      primaryContact: quote.contact.firstName + ' ' + quote.contact.lastName,
       phone: quote.contact.phone,
       email: quote.contact.email,
       billingAddress: quote.businessRecord.address,
@@ -284,7 +277,7 @@ const autoPopulateFromQuote = (quoteId: string) => {
 
     equipmentDetails: {
       items: quote.lineItems.map((item) => ({
-        manufacturer: item.productName.split(" ")[0],
+        manufacturer: item.productName.split(' ')[0],
         model: item.productName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -406,7 +399,7 @@ interface ReplacementMapping {
     downtimeWindow: {
       start: Date;
       end: Date;
-      businessImpact: "low" | "medium" | "high";
+      businessImpact: 'low' | 'medium' | 'high';
     };
   };
 }
@@ -422,7 +415,7 @@ interface ReplacementMapping {
 
    ```typescript
    interface IPConfiguration {
-     assignmentType: "static" | "dhcp" | "reserved";
+     assignmentType: 'static' | 'dhcp' | 'reserved';
      ipAddress: string; // Target IP for new device
      subnetMask: string; // Network subnet
      gateway: string; // Default gateway
@@ -462,17 +455,17 @@ interface ReplacementMapping {
 ```typescript
 interface PrintManagementConfig {
   system: {
-    type: "papercut" | "equitrac" | "ysoft" | "other";
+    type: 'papercut' | 'equitrac' | 'ysoft' | 'other';
     version: string;
     serverAddress: string;
-    authenticationType: "ldap" | "local" | "sso";
+    authenticationType: 'ldap' | 'local' | 'sso';
   };
 
   deviceConfiguration: {
     queueName: string; // Print queue identifier
     costCenter: string; // Billing/cost center
     location: string; // Physical location code
-    deviceType: "printer" | "mfp" | "copier";
+    deviceType: 'printer' | 'mfp' | 'copier';
     capabilities: string[]; // print, scan, fax, etc.
   };
 
@@ -706,10 +699,7 @@ class PapercutIntegration {
     return device;
   }
 
-  async migrateDevice(
-    oldDeviceId: string,
-    newDeviceConfig: PrintManagementConfig
-  ) {
+  async migrateDevice(oldDeviceId: string, newDeviceConfig: PrintManagementConfig) {
     // Get current device settings
     const oldDevice = await this.papercutAPI.getDevice(oldDeviceId);
 
@@ -737,10 +727,7 @@ class PapercutIntegration {
 
 ```typescript
 class IPAddressManager {
-  async validateIPAssignment(
-    ipAddress: string,
-    customerId: string
-  ): Promise<ValidationResult> {
+  async validateIPAssignment(ipAddress: string, customerId: string): Promise<ValidationResult> {
     // Check for conflicts in customer network
     const conflicts = await this.checkIPConflicts(ipAddress, customerId);
 
@@ -755,18 +742,14 @@ class IPAddressManager {
     };
   }
 
-  async reserveIPAddress(
-    ipAddress: string,
-    deviceId: string,
-    customerId: string
-  ) {
+  async reserveIPAddress(ipAddress: string, deviceId: string, customerId: string) {
     // Create reservation record
     await this.networkDB.createReservation({
       ipAddress,
       deviceId,
       customerId,
       reservedAt: new Date(),
-      status: "reserved",
+      status: 'reserved',
     });
 
     // Update DHCP server if applicable
@@ -838,15 +821,12 @@ class ChecklistValidator {
     };
   }
 
-  private validateRequiredFields(
-    checklist: OnboardingChecklistData,
-    errors: ValidationError[]
-  ) {
+  private validateRequiredFields(checklist: OnboardingChecklistData, errors: ValidationError[]) {
     // Validate customer information
     if (!checklist.customerInfo.companyName) {
       errors.push({
-        field: "customerInfo.companyName",
-        message: "Company name is required",
+        field: 'customerInfo.companyName',
+        message: 'Company name is required',
       });
     }
 
@@ -855,7 +835,7 @@ class ChecklistValidator {
       if (!item.serialNumber) {
         errors.push({
           field: `equipmentDetails.items[${index}].serialNumber`,
-          message: "Serial number is required for all equipment",
+          message: 'Serial number is required for all equipment',
         });
       }
     });
@@ -867,7 +847,7 @@ class ChecklistValidator {
         if (!item.networkConfig?.ipAddress) {
           errors.push({
             field: `equipmentDetails.items[${index}].networkConfig.ipAddress`,
-            message: "IP address is required for network devices",
+            message: 'IP address is required for network devices',
           });
         }
       });

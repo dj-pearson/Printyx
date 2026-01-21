@@ -10,7 +10,7 @@ import { DatabaseUpdaterManager, startDatabaseUpdater } from '../index';
  */
 async function basicStartup() {
   console.log('🚀 Starting Database Updater with basic configuration...');
-  
+
   try {
     const manager = await startDatabaseUpdater({
       logLevel: 'info',
@@ -18,18 +18,17 @@ async function basicStartup() {
     });
 
     console.log('✅ Database Updater started successfully!');
-    
+
     // Get status
     const status = manager.getStatus();
     console.log('Status:', status);
-    
+
     // Stop after 30 seconds (for example)
     setTimeout(async () => {
       await manager.stop();
       console.log('✅ Database Updater stopped');
       process.exit(0);
     }, 30000);
-    
   } catch (error) {
     console.error('❌ Failed to start:', error);
     process.exit(1);
@@ -41,7 +40,7 @@ async function basicStartup() {
  */
 async function dryRunExample() {
   console.log('🧪 Running in dry-run mode...');
-  
+
   try {
     const manager = new DatabaseUpdaterManager({
       dryRun: true,
@@ -55,7 +54,6 @@ async function dryRunExample() {
     await manager.executeUpdater('business_records');
 
     console.log('✅ Dry-run completed successfully!');
-    
   } catch (error) {
     console.error('❌ Dry-run failed:', error);
     process.exit(1);
@@ -67,7 +65,7 @@ async function dryRunExample() {
  */
 async function customConfigExample() {
   console.log('⚙️ Starting with custom configuration...');
-  
+
   try {
     const manager = new DatabaseUpdaterManager({
       logLevel: 'info',
@@ -75,8 +73,8 @@ async function customConfigExample() {
       configOverrides: {
         scheduleConfig: {
           businessActivities: '0 */1 9-17 * * 1-5', // Every hour during business hours
-          serviceTickets: '0 0 */4 * * *',         // Every 4 hours
-          newLeads: '0 0 8 * * 1-5',               // Daily at 8 AM
+          serviceTickets: '0 0 */4 * * *', // Every 4 hours
+          newLeads: '0 0 8 * * 1-5', // Daily at 8 AM
         },
         executionConfig: {
           enabledUpdaters: {
@@ -92,12 +90,11 @@ async function customConfigExample() {
 
     await manager.start();
     console.log('✅ Started with custom configuration!');
-    
+
     // Show configuration
     const status = manager.getStatus();
     console.log('Custom Schedule Config:', status.config.scheduleConfig);
     console.log('Custom Execution Config:', status.config.executionConfig);
-    
   } catch (error) {
     console.error('❌ Failed to start with custom config:', error);
     process.exit(1);
@@ -109,7 +106,7 @@ async function customConfigExample() {
  */
 async function manualExecutionExample() {
   console.log('🔧 Manual execution example...');
-  
+
   try {
     const manager = new DatabaseUpdaterManager({
       enableScheduling: false, // Disable automatic scheduling
@@ -127,13 +124,12 @@ async function manualExecutionExample() {
     await manager.executeUpdater('business_records');
 
     console.log('✅ Manual execution completed!');
-    
+
     // Get execution metrics
     const status = manager.getStatus();
-    status.updaters.forEach(updater => {
+    status.updaters.forEach((updater) => {
       console.log(`${updater.name}: Last execution - ${updater.lastExecution}`);
     });
-    
   } catch (error) {
     console.error('❌ Manual execution failed:', error);
     process.exit(1);
@@ -145,7 +141,7 @@ async function manualExecutionExample() {
  */
 async function configUpdateExample() {
   console.log('🔄 Configuration update example...');
-  
+
   try {
     const manager = new DatabaseUpdaterManager({
       enableScheduling: true,
@@ -156,24 +152,23 @@ async function configUpdateExample() {
     console.log('✅ Initial startup complete');
 
     // Wait a bit
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // Update configuration
     console.log('Updating configuration...');
     await manager.updateConfiguration({
       scheduleConfig: {
         businessActivities: '0 */3 9-17 * * 1-5', // Change to every 3 hours
-        serviceTickets: '0 0 */8 * * *',           // Change to every 8 hours
-        newLeads: '0 0 14 * * 1-5',               // Change to 2 PM daily
+        serviceTickets: '0 0 */8 * * *', // Change to every 8 hours
+        newLeads: '0 0 14 * * 1-5', // Change to 2 PM daily
       },
     });
 
     console.log('✅ Configuration updated successfully!');
-    
+
     // Show updated configuration
     const status = manager.getStatus();
     console.log('Updated Schedule:', status.config.scheduleConfig);
-    
   } catch (error) {
     console.error('❌ Configuration update failed:', error);
     process.exit(1);

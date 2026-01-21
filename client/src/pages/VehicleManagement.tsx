@@ -4,9 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Car,
@@ -26,7 +39,7 @@ import {
   Search,
   Filter,
   Download,
-  Bell
+  Bell,
 } from 'lucide-react';
 
 interface Vehicle {
@@ -86,7 +99,7 @@ const VehicleManagement: React.FC = () => {
       assignedTechnician: 'John Smith',
       status: 'active',
       lastMaintenanceDate: new Date('2024-06-15'),
-      maintenanceAlerts: 1
+      maintenanceAlerts: 1,
     },
     {
       id: '2',
@@ -103,8 +116,8 @@ const VehicleManagement: React.FC = () => {
       assignedTechnician: 'Mike Johnson',
       status: 'maintenance',
       lastMaintenanceDate: new Date('2024-07-20'),
-      maintenanceAlerts: 3
-    }
+      maintenanceAlerts: 3,
+    },
   ];
 
   const maintenanceRecords: MaintenanceRecord[] = [
@@ -117,7 +130,7 @@ const VehicleManagement: React.FC = () => {
       cost: 89.99,
       mileage: 42000,
       vendor: 'Quick Lube Express',
-      nextDue: 48000
+      nextDue: 48000,
     },
     {
       id: '2',
@@ -125,40 +138,51 @@ const VehicleManagement: React.FC = () => {
       date: new Date('2024-05-10'),
       type: 'inspection',
       description: 'Annual state inspection',
-      cost: 25.00,
+      cost: 25.0,
       mileage: 40500,
-      vendor: 'State Inspection Center'
-    }
+      vendor: 'State Inspection Center',
+    },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'maintenance': return 'bg-yellow-100 text-yellow-800';
-      case 'out-of-service': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'maintenance':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'out-of-service':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'service': return <Wrench className="h-4 w-4" />;
-      case 'delivery': return <Truck className="h-4 w-4" />;
-      case 'management': return <Car className="h-4 w-4" />;
-      default: return <Car className="h-4 w-4" />;
+      case 'service':
+        return <Wrench className="h-4 w-4" />;
+      case 'delivery':
+        return <Truck className="h-4 w-4" />;
+      case 'management':
+        return <Car className="h-4 w-4" />;
+      default:
+        return <Car className="h-4 w-4" />;
     }
   };
 
   const isMaintenanceDue = (vehicle: Vehicle) => {
     const oilChangeDue = vehicle.currentMileage >= vehicle.nextOilChange - 1000;
-    const inspectionDue = vehicle.nextInspection && new Date(vehicle.nextInspection) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const inspectionDue =
+      vehicle.nextInspection &&
+      new Date(vehicle.nextInspection) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     return oilChangeDue || inspectionDue;
   };
 
-  const filteredVehicles = vehicles.filter(vehicle => {
-    const matchesSearch = vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         vehicle.licensePlate.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredVehicles = vehicles.filter((vehicle) => {
+    const matchesSearch =
+      vehicle.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehicle.licensePlate.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter;
     const matchesType = typeFilter === 'all' || vehicle.type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
@@ -186,42 +210,43 @@ const VehicleManagement: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Active Vehicles</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {vehicles.filter(v => v.status === 'active').length}
+                    {vehicles.filter((v) => v.status === 'active').length}
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Maintenance Due</p>
                   <p className="text-2xl font-bold text-yellow-600">
-                    {vehicles.filter(v => isMaintenanceDue(v)).length}
+                    {vehicles.filter((v) => isMaintenanceDue(v)).length}
                   </p>
                 </div>
                 <AlertTriangle className="h-8 w-8 text-yellow-600" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Monthly Lease Cost</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    ${vehicles.reduce((sum, v) => sum + (v.monthlyPayment || 0), 0).toLocaleString()}
+                    $
+                    {vehicles.reduce((sum, v) => sum + (v.monthlyPayment || 0), 0).toLocaleString()}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-blue-600" />
@@ -241,7 +266,7 @@ const VehicleManagement: React.FC = () => {
               className="pl-10"
             />
           </div>
-          
+
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by status" />
@@ -253,7 +278,7 @@ const VehicleManagement: React.FC = () => {
               <SelectItem value="out-of-service">Out of Service</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by type" />
@@ -340,9 +365,7 @@ const VehicleManagement: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <Badge className={getStatusColor(vehicle.status)}>
-                      {vehicle.status}
-                    </Badge>
+                    <Badge className={getStatusColor(vehicle.status)}>{vehicle.status}</Badge>
                     {vehicle.maintenanceAlerts > 0 && (
                       <Badge variant="destructive" className="text-xs">
                         <Bell className="h-3 w-3 mr-1" />
@@ -352,7 +375,7 @@ const VehicleManagement: React.FC = () => {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
@@ -360,19 +383,23 @@ const VehicleManagement: React.FC = () => {
                       <Gauge className="h-4 w-4" />
                       Current Mileage
                     </span>
-                    <span className="font-medium">{vehicle.currentMileage.toLocaleString()} mi</span>
+                    <span className="font-medium">
+                      {vehicle.currentMileage.toLocaleString()} mi
+                    </span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-1">
                       <Fuel className="h-4 w-4" />
                       Next Oil Change
                     </span>
-                    <span className={`font-medium ${vehicle.currentMileage >= vehicle.nextOilChange - 1000 ? 'text-yellow-600' : ''}`}>
+                    <span
+                      className={`font-medium ${vehicle.currentMileage >= vehicle.nextOilChange - 1000 ? 'text-yellow-600' : ''}`}
+                    >
                       {vehicle.nextOilChange.toLocaleString()} mi
                     </span>
                   </div>
-                  
+
                   {vehicle.assignedTechnician && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-1">
@@ -382,7 +409,7 @@ const VehicleManagement: React.FC = () => {
                       <span className="font-medium">{vehicle.assignedTechnician}</span>
                     </div>
                   )}
-                  
+
                   {vehicle.ownership === 'leased' && vehicle.leaseExpiration && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-1">
@@ -394,7 +421,7 @@ const VehicleManagement: React.FC = () => {
                       </span>
                     </div>
                   )}
-                  
+
                   {vehicle.monthlyPayment && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="flex items-center gap-1">
@@ -405,11 +432,11 @@ const VehicleManagement: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex gap-2 mt-4">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => setSelectedVehicle(vehicle)}
                   >
@@ -433,11 +460,9 @@ const VehicleManagement: React.FC = () => {
                 <DialogTitle>
                   {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
                 </DialogTitle>
-                <DialogDescription>
-                  Vehicle Details and Maintenance History
-                </DialogDescription>
+                <DialogDescription>Vehicle Details and Maintenance History</DialogDescription>
               </DialogHeader>
-              
+
               <Tabs defaultValue="overview" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -445,7 +470,7 @@ const VehicleManagement: React.FC = () => {
                   <TabsTrigger value="costs">Costs</TabsTrigger>
                   <TabsTrigger value="schedule">Schedule</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="overview" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <Card>
@@ -468,12 +493,14 @@ const VehicleManagement: React.FC = () => {
                           </div>
                           <div className="flex justify-between">
                             <span>Ownership:</span>
-                            <span className="font-medium capitalize">{selectedVehicle.ownership}</span>
+                            <span className="font-medium capitalize">
+                              {selectedVehicle.ownership}
+                            </span>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg">Current Status</CardTitle>
@@ -488,18 +515,22 @@ const VehicleManagement: React.FC = () => {
                           </div>
                           <div className="flex justify-between">
                             <span>Current Mileage:</span>
-                            <span className="font-medium">{selectedVehicle.currentMileage.toLocaleString()} mi</span>
+                            <span className="font-medium">
+                              {selectedVehicle.currentMileage.toLocaleString()} mi
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Assigned Technician:</span>
-                            <span className="font-medium">{selectedVehicle.assignedTechnician || 'Unassigned'}</span>
+                            <span className="font-medium">
+                              {selectedVehicle.assignedTechnician || 'Unassigned'}
+                            </span>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="maintenance" className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold">Maintenance History</h3>
@@ -508,10 +539,10 @@ const VehicleManagement: React.FC = () => {
                       Add Record
                     </Button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     {maintenanceRecords
-                      .filter(record => record.vehicleId === selectedVehicle.id)
+                      .filter((record) => record.vehicleId === selectedVehicle.id)
                       .map((record) => (
                         <Card key={record.id}>
                           <CardContent className="p-4">
@@ -521,7 +552,8 @@ const VehicleManagement: React.FC = () => {
                                   {record.type.replace('-', ' ')}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  {record.date.toLocaleDateString()} • {record.mileage.toLocaleString()} mi
+                                  {record.date.toLocaleDateString()} •{' '}
+                                  {record.mileage.toLocaleString()} mi
                                 </p>
                               </div>
                               <p className="font-medium">${record.cost}</p>
@@ -533,7 +565,7 @@ const VehicleManagement: React.FC = () => {
                       ))}
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="costs">
                   <Card>
                     <CardHeader>
@@ -551,8 +583,9 @@ const VehicleManagement: React.FC = () => {
                           <div>
                             <p className="text-sm text-gray-600">Total Maintenance Cost</p>
                             <p className="text-2xl font-bold">
-                              ${maintenanceRecords
-                                .filter(r => r.vehicleId === selectedVehicle.id)
+                              $
+                              {maintenanceRecords
+                                .filter((r) => r.vehicleId === selectedVehicle.id)
                                 .reduce((sum, r) => sum + r.cost, 0)
                                 .toFixed(2)}
                             </p>
@@ -562,7 +595,7 @@ const VehicleManagement: React.FC = () => {
                     </CardContent>
                   </Card>
                 </TabsContent>
-                
+
                 <TabsContent value="schedule">
                   <Card>
                     <CardHeader>
@@ -577,11 +610,18 @@ const VehicleManagement: React.FC = () => {
                               Due at {selectedVehicle.nextOilChange.toLocaleString()} mi
                             </p>
                           </div>
-                          <Badge variant={selectedVehicle.currentMileage >= selectedVehicle.nextOilChange - 1000 ? "destructive" : "secondary"}>
-                            {selectedVehicle.nextOilChange - selectedVehicle.currentMileage} mi remaining
+                          <Badge
+                            variant={
+                              selectedVehicle.currentMileage >= selectedVehicle.nextOilChange - 1000
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                          >
+                            {selectedVehicle.nextOilChange - selectedVehicle.currentMileage} mi
+                            remaining
                           </Badge>
                         </div>
-                        
+
                         <div className="flex justify-between items-center p-3 border rounded">
                           <div>
                             <p className="font-medium">Annual Inspection</p>
@@ -590,7 +630,11 @@ const VehicleManagement: React.FC = () => {
                             </p>
                           </div>
                           <Badge variant="secondary">
-                            {Math.ceil((selectedVehicle.nextInspection.getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
+                            {Math.ceil(
+                              (selectedVehicle.nextInspection.getTime() - Date.now()) /
+                                (1000 * 60 * 60 * 24),
+                            )}{' '}
+                            days
                           </Badge>
                         </div>
                       </div>

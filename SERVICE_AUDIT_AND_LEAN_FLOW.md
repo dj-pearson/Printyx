@@ -131,7 +131,6 @@ Standard work (examples)
 Service endpoints to implement (backing current UI)
 
 - Phone‑in search & CRUD
-
   - GET `/api/phone-tickets/search-companies?q=...`
   - GET `/api/phone-tickets/search-contacts/:companyId?q=...`
   - GET `/api/phone-tickets/equipment/:companyId`
@@ -139,7 +138,6 @@ Service endpoints to implement (backing current UI)
   - POST `/api/phone-in-tickets/:id/convert` → creates `/api/service-tickets/:id`
 
 - Technician sessions & workflow steps
-
   - GET `/api/technician-sessions?ticketId=...` (latest/open session)
   - POST `/api/service-tickets/:ticketId/check-in` (create session, store GPS)
   - GET `/api/technician-sessions/:sessionId/workflow-steps`

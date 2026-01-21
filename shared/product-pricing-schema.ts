@@ -1,4 +1,13 @@
-import { pgTable, varchar, decimal, boolean, timestamp, text, pgEnum, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  varchar,
+  decimal,
+  boolean,
+  timestamp,
+  text,
+  pgEnum,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -21,14 +30,14 @@ export const pricingApprovalStatusEnum = pgEnum('pricing_approval_status', [
   'pending',
   'approved',
   'rejected',
-  'auto_approved'
+  'auto_approved',
 ]);
 
 // Markup type enum - determines how rep cost is calculated
 export const markupTypeEnum = pgEnum('markup_type', [
   'percentage', // Percentage markup (e.g., 13%)
   'fixed_amount', // Fixed dollar amount
-  'custom' // Custom calculation per product
+  'custom', // Custom calculation per product
 ]);
 
 // Company Pricing Settings - Tenant-level pricing controls
@@ -40,7 +49,9 @@ export const companyPricingSettings = pgTable('company_pricing_settings', {
 
   // Default Markup Settings
   defaultMarkupType: markupTypeEnum('default_markup_type').default('percentage'),
-  defaultMarkupPercentage: decimal('default_markup_percentage', { precision: 5, scale: 2 }).default('13.00'), // 13%
+  defaultMarkupPercentage: decimal('default_markup_percentage', { precision: 5, scale: 2 }).default(
+    '13.00',
+  ), // 13%
   defaultMarkupAmount: decimal('default_markup_amount', { precision: 10, scale: 2 }),
 
   // Per-Category Markup Overrides (JSONB for flexibility)
@@ -53,9 +64,13 @@ export const companyPricingSettings = pgTable('company_pricing_settings', {
   requireApprovalAboveThreshold: boolean('require_approval_above_threshold').default(true), // Require approval for discounts above threshold?
 
   // Pricing Thresholds
-  maxDiscountPercentage: decimal('max_discount_percentage', { precision: 5, scale: 2 }).default('20.00'), // Max discount from rep cost before approval
+  maxDiscountPercentage: decimal('max_discount_percentage', { precision: 5, scale: 2 }).default(
+    '20.00',
+  ), // Max discount from rep cost before approval
   minMarginPercentage: decimal('min_margin_percentage', { precision: 5, scale: 2 }).default('5.00'), // Minimum margin required (from dealer cost)
-  autoApprovalThreshold: decimal('auto_approval_threshold', { precision: 5, scale: 2 }).default('10.00'), // Auto-approve if discount <= this %
+  autoApprovalThreshold: decimal('auto_approval_threshold', { precision: 5, scale: 2 }).default(
+    '10.00',
+  ), // Auto-approve if discount <= this %
 
   // Visibility Settings
   showDealerCostToReps: boolean('show_dealer_cost_to_reps').default(false), // Should reps see dealer cost?
@@ -138,7 +153,10 @@ export const productModelPricingExtension = {
 export const productAccessoryPricingExtension = {
   // Standard tier
   standardDealerCost: decimal('standard_dealer_cost', { precision: 10, scale: 2 }),
-  standardRepMarkupPercentage: decimal('standard_rep_markup_percentage', { precision: 5, scale: 2 }),
+  standardRepMarkupPercentage: decimal('standard_rep_markup_percentage', {
+    precision: 5,
+    scale: 2,
+  }),
   standardRepCost: decimal('standard_rep_cost', { precision: 10, scale: 2 }),
 
   // New tier
@@ -168,17 +186,30 @@ export const enhancedQuotePricing = pgTable('enhanced_quote_pricing', {
   // Pricing Summary - All three tiers
   totalDealerCost: decimal('total_dealer_cost', { precision: 12, scale: 2 }).notNull().default('0'),
   totalRepCost: decimal('total_rep_cost', { precision: 12, scale: 2 }).notNull().default('0'),
-  totalCustomerPrice: decimal('total_customer_price', { precision: 12, scale: 2 }).notNull().default('0'),
+  totalCustomerPrice: decimal('total_customer_price', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
 
   // Margin Calculations
-  totalMarginAmount: decimal('total_margin_amount', { precision: 12, scale: 2 }).notNull().default('0'), // customerPrice - dealerCost
-  totalMarginPercentage: decimal('total_margin_percentage', { precision: 5, scale: 2 }).default('0'), // (margin / dealerCost) * 100
-  totalRepMarginAmount: decimal('total_rep_margin_amount', { precision: 12, scale: 2 }).default('0'), // customerPrice - repCost
-  totalRepMarginPercentage: decimal('total_rep_margin_percentage', { precision: 5, scale: 2 }).default('0'),
+  totalMarginAmount: decimal('total_margin_amount', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'), // customerPrice - dealerCost
+  totalMarginPercentage: decimal('total_margin_percentage', { precision: 5, scale: 2 }).default(
+    '0',
+  ), // (margin / dealerCost) * 100
+  totalRepMarginAmount: decimal('total_rep_margin_amount', { precision: 12, scale: 2 }).default(
+    '0',
+  ), // customerPrice - repCost
+  totalRepMarginPercentage: decimal('total_rep_margin_percentage', {
+    precision: 5,
+    scale: 2,
+  }).default('0'),
 
   // Discount Applied
   totalDiscountAmount: decimal('total_discount_amount', { precision: 12, scale: 2 }).default('0'),
-  totalDiscountPercentage: decimal('total_discount_percentage', { precision: 5, scale: 2 }).default('0'),
+  totalDiscountPercentage: decimal('total_discount_percentage', { precision: 5, scale: 2 }).default(
+    '0',
+  ),
 
   // Approval Workflow
   requiresApproval: boolean('requires_approval').default(false), // Does this quote need approval?
@@ -318,22 +349,26 @@ export const marginAnalysisReport = {
   marginPercentage: z.number(),
 
   // Line items with margin breakdown
-  lineItems: z.array(z.object({
-    productName: z.string(),
-    quantity: z.number(),
-    unitDealerCost: z.number(),
-    unitRepCost: z.number(),
-    unitCustomerPrice: z.number(),
-    lineMargin: z.number(),
-    lineMarginPercentage: z.number(),
-  })),
+  lineItems: z.array(
+    z.object({
+      productName: z.string(),
+      quantity: z.number(),
+      unitDealerCost: z.number(),
+      unitRepCost: z.number(),
+      unitCustomerPrice: z.number(),
+      lineMargin: z.number(),
+      lineMarginPercentage: z.number(),
+    }),
+  ),
 };
 
 // Zod Schemas for Validation
 export const insertCompanyPricingSettingsSchema = createInsertSchema(companyPricingSettings);
 export const insertEnhancedProductPricingSchema = createInsertSchema(enhancedProductPricing);
 export const insertEnhancedQuotePricingSchema = createInsertSchema(enhancedQuotePricing);
-export const insertEnhancedQuotePricingLineItemsSchema = createInsertSchema(enhancedQuotePricingLineItems);
+export const insertEnhancedQuotePricingLineItemsSchema = createInsertSchema(
+  enhancedQuotePricingLineItems,
+);
 export const insertPriceChangeApprovalSchema = createInsertSchema(priceChangeApprovals);
 
 // TypeScript Types

@@ -46,20 +46,12 @@ export function OfflineIndicator({ className }: OfflineIndicatorProps) {
             : 'bg-green-600 text-white border-green-700'
         }`}
       >
-        {isOffline ? (
-          <WifiOff className="h-4 w-4" />
-        ) : (
-          <Wifi className="h-4 w-4" />
-        )}
+        {isOffline ? <WifiOff className="h-4 w-4" /> : <Wifi className="h-4 w-4" />}
         <AlertDescription className="flex items-center justify-between">
           {isOffline ? (
-            <span className="font-medium">
-              You're offline. Some features may be limited.
-            </span>
+            <span className="font-medium">You're offline. Some features may be limited.</span>
           ) : (
-            <span className="font-medium">
-              You're back online!
-            </span>
+            <span className="font-medium">You're back online!</span>
           )}
         </AlertDescription>
       </Alert>

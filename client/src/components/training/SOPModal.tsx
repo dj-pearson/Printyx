@@ -12,16 +12,16 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { 
-  BookOpen, 
-  CheckCircle, 
-  ArrowRight, 
-  Clock, 
+import {
+  BookOpen,
+  CheckCircle,
+  ArrowRight,
+  Clock,
   AlertTriangle,
   Users,
   Target,
   FileText,
-  Settings
+  Settings,
 } from 'lucide-react';
 
 interface SOPStep {
@@ -55,7 +55,7 @@ const SOPs: Record<string, SOPData> = {
       'Equipment requirements documented',
       'Pricing approved by manager',
       'Quote valid until date set',
-      'Customer contact information verified'
+      'Customer contact information verified',
     ],
     steps: [
       {
@@ -67,12 +67,12 @@ const SOPs: Record<string, SOPData> = {
           'Contact information verified',
           'Business type confirmed',
           'Budget range discussed',
-          'Timeline requirements understood'
+          'Timeline requirements understood',
         ],
         tips: [
           'Use discovery questions to understand pain points',
-          'Document specific requirements in lead notes'
-        ]
+          'Document specific requirements in lead notes',
+        ],
       },
       {
         step: 2,
@@ -83,12 +83,9 @@ const SOPs: Record<string, SOPData> = {
           'Monthly volume estimates',
           'Color vs. black & white ratio',
           'Special features needed',
-          'Location and space constraints'
+          'Location and space constraints',
         ],
-        tips: [
-          'Ask about current equipment problems',
-          'Understand workflow and user base'
-        ]
+        tips: ['Ask about current equipment problems', 'Understand workflow and user base'],
       },
       {
         step: 3,
@@ -99,12 +96,12 @@ const SOPs: Record<string, SOPData> = {
           'Equipment models selected',
           'Service plan recommended',
           'Installation requirements noted',
-          'Training needs identified'
+          'Training needs identified',
         ],
         warnings: [
           'Verify equipment availability before quoting',
-          'Check for any special shipping requirements'
-        ]
+          'Check for any special shipping requirements',
+        ],
       },
       {
         step: 4,
@@ -115,19 +112,15 @@ const SOPs: Record<string, SOPData> = {
           'All line items priced correctly',
           'Terms and conditions included',
           'Valid until date set (14-30 days)',
-          'Manager approval if required'
+          'Manager approval if required',
         ],
         tips: [
           'Include alternative options when possible',
-          'Clearly explain lease vs. purchase options'
-        ]
-      }
+          'Clearly explain lease vs. purchase options',
+        ],
+      },
     ],
-    relatedProcesses: [
-      'Quote to Proposal',
-      'Customer Follow-up',
-      'Equipment Availability Check'
-    ]
+    relatedProcesses: ['Quote to Proposal', 'Customer Follow-up', 'Equipment Availability Check'],
   },
   'quote-to-proposal': {
     title: 'Quote to Proposal Conversion',
@@ -139,7 +132,7 @@ const SOPs: Record<string, SOPData> = {
       'Financing terms finalized',
       'Delivery timeline confirmed',
       'Installation requirements documented',
-      'Legal terms reviewed'
+      'Legal terms reviewed',
     ],
     steps: [
       {
@@ -151,8 +144,8 @@ const SOPs: Record<string, SOPData> = {
           'Written or verbal acceptance confirmed',
           'Decision maker authorization verified',
           'Purchase order received (if required)',
-          'Financing pre-approval completed'
-        ]
+          'Financing pre-approval completed',
+        ],
       },
       {
         step: 2,
@@ -164,13 +157,13 @@ const SOPs: Record<string, SOPData> = {
           'Service level agreements defined',
           'Installation timeline and requirements',
           'Training plan outlined',
-          'Warranty and support terms'
+          'Warranty and support terms',
         ],
         tips: [
           'Use customer-specific branding when possible',
           'Include implementation timeline',
-          'Highlight unique value propositions'
-        ]
+          'Highlight unique value propositions',
+        ],
       },
       {
         step: 3,
@@ -181,19 +174,19 @@ const SOPs: Record<string, SOPData> = {
           'Contract terms comply with company policy',
           'Credit approval completed',
           'Insurance requirements verified',
-          'Compliance documents prepared'
+          'Compliance documents prepared',
         ],
         warnings: [
           'All custom terms must be approved by legal',
-          'Verify customer insurance meets minimum requirements'
-        ]
-      }
+          'Verify customer insurance meets minimum requirements',
+        ],
+      },
     ],
     relatedProcesses: [
       'Proposal to Contract',
       'Credit Approval Process',
-      'Installation Scheduling'
-    ]
+      'Installation Scheduling',
+    ],
   },
   'proposal-to-contract': {
     title: 'Proposal to Contract Execution',
@@ -205,7 +198,7 @@ const SOPs: Record<string, SOPData> = {
       'Contract terms finalized',
       'Signatures obtained',
       'Installation scheduled',
-      'Equipment ordered'
+      'Equipment ordered',
     ],
     steps: [
       {
@@ -217,8 +210,8 @@ const SOPs: Record<string, SOPData> = {
           'All proposal terms transferred to contract',
           'Legal review completed',
           'Pricing and terms locked in',
-          'Installation dates confirmed'
-        ]
+          'Installation dates confirmed',
+        ],
       },
       {
         step: 2,
@@ -229,12 +222,12 @@ const SOPs: Record<string, SOPData> = {
           'Customer signatures obtained',
           'Company authorization completed',
           'Witness signatures (if required)',
-          'Date and execution location recorded'
+          'Date and execution location recorded',
         ],
         tips: [
           'Use electronic signature tools when possible',
-          'Verify signer authority before proceeding'
-        ]
+          'Verify signer authority before proceeding',
+        ],
       },
       {
         step: 3,
@@ -245,16 +238,12 @@ const SOPs: Record<string, SOPData> = {
           'Contract stored in system',
           'Equipment order initiated',
           'Installation team notified',
-          'Customer success handoff completed'
-        ]
-      }
+          'Customer success handoff completed',
+        ],
+      },
     ],
-    relatedProcesses: [
-      'Equipment Ordering',
-      'Installation Scheduling',
-      'Customer Onboarding'
-    ]
-  }
+    relatedProcesses: ['Equipment Ordering', 'Installation Scheduling', 'Customer Onboarding'],
+  },
 };
 
 interface SOPModalProps {
@@ -285,18 +274,14 @@ export default function SOPModal({ processType, trigger, className }: SOPModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        {trigger || defaultTrigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <BookOpen className="h-5 w-5" />
             {sop.title}
           </DialogTitle>
-          <DialogDescription>
-            {sop.description}
-          </DialogDescription>
+          <DialogDescription>{sop.description}</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh] pr-4">
@@ -362,12 +347,15 @@ export default function SOPModal({ processType, trigger, className }: SOPModalPr
                 <Settings className="h-5 w-5" />
                 Process Steps
               </h3>
-              
+
               {sop.steps.map((step, index) => (
                 <Card key={step.step}>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-3">
-                      <Badge variant="outline" className="w-8 h-8 rounded-full flex items-center justify-center">
+                      <Badge
+                        variant="outline"
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                      >
                         {step.step}
                       </Badge>
                       {step.title}
@@ -412,7 +400,10 @@ export default function SOPModal({ processType, trigger, className }: SOPModalPr
                         <h5 className="font-medium text-sm mb-2 text-amber-600">Warnings:</h5>
                         <div className="space-y-1">
                           {step.warnings.map((warning, idx) => (
-                            <div key={idx} className="flex items-start gap-2 text-sm text-amber-700">
+                            <div
+                              key={idx}
+                              className="flex items-start gap-2 text-sm text-amber-700"
+                            >
                               <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
                               <span>{warning}</span>
                             </div>

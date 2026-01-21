@@ -5,11 +5,13 @@
 Successfully created and configured Stripe products in **TEST MODE**:
 
 ### Products Created:
+
 - ✅ **Starter Plan** - $79/month, $758/year (20% discount)
-- ✅ **Professional Plan** - $99/month, $950/year (20% discount) 
+- ✅ **Professional Plan** - $99/month, $950/year (20% discount)
 - ✅ **Enterprise Plan** - $149/month, $1430/year (20% discount)
 
 ### Files Updated:
+
 - ✅ `.env` - Local development environment variables
 - ✅ `.env.example` - Template for team members
 - ✅ `.dev.vars` - Cloudflare Wrangler local development (NEW)
@@ -28,6 +30,7 @@ All Stripe product IDs, price IDs, and payment links have been added to your env
 Update these files with your actual Stripe keys from https://dashboard.stripe.com/apikeys:
 
 **In `.env` and `.dev.vars`:**
+
 ```bash
 STRIPE_SECRET_KEY=sk_test_51RtUuKDicESs12qV...
 STRIPE_PUBLISHABLE_KEY=pk_test_51RtUuKDicESs12qV...
@@ -39,6 +42,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 Since you're using Cloudflare Pages, you need to add these environment variables in the Cloudflare Dashboard:
 
 #### Go to Cloudflare Dashboard:
+
 1. Navigate to https://dash.cloudflare.com
 2. Select your account > **Pages** > **printyx** project
 3. Go to **Settings** > **Environment variables**
@@ -141,12 +145,15 @@ Once you're ready to go live:
 ## 🆘 Troubleshooting
 
 ### Issue: "No such product" error
+
 - **Solution:** Make sure the product IDs in your environment match the Stripe dashboard
 
 ### Issue: Webhook signature verification failed
+
 - **Solution:** Verify `STRIPE_WEBHOOK_SECRET` matches the webhook signing secret from Stripe dashboard
 
 ### Issue: Payment links don't work
+
 - **Solution:** Check that you're using test payment links in test mode and live links in production
 
 ## ✨ Quick Commands

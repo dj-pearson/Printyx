@@ -11,7 +11,9 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Core Business Domains (8 Primary Areas)
 
 #### 1.1 CRM & Sales Management
+
 **Features:**
+
 - Lead/prospect management and tracking
 - Business Records (unified lead-to-customer conversion system)
 - Deal tracking and pipeline management
@@ -23,6 +25,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - Deal stages and activity logging
 
 **Key Tables:**
+
 - `businessRecords` - Unified lead/customer data
 - `opportunities` - Sales opportunities
 - `deals` - Deal tracking
@@ -30,7 +33,9 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - `commissionPlans`, `commissionCalculations` - Commission tracking
 
 #### 1.2 Service Management & Field Service
+
 **Features:**
+
 - Service call scheduling and dispatch
 - Technician management and assignment
 - Mobile field service app
@@ -43,6 +48,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - Dynamic rescheduling and optimization
 
 **Key Tables:**
+
 - `serviceCalls` - Service call records
 - `serviceContracts` - Service contracts with coverage details
 - `serviceTickets` - Ticketing system
@@ -51,12 +57,15 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - `locationHistory` - Technician location tracking
 
 **Toner Coverage Integration:**
+
 - Service contracts include `includes_toner` flag
 - Automatic toner ordering when levels drop below threshold
 - Integration with supplies inventory
 
 #### 1.3 Meter Reading & Advanced Billing
+
 **Features:**
+
 - Real-time meter reading collection
 - Automated billing rule engine
 - Tiered billing with volume discounts
@@ -69,18 +78,22 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - Custom billing formulas
 
 **Key Tables:**
+
 - `meterReadings` - Device meter readings
 - `billingRules` - Billing configuration
 - `meterAnomalies` - Anomaly detection
 - `invoices`, `invoiceLineItems` - Invoice management
 
 **Toner Billing Integration:**
+
 - Toner covered under service contracts (zero-cost to customer)
 - Automatic supply orders triggered by meter readings
 - Parts/toner tracking in service calls
 
 #### 1.4 Inventory & Warehouse Management
+
 **Features:**
+
 - Equipment lifecycle tracking (ordered → retired)
 - Parts and consumables inventory
 - Supply ordering and fulfillment
@@ -95,6 +108,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - FPY (First Pass Yield) metrics
 
 **Key Tables:**
+
 - `equipment` - Copier/printer equipment
 - `equipmentLifecycle` - Equipment status tracking
 - `inventoryItems` - Parts and consumables
@@ -104,13 +118,16 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - `supplies` - Toner and supplies catalog
 
 **Toner-Specific Data:**
+
 - Product codes like `TONER-BLACK-HP-P4015`
 - Manufacturer part numbers
 - Stock levels: onHand, committed, available, onOrder
 - Color variants: BLACK, CYAN, MAGENTA, YELLOW
 
 #### 1.5 Manufacturer Integrations
+
 **Supported Manufacturers:**
+
 - Canon (ImageRunner series)
 - Xerox (ConnectKey)
 - HP (PrintOS)
@@ -120,6 +137,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - Ricoh SmartSDK
 
 **Features:**
+
 - Device registration and monitoring
 - Real-time meter collection (hourly, daily, weekly, monthly, real-time)
 - Device status monitoring (online/offline/error/maintenance)
@@ -129,13 +147,16 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - API endpoint management
 
 **Key Tables:**
+
 - `manufacturerIntegrations` - Integration configuration
 - `deviceRegistrations` - Registered devices
 - `deviceMetrics` - Device metrics/meter readings
 - `integrationAuditLogs` - Integration activity logs
 
 #### 1.6 Remote Monitoring & IoT (Fleet Monitoring)
+
 **Features:**
+
 - Real-time equipment status monitoring
 - Toner and paper level tracking
 - Performance metrics (pages/minute, utilization rate)
@@ -148,13 +169,16 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - Network device discovery
 
 **Key Tables:**
+
 - `monitoringClients` - Collector agent registration
 - `clientActivityLogs` - Activity tracking
 - `clientDiscoveredDevices` - Network device discovery
 - Configuration includes toner threshold (15%), paper threshold (20%)
 
 #### 1.7 Workflow Automation & Advanced Operations
+
 **Features:**
+
 - Event-based workflow triggers
 - Scheduled workflow execution
 - Manual workflow triggers
@@ -166,41 +190,42 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - Execution status tracking
 
 **Key Tables:**
+
 - `workflows` - Workflow definitions
 - `workflowSteps` - Step configurations
 - `workflowExecutions` - Execution history
 - `stepExecutions` - Individual step tracking
 
 **Toner Workflow Example:**
+
 - Trigger: Meter reading drops below threshold
 - Action: Create purchase order for toner
 - Action: Send notification to customer
 - Action: Generate invoice
 
 #### 1.8 AI & Automation Features
+
 **Services Implemented:**
+
 - **AI Documentation Service** - Create, manage, and assist with document generation
   - Document types: meeting minutes, proposals, reports, contracts, templates, knowledge base
   - AI writing assistance with tone and complexity settings
   - Section-level content suggestions
   - Version control and approval workflows
-  
 - **AI Search & Knowledge Service** - Vector-based semantic search
   - Embeddings for documents, transcriptions, knowledge articles
   - Query expansion and intent detection
   - Answer synthesis from multiple sources
   - Quality scoring and relevance ranking
-  
 - **AI Employee Service** - HR and employee optimization
-  
 - **Claude AI Service** - Core AI integration
   - Uses Claude 3.5 Sonnet model
   - Context management for conversations
   - Streaming response support
-  
 - **GPT-5 Routes** - Advanced AI analytics
 
 **Key Tables:**
+
 - AI documentation, search queries, embeddings tracked in application
 
 ---
@@ -210,6 +235,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Core Schema Files (24 Specialized Schemas)
 
 **Main Schema** (`shared/schema.ts` - 7,730 lines):
+
 - Contains 60+ core business tables
 - All tables include tenant_id for multi-tenancy
 - Session management and user/role tables
@@ -217,46 +243,49 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 
 **Specialized Schemas:**
 
-| Schema File | Primary Tables | Purpose |
-|---|---|---|
-| `equipment-schema.ts` | `purchaseOrders`, `warehouseOperations`, `equipmentLifecycle`, `deliverySchedules`, `complianceDocuments` | Equipment lifecycle and warehouse |
-| `service-analysis-schema.ts` | `serviceCallAnalysis`, `servicePartsUsed`, `partsOrders` | Service quality analysis |
-| `manufacturer-integration-schema.ts` | `manufacturerIntegrations`, `deviceRegistrations`, `deviceMetrics` | Device integration |
-| `client-monitor-schema.ts` | `monitoringClients`, `clientActivityLogs`, `clientDiscoveredDevices` | Fleet monitoring agents |
-| `advanced-billing-schema.ts` | `billingRules`, `meterAnomalies`, `invoiceAdjustments` | Advanced billing engine |
-| `customer-portal-schema.ts` | `customerPortalAccess`, `serviceRequests`, `supplyOrders`, `notifications` | Customer self-service portal |
-| `workflow-automation-schema.ts` | `workflows`, `workflowSteps`, `workflowExecutions` | Workflow definitions |
-| `commission-schema.ts` | `commissionPlans`, `commissionCalculations`, `commissionDisputes` | Commission management |
-| `quickbooks-schema.ts` | `qbVendors`, `glAccounts`, `paymentTerms`, `vendorBills` | QuickBooks integration |
-| `security-schema.ts` | `auditLogs`, `dataAccessLogs`, `gdprRequests`, `securitySessions` | Compliance and security |
-| `task-schema.ts` | Task management tables | Task and checklist management |
-| `mobile-service-schema.ts` | `mobileServiceSessions`, `timeTrackingEntries`, `servicePhotos` | Field service mobile |
-| `enhanced-service-schema.ts` | `phoneInTickets`, `ticketPartsRequests`, `workflowSteps` | Service ticket details |
-| `warehouse-fpy-schema.ts` | `warehouseKittingOperations`, `fpyMetrics` | Warehouse quality |
-| `manufacturing-order-schema.ts` | `manufacturerOrderWorkflows`, `orderTracking` | Equipment orders |
-| `gps-tracking-schema.ts` | `technicianLocations`, `routeOptimization` | GPS and routing |
-| `lead-scoring-schema.ts` | Lead scoring models and history | Lead qualification |
-| `quote-proposal-schema.ts` | Quote and proposal management | Quote generation |
-| `reporting-schema.ts` | Reporting definitions and executions | Business intelligence |
-| `seo-schema.ts` | SEO settings, pages, metadata | SEO management |
-| `customer-success-schema.ts` | Customer health and success tracking | Customer success |
-| `apollo-schema.ts` | Apollo.io data mapping | Lead enrichment |
+| Schema File                          | Primary Tables                                                                                            | Purpose                           |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `equipment-schema.ts`                | `purchaseOrders`, `warehouseOperations`, `equipmentLifecycle`, `deliverySchedules`, `complianceDocuments` | Equipment lifecycle and warehouse |
+| `service-analysis-schema.ts`         | `serviceCallAnalysis`, `servicePartsUsed`, `partsOrders`                                                  | Service quality analysis          |
+| `manufacturer-integration-schema.ts` | `manufacturerIntegrations`, `deviceRegistrations`, `deviceMetrics`                                        | Device integration                |
+| `client-monitor-schema.ts`           | `monitoringClients`, `clientActivityLogs`, `clientDiscoveredDevices`                                      | Fleet monitoring agents           |
+| `advanced-billing-schema.ts`         | `billingRules`, `meterAnomalies`, `invoiceAdjustments`                                                    | Advanced billing engine           |
+| `customer-portal-schema.ts`          | `customerPortalAccess`, `serviceRequests`, `supplyOrders`, `notifications`                                | Customer self-service portal      |
+| `workflow-automation-schema.ts`      | `workflows`, `workflowSteps`, `workflowExecutions`                                                        | Workflow definitions              |
+| `commission-schema.ts`               | `commissionPlans`, `commissionCalculations`, `commissionDisputes`                                         | Commission management             |
+| `quickbooks-schema.ts`               | `qbVendors`, `glAccounts`, `paymentTerms`, `vendorBills`                                                  | QuickBooks integration            |
+| `security-schema.ts`                 | `auditLogs`, `dataAccessLogs`, `gdprRequests`, `securitySessions`                                         | Compliance and security           |
+| `task-schema.ts`                     | Task management tables                                                                                    | Task and checklist management     |
+| `mobile-service-schema.ts`           | `mobileServiceSessions`, `timeTrackingEntries`, `servicePhotos`                                           | Field service mobile              |
+| `enhanced-service-schema.ts`         | `phoneInTickets`, `ticketPartsRequests`, `workflowSteps`                                                  | Service ticket details            |
+| `warehouse-fpy-schema.ts`            | `warehouseKittingOperations`, `fpyMetrics`                                                                | Warehouse quality                 |
+| `manufacturing-order-schema.ts`      | `manufacturerOrderWorkflows`, `orderTracking`                                                             | Equipment orders                  |
+| `gps-tracking-schema.ts`             | `technicianLocations`, `routeOptimization`                                                                | GPS and routing                   |
+| `lead-scoring-schema.ts`             | Lead scoring models and history                                                                           | Lead qualification                |
+| `quote-proposal-schema.ts`           | Quote and proposal management                                                                             | Quote generation                  |
+| `reporting-schema.ts`                | Reporting definitions and executions                                                                      | Business intelligence             |
+| `seo-schema.ts`                      | SEO settings, pages, metadata                                                                             | SEO management                    |
+| `customer-success-schema.ts`         | Customer health and success tracking                                                                      | Customer success                  |
+| `apollo-schema.ts`                   | Apollo.io data mapping                                                                                    | Lead enrichment                   |
 
 ### Multi-Tenancy Implementation
 
 **Tenant Isolation:**
+
 - All tables include `tenant_id` (UUID) column
 - Row-level security (RLS) enforced via tenant context
 - Session-based tenant resolution via middleware
 - Tenant context attached to all requests
 
 **Organizational Hierarchy:**
+
 - Platform (root)
 - Company (per tenant)
 - Regional offices
 - Individual locations
 
 **Database Configuration:**
+
 - Primary: PostgreSQL via Neon (cloud)
 - ORM: Drizzle with TypeScript
 - Forecasting DB: Separate database for analytics
@@ -269,6 +298,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Route Organization (70+ Route Files)
 
 **Main Routes Registration** (`server/routes.ts`):
+
 - Orchestrates all sub-router registrations
 - Central middleware (auth, session, CSRF protection)
 - Rate limiting
@@ -277,6 +307,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 **Specialized Route Modules (23 route files in `/server/routes/`):**
 
 #### CRM & Sales Routes
+
 - `ai-search-knowledge-routes.ts` - Semantic search and knowledge management
 - `ai-documentation-routes.ts` - Document creation and management
 - `lead-scoring-routes.ts` - Lead qualification
@@ -284,6 +315,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - `email-marketing-routes.ts` - Email campaigns
 
 #### Service & Field Operations
+
 - `advanced-scheduling-routes.ts` - AI scheduling optimization
 - `field-service-routes.ts` - Mobile field service
 - `gps-tracking-routes.ts` - GPS and routing
@@ -291,10 +323,12 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 - `performance-routes.ts` - KPI tracking
 
 #### Billing & Financial
+
 - `advanced-billing-routes.ts` - Tiered billing rules
 - `lease-routes.ts` - Lease management
 
 #### Integration & Data
+
 - `manufacturer-order-routes.ts` - Equipment ordering
 - `meeting-transcription-routes.ts` - Meeting notes/transcription
 - `signature-routes.ts` - E-signature management
@@ -314,18 +348,21 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Key Route Patterns
 
 **Authentication:**
+
 - Replit Auth with OpenID Connect
 - Session-based auth with express-session
 - PostgreSQL session store
 - MFA support via backup codes
 
 **Authorization:**
+
 - Role-based access control (RBAC)
 - Tenant context middleware
 - 8-level role hierarchy
 - Permission inheritance
 
 **Data Validation:**
+
 - Zod schemas for request validation
 - Type-safe response objects
 - Error boundary handling
@@ -337,17 +374,16 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Service Layer (`/server/services/`)
 
 #### AI & Intelligence Services
+
 1. **ClaudeAIService** (`claude-ai-service.ts`)
    - Claude 3.5 Sonnet integration
    - Completion and chat endpoints
    - Token counting
-   
 2. **AIDocumentationService** (`ai-documentation-service.ts`)
    - Document type management
    - AI writing assistance
    - Content suggestions
    - Document versioning
-   
 3. **AISearchKnowledgeService** (`ai-search-knowledge-service.ts`)
    - Vector embeddings (1536-dimensional)
    - Semantic search
@@ -361,6 +397,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
    - Advanced AI analytics
 
 #### Operational Services
+
 1. **EmailService** (`email-service.ts`)
    - Transactional email
    - Template rendering
@@ -412,6 +449,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
     - Complex optimization problems
 
 #### Manufacturer Adapters (`/server/services/manufacturer-adapters/`)
+
 - **BaseAdapter** - Abstract base class for all adapters
 - **CanonAdapter** - Canon ImageRunner/imageRUNNER integration
 - **XeroxAdapter** - Xerox ConnectKey integration
@@ -448,6 +486,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### AI Capabilities Implemented
 
 **1. AI Documentation System**
+
 - Location: `/server/services/ai-documentation-service.ts`
 - Routes: `/server/routes/ai-documentation-routes.ts`
 - Features:
@@ -458,6 +497,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
   - Multi-format support (JSON, markdown, rich text)
 
 **2. AI Search & Knowledge Management**
+
 - Location: `/server/services/ai-search-knowledge-service.ts`
 - Routes: `/server/routes/ai-search-knowledge-routes.ts`
 - Features:
@@ -468,11 +508,13 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
   - Search analytics and quality scoring
 
 **3. AI/GPT Routes**
+
 - `routes-ai-gpt5.ts` - Advanced AI analytics
 - `routes-ai-analytics.ts` - AI-driven insights
 - `routes-ai-employee.ts` - Employee optimization
 
 **4. Meeting Transcription Service**
+
 - Location: `/server/services/meeting-transcription-service.ts`
 - Features:
   - Meeting recording integration
@@ -481,6 +523,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
   - Action item extraction
 
 **5. Workflow Automation**
+
 - Location: `/server/routes-workflow-automation.ts`
 - Features:
   - Event-triggered workflows
@@ -490,6 +533,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
   - AI-powered workflow recommendations
 
 **6. Predictive Analytics**
+
 - Location: `/server/routes-predictive-analytics.ts`
 - Features:
   - Meter reading pattern analysis
@@ -498,12 +542,14 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
   - Churn prediction
 
 **7. Advanced Scheduling**
+
 - Dynamic technician scheduling
 - Route optimization
 - Constraint satisfaction
 - Resource leveling
 
 **8. Lead Scoring**
+
 - AI-based lead qualification
 - Scoring model training
 - Conversion probability prediction
@@ -515,6 +561,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Toner Product Catalog
 
 **Inventory Structure:**
+
 - Products tracked in `supplies` table with:
   - Product code (e.g., `TONER-BLACK-HP-P4015`)
   - Manufacturer and model
@@ -523,6 +570,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
   - Stock information
 
 **Manufacturer Coverage (Seed Data):**
+
 - HP LaserJet series (P4015, M604, M806)
 - Canon ImageRunner (IR5075 with CMYK colors)
 - Xerox Color series (C70 with CMYK)
@@ -531,6 +579,7 @@ Printyx is a unified SaaS platform for copier dealers consolidating operations a
 ### Automatic Toner Ordering Workflow
 
 **Trigger Points:**
+
 1. **Meter Reading Collection:**
    - Real-time monitoring via manufacturer integrations
    - Clients submit toner levels via API
@@ -566,12 +615,14 @@ service_contracts table includes:
 ### Customer Portal Integration
 
 **Tables:**
+
 - `customerPortalAccess` - User access and credentials
 - `customerSupplyOrders` - Supply orders from portal
 - `customerSupplyOrderItems` - Order line items
 - `customerNotifications` - Delivery notifications
 
 **Features:**
+
 - Self-service toner ordering
 - Meter reading submission (manual, photo, or automated)
 - Order history and tracking
@@ -582,6 +633,7 @@ service_contracts table includes:
 ### Billing Rules for Toner
 
 **Configuration:**
+
 - Billing rule type: "supplies" or "services"
 - Base charge for supplies
 - Volume discounts
@@ -589,6 +641,7 @@ service_contracts table includes:
 - Time-based pricing (peak rates)
 
 **Rule Application:**
+
 - Rule priority determines order of application
 - Effective date ranges
 - Customer/equipment/contract-specific rules
@@ -601,6 +654,7 @@ service_contracts table includes:
 ### Multi-Tenant Architecture
 
 **Implementation:**
+
 - 4-tier organizational structure
 - Tenant isolation via row-level security
 - Shared database with RLS policies
@@ -608,6 +662,7 @@ service_contracts table includes:
 - Session-based tenant resolution
 
 **Security:**
+
 - Tenant context middleware enforcement
 - All queries filtered by tenant_id
 - Cross-tenant access prevention
@@ -616,6 +671,7 @@ service_contracts table includes:
 ### Error Handling & Resilience
 
 **Manufacturer Integration Resilience:**
+
 - Retry logic with exponential backoff
 - Connection pooling
 - Fallback to cached data
@@ -623,6 +679,7 @@ service_contracts table includes:
 - Error monitoring and alerting
 
 **Webhook Reliability:**
+
 - Automatic retries (configurable)
 - Dead letter queue for failed webhooks
 - Signature verification for security
@@ -631,6 +688,7 @@ service_contracts table includes:
 ### Data Consistency
 
 **Patterns:**
+
 - Transactional updates via ORM
 - Audit trail logging for all changes
 - Data validation at schema level
@@ -639,6 +697,7 @@ service_contracts table includes:
 ### Performance Optimization
 
 **Approaches:**
+
 - Database indexes on tenant_id and frequently queried fields
 - Query result caching
 - Pagination for large result sets
@@ -652,6 +711,7 @@ service_contracts table includes:
 ### 1. Adding New Feature Domain
 
 **Steps:**
+
 1. Create schema file: `shared/<feature>-schema.ts`
 2. Define Drizzle tables with tenant_id column
 3. Create insert schemas with Zod validation
@@ -661,6 +721,7 @@ service_contracts table includes:
 7. Register route in `server/routes.ts`
 
 **Schema Template:**
+
 ```typescript
 import { pgTable, varchar, timestamp, uuid, pgEnum } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
@@ -671,8 +732,12 @@ export const myFeatureTable = pgTable('my_feature', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull(), // REQUIRED
   status: myFeatureEnum('status').default('active').notNull(),
-  createdAt: timestamp('created_at').default(sql`now()`).notNull(),
-  updatedAt: timestamp('updated_at').default(sql`now()`).notNull(),
+  createdAt: timestamp('created_at')
+    .default(sql`now()`)
+    .notNull(),
+  updatedAt: timestamp('updated_at')
+    .default(sql`now()`)
+    .notNull(),
 });
 
 export const insertMyFeatureSchema = createInsertSchema(myFeatureTable);
@@ -682,6 +747,7 @@ export type MyFeature = typeof myFeatureTable.$inferSelect;
 ### 2. Adding New API Endpoint
 
 **Pattern:**
+
 ```typescript
 // 1. Import required dependencies and schemas
 import express from 'express';
@@ -696,16 +762,19 @@ const router = express.Router();
 router.post('/api/feature', requireAuth, async (req, res) => {
   try {
     const tenantId = req.user?.tenantId;
-    
+
     // Validate input
     const validated = insertMyFeatureSchema.parse(req.body);
-    
+
     // Insert with tenant_id
-    const result = await db.insert(myFeatureTable).values({
-      ...validated,
-      tenantId,
-    }).returning();
-    
+    const result = await db
+      .insert(myFeatureTable)
+      .values({
+        ...validated,
+        tenantId,
+      })
+      .returning();
+
     res.json(result[0]);
   } catch (error) {
     res.status(400).json({ error: String(error) });
@@ -721,6 +790,7 @@ export function registerFeatureRoutes(app: Express) {
 ### 3. Integrating with Manufacturer Data
 
 **Pattern:**
+
 ```typescript
 // 1. Create adapter extending BaseManufacturerAdapter
 class CustomManufacturerAdapter extends BaseManufacturerAdapter {
@@ -741,6 +811,7 @@ const standardMetrics = this.normalizeMetrics(metrics);
 ### 4. Adding Workflow Automation
 
 **Pattern:**
+
 ```typescript
 // 1. Define workflow template
 const workflowTemplate = {
@@ -753,13 +824,13 @@ const workflowTemplate = {
   steps: [
     {
       action: 'create_task',
-      config: { taskType: 'order_toner' }
+      config: { taskType: 'order_toner' },
     },
     {
       action: 'send_notification',
-      config: { channel: 'email' }
+      config: { channel: 'email' },
     },
-  ]
+  ],
 };
 
 // 2. Register workflow in database
@@ -778,6 +849,7 @@ eventEmitter.on('meter_reading.toner_low', async (data) => {
 ### 5. Adding AI Integration
 
 **Pattern:**
+
 ```typescript
 // 1. Use Claude AI Service
 const aiService = new ClaudeAIService();
@@ -788,9 +860,7 @@ const response = await aiService.generateCompletion({
   max_tokens: 4000,
   temperature: 0.7,
   system: 'You are a business expert...',
-  messages: [
-    { role: 'user', content: userPrompt }
-  ]
+  messages: [{ role: 'user', content: userPrompt }],
 });
 
 // 3. Store results with metadata
@@ -806,21 +876,16 @@ await db.insert(aiGeneratedContent).values({
 ### 6. Multi-Tenant Query Pattern
 
 **Always Include Tenant Filter:**
+
 ```typescript
 // CORRECT - includes tenant_id
-const result = await db.select()
+const result = await db
+  .select()
   .from(myTable)
-  .where(
-    and(
-      eq(myTable.tenantId, req.user.tenantId),
-      eq(myTable.status, 'active')
-    )
-  );
+  .where(and(eq(myTable.tenantId, req.user.tenantId), eq(myTable.status, 'active')));
 
 // WRONG - missing tenant filter (data leak!)
-const result = await db.select()
-  .from(myTable)
-  .where(eq(myTable.status, 'active'));
+const result = await db.select().from(myTable).where(eq(myTable.status, 'active'));
 ```
 
 ---
@@ -828,36 +893,43 @@ const result = await db.select()
 ## 9. FRONTEND PAGES & USER INTERFACES (151 Pages)
 
 ### Dashboard & Analytics Pages
+
 - AIAnalyticsDashboard, AIDocumentationDashboard, AIEmployeeDashboard
 - AdvancedAnalytics, AdvancedAnalyticsDashboard
 - SystemMonitoring, ReportsHub, AdvancedReporting
 
 ### CRM & Sales Pages
+
 - BusinessRecords, CRMEnhanced, Contacts, CompanyContacts
 - DealsManagementOptimization, DealsManagementOptimized
 - SalesPipeline, SalesForecasting, Opportunities
 - Proposals, ProposalBuilder, QuotesManagementOptimization
 
 ### Service & Field Operations
+
 - ServiceDispatchDashboard, FleetMonitoringDashboard
 - MobileServiceApp, MobileFieldService
 - RemoteMonitoring, PreventiveMaintenanceScheduling
 - TechnicianAssignment, ServiceForecastingAnalytics
 
 ### Inventory & Warehouse
+
 - InventoryManagement, AssetManagement, EquipmentLifecycle
 - ManufacturerIntegrationDevices, PurchaseOrdersOptimization
 - ProductHub, ProductModels, WarehouseManagement
 
 ### Customer Portal & Self-Service
+
 - CustomerSelfServicePortal, CustomerDashboard
 - EquipmentHealthDashboard, ServiceRequestsDashboard
 
 ### AI & Automation Features
+
 - AIHub, AISearchKnowledgeDashboard, AITaskScheduling, ConversationalAIDashboard
 - BusinessProcessOptimization, AdvancedWorkflowsDashboard
 
 ### Administrative
+
 - AccessControl, SecurityComplianceManagement, UserManagement
 - CommissionManagement, AccountsPayable, AccountsReceivable
 
@@ -866,6 +938,7 @@ const result = await db.select()
 ## 10. EXISTING DOCUMENTATION & ARTICLES
 
 ### Key Documentation Files
+
 - `CLAUDE.md` - Development guidelines and architecture overview
 - `PRD.md` - Comprehensive product requirements document
 - `FLEET_MONITORING_DEPLOYMENT.md` - Fleet monitoring setup
@@ -873,6 +946,7 @@ const result = await db.select()
 - `DATABASE_SCHEMA_HIERARCHY.md` - Schema relationships
 
 ### SEO & Knowledge Resources
+
 - `seo-schema.ts` - SEO metadata and article schema
 - `seo-routes.ts` - SEO management endpoints
 - Schema support for 'Article' type in structured data
@@ -882,6 +956,7 @@ const result = await db.select()
 ## 11. RECOMMENDATIONS FOR KNOWLEDGE BASE SYSTEM
 
 ### Core Requirements
+
 1. **Document Storage:**
    - Use `documents` table with tenant_id
    - Version control via document versions table
@@ -919,10 +994,10 @@ const result = await db.select()
    - Search term analysis
 
 ### Implementation Approach
+
 1. Extend `documents` table for articles
 2. Create `articleCategories`, `articleTags` tables
 3. Integrate with AI documentation service
 4. Build search UI leveraging AI search service
 5. Add customer portal article browsing
 6. Implement feedback mechanism
-

@@ -97,9 +97,11 @@ function extractPublishedDate() {
   for (const selector of dateSelectors) {
     const element = document.querySelector(selector);
     if (element) {
-      return element.getAttribute('content') ||
-             element.getAttribute('datetime') ||
-             element.textContent?.trim();
+      return (
+        element.getAttribute('content') ||
+        element.getAttribute('datetime') ||
+        element.textContent?.trim()
+      );
     }
   }
 
@@ -162,7 +164,9 @@ function extractMainContent() {
   let order = 1;
 
   // Process child elements
-  const elements = contentElement.querySelectorAll('h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, img');
+  const elements = contentElement.querySelectorAll(
+    'h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, img',
+  );
 
   elements.forEach((element) => {
     const tagName = element.tagName.toLowerCase();
@@ -189,7 +193,7 @@ function extractMainContent() {
     } else if (tagName === 'ul' || tagName === 'ol') {
       // List
       const items = Array.from(element.querySelectorAll('li')).map(
-        (li) => li.textContent?.trim() || ''
+        (li) => li.textContent?.trim() || '',
       );
       sections.push({
         type: 'list',

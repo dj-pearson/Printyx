@@ -1,17 +1,22 @@
-import { Router } from "express";
-import { storage } from "../storage";
-import { insertLeaseSchema, insertLeasePaymentSchema, insertLeaseRenewalSchema, insertLeaseDispositionSchema } from "@shared/schema";
+import { Router } from 'express';
+import { storage } from '../storage';
+import {
+  insertLeaseSchema,
+  insertLeasePaymentSchema,
+  insertLeaseRenewalSchema,
+  insertLeaseDispositionSchema,
+} from '@shared/schema';
 
 const router = Router();
 
 // ============= LEASE CRUD OPERATIONS =============
 
 // Get all leases for tenant
-router.get("/leases", async (req, res, next) => {
+router.get('/leases', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const leases = await storage.getLeases(tenantId);
@@ -22,16 +27,16 @@ router.get("/leases", async (req, res, next) => {
 });
 
 // Get lease by ID
-router.get("/leases/:id", async (req, res, next) => {
+router.get('/leases/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const lease = await storage.getLease(req.params.id, tenantId);
     if (!lease) {
-      return res.status(404).json({ error: "Lease not found" });
+      return res.status(404).json({ error: 'Lease not found' });
     }
 
     res.json(lease);
@@ -41,11 +46,11 @@ router.get("/leases/:id", async (req, res, next) => {
 });
 
 // Get leases by customer
-router.get("/customers/:customerId/leases", async (req, res, next) => {
+router.get('/customers/:customerId/leases', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const leases = await storage.getLeasesByCustomer(req.params.customerId, tenantId);
@@ -56,11 +61,11 @@ router.get("/customers/:customerId/leases", async (req, res, next) => {
 });
 
 // Get leases by status
-router.get("/leases/status/:status", async (req, res, next) => {
+router.get('/leases/status/:status', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const leases = await storage.getLeasesByStatus(req.params.status, tenantId);
@@ -71,12 +76,12 @@ router.get("/leases/status/:status", async (req, res, next) => {
 });
 
 // Create new lease
-router.post("/leases", async (req, res, next) => {
+router.post('/leases', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const validatedData = insertLeaseSchema.parse({
@@ -93,12 +98,12 @@ router.post("/leases", async (req, res, next) => {
 });
 
 // Update lease
-router.patch("/leases/:id", async (req, res, next) => {
+router.patch('/leases/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const updatedLease = await storage.updateLease(req.params.id, tenantId, {
@@ -107,7 +112,7 @@ router.patch("/leases/:id", async (req, res, next) => {
     });
 
     if (!updatedLease) {
-      return res.status(404).json({ error: "Lease not found" });
+      return res.status(404).json({ error: 'Lease not found' });
     }
 
     res.json(updatedLease);
@@ -117,11 +122,11 @@ router.patch("/leases/:id", async (req, res, next) => {
 });
 
 // Delete lease
-router.delete("/leases/:id", async (req, res, next) => {
+router.delete('/leases/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     await storage.deleteLease(req.params.id, tenantId);
@@ -134,11 +139,11 @@ router.delete("/leases/:id", async (req, res, next) => {
 // ============= LEASE PAYMENT OPERATIONS =============
 
 // Get payments for a lease
-router.get("/leases/:leaseId/payments", async (req, res, next) => {
+router.get('/leases/:leaseId/payments', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const payments = await storage.getLeasePayments(req.params.leaseId, tenantId);
@@ -149,11 +154,11 @@ router.get("/leases/:leaseId/payments", async (req, res, next) => {
 });
 
 // Get upcoming payments
-router.get("/lease-payments/upcoming", async (req, res, next) => {
+router.get('/lease-payments/upcoming', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const daysAhead = parseInt(req.query.days as string) || 30;
@@ -165,11 +170,11 @@ router.get("/lease-payments/upcoming", async (req, res, next) => {
 });
 
 // Get past due payments
-router.get("/lease-payments/past-due", async (req, res, next) => {
+router.get('/lease-payments/past-due', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const payments = await storage.getPastDuePayments(tenantId);
@@ -180,11 +185,11 @@ router.get("/lease-payments/past-due", async (req, res, next) => {
 });
 
 // Create lease payment
-router.post("/lease-payments", async (req, res, next) => {
+router.post('/lease-payments', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const validatedData = insertLeasePaymentSchema.parse({
@@ -200,16 +205,16 @@ router.post("/lease-payments", async (req, res, next) => {
 });
 
 // Update lease payment (e.g., mark as paid)
-router.patch("/lease-payments/:id", async (req, res, next) => {
+router.patch('/lease-payments/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const updatedPayment = await storage.updateLeasePayment(req.params.id, tenantId, req.body);
     if (!updatedPayment) {
-      return res.status(404).json({ error: "Payment not found" });
+      return res.status(404).json({ error: 'Payment not found' });
     }
 
     res.json(updatedPayment);
@@ -219,11 +224,11 @@ router.patch("/lease-payments/:id", async (req, res, next) => {
 });
 
 // Delete lease payment
-router.delete("/lease-payments/:id", async (req, res, next) => {
+router.delete('/lease-payments/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     await storage.deleteLeasePayment(req.params.id, tenantId);
@@ -236,11 +241,11 @@ router.delete("/lease-payments/:id", async (req, res, next) => {
 // ============= LEASE RENEWAL OPERATIONS =============
 
 // Get all lease renewals
-router.get("/lease-renewals", async (req, res, next) => {
+router.get('/lease-renewals', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const renewals = await storage.getLeaseRenewals(tenantId);
@@ -251,11 +256,11 @@ router.get("/lease-renewals", async (req, res, next) => {
 });
 
 // Get lease renewal by lease ID
-router.get("/leases/:leaseId/renewal", async (req, res, next) => {
+router.get('/leases/:leaseId/renewal', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const renewal = await storage.getLeaseRenewalByLease(req.params.leaseId, tenantId);
@@ -266,11 +271,11 @@ router.get("/leases/:leaseId/renewal", async (req, res, next) => {
 });
 
 // Get leases needing renewal action
-router.get("/lease-renewals/action-needed", async (req, res, next) => {
+router.get('/lease-renewals/action-needed', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const daysAhead = parseInt(req.query.days as string) || 180;
@@ -282,12 +287,12 @@ router.get("/lease-renewals/action-needed", async (req, res, next) => {
 });
 
 // Create lease renewal
-router.post("/lease-renewals", async (req, res, next) => {
+router.post('/lease-renewals', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const validatedData = insertLeaseRenewalSchema.parse({
@@ -304,16 +309,16 @@ router.post("/lease-renewals", async (req, res, next) => {
 });
 
 // Update lease renewal
-router.patch("/lease-renewals/:id", async (req, res, next) => {
+router.patch('/lease-renewals/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const updatedRenewal = await storage.updateLeaseRenewal(req.params.id, tenantId, req.body);
     if (!updatedRenewal) {
-      return res.status(404).json({ error: "Renewal not found" });
+      return res.status(404).json({ error: 'Renewal not found' });
     }
 
     res.json(updatedRenewal);
@@ -323,11 +328,11 @@ router.patch("/lease-renewals/:id", async (req, res, next) => {
 });
 
 // Delete lease renewal
-router.delete("/lease-renewals/:id", async (req, res, next) => {
+router.delete('/lease-renewals/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     await storage.deleteLeaseRenewal(req.params.id, tenantId);
@@ -340,11 +345,11 @@ router.delete("/lease-renewals/:id", async (req, res, next) => {
 // ============= LEASE DISPOSITION OPERATIONS =============
 
 // Get all lease dispositions
-router.get("/lease-dispositions", async (req, res, next) => {
+router.get('/lease-dispositions', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const dispositions = await storage.getLeaseDispositions(tenantId);
@@ -355,11 +360,11 @@ router.get("/lease-dispositions", async (req, res, next) => {
 });
 
 // Get disposition by lease ID
-router.get("/leases/:leaseId/disposition", async (req, res, next) => {
+router.get('/leases/:leaseId/disposition', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const disposition = await storage.getLeaseDispositionByLease(req.params.leaseId, tenantId);
@@ -370,12 +375,12 @@ router.get("/leases/:leaseId/disposition", async (req, res, next) => {
 });
 
 // Create lease disposition
-router.post("/lease-dispositions", async (req, res, next) => {
+router.post('/lease-dispositions', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const validatedData = insertLeaseDispositionSchema.parse({
@@ -392,16 +397,20 @@ router.post("/lease-dispositions", async (req, res, next) => {
 });
 
 // Update lease disposition
-router.patch("/lease-dispositions/:id", async (req, res, next) => {
+router.patch('/lease-dispositions/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const updatedDisposition = await storage.updateLeaseDisposition(req.params.id, tenantId, req.body);
+    const updatedDisposition = await storage.updateLeaseDisposition(
+      req.params.id,
+      tenantId,
+      req.body,
+    );
     if (!updatedDisposition) {
-      return res.status(404).json({ error: "Disposition not found" });
+      return res.status(404).json({ error: 'Disposition not found' });
     }
 
     res.json(updatedDisposition);
@@ -411,11 +420,11 @@ router.patch("/lease-dispositions/:id", async (req, res, next) => {
 });
 
 // Delete lease disposition
-router.delete("/lease-dispositions/:id", async (req, res, next) => {
+router.delete('/lease-dispositions/:id', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     await storage.deleteLeaseDisposition(req.params.id, tenantId);
@@ -428,22 +437,22 @@ router.delete("/lease-dispositions/:id", async (req, res, next) => {
 // ============= LEASE LIFECYCLE OPERATIONS =============
 
 // Generate lease payment schedule
-router.post("/leases/:id/generate-payment-schedule", async (req, res, next) => {
+router.post('/leases/:id/generate-payment-schedule', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const lease = await storage.getLease(req.params.id, tenantId);
     if (!lease) {
-      return res.status(404).json({ error: "Lease not found" });
+      return res.status(404).json({ error: 'Lease not found' });
     }
 
     // Generate payment schedule based on lease terms
     const paymentSchedule = [];
     const startDate = new Date(lease.firstPaymentDate);
-    
+
     for (let i = 0; i < lease.term; i++) {
       const scheduledDate = new Date(startDate);
       scheduledDate.setMonth(startDate.getMonth() + i);
@@ -454,34 +463,34 @@ router.post("/leases/:id/generate-payment-schedule", async (req, res, next) => {
         paymentNumber: i + 1,
         scheduledDate,
         scheduledAmount: lease.monthlyPayment,
-        status: "scheduled",
+        status: 'scheduled',
       });
 
       paymentSchedule.push(payment);
     }
 
-    res.json({ message: "Payment schedule generated", payments: paymentSchedule });
+    res.json({ message: 'Payment schedule generated', payments: paymentSchedule });
   } catch (error) {
     next(error);
   }
 });
 
 // Process lease payment
-router.post("/lease-payments/:id/process", async (req, res, next) => {
+router.post('/lease-payments/:id/process', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const payment = await storage.getLeasePayment(req.params.id, tenantId);
     if (!payment) {
-      return res.status(404).json({ error: "Payment not found" });
+      return res.status(404).json({ error: 'Payment not found' });
     }
 
     // Update payment status to completed
     const updatedPayment = await storage.updateLeasePayment(req.params.id, tenantId, {
-      status: "completed",
+      status: 'completed',
       paidDate: new Date(),
       paidAmount: payment.scheduledAmount,
       ...req.body, // Allow passing transaction details
@@ -492,7 +501,7 @@ router.post("/lease-payments/:id/process", async (req, res, next) => {
     if (lease) {
       await storage.updateLease(payment.leaseId, tenantId, {
         paymentsCompleted: (lease.paymentsCompleted || 0) + 1,
-        totalPaid: parseFloat(lease.totalPaid || "0") + parseFloat(payment.scheduledAmount),
+        totalPaid: parseFloat(lease.totalPaid || '0') + parseFloat(payment.scheduledAmount),
       });
     }
 
@@ -503,17 +512,17 @@ router.post("/lease-payments/:id/process", async (req, res, next) => {
 });
 
 // Initiate lease renewal
-router.post("/leases/:id/initiate-renewal", async (req, res, next) => {
+router.post('/leases/:id/initiate-renewal', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const lease = await storage.getLease(req.params.id, tenantId);
     if (!lease) {
-      return res.status(404).json({ error: "Lease not found" });
+      return res.status(404).json({ error: 'Lease not found' });
     }
 
     // Create renewal record
@@ -533,28 +542,28 @@ router.post("/leases/:id/initiate-renewal", async (req, res, next) => {
 
     // Update lease status
     await storage.updateLease(lease.id, tenantId, {
-      status: "pending_renewal",
+      status: 'pending_renewal',
       updatedBy: userId,
     });
 
-    res.json({ message: "Renewal initiated", renewal });
+    res.json({ message: 'Renewal initiated', renewal });
   } catch (error) {
     next(error);
   }
 });
 
 // Complete lease disposition
-router.post("/leases/:id/complete-disposition", async (req, res, next) => {
+router.post('/leases/:id/complete-disposition', async (req, res, next) => {
   try {
     const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const lease = await storage.getLease(req.params.id, tenantId);
     if (!lease) {
-      return res.status(404).json({ error: "Lease not found" });
+      return res.status(404).json({ error: 'Lease not found' });
     }
 
     // Create or update disposition
@@ -563,18 +572,18 @@ router.post("/leases/:id/complete-disposition", async (req, res, next) => {
       leaseId: lease.id,
       action: req.body.action,
       actionDate: new Date(),
-      finalStatus: "completed",
+      finalStatus: 'completed',
       completionDate: new Date(),
       createdBy: userId,
       ...req.body,
     });
 
     // Update lease status based on disposition action
-    let leaseStatus = "expired";
-    if (req.body.action === "renew") {
-      leaseStatus = "renewed";
-    } else if (req.body.action === "purchase") {
-      leaseStatus = "completed";
+    let leaseStatus = 'expired';
+    if (req.body.action === 'renew') {
+      leaseStatus = 'renewed';
+    } else if (req.body.action === 'purchase') {
+      leaseStatus = 'completed';
     }
 
     await storage.updateLease(lease.id, tenantId, {
@@ -582,7 +591,7 @@ router.post("/leases/:id/complete-disposition", async (req, res, next) => {
       updatedBy: userId,
     });
 
-    res.json({ message: "Disposition completed", disposition });
+    res.json({ message: 'Disposition completed', disposition });
   } catch (error) {
     next(error);
   }

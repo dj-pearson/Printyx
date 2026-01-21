@@ -1,4 +1,5 @@
 # Living Technical Specification - Printyx
+
 **Last Updated:** 2025-11-11
 **Version:** 1.0
 **Status:** Current Production State
@@ -10,6 +11,7 @@
 **Printyx** is an enterprise-grade, multi-tenant SaaS platform designed for copier/printer dealer businesses. It provides comprehensive business management capabilities including CRM, service dispatch, inventory management, billing, and analytics.
 
 **Platform Scale:**
+
 - 169 frontend pages
 - 126+ database tables
 - 90+ API route handlers
@@ -17,6 +19,7 @@
 - 8+ external integrations
 
 **Technology Stack:**
+
 - **Frontend:** React 18 + TypeScript + Vite
 - **Backend:** Express.js + TypeScript
 - **Database:** PostgreSQL (Neon) + Drizzle ORM
@@ -28,6 +31,7 @@
 ## 1. Project Structure & Organization
 
 ### Root Directory Structure
+
 ```
 Printyx/
 ├── client/src/              # React frontend application
@@ -48,11 +52,13 @@ Printyx/
 ```
 
 ### Path Aliases
+
 - `@/*` → `client/src/*`
 - `@shared/*` → `shared/*`
 - `@assets/*` → `attached_assets/*`
 
 ### Key Configuration Files
+
 - **package.json** - 140+ npm dependencies
 - **vite.config.ts** - Frontend build with code splitting
 - **drizzle.config.ts** - Primary database configuration
@@ -65,6 +71,7 @@ Printyx/
 ## 2. Frontend Architecture
 
 ### Technology Stack
+
 - **Framework:** React 18.3.1 with TypeScript
 - **Build Tool:** Vite 5.4.2
 - **Routing:** Wouter 3.3.5 (lightweight client-side routing)
@@ -76,6 +83,7 @@ Printyx/
 ### Component Architecture
 
 #### UI Component Categories (20+ categories):
+
 1. **Core UI Components** - Buttons, inputs, cards, dialogs, dropdowns
 2. **Service Management** - ServiceRequestForm, TechnicianWorkflowView, DispatchBoard
 3. **Customer Management** - CustomerForm, CustomerDetailView, BusinessRecordView
@@ -100,64 +108,74 @@ Printyx/
 ### Page Structure (169 Pages)
 
 #### CRM & Sales (25+ pages)
+
 - Lead Management, Deal Pipeline, Contact Management
 - Sales Forecasting, Commission Tracking, Territory Management
 - Opportunity Tracking, Quote Management, Proposal Builder
 
 #### Service Management (30+ pages)
+
 - Service Request Management, Dispatch Board, Technician Workflow
 - Equipment Maintenance, Preventive Maintenance, Service Calendar
 - Parts Management, Remote Monitoring, Service Analytics
 
 #### Inventory & Warehouse (20+ pages)
+
 - Product Catalog, Warehouse Management, Equipment Tracking
 - Parts Inventory, Supplier Management, Purchase Orders
 - Transfer Management, Receiving, Stock Adjustments
 
 #### Billing & Finance (25+ pages)
+
 - Invoice Management, Meter Billing, Contract Management
 - Payment Processing, Credit Management, Collections
 - Financial Reports, Revenue Recognition, Tax Management
 
 #### Customer Portal (15+ pages)
+
 - Customer Dashboard, Supply Ordering, Meter Submission
 - Service Request Creation, Invoice Viewing, Payment Portal
 - Equipment Management, Document Access, Support
 
 #### Analytics & Reporting (20+ pages)
+
 - Executive Dashboard, Service Analytics, Sales Reports
 - Financial Reports, Inventory Reports, Custom Report Builder
 - Predictive Analytics, Performance Metrics, KPI Tracking
 
 #### Administration (30+ pages)
+
 - User Management, Role Management, Tenant Settings
 - Integration Settings, Subscription Management, Billing Settings
 - Security Settings, Audit Logs, System Configuration
 
 ### Custom React Hooks (13 hooks)
+
 ```typescript
-useToast()              // Toast notifications
-useUser()               // Current user context
-useSubscription()       // Subscription status
-useTenant()             // Current tenant context
-usePermissions()        // RBAC permissions
-useBusinessRecords()    // Business records management
-useServiceRequests()    // Service request operations
-useInventory()          // Inventory operations
-useInvoices()           // Invoice management
-useQuotes()             // Quote operations
-useReports()            // Report generation
-useIntegrations()       // External integrations
-useAI()                 // AI assistant features
+useToast(); // Toast notifications
+useUser(); // Current user context
+useSubscription(); // Subscription status
+useTenant(); // Current tenant context
+usePermissions(); // RBAC permissions
+useBusinessRecords(); // Business records management
+useServiceRequests(); // Service request operations
+useInventory(); // Inventory operations
+useInvoices(); // Invoice management
+useQuotes(); // Quote operations
+useReports(); // Report generation
+useIntegrations(); // External integrations
+useAI(); // AI assistant features
 ```
 
 ### State Management Strategy
+
 - **TanStack Query** for server state (API calls, caching, optimistic updates)
 - **React Context** for global app state (user, tenant, theme)
 - **Local State** with useState/useReducer for component-specific state
 - **Form State** managed by React Hook Form
 
 ### Build Configuration
+
 - **Code Splitting:** Vendor chunks for React, UI components, charts
 - **Optimization:** Tree shaking, minification, lazy loading
 - **Assets:** Image optimization, font loading
@@ -168,6 +186,7 @@ useAI()                 // AI assistant features
 ## 3. Backend Architecture
 
 ### Technology Stack
+
 - **Framework:** Express.js 4.19.2 with TypeScript
 - **ORM:** Drizzle ORM with PostgreSQL adapter
 - **Database:** PostgreSQL 16 (Neon serverless)
@@ -191,6 +210,7 @@ useAI()                 // AI assistant features
 ### Route Organization (90+ Files)
 
 #### Core Business Routes
+
 ```
 server/
 ├── routes.ts                    # Main router aggregator
@@ -227,67 +247,69 @@ server/
 ### Business Logic Services (40+ Services)
 
 #### Service Categories
+
 ```typescript
 // Authentication & Authorization
-services/authService.ts
-services/rbacService.ts
-services/permissionService.ts
-services/sessionService.ts
+services / authService.ts;
+services / rbacService.ts;
+services / permissionService.ts;
+services / sessionService.ts;
 
 // CRM & Sales
-services/businessRecordService.ts
-services/leadService.ts
-services/customerService.ts
-services/dealService.ts
-services/forecastingService.ts
-services/commissionService.ts
+services / businessRecordService.ts;
+services / leadService.ts;
+services / customerService.ts;
+services / dealService.ts;
+services / forecastingService.ts;
+services / commissionService.ts;
 
 // Service Management
-services/serviceRequestService.ts
-services/dispatchService.ts
-services/technicianService.ts
-services/equipmentService.ts
-services/maintenanceService.ts
-services/remoteMonitoringService.ts
+services / serviceRequestService.ts;
+services / dispatchService.ts;
+services / technicianService.ts;
+services / equipmentService.ts;
+services / maintenanceService.ts;
+services / remoteMonitoringService.ts;
 
 // Inventory & Warehouse
-services/inventoryService.ts
-services/warehouseService.ts
-services/productService.ts
-services/partsService.ts
-services/supplierService.ts
+services / inventoryService.ts;
+services / warehouseService.ts;
+services / productService.ts;
+services / partsService.ts;
+services / supplierService.ts;
 
 // Billing & Finance
-services/invoiceService.ts
-services/meterBillingService.ts
-services/paymentService.ts
-services/contractService.ts
-services/billingService.ts
+services / invoiceService.ts;
+services / meterBillingService.ts;
+services / paymentService.ts;
+services / contractService.ts;
+services / billingService.ts;
 
 // Integrations
-services/integrationService.ts
-services/salesforceService.ts
-services/quickbooksService.ts
-services/stripeService.ts
-services/calendarService.ts
+services / integrationService.ts;
+services / salesforceService.ts;
+services / quickbooksService.ts;
+services / stripeService.ts;
+services / calendarService.ts;
 
 // Analytics & Reporting
-services/analyticsService.ts
-services/reportService.ts
-services/forecastingService.ts
-services/aiService.ts
+services / analyticsService.ts;
+services / reportService.ts;
+services / forecastingService.ts;
+services / aiService.ts;
 
 // System Services
-services/cacheService.ts
-services/notificationService.ts
-services/emailService.ts
-services/storageService.ts
-services/subscriptionService.ts
+services / cacheService.ts;
+services / notificationService.ts;
+services / emailService.ts;
+services / storageService.ts;
+services / subscriptionService.ts;
 ```
 
 ### API Design Patterns
 
 #### RESTful Endpoints
+
 ```
 GET    /api/{resource}              # List resources (paginated)
 GET    /api/{resource}/:id          # Get single resource
@@ -298,15 +320,17 @@ POST   /api/{resource}/:id/action   # Custom actions
 ```
 
 #### Tenant-Aware Queries
+
 All database queries automatically include tenant filtering:
+
 ```typescript
-const customers = await db.select()
-  .from(customers)
-  .where(eq(customers.tenantId, req.tenantId));
+const customers = await db.select().from(customers).where(eq(customers.tenantId, req.tenantId));
 ```
 
 #### Error Handling
+
 Standardized error responses:
+
 ```typescript
 {
   "error": "Error message",
@@ -321,6 +345,7 @@ Standardized error responses:
 ## 4. Database Architecture
 
 ### Database Configuration
+
 - **Primary Database:** Neon PostgreSQL (main business data)
 - **Secondary Database:** Neon PostgreSQL (forecasting/analytics)
 - **ORM:** Drizzle ORM with type-safe queries
@@ -329,140 +354,129 @@ Standardized error responses:
 ### Schema Organization (126+ Tables)
 
 #### Core Schema (`shared/schema.ts`)
+
 ```typescript
 // Organizational Hierarchy
-- platforms              // Top-level platform management
-- tenants               // Company/dealer level
-- regions               // Regional offices
-- locations             // Physical locations
-
-// Identity & Access
-- users                 // User accounts
-- sessions              // Session storage
-- roles                 // Role definitions
-- permissions           // Permission definitions
-- userRoles             // User-role assignments
-- rolePermissions       // Role-permission assignments
-- securityTokens        // API tokens
-- mfaBackupCodes        // Multi-factor auth backup codes
-
-// CRM & Sales
-- businessRecords       // Unified lead/customer records
-- leads                 // Sales leads
-- customers             // Converted customers
-- contacts              // Contact persons
-- deals                 // Sales opportunities
-- dealStages            // Deal pipeline stages
-- activities            // Activity tracking
-- notes                 // Notes and comments
-- salesForecasts        // Sales forecasting
-- commissionStructures  // Commission plans
-- territories           // Sales territories
-
-// Service Management
-- serviceRequests       // Service tickets
-- serviceTypes          // Service categories
-- servicePriorities     // Priority levels
-- serviceStatuses       // Status definitions
-- dispatches            // Dispatch assignments
-- technicians           // Technician profiles
-- technicianSkills      // Skill tracking
-- appointments          // Scheduled appointments
-- timeEntries           // Time tracking
-- equipment             // Equipment records
-- equipmentTypes        // Equipment categories
-- equipmentModels       // Equipment models
-- maintenanceSchedules  // Preventive maintenance
-- maintenanceHistory    // Service history
-- remoteMonitoring      // IoT monitoring data
-- parts                 // Parts catalog
-- partsUsage            // Parts consumption
-
-// Inventory & Warehouse
-- products              // Product catalog
-- productCategories     // Product categories
-- inventory             // Inventory levels
-- warehouses            // Warehouse locations
-- warehouseTransfers    // Transfer transactions
-- warehouseBins         // Storage locations
-- stockAdjustments      // Inventory adjustments
-- purchaseOrders        // PO management
-- suppliers             // Supplier directory
-- receiving             // Receiving transactions
-
-// Billing & Finance
-- invoices              // Invoice records
-- invoiceLineItems      // Invoice details
-- payments              // Payment transactions
-- paymentMethods        // Payment method storage
-- contracts             // Contract management
-- contractLineItems     // Contract details
-- meterBillings         // Meter-based billing
-- meterReadings         // Meter reading history
-- creditMemos           // Credit transactions
-- collections           // Collections tracking
-- billingSchedules      // Recurring billing
-
-// Quotes & Proposals
-- quotes                // Quote records
-- quoteLineItems        // Quote details
-- proposals             // Visual proposals
-- proposalSections      // Proposal content
-- pricingTiers          // Pricing structures
-
-// Integrations
-- integrationConfigs    // Integration settings
-- integrationMappings   // Field mappings
-- integrationLogs       // Sync logs
-- salesforceSync        // Salesforce data
-- quickbooksSync        // QuickBooks data
-- apiWebhooks           // Webhook configurations
-
-// Analytics & Reporting
-- reports               // Report definitions
-- reportSchedules       // Scheduled reports
-- dashboards            // Dashboard configurations
-- metrics               // KPI tracking
-- analyticsEvents       // Event tracking
-- predictiveModels      // ML models
-
-// Subscriptions & Usage
-- subscriptionPlans     // Plan definitions
-- subscriptions         // Active subscriptions
-- subscriptionAddons    // Add-on products
-- subscriptionUsage     // Usage tracking
-- subscriptionInvoices  // Subscription billing
-
-// Customer Portal
-- portalUsers           // Portal access
-- portalSupplyOrders    // Supply orders
-- portalMeterSubmissions // Meter submissions
-- portalDocuments       // Document sharing
-
-// Communication
-- notifications         // System notifications
-- emailTemplates        // Email templates
-- emailLogs             // Email tracking
-- chatMessages          // Internal chat
-- chatRooms             // Chat channels
-
-// Tasks & Workflow
-- tasks                 // Task management
-- taskTemplates         // Task templates
-- workflows             // Workflow definitions
-- workflowSteps         // Workflow steps
-- approvals             // Approval workflows
-
-// System & Configuration
-- settings              // System settings
-- auditLogs             // Audit trail
-- fileAttachments       // File storage
-- tags                  // Tagging system
-- customFields          // Custom field definitions
-- customFieldValues     // Custom field data
+-platforms - // Top-level platform management
+  tenants - // Company/dealer level
+  regions - // Regional offices
+  locations - // Physical locations
+  // Identity & Access
+  users - // User accounts
+  sessions - // Session storage
+  roles - // Role definitions
+  permissions - // Permission definitions
+  userRoles - // User-role assignments
+  rolePermissions - // Role-permission assignments
+  securityTokens - // API tokens
+  mfaBackupCodes - // Multi-factor auth backup codes
+  // CRM & Sales
+  businessRecords - // Unified lead/customer records
+  leads - // Sales leads
+  customers - // Converted customers
+  contacts - // Contact persons
+  deals - // Sales opportunities
+  dealStages - // Deal pipeline stages
+  activities - // Activity tracking
+  notes - // Notes and comments
+  salesForecasts - // Sales forecasting
+  commissionStructures - // Commission plans
+  territories - // Sales territories
+  // Service Management
+  serviceRequests - // Service tickets
+  serviceTypes - // Service categories
+  servicePriorities - // Priority levels
+  serviceStatuses - // Status definitions
+  dispatches - // Dispatch assignments
+  technicians - // Technician profiles
+  technicianSkills - // Skill tracking
+  appointments - // Scheduled appointments
+  timeEntries - // Time tracking
+  equipment - // Equipment records
+  equipmentTypes - // Equipment categories
+  equipmentModels - // Equipment models
+  maintenanceSchedules - // Preventive maintenance
+  maintenanceHistory - // Service history
+  remoteMonitoring - // IoT monitoring data
+  parts - // Parts catalog
+  partsUsage - // Parts consumption
+  // Inventory & Warehouse
+  products - // Product catalog
+  productCategories - // Product categories
+  inventory - // Inventory levels
+  warehouses - // Warehouse locations
+  warehouseTransfers - // Transfer transactions
+  warehouseBins - // Storage locations
+  stockAdjustments - // Inventory adjustments
+  purchaseOrders - // PO management
+  suppliers - // Supplier directory
+  receiving - // Receiving transactions
+  // Billing & Finance
+  invoices - // Invoice records
+  invoiceLineItems - // Invoice details
+  payments - // Payment transactions
+  paymentMethods - // Payment method storage
+  contracts - // Contract management
+  contractLineItems - // Contract details
+  meterBillings - // Meter-based billing
+  meterReadings - // Meter reading history
+  creditMemos - // Credit transactions
+  collections - // Collections tracking
+  billingSchedules - // Recurring billing
+  // Quotes & Proposals
+  quotes - // Quote records
+  quoteLineItems - // Quote details
+  proposals - // Visual proposals
+  proposalSections - // Proposal content
+  pricingTiers - // Pricing structures
+  // Integrations
+  integrationConfigs - // Integration settings
+  integrationMappings - // Field mappings
+  integrationLogs - // Sync logs
+  salesforceSync - // Salesforce data
+  quickbooksSync - // QuickBooks data
+  apiWebhooks - // Webhook configurations
+  // Analytics & Reporting
+  reports - // Report definitions
+  reportSchedules - // Scheduled reports
+  dashboards - // Dashboard configurations
+  metrics - // KPI tracking
+  analyticsEvents - // Event tracking
+  predictiveModels - // ML models
+  // Subscriptions & Usage
+  subscriptionPlans - // Plan definitions
+  subscriptions - // Active subscriptions
+  subscriptionAddons - // Add-on products
+  subscriptionUsage - // Usage tracking
+  subscriptionInvoices - // Subscription billing
+  // Customer Portal
+  portalUsers - // Portal access
+  portalSupplyOrders - // Supply orders
+  portalMeterSubmissions - // Meter submissions
+  portalDocuments - // Document sharing
+  // Communication
+  notifications - // System notifications
+  emailTemplates - // Email templates
+  emailLogs - // Email tracking
+  chatMessages - // Internal chat
+  chatRooms - // Chat channels
+  // Tasks & Workflow
+  tasks - // Task management
+  taskTemplates - // Task templates
+  workflows - // Workflow definitions
+  workflowSteps - // Workflow steps
+  approvals - // Approval workflows
+  // System & Configuration
+  settings - // System settings
+  auditLogs - // Audit trail
+  fileAttachments - // File storage
+  tags - // Tagging system
+  customFields - // Custom field definitions
+  customFieldValues; // Custom field data
 ```
 
 #### Specialized Schemas
+
 ```typescript
 // Equipment Schema (schemaEquipment.ts)
 - Equipment tracking, models, manufacturers
@@ -493,6 +507,7 @@ Standardized error responses:
 ### Multi-Tenant Architecture
 
 #### 4-Tier Organizational Hierarchy
+
 ```
 Platform (Top Level)
   └── Tenant (Company/Dealer)
@@ -501,12 +516,14 @@ Platform (Top Level)
 ```
 
 #### Data Isolation Strategy
+
 1. **Row-Level Security:** Every table includes `tenantId` column
 2. **Query Filtering:** Middleware automatically adds tenant filter to all queries
 3. **Session Isolation:** Sessions tied to tenant context
 4. **Cache Isolation:** Tenant-aware caching keys
 
 #### Tenant Resolution Methods
+
 1. **Subdomain-based (Primary):** `{tenant}.printyx.com`
 2. **Path-based (Fallback):** `/tenant/{tenantId}/...`
 3. **Development Mode:** Uses default tenant from environment
@@ -515,25 +532,25 @@ Platform (Top Level)
 
 ```typescript
 // Service Request Status
-serviceRequestStatus: ['pending', 'scheduled', 'in_progress', 'completed', 'cancelled']
+serviceRequestStatus: ['pending', 'scheduled', 'in_progress', 'completed', 'cancelled'];
 
 // Deal Status
-dealStatus: ['open', 'won', 'lost', 'abandoned']
+dealStatus: ['open', 'won', 'lost', 'abandoned'];
 
 // Payment Status
-paymentStatus: ['pending', 'processing', 'completed', 'failed', 'refunded']
+paymentStatus: ['pending', 'processing', 'completed', 'failed', 'refunded'];
 
 // Contract Status
-contractStatus: ['draft', 'active', 'expired', 'cancelled', 'renewed']
+contractStatus: ['draft', 'active', 'expired', 'cancelled', 'renewed'];
 
 // User Status
-userStatus: ['active', 'inactive', 'suspended', 'pending']
+userStatus: ['active', 'inactive', 'suspended', 'pending'];
 
 // Subscription Status
-subscriptionStatus: ['trial', 'active', 'past_due', 'cancelled', 'expired']
+subscriptionStatus: ['trial', 'active', 'past_due', 'cancelled', 'expired'];
 
 // Invoice Status
-invoiceStatus: ['draft', 'sent', 'viewed', 'paid', 'overdue', 'void']
+invoiceStatus: ['draft', 'sent', 'viewed', 'paid', 'overdue', 'void'];
 ```
 
 ### Key Relationships
@@ -574,6 +591,7 @@ parts → partsUsage (1:many)
 ### Authentication System
 
 #### Replit Auth (OpenID Connect)
+
 - **Provider:** Replit OpenID Connect
 - **Flow:** Authorization Code with PKCE
 - **Session Storage:** PostgreSQL (connect-pg-simple)
@@ -581,6 +599,7 @@ parts → partsUsage (1:many)
 - **Token Refresh:** Automatic via middleware
 
 #### Authentication Flow
+
 ```
 1. User visits protected route
 2. Redirected to Replit Auth login
@@ -592,6 +611,7 @@ parts → partsUsage (1:many)
 ```
 
 #### Multi-Factor Authentication (MFA)
+
 - **TOTP-based:** Time-based one-time passwords
 - **Backup Codes:** 10 single-use backup codes per user
 - **Recovery:** Email-based account recovery
@@ -600,6 +620,7 @@ parts → partsUsage (1:many)
 ### Authorization System (RBAC)
 
 #### Role Hierarchy (7 Levels)
+
 ```
 1. Individual User        - Basic user access
 2. Manager               - Team management
@@ -611,6 +632,7 @@ parts → partsUsage (1:many)
 ```
 
 #### Permission Structure
+
 ```typescript
 {
   resource: string,      // e.g., 'customers', 'invoices'
@@ -621,6 +643,7 @@ parts → partsUsage (1:many)
 ```
 
 #### Permission Examples
+
 ```typescript
 // Read own customers
 { resource: 'customers', action: 'read', scope: 'own' }
@@ -636,18 +659,23 @@ parts → partsUsage (1:many)
 ```
 
 #### RBAC Middleware
+
 - **Route Protection:** `requireRole(['Manager', 'Tenant Admin'])`
 - **Permission Checks:** `requirePermission('customers', 'write')`
 - **Resource Ownership:** Automatic scope enforcement
 - **Caching:** Permission cache with 5-minute TTL
 
 #### Access Control Implementation
+
 ```typescript
 // Route-level protection
-router.get('/customers',
+router.get(
+  '/customers',
   requireAuth(),
   requirePermission('customers', 'read'),
-  async (req, res) => { /* ... */ }
+  async (req, res) => {
+    /* ... */
+  },
 );
 
 // Service-level checks
@@ -659,6 +687,7 @@ if (!hasPermission(user, 'customers', 'delete', 'tenant')) {
 ### Security Features
 
 #### API Security
+
 - **Rate Limiting:** 100 requests/minute per IP
 - **CORS:** Configured per tenant domain
 - **CSRF Protection:** Token-based protection
@@ -666,13 +695,16 @@ if (!hasPermission(user, 'customers', 'delete', 'tenant')) {
 - **SQL Injection:** Parameterized queries via Drizzle ORM
 
 #### Session Security
+
 - **Secure Cookies:** HttpOnly, Secure, SameSite
 - **Session Rotation:** On privilege escalation
 - **Concurrent Session Limit:** 5 sessions per user
 - **Session Invalidation:** On password change
 
 #### Audit Logging
+
 All security-relevant events logged:
+
 - Login/logout
 - Permission changes
 - Role assignments
@@ -687,6 +719,7 @@ All security-relevant events logged:
 ### 6.1 CRM & Sales Management
 
 #### Lead Management
+
 - **Lead Capture:** Web forms, API, manual entry, integrations
 - **Lead Scoring:** Automatic scoring based on engagement
 - **Lead Assignment:** Round-robin, territory-based, manual
@@ -694,6 +727,7 @@ All security-relevant events logged:
 - **Lead Conversion:** Zero-data-loss conversion to customers
 
 #### Business Records (Unified System)
+
 - **Unified Entity:** Single record for lead → customer lifecycle
 - **Zero Data Loss:** All lead data preserved after conversion
 - **Activity History:** Complete interaction history
@@ -701,6 +735,7 @@ All security-relevant events logged:
 - **Conversion Tracking:** Source tracking and attribution
 
 #### Customer Management
+
 - **360° View:** Complete customer profile with all interactions
 - **Equipment Tracking:** All customer equipment with history
 - **Contact Management:** Multiple contacts per customer
@@ -708,6 +743,7 @@ All security-relevant events logged:
 - **Communication History:** Emails, calls, meetings tracked
 
 #### Deal Pipeline
+
 - **Pipeline Stages:** Customizable stages per tenant
 - **Deal Tracking:** Opportunity management with probability
 - **Sales Forecasting:** AI-powered forecast predictions
@@ -715,6 +751,7 @@ All security-relevant events logged:
 - **Win/Loss Analysis:** Deal outcome analytics
 
 #### Territory Management
+
 - **Geographic Territories:** ZIP code, city, region-based
 - **Territory Assignment:** Sales rep territory management
 - **Performance Tracking:** Territory-level metrics
@@ -723,6 +760,7 @@ All security-relevant events logged:
 ### 6.2 Service Management
 
 #### Service Request Management
+
 - **Multi-Channel Creation:** Phone, email, portal, technician mobile
 - **Priority Management:** Automatic priority assignment
 - **SLA Tracking:** Response time and resolution tracking
@@ -730,6 +768,7 @@ All security-relevant events logged:
 - **Customer Communication:** Automated status updates
 
 #### Dispatch System
+
 - **Intelligent Routing:** Geographic and skill-based assignment
 - **Calendar Integration:** Google/Microsoft Calendar sync
 - **Technician Availability:** Real-time availability tracking
@@ -737,6 +776,7 @@ All security-relevant events logged:
 - **Route Optimization:** Geographic route planning
 
 #### Technician Workflow
+
 - **Mobile Interface:** Native mobile-optimized interface
 - **Offline Mode:** Work offline with sync capability
 - **Time Tracking:** Clock in/out, time per task
@@ -746,6 +786,7 @@ All security-relevant events logged:
 - **Service Notes:** Detailed service documentation
 
 #### Equipment Management
+
 - **Equipment Registry:** Complete equipment database
 - **Serial Number Tracking:** Unique equipment identification
 - **Warranty Tracking:** Warranty expiration monitoring
@@ -754,6 +795,7 @@ All security-relevant events logged:
 - **Service History:** Complete maintenance history
 
 #### Preventive Maintenance
+
 - **Maintenance Schedules:** Rule-based scheduling
 - **Automatic Generation:** Service requests auto-created
 - **Reminder System:** Customer and technician reminders
@@ -761,6 +803,7 @@ All security-relevant events logged:
 - **Performance Analytics:** Maintenance effectiveness metrics
 
 #### Remote Monitoring
+
 - **IoT Integration:** Real-time equipment monitoring
 - **Alert System:** Proactive issue detection
 - **Usage Analytics:** Equipment usage patterns
@@ -770,6 +813,7 @@ All security-relevant events logged:
 ### 6.3 Inventory & Warehouse Management
 
 #### Product Catalog
+
 - **Multi-Level Categories:** Hierarchical product organization
 - **Product Variants:** Size, color, configuration variants
 - **Pricing Tiers:** Customer-specific pricing
@@ -777,6 +821,7 @@ All security-relevant events logged:
 - **Manufacturer Integration:** Direct manufacturer data sync
 
 #### Inventory Management
+
 - **Multi-Warehouse:** Multiple warehouse locations
 - **Bin Management:** Warehouse bin/location tracking
 - **Stock Levels:** Real-time inventory levels
@@ -785,6 +830,7 @@ All security-relevant events logged:
 - **Cycle Counting:** Regular inventory audits
 
 #### Warehouse Operations
+
 - **Receiving:** Purchase order receiving workflow
 - **Transfers:** Inter-warehouse transfer management
 - **Picking:** Order picking workflow
@@ -792,6 +838,7 @@ All security-relevant events logged:
 - **Returns:** Return merchandise handling
 
 #### Parts Management
+
 - **Parts Catalog:** Equipment parts database
 - **Parts Compatibility:** Equipment model compatibility
 - **Parts Usage Tracking:** Service request parts consumption
@@ -799,6 +846,7 @@ All security-relevant events logged:
 - **Supplier Management:** Multi-supplier sourcing
 
 #### Purchase Orders
+
 - **PO Creation:** Manual and automatic PO generation
 - **Approval Workflow:** Multi-level PO approval
 - **Receiving:** PO receiving and variance tracking
@@ -807,6 +855,7 @@ All security-relevant events logged:
 ### 6.4 Billing & Finance
 
 #### Invoice Management
+
 - **Invoice Generation:** Manual and automated creation
 - **Invoice Templates:** Customizable invoice layouts
 - **Line Item Management:** Detailed invoice line items
@@ -815,6 +864,7 @@ All security-relevant events logged:
 - **Invoice Delivery:** Email, portal, print options
 
 #### Meter Billing
+
 - **Meter Reading Collection:** Portal, email, API, manual
 - **Automatic Billing:** Scheduled meter billing runs
 - **Overage Calculation:** Base + overage pricing
@@ -822,6 +872,7 @@ All security-relevant events logged:
 - **Billing Alerts:** Usage anomaly detection
 
 #### Contract Management
+
 - **Contract Types:** Service, supply, lease contracts
 - **Contract Templates:** Reusable contract templates
 - **Billing Schedules:** Recurring billing automation
@@ -829,6 +880,7 @@ All security-relevant events logged:
 - **Contract Compliance:** SLA and deliverable tracking
 
 #### Payment Processing
+
 - **Stripe Integration:** Credit card processing
 - **Payment Methods:** Card, ACH, check, wire
 - **Payment Plans:** Installment payment setup
@@ -836,12 +888,14 @@ All security-relevant events logged:
 - **Payment Reconciliation:** Automatic payment matching
 
 #### Collections Management
+
 - **Aging Reports:** AR aging analysis
 - **Collection Workflows:** Automated collection reminders
 - **Payment Plans:** Past-due payment arrangements
 - **Collection Tracking:** Collection action history
 
 #### QuickBooks Integration
+
 - **Bi-Directional Sync:** Two-way data synchronization
 - **Chart of Accounts:** Automatic account mapping
 - **Invoice Sync:** Invoice push to QuickBooks
@@ -851,6 +905,7 @@ All security-relevant events logged:
 ### 6.5 Quotes & Proposals
 
 #### Quote Builder
+
 - **Product Selection:** Drag-and-drop product selection
 - **Pricing Configuration:** Tiered pricing options
 - **Discount Management:** Quote-level discounts
@@ -859,6 +914,7 @@ All security-relevant events logged:
 - **Quote Expiration:** Time-limited quotes
 
 #### Visual Proposal Builder
+
 - **Template Library:** Pre-designed proposal templates
 - **Content Sections:** Modular section builder
 - **Image Gallery:** Product image management
@@ -870,6 +926,7 @@ All security-relevant events logged:
 ### 6.6 Customer Portal
 
 #### Self-Service Features
+
 - **Dashboard:** Customer-specific metrics
 - **Supply Ordering:** Toner/ink ordering
 - **Meter Submission:** Self-service meter readings
@@ -880,6 +937,7 @@ All security-relevant events logged:
 - **Contact Management:** Update contact information
 
 #### Portal Administration
+
 - **User Management:** Portal user invitation
 - **Permission Control:** Feature-level access control
 - **Branding:** Tenant-specific portal branding
@@ -888,6 +946,7 @@ All security-relevant events logged:
 ### 6.7 Subscriptions & Usage Tracking
 
 #### Subscription Plans
+
 - **Tiered Plans:** Multiple subscription tiers
 - **Feature Gating:** Plan-based feature access
 - **Usage Limits:** API calls, storage, users
@@ -895,6 +954,7 @@ All security-relevant events logged:
 - **Trial Management:** Free trial functionality
 
 #### Subscription Management
+
 - **Plan Changes:** Upgrade/downgrade handling
 - **Proration:** Prorated billing calculations
 - **Usage Tracking:** Real-time usage monitoring
@@ -904,6 +964,7 @@ All security-relevant events logged:
 ### 6.8 Analytics & Reporting
 
 #### Executive Dashboard
+
 - **Revenue Metrics:** Real-time revenue tracking
 - **Service Metrics:** Service request analytics
 - **Sales Pipeline:** Visual pipeline representation
@@ -911,6 +972,7 @@ All security-relevant events logged:
 - **Trend Analysis:** Historical trend visualization
 
 #### Standard Reports
+
 - **Sales Reports:** Revenue, pipeline, forecasting
 - **Service Reports:** Technician, equipment, response time
 - **Financial Reports:** AR aging, revenue, profitability
@@ -918,6 +980,7 @@ All security-relevant events logged:
 - **Customer Reports:** Activity, satisfaction, retention
 
 #### Custom Report Builder
+
 - **Drag-and-Drop:** Visual report builder
 - **Data Sources:** All database tables available
 - **Filters:** Complex filter criteria
@@ -928,6 +991,7 @@ All security-relevant events logged:
 - **Scheduling:** Automated report delivery
 
 #### Predictive Analytics
+
 - **Sales Forecasting:** AI-powered revenue predictions
 - **Equipment Failure:** Predictive maintenance alerts
 - **Customer Churn:** Churn risk prediction
@@ -936,6 +1000,7 @@ All security-relevant events logged:
 ### 6.9 AI & Automation
 
 #### AI Assistant
+
 - **Claude Integration:** Anthropic Claude API
 - **GPT Integration:** OpenAI GPT-4 API
 - **Context-Aware:** Understands business context
@@ -943,6 +1008,7 @@ All security-relevant events logged:
 - **Task Automation:** Automated task suggestions
 
 #### Intelligent Features
+
 - **Smart Scheduling:** AI-powered appointment scheduling
 - **Email Intelligence:** Automatic email categorization
 - **Lead Scoring:** ML-based lead scoring
@@ -950,6 +1016,7 @@ All security-relevant events logged:
 - **Document Processing:** Automated document extraction
 
 #### Workflow Automation
+
 - **Workflow Builder:** Visual workflow designer
 - **Triggers:** Event-based workflow triggers
 - **Actions:** Automated actions and tasks
@@ -959,6 +1026,7 @@ All security-relevant events logged:
 ### 6.10 Integration Ecosystem
 
 #### Salesforce Integration
+
 - **Bi-Directional Sync:** Two-way data synchronization
 - **Field Mapping:** Customizable field mapping
 - **Real-Time Sync:** Webhook-based real-time sync
@@ -966,6 +1034,7 @@ All security-relevant events logged:
 - **Sync Logs:** Detailed synchronization logs
 
 #### QuickBooks Integration
+
 - **Customer Sync:** Customer data synchronization
 - **Invoice Sync:** Invoice push to QuickBooks
 - **Payment Import:** Payment data import
@@ -973,22 +1042,26 @@ All security-relevant events logged:
 - **Tax Mapping:** Tax code synchronization
 
 #### Calendar Integrations
+
 - **Google Calendar:** Two-way calendar sync
 - **Microsoft 365:** Outlook calendar integration
 - **Appointment Sync:** Service appointment sync
 - **Availability:** Real-time availability checking
 
 #### Communication Integrations
+
 - **Email:** SMTP email sending
 - **SMS:** Twilio SMS integration
 - **VoIP:** Phone system integration capabilities
 
 #### Data Enrichment
+
 - **ZoomInfo:** Company data enrichment
 - **Apollo.io:** Contact data enrichment
 - **Address Validation:** USPS address validation
 
 #### Manufacturer Integrations
+
 - **Equipment Data:** Model specifications sync
 - **Parts Catalog:** Parts compatibility data
 - **Pricing:** Manufacturer pricing updates
@@ -1001,6 +1074,7 @@ All security-relevant events logged:
 ### Build Configuration
 
 #### Vite Configuration
+
 ```typescript
 // vite.config.ts highlights
 {
@@ -1024,6 +1098,7 @@ All security-relevant events logged:
 ```
 
 #### TypeScript Configuration
+
 ```json
 {
   "compilerOptions": {
@@ -1043,6 +1118,7 @@ All security-relevant events logged:
 ```
 
 ### NPM Scripts
+
 ```json
 {
   "dev": "vite",
@@ -1059,6 +1135,7 @@ All security-relevant events logged:
 ```
 
 ### Environment Variables
+
 ```bash
 # Database
 DATABASE_URL=              # Primary PostgreSQL connection string
@@ -1102,6 +1179,7 @@ ENABLE_PORTAL=             # Enable customer portal
 ### Dependencies (140+ packages)
 
 #### Core Dependencies
+
 ```json
 {
   "react": "^18.3.1",
@@ -1115,6 +1193,7 @@ ENABLE_PORTAL=             # Enable customer portal
 ```
 
 #### UI Libraries
+
 ```json
 {
   "@radix-ui/react-*": "Latest",
@@ -1126,6 +1205,7 @@ ENABLE_PORTAL=             # Enable customer portal
 ```
 
 #### State Management
+
 ```json
 {
   "@tanstack/react-query": "^5.28.6",
@@ -1134,6 +1214,7 @@ ENABLE_PORTAL=             # Enable customer portal
 ```
 
 #### Integrations
+
 ```json
 {
   "stripe": "^14.21.0",
@@ -1149,6 +1230,7 @@ ENABLE_PORTAL=             # Enable customer portal
 ### Tenant Resolution Strategy
 
 #### Primary Method: Subdomain-Based
+
 ```typescript
 // Extract tenant from subdomain
 // Format: {tenant}.printyx.com
@@ -1158,6 +1240,7 @@ const tenant = await getTenantBySubdomain(subdomain);
 ```
 
 #### Fallback Method: Path-Based
+
 ```typescript
 // Extract tenant from URL path
 // Format: /tenant/{tenantId}/...
@@ -1169,6 +1252,7 @@ if (pathSegments[1] === 'tenant') {
 ```
 
 #### Development Mode
+
 ```typescript
 // Use default tenant in development
 if (process.env.NODE_ENV === 'development') {
@@ -1179,6 +1263,7 @@ if (process.env.NODE_ENV === 'development') {
 ### Data Isolation
 
 #### Database Level
+
 ```typescript
 // All queries automatically filtered by tenantId
 const middleware = async (req, res, next) => {
@@ -1187,12 +1272,14 @@ const middleware = async (req, res, next) => {
 };
 
 // Query example
-const customers = await db.select()
+const customers = await db
+  .select()
   .from(customersTable)
   .where(eq(customersTable.tenantId, req.tenantId));
 ```
 
 #### Session Level
+
 ```typescript
 // Sessions scoped to tenant
 session.tenantId = tenant.id;
@@ -1200,6 +1287,7 @@ session.userId = user.id;
 ```
 
 #### Cache Level
+
 ```typescript
 // Cache keys include tenant ID
 const cacheKey = `tenant:${tenantId}:users:${userId}`;
@@ -1208,6 +1296,7 @@ const cacheKey = `tenant:${tenantId}:users:${userId}`;
 ### Tenant-Specific Configuration
 
 #### Settings
+
 - **Branding:** Logo, colors, custom domain
 - **Features:** Feature flags per tenant
 - **Integrations:** Tenant-specific API credentials
@@ -1215,6 +1304,7 @@ const cacheKey = `tenant:${tenantId}:users:${userId}`;
 - **Billing:** Payment gateway configuration
 
 #### Database Isolation Options
+
 - **Shared Database, Shared Schema:** Current implementation (RLS)
 - **Shared Database, Separate Schema:** Possible future enhancement
 - **Separate Database:** Available for enterprise tier
@@ -1226,6 +1316,7 @@ const cacheKey = `tenant:${tenantId}:users:${userId}`;
 ### Testing Infrastructure
 
 #### Playwright E2E Tests
+
 - **Test Runner:** Playwright
 - **Browsers:** Chromium, Firefox, WebKit
 - **Parallel Execution:** Multi-browser testing
@@ -1233,6 +1324,7 @@ const cacheKey = `tenant:${tenantId}:users:${userId}`;
 - **Video Recording:** Test execution videos
 
 #### Test Categories
+
 ```
 testing/
 ├── e2e/
@@ -1247,21 +1339,25 @@ testing/
 ### Code Quality Tools
 
 #### ESLint
+
 - **Parser:** @typescript-eslint/parser
 - **Rules:** Airbnb + TypeScript recommended
 - **Auto-fix:** Available for many rules
 
 #### Prettier
+
 - **Config:** Standardized formatting
 - **Integration:** Pre-commit hooks
 - **Format on Save:** IDE integration
 
 #### TypeScript
+
 - **Strict Mode:** Enabled
 - **No Implicit Any:** Enforced
 - **Type Checking:** Pre-build validation
 
 ### Quality Metrics
+
 - **Test Coverage:** E2E critical paths covered
 - **Type Safety:** 100% TypeScript coverage
 - **Code Formatting:** Automated via Prettier
@@ -1272,12 +1368,14 @@ testing/
 ## 10. Deployment & Hosting
 
 ### Deployment Platform
+
 - **Platform:** Replit
 - **Deployment Type:** Autoscale
 - **Region:** Auto-selected based on traffic
 - **Scaling:** Automatic based on load
 
 ### Replit Configuration
+
 ```toml
 # .replit
 run = "npm start"
@@ -1294,6 +1392,7 @@ externalPort = 80
 ```
 
 ### Build Process
+
 ```bash
 # 1. Frontend build (Vite)
 vite build → client/dist/
@@ -1308,18 +1407,21 @@ NODE_ENV=production node dist/server/index.js
 ### Environment-Specific Configuration
 
 #### Development
+
 - Hot module replacement
 - Source maps enabled
 - Detailed error messages
 - Default tenant fallback
 
 #### Production
+
 - Minified assets
 - Compressed responses
 - Error tracking
 - Performance monitoring
 
 ### Database Hosting
+
 - **Provider:** Neon (serverless PostgreSQL)
 - **Connection Pooling:** Managed by Neon
 - **Backup:** Automatic daily backups
@@ -1332,16 +1434,19 @@ NODE_ENV=production node dist/server/index.js
 ### Frontend Optimization
 
 #### Code Splitting
+
 - **Vendor Chunks:** React, UI libraries, charts separated
 - **Route-Based:** Lazy loading for routes
 - **Component-Based:** Dynamic imports for heavy components
 
 #### Bundle Optimization
+
 - **Tree Shaking:** Unused code elimination
 - **Minification:** Terser for JavaScript, cssnano for CSS
 - **Compression:** Gzip/Brotli compression
 
 #### Asset Optimization
+
 - **Image Optimization:** WebP format, lazy loading
 - **Font Loading:** Font-display: swap
 - **Icon System:** SVG sprite sheets
@@ -1349,6 +1454,7 @@ NODE_ENV=production node dist/server/index.js
 ### Backend Optimization
 
 #### Database Optimization
+
 ```typescript
 // Indexes on frequently queried columns
 - tenantId (all tables)
@@ -1359,12 +1465,14 @@ NODE_ENV=production node dist/server/index.js
 ```
 
 #### Query Optimization
-- **Select Specific Fields:** Avoid SELECT *
+
+- **Select Specific Fields:** Avoid SELECT \*
 - **Pagination:** Limit + offset for large datasets
 - **Eager Loading:** Join related data when needed
 - **Query Result Caching:** Redis for frequently accessed data
 
 #### Caching Strategy
+
 ```typescript
 // Cache layers
 1. Browser Cache (static assets)
@@ -1374,6 +1482,7 @@ NODE_ENV=production node dist/server/index.js
 ```
 
 #### API Optimization
+
 - **Response Compression:** Gzip middleware
 - **ETag Support:** Conditional requests
 - **Rate Limiting:** Prevent abuse
@@ -1386,6 +1495,7 @@ NODE_ENV=production node dist/server/index.js
 ### Known Issues
 
 #### Disabled Features
+
 ```typescript
 // SEO routes disabled due to cheerio dependency issues
 // File: server/routes.ts
@@ -1393,6 +1503,7 @@ NODE_ENV=production node dist/server/index.js
 ```
 
 #### Development Warnings
+
 - Cheerio dependency requires bundling workaround
 - Some Radix UI components emit hydration warnings
 - TanStack Query devtools not production-ready
@@ -1400,21 +1511,25 @@ NODE_ENV=production node dist/server/index.js
 ### Technical Debt
 
 #### Code Organization
+
 - Some route files are very large (500+ lines)
 - Service layer could use more abstraction
 - Shared types should be centralized
 
 #### Testing
+
 - E2E test coverage is partial
 - Unit tests needed for services
 - Integration tests needed for critical paths
 
 #### Documentation
+
 - API documentation incomplete
 - Component documentation sparse
 - Some complex business logic undocumented
 
 #### Performance
+
 - Some N+1 query opportunities
 - Cache invalidation strategy needs refinement
 - Database connection pooling tuning needed
@@ -1422,6 +1537,7 @@ NODE_ENV=production node dist/server/index.js
 ### Future Enhancements
 
 #### Planned Features
+
 - Mobile native apps (React Native)
 - Advanced AI features (document processing, voice)
 - More manufacturer integrations
@@ -1429,6 +1545,7 @@ NODE_ENV=production node dist/server/index.js
 - Real-time collaboration features
 
 #### Architecture Improvements
+
 - Microservices for resource-intensive operations
 - Event-driven architecture for real-time updates
 - GraphQL API alongside REST
@@ -1441,6 +1558,7 @@ NODE_ENV=production node dist/server/index.js
 ### Current Security Measures
 
 #### Application Security
+
 - ✅ SQL Injection Prevention (parameterized queries)
 - ✅ XSS Prevention (React automatic escaping)
 - ✅ CSRF Protection (token-based)
@@ -1451,6 +1569,7 @@ NODE_ENV=production node dist/server/index.js
 - ✅ Session Security (secure cookies)
 
 #### Data Security
+
 - ✅ Multi-tenant isolation (RLS)
 - ✅ Encryption at rest (PostgreSQL)
 - ✅ Encryption in transit (HTTPS)
@@ -1459,6 +1578,7 @@ NODE_ENV=production node dist/server/index.js
 - ✅ Backup codes (account recovery)
 
 #### Infrastructure Security
+
 - ✅ Managed hosting (Replit)
 - ✅ Automated backups (Neon)
 - ✅ DDoS protection (Replit)
@@ -1467,16 +1587,19 @@ NODE_ENV=production node dist/server/index.js
 ### Security Best Practices
 
 #### Code Review
+
 - All PRs require review
 - Security-sensitive changes require careful review
 - Dependency updates reviewed for vulnerabilities
 
 #### Secrets Management
+
 - Environment variables for secrets
 - No secrets in code or version control
 - Rotation policy for API keys
 
 #### Vulnerability Management
+
 - Regular dependency updates
 - npm audit for vulnerability scanning
 - Security patches applied promptly
@@ -1488,11 +1611,13 @@ NODE_ENV=production node dist/server/index.js
 ### Business Expansion
 
 #### New Markets
+
 - **International:** Multi-currency, multi-language support
 - **Adjacent Markets:** Office furniture, IT services dealers
 - **Vertical Expansion:** Managed print services, document management
 
 #### New Features
+
 - **Mobile Apps:** Native iOS/Android applications
 - **Advanced Analytics:** Predictive modeling, prescriptive recommendations
 - **AI Enhancements:** Document processing, voice interface, chatbots
@@ -1502,18 +1627,21 @@ NODE_ENV=production node dist/server/index.js
 ### Technical Enhancements
 
 #### Scalability
+
 - **Microservices:** Break out resource-intensive services
 - **Event-Driven:** Real-time event processing
 - **Edge Computing:** Geographically distributed processing
 - **Database Sharding:** Horizontal database scaling
 
 #### Performance
+
 - **GraphQL:** More efficient data fetching
 - **Serverless Functions:** Cost-effective compute
 - **CDN Integration:** Global content delivery
 - **Advanced Caching:** Multi-level cache strategy
 
 #### Developer Experience
+
 - **API Documentation:** OpenAPI/Swagger docs
 - **SDK:** Client libraries for integrations
 - **Webhooks:** Event notification system
@@ -1522,6 +1650,7 @@ NODE_ENV=production node dist/server/index.js
 ### Integration Expansion
 
 #### Additional Integrations
+
 - **More ERPs:** NetSuite, SAP, Microsoft Dynamics
 - **More CRMs:** HubSpot, Zoho, Pipedrive
 - **Payment Processors:** PayPal, Square, Authorize.net
@@ -1530,6 +1659,7 @@ NODE_ENV=production node dist/server/index.js
 - **Marketing Automation:** Mailchimp, Constant Contact
 
 #### Data & Analytics
+
 - **Business Intelligence:** Tableau, Power BI, Looker
 - **Data Warehouse:** Snowflake, BigQuery integration
 - **ETL Pipelines:** Automated data pipelines
@@ -1541,24 +1671,28 @@ NODE_ENV=production node dist/server/index.js
 ### Regular Maintenance Tasks
 
 #### Daily
+
 - Monitor error logs
 - Check system health metrics
 - Review security alerts
 - Monitor database performance
 
 #### Weekly
+
 - Review and update dependencies
 - Database performance analysis
 - Backup verification
 - Security patch review
 
 #### Monthly
+
 - Performance optimization review
 - Cost analysis and optimization
 - Feature usage analytics
 - User feedback review
 
 #### Quarterly
+
 - Major dependency updates
 - Security audit
 - Performance benchmarking
@@ -1567,18 +1701,21 @@ NODE_ENV=production node dist/server/index.js
 ### Monitoring & Alerting
 
 #### Application Monitoring
+
 - Error tracking (server errors, exceptions)
 - Performance monitoring (response times, throughput)
 - User activity (active users, feature usage)
 - API usage (endpoint calls, rate limits)
 
 #### Infrastructure Monitoring
+
 - Server health (CPU, memory, disk)
 - Database health (connections, query performance)
 - Network health (latency, bandwidth)
 - Uptime monitoring (availability)
 
 #### Business Metrics
+
 - Revenue tracking
 - User growth
 - Feature adoption
@@ -1587,12 +1724,14 @@ NODE_ENV=production node dist/server/index.js
 ### Support & Documentation
 
 #### User Support
+
 - Help documentation
 - Video tutorials
 - In-app guidance
 - Support ticket system
 
 #### Developer Documentation
+
 - API documentation
 - Integration guides
 - Code examples
@@ -1603,6 +1742,7 @@ NODE_ENV=production node dist/server/index.js
 ## Appendix A: Technology Stack Summary
 
 ### Frontend Stack
+
 ```
 React 18.3.1               - UI framework
 TypeScript 5.5.3          - Type safety
@@ -1618,6 +1758,7 @@ Recharts 2.12.2           - Charts
 ```
 
 ### Backend Stack
+
 ```
 Node.js 20                - Runtime
 Express.js 4.19.2         - Web framework
@@ -1629,6 +1770,7 @@ connect-pg-simple         - Session store
 ```
 
 ### Infrastructure Stack
+
 ```
 Replit                    - Hosting platform
 Neon PostgreSQL           - Database hosting
@@ -1685,16 +1827,20 @@ Printyx/
 ## Document Maintenance
 
 ### Updating This Document
+
 This Living Technical Specification should be updated:
+
 - **Weekly:** Review for accuracy
 - **After Major Changes:** Update relevant sections
 - **Before Releases:** Comprehensive review
 - **On Request:** Ad-hoc updates as needed
 
 ### Version History
+
 - **v1.0** (2025-11-11): Initial comprehensive specification
 
 ### Contributors
+
 This document reflects the current state of the Printyx codebase as of November 11, 2025.
 
 ---

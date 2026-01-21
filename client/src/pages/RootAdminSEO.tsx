@@ -1,77 +1,63 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import { MainLayout } from "@/components/layout/main-layout";
-import { Search, Globe, FileText, Bot, Brain, Refresh } from "lucide-react";
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { MainLayout } from '@/components/layout/main-layout';
+import { Search, Globe, FileText, Bot, Brain, Refresh } from 'lucide-react';
 
 export default function RootAdminSEO() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { data: settings } = useQuery({ queryKey: ["/api/seo/settings"] });
-  const { data: pages } = useQuery({ queryKey: ["/api/seo/pages"] });
+  const { data: settings } = useQuery({ queryKey: ['/api/seo/settings'] });
+  const { data: pages } = useQuery({ queryKey: ['/api/seo/pages'] });
 
-  const [siteName, setSiteName] = useState(settings?.siteName || "");
-  const [siteUrl, setSiteUrl] = useState(settings?.siteUrl || "");
-  const [defaultTitle, setDefaultTitle] = useState(
-    settings?.defaultTitle || ""
-  );
-  const [defaultDescription, setDefaultDescription] = useState(
-    settings?.defaultDescription || ""
-  );
-  const [defaultOgImage, setDefaultOgImage] = useState(
-    settings?.defaultOgImage || ""
-  );
-  const [twitterHandle, setTwitterHandle] = useState(
-    settings?.twitterHandle || ""
-  );
+  const [siteName, setSiteName] = useState(settings?.siteName || '');
+  const [siteUrl, setSiteUrl] = useState(settings?.siteUrl || '');
+  const [defaultTitle, setDefaultTitle] = useState(settings?.defaultTitle || '');
+  const [defaultDescription, setDefaultDescription] = useState(settings?.defaultDescription || '');
+  const [defaultOgImage, setDefaultOgImage] = useState(settings?.defaultOgImage || '');
+  const [twitterHandle, setTwitterHandle] = useState(settings?.twitterHandle || '');
 
   const upsertSettings = useMutation({
     mutationFn: async (payload: any) => {
-      return await apiRequest("/api/seo/settings", "POST", payload);
+      return await apiRequest('/api/seo/settings', 'POST', payload);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/seo/settings"] });
-      toast({ title: "SEO settings saved successfully!" });
+      qc.invalidateQueries({ queryKey: ['/api/seo/settings'] });
+      toast({ title: 'SEO settings saved successfully!' });
     },
     onError: (error: any) => {
       toast({
-        title: "Error saving SEO settings",
+        title: 'Error saving SEO settings',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const upsertPage = useMutation({
     mutationFn: async (payload: any) => {
-      return await apiRequest("/api/seo/pages", "POST", payload);
+      return await apiRequest('/api/seo/pages', 'POST', payload);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/seo/pages"] });
-      toast({ title: "SEO page saved successfully!" });
+      qc.invalidateQueries({ queryKey: ['/api/seo/pages'] });
+      toast({ title: 'SEO page saved successfully!' });
       // Clear form
-      setNewPath("");
-      setNewTitle("");
-      setNewDescription("");
-      setNewSchemaType("");
-      setNewSchemaData("");
+      setNewPath('');
+      setNewTitle('');
+      setNewDescription('');
+      setNewSchemaType('');
+      setNewSchemaData('');
     },
     onError: (error: any) => {
       toast({
-        title: "Error saving SEO page",
+        title: 'Error saving SEO page',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -79,99 +65,97 @@ export default function RootAdminSEO() {
   // Add mutations for regenerating static files
   const regenerateSitemap = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/seo/regenerate-sitemap", "POST");
+      return await apiRequest('/api/seo/regenerate-sitemap', 'POST');
     },
     onSuccess: () => {
-      toast({ title: "Sitemap regenerated successfully!" });
+      toast({ title: 'Sitemap regenerated successfully!' });
     },
     onError: (error: any) => {
       toast({
-        title: "Error regenerating sitemap",
+        title: 'Error regenerating sitemap',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const regenerateRobots = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/seo/regenerate-robots", "POST");
+      return await apiRequest('/api/seo/regenerate-robots', 'POST');
     },
     onSuccess: () => {
-      toast({ title: "Robots.txt regenerated successfully!" });
+      toast({ title: 'Robots.txt regenerated successfully!' });
     },
     onError: (error: any) => {
       toast({
-        title: "Error regenerating robots.txt",
+        title: 'Error regenerating robots.txt',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
   const regenerateLlms = useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/seo/regenerate-llms", "POST");
+      return await apiRequest('/api/seo/regenerate-llms', 'POST');
     },
     onSuccess: () => {
-      toast({ title: "LLMs.txt regenerated successfully!" });
+      toast({ title: 'LLMs.txt regenerated successfully!' });
     },
     onError: (error: any) => {
       toast({
-        title: "Error regenerating llms.txt",
+        title: 'Error regenerating llms.txt',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
 
-  const [newPath, setNewPath] = useState("/product-catalog");
-  const [newTitle, setNewTitle] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [newSchemaType, setNewSchemaType] = useState("Service");
-  const [newSchemaData, setNewSchemaData] = useState(
-    '{\n  "name": "Master Product Catalog"\n}'
-  );
+  const [newPath, setNewPath] = useState('/product-catalog');
+  const [newTitle, setNewTitle] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newSchemaType, setNewSchemaType] = useState('Service');
+  const [newSchemaData, setNewSchemaData] = useState('{\n  "name": "Master Product Catalog"\n}');
 
   const presetOptions = [
     {
-      label: "Organization",
-      type: "Organization",
+      label: 'Organization',
+      type: 'Organization',
       data: {
-        name: "Printyx",
-        url: "https://printyx.net",
+        name: 'Printyx',
+        url: 'https://printyx.net',
       },
     },
     {
-      label: "SoftwareApplication",
-      type: "SoftwareApplication",
+      label: 'SoftwareApplication',
+      type: 'SoftwareApplication',
       data: {
-        name: "Printyx Platform",
-        applicationCategory: "BusinessApplication",
+        name: 'Printyx Platform',
+        applicationCategory: 'BusinessApplication',
       },
     },
     {
-      label: "Product",
-      type: "Product",
+      label: 'Product',
+      type: 'Product',
       data: {
-        name: "Canon imageRUNNER",
+        name: 'Canon imageRUNNER',
         brand: {
-          "@type": "Brand",
-          name: "Canon",
+          '@type': 'Brand',
+          name: 'Canon',
         },
       },
     },
     {
-      label: "FAQPage",
-      type: "FAQPage",
+      label: 'FAQPage',
+      type: 'FAQPage',
       data: {
         mainEntity: [
           {
-            "@type": "Question",
-            name: "What is Printyx?",
+            '@type': 'Question',
+            name: 'What is Printyx?',
             acceptedAnswer: {
-              "@type": "Answer",
-              text: "Printyx is an all-in-one platform for print dealers.",
+              '@type': 'Answer',
+              text: 'Printyx is an all-in-one platform for print dealers.',
             },
           },
         ],
@@ -182,11 +166,9 @@ export default function RootAdminSEO() {
   const pagesSorted = useMemo(
     () =>
       Array.isArray(pages)
-        ? [...pages].sort((a: any, b: any) =>
-            (a.path || "").localeCompare(b.path || "")
-          )
+        ? [...pages].sort((a: any, b: any) => (a.path || '').localeCompare(b.path || ''))
         : [],
-    [pages]
+    [pages],
   );
 
   return (
@@ -197,8 +179,7 @@ export default function RootAdminSEO() {
           <div>
             <h1 className="text-2xl font-semibold">SEO Management</h1>
             <p className="text-sm text-muted-foreground">
-              Manage sitemaps, meta tags, schema markup, and search engine
-              optimization
+              Manage sitemaps, meta tags, schema markup, and search engine optimization
             </p>
           </div>
         </div>
@@ -210,8 +191,7 @@ export default function RootAdminSEO() {
               Global SEO Settings
             </CardTitle>
             <CardDescription>
-              Configure default SEO settings that apply across your entire
-              platform
+              Configure default SEO settings that apply across your entire platform
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -281,7 +261,7 @@ export default function RootAdminSEO() {
                 }
                 disabled={upsertSettings.isPending}
               >
-                {upsertSettings.isPending ? "Saving..." : "Save Settings"}
+                {upsertSettings.isPending ? 'Saving...' : 'Save Settings'}
               </Button>
 
               <div className="flex gap-2 ml-4">
@@ -293,9 +273,7 @@ export default function RootAdminSEO() {
                   className="flex items-center gap-1"
                 >
                   <FileText className="h-4 w-4" />
-                  {regenerateSitemap.isPending
-                    ? "Generating..."
-                    : "Generate Sitemap"}
+                  {regenerateSitemap.isPending ? 'Generating...' : 'Generate Sitemap'}
                 </Button>
 
                 <Button
@@ -306,9 +284,7 @@ export default function RootAdminSEO() {
                   className="flex items-center gap-1"
                 >
                   <Bot className="h-4 w-4" />
-                  {regenerateRobots.isPending
-                    ? "Generating..."
-                    : "Generate Robots.txt"}
+                  {regenerateRobots.isPending ? 'Generating...' : 'Generate Robots.txt'}
                 </Button>
 
                 <Button
@@ -319,9 +295,7 @@ export default function RootAdminSEO() {
                   className="flex items-center gap-1"
                 >
                   <Brain className="h-4 w-4" />
-                  {regenerateLlms.isPending
-                    ? "Generating..."
-                    : "Generate LLMs.txt"}
+                  {regenerateLlms.isPending ? 'Generating...' : 'Generate LLMs.txt'}
                 </Button>
               </div>
             </div>
@@ -365,8 +339,7 @@ export default function RootAdminSEO() {
               SEO Pages
             </CardTitle>
             <CardDescription>
-              Manage individual page SEO settings, meta tags, and structured
-              data
+              Manage individual page SEO settings, meta tags, and structured data
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -389,10 +362,7 @@ export default function RootAdminSEO() {
               </div>
               <div className="col-span-2">
                 <Label>Title</Label>
-                <Input
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                />
+                <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
               </div>
               <div className="col-span-2">
                 <Label>Description</Label>
@@ -416,9 +386,7 @@ export default function RootAdminSEO() {
                   <select
                     className="w-full border rounded h-9 px-2"
                     onChange={(e) => {
-                      const preset = presetOptions.find(
-                        (p) => p.type === e.target.value
-                      );
+                      const preset = presetOptions.find((p) => p.type === e.target.value);
                       if (preset) {
                         setNewSchemaType(preset.type);
                         setNewSchemaData(JSON.stringify(preset.data, null, 2));
@@ -439,8 +407,8 @@ export default function RootAdminSEO() {
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setNewSchemaType("");
-                    setNewSchemaData("");
+                    setNewSchemaType('');
+                    setNewSchemaData('');
                   }}
                 >
                   Clear
@@ -453,7 +421,7 @@ export default function RootAdminSEO() {
                 try {
                   parsed = newSchemaData ? JSON.parse(newSchemaData) : null;
                 } catch (e) {
-                  alert("Schema JSON is invalid");
+                  alert('Schema JSON is invalid');
                   return;
                 }
                 upsertPage.mutate({
@@ -467,22 +435,17 @@ export default function RootAdminSEO() {
               }}
               disabled={upsertPage.isPending}
             >
-              {upsertPage.isPending ? "Saving..." : "Add / Update Page"}
+              {upsertPage.isPending ? 'Saving...' : 'Add / Update Page'}
             </Button>
 
             <div className="mt-6">
               <div className="text-sm text-gray-600 mb-2">Existing Pages</div>
               <div className="rounded border divide-y">
                 {pagesSorted.map((p: any) => (
-                  <div
-                    key={p.id}
-                    className="p-3 text-sm flex items-center justify-between"
-                  >
+                  <div key={p.id} className="p-3 text-sm flex items-center justify-between">
                     <div className="flex-1">
                       <div className="font-medium">{p.path}</div>
-                      <div className="text-gray-500 line-clamp-1">
-                        {p.title || "(no title)"}
-                      </div>
+                      <div className="text-gray-500 line-clamp-1">{p.title || '(no title)'}</div>
                     </div>
                     <div className="flex gap-3 text-xs">
                       <a

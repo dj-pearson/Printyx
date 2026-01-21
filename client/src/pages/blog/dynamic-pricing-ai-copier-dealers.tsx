@@ -1,29 +1,40 @@
-import BlogPostLayout from "@/components/blog/BlogPostLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, TrendingUp, DollarSign, AlertCircle, Target } from "lucide-react";
+import BlogPostLayout from '@/components/blog/BlogPostLayout';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, TrendingUp, DollarSign, AlertCircle, Target } from 'lucide-react';
 
 const DynamicPricingAIBlogPost = () => {
   return (
-      <BlogPostLayout
-        title="How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI (2025 Guide)"
-        description="Discover how AI-powered dynamic pricing helps copier dealers optimize contract pricing, identify underpriced accounts, and automatically maximize margins without losing customers."
-        author="Printyx Revenue Team"
-        date="January 10, 2025"
-        readTime="14 min read"
-        category="Revenue Optimization"
-        slug="dynamic-pricing-ai-copier-dealers"
-        publishedDate="2025-01-10"
-        modifiedDate="2025-01-10"
-        keywords={["dynamic pricing", "AI pricing", "copier dealer profitability", "contract pricing", "margin optimization", "revenue management"]}
-      >
+    <BlogPostLayout
+      title="How Copier Dealers Increase Profitability 15-25% with Dynamic Pricing AI (2025 Guide)"
+      description="Discover how AI-powered dynamic pricing helps copier dealers optimize contract pricing, identify underpriced accounts, and automatically maximize margins without losing customers."
+      author="Printyx Revenue Team"
+      date="January 10, 2025"
+      readTime="14 min read"
+      category="Revenue Optimization"
+      slug="dynamic-pricing-ai-copier-dealers"
+      publishedDate="2025-01-10"
+      modifiedDate="2025-01-10"
+      keywords={[
+        'dynamic pricing',
+        'AI pricing',
+        'copier dealer profitability',
+        'contract pricing',
+        'margin optimization',
+        'revenue management',
+      ]}
+    >
       <div className="space-y-8">
         {/* Introduction */}
         <section>
           <p className="text-lg">
-            Most copier dealers are leaving 15-25% of potential profit on the table. Not because they're bad at sales—but because pricing contracts manually is impossible to do optimally.
+            Most copier dealers are leaving 15-25% of potential profit on the table. Not because
+            they're bad at sales—but because pricing contracts manually is impossible to do
+            optimally.
           </p>
           <p className="text-lg mt-4">
-            You're juggling dozens of variables: equipment costs, service history, customer usage patterns, competitive pressure, payment reliability. Even experienced sales managers can't process all these factors consistently across hundreds of contracts.
+            You're juggling dozens of variables: equipment costs, service history, customer usage
+            patterns, competitive pressure, payment reliability. Even experienced sales managers
+            can't process all these factors consistently across hundreds of contracts.
           </p>
           <p className="text-lg mt-4 font-semibold text-gray-900">
             AI-powered dynamic pricing solves this problem—and the results are remarkable.
@@ -33,7 +44,9 @@ const DynamicPricingAIBlogPost = () => {
         {/* Stats Callout */}
         <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-300">
           <CardContent className="p-8">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6">Dealers Using Dynamic Pricing AI See:</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">
+              Dealers Using Dynamic Pricing AI See:
+            </h3>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
@@ -74,21 +87,25 @@ const DynamicPricingAIBlogPost = () => {
 
         {/* The Manual Pricing Problem */}
         <section>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">The Hidden Cost of Manual Pricing</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
+            The Hidden Cost of Manual Pricing
+          </h2>
 
-          <p className="text-lg mb-4">
-            Here's how most dealers price contracts today:
-          </p>
+          <p className="text-lg mb-4">Here's how most dealers price contracts today:</p>
 
           <div className="bg-gray-50 rounded-xl p-6 my-6">
             <ol className="space-y-4">
               <li className="flex items-start">
                 <span className="font-bold text-gray-900 mr-3">1.</span>
-                <span className="text-gray-700">Calculate equipment costs (lease/purchase + depreciation)</span>
+                <span className="text-gray-700">
+                  Calculate equipment costs (lease/purchase + depreciation)
+                </span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-gray-900 mr-3">2.</span>
-                <span className="text-gray-700">Estimate service costs based on "gut feel" or historical averages</span>
+                <span className="text-gray-700">
+                  Estimate service costs based on "gut feel" or historical averages
+                </span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-gray-900 mr-3">3.</span>
@@ -100,7 +117,9 @@ const DynamicPricingAIBlogPost = () => {
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-gray-900 mr-3">5.</span>
-                <span className="text-gray-700">Hope the customer accepts and the contract stays profitable</span>
+                <span className="text-gray-700">
+                  Hope the customer accepts and the contract stays profitable
+                </span>
               </li>
             </ol>
           </div>
@@ -113,24 +132,45 @@ const DynamicPricingAIBlogPost = () => {
             <div className="flex items-start space-x-3">
               <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
               <div>
-                <h4 className="font-bold text-gray-900 mb-1">Flaw #1: Service Cost Estimation is Guesswork</h4>
-                <p className="text-gray-700">You might estimate $80/month in service costs based on device average—but this specific unit at this customer location might cost $140/month. Equipment age, usage intensity, environmental factors all matter. Manual pricing can't account for these nuances.</p>
+                <h4 className="font-bold text-gray-900 mb-1">
+                  Flaw #1: Service Cost Estimation is Guesswork
+                </h4>
+                <p className="text-gray-700">
+                  You might estimate $80/month in service costs based on device average—but this
+                  specific unit at this customer location might cost $140/month. Equipment age,
+                  usage intensity, environmental factors all matter. Manual pricing can't account
+                  for these nuances.
+                </p>
               </div>
             </div>
 
             <div className="flex items-start space-x-3">
               <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
               <div>
-                <h4 className="font-bold text-gray-900 mb-1">Flaw #2: Pricing Doesn't Adapt Over Time</h4>
-                <p className="text-gray-700">You price a contract at signing, then don't touch it for 3-5 years. Meanwhile, actual costs change: service frequency increases, parts get more expensive, customer usage patterns shift. Your profitable contract becomes a money loser—and you don't notice until renewal time.</p>
+                <h4 className="font-bold text-gray-900 mb-1">
+                  Flaw #2: Pricing Doesn't Adapt Over Time
+                </h4>
+                <p className="text-gray-700">
+                  You price a contract at signing, then don't touch it for 3-5 years. Meanwhile,
+                  actual costs change: service frequency increases, parts get more expensive,
+                  customer usage patterns shift. Your profitable contract becomes a money loser—and
+                  you don't notice until renewal time.
+                </p>
               </div>
             </div>
 
             <div className="flex items-start space-x-3">
               <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-1" />
               <div>
-                <h4 className="font-bold text-gray-900 mb-1">Flaw #3: Inconsistent Pricing Across Your Portfolio</h4>
-                <p className="text-gray-700">Different sales reps price contracts differently. Some are aggressive, some conservative. Result: You have similar customers on wildly different pricing for no good reason. Money left on the table with some accounts, unprofitable contracts with others.</p>
+                <h4 className="font-bold text-gray-900 mb-1">
+                  Flaw #3: Inconsistent Pricing Across Your Portfolio
+                </h4>
+                <p className="text-gray-700">
+                  Different sales reps price contracts differently. Some are aggressive, some
+                  conservative. Result: You have similar customers on wildly different pricing for
+                  no good reason. Money left on the table with some accounts, unprofitable contracts
+                  with others.
+                </p>
               </div>
             </div>
           </div>
@@ -139,13 +179,16 @@ const DynamicPricingAIBlogPost = () => {
             <CardContent className="p-6">
               <h4 className="text-xl font-bold text-red-900 mb-3">Real Example:</h4>
               <p className="text-gray-800">
-                A mid-sized dealer analyzed their contract portfolio and discovered:<br/>
-                • 23% of contracts were underwater (negative margin)<br/>
-                • 41% were below target margin thresholds<br/>
-                • Estimated $380,000 in lost annual profit from pricing inefficiency
+                A mid-sized dealer analyzed their contract portfolio and discovered:
+                <br />
+                • 23% of contracts were underwater (negative margin)
+                <br />
+                • 41% were below target margin thresholds
+                <br />• Estimated $380,000 in lost annual profit from pricing inefficiency
               </p>
               <p className="text-gray-800 mt-3 font-semibold">
-                Most dealers have similar issues—they just don't realize it until they run the numbers.
+                Most dealers have similar issues—they just don't realize it until they run the
+                numbers.
               </p>
             </CardContent>
           </Card>
@@ -153,16 +196,21 @@ const DynamicPricingAIBlogPost = () => {
 
         {/* How Dynamic Pricing Works */}
         <section>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">How AI Dynamic Pricing Actually Works</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
+            How AI Dynamic Pricing Actually Works
+          </h2>
 
           <p className="text-lg mb-6">
-            AI-powered pricing systems analyze hundreds of variables in real-time to recommend optimal contract pricing. Here's the intelligence stack:
+            AI-powered pricing systems analyze hundreds of variables in real-time to recommend
+            optimal contract pricing. Here's the intelligence stack:
           </p>
 
           <div className="space-y-6">
             <div className="border-l-4 border-blue-600 pl-6">
               <h4 className="text-xl font-bold text-gray-900 mb-3">1. Real-Time Cost Analysis</h4>
-              <p className="text-gray-700 mb-3">The system continuously calculates actual contract costs:</p>
+              <p className="text-gray-700 mb-3">
+                The system continuously calculates actual contract costs:
+              </p>
               <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -205,17 +253,27 @@ const DynamicPricingAIBlogPost = () => {
 
             <div className="border-l-4 border-purple-600 pl-6">
               <h4 className="text-xl font-bold text-gray-900 mb-3">2. Predictive Cost Modeling</h4>
-              <p className="text-gray-700 mb-3">ML models predict future costs based on equipment lifecycle and usage patterns:</p>
+              <p className="text-gray-700 mb-3">
+                ML models predict future costs based on equipment lifecycle and usage patterns:
+              </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
-                <li>"This device will require 15% more service next year based on age and usage acceleration"</li>
+                <li>
+                  "This device will require 15% more service next year based on age and usage
+                  acceleration"
+                </li>
                 <li>"Customer usage trending upward—meter revenue will increase 8%"</li>
                 <li>"Parts costs for this model rising—factor in 12% increase"</li>
-                <li>"Service frequency matches pattern indicating major replacement needed in 6 months"</li>
+                <li>
+                  "Service frequency matches pattern indicating major replacement needed in 6
+                  months"
+                </li>
               </ul>
             </div>
 
             <div className="border-l-4 border-green-600 pl-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">3. Customer Lifetime Value Analysis</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                3. Customer Lifetime Value Analysis
+              </h4>
               <p className="text-gray-700 mb-3">The system considers long-term customer value:</p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>Payment history and reliability</li>
@@ -228,7 +286,9 @@ const DynamicPricingAIBlogPost = () => {
 
             <div className="border-l-4 border-orange-600 pl-6">
               <h4 className="text-xl font-bold text-gray-900 mb-3">4. Competitive Intelligence</h4>
-              <p className="text-gray-700 mb-3">Pricing recommendations factor in market conditions:</p>
+              <p className="text-gray-700 mb-3">
+                Pricing recommendations factor in market conditions:
+              </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>Competitive pricing data (manual input or market analysis)</li>
                 <li>Win/loss analysis by price point</li>
@@ -243,11 +303,25 @@ const DynamicPricingAIBlogPost = () => {
               <div className="bg-blue-50 rounded-lg p-4 mt-3">
                 <p className="font-semibold text-gray-900 mb-2">Example Output:</p>
                 <div className="space-y-1 text-sm text-gray-800">
-                  <p>• <strong>Recommended Price:</strong> $387/month (23% margin, 78% win probability)</p>
-                  <p>• <strong>Price Range:</strong> $342/month (minimum) to $425/month (maximum)</p>
-                  <p>• <strong>Rationale:</strong> Higher service costs on this model justify 12% premium over standard pricing</p>
-                  <p>• <strong>Competitive Position:</strong> 6% below estimated competitor pricing for similar configuration</p>
-                  <p>• <strong>Risk Analysis:</strong> Low churn risk customer—can optimize for margin over acquisition cost</p>
+                  <p>
+                    • <strong>Recommended Price:</strong> $387/month (23% margin, 78% win
+                    probability)
+                  </p>
+                  <p>
+                    • <strong>Price Range:</strong> $342/month (minimum) to $425/month (maximum)
+                  </p>
+                  <p>
+                    • <strong>Rationale:</strong> Higher service costs on this model justify 12%
+                    premium over standard pricing
+                  </p>
+                  <p>
+                    • <strong>Competitive Position:</strong> 6% below estimated competitor pricing
+                    for similar configuration
+                  </p>
+                  <p>
+                    • <strong>Risk Analysis:</strong> Low churn risk customer—can optimize for
+                    margin over acquisition cost
+                  </p>
                 </div>
               </div>
             </div>
@@ -259,7 +333,8 @@ const DynamicPricingAIBlogPost = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Real-World Results: The Numbers</h2>
 
           <p className="text-lg mb-6">
-            Dealers implementing AI dynamic pricing see consistent improvements across multiple metrics:
+            Dealers implementing AI dynamic pricing see consistent improvements across multiple
+            metrics:
           </p>
 
           <div className="grid md:grid-cols-2 gap-6 my-8">
@@ -269,15 +344,24 @@ const DynamicPricingAIBlogPost = () => {
                 <ul className="space-y-3">
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>15-25% increase in average contract margin</strong> through optimization</span>
+                    <span className="text-gray-700">
+                      <strong>15-25% increase in average contract margin</strong> through
+                      optimization
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>Identify 20-30% of contracts as underpriced</strong> within first analysis</span>
+                    <span className="text-gray-700">
+                      <strong>Identify 20-30% of contracts as underpriced</strong> within first
+                      analysis
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-green-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>$500K-2M additional profit annually</strong> for average mid-market dealer</span>
+                    <span className="text-gray-700">
+                      <strong>$500K-2M additional profit annually</strong> for average mid-market
+                      dealer
+                    </span>
                   </li>
                 </ul>
               </CardContent>
@@ -289,15 +373,23 @@ const DynamicPricingAIBlogPost = () => {
                 <ul className="space-y-3">
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>50% reduction in quote generation time</strong> with automated recommendations</span>
+                    <span className="text-gray-700">
+                      <strong>50% reduction in quote generation time</strong> with automated
+                      recommendations
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>95% of quotes use recommended pricing</strong> (with rare exceptions)</span>
+                    <span className="text-gray-700">
+                      <strong>95% of quotes use recommended pricing</strong> (with rare exceptions)
+                    </span>
                   </li>
                   <li className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-700"><strong>Consistent pricing across sales team</strong> eliminates rep variability</span>
+                    <span className="text-gray-700">
+                      <strong>Consistent pricing across sales team</strong> eliminates rep
+                      variability
+                    </span>
                   </li>
                 </ul>
               </CardContent>
@@ -306,7 +398,9 @@ const DynamicPricingAIBlogPost = () => {
 
           <Card className="bg-gradient-to-r from-purple-100 to-blue-100 border-2 border-purple-300 my-8">
             <CardContent className="p-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">Case Study: 40-Technician Dealer</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                Case Study: 40-Technician Dealer
+              </h4>
               <p className="text-gray-800 mb-4">
                 A dealer in the Midwest implemented dynamic pricing AI in Q2 2024. One year later:
               </p>
@@ -339,16 +433,21 @@ const DynamicPricingAIBlogPost = () => {
 
         {/* Renewal Pricing */}
         <section>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">The Renewal Opportunity: Where the Real Money Is</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
+            The Renewal Opportunity: Where the Real Money Is
+          </h2>
 
           <p className="text-lg mb-6">
-            New contract pricing is important—but contract renewals are where dynamic pricing really shines:
+            New contract pricing is important—but contract renewals are where dynamic pricing really
+            shines:
           </p>
 
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 my-6">
             <h4 className="font-bold text-gray-900 mb-2">The Renewal Pricing Challenge:</h4>
             <p className="text-gray-700">
-              Most dealers renew contracts at the same price or small increases (3-5%). But after 3-5 years, actual costs have changed dramatically. You're either leaving money on the table or renewing unprofitable contracts.
+              Most dealers renew contracts at the same price or small increases (3-5%). But after
+              3-5 years, actual costs have changed dramatically. You're either leaving money on the
+              table or renewing unprofitable contracts.
             </p>
           </div>
 
@@ -357,31 +456,53 @@ const DynamicPricingAIBlogPost = () => {
               <h4 className="text-xl font-bold text-gray-900 mb-3">How AI Optimizes Renewals:</h4>
               <ul className="space-y-3">
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">1</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">
+                    1
+                  </div>
                   <div className="ml-3">
-                    <p className="font-semibold text-gray-900">Analyze actual contract performance over term</p>
-                    <p className="text-gray-700 text-sm">Compare projected vs. actual service costs, meter revenue, profitability trends</p>
+                    <p className="font-semibold text-gray-900">
+                      Analyze actual contract performance over term
+                    </p>
+                    <p className="text-gray-700 text-sm">
+                      Compare projected vs. actual service costs, meter revenue, profitability
+                      trends
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">2</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">
+                    2
+                  </div>
                   <div className="ml-3">
                     <p className="font-semibold text-gray-900">Calculate optimal renewal price</p>
-                    <p className="text-gray-700 text-sm">Factor in current costs, predicted future costs, customer retention risk, competitive position</p>
+                    <p className="text-gray-700 text-sm">
+                      Factor in current costs, predicted future costs, customer retention risk,
+                      competitive position
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">3</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">
+                    3
+                  </div>
                   <div className="ml-3">
                     <p className="font-semibold text-gray-900">Recommend pricing strategy</p>
-                    <p className="text-gray-700 text-sm">"This contract performed at 12% margin—recommend 18% increase to target margin" or "High retention risk—hold pricing stable"</p>
+                    <p className="text-gray-700 text-sm">
+                      "This contract performed at 12% margin—recommend 18% increase to target
+                      margin" or "High retention risk—hold pricing stable"
+                    </p>
                   </div>
                 </li>
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">4</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 text-sm font-bold">
+                    4
+                  </div>
                   <div className="ml-3">
                     <p className="font-semibold text-gray-900">Auto-generate renewal quotes</p>
-                    <p className="text-gray-700 text-sm">One-click quote generation 90 days before expiration, with recommended pricing and justification</p>
+                    <p className="text-gray-700 text-sm">
+                      One-click quote generation 90 days before expiration, with recommended pricing
+                      and justification
+                    </p>
                   </div>
                 </li>
               </ul>
@@ -402,7 +523,8 @@ const DynamicPricingAIBlogPost = () => {
                 </div>
               </div>
               <p className="text-gray-800 mt-4">
-                <strong>Key insight:</strong> Customers accept price increases when backed by data showing actual service costs and value delivered.
+                <strong>Key insight:</strong> Customers accept price increases when backed by data
+                showing actual service costs and value delivered.
               </p>
             </CardContent>
           </Card>
@@ -410,7 +532,9 @@ const DynamicPricingAIBlogPost = () => {
 
         {/* Avoiding Pricing Mistakes */}
         <section>
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">The Pricing Mistakes AI Prevents</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
+            The Pricing Mistakes AI Prevents
+          </h2>
 
           <p className="text-lg mb-6">
             Beyond optimization, dynamic pricing prevents common (and expensive) pricing mistakes:
@@ -419,33 +543,64 @@ const DynamicPricingAIBlogPost = () => {
           <div className="space-y-4">
             <Card className="border-l-4 border-l-red-600">
               <CardContent className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">❌ Mistake #1: Winning Unprofitable Deals</h4>
-                <p className="text-gray-700 mb-2">You quote aggressively to win business, but the math doesn't work. Contract is underwater from day one.</p>
-                <p className="text-green-700 font-semibold">✓ AI Prevention: System flags quotes below break-even, requires approval for low-margin deals</p>
+                <h4 className="font-bold text-gray-900 mb-2">
+                  ❌ Mistake #1: Winning Unprofitable Deals
+                </h4>
+                <p className="text-gray-700 mb-2">
+                  You quote aggressively to win business, but the math doesn't work. Contract is
+                  underwater from day one.
+                </p>
+                <p className="text-green-700 font-semibold">
+                  ✓ AI Prevention: System flags quotes below break-even, requires approval for
+                  low-margin deals
+                </p>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-red-600">
               <CardContent className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">❌ Mistake #2: Leaving Money on the Table</h4>
-                <p className="text-gray-700 mb-2">You price conservatively to ensure profitability—but customer would have accepted 15% more.</p>
-                <p className="text-green-700 font-semibold">✓ AI Prevention: Win probability analysis shows when you can optimize for margin vs. acquisition</p>
+                <h4 className="font-bold text-gray-900 mb-2">
+                  ❌ Mistake #2: Leaving Money on the Table
+                </h4>
+                <p className="text-gray-700 mb-2">
+                  You price conservatively to ensure profitability—but customer would have accepted
+                  15% more.
+                </p>
+                <p className="text-green-700 font-semibold">
+                  ✓ AI Prevention: Win probability analysis shows when you can optimize for margin
+                  vs. acquisition
+                </p>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-red-600">
               <CardContent className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">❌ Mistake #3: Inconsistent Pricing Logic</h4>
-                <p className="text-gray-700 mb-2">Similar customers get different pricing because different reps have different approaches.</p>
-                <p className="text-green-700 font-semibold">✓ AI Prevention: Consistent algorithm applied across all quotes eliminates rep variability</p>
+                <h4 className="font-bold text-gray-900 mb-2">
+                  ❌ Mistake #3: Inconsistent Pricing Logic
+                </h4>
+                <p className="text-gray-700 mb-2">
+                  Similar customers get different pricing because different reps have different
+                  approaches.
+                </p>
+                <p className="text-green-700 font-semibold">
+                  ✓ AI Prevention: Consistent algorithm applied across all quotes eliminates rep
+                  variability
+                </p>
               </CardContent>
             </Card>
 
             <Card className="border-l-4 border-l-red-600">
               <CardContent className="p-6">
-                <h4 className="font-bold text-gray-900 mb-2">❌ Mistake #4: Static Pricing in Dynamic Conditions</h4>
-                <p className="text-gray-700 mb-2">Contract priced 4 years ago doesn't account for current cost realities.</p>
-                <p className="text-green-700 font-semibold">✓ AI Prevention: Continuous profitability monitoring alerts you to degrading margins</p>
+                <h4 className="font-bold text-gray-900 mb-2">
+                  ❌ Mistake #4: Static Pricing in Dynamic Conditions
+                </h4>
+                <p className="text-gray-700 mb-2">
+                  Contract priced 4 years ago doesn't account for current cost realities.
+                </p>
+                <p className="text-green-700 font-semibold">
+                  ✓ AI Prevention: Continuous profitability monitoring alerts you to degrading
+                  margins
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -456,13 +611,18 @@ const DynamicPricingAIBlogPost = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Implementing Dynamic Pricing</h2>
 
           <p className="text-lg mb-6">
-            The good news: You don't need to be a data scientist to use AI pricing. Modern platforms make it straightforward:
+            The good news: You don't need to be a data scientist to use AI pricing. Modern platforms
+            make it straightforward:
           </p>
 
           <div className="space-y-6">
             <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">Step 1: Data Collection (Week 1-2)</h4>
-              <p className="text-gray-700 mb-3">The system needs historical data to train models:</p>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                Step 1: Data Collection (Week 1-2)
+              </h4>
+              <p className="text-gray-700 mb-3">
+                The system needs historical data to train models:
+              </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>12+ months of service history (costs, frequency, parts used)</li>
                 <li>Contract terms and pricing history</li>
@@ -473,7 +633,9 @@ const DynamicPricingAIBlogPost = () => {
             </div>
 
             <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">Step 2: Initial Analysis (Week 3-4)</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                Step 2: Initial Analysis (Week 3-4)
+              </h4>
               <p className="text-gray-700 mb-3">System analyzes your existing portfolio:</p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>Calculate actual profitability by contract</li>
@@ -487,7 +649,9 @@ const DynamicPricingAIBlogPost = () => {
             </div>
 
             <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">Step 3: Pilot Program (Month 2-3)</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                Step 3: Pilot Program (Month 2-3)
+              </h4>
               <p className="text-gray-700 mb-3">Test AI recommendations on new quotes:</p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>Use AI pricing for all new quotes (with human review)</li>
@@ -498,7 +662,9 @@ const DynamicPricingAIBlogPost = () => {
             </div>
 
             <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">Step 4: Renewal Optimization (Month 4+)</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                Step 4: Renewal Optimization (Month 4+)
+              </h4>
               <p className="text-gray-700 mb-3">Apply AI to contract renewals:</p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>90 days before expiration, AI generates renewal analysis</li>
@@ -509,7 +675,9 @@ const DynamicPricingAIBlogPost = () => {
             </div>
 
             <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
-              <h4 className="text-xl font-bold text-gray-900 mb-3">Step 5: Continuous Optimization (Ongoing)</h4>
+              <h4 className="text-xl font-bold text-gray-900 mb-3">
+                Step 5: Continuous Optimization (Ongoing)
+              </h4>
               <p className="text-gray-700 mb-3">Models improve with every contract:</p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 ml-4">
                 <li>System learns from actual contract performance</li>
@@ -526,7 +694,9 @@ const DynamicPricingAIBlogPost = () => {
           <h2 className="text-3xl font-bold text-gray-900 mb-6">The Bottom Line</h2>
 
           <p className="text-lg mb-4">
-            Manual contract pricing made sense when dealers had 50 contracts to manage. But with 500+ contracts, dozens of equipment models, and complex cost structures, human pricing simply can't be optimal.
+            Manual contract pricing made sense when dealers had 50 contracts to manage. But with
+            500+ contracts, dozens of equipment models, and complex cost structures, human pricing
+            simply can't be optimal.
           </p>
 
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white my-8">
@@ -552,11 +722,14 @@ const DynamicPricingAIBlogPost = () => {
           </div>
 
           <p className="text-lg mb-4">
-            The dealers who adopt AI pricing early build a compounding advantage. Their models get smarter, their pricing gets better, and their profitability pulls away from competitors still pricing manually.
+            The dealers who adopt AI pricing early build a compounding advantage. Their models get
+            smarter, their pricing gets better, and their profitability pulls away from competitors
+            still pricing manually.
           </p>
 
           <p className="text-lg font-semibold text-gray-900">
-            The question isn't whether AI pricing works—the data is clear. The question is: How much profit will you leave on the table while you wait?
+            The question isn't whether AI pricing works—the data is clear. The question is: How much
+            profit will you leave on the table while you wait?
           </p>
         </section>
 
@@ -564,18 +737,32 @@ const DynamicPricingAIBlogPost = () => {
         <section className="mt-12 pt-12 border-t border-gray-200">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">Related Articles</h3>
           <div className="grid md:grid-cols-2 gap-6">
-            <a href="/blog/ai-predictive-maintenance-vs-reactive-service" className="block p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all">
-              <h4 className="font-bold text-gray-900 mb-2">Why AI-Powered Predictive Maintenance Beats Reactive Service</h4>
-              <p className="text-gray-600 text-sm">Learn how predictive AI reduces emergency calls by 30-40%</p>
+            <a
+              href="/blog/ai-predictive-maintenance-vs-reactive-service"
+              className="block p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all"
+            >
+              <h4 className="font-bold text-gray-900 mb-2">
+                Why AI-Powered Predictive Maintenance Beats Reactive Service
+              </h4>
+              <p className="text-gray-600 text-sm">
+                Learn how predictive AI reduces emergency calls by 30-40%
+              </p>
             </a>
-            <a href="/blog/e-automate-vs-modern-cloud-platforms" className="block p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all">
-              <h4 className="font-bold text-gray-900 mb-2">E-Automate vs Modern Cloud Platforms: Technical Architecture Comparison</h4>
-              <p className="text-gray-600 text-sm">Understand why legacy systems can't support AI pricing</p>
+            <a
+              href="/blog/e-automate-vs-modern-cloud-platforms"
+              className="block p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all"
+            >
+              <h4 className="font-bold text-gray-900 mb-2">
+                E-Automate vs Modern Cloud Platforms: Technical Architecture Comparison
+              </h4>
+              <p className="text-gray-600 text-sm">
+                Understand why legacy systems can't support AI pricing
+              </p>
             </a>
           </div>
         </section>
       </div>
-      </BlogPostLayout>
+    </BlogPostLayout>
   );
 };
 

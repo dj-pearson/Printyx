@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express } from 'express';
 import { db } from './db';
 import {
   salesHandoffChecklists,
@@ -9,18 +9,18 @@ import {
   type InsertHandoffTaskTemplate,
   type InsertHandoffTask,
   type InsertImplementationProject,
-} from "@shared/schema";
-import { eq, and, desc, asc, sql, or } from "drizzle-orm";
+} from '@shared/schema';
+import { eq, and, desc, asc, sql, or } from 'drizzle-orm';
 
 export function registerSalesHandoffRoutes(app: Express) {
   // ==================== Sales Handoff Checklists ====================
 
   // Get all handoffs for tenant
-  app.get("/api/sales-handoffs", async (req, res) => {
+  app.get('/api/sales-handoffs', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const { status, salesRepId, csmId } = req.query;
@@ -44,13 +44,13 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(handoffs);
     } catch (error) {
-      console.error("Error fetching handoffs:", error);
-      res.status(500).json({ error: "Failed to fetch handoffs" });
+      console.error('Error fetching handoffs:', error);
+      res.status(500).json({ error: 'Failed to fetch handoffs' });
     }
   });
 
   // Get single handoff
-  app.get("/api/sales-handoffs/:id", async (req, res) => {
+  app.get('/api/sales-handoffs/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -58,12 +58,12 @@ export function registerSalesHandoffRoutes(app: Express) {
       const handoff = await db.query.salesHandoffChecklists.findFirst({
         where: and(
           eq(salesHandoffChecklists.id, id),
-          eq(salesHandoffChecklists.tenantId, tenantId)
+          eq(salesHandoffChecklists.tenantId, tenantId),
         ),
       });
 
       if (!handoff) {
-        return res.status(404).json({ error: "Handoff not found" });
+        return res.status(404).json({ error: 'Handoff not found' });
       }
 
       // Get associated tasks
@@ -74,17 +74,17 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json({ ...handoff, tasks });
     } catch (error) {
-      console.error("Error fetching handoff:", error);
-      res.status(500).json({ error: "Failed to fetch handoff" });
+      console.error('Error fetching handoff:', error);
+      res.status(500).json({ error: 'Failed to fetch handoff' });
     }
   });
 
   // Create handoff checklist
-  app.post("/api/sales-handoffs", async (req, res) => {
+  app.post('/api/sales-handoffs', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const handoffData: InsertSalesHandoffChecklist = {
@@ -92,9 +92,7 @@ export function registerSalesHandoffRoutes(app: Express) {
         tenantId,
       };
 
-      const [newHandoff] = await db.insert(salesHandoffChecklists)
-        .values(handoffData)
-        .returning();
+      const [newHandoff] = await db.insert(salesHandoffChecklists).values(handoffData).returning();
 
       // Create tasks from template if specified
       if (req.body.templateId) {
@@ -121,13 +119,13 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.status(201).json(newHandoff);
     } catch (error) {
-      console.error("Error creating handoff:", error);
-      res.status(500).json({ error: "Failed to create handoff" });
+      console.error('Error creating handoff:', error);
+      res.status(500).json({ error: 'Failed to create handoff' });
     }
   });
 
   // Update handoff
-  app.put("/api/sales-handoffs/:id", async (req, res) => {
+  app.put('/api/sales-handoffs/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -138,57 +136,54 @@ export function registerSalesHandoffRoutes(app: Express) {
           where: eq(handoffTasks.handoffId, id),
         });
 
-        const completedTasks = tasks.filter(t => t.status === 'completed').length;
-        req.body.completionPercentage = tasks.length > 0
-          ? Math.round((completedTasks / tasks.length) * 100)
-          : 0;
+        const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+        req.body.completionPercentage =
+          tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
       }
 
-      const [updated] = await db.update(salesHandoffChecklists)
+      const [updated] = await db
+        .update(salesHandoffChecklists)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(
-          eq(salesHandoffChecklists.id, id),
-          eq(salesHandoffChecklists.tenantId, tenantId)
-        ))
+        .where(
+          and(eq(salesHandoffChecklists.id, id), eq(salesHandoffChecklists.tenantId, tenantId)),
+        )
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Handoff not found" });
+        return res.status(404).json({ error: 'Handoff not found' });
       }
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating handoff:", error);
-      res.status(500).json({ error: "Failed to update handoff" });
+      console.error('Error updating handoff:', error);
+      res.status(500).json({ error: 'Failed to update handoff' });
     }
   });
 
   // Complete handoff
-  app.post("/api/sales-handoffs/:id/complete", async (req, res) => {
+  app.post('/api/sales-handoffs/:id/complete', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
       // Check if all required tasks are completed
       const tasks = await db.query.handoffTasks.findMany({
-        where: and(
-          eq(handoffTasks.handoffId, id),
-          eq(handoffTasks.tenantId, tenantId)
-        ),
+        where: and(eq(handoffTasks.handoffId, id), eq(handoffTasks.tenantId, tenantId)),
       });
 
       const incompleteRequiredTasks = tasks.filter(
-        t => t.isRequired && t.status !== 'completed' && t.status !== 'skipped'
+        (t) => t.isRequired && t.status !== 'completed' && t.status !== 'skipped',
       );
 
       if (incompleteRequiredTasks.length > 0) {
         return res.status(400).json({
-          error: "Cannot complete handoff with incomplete required tasks",
-          incompleteTasks: incompleteRequiredTasks.map(t => t.taskName),
+          error: 'Cannot complete handoff with incomplete required tasks',
+          incompleteTasks: incompleteRequiredTasks.map((t) => t.taskName),
         });
       }
 
-      const [updated] = await db.update(salesHandoffChecklists)
+      const [updated] = await db
+        .update(salesHandoffChecklists)
         .set({
           status: 'completed',
           completedAt: new Date(),
@@ -196,27 +191,26 @@ export function registerSalesHandoffRoutes(app: Express) {
           readyForImplementation: true,
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(salesHandoffChecklists.id, id),
-          eq(salesHandoffChecklists.tenantId, tenantId)
-        ))
+        .where(
+          and(eq(salesHandoffChecklists.id, id), eq(salesHandoffChecklists.tenantId, tenantId)),
+        )
         .returning();
 
       res.json(updated);
     } catch (error) {
-      console.error("Error completing handoff:", error);
-      res.status(500).json({ error: "Failed to complete handoff" });
+      console.error('Error completing handoff:', error);
+      res.status(500).json({ error: 'Failed to complete handoff' });
     }
   });
 
   // ==================== Handoff Task Templates ====================
 
   // Get task templates
-  app.get("/api/handoff-task-templates", async (req, res) => {
+  app.get('/api/handoff-task-templates', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const { handoffType } = req.query;
@@ -234,17 +228,17 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(templates);
     } catch (error) {
-      console.error("Error fetching templates:", error);
-      res.status(500).json({ error: "Failed to fetch templates" });
+      console.error('Error fetching templates:', error);
+      res.status(500).json({ error: 'Failed to fetch templates' });
     }
   });
 
   // Create task template
-  app.post("/api/handoff-task-templates", async (req, res) => {
+  app.post('/api/handoff-task-templates', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const templateData: InsertHandoffTaskTemplate = {
@@ -252,46 +246,42 @@ export function registerSalesHandoffRoutes(app: Express) {
         tenantId,
       };
 
-      const [newTemplate] = await db.insert(handoffTaskTemplates)
-        .values(templateData)
-        .returning();
+      const [newTemplate] = await db.insert(handoffTaskTemplates).values(templateData).returning();
 
       res.status(201).json(newTemplate);
     } catch (error) {
-      console.error("Error creating template:", error);
-      res.status(500).json({ error: "Failed to create template" });
+      console.error('Error creating template:', error);
+      res.status(500).json({ error: 'Failed to create template' });
     }
   });
 
   // Update task template
-  app.put("/api/handoff-task-templates/:id", async (req, res) => {
+  app.put('/api/handoff-task-templates/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [updated] = await db.update(handoffTaskTemplates)
+      const [updated] = await db
+        .update(handoffTaskTemplates)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(
-          eq(handoffTaskTemplates.id, id),
-          eq(handoffTaskTemplates.tenantId, tenantId)
-        ))
+        .where(and(eq(handoffTaskTemplates.id, id), eq(handoffTaskTemplates.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Template not found" });
+        return res.status(404).json({ error: 'Template not found' });
       }
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating template:", error);
-      res.status(500).json({ error: "Failed to update template" });
+      console.error('Error updating template:', error);
+      res.status(500).json({ error: 'Failed to update template' });
     }
   });
 
   // ==================== Handoff Tasks ====================
 
   // Get tasks for handoff
-  app.get("/api/handoff-tasks", async (req, res) => {
+  app.get('/api/handoff-tasks', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       const { handoffId, assignedTo, status, category } = req.query;
@@ -318,17 +308,17 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(tasks);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
-      res.status(500).json({ error: "Failed to fetch tasks" });
+      console.error('Error fetching tasks:', error);
+      res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
 
   // Create handoff task
-  app.post("/api/handoff-tasks", async (req, res) => {
+  app.post('/api/handoff-tasks', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const taskData: InsertHandoffTask = {
@@ -336,33 +326,29 @@ export function registerSalesHandoffRoutes(app: Express) {
         tenantId,
       };
 
-      const [newTask] = await db.insert(handoffTasks)
-        .values(taskData)
-        .returning();
+      const [newTask] = await db.insert(handoffTasks).values(taskData).returning();
 
       res.status(201).json(newTask);
     } catch (error) {
-      console.error("Error creating task:", error);
-      res.status(500).json({ error: "Failed to create task" });
+      console.error('Error creating task:', error);
+      res.status(500).json({ error: 'Failed to create task' });
     }
   });
 
   // Update handoff task
-  app.put("/api/handoff-tasks/:id", async (req, res) => {
+  app.put('/api/handoff-tasks/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [updated] = await db.update(handoffTasks)
+      const [updated] = await db
+        .update(handoffTasks)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(
-          eq(handoffTasks.id, id),
-          eq(handoffTasks.tenantId, tenantId)
-        ))
+        .where(and(eq(handoffTasks.id, id), eq(handoffTasks.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Task not found" });
+        return res.status(404).json({ error: 'Task not found' });
       }
 
       // Update handoff completion percentage
@@ -371,10 +357,11 @@ export function registerSalesHandoffRoutes(app: Express) {
           where: eq(handoffTasks.handoffId, updated.handoffId),
         });
 
-        const completedTasks = allTasks.filter(t => t.status === 'completed').length;
+        const completedTasks = allTasks.filter((t) => t.status === 'completed').length;
         const completionPercentage = Math.round((completedTasks / allTasks.length) * 100);
 
-        await db.update(salesHandoffChecklists)
+        await db
+          .update(salesHandoffChecklists)
           .set({
             completionPercentage,
             updatedAt: new Date(),
@@ -384,19 +371,20 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating task:", error);
-      res.status(500).json({ error: "Failed to update task" });
+      console.error('Error updating task:', error);
+      res.status(500).json({ error: 'Failed to update task' });
     }
   });
 
   // Complete handoff task
-  app.post("/api/handoff-tasks/:id/complete", async (req, res) => {
+  app.post('/api/handoff-tasks/:id/complete', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
       const { completedBy, completionNotes } = req.body;
 
-      const [updated] = await db.update(handoffTasks)
+      const [updated] = await db
+        .update(handoffTasks)
         .set({
           status: 'completed',
           completedAt: new Date(),
@@ -404,14 +392,11 @@ export function registerSalesHandoffRoutes(app: Express) {
           completionNotes,
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(handoffTasks.id, id),
-          eq(handoffTasks.tenantId, tenantId)
-        ))
+        .where(and(eq(handoffTasks.id, id), eq(handoffTasks.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Task not found" });
+        return res.status(404).json({ error: 'Task not found' });
       }
 
       // Update handoff completion percentage
@@ -420,10 +405,11 @@ export function registerSalesHandoffRoutes(app: Express) {
           where: eq(handoffTasks.handoffId, updated.handoffId),
         });
 
-        const completedTasks = allTasks.filter(t => t.status === 'completed').length;
+        const completedTasks = allTasks.filter((t) => t.status === 'completed').length;
         const completionPercentage = Math.round((completedTasks / allTasks.length) * 100);
 
-        await db.update(salesHandoffChecklists)
+        await db
+          .update(salesHandoffChecklists)
           .set({
             completionPercentage,
             updatedAt: new Date(),
@@ -433,19 +419,19 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error("Error completing task:", error);
-      res.status(500).json({ error: "Failed to complete task" });
+      console.error('Error completing task:', error);
+      res.status(500).json({ error: 'Failed to complete task' });
     }
   });
 
   // ==================== Implementation Projects ====================
 
   // Get implementation projects
-  app.get("/api/implementation-projects", async (req, res) => {
+  app.get('/api/implementation-projects', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const { status, customerId, projectManagerId } = req.query;
@@ -469,13 +455,13 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(projects);
     } catch (error) {
-      console.error("Error fetching projects:", error);
-      res.status(500).json({ error: "Failed to fetch projects" });
+      console.error('Error fetching projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
 
   // Get single project
-  app.get("/api/implementation-projects/:id", async (req, res) => {
+  app.get('/api/implementation-projects/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -483,27 +469,27 @@ export function registerSalesHandoffRoutes(app: Express) {
       const project = await db.query.implementationProjects.findFirst({
         where: and(
           eq(implementationProjects.id, id),
-          eq(implementationProjects.tenantId, tenantId)
+          eq(implementationProjects.tenantId, tenantId),
         ),
       });
 
       if (!project) {
-        return res.status(404).json({ error: "Project not found" });
+        return res.status(404).json({ error: 'Project not found' });
       }
 
       res.json(project);
     } catch (error) {
-      console.error("Error fetching project:", error);
-      res.status(500).json({ error: "Failed to fetch project" });
+      console.error('Error fetching project:', error);
+      res.status(500).json({ error: 'Failed to fetch project' });
     }
   });
 
   // Create implementation project
-  app.post("/api/implementation-projects", async (req, res) => {
+  app.post('/api/implementation-projects', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const projectData: InsertImplementationProject = {
@@ -511,86 +497,88 @@ export function registerSalesHandoffRoutes(app: Express) {
         tenantId,
       };
 
-      const [newProject] = await db.insert(implementationProjects)
-        .values(projectData)
-        .returning();
+      const [newProject] = await db.insert(implementationProjects).values(projectData).returning();
 
       res.status(201).json(newProject);
     } catch (error) {
-      console.error("Error creating project:", error);
-      res.status(500).json({ error: "Failed to create project" });
+      console.error('Error creating project:', error);
+      res.status(500).json({ error: 'Failed to create project' });
     }
   });
 
   // Update implementation project
-  app.put("/api/implementation-projects/:id", async (req, res) => {
+  app.put('/api/implementation-projects/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [updated] = await db.update(implementationProjects)
+      const [updated] = await db
+        .update(implementationProjects)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(
-          eq(implementationProjects.id, id),
-          eq(implementationProjects.tenantId, tenantId)
-        ))
+        .where(
+          and(eq(implementationProjects.id, id), eq(implementationProjects.tenantId, tenantId)),
+        )
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Project not found" });
+        return res.status(404).json({ error: 'Project not found' });
       }
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating project:", error);
-      res.status(500).json({ error: "Failed to update project" });
+      console.error('Error updating project:', error);
+      res.status(500).json({ error: 'Failed to update project' });
     }
   });
 
   // Update project milestone
-  app.post("/api/implementation-projects/:id/milestones/:milestoneIndex/complete", async (req, res) => {
-    try {
-      const { id, milestoneIndex } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+  app.post(
+    '/api/implementation-projects/:id/milestones/:milestoneIndex/complete',
+    async (req, res) => {
+      try {
+        const { id, milestoneIndex } = req.params;
+        const tenantId = req.headers['x-tenant-id'] as string;
 
-      const project = await db.query.implementationProjects.findFirst({
-        where: and(
-          eq(implementationProjects.id, id),
-          eq(implementationProjects.tenantId, tenantId)
-        ),
-      });
+        const project = await db.query.implementationProjects.findFirst({
+          where: and(
+            eq(implementationProjects.id, id),
+            eq(implementationProjects.tenantId, tenantId),
+          ),
+        });
 
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
+        if (!project) {
+          return res.status(404).json({ error: 'Project not found' });
+        }
+
+        const milestones = (project.milestones as any[]) || [];
+        const index = parseInt(milestoneIndex);
+
+        if (index >= 0 && index < milestones.length) {
+          milestones[index].status = 'completed';
+          milestones[index].completedDate = new Date().toISOString();
+
+          // Calculate completion percentage
+          const completedMilestones = milestones.filter((m) => m.status === 'completed').length;
+          const completionPercentage = Math.round((completedMilestones / milestones.length) * 100);
+
+          const [updated] = await db
+            .update(implementationProjects)
+            .set({
+              milestones,
+              completionPercentage,
+              updatedAt: new Date(),
+            })
+            .where(eq(implementationProjects.id, id))
+            .returning();
+
+          res.json(updated);
+        } else {
+          res.status(400).json({ error: 'Invalid milestone index' });
+        }
+      } catch (error) {
+        console.error('Error completing milestone:', error);
+        res.status(500).json({ error: 'Failed to complete milestone' });
       }
-
-      const milestones = (project.milestones as any[]) || [];
-      const index = parseInt(milestoneIndex);
-
-      if (index >= 0 && index < milestones.length) {
-        milestones[index].status = 'completed';
-        milestones[index].completedDate = new Date().toISOString();
-
-        // Calculate completion percentage
-        const completedMilestones = milestones.filter(m => m.status === 'completed').length;
-        const completionPercentage = Math.round((completedMilestones / milestones.length) * 100);
-
-        const [updated] = await db.update(implementationProjects)
-          .set({
-            milestones,
-            completionPercentage,
-            updatedAt: new Date(),
-          })
-          .where(eq(implementationProjects.id, id))
-          .returning();
-
-        res.json(updated);
-      } else {
-        res.status(400).json({ error: "Invalid milestone index" });
-      }
-    } catch (error) {
-      console.error("Error completing milestone:", error);
-      res.status(500).json({ error: "Failed to complete milestone" });
-    }
-  });
+    },
+  );
 }

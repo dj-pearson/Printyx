@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -18,8 +13,28 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, FunnelChart, Funnel, Cell } from 'recharts';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  FunnelChart,
+  Funnel,
+  Cell,
+} from 'recharts';
 import MainLayout from '@/components/layout/main-layout';
 import {
   Users,
@@ -85,8 +100,12 @@ export default function RootAdminSignupsCRM() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Signups & Trials CRM</h1>
-            <p className="text-gray-500 dark:text-gray-400">Manage platform signups and monitor trial engagement</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Signups & Trials CRM
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">
+              Manage platform signups and monitor trial engagement
+            </p>
           </div>
           <Button>
             <Download className="w-4 h-4 mr-2" />
@@ -124,7 +143,9 @@ export default function RootAdminSignupsCRM() {
               <Target className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analyticsData?.avgQualificationScore || 0}/100</div>
+              <div className="text-2xl font-bold">
+                {analyticsData?.avgQualificationScore || 0}/100
+              </div>
               <p className="text-xs text-gray-500">Lead quality score</p>
             </CardContent>
           </Card>
@@ -210,15 +231,19 @@ export default function RootAdminSignupsCRM() {
                         </TableRow>
                       ) : (
                         signups
-                          .filter((signup: any) =>
-                            searchQuery === '' || signup.email.toLowerCase().includes(searchQuery.toLowerCase())
+                          .filter(
+                            (signup: any) =>
+                              searchQuery === '' ||
+                              signup.email.toLowerCase().includes(searchQuery.toLowerCase()),
                           )
                           .map((signup: any) => (
                             <TableRow key={signup.id}>
                               <TableCell className="font-medium">{signup.companyName}</TableCell>
                               <TableCell>
                                 <div>
-                                  <p className="font-sm">{signup.firstName} {signup.lastName}</p>
+                                  <p className="font-sm">
+                                    {signup.firstName} {signup.lastName}
+                                  </p>
                                   <p className="text-sm text-gray-500">{signup.email}</p>
                                 </div>
                               </TableCell>
@@ -233,7 +258,9 @@ export default function RootAdminSignupsCRM() {
                                 </Badge>
                               </TableCell>
                               <TableCell>
-                                <span className="font-mono text-sm">{signup.qualificationScore}/100</span>
+                                <span className="font-mono text-sm">
+                                  {signup.qualificationScore}/100
+                                </span>
                               </TableCell>
                               <TableCell className="text-sm">
                                 {format(new Date(signup.createdAt), 'MMM dd')}
@@ -318,12 +345,14 @@ export default function RootAdminSignupsCRM() {
                     <div className="text-center py-8">Loading...</div>
                   ) : (
                     <div className="space-y-3">
-                      {Object.entries(analyticsData?.bySource || {}).map(([source, count]: [string, any]) => (
-                        <div key={source} className="flex justify-between items-center">
-                          <span className="text-sm capitalize">{source.replace('_', ' ')}</span>
-                          <span className="font-bold">{count}</span>
-                        </div>
-                      ))}
+                      {Object.entries(analyticsData?.bySource || {}).map(
+                        ([source, count]: [string, any]) => (
+                          <div key={source} className="flex justify-between items-center">
+                            <span className="text-sm capitalize">{source.replace('_', ' ')}</span>
+                            <span className="font-bold">{count}</span>
+                          </div>
+                        ),
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -338,14 +367,18 @@ export default function RootAdminSignupsCRM() {
                     <div className="text-center py-8">Loading...</div>
                   ) : (
                     <div className="space-y-3">
-                      {Object.entries(analyticsData?.byStatus || {}).map(([status, count]: [string, any]) => (
-                        <div key={status} className="flex justify-between items-center">
-                          <span className="text-sm">
-                            <Badge className={statusColors[status]}>{status.replace('_', ' ')}</Badge>
-                          </span>
-                          <span className="font-bold">{count}</span>
-                        </div>
-                      ))}
+                      {Object.entries(analyticsData?.byStatus || {}).map(
+                        ([status, count]: [string, any]) => (
+                          <div key={status} className="flex justify-between items-center">
+                            <span className="text-sm">
+                              <Badge className={statusColors[status]}>
+                                {status.replace('_', ' ')}
+                              </Badge>
+                            </span>
+                            <span className="font-bold">{count}</span>
+                          </div>
+                        ),
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -377,12 +410,16 @@ export default function RootAdminSignupsCRM() {
                           <TableCell className="font-medium">{signup.companyName}</TableCell>
                           <TableCell>
                             <div>
-                              <p className="text-sm">{signup.firstName} {signup.lastName}</p>
+                              <p className="text-sm">
+                                {signup.firstName} {signup.lastName}
+                              </p>
                               <p className="text-xs text-gray-500">{signup.email}</p>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <span className="font-bold text-green-600">{signup.qualificationScore}</span>
+                            <span className="font-bold text-green-600">
+                              {signup.qualificationScore}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <Badge className={statusColors[signup.status]}>
@@ -390,7 +427,9 @@ export default function RootAdminSignupsCRM() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
-                            {signup.lastActivityAt ? format(new Date(signup.lastActivityAt), 'MMM dd, HH:mm') : 'Never'}
+                            {signup.lastActivityAt
+                              ? format(new Date(signup.lastActivityAt), 'MMM dd, HH:mm')
+                              : 'Never'}
                           </TableCell>
                         </TableRow>
                       ))}

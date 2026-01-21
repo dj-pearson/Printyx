@@ -91,17 +91,18 @@ router.get('/health-scores', async (req: Request, res: Response) => {
     });
 
     // Get associated business records
-    const businessRecordIds = healthScores.map(hs => hs.businessRecordId);
-    const businessRecords = businessRecordIds.length > 0
-      ? await db.query.platformBusinessRecords.findMany({
-          where: inArray(platformBusinessRecords.id, businessRecordIds),
-        })
-      : [];
+    const businessRecordIds = healthScores.map((hs) => hs.businessRecordId);
+    const businessRecords =
+      businessRecordIds.length > 0
+        ? await db.query.platformBusinessRecords.findMany({
+            where: inArray(platformBusinessRecords.id, businessRecordIds),
+          })
+        : [];
 
     // Combine data
-    const results = healthScores.map(hs => ({
+    const results = healthScores.map((hs) => ({
       ...hs,
-      businessRecord: businessRecords.find(br => br.id === hs.businessRecordId),
+      businessRecord: businessRecords.find((br) => br.id === hs.businessRecordId),
     }));
 
     // Get total count
@@ -127,7 +128,7 @@ router.get('/health-scores', async (req: Request, res: Response) => {
     console.error('Error fetching health scores:', error);
     res.status(500).json({
       error: 'Failed to fetch health scores',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -153,7 +154,7 @@ router.get('/health-scores/:businessRecordId', async (req: Request, res: Respons
     console.error('Error fetching health score:', error);
     res.status(500).json({
       error: 'Failed to fetch health score',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -188,13 +189,15 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
     // This is a simplified calculation - in production, you'd pull real data from usage metrics, support tickets, etc.
 
     // Usage score (based on engagement metrics)
-    const usageScore = Math.min(100, (businessRecord.engagementScore || 0));
+    const usageScore = Math.min(100, businessRecord.engagementScore || 0);
 
     // Engagement score (based on activity levels)
     const daysSinceLastActivity = businessRecord.lastEngagementDate
-      ? Math.floor((Date.now() - businessRecord.lastEngagementDate.getTime()) / (1000 * 60 * 60 * 24))
+      ? Math.floor(
+          (Date.now() - businessRecord.lastEngagementDate.getTime()) / (1000 * 60 * 60 * 24),
+        )
       : 999;
-    const engagementScore = Math.max(0, 100 - (daysSinceLastActivity * 2)); // Lose 2 points per day of inactivity
+    const engagementScore = Math.max(0, 100 - daysSinceLastActivity * 2); // Lose 2 points per day of inactivity
 
     // Adoption score (placeholder - would come from feature usage data)
     const adoptionScore = 70; // Default
@@ -207,17 +210,17 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
 
     // Satisfaction score (based on NPS/CSAT)
     const satisfactionScore = businessRecord.npsScore
-      ? Math.max(0, Math.min(100, ((businessRecord.npsScore + 100) / 2))) // Convert -100 to 100 scale to 0-100
+      ? Math.max(0, Math.min(100, (businessRecord.npsScore + 100) / 2)) // Convert -100 to 100 scale to 0-100
       : 50;
 
     // Calculate overall score (weighted average)
     const overallScore = Math.round(
-      (usageScore * 0.2) +
-      (engagementScore * 0.2) +
-      (adoptionScore * 0.15) +
-      (supportScore * 0.15) +
-      (paymentScore * 0.2) +
-      (satisfactionScore * 0.1)
+      usageScore * 0.2 +
+        engagementScore * 0.2 +
+        adoptionScore * 0.15 +
+        supportScore * 0.15 +
+        paymentScore * 0.2 +
+        satisfactionScore * 0.1,
     );
 
     // Determine health status
@@ -252,7 +255,8 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
     if (usageScore >= 80) strengthFactors.push('High usage');
     if (engagementScore >= 80) strengthFactors.push('High engagement');
     if (businessRecord.npsScore && businessRecord.npsScore > 50) strengthFactors.push('High NPS');
-    if (businessRecord.currentMRR && Number(businessRecord.currentMRR) > 1000) strengthFactors.push('High-value customer');
+    if (businessRecord.currentMRR && Number(businessRecord.currentMRR) > 1000)
+      strengthFactors.push('High-value customer');
 
     // Generate recommendations
     const recommendations: string[] = [];
@@ -317,9 +321,14 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
     await db
       .update(platformBusinessRecords)
       .set({
-        churnRisk: healthStatus === 'critical' ? 'critical' :
-                   healthStatus === 'at_risk' ? 'high' :
-                   healthStatus === 'healthy' ? 'low' : 'very_low',
+        churnRisk:
+          healthStatus === 'critical'
+            ? 'critical'
+            : healthStatus === 'at_risk'
+              ? 'high'
+              : healthStatus === 'healthy'
+                ? 'low'
+                : 'very_low',
         updatedAt: new Date(),
       })
       .where(eq(platformBusinessRecords.id, businessRecordId));
@@ -329,7 +338,7 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
     console.error('Error calculating health score:', error);
     res.status(500).json({
       error: 'Failed to calculate health score',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -344,12 +353,7 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
  */
 router.get('/churn-predictions', async (req: Request, res: Response) => {
   try {
-    const {
-      page = '1',
-      limit = '50',
-      churnRisk,
-      daysUntilChurn,
-    } = req.query;
+    const { page = '1', limit = '50', churnRisk, daysUntilChurn } = req.query;
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
@@ -364,7 +368,9 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
     }
 
     if (daysUntilChurn) {
-      conditions.push(lte(platformChurnPredictions.daysUntilChurn, parseInt(daysUntilChurn as string)));
+      conditions.push(
+        lte(platformChurnPredictions.daysUntilChurn, parseInt(daysUntilChurn as string)),
+      );
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -377,17 +383,18 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
     });
 
     // Get associated business records
-    const businessRecordIds = predictions.map(p => p.businessRecordId);
-    const businessRecords = businessRecordIds.length > 0
-      ? await db.query.platformBusinessRecords.findMany({
-          where: inArray(platformBusinessRecords.id, businessRecordIds),
-        })
-      : [];
+    const businessRecordIds = predictions.map((p) => p.businessRecordId);
+    const businessRecords =
+      businessRecordIds.length > 0
+        ? await db.query.platformBusinessRecords.findMany({
+            where: inArray(platformBusinessRecords.id, businessRecordIds),
+          })
+        : [];
 
     // Combine data
-    const results = predictions.map(p => ({
+    const results = predictions.map((p) => ({
       ...p,
-      businessRecord: businessRecords.find(br => br.id === p.businessRecordId),
+      businessRecord: businessRecords.find((br) => br.id === p.businessRecordId),
     }));
 
     res.json({
@@ -401,7 +408,7 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
     console.error('Error fetching churn predictions:', error);
     res.status(500).json({
       error: 'Failed to fetch churn predictions',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -447,7 +454,9 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
     if (!businessRecord.currentMRR) churnProbability += 0.3;
     if (businessRecord.npsScore && businessRecord.npsScore < 0) churnProbability += 0.2;
     if (businessRecord.lastEngagementDate) {
-      const daysSinceEngagement = Math.floor((Date.now() - businessRecord.lastEngagementDate.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceEngagement = Math.floor(
+        (Date.now() - businessRecord.lastEngagementDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
       if (daysSinceEngagement > 60) churnProbability += 0.2;
     }
 
@@ -461,9 +470,8 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
     else churnRisk = 'critical';
 
     // Estimate days until churn
-    const daysUntilChurn = churnRisk === 'critical' ? 30 :
-                          churnRisk === 'high' ? 60 :
-                          churnRisk === 'medium' ? 90 : 180;
+    const daysUntilChurn =
+      churnRisk === 'critical' ? 30 : churnRisk === 'high' ? 60 : churnRisk === 'medium' ? 90 : 180;
 
     // Identify risk factors
     const primaryRiskFactors: string[] = [];
@@ -471,8 +479,10 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
 
     if (healthScore && healthScore.overallScore < 50) primaryRiskFactors.push('Low health score');
     if (!businessRecord.currentMRR) primaryRiskFactors.push('No active subscription');
-    if (businessRecord.npsScore && businessRecord.npsScore < 0) primaryRiskFactors.push('Negative NPS');
-    if (businessRecord.engagementScore && businessRecord.engagementScore < 30) secondaryRiskFactors.push('Low engagement');
+    if (businessRecord.npsScore && businessRecord.npsScore < 0)
+      primaryRiskFactors.push('Negative NPS');
+    if (businessRecord.engagementScore && businessRecord.engagementScore < 30)
+      secondaryRiskFactors.push('Low engagement');
 
     // Create prediction
     const [prediction] = await db
@@ -514,7 +524,7 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
     console.error('Error predicting churn:', error);
     res.status(500).json({
       error: 'Failed to predict churn',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -529,14 +539,7 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
  */
 router.get('/interventions', async (req: Request, res: Response) => {
   try {
-    const {
-      page = '1',
-      limit = '50',
-      status,
-      priority,
-      assignedTo,
-      businessRecordId,
-    } = req.query;
+    const { page = '1', limit = '50', status, priority, assignedTo, businessRecordId } = req.query;
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
@@ -558,7 +561,9 @@ router.get('/interventions', async (req: Request, res: Response) => {
     }
 
     if (businessRecordId) {
-      conditions.push(eq(platformSuccessInterventions.businessRecordId, businessRecordId as string));
+      conditions.push(
+        eq(platformSuccessInterventions.businessRecordId, businessRecordId as string),
+      );
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -575,7 +580,7 @@ router.get('/interventions', async (req: Request, res: Response) => {
     console.error('Error fetching interventions:', error);
     res.status(500).json({
       error: 'Failed to fetch interventions',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -619,7 +624,7 @@ router.post('/interventions', async (req: Request, res: Response) => {
     console.error('Error creating intervention:', error);
     res.status(500).json({
       error: 'Failed to create intervention',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -651,7 +656,7 @@ router.patch('/interventions/:id', async (req: Request, res: Response) => {
     console.error('Error updating intervention:', error);
     res.status(500).json({
       error: 'Failed to update intervention',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

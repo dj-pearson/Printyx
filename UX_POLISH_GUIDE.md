@@ -7,10 +7,12 @@ This guide documents the comprehensive UX enhancements implemented across Printy
 ### 1. Bulk Operations System
 
 **Files:**
+
 - `client/src/components/ui/bulk-operations-toolbar.tsx`
 - `client/src/lib/export-utils.ts`
 
 **Usage:**
+
 ```tsx
 import { BulkOperationsToolbar, useBulkSelection, BulkAction } from '@/components/ui/bulk-operations-toolbar';
 import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
@@ -66,11 +68,10 @@ const bulkActions: BulkAction[] = [
 ```
 
 **Export Implementation:**
+
 ```tsx
 const handleBulkExport = (format: 'csv' | 'json') => {
-  const selectedItems = items.filter(i =>
-    bulkSelection.selectedIds.includes(i.id)
-  );
+  const selectedItems = items.filter((i) => bulkSelection.selectedIds.includes(i.id));
 
   const columns = [
     createExportColumn('name', 'Name'),
@@ -94,6 +95,7 @@ const handleBulkExport = (format: 'csv' | 'json') => {
 **File:** `client/src/components/ui/saved-filters.tsx`
 
 **Usage:**
+
 ```tsx
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 
@@ -143,15 +145,15 @@ const { searchTerm, statusFilter, dateFilter } = filterState.filters;
 **File:** `client/src/components/ui/empty-state.tsx`
 
 **Usage:**
+
 ```tsx
 import { EmptyState } from '@/components/ui/empty-state';
 
 <EmptyState
   icon={YourIcon}
   title={hasFilters ? 'No results found' : 'No items yet'}
-  description={hasFilters
-    ? 'Try adjusting your filters'
-    : 'Get started by creating your first item'
+  description={
+    hasFilters ? 'Try adjusting your filters' : 'Get started by creating your first item'
   }
   type={hasFilters ? 'filter' : 'default'} // 'default' | 'search' | 'filter' | 'error'
   action={{
@@ -159,17 +161,19 @@ import { EmptyState } from '@/components/ui/empty-state';
     onClick: handleCreate,
     icon: Plus,
   }}
-  secondaryAction={hasFilters ? {
-    label: 'Clear Filters',
-    onClick: filterState.clearFilters,
-    variant: 'outline',
-  } : undefined}
-  suggestions={!hasFilters ? [
-    'First helpful tip',
-    'Second helpful tip',
-    'Third helpful tip',
-  ] : undefined}
-/>
+  secondaryAction={
+    hasFilters
+      ? {
+          label: 'Clear Filters',
+          onClick: filterState.clearFilters,
+          variant: 'outline',
+        }
+      : undefined
+  }
+  suggestions={
+    !hasFilters ? ['First helpful tip', 'Second helpful tip', 'Third helpful tip'] : undefined
+  }
+/>;
 ```
 
 ---
@@ -179,6 +183,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 **File:** `client/src/components/ui/inline-edit.tsx`
 
 **Usage:**
+
 ```tsx
 import { InlineEdit, InlineEditCurrency, InlineEditDate } from '@/components/ui/inline-edit';
 
@@ -231,6 +236,7 @@ import { InlineEdit, InlineEditCurrency, InlineEditDate } from '@/components/ui/
 **File:** `client/src/components/ui/responsive-dialog.tsx`
 
 **Usage:**
+
 ```tsx
 import {
   ResponsiveDialog,
@@ -258,7 +264,7 @@ import {
       <Button>Save</Button>
     </ResponsiveDialogFooter>
   </ResponsiveDialogContent>
-</ResponsiveDialog>
+</ResponsiveDialog>;
 ```
 
 ---
@@ -268,6 +274,7 @@ import {
 **File:** `client/src/components/search/global-search.tsx`
 
 **Usage in Layout:**
+
 ```tsx
 import { GlobalSearch, useGlobalSearch } from '@/components/search/global-search';
 
@@ -290,6 +297,7 @@ function MainLayout() {
 **File:** `client/src/components/quotes/quote-templates.tsx`
 
 **Usage:**
+
 ```tsx
 import { QuoteTemplates, SaveQuoteTemplate } from '@/components/quotes/quote-templates';
 
@@ -322,6 +330,7 @@ import { QuoteTemplates, SaveQuoteTemplate } from '@/components/quotes/quote-tem
 When enhancing a list-based page, follow this checklist:
 
 ### Step 1: Add Imports
+
 ```tsx
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -332,16 +341,13 @@ import {
   useBulkSelection,
   BulkAction,
 } from '@/components/ui/bulk-operations-toolbar';
-import {
-  exportToCSV,
-  exportToJSON,
-  createExportColumn,
-} from '@/lib/export-utils';
+import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import { Download, FileText, Trash2 } from 'lucide-react';
 ```
 
 ### Step 2: Replace Filter State
+
 ```tsx
 // Before:
 const [searchTerm, setSearchTerm] = useState('');
@@ -356,15 +362,17 @@ const { searchTerm, statusFilter } = filterState.filters;
 ```
 
 ### Step 3: Add Bulk Selection
+
 ```tsx
 const bulkSelection = useBulkSelection(filteredItems);
 ```
 
 ### Step 4: Add Bulk Operations
+
 ```tsx
 const bulkDeleteMutation = useMutation({
   mutationFn: async (ids: string[]) => {
-    await Promise.all(ids.map(id => apiRequest(`/api/items/${id}`, 'DELETE')));
+    await Promise.all(ids.map((id) => apiRequest(`/api/items/${id}`, 'DELETE')));
   },
   onSuccess: () => {
     queryClient.invalidateQueries({ queryKey: ['/api/items'] });
@@ -374,7 +382,7 @@ const bulkDeleteMutation = useMutation({
 });
 
 const handleBulkExport = (format: 'csv' | 'json') => {
-  const selected = items.filter(i => bulkSelection.selectedIds.includes(i.id));
+  const selected = items.filter((i) => bulkSelection.selectedIds.includes(i.id));
   const columns = [
     createExportColumn('name', 'Name'),
     // ... more columns
@@ -408,6 +416,7 @@ const bulkActions: BulkAction[] = [
 ```
 
 ### Step 5: Update Filter UI
+
 ```tsx
 <Card>
   <CardContent className="p-4">
@@ -443,6 +452,7 @@ const bulkActions: BulkAction[] = [
 ```
 
 ### Step 6: Add Bulk Operations Toolbar
+
 ```tsx
 <BulkOperationsToolbar
   selectedCount={bulkSelection.selectedCount}
@@ -455,6 +465,7 @@ const bulkActions: BulkAction[] = [
 ```
 
 ### Step 7: Add Checkboxes to Table
+
 ```tsx
 <TableHeader>
   <TableRow>
@@ -484,6 +495,7 @@ const bulkActions: BulkAction[] = [
 ```
 
 ### Step 8: Replace Empty State
+
 ```tsx
 <EmptyState
   icon={YourIcon}
@@ -491,11 +503,15 @@ const bulkActions: BulkAction[] = [
   description="..."
   type={hasFilters ? 'filter' : 'default'}
   action={{ label: 'Create', onClick: handleCreate, icon: Plus }}
-  secondaryAction={hasFilters ? {
-    label: 'Clear Filters',
-    onClick: filterState.clearFilters,
-    variant: 'outline',
-  } : undefined}
+  secondaryAction={
+    hasFilters
+      ? {
+          label: 'Clear Filters',
+          onClick: filterState.clearFilters,
+          variant: 'outline',
+        }
+      : undefined
+  }
   suggestions={!hasFilters ? ['Tip 1', 'Tip 2'] : undefined}
 />
 ```
@@ -505,6 +521,7 @@ const bulkActions: BulkAction[] = [
 ## 📊 Reference Implementations
 
 ### Fully Enhanced Pages:
+
 1. **QuotesManagement** (`client/src/pages/QuotesManagement.tsx`)
    - All features implemented
    - Quote templates integration
@@ -518,6 +535,7 @@ const bulkActions: BulkAction[] = [
 ### Key Patterns:
 
 **Filter State Management:**
+
 ```tsx
 const filterState = useFilterState({ searchTerm: '', status: 'all' });
 // Access: filterState.filters.searchTerm
@@ -527,6 +545,7 @@ const filterState = useFilterState({ searchTerm: '', status: 'all' });
 ```
 
 **Bulk Selection:**
+
 ```tsx
 const bulk = useBulkSelection(items);
 // bulk.selectedIds - array of selected IDs
@@ -539,6 +558,7 @@ const bulk = useBulkSelection(items);
 ```
 
 **Export Columns:**
+
 ```tsx
 const columns = [
   createExportColumn('field', 'Label'),
@@ -556,24 +576,28 @@ const columns = [
 ## 🎨 UX Best Practices
 
 ### Empty States
+
 - **Default**: First-time experience, provide onboarding
 - **Search**: No search results, suggest adjustments
 - **Filter**: Active filters with no results, offer clear action
 - **Error**: Something went wrong, explain and offer retry
 
 ### Bulk Operations
+
 - Always confirm destructive actions
 - Show count in confirmation ("Delete 5 items?")
 - Clear selection after action completes
 - Provide export options (CSV for Excel, JSON for developers)
 
 ### Filters
+
 - Save common filter combinations
 - Show active filter count
 - Provide "Clear All" action when filters active
 - Use badges to show applied filters
 
 ### Mobile Responsiveness
+
 - Bulk toolbar: bottom-fixed on mobile, top-sticky on desktop
 - Filters: vertical stack on mobile, horizontal on desktop
 - Use `ResponsiveDialog` for modals
@@ -584,18 +608,21 @@ const columns = [
 ## 🚀 Next Pages to Enhance
 
 ### High Priority:
+
 1. **Contacts** - Important CRM page
 2. **Service Tickets** - High operational value
 3. **Inventory** - Daily use, needs bulk export
 4. **Deals** - Already has Kanban, add bulk ops for table view
 
 ### Medium Priority:
+
 5. **Products** - Catalog management
 6. **Invoices** - Accounting workflows
 7. **Equipment** - Asset tracking
 8. **Tasks** - Project management
 
 ### Enhancement Effort:
+
 - **Easy** (1-2 hours): Pages with simple tables
 - **Medium** (2-4 hours): Pages with multiple views or complex filters
 - **Complex** (4+ hours): Pages with custom layouts or workflows

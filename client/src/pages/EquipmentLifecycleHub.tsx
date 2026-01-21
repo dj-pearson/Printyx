@@ -1,30 +1,72 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import {
-  Plus, Package, Truck, Settings, CheckCircle, Clock, AlertTriangle,
-  MapPin, Calendar, FileText, FileCheck, Wrench, Warehouse, ShoppingCart,
-  Camera, Shield, BarChart3, Activity, Star, Target, Search,
-  ChevronDown, ChevronUp, Workflow, Eye, Filter, History
-} from "lucide-react";
+  Plus,
+  Package,
+  Truck,
+  Settings,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  MapPin,
+  Calendar,
+  FileText,
+  FileCheck,
+  Wrench,
+  Warehouse,
+  ShoppingCart,
+  Camera,
+  Shield,
+  BarChart3,
+  Activity,
+  Star,
+  Target,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  Workflow,
+  Eye,
+  Filter,
+  History,
+} from 'lucide-react';
 import { EquipmentTransitionDialog } from '@/components/equipment/EquipmentTransitionDialog';
 import { EquipmentTransitionHistory } from '@/components/equipment/EquipmentTransitionHistory';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 // Types
 type EquipmentLifecycleStage = {
@@ -121,19 +163,23 @@ interface StageCard {
 
 // Form Schemas
 const purchaseOrderSchema = z.object({
-  vendor_name: z.string().min(2, "Vendor name required"),
+  vendor_name: z.string().min(2, 'Vendor name required'),
   order_date: z.string(),
   requested_delivery_date: z.string(),
   customer_id: z.string().optional(),
-  delivery_address: z.string().min(10, "Delivery address required"),
+  delivery_address: z.string().min(10, 'Delivery address required'),
   special_instructions: z.string().optional(),
-  items: z.array(z.object({
-    equipment_model: z.string().min(2, "Model required"),
-    equipment_brand: z.string().min(2, "Brand required"),
-    description: z.string().min(5, "Description required"),
-    quantity: z.number().min(1),
-    unit_price: z.number().min(0.01),
-  })).min(1, "At least one item required"),
+  items: z
+    .array(
+      z.object({
+        equipment_model: z.string().min(2, 'Model required'),
+        equipment_brand: z.string().min(2, 'Brand required'),
+        description: z.string().min(5, 'Description required'),
+        quantity: z.number().min(1),
+        unit_price: z.number().min(0.01),
+      }),
+    )
+    .min(1, 'At least one item required'),
 });
 
 const deliveryScheduleSchema = z.object({
@@ -142,10 +188,10 @@ const deliveryScheduleSchema = z.object({
   time_window_start: z.string(),
   time_window_end: z.string(),
   delivery_type: z.enum(['standard', 'white_glove', 'freight', 'expedited']),
-  contact_person: z.string().min(2, "Contact person required"),
-  contact_phone: z.string().min(10, "Phone number required"),
+  contact_person: z.string().min(2, 'Contact person required'),
+  contact_phone: z.string().min(10, 'Phone number required'),
   contact_email: z.string().email().optional(),
-  delivery_address: z.string().min(10, "Address required"),
+  delivery_address: z.string().min(10, 'Address required'),
   special_equipment_required: z.boolean(),
   delivery_instructions: z.string().optional(),
 });
@@ -155,9 +201,9 @@ const installationSchema = z.object({
   scheduled_date: z.string(),
   scheduled_time_start: z.string(),
   scheduled_time_end: z.string(),
-  installation_location: z.string().min(5, "Location required"),
-  site_contact_person: z.string().min(2, "Contact person required"),
-  site_contact_phone: z.string().min(10, "Phone required"),
+  installation_location: z.string().min(5, 'Location required'),
+  site_contact_person: z.string().min(2, 'Contact person required'),
+  site_contact_phone: z.string().min(10, 'Phone required'),
   lead_technician_id: z.string(),
   power_requirements: z.string().optional(),
   network_requirements: z.string().optional(),
@@ -171,151 +217,157 @@ type InstallationForm = z.infer<typeof installationSchema>;
 // Lifecycle stage definitions
 const lifecycleStageCards: StageCard[] = [
   {
-    id: "procurement",
-    title: "Purchase Orders & Procurement",
-    description: "Manage orders, vendor relationships, and equipment procurement",
+    id: 'procurement',
+    title: 'Purchase Orders & Procurement',
+    description: 'Manage orders, vendor relationships, and equipment procurement',
     icon: ShoppingCart,
-    stage: "ordered",
-    category: "Procurement",
+    stage: 'ordered',
+    category: 'Procurement',
   },
   {
-    id: "warehouse",
-    title: "Warehouse Operations",
-    description: "Receiving, quality control, staging, and inventory management",
+    id: 'warehouse',
+    title: 'Warehouse Operations',
+    description: 'Receiving, quality control, staging, and inventory management',
     icon: Warehouse,
-    stage: "in_warehouse",
-    category: "Operations",
+    stage: 'in_warehouse',
+    category: 'Operations',
   },
   {
-    id: "delivery",
-    title: "Delivery Logistics",
-    description: "Route optimization, scheduling, and white glove delivery",
+    id: 'delivery',
+    title: 'Delivery Logistics',
+    description: 'Route optimization, scheduling, and white glove delivery',
     icon: Truck,
-    stage: "in_transit",
-    category: "Logistics",
+    stage: 'in_transit',
+    category: 'Logistics',
   },
   {
-    id: "installation",
-    title: "Installation Management",
-    description: "Field service, certified technician deployment, and setup",
+    id: 'installation',
+    title: 'Installation Management',
+    description: 'Field service, certified technician deployment, and setup',
     icon: Wrench,
-    stage: "installed",
-    category: "Service",
+    stage: 'installed',
+    category: 'Service',
   },
   {
-    id: "documentation",
-    title: "Documentation & Compliance",
-    description: "Warranty registration, photo documentation, compliance",
+    id: 'documentation',
+    title: 'Documentation & Compliance',
+    description: 'Warranty registration, photo documentation, compliance',
     icon: FileCheck,
-    stage: "active",
-    category: "Compliance",
+    stage: 'active',
+    category: 'Compliance',
   },
   {
-    id: "tracking",
-    title: "Asset Lifecycle Tracking",
-    description: "End-to-end equipment tracking with QR codes",
+    id: 'tracking',
+    title: 'Asset Lifecycle Tracking',
+    description: 'End-to-end equipment tracking with QR codes',
     icon: MapPin,
-    stage: "active",
-    category: "Technology",
-  }
+    stage: 'active',
+    category: 'Technology',
+  },
 ];
 
 export default function EquipmentLifecycleHub() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState('overview');
   const [isPODialogOpen, setIsPODialogOpen] = useState(false);
   const [isDeliveryDialogOpen, setIsDeliveryDialogOpen] = useState(false);
   const [isInstallationDialogOpen, setIsInstallationDialogOpen] = useState(false);
-  const [selectedStage, setSelectedStage] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [selectedStage, setSelectedStage] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [transitionDialogOpen, setTransitionDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [selectedEquipment, setSelectedEquipment] = useState<{id: string, stage: string} | null>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<{ id: string; stage: string } | null>(
+    null,
+  );
 
   const queryClient = useQueryClient();
 
   // Fetch lifecycle metrics
   const { data: metrics } = useQuery<LifecycleMetrics>({
-    queryKey: ["/api/equipment-lifecycle/metrics"],
+    queryKey: ['/api/equipment-lifecycle/metrics'],
   });
 
   // Fetch lifecycle stages
-  const { data: lifecycleStages = [], isLoading: stagesLoading } = useQuery<EquipmentLifecycleStage[]>({
-    queryKey: ["/api/equipment-lifecycle/stages", selectedStage, selectedStatus],
+  const { data: lifecycleStages = [], isLoading: stagesLoading } = useQuery<
+    EquipmentLifecycleStage[]
+  >({
+    queryKey: ['/api/equipment-lifecycle/stages', selectedStage, selectedStatus],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (selectedStage !== "all") params.append("stage", selectedStage);
-      if (selectedStatus !== "all") params.append("status", selectedStatus);
+      if (selectedStage !== 'all') params.append('stage', selectedStage);
+      if (selectedStatus !== 'all') params.append('status', selectedStatus);
       return await apiRequest(`/api/equipment-lifecycle/stages?${params.toString()}`);
     },
   });
 
   // Fetch purchase orders
   const { data: purchaseOrders = [], isLoading: poLoading } = useQuery<PurchaseOrder[]>({
-    queryKey: ["/api/equipment-lifecycle/purchase-orders"],
+    queryKey: ['/api/equipment-lifecycle/purchase-orders'],
   });
 
   // Fetch delivery schedules
-  const { data: deliverySchedules = [], isLoading: deliveryLoading } = useQuery<DeliverySchedule[]>({
-    queryKey: ["/api/equipment-lifecycle/deliveries"],
-  });
+  const { data: deliverySchedules = [], isLoading: deliveryLoading } = useQuery<DeliverySchedule[]>(
+    {
+      queryKey: ['/api/equipment-lifecycle/deliveries'],
+    },
+  );
 
   // Fetch installations
   const { data: installations = [], isLoading: installationsLoading } = useQuery<Installation[]>({
-    queryKey: ["/api/equipment-lifecycle/installations"],
+    queryKey: ['/api/equipment-lifecycle/installations'],
   });
 
   // Fetch asset tracking
   const { data: assets = [], isLoading: assetsLoading } = useQuery<AssetTracking[]>({
-    queryKey: ["/api/equipment-lifecycle/assets"],
+    queryKey: ['/api/equipment-lifecycle/assets'],
   });
 
   // Fetch technicians and customers for dropdowns
   const { data: technicians = [] } = useQuery<any[]>({
-    queryKey: ["/api/technicians"],
+    queryKey: ['/api/technicians'],
   });
 
   const { data: businessRecords = [] } = useQuery<any[]>({
-    queryKey: ["/api/business-records"],
+    queryKey: ['/api/business-records'],
   });
 
   // Mutations
   const createPOMutation = useMutation({
     mutationFn: async (data: PurchaseOrderForm) =>
-      await apiRequest("/api/equipment-lifecycle/purchase-orders", {
-        method: "POST",
+      await apiRequest('/api/equipment-lifecycle/purchase-orders', {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment-lifecycle/purchase-orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment-lifecycle/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
       setIsPODialogOpen(false);
     },
   });
 
   const scheduleDeliveryMutation = useMutation({
     mutationFn: async (data: DeliveryScheduleForm) =>
-      await apiRequest("/api/equipment-lifecycle/deliveries", {
-        method: "POST",
+      await apiRequest('/api/equipment-lifecycle/deliveries', {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment-lifecycle/deliveries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment-lifecycle/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/deliveries'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
       setIsDeliveryDialogOpen(false);
     },
   });
 
   const scheduleInstallationMutation = useMutation({
     mutationFn: async (data: InstallationForm) =>
-      await apiRequest("/api/equipment-lifecycle/installations", {
-        method: "POST",
+      await apiRequest('/api/equipment-lifecycle/installations', {
+        method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment-lifecycle/installations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment-lifecycle/metrics"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/installations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
       setIsInstallationDialogOpen(false);
     },
   });
@@ -324,14 +376,16 @@ export default function EquipmentLifecycleHub() {
   const poForm = useForm<PurchaseOrderForm>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
-      items: [{ equipment_model: "", equipment_brand: "", description: "", quantity: 1, unit_price: 0 }],
+      items: [
+        { equipment_model: '', equipment_brand: '', description: '', quantity: 1, unit_price: 0 },
+      ],
     },
   });
 
   const deliveryForm = useForm<DeliveryScheduleForm>({
     resolver: zodResolver(deliveryScheduleSchema),
     defaultValues: {
-      delivery_type: "standard",
+      delivery_type: 'standard',
       special_equipment_required: false,
     },
   });
@@ -366,32 +420,47 @@ export default function EquipmentLifecycleHub() {
   // Helper functions
   const getStageColor = (stage: string) => {
     switch (stage) {
-      case 'ordered': return 'secondary';
-      case 'received': case 'in_warehouse': return 'default';
-      case 'in_transit': case 'delivered': return 'default';
-      case 'installed': case 'active': return 'default';
-      case 'maintenance': return 'destructive';
-      case 'retired': return 'outline';
-      default: return 'outline';
+      case 'ordered':
+        return 'secondary';
+      case 'received':
+      case 'in_warehouse':
+        return 'default';
+      case 'in_transit':
+      case 'delivered':
+        return 'default';
+      case 'installed':
+      case 'active':
+        return 'default';
+      case 'maintenance':
+        return 'destructive';
+      case 'retired':
+        return 'outline';
+      default:
+        return 'outline';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'in_progress': return <Clock className="h-4 w-4 text-blue-600" />;
-      case 'delayed': return <AlertTriangle className="h-4 w-4 text-orange-600" />;
-      case 'cancelled': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      default: return <Clock className="h-4 w-4 text-muted-foreground" />;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'in_progress':
+        return <Clock className="h-4 w-4 text-blue-600" />;
+      case 'delayed':
+        return <AlertTriangle className="h-4 w-4 text-orange-600" />;
+      case 'cancelled':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getStageCount = (stage: string) => {
-    return lifecycleStages.filter(s => s.current_stage === stage).length;
+    return lifecycleStages.filter((s) => s.current_stage === stage).length;
   };
 
   const getStageEquipment = (stage: string) => {
-    return lifecycleStages.filter(s => s.current_stage === stage);
+    return lifecycleStages.filter((s) => s.current_stage === stage);
   };
 
   // Calculate average completion for stage cards
@@ -511,7 +580,11 @@ export default function EquipmentLifecycleHub() {
                         <FormItem>
                           <FormLabel>Delivery Address</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Complete delivery address..." rows={2} {...field} />
+                            <Textarea
+                              placeholder="Complete delivery address..."
+                              rows={2}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -574,7 +647,7 @@ export default function EquipmentLifecycleHub() {
                                   type="number"
                                   min="1"
                                   {...field}
-                                  onChange={e => field.onChange(parseInt(e.target.value) || 1)}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -592,7 +665,7 @@ export default function EquipmentLifecycleHub() {
                                   step="0.01"
                                   placeholder="0.00"
                                   {...field}
-                                  onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -603,11 +676,15 @@ export default function EquipmentLifecycleHub() {
                     </div>
 
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button type="button" variant="outline" onClick={() => setIsPODialogOpen(false)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsPODialogOpen(false)}
+                      >
                         Cancel
                       </Button>
                       <Button type="submit" disabled={createPOMutation.isPending}>
-                        {createPOMutation.isPending ? "Creating..." : "Create"}
+                        {createPOMutation.isPending ? 'Creating...' : 'Create'}
                       </Button>
                     </div>
                   </form>
@@ -627,7 +704,10 @@ export default function EquipmentLifecycleHub() {
                   <DialogTitle>Schedule Delivery</DialogTitle>
                 </DialogHeader>
                 <Form {...deliveryForm}>
-                  <form onSubmit={deliveryForm.handleSubmit(onDeliverySubmit)} className="space-y-4">
+                  <form
+                    onSubmit={deliveryForm.handleSubmit(onDeliverySubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={deliveryForm.control}
                       name="purchase_order_id"
@@ -763,11 +843,15 @@ export default function EquipmentLifecycleHub() {
                     />
 
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button type="button" variant="outline" onClick={() => setIsDeliveryDialogOpen(false)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDeliveryDialogOpen(false)}
+                      >
                         Cancel
                       </Button>
                       <Button type="submit" disabled={scheduleDeliveryMutation.isPending}>
-                        {scheduleDeliveryMutation.isPending ? "Scheduling..." : "Schedule"}
+                        {scheduleDeliveryMutation.isPending ? 'Scheduling...' : 'Schedule'}
                       </Button>
                     </div>
                   </form>
@@ -787,7 +871,10 @@ export default function EquipmentLifecycleHub() {
                   <DialogTitle>Schedule Installation</DialogTitle>
                 </DialogHeader>
                 <Form {...installationForm}>
-                  <form onSubmit={installationForm.handleSubmit(onInstallationSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={installationForm.handleSubmit(onInstallationSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={installationForm.control}
                       name="equipment_id"
@@ -913,11 +1000,15 @@ export default function EquipmentLifecycleHub() {
                     />
 
                     <div className="flex justify-end gap-2 pt-2">
-                      <Button type="button" variant="outline" onClick={() => setIsInstallationDialogOpen(false)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsInstallationDialogOpen(false)}
+                      >
                         Cancel
                       </Button>
                       <Button type="submit" disabled={scheduleInstallationMutation.isPending}>
-                        {scheduleInstallationMutation.isPending ? "Scheduling..." : "Schedule"}
+                        {scheduleInstallationMutation.isPending ? 'Scheduling...' : 'Schedule'}
                       </Button>
                     </div>
                   </form>
@@ -966,7 +1057,9 @@ export default function EquipmentLifecycleHub() {
               </div>
               <div className="text-center">
                 <Star className="h-5 w-5 mx-auto text-yellow-500 mb-1" />
-                <div className="text-2xl font-bold">{metrics?.customerSatisfactionRating || 0}/5</div>
+                <div className="text-2xl font-bold">
+                  {metrics?.customerSatisfactionRating || 0}/5
+                </div>
                 <p className="text-xs text-muted-foreground">Satisfaction</p>
               </div>
             </div>
@@ -1046,7 +1139,8 @@ export default function EquipmentLifecycleHub() {
                                   {equipment.equipment_brand} {equipment.equipment_model}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {equipment.customer_name} • {equipment.progress_percentage}% complete
+                                  {equipment.customer_name} • {equipment.progress_percentage}%
+                                  complete
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
@@ -1057,7 +1151,10 @@ export default function EquipmentLifecycleHub() {
                                   className="h-7 px-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedEquipment({id: equipment.equipment_id, stage: equipment.current_stage});
+                                    setSelectedEquipment({
+                                      id: equipment.equipment_id,
+                                      stage: equipment.current_stage,
+                                    });
                                     setTransitionDialogOpen(true);
                                   }}
                                 >
@@ -1085,13 +1182,27 @@ export default function EquipmentLifecycleHub() {
         {/* Operational Tabs - Full functionality from Management page */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-1">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
-            <TabsTrigger value="lifecycle" className="text-xs sm:text-sm">Lifecycle</TabsTrigger>
-            <TabsTrigger value="orders" className="text-xs sm:text-sm">Orders</TabsTrigger>
-            <TabsTrigger value="deliveries" className="text-xs sm:text-sm">Deliveries</TabsTrigger>
-            <TabsTrigger value="installations" className="text-xs sm:text-sm">Installs</TabsTrigger>
-            <TabsTrigger value="assets" className="text-xs sm:text-sm">Assets</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs sm:text-sm">Analytics</TabsTrigger>
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="lifecycle" className="text-xs sm:text-sm">
+              Lifecycle
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="text-xs sm:text-sm">
+              Orders
+            </TabsTrigger>
+            <TabsTrigger value="deliveries" className="text-xs sm:text-sm">
+              Deliveries
+            </TabsTrigger>
+            <TabsTrigger value="installations" className="text-xs sm:text-sm">
+              Installs
+            </TabsTrigger>
+            <TabsTrigger value="assets" className="text-xs sm:text-sm">
+              Assets
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs sm:text-sm">
+              Analytics
+            </TabsTrigger>
           </TabsList>
 
           {/* Tab content sections will be added next */}
@@ -1115,7 +1226,10 @@ export default function EquipmentLifecycleHub() {
                     ) : (
                       <div className="space-y-3">
                         {recentActivity.map((activity) => (
-                          <div key={activity.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+                          <div
+                            key={activity.id}
+                            className="flex items-start space-x-3 p-3 border rounded-lg"
+                          >
                             {getStatusIcon(activity.stage_status)}
                             <div className="flex-1 space-y-1 min-w-0">
                               <p className="text-sm font-medium leading-none">
@@ -1125,10 +1239,16 @@ export default function EquipmentLifecycleHub() {
                                 {activity.customer_name} • {activity.next_action_required}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {format(new Date(activity.stage_started_at), 'MMM dd, yyyy • h:mm a')}
+                                {format(
+                                  new Date(activity.stage_started_at),
+                                  'MMM dd, yyyy • h:mm a',
+                                )}
                               </p>
                             </div>
-                            <Badge variant={getStageColor(activity.current_stage)} className="text-xs flex-shrink-0">
+                            <Badge
+                              variant={getStageColor(activity.current_stage)}
+                              className="text-xs flex-shrink-0"
+                            >
                               {activity.current_stage.replace('_', ' ')}
                             </Badge>
                           </div>
@@ -1146,15 +1266,30 @@ export default function EquipmentLifecycleHub() {
                     <CardTitle className="text-lg">Quick Actions</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setIsPODialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setIsPODialogOpen(true)}
+                    >
                       <ShoppingCart className="h-4 w-4 mr-2" />
                       Create Purchase Order
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setIsDeliveryDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setIsDeliveryDialogOpen(true)}
+                    >
                       <Truck className="h-4 w-4 mr-2" />
                       Schedule Delivery
                     </Button>
-                    <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setIsInstallationDialogOpen(true)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => setIsInstallationDialogOpen(true)}
+                    >
                       <Wrench className="h-4 w-4 mr-2" />
                       Schedule Installation
                     </Button>
@@ -1249,7 +1384,9 @@ export default function EquipmentLifecycleHub() {
                   <div className="text-center py-12">
                     <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No equipment found</h3>
-                    <p className="text-muted-foreground mb-4">Create a purchase order to start tracking equipment</p>
+                    <p className="text-muted-foreground mb-4">
+                      Create a purchase order to start tracking equipment
+                    </p>
                     <Button onClick={() => setIsPODialogOpen(true)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Create Purchase Order
@@ -1258,7 +1395,10 @@ export default function EquipmentLifecycleHub() {
                 ) : (
                   <div className="space-y-3">
                     {lifecycleStages.map((stage) => (
-                      <div key={stage.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={stage.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -1273,21 +1413,30 @@ export default function EquipmentLifecycleHub() {
                             <div className="text-sm text-muted-foreground space-y-1">
                               <p>Serial: {stage.equipment_serial_number}</p>
                               <p>Customer: {stage.customer_name || 'Not assigned'}</p>
-                              <p>Started: {format(new Date(stage.stage_started_at), 'MMM dd, yyyy')}</p>
+                              <p>
+                                Started: {format(new Date(stage.stage_started_at), 'MMM dd, yyyy')}
+                              </p>
                               {stage.estimated_completion_date && (
-                                <p>Est. Completion: {format(new Date(stage.estimated_completion_date), 'MMM dd, yyyy')}</p>
+                                <p>
+                                  Est. Completion:{' '}
+                                  {format(
+                                    new Date(stage.estimated_completion_date),
+                                    'MMM dd, yyyy',
+                                  )}
+                                </p>
                               )}
                               <p>Next Action: {stage.next_action_required}</p>
-                              {stage.assigned_to_name && (
-                                <p>Assigned: {stage.assigned_to_name}</p>
-                              )}
+                              {stage.assigned_to_name && <p>Assigned: {stage.assigned_to_name}</p>}
                             </div>
                             <div className="mt-3 flex gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => {
-                                  setSelectedEquipment({id: stage.equipment_id, stage: stage.current_stage});
+                                  setSelectedEquipment({
+                                    id: stage.equipment_id,
+                                    stage: stage.current_stage,
+                                  });
                                   setTransitionDialogOpen(true);
                                 }}
                               >
@@ -1298,7 +1447,10 @@ export default function EquipmentLifecycleHub() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => {
-                                  setSelectedEquipment({id: stage.equipment_id, stage: stage.current_stage});
+                                  setSelectedEquipment({
+                                    id: stage.equipment_id,
+                                    stage: stage.current_stage,
+                                  });
                                   setHistoryDialogOpen(true);
                                 }}
                               >
@@ -1352,7 +1504,10 @@ export default function EquipmentLifecycleHub() {
                 ) : (
                   <div className="space-y-3">
                     {purchaseOrders.map((po) => (
-                      <div key={po.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={po.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -1363,7 +1518,10 @@ export default function EquipmentLifecycleHub() {
                               <p>Vendor: {po.vendor_name}</p>
                               <p>Customer: {po.customer_name || 'Not assigned'}</p>
                               <p>Order Date: {format(new Date(po.order_date), 'MMM dd, yyyy')}</p>
-                              <p>Delivery: {format(new Date(po.requested_delivery_date), 'MMM dd, yyyy')}</p>
+                              <p>
+                                Delivery:{' '}
+                                {format(new Date(po.requested_delivery_date), 'MMM dd, yyyy')}
+                              </p>
                               <p>Items: {po.line_items_count}</p>
                               {po.tracking_number && <p>Tracking: {po.tracking_number}</p>}
                             </div>
@@ -1411,18 +1569,29 @@ export default function EquipmentLifecycleHub() {
                 ) : (
                   <div className="space-y-3">
                     {deliverySchedules.map((delivery) => (
-                      <div key={delivery.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={delivery.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">{delivery.delivery_id}</h3>
-                              <Badge variant={getStageColor(delivery.status)}>{delivery.status}</Badge>
+                              <Badge variant={getStageColor(delivery.status)}>
+                                {delivery.status}
+                              </Badge>
                               <Badge variant="outline">{delivery.delivery_type}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Date: {format(new Date(delivery.scheduled_date), 'MMM dd, yyyy')}</p>
-                              <p>Time: {delivery.time_window_start} - {delivery.time_window_end}</p>
-                              <p>Contact: {delivery.contact_person} ({delivery.contact_phone})</p>
+                              <p>
+                                Date: {format(new Date(delivery.scheduled_date), 'MMM dd, yyyy')}
+                              </p>
+                              <p>
+                                Time: {delivery.time_window_start} - {delivery.time_window_end}
+                              </p>
+                              <p>
+                                Contact: {delivery.contact_person} ({delivery.contact_phone})
+                              </p>
                               {delivery.driver_name && <p>Driver: {delivery.driver_name}</p>}
                             </div>
                           </div>
@@ -1470,20 +1639,30 @@ export default function EquipmentLifecycleHub() {
                 ) : (
                   <div className="space-y-3">
                     {installations.map((installation) => (
-                      <div key={installation.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={installation.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">
                                 {installation.equipment_brand} {installation.equipment_model}
                               </h3>
-                              <Badge variant={getStageColor(installation.status)}>{installation.status}</Badge>
+                              <Badge variant={getStageColor(installation.status)}>
+                                {installation.status}
+                              </Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Date: {format(new Date(installation.scheduled_date), 'MMM dd, yyyy')}</p>
+                              <p>
+                                Date:{' '}
+                                {format(new Date(installation.scheduled_date), 'MMM dd, yyyy')}
+                              </p>
                               <p>Location: {installation.installation_location}</p>
                               <p>Duration: {installation.estimated_duration_hours} hours</p>
-                              <p>Technician: {installation.lead_technician_name || 'Not assigned'}</p>
+                              <p>
+                                Technician: {installation.lead_technician_name || 'Not assigned'}
+                              </p>
                               {installation.customer_satisfaction_rating && (
                                 <div className="flex items-center gap-1">
                                   <span>Rating:</span>
@@ -1530,17 +1709,26 @@ export default function EquipmentLifecycleHub() {
                   <div className="text-center py-12">
                     <Target className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
                     <h3 className="text-lg font-medium mb-2">No assets tracked</h3>
-                    <p className="text-muted-foreground">Assets will appear here once equipment is installed</p>
+                    <p className="text-muted-foreground">
+                      Assets will appear here once equipment is installed
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {assets.map((asset) => (
-                      <div key={asset.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div
+                        key={asset.id}
+                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="font-medium">{asset.brand} {asset.model}</h3>
-                              <Badge variant={getStageColor(asset.current_status)}>{asset.current_status}</Badge>
+                              <h3 className="font-medium">
+                                {asset.brand} {asset.model}
+                              </h3>
+                              <Badge variant={getStageColor(asset.current_status)}>
+                                {asset.current_status}
+                              </Badge>
                               <Badge variant="outline">{asset.equipment_type}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
@@ -1548,8 +1736,14 @@ export default function EquipmentLifecycleHub() {
                               <p>Serial: {asset.serial_number}</p>
                               <p>Customer: {asset.customer_name || 'Not assigned'}</p>
                               <p>Location: {asset.current_location_details}</p>
-                              <p>Next Maintenance: {format(new Date(asset.next_maintenance_due), 'MMM dd, yyyy')}</p>
-                              <p>B&W: {asset.current_bw_count.toLocaleString()} • Color: {asset.current_color_count.toLocaleString()}</p>
+                              <p>
+                                Next Maintenance:{' '}
+                                {format(new Date(asset.next_maintenance_due), 'MMM dd, yyyy')}
+                              </p>
+                              <p>
+                                B&W: {asset.current_bw_count.toLocaleString()} • Color:{' '}
+                                {asset.current_color_count.toLocaleString()}
+                              </p>
                             </div>
                           </div>
                           <div className="text-center flex-shrink-0">
@@ -1591,14 +1785,21 @@ export default function EquipmentLifecycleHub() {
                       <span className="font-medium">78%</span>
                     </div>
                     <Progress value={78} className="h-2" />
-                    <p className="text-xs text-muted-foreground">22% faster than industry average</p>
+                    <p className="text-xs text-muted-foreground">
+                      22% faster than industry average
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Customer Satisfaction</span>
-                      <span className="font-medium">{metrics?.customerSatisfactionRating || 0}/5</span>
+                      <span className="font-medium">
+                        {metrics?.customerSatisfactionRating || 0}/5
+                      </span>
                     </div>
-                    <Progress value={(metrics?.customerSatisfactionRating || 0) * 20} className="h-2" />
+                    <Progress
+                      value={(metrics?.customerSatisfactionRating || 0) * 20}
+                      className="h-2"
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -1631,7 +1832,6 @@ export default function EquipmentLifecycleHub() {
               </Card>
             </div>
           </TabsContent>
-
         </Tabs>
 
         {/* Equipment Transition Dialog */}
@@ -1643,9 +1843,9 @@ export default function EquipmentLifecycleHub() {
             currentStage={selectedEquipment.stage}
             onTransitionComplete={() => {
               // Invalidate all relevant queries to refresh the UI
-              queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/stages']});
-              queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/metrics']});
-              queryClient.invalidateQueries({queryKey: ['/api/equipment-lifecycle/assets']});
+              queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/stages'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/metrics'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/equipment-lifecycle/assets'] });
             }}
           />
         )}

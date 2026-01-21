@@ -50,9 +50,9 @@ export default function AccessibilityStatement() {
             Accessibility Statement
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Printyx is committed to ensuring digital accessibility for people with disabilities.
-            We continually improve the user experience for everyone and apply relevant
-            accessibility standards.
+            Printyx is committed to ensuring digital accessibility for people with disabilities. We
+            continually improve the user experience for everyone and apply relevant accessibility
+            standards.
           </p>
         </div>
 
@@ -66,16 +66,16 @@ export default function AccessibilityStatement() {
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none">
             <p>
-              Printyx is committed to providing a website that is accessible to the widest
-              possible audience, regardless of technology or ability. We are actively working
-              to increase the accessibility and usability of our platform and in doing so
-              adhere to many of the available standards and guidelines.
+              Printyx is committed to providing a website that is accessible to the widest possible
+              audience, regardless of technology or ability. We are actively working to increase the
+              accessibility and usability of our platform and in doing so adhere to many of the
+              available standards and guidelines.
             </p>
             <p>
-              This website endeavors to conform to level AA of the World Wide Web Consortium
-              (W3C) Web Content Accessibility Guidelines 2.1. These guidelines explain how to
-              make web content more accessible for people with disabilities and more
-              user-friendly for everyone.
+              This website endeavors to conform to level AA of the World Wide Web Consortium (W3C)
+              Web Content Accessibility Guidelines 2.1. These guidelines explain how to make web
+              content more accessible for people with disabilities and more user-friendly for
+              everyone.
             </p>
           </CardContent>
         </Card>
@@ -91,35 +91,42 @@ export default function AccessibilityStatement() {
           <CardContent>
             <div className="grid gap-6">
               <div className="flex items-start gap-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <CheckCircle
+                  className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div>
                   <h3 className="font-semibold text-green-900 dark:text-green-100 mb-1">
                     WCAG 2.1 Level AA
                   </h3>
                   <p className="text-green-800 dark:text-green-200 text-sm">
-                    Printyx substantially conforms to WCAG 2.1 Level AA. Substantially
-                    conformant means that the content substantially conforms to the
-                    accessibility standard.
+                    Printyx substantially conforms to WCAG 2.1 Level AA. Substantially conformant
+                    means that the content substantially conforms to the accessibility standard.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <CheckCircle
+                  className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div>
                   <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
                     Section 508 Compliance
                   </h3>
                   <p className="text-blue-800 dark:text-blue-200 text-sm">
                     Our platform is designed to meet the requirements of Section 508 of the
-                    Rehabilitation Act, ensuring accessibility for federal agencies and
-                    contractors.
+                    Rehabilitation Act, ensuring accessibility for federal agencies and contractors.
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start gap-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-purple-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <CheckCircle
+                  className="h-6 w-6 text-purple-600 flex-shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
                 <div>
                   <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">
                     ADA Compliance
@@ -143,26 +150,32 @@ export default function AccessibilityStatement() {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="flex gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                  <Keyboard className="h-5 w-5 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+                  <Keyboard
+                    className="h-5 w-5 text-indigo-600 dark:text-indigo-400"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">Keyboard Navigation</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Full keyboard accessibility with logical tab order, skip navigation
-                    links, and keyboard shortcuts for common actions.
+                    Full keyboard accessibility with logical tab order, skip navigation links, and
+                    keyboard shortcuts for common actions.
                   </p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                  <Eye className="h-5 w-5 text-orange-600 dark:text-orange-400" aria-hidden="true" />
+                  <Eye
+                    className="h-5 w-5 text-orange-600 dark:text-orange-400"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">Screen Reader Support</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Compatible with popular screen readers including NVDA, JAWS, VoiceOver,
-                    and TalkBack. ARIA labels and live regions for dynamic content.
+                    Compatible with popular screen readers including NVDA, JAWS, VoiceOver, and
+                    TalkBack. ARIA labels and live regions for dynamic content.
                   </p>
                 </div>
               </div>
@@ -174,47 +187,56 @@ export default function AccessibilityStatement() {
                 <div>
                   <h3 className="font-semibold mb-1">Visual Accommodations</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    High contrast mode, adjustable font sizes, color blindness filters,
-                    and support for browser zoom up to 200%.
+                    High contrast mode, adjustable font sizes, color blindness filters, and support
+                    for browser zoom up to 200%.
                   </p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                  <MousePointer className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden="true" />
+                  <MousePointer
+                    className="h-5 w-5 text-red-600 dark:text-red-400"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">Motor Accessibility</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Large click targets (44x44px minimum), reduced motion option, and
-                    support for alternative input devices.
+                    Large click targets (44x44px minimum), reduced motion option, and support for
+                    alternative input devices.
                   </p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                  <Volume2 className="h-5 w-5 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                  <Volume2
+                    className="h-5 w-5 text-purple-600 dark:text-purple-400"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">Audio & Multimedia</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    No auto-playing audio or video. Media controls are keyboard accessible.
-                    Captions provided where applicable.
+                    No auto-playing audio or video. Media controls are keyboard accessible. Captions
+                    provided where applicable.
                   </p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" aria-hidden="true" />
+                  <CheckCircle
+                    className="h-5 w-5 text-yellow-600 dark:text-yellow-400"
+                    aria-hidden="true"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold mb-1">Form Accessibility</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    All form fields have associated labels, clear error messages, and
-                    helpful instructions. Required fields are clearly indicated.
+                    All form fields have associated labels, clear error messages, and helpful
+                    instructions. Required fields are clearly indicated.
                   </p>
                 </div>
               </div>
@@ -231,27 +253,23 @@ export default function AccessibilityStatement() {
             </CardTitle>
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none">
-            <p>
-              While we strive for full accessibility, some content may have limitations:
-            </p>
+            <p>While we strive for full accessibility, some content may have limitations:</p>
             <ul>
               <li>
-                <strong>Legacy PDF Documents:</strong> Some older PDF documents may not be
-                fully accessible. We are working to remediate these documents.
+                <strong>Legacy PDF Documents:</strong> Some older PDF documents may not be fully
+                accessible. We are working to remediate these documents.
               </li>
               <li>
-                <strong>Third-Party Content:</strong> Some third-party integrations may have
-                varying levels of accessibility. We work with vendors to improve
-                accessibility where possible.
+                <strong>Third-Party Content:</strong> Some third-party integrations may have varying
+                levels of accessibility. We work with vendors to improve accessibility where
+                possible.
               </li>
               <li>
-                <strong>Complex Charts and Graphs:</strong> Some data visualizations may
-                rely primarily on visual presentation. We provide data tables as alternatives.
+                <strong>Complex Charts and Graphs:</strong> Some data visualizations may rely
+                primarily on visual presentation. We provide data tables as alternatives.
               </li>
             </ul>
-            <p>
-              We are actively working to address these limitations and welcome your feedback.
-            </p>
+            <p>We are actively working to address these limitations and welcome your feedback.</p>
           </CardContent>
         </Card>
 
@@ -312,16 +330,29 @@ export default function AccessibilityStatement() {
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none">
             <p>
-              Printyx offers customizable accessibility settings that you can adjust to meet
-              your needs. Access these settings through Settings &gt; Accessibility:
+              Printyx offers customizable accessibility settings that you can adjust to meet your
+              needs. Access these settings through Settings &gt; Accessibility:
             </p>
             <ul>
-              <li><strong>High Contrast Mode:</strong> Increases color contrast for better visibility</li>
-              <li><strong>Reduced Motion:</strong> Disables animations and transitions</li>
-              <li><strong>Font Size:</strong> Adjustable text size from small to extra-large</li>
-              <li><strong>Color Blindness Filters:</strong> Support for protanopia, deuteranopia, tritanopia, and achromatopsia</li>
-              <li><strong>Focus Indicators:</strong> Enhanced visible focus outlines</li>
-              <li><strong>Link Underlines:</strong> Underline all links for easier identification</li>
+              <li>
+                <strong>High Contrast Mode:</strong> Increases color contrast for better visibility
+              </li>
+              <li>
+                <strong>Reduced Motion:</strong> Disables animations and transitions
+              </li>
+              <li>
+                <strong>Font Size:</strong> Adjustable text size from small to extra-large
+              </li>
+              <li>
+                <strong>Color Blindness Filters:</strong> Support for protanopia, deuteranopia,
+                tritanopia, and achromatopsia
+              </li>
+              <li>
+                <strong>Focus Indicators:</strong> Enhanced visible focus outlines
+              </li>
+              <li>
+                <strong>Link Underlines:</strong> Underline all links for easier identification
+              </li>
             </ul>
           </CardContent>
         </Card>
@@ -333,12 +364,10 @@ export default function AccessibilityStatement() {
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none">
             <p>
-              A Voluntary Product Accessibility Template (VPAT) is available upon request.
-              The VPAT documents how Printyx conforms to Section 508 and WCAG 2.1 standards.
+              A Voluntary Product Accessibility Template (VPAT) is available upon request. The VPAT
+              documents how Printyx conforms to Section 508 and WCAG 2.1 standards.
             </p>
-            <p>
-              To request a copy of our VPAT, please contact us using the information below.
-            </p>
+            <p>To request a copy of our VPAT, please contact us using the information below.</p>
           </CardContent>
         </Card>
 
@@ -349,8 +378,8 @@ export default function AccessibilityStatement() {
           </CardHeader>
           <CardContent>
             <p className="mb-6 text-gray-600 dark:text-gray-400">
-              We welcome your feedback on the accessibility of Printyx. Please let us know
-              if you encounter accessibility barriers:
+              We welcome your feedback on the accessibility of Printyx. Please let us know if you
+              encounter accessibility barriers:
             </p>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -445,9 +474,7 @@ export default function AccessibilityStatement() {
         {/* Last Updated */}
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 mb-8">
           <p>This statement was last updated on January 12, 2026.</p>
-          <p className="mt-2">
-            We review and update this statement regularly to ensure accuracy.
-          </p>
+          <p className="mt-2">We review and update this statement regularly to ensure accuracy.</p>
         </div>
       </main>
 
@@ -456,9 +483,15 @@ export default function AccessibilityStatement() {
         <div className="max-w-4xl mx-auto px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
           <p>&copy; {new Date().getFullYear()} Printyx. All rights reserved.</p>
           <div className="flex justify-center gap-4 mt-2">
-            <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
-            <Link href="/eula" className="hover:text-primary">EULA</Link>
+            <Link href="/privacy" className="hover:text-primary">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-primary">
+              Terms of Service
+            </Link>
+            <Link href="/eula" className="hover:text-primary">
+              EULA
+            </Link>
           </div>
         </div>
       </footer>

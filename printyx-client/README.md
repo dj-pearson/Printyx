@@ -17,28 +17,33 @@ A lightweight, standalone monitoring client for tracking copier toner levels and
 The Printyx Client is designed for secure enterprise deployments including healthcare (HIPAA), financial services, legal firms, and government contractors.
 
 ### Transport Security
+
 - **HTTPS Only**: All API communication over TLS 1.2+ (HTTP rejected)
 - **Certificate Validation**: Full chain validation with hostname verification
 - **Certificate Pinning**: Optional SHA-256 fingerprint or public key pinning
 - **Custom CA Support**: Private certificate authority support
 
 ### Data Protection
+
 - **AES-256-GCM Encryption**: API keys and passwords encrypted at rest
 - **Machine-Specific Keys**: Derived from hardware identifiers
 - **File Permissions**: Auto-set to 600 (owner only) on Unix systems
 - **Secure Memory**: Best-effort credential wiping after use
 
 ### Authentication
+
 - **API Key Authentication**: SHA-256 hashed keys with bearer tokens
 - **Key Rotation**: Zero-downtime key rotation supported
 - **Tenant Isolation**: Multi-tenant architecture with strict scoping
 
 ### Protocol Security
+
 - **SNMPv3 Support**: Authentication and encryption for printer monitoring
 - **TLS Enforcement**: Minimum TLS 1.2, SSLv2/v3/TLS1.0/1.1 disabled
 - **Secure Defaults**: All insecure options disabled by default
 
 ### Compliance
+
 - ✅ HIPAA compliant (with BAA)
 - ✅ PCI DSS requirements met
 - ✅ SOC 2 security controls
@@ -228,6 +233,7 @@ printyx-client test 192.168.1.100
 ```
 
 This will:
+
 - Test SNMP connectivity
 - Retrieve device information
 - Display toner levels
@@ -260,22 +266,26 @@ tail -f printyx-client.log
 ### Troubleshooting
 
 **Connection Failed**
+
 - Verify API endpoint URL is correct
 - Check API key and tenant ID
 - Ensure network connectivity to Printyx platform
 
 **No Devices Found**
+
 - Verify SNMP is enabled on printers (check printer settings)
 - Confirm correct SNMP community string (default: "public")
 - Check firewall rules allow SNMP (UDP port 161)
 - Ensure network ranges are correct
 
 **Incomplete Metrics**
+
 - Some manufacturers use proprietary MIBs
 - Try different SNMP versions (v1, v2c, v3)
 - Check printer documentation for SNMP configuration
 
 **High CPU Usage**
+
 - Increase polling interval in config
 - Reduce number of devices per client
 - Check for network latency issues
@@ -285,18 +295,21 @@ tail -f printyx-client.log
 ### Enable SNMP on Printers
 
 **Canon imageRUNNER:**
+
 1. Access web interface
 2. Settings → Network → SNMP Settings
 3. Enable SNMP v1/v2
 4. Set community name (default: public)
 
 **Xerox:**
+
 1. Access web interface
 2. Properties → Connectivity → Protocols
 3. Enable SNMP
 4. Set access control
 
 **HP LaserJet/PageWide:**
+
 1. Access web interface
 2. Network → SNMP → Access Control
 3. Enable SNMP v1/v2
@@ -348,6 +361,7 @@ printyx-client/
 ## Support
 
 For issues or questions:
+
 - Check logs for error messages
 - Verify network connectivity
 - Ensure SNMP is enabled on devices

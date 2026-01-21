@@ -1,6 +1,7 @@
 # 🚀 Quick Fix - Get Admin Access in 2 Minutes
 
 ## The Problem
+
 You're seeing "User" instead of "admin" because of a 403 Forbidden error when fetching your profile.
 
 ## The Fix (Choose ONE)
@@ -12,6 +13,7 @@ You're seeing "User" instead of "admin" because of a 403 Forbidden error when fe
    - Click **SQL Editor** in left sidebar
 
 2. **Paste and Run This SQL**:
+
 ```sql
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
@@ -35,6 +37,7 @@ GRANT SELECT ON users TO authenticated;
 **Don't want to touch Supabase right now?**
 
 1. **Restart Backend Server**:
+
 ```bash
 npm run dev
 ```
@@ -50,6 +53,7 @@ The app will automatically use `/api/auth/me` endpoint which bypasses RLS.
 ## Verify It Worked
 
 Open browser console, you should see:
+
 - ✅ No 403 errors
 - ✅ `Using role string 'admin' - level 8, isAdmin: true`
 - ✅ User display shows "admin" instead of "User"

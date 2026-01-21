@@ -1,24 +1,18 @@
-import { useEffect, useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -36,8 +30,8 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Plus,
   Calculator,
@@ -49,17 +43,17 @@ import {
   TrendingUp,
   AlertCircle,
   MapPin,
-  Search
-} from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMeterReadingSchema } from "@shared/schema";
-import type { MeterReading, Equipment, Contract, Location } from "@shared/schema";
-import { z } from "zod";
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
-import { useLocation } from "wouter";
-import { cn } from "@/lib/utils";
+  Search,
+} from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertMeterReadingSchema } from '@shared/schema';
+import type { MeterReading, Equipment, Contract, Location } from '@shared/schema';
+import { z } from 'zod';
+import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import { useLocation } from 'wouter';
+import { cn } from '@/lib/utils';
 
 const createMeterReadingSchema = insertMeterReadingSchema.extend({
   readingDate: z.string(),
@@ -76,32 +70,32 @@ type DateRangePreset = {
 
 const dateRangePresets: DateRangePreset[] = [
   {
-    label: "Last 7 Days",
-    value: "7d",
+    label: 'Last 7 Days',
+    value: '7d',
     getDates: () => ({
       start: subDays(new Date(), 7),
       end: new Date(),
     }),
   },
   {
-    label: "Last 30 Days",
-    value: "30d",
+    label: 'Last 30 Days',
+    value: '30d',
     getDates: () => ({
       start: subDays(new Date(), 30),
       end: new Date(),
     }),
   },
   {
-    label: "This Month",
-    value: "this_month",
+    label: 'This Month',
+    value: 'this_month',
     getDates: () => ({
       start: startOfMonth(new Date()),
       end: endOfMonth(new Date()),
     }),
   },
   {
-    label: "Last Month",
-    value: "last_month",
+    label: 'Last Month',
+    value: 'last_month',
     getDates: () => ({
       start: startOfMonth(subMonths(new Date(), 1)),
       end: endOfMonth(subMonths(new Date(), 1)),
@@ -114,11 +108,11 @@ export default function MeterReadings() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [urlFilter, setUrlFilter] = useState<{ type?: string; n?: string } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedEquipment, setSelectedEquipment] = useState<string>("all");
-  const [selectedLocation, setSelectedLocation] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<string>("all");
-  const [equipmentSearch, setEquipmentSearch] = useState("");
+  const [selectedEquipment, setSelectedEquipment] = useState<string>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [dateRange, setDateRange] = useState<string>('all');
+  const [equipmentSearch, setEquipmentSearch] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -131,7 +125,7 @@ export default function MeterReadings() {
   }, []);
 
   const { data: meterReadings, isLoading: isLoadingReadings } = useQuery<MeterReading[]>({
-    queryKey: ["/api/meter-readings", typeof window !== 'undefined' ? window.location.search : ""],
+    queryKey: ['/api/meter-readings', typeof window !== 'undefined' ? window.location.search : ''],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (typeof window !== 'undefined') {
@@ -144,34 +138,34 @@ export default function MeterReadings() {
       const qs = params.toString();
       const path = `/api/meter-readings${qs ? `?${qs}` : ''}`;
       return await apiRequest(path, 'GET');
-    }
+    },
   });
 
   const { data: equipment } = useQuery<Equipment[]>({
-    queryKey: ["/api/equipment"],
+    queryKey: ['/api/equipment'],
   });
 
   const { data: contracts } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts"],
+    queryKey: ['/api/contracts'],
   });
 
   const { data: locations } = useQuery<Location[]>({
-    queryKey: ["/api/locations"],
+    queryKey: ['/api/locations'],
   });
 
   const form = useForm<CreateMeterReadingInput>({
     resolver: zodResolver(createMeterReadingSchema),
     defaultValues: {
-      readingDate: new Date().toISOString().split("T")[0],
+      readingDate: new Date().toISOString().split('T')[0],
       blackMeter: 0,
       colorMeter: 0,
-      collectionMethod: "manual",
-      notes: "",
-      photoUrl: "",
+      collectionMethod: 'manual',
+      notes: '',
+      photoUrl: '',
     },
   });
 
-  const selectedEquipmentId = form.watch("equipmentId");
+  const selectedEquipmentId = form.watch('equipmentId');
 
   // Get previous reading for selected equipment
   const previousReading = useMemo(() => {
@@ -184,28 +178,28 @@ export default function MeterReadings() {
 
   // Calculate deltas
   const blackDelta = useMemo(() => {
-    const current = form.watch("blackMeter");
+    const current = form.watch('blackMeter');
     if (!previousReading || !current) return 0;
     return current - previousReading.blackMeter;
-  }, [form.watch("blackMeter"), previousReading]);
+  }, [form.watch('blackMeter'), previousReading]);
 
   const colorDelta = useMemo(() => {
-    const current = form.watch("colorMeter");
+    const current = form.watch('colorMeter');
     if (!previousReading || !current) return 0;
     return current - previousReading.colorMeter;
-  }, [form.watch("colorMeter"), previousReading]);
+  }, [form.watch('colorMeter'), previousReading]);
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateMeterReadingInput) =>
-      apiRequest("/api/meter-readings", "POST", {
+      apiRequest('/api/meter-readings', 'POST', {
         ...data,
         readingDate: new Date(data.readingDate),
         blackMeter: parseInt((data.blackMeter || 0).toString()),
         colorMeter: parseInt((data.colorMeter || 0).toString()),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/meter-readings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/equipment"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/meter-readings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/equipment'] });
       setIsCreateDialogOpen(false);
       form.reset();
       setPhotoPreview(null);
@@ -223,7 +217,7 @@ export default function MeterReadings() {
       reader.onloadend = () => {
         const result = reader.result as string;
         setPhotoPreview(result);
-        form.setValue("photoUrl", result);
+        form.setValue('photoUrl', result);
       };
       reader.readAsDataURL(file);
     }
@@ -231,9 +225,7 @@ export default function MeterReadings() {
 
   const getEquipmentName = (equipmentId: string) => {
     const eq = equipment?.find((e) => e.id === equipmentId);
-    return eq
-      ? `${eq.manufacturer} ${eq.model} (${eq.serialNumber})`
-      : "Unknown Equipment";
+    return eq ? `${eq.manufacturer} ${eq.model} (${eq.serialNumber})` : 'Unknown Equipment';
   };
 
   const getEquipmentLocation = (equipmentId: string) => {
@@ -244,19 +236,19 @@ export default function MeterReadings() {
 
   const getContractNumber = (contractId: string) => {
     const contract = contracts?.find((c) => c.id === contractId);
-    return contract?.contractNumber || "Unknown Contract";
+    return contract?.contractNumber || 'Unknown Contract';
   };
 
   const getCollectionMethodBadge = (method: string) => {
     const variants = {
-      manual: "default",
-      email: "secondary",
-      dca: "outline",
+      manual: 'default',
+      email: 'secondary',
+      dca: 'outline',
     } as const;
 
     return (
       <Badge
-        variant={variants[method as keyof typeof variants] || "default"}
+        variant={variants[method as keyof typeof variants] || 'default'}
         className="touch-manipulation"
       >
         {method.toUpperCase()}
@@ -266,7 +258,7 @@ export default function MeterReadings() {
 
   const isOverdue = (reading: MeterReading) => {
     const daysSinceReading = Math.floor(
-      (new Date().getTime() - new Date(reading.readingDate).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date().getTime() - new Date(reading.readingDate).getTime()) / (1000 * 60 * 60 * 24),
     );
     return daysSinceReading > 45; // Consider overdue after 45 days
   };
@@ -278,12 +270,12 @@ export default function MeterReadings() {
     let filtered = [...meterReadings];
 
     // Equipment filter
-    if (selectedEquipment !== "all") {
+    if (selectedEquipment !== 'all') {
       filtered = filtered.filter((r) => r.equipmentId === selectedEquipment);
     }
 
     // Location filter
-    if (selectedLocation !== "all") {
+    if (selectedLocation !== 'all') {
       filtered = filtered.filter((r) => {
         const eq = equipment?.find((e) => e.id === r.equipmentId);
         return eq?.locationId === selectedLocation;
@@ -291,14 +283,14 @@ export default function MeterReadings() {
     }
 
     // Status filter
-    if (selectedStatus === "overdue") {
+    if (selectedStatus === 'overdue') {
       filtered = filtered.filter(isOverdue);
-    } else if (selectedStatus === "recent") {
+    } else if (selectedStatus === 'recent') {
       filtered = filtered.filter((r) => !isOverdue(r));
     }
 
     // Date range filter
-    if (dateRange !== "all") {
+    if (dateRange !== 'all') {
       const preset = dateRangePresets.find((p) => p.value === dateRange);
       if (preset) {
         const { start, end } = preset.getDates();
@@ -326,10 +318,10 @@ export default function MeterReadings() {
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (selectedEquipment !== "all") count++;
-    if (selectedLocation !== "all") count++;
-    if (selectedStatus !== "all") count++;
-    if (dateRange !== "all") count++;
+    if (selectedEquipment !== 'all') count++;
+    if (selectedLocation !== 'all') count++;
+    if (selectedStatus !== 'all') count++;
+    if (dateRange !== 'all') count++;
     return count;
   }, [selectedEquipment, selectedLocation, selectedStatus, dateRange]);
 
@@ -407,14 +399,9 @@ export default function MeterReadings() {
           </Button>
 
           {/* Add Reading Button */}
-          <Dialog
-            open={isCreateDialogOpen}
-            onOpenChange={setIsCreateDialogOpen}
-          >
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-none"
-              >
+              <Button className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1 sm:flex-none">
                 <Plus className="w-4 h-4 mr-2" />
                 Record Reading
               </Button>
@@ -448,10 +435,7 @@ export default function MeterReadings() {
                               className="pl-9 min-h-[44px] touch-manipulation text-base"
                             />
                           </div>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="min-h-[44px] touch-manipulation text-base">
                                 <SelectValue placeholder="Select equipment" />
@@ -467,7 +451,9 @@ export default function MeterReadings() {
                                     className="min-h-[44px] touch-manipulation"
                                   >
                                     <div className="flex flex-col">
-                                      <span>{eq.manufacturer} {eq.model}</span>
+                                      <span>
+                                        {eq.manufacturer} {eq.model}
+                                      </span>
                                       <span className="text-xs text-gray-500">
                                         {eq.serialNumber} {location ? `• ${location.name}` : ''}
                                       </span>
@@ -490,10 +476,7 @@ export default function MeterReadings() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base">Contract *</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="min-h-[44px] touch-manipulation text-base">
                               <SelectValue placeholder="Select contract" />
@@ -521,16 +504,21 @@ export default function MeterReadings() {
                     <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
                       <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
                         <Activity className="w-4 h-4" />
-                        Previous Reading ({format(new Date(previousReading.readingDate), "MMM dd, yyyy")})
+                        Previous Reading (
+                        {format(new Date(previousReading.readingDate), 'MMM dd, yyyy')})
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <p className="text-gray-600">Black & White</p>
-                          <p className="font-semibold text-lg">{previousReading.blackMeter.toLocaleString()}</p>
+                          <p className="font-semibold text-lg">
+                            {previousReading.blackMeter.toLocaleString()}
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-600">Color</p>
-                          <p className="font-semibold text-lg">{previousReading.colorMeter.toLocaleString()}</p>
+                          <p className="font-semibold text-lg">
+                            {previousReading.colorMeter.toLocaleString()}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -554,7 +542,7 @@ export default function MeterReadings() {
                           <Button
                             type="button"
                             variant="outline"
-                            onClick={() => field.onChange(new Date().toISOString().split("T")[0])}
+                            onClick={() => field.onChange(new Date().toISOString().split('T')[0])}
                             className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                           >
                             Today
@@ -579,20 +567,21 @@ export default function MeterReadings() {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               {...field}
-                              onChange={(e) =>
-                                field.onChange(parseInt(e.target.value) || 0)
-                              }
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                               className="min-h-[56px] text-2xl font-semibold touch-manipulation"
                               placeholder="0"
                             />
                           </FormControl>
                           {blackDelta !== 0 && (
-                            <FormDescription className={cn(
-                              "flex items-center gap-1 text-base font-medium",
-                              blackDelta > 0 ? "text-green-600" : "text-red-600"
-                            )}>
+                            <FormDescription
+                              className={cn(
+                                'flex items-center gap-1 text-base font-medium',
+                                blackDelta > 0 ? 'text-green-600' : 'text-red-600',
+                              )}
+                            >
                               <TrendingUp className="w-4 h-4" />
-                              {blackDelta > 0 ? '+' : ''}{blackDelta.toLocaleString()} copies
+                              {blackDelta > 0 ? '+' : ''}
+                              {blackDelta.toLocaleString()} copies
                             </FormDescription>
                           )}
                           <FormMessage />
@@ -612,20 +601,21 @@ export default function MeterReadings() {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               {...field}
-                              onChange={(e) =>
-                                field.onChange(parseInt(e.target.value) || 0)
-                              }
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                               className="min-h-[56px] text-2xl font-semibold touch-manipulation"
                               placeholder="0"
                             />
                           </FormControl>
                           {colorDelta !== 0 && (
-                            <FormDescription className={cn(
-                              "flex items-center gap-1 text-base font-medium",
-                              colorDelta > 0 ? "text-blue-600" : "text-red-600"
-                            )}>
+                            <FormDescription
+                              className={cn(
+                                'flex items-center gap-1 text-base font-medium',
+                                colorDelta > 0 ? 'text-blue-600' : 'text-red-600',
+                              )}
+                            >
                               <TrendingUp className="w-4 h-4" />
-                              {colorDelta > 0 ? '+' : ''}{colorDelta.toLocaleString()} copies
+                              {colorDelta > 0 ? '+' : ''}
+                              {colorDelta.toLocaleString()} copies
                             </FormDescription>
                           )}
                           <FormMessage />
@@ -653,7 +643,7 @@ export default function MeterReadings() {
                         className="flex-1 min-h-[44px] touch-manipulation active:scale-[0.98]"
                       >
                         <Camera className="w-4 h-4 mr-2" />
-                        {photoPreview ? "Change Photo" : "Take Photo"}
+                        {photoPreview ? 'Change Photo' : 'Take Photo'}
                       </Button>
                       {photoPreview && (
                         <Button
@@ -661,7 +651,7 @@ export default function MeterReadings() {
                           variant="ghost"
                           onClick={() => {
                             setPhotoPreview(null);
-                            form.setValue("photoUrl", "");
+                            form.setValue('photoUrl', '');
                           }}
                           className="min-h-[44px] touch-manipulation active:scale-[0.98]"
                         >
@@ -687,10 +677,7 @@ export default function MeterReadings() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base">Collection Method</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="min-h-[44px] touch-manipulation text-base">
                               <SelectValue />
@@ -749,9 +736,7 @@ export default function MeterReadings() {
                       disabled={createMutation.isPending}
                       className="w-full sm:w-auto min-h-[44px] touch-manipulation active:scale-[0.98]"
                     >
-                      {createMutation.isPending
-                        ? "Saving..."
-                        : "Save Reading"}
+                      {createMutation.isPending ? 'Saving...' : 'Save Reading'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -770,10 +755,10 @@ export default function MeterReadings() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setSelectedEquipment("all");
-                    setSelectedLocation("all");
-                    setSelectedStatus("all");
-                    setDateRange("all");
+                    setSelectedEquipment('all');
+                    setSelectedLocation('all');
+                    setSelectedStatus('all');
+                    setDateRange('all');
                   }}
                   className="text-sm touch-manipulation active:scale-[0.98]"
                 >
@@ -889,8 +874,8 @@ export default function MeterReadings() {
               <Card
                 key={reading.id}
                 className={cn(
-                  "transition-all touch-manipulation active:scale-[0.99]",
-                  overdue && "border-orange-300 bg-orange-50/50"
+                  'transition-all touch-manipulation active:scale-[0.99]',
+                  overdue && 'border-orange-300 bg-orange-50/50',
                 )}
               >
                 <CardHeader className="p-4 sm:p-6 pb-3">
@@ -909,7 +894,7 @@ export default function MeterReadings() {
                         <span className="hidden sm:inline">•</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {format(new Date(reading.readingDate), "MMM dd, yyyy")}
+                          {format(new Date(reading.readingDate), 'MMM dd, yyyy')}
                         </span>
                       </CardDescription>
                     </div>
@@ -947,9 +932,7 @@ export default function MeterReadings() {
                     <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg">
                       <Activity className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm text-gray-600 font-medium">
-                          Color
-                        </p>
+                        <p className="text-xs sm:text-sm text-gray-600 font-medium">Color</p>
                         <p className="font-bold text-lg sm:text-xl mt-1">
                           {reading.colorMeter.toLocaleString()}
                         </p>
@@ -964,7 +947,8 @@ export default function MeterReadings() {
 
                   {/* Contract Info */}
                   <div className="text-sm text-gray-600 px-3">
-                    Contract: <span className="font-medium">{getContractNumber(reading.contractId)}</span>
+                    Contract:{' '}
+                    <span className="font-medium">{getContractNumber(reading.contractId)}</span>
                   </div>
 
                   {/* Notes */}
@@ -994,13 +978,12 @@ export default function MeterReadings() {
               <CardContent className="p-8 sm:p-12 text-center">
                 <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                  {activeFiltersCount > 0 ? "No matching readings" : "No meter readings yet"}
+                  {activeFiltersCount > 0 ? 'No matching readings' : 'No meter readings yet'}
                 </h3>
                 <p className="text-sm sm:text-base text-gray-600 mb-4">
                   {activeFiltersCount > 0
-                    ? "Try adjusting your filters to see more results."
-                    : "Start by recording your first meter reading to track equipment usage and generate accurate billing."
-                  }
+                    ? 'Try adjusting your filters to see more results.'
+                    : 'Start by recording your first meter reading to track equipment usage and generate accurate billing.'}
                 </p>
                 {activeFiltersCount === 0 && (
                   <Button

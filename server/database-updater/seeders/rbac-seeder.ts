@@ -38,7 +38,6 @@ interface PermissionDefinition {
 }
 
 const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
-
   // ============================================================================
   // SALES MODULE PERMISSIONS
   // ============================================================================
@@ -1336,7 +1335,6 @@ interface RoleTemplate {
 }
 
 const ROLE_TEMPLATES: RoleTemplate[] = [
-
   // ============================================================================
   // LEVEL 8: PLATFORM ADMINISTRATORS (Printyx Staff)
   // ============================================================================
@@ -1968,19 +1966,22 @@ export async function seedRBAC() {
 
     for (const perm of PERMISSION_DEFINITIONS) {
       try {
-        const [created] = await db.insert(permissions).values({
-          name: perm.name,
-          code: perm.code,
-          description: perm.description,
-          module: perm.module,
-          resourceType: perm.resourceType,
-          action: perm.action,
-          scopeLevel: perm.scopeLevel,
-          requiresApproval: perm.requiresApproval || false,
-          requiresMFA: perm.requiresMFA || false,
-          riskLevel: perm.riskLevel || 'low',
-          isActive: true,
-        }).returning();
+        const [created] = await db
+          .insert(permissions)
+          .values({
+            name: perm.name,
+            code: perm.code,
+            description: perm.description,
+            module: perm.module,
+            resourceType: perm.resourceType,
+            action: perm.action,
+            scopeLevel: perm.scopeLevel,
+            requiresApproval: perm.requiresApproval || false,
+            requiresMFA: perm.requiresMFA || false,
+            riskLevel: perm.riskLevel || 'low',
+            isActive: true,
+          })
+          .returning();
 
         permissionMap.set(perm.code, created.id);
         permissionsCreated++;
@@ -1995,7 +1996,9 @@ export async function seedRBAC() {
       }
     }
 
-    console.log(`✅ Created ${permissionsCreated} permissions (${PERMISSION_DEFINITIONS.length} total)`);
+    console.log(
+      `✅ Created ${permissionsCreated} permissions (${PERMISSION_DEFINITIONS.length} total)`,
+    );
 
     // Step 2: Seed Roles
     console.log('\n👥 Seeding roles...');
@@ -2009,23 +2012,26 @@ export async function seedRBAC() {
     for (const role of ROLE_TEMPLATES) {
       try {
         const rght = lftCounter + 1;
-        const [created] = await db.insert(enhancedRoles).values({
-          tenantId: 'system', // System roles, will be copied per tenant
-          name: role.name,
-          code: role.code,
-          description: role.description,
-          hierarchyLevel: role.hierarchyLevel as any,
-          organizationalTier: role.organizationalTier as any,
-          department: role.department,
-          parentRoleId: null,
-          lft: lftCounter,
-          rght: rght,
-          depth: 0,
-          isSystemRole: role.isSystemRole,
-          isCustomizable: false,
-          isTemplate: true,
-          createdBy: 'system',
-        }).returning();
+        const [created] = await db
+          .insert(enhancedRoles)
+          .values({
+            tenantId: 'system', // System roles, will be copied per tenant
+            name: role.name,
+            code: role.code,
+            description: role.description,
+            hierarchyLevel: role.hierarchyLevel as any,
+            organizationalTier: role.organizationalTier as any,
+            department: role.department,
+            parentRoleId: null,
+            lft: lftCounter,
+            rght: rght,
+            depth: 0,
+            isSystemRole: role.isSystemRole,
+            isCustomizable: false,
+            isTemplate: true,
+            createdBy: 'system',
+          })
+          .returning();
 
         roleMap.set(role.code, created.id);
         rolesCreated++;
@@ -2087,7 +2093,6 @@ export async function seedRBAC() {
     console.log(`   - Level 2 (Team Lead): 2 roles`);
     console.log(`   - Level 1 (Individual): 4 roles`);
     console.log('='.repeat(60));
-
   } catch (error) {
     console.error('❌ RBAC Seeding Failed:', error);
     throw error;

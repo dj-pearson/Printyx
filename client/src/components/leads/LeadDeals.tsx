@@ -1,28 +1,28 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
+import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { format } from "date-fns";
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
 import {
   Target,
   Plus,
@@ -38,11 +38,11 @@ import {
   ExternalLink,
   Briefcase,
   BarChart3,
-  Activity
-} from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import { ConversionInsights } from "@/components/analytics/ConversionInsights";
-import { PipelineTrendWidgets } from "@/components/analytics/PipelineTrendWidgets";
+  Activity,
+} from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { ConversionInsights } from '@/components/analytics/ConversionInsights';
+import { PipelineTrendWidgets } from '@/components/analytics/PipelineTrendWidgets';
 
 interface LeadDealsProps {
   leadId: string;
@@ -60,7 +60,7 @@ interface Deal {
   primaryContactEmail?: string;
   source?: string;
   dealType?: string;
-  priority: "low" | "medium" | "high";
+  priority: 'low' | 'medium' | 'high';
   stageId: string;
   stageName?: string;
   stageColor?: string;
@@ -86,7 +86,7 @@ interface CreateDealFormData {
   description: string;
   amount: string;
   dealType: string;
-  priority: "low" | "medium" | "high";
+  priority: 'low' | 'medium' | 'high';
   expectedCloseDate: string;
   notes: string;
   stageId: string;
@@ -98,21 +98,21 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState<CreateDealFormData>({
-    title: "",
-    description: "",
-    amount: "",
-    dealType: "",
-    priority: "medium",
-    expectedCloseDate: "",
-    notes: "",
-    stageId: "",
+    title: '',
+    description: '',
+    amount: '',
+    dealType: '',
+    priority: 'medium',
+    expectedCloseDate: '',
+    notes: '',
+    stageId: '',
   });
 
   // Handle Quick Actions CTA events from LeadDetail
   useEffect(() => {
     const handleTabAction = (event: CustomEvent) => {
       const { action, leadId: eventLeadId, companyName } = event.detail || {};
-      
+
       if (action === 'createDeal') {
         setIsCreateDialogOpen(true);
       } else if (action === 'createQuote') {
@@ -121,7 +121,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
           leadId: eventLeadId || leadId,
           companyName: companyName || leadName,
           prefill: 'true',
-          source: 'deal'
+          source: 'deal',
         });
         window.open(`/quotes/new?${params.toString()}`, '_blank');
       } else if (action === 'createProposal') {
@@ -130,7 +130,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
           leadId: eventLeadId || leadId,
           companyName: companyName || leadName,
           prefill: 'true',
-          source: 'deal'
+          source: 'deal',
         });
         window.open(`/proposals/new?${params.toString()}`, '_blank');
       }
@@ -169,25 +169,25 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       setIsCreateDialogOpen(false);
       setFormData({
-        title: "",
-        description: "",
-        amount: "",
-        dealType: "",
-        priority: "medium",
-        expectedCloseDate: "",
-        notes: "",
-        stageId: "",
+        title: '',
+        description: '',
+        amount: '',
+        dealType: '',
+        priority: 'medium',
+        expectedCloseDate: '',
+        notes: '',
+        stageId: '',
       });
       toast({
-        title: "Success",
-        description: "Deal created successfully",
+        title: 'Success',
+        description: 'Deal created successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error", 
-        description: error.message || "Failed to create deal",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create deal',
+        variant: 'destructive',
       });
     },
   });
@@ -195,78 +195,78 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
   // Phase 2: Enhanced validation with stage guards (poka-yoke)
   const validateDealData = (data: CreateDealFormData) => {
     const errors = [];
-    
+
     // Required field validations
     if (!data.title.trim()) {
-      errors.push("Deal title is required");
+      errors.push('Deal title is required');
     }
-    
+
     if (!data.stageId) {
-      errors.push("Deal stage must be selected");
+      errors.push('Deal stage must be selected');
     }
-    
+
     // Stage-specific validations (stage guards)
-    const selectedStage = stages.find(s => s.id === data.stageId);
+    const selectedStage = stages.find((s) => s.id === data.stageId);
     if (selectedStage) {
       // Early stage requirements
       if (selectedStage.name === 'Qualified' || selectedStage.name === 'Needs Analysis') {
         if (!data.description.trim()) {
-          errors.push("Description is required for qualified deals");
+          errors.push('Description is required for qualified deals');
         }
       }
-      
+
       // Proposal/negotiation stage requirements
       if (selectedStage.name === 'Proposal' || selectedStage.name === 'Negotiation') {
         if (!data.amount || parseFloat(data.amount) <= 0) {
-          errors.push("Deal amount is required for proposal stage and beyond");
+          errors.push('Deal amount is required for proposal stage and beyond');
         }
         if (!data.expectedCloseDate) {
-          errors.push("Expected close date is required for proposal stage and beyond");
+          errors.push('Expected close date is required for proposal stage and beyond');
         }
       }
-      
+
       // High-value deal requirements (poka-yoke)
       if (data.amount && parseFloat(data.amount) > 50000) {
         if (data.priority === 'low') {
-          errors.push("High-value deals (>$50K) cannot be set as low priority");
+          errors.push('High-value deals (>$50K) cannot be set as low priority');
         }
         if (!data.notes.trim()) {
-          errors.push("Notes are required for high-value deals (>$50K)");
+          errors.push('Notes are required for high-value deals (>$50K)');
         }
       }
     }
-    
+
     // Business logic validations
     if (data.expectedCloseDate) {
       const closeDate = new Date(data.expectedCloseDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (closeDate < today) {
-        errors.push("Expected close date cannot be in the past");
+        errors.push('Expected close date cannot be in the past');
       }
-      
+
       const threeMonthsFromNow = new Date();
       threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-      
+
       if (closeDate > threeMonthsFromNow && !data.notes.trim()) {
-        errors.push("Deals with close dates beyond 3 months require notes explaining the timeline");
+        errors.push('Deals with close dates beyond 3 months require notes explaining the timeline');
       }
     }
-    
+
     return errors;
   };
 
   const handleCreateDeal = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Phase 2: Apply stage guards and validations
     const validationErrors = validateDealData(formData);
     if (validationErrors.length > 0) {
       toast({
-        title: "Validation Error",
+        title: 'Validation Error',
         description: validationErrors[0], // Show first error
-        variant: "destructive",
+        variant: 'destructive',
       });
       return;
     }
@@ -291,15 +291,19 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "high": return "bg-red-100 text-red-800";
-      case "medium": return "bg-yellow-100 text-yellow-800";
-      case "low": return "bg-green-100 text-green-800";
-      default: return "bg-gray-100 text-gray-800";
+      case 'high':
+        return 'bg-red-100 text-red-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStageColor = (stageColor?: string) => {
-    return stageColor || "#6B7280";
+    return stageColor || '#6B7280';
   };
 
   if (dealsLoading || stagesLoading) {
@@ -324,11 +328,9 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
             <Target className="h-5 w-5 text-blue-600" />
             Associated Deals
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Track opportunities and deals for {leadName}
-          </p>
+          <p className="text-sm text-gray-600 mt-1">Track opportunities and deals for {leadName}</p>
         </div>
-        
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="flex items-center gap-2">
@@ -343,7 +345,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                 Create New Deal for {leadName}
               </DialogTitle>
             </DialogHeader>
-            
+
             <form onSubmit={handleCreateDeal} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -356,7 +358,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="amount">Deal Amount</Label>
                   <Input
@@ -368,7 +370,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     placeholder="0.00"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="dealType">Deal Type</Label>
                   <Select
@@ -387,12 +389,12 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="priority">Priority</Label>
                   <Select
                     value={formData.priority}
-                    onValueChange={(value: "low" | "medium" | "high") => 
+                    onValueChange={(value: 'low' | 'medium' | 'high') =>
                       setFormData({ ...formData, priority: value })
                     }
                   >
@@ -406,17 +408,19 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="expectedCloseDate">Expected Close Date</Label>
                   <Input
                     id="expectedCloseDate"
                     type="date"
                     value={formData.expectedCloseDate}
-                    onChange={(e) => setFormData({ ...formData, expectedCloseDate: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, expectedCloseDate: e.target.value })
+                    }
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="stageId">Initial Stage</Label>
                   <Select
@@ -430,8 +434,8 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                       {stages.map((stage) => (
                         <SelectItem key={stage.id} value={stage.id}>
                           <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
+                            <div
+                              className="w-3 h-3 rounded-full"
                               style={{ backgroundColor: stage.color }}
                             />
                             {stage.name}
@@ -441,7 +445,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="col-span-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -452,7 +456,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="col-span-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
@@ -464,7 +468,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 pt-4">
                 <Button
                   type="button"
@@ -473,11 +477,8 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createDealMutation.isPending}
-                >
-                  {createDealMutation.isPending ? "Creating..." : "Create Deal"}
+                <Button type="submit" disabled={createDealMutation.isPending}>
+                  {createDealMutation.isPending ? 'Creating...' : 'Create Deal'}
                 </Button>
               </div>
             </form>
@@ -510,37 +511,30 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-medium text-gray-900 truncate">
-                        {deal.title}
-                      </h4>
-                      <Badge className={getPriorityColor(deal.priority)}>
-                        {deal.priority}
-                      </Badge>
+                      <h4 className="font-medium text-gray-900 truncate">{deal.title}</h4>
+                      <Badge className={getPriorityColor(deal.priority)}>{deal.priority}</Badge>
                       {deal.stageName && (
-                        <Badge 
+                        <Badge
                           variant="outline"
                           className="border-2"
-                          style={{ 
+                          style={{
                             borderColor: getStageColor(deal.stageColor),
-                            color: getStageColor(deal.stageColor)
+                            color: getStageColor(deal.stageColor),
                           }}
                         >
                           {deal.stageName}
                         </Badge>
                       )}
                     </div>
-                    
+
                     {deal.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {deal.description}
-                      </p>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{deal.description}</p>
                     )}
-                    
+
                     <div className="flex items-center gap-4 text-sm text-gray-500">
                       {deal.amount && (
                         <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          ${deal.amount.toLocaleString()}
+                          <DollarSign className="h-4 w-4" />${deal.amount.toLocaleString()}
                         </div>
                       )}
                       {deal.probability && (
@@ -552,7 +546,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                       {deal.expectedCloseDate && (
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {format(new Date(deal.expectedCloseDate), "MMM d, yyyy")}
+                          {format(new Date(deal.expectedCloseDate), 'MMM d, yyyy')}
                         </div>
                       )}
                       {deal.ownerName && (
@@ -562,7 +556,7 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                         </div>
                       )}
                     </div>
-                    
+
                     {deal.dealType && (
                       <div className="flex items-center gap-1 mt-2">
                         <Briefcase className="h-4 w-4 text-gray-400" />
@@ -570,10 +564,10 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-2 ml-4">
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => window.open(`/deals/${deal.id}`, '_blank')}
                     >
@@ -607,26 +601,37 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
                   {(() => {
                     const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
                     const monthlyGoal = 50000; // Lead-specific goal (smaller than company-wide)
-                    const attainmentPct = Math.min(100, Math.round((totalValue / monthlyGoal) * 100));
+                    const attainmentPct = Math.min(
+                      100,
+                      Math.round((totalValue / monthlyGoal) * 100),
+                    );
                     return `${attainmentPct}%`;
                   })()}
                 </div>
                 <div className="text-sm text-gray-600 flex items-center justify-center gap-1">
                   Goal Attainment
-                  <Badge 
+                  <Badge
                     variant={(() => {
                       const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
                       const monthlyGoal = 50000;
                       const attainment = (totalValue / monthlyGoal) * 100;
-                      return attainment >= 90 ? 'default' : attainment >= 70 ? 'secondary' : 'destructive';
-                    })()} 
+                      return attainment >= 90
+                        ? 'default'
+                        : attainment >= 70
+                          ? 'secondary'
+                          : 'destructive';
+                    })()}
                     className="text-xs ml-1"
                   >
                     {(() => {
                       const totalValue = deals.reduce((sum, deal) => sum + (deal.amount || 0), 0);
                       const monthlyGoal = 50000;
                       const attainment = (totalValue / monthlyGoal) * 100;
-                      return attainment >= 90 ? 'On Track' : attainment >= 70 ? 'At Risk' : 'Behind';
+                      return attainment >= 90
+                        ? 'On Track'
+                        : attainment >= 70
+                          ? 'At Risk'
+                          : 'Behind';
                     })()}
                   </Badge>
                 </div>
@@ -654,10 +659,10 @@ export function LeadDeals({ leadId, leadName, companyId }: LeadDealsProps) {
             <BarChart3 className="h-5 w-5" />
             <h3 className="text-lg font-semibold">Conversion Insights & Optimization</h3>
           </div>
-          
+
           <div className="space-y-6">
             <ConversionInsights dealId={deals[0]?.id} />
-            
+
             <div className="border-t pt-6">
               <div className="flex items-center gap-2 mb-4">
                 <Activity className="h-5 w-5" />

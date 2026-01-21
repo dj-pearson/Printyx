@@ -20,24 +20,21 @@ export interface ExportOptions {
 export function exportToCSV<T extends Record<string, any>>(
   data: T[],
   columns: ExportColumn<T>[],
-  options: ExportOptions = {}
+  options: ExportOptions = {},
 ) {
-  const {
-    filename = 'export',
-    includeHeaders = true,
-  } = options;
+  const { filename = 'export', includeHeaders = true } = options;
 
   // Build CSV content
   const rows: string[][] = [];
 
   // Add headers
   if (includeHeaders) {
-    rows.push(columns.map(col => col.label));
+    rows.push(columns.map((col) => col.label));
   }
 
   // Add data rows
-  data.forEach(row => {
-    const rowData = columns.map(col => {
+  data.forEach((row) => {
+    const rowData = columns.map((col) => {
       const key = col.key as keyof T;
       let value = row[key];
 
@@ -65,7 +62,7 @@ export function exportToCSV<T extends Record<string, any>>(
   });
 
   // Convert to CSV string
-  const csvContent = rows.map(row => row.join(',')).join('\n');
+  const csvContent = rows.map((row) => row.join(',')).join('\n');
 
   // Create blob and download
   downloadFile(csvContent, `${filename}.csv`, 'text/csv;charset=utf-8;');
@@ -77,14 +74,14 @@ export function exportToCSV<T extends Record<string, any>>(
 export function exportToJSON<T extends Record<string, any>>(
   data: T[],
   columns: ExportColumn<T>[],
-  options: ExportOptions = {}
+  options: ExportOptions = {},
 ) {
   const { filename = 'export' } = options;
 
   // Transform data using columns
-  const transformedData = data.map(row => {
+  const transformedData = data.map((row) => {
     const obj: Record<string, any> = {};
-    columns.forEach(col => {
+    columns.forEach((col) => {
       const key = col.key as keyof T;
       let value = row[key];
 
@@ -134,7 +131,10 @@ export function formatCurrency(value: number | string | null | undefined): strin
 /**
  * Format date value for export
  */
-export function formatDate(value: string | Date | null | undefined, format: 'short' | 'long' = 'short'): string {
+export function formatDate(
+  value: string | Date | null | undefined,
+  format: 'short' | 'long' = 'short',
+): string {
   if (!value) return '';
 
   const date = typeof value === 'string' ? new Date(value) : value;
@@ -174,7 +174,7 @@ export function formatArray(value: any[] | null | undefined, separator: string =
 export function createExportColumn<T>(
   key: keyof T | string,
   label: string,
-  formatter?: 'currency' | 'date' | 'longDate' | 'boolean' | ((value: any, row: T) => string)
+  formatter?: 'currency' | 'date' | 'longDate' | 'boolean' | ((value: any, row: T) => string),
 ): ExportColumn<T> {
   let format: ((value: any, row: T) => string) | undefined;
 

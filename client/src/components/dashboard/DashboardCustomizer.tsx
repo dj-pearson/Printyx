@@ -10,7 +10,12 @@ import {
   useSensors,
   DragEndEvent,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import {
   Dialog,
   DialogContent,
@@ -80,8 +85,7 @@ export function DashboardCustomizer() {
 
   // Save layout mutation
   const saveMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest('POST', '/api/dashboard/layout', data),
+    mutationFn: (data: any) => apiRequest('POST', '/api/dashboard/layout', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/layout'] });
       setIsOpen(false);
@@ -91,8 +95,8 @@ export function DashboardCustomizer() {
   const widgets = (widgetsData?.data || []) as Widget[];
   const layout = layoutData?.data as Layout | undefined;
 
-  const filteredWidgets = widgets.filter(w =>
-    w.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredWidgets = widgets.filter((w) =>
+    w.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const handleAddWidget = (widget: Widget) => {
@@ -107,14 +111,12 @@ export function DashboardCustomizer() {
   };
 
   const handleRemoveWidget = (widgetId: string) => {
-    setSelectedWidgets(selectedWidgets.filter(w => w.id !== widgetId));
+    setSelectedWidgets(selectedWidgets.filter((w) => w.id !== widgetId));
   };
 
   const handleToggleWidget = (widgetId: string) => {
     setSelectedWidgets(
-      selectedWidgets.map(w =>
-        w.id === widgetId ? { ...w, visible: !w.visible } : w
-      )
+      selectedWidgets.map((w) => (w.id === widgetId ? { ...w, visible: !w.visible } : w)),
     );
   };
 
@@ -129,15 +131,15 @@ export function DashboardCustomizer() {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = selectedWidgets.findIndex(w => w.id === active.id);
-      const newIndex = selectedWidgets.findIndex(w => w.id === over.id);
+      const oldIndex = selectedWidgets.findIndex((w) => w.id === active.id);
+      const newIndex = selectedWidgets.findIndex((w) => w.id === over.id);
       setSelectedWidgets(arrayMove(selectedWidgets, oldIndex, newIndex));
     }
   };
@@ -216,7 +218,7 @@ export function DashboardCustomizer() {
                   onDragEnd={handleDragEnd}
                 >
                   <SortableContext
-                    items={selectedWidgets.map(w => w.id)}
+                    items={selectedWidgets.map((w) => w.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <ScrollArea className="h-[300px]">
@@ -227,9 +229,7 @@ export function DashboardCustomizer() {
                           </div>
                         ) : (
                           selectedWidgets.map((widget) => {
-                            const widgetDef = widgets.find(
-                              w => w.id === widget.widgetId
-                            );
+                            const widgetDef = widgets.find((w) => w.id === widget.widgetId);
                             return (
                               <SortableWidgetItem
                                 key={widget.id}
@@ -279,14 +279,9 @@ function SortableWidgetItem({
   onToggle: () => void;
   onRemove: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),

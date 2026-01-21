@@ -235,9 +235,7 @@ export default function KnowledgeBaseAdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Knowledge Base Admin</h1>
-          <p className="text-muted-foreground">
-            Manage articles, content, and AI generation
-          </p>
+          <p className="text-muted-foreground">Manage articles, content, and AI generation</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setImportDialog(true)}>
@@ -248,7 +246,7 @@ export default function KnowledgeBaseAdminDashboard() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button onClick={() => window.location.href = '/admin/knowledge-base/article-editor'}>
+          <Button onClick={() => (window.location.href = '/admin/knowledge-base/article-editor')}>
             <FileText className="h-4 w-4 mr-2" />
             New Article
           </Button>
@@ -265,8 +263,8 @@ export default function KnowledgeBaseAdminDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.data.articles.total || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {stats?.data.articles.published || 0} published,{' '}
-              {stats?.data.articles.draft || 0} draft
+              {stats?.data.articles.published || 0} published, {stats?.data.articles.draft || 0}{' '}
+              draft
             </p>
           </CardContent>
         </Card>
@@ -343,9 +341,7 @@ export default function KnowledgeBaseAdminDashboard() {
                         <Badge variant="outline">{index + 1}</Badge>
                         <div>
                           <p className="font-medium text-sm">{article.title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {article.viewCount} views
-                          </p>
+                          <p className="text-xs text-muted-foreground">{article.viewCount} views</p>
                         </div>
                       </div>
                       <Button variant="ghost" size="sm">
@@ -446,9 +442,7 @@ export default function KnowledgeBaseAdminDashboard() {
                       <TableCell className="max-w-xs truncate">
                         {feedback.comment || 'N/A'}
                       </TableCell>
-                      <TableCell>
-                        {new Date(feedback.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(feedback.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"
@@ -507,9 +501,7 @@ export default function KnowledgeBaseAdminDashboard() {
                           {item.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>{item.attempts}</TableCell>
                       <TableCell>
                         {item.status === 'failed' && (
@@ -581,9 +573,7 @@ export default function KnowledgeBaseAdminDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import Articles</DialogTitle>
-            <DialogDescription>
-              Upload a JSON or CSV file to import articles
-            </DialogDescription>
+            <DialogDescription>Upload a JSON or CSV file to import articles</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <Input type="file" accept=".json,.csv" />

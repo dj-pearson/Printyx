@@ -11,6 +11,7 @@
 This document demonstrates the successful migration of the first high-traffic route from the monolithic `routes.ts` to a modular file.
 
 ### **Route Migrated**
+
 - **Endpoint**: `POST /api/customers`
 - **From**: `server/routes.ts:4748-4773` (inline)
 - **To**: `server/routes-customers.ts` (modular)
@@ -24,6 +25,7 @@ This document demonstrates the successful migration of the first high-traffic ro
 ### **Step 1: Create Modular Route File**
 
 Created `server/routes-customers.ts` with:
+
 - Proper imports (`Router`, `Express`, `getUserId`, `getTenantId`)
 - Route handler using unified auth helpers
 - Registration function (`registerCustomerRoutes`)
@@ -66,6 +68,7 @@ npm run build
 ### **1. Unified Auth Pattern**
 
 **Before** (inline in routes.ts):
+
 ```typescript
 const tenantId = req.user?.tenantId;
 if (!tenantId) {
@@ -74,6 +77,7 @@ if (!tenantId) {
 ```
 
 **After** (modular file):
+
 ```typescript
 const userId = getUserId(req);
 const tenantId = getTenantId(req);
@@ -81,12 +85,13 @@ const tenantId = getTenantId(req);
 if (!tenantId) {
   return res.status(403).json({
     message: 'Tenant context required',
-    code: 'NO_TENANT'
+    code: 'NO_TENANT',
   });
 }
 ```
 
 **Benefits**:
+
 - ✅ Uses unified auth helpers (supports both JWT and session)
 - ✅ Consistent error codes
 - ✅ Proper HTTP status codes (403 instead of 400)
@@ -95,6 +100,7 @@ if (!tenantId) {
 ### **2. Enhanced Error Handling**
 
 **Before**:
+
 ```typescript
 catch (error) {
   console.error('Error creating customer:', error);
@@ -103,6 +109,7 @@ catch (error) {
 ```
 
 **After**:
+
 ```typescript
 catch (error) {
   console.error('Error creating customer:', error);
@@ -120,6 +127,7 @@ catch (error) {
 ```
 
 **Benefits**:
+
 - ✅ Explicit handling of validation errors
 - ✅ Returns 400 for bad requests (not 500)
 - ✅ Provides detailed error messages to client
@@ -127,11 +135,13 @@ catch (error) {
 ### **3. Better Code Organization**
 
 **Before**:
+
 - Mixed with 225+ other routes in one file
 - Hard to find
 - No clear ownership
 
 **After**:
+
 - Dedicated file for customer routes
 - Easy to locate (`server/routes-customers.ts`)
 - Clear module boundaries
@@ -143,36 +153,39 @@ catch (error) {
 
 ### **routes.ts File Size**
 
-| Metric | Before | After | Change |
-|--------|--------|-------|--------|
-| **Lines** | 15,515 | 15,489 | -26 (-0.17%) |
-| **Routes** | 225 | 224 | -1 |
-| **Bytes** | 513KB | ~512KB | -1KB |
+| Metric     | Before | After  | Change       |
+| ---------- | ------ | ------ | ------------ |
+| **Lines**  | 15,515 | 15,489 | -26 (-0.17%) |
+| **Routes** | 225    | 224    | -1           |
+| **Bytes**  | 513KB  | ~512KB | -1KB         |
 
 ### **Build Performance**
 
-| Metric | Before | After |
-|--------|--------|-------|
-| **Build time** | 39.17s | 34.58s |
-| **TypeScript errors** | 0 | 0 |
-| **Bundle size** | Same | Same |
+| Metric                | Before | After  |
+| --------------------- | ------ | ------ |
+| **Build time**        | 39.17s | 34.58s |
+| **TypeScript errors** | 0      | 0      |
+| **Bundle size**       | Same   | Same   |
 
 ---
 
 ## 🎯 Lessons Learned
 
 ### **What Worked Well**
+
 1. ✅ Unified auth helpers made migration straightforward
 2. ✅ Build verified immediately (no regressions)
 3. ✅ Pattern is repeatable for other routes
 4. ✅ No breaking changes to API
 
 ### **Challenges**
+
 1. ⚠️ Finding all instances of the route in routes.ts
 2. ⚠️ Ensuring proper import order
 3. ⚠️ Maintaining backward compatibility
 
 ### **Best Practices Established**
+
 1. Always use `getUserId()` and `getTenantId()` helpers
 2. Include migration notes in routes.ts (`// NOTE: moved to...`)
 3. Test build immediately after migration
@@ -188,12 +201,14 @@ Based on ROUTES_REFACTOR_STRATEGY.md, prioritize:
 ### **Phase 1: High-Traffic Routes** (9 remaining)
 
 **Business Records** (4 routes):
+
 - GET /api/business-records/:id/contacts
 - GET /api/business-records/:id
 - POST /api/business-records/:id/convert-to-customer
 - PATCH /api/business-records/:id/lifecycle
 
 **Deals** (5 routes):
+
 - GET /api/deals
 - GET /api/deals/:id
 - POST /api/deals

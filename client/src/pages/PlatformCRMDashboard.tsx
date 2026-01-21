@@ -1,12 +1,25 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import {
   Building2,
   Users,
@@ -34,11 +47,11 @@ import {
   Zap,
   Heart,
   AlertCircle,
-  UserPlus
-} from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
-import MainLayout from "@/components/layout/main-layout";
-import { useLocation } from "wouter";
+  UserPlus,
+} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import MainLayout from '@/components/layout/main-layout';
+import { useLocation } from 'wouter';
 
 interface ExecutiveMetrics {
   totalProspects: number;
@@ -87,41 +100,44 @@ interface TopPerformer {
 export default function PlatformCRMDashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [timeRange, setTimeRange] = useState("30d");
+  const [timeRange, setTimeRange] = useState('30d');
 
   // Fetch executive metrics
   const { data: metrics, isLoading: metricsLoading } = useQuery<ExecutiveMetrics>({
-    queryKey: ["/api/platform-analytics/revenue-metrics", { timeRange }],
+    queryKey: ['/api/platform-analytics/revenue-metrics', { timeRange }],
     refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch pipeline data
   const { data: pipeline, isLoading: pipelineLoading } = useQuery<{ pipeline: PipelineMetrics[] }>({
-    queryKey: ["/api/platform-deals/pipeline"],
+    queryKey: ['/api/platform-deals/pipeline'],
     refetchInterval: 30000,
   });
 
   // Fetch recent activities
   const { data: recentActivities, isLoading: activitiesLoading } = useQuery<RecentActivity[]>({
-    queryKey: ["/api/platform-activities", { limit: 10, sortBy: "activityDate", sortOrder: "desc" }],
+    queryKey: [
+      '/api/platform-activities',
+      { limit: 10, sortBy: 'activityDate', sortOrder: 'desc' },
+    ],
     refetchInterval: 30000,
   });
 
   // Fetch health summary
   const { data: healthSummary, isLoading: healthLoading } = useQuery<{ summary: HealthSummary }>({
-    queryKey: ["/api/platform-analytics/health-trends"],
+    queryKey: ['/api/platform-analytics/health-trends'],
     refetchInterval: 60000,
   });
 
   // Fetch conversion funnel
   const { data: funnelData, isLoading: funnelLoading } = useQuery({
-    queryKey: ["/api/platform-analytics/conversion-funnel", { timeRange }],
+    queryKey: ['/api/platform-analytics/conversion-funnel', { timeRange }],
     refetchInterval: 60000,
   });
 
   // Fetch sales performance
   const { data: performance, isLoading: performanceLoading } = useQuery({
-    queryKey: ["/api/platform-analytics/sales-performance", { timeRange }],
+    queryKey: ['/api/platform-analytics/sales-performance', { timeRange }],
     refetchInterval: 60000,
   });
 
@@ -149,13 +165,18 @@ export default function PlatformCRMDashboard() {
     conversionRate: 0,
     churnRate: 0,
     avgDealSize: 0,
-    avgTimeToClose: 0
+    avgTimeToClose: 0,
   };
 
   const currentMetrics = metrics || defaultMetrics;
   const currentPipeline = pipeline?.pipeline || [];
   const currentActivities = recentActivities || [];
-  const currentHealth = healthSummary?.summary || { healthy: 0, at_risk: 0, critical: 0, totalScore: 0 };
+  const currentHealth = healthSummary?.summary || {
+    healthy: 0,
+    at_risk: 0,
+    critical: 0,
+    totalScore: 0,
+  };
   const topPerformers = (performance as any)?.repPerformance?.slice(0, 5) || [];
 
   const formatCurrency = (value: number) => {
@@ -173,20 +194,29 @@ export default function PlatformCRMDashboard() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'call': return <Phone className="w-4 h-4" />;
-      case 'email': return <Mail className="w-4 h-4" />;
-      case 'meeting': return <Calendar className="w-4 h-4" />;
-      case 'demo': return <Briefcase className="w-4 h-4" />;
-      default: return <Activity className="w-4 h-4" />;
+      case 'call':
+        return <Phone className="w-4 h-4" />;
+      case 'email':
+        return <Mail className="w-4 h-4" />;
+      case 'meeting':
+        return <Calendar className="w-4 h-4" />;
+      case 'demo':
+        return <Briefcase className="w-4 h-4" />;
+      default:
+        return <Activity className="w-4 h-4" />;
     }
   };
 
   const getHealthColor = (status: string) => {
     switch (status) {
-      case 'healthy': return 'text-green-600 bg-green-100';
-      case 'at_risk': return 'text-yellow-600 bg-yellow-100';
-      case 'critical': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'healthy':
+        return 'text-green-600 bg-green-100';
+      case 'at_risk':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'critical':
+        return 'text-red-600 bg-red-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
     }
   };
 
@@ -232,10 +262,10 @@ export default function PlatformCRMDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{currentMetrics.totalProspects.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                Active prospects in pipeline
-              </p>
+              <div className="text-2xl font-bold">
+                {currentMetrics.totalProspects.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">Active prospects in pipeline</p>
             </CardContent>
           </Card>
 
@@ -245,7 +275,9 @@ export default function PlatformCRMDashboard() {
               <Building2 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{currentMetrics.activeTenants.toLocaleString()}</div>
+              <div className="text-2xl font-bold">
+                {currentMetrics.activeTenants.toLocaleString()}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {currentMetrics.trialTenants} in trial
               </p>
@@ -271,10 +303,10 @@ export default function PlatformCRMDashboard() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatPercentage(currentMetrics.conversionRate)}</div>
-              <p className="text-xs text-muted-foreground">
-                Prospect to customer
-              </p>
+              <div className="text-2xl font-bold">
+                {formatPercentage(currentMetrics.conversionRate)}
+              </div>
+              <p className="text-xs text-muted-foreground">Prospect to customer</p>
             </CardContent>
           </Card>
         </div>
@@ -305,10 +337,14 @@ export default function PlatformCRMDashboard() {
                     {currentPipeline.map((stage) => (
                       <div key={stage.stage} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium capitalize">{stage.stage.replace(/_/g, ' ')}</span>
+                          <span className="font-medium capitalize">
+                            {stage.stage.replace(/_/g, ' ')}
+                          </span>
                           <div className="flex items-center gap-4">
                             <span className="text-muted-foreground">{stage.count} deals</span>
-                            <span className="font-semibold">{formatCurrency(stage.weightedValue)}</span>
+                            <span className="font-semibold">
+                              {formatCurrency(stage.weightedValue)}
+                            </span>
                           </div>
                         </div>
                         <div className="w-full bg-secondary rounded-full h-2">
@@ -351,7 +387,9 @@ export default function PlatformCRMDashboard() {
                       <DollarSign className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm">Avg Deal Size</span>
                     </div>
-                    <span className="font-semibold">{formatCurrency(currentMetrics.avgDealSize)}</span>
+                    <span className="font-semibold">
+                      {formatCurrency(currentMetrics.avgDealSize)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -365,7 +403,9 @@ export default function PlatformCRMDashboard() {
                       <TrendingDown className="w-4 h-4 text-muted-foreground" />
                       <span className="text-sm">Churn Rate</span>
                     </div>
-                    <span className="font-semibold">{formatPercentage(currentMetrics.churnRate)}</span>
+                    <span className="font-semibold">
+                      {formatPercentage(currentMetrics.churnRate)}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="flex items-center gap-2">
@@ -410,22 +450,26 @@ export default function PlatformCRMDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {currentActivities.map((activity) => (
-                      <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="mt-1">
-                          {getActivityIcon(activity.type)}
-                        </div>
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="mt-1">{getActivityIcon(activity.type)}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="font-medium text-sm">{activity.businessRecordName}</p>
-                              <p className="text-sm text-muted-foreground truncate">{activity.subject}</p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {activity.subject}
+                              </p>
                             </div>
                             <Badge variant="outline" className="text-xs shrink-0">
                               {activity.type}
                             </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })} by {activity.createdBy}
+                            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}{' '}
+                            by {activity.createdBy}
                           </p>
                         </div>
                       </div>
@@ -551,7 +595,10 @@ export default function PlatformCRMDashboard() {
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               {idx < 3 && (
-                                <Badge variant={idx === 0 ? "default" : "secondary"} className="w-6 h-6 rounded-full p-0 flex items-center justify-center">
+                                <Badge
+                                  variant={idx === 0 ? 'default' : 'secondary'}
+                                  className="w-6 h-6 rounded-full p-0 flex items-center justify-center"
+                                >
                                   {idx + 1}
                                 </Badge>
                               )}
@@ -559,8 +606,12 @@ export default function PlatformCRMDashboard() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">{rep.dealsWon}</TableCell>
-                          <TableCell className="text-right font-semibold">{formatCurrency(rep.revenue)}</TableCell>
-                          <TableCell className="text-right">{formatPercentage(rep.conversionRate)}</TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(rep.revenue)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatPercentage(rep.conversionRate)}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -610,10 +661,7 @@ export default function PlatformCRMDashboard() {
                 <LineChart className="w-6 h-6 mb-2" />
                 <span className="text-sm">View Analytics</span>
               </Button>
-              <Button
-                variant="outline"
-                className="h-24 flex-col"
-              >
+              <Button variant="outline" className="h-24 flex-col">
                 <Download className="w-6 h-6 mb-2" />
                 <span className="text-sm">Export Data</span>
               </Button>

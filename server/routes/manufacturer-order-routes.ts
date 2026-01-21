@@ -17,13 +17,15 @@ function isAdminOrManager(user: any): boolean {
   if (!user?.role) return false;
   const role = user.role || '';
   const roleLower = role.toLowerCase();
-  return roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive');
+  return (
+    roleLower.includes('admin') || roleLower.includes('manager') || roleLower.includes('executive')
+  );
 }
 
 // Helper function to redact sensitive credential fields from connections
 function redactConnectionCredentials(connection: any): any {
   const redacted = { ...connection };
-  
+
   // Redact sensitive fields with masked values
   if (redacted.apiKey) redacted.apiKey = '••••••••';
   if (redacted.apiSecret) redacted.apiSecret = '••••••••';
@@ -35,7 +37,7 @@ function redactConnectionCredentials(connection: any): any {
   if (redacted.ediPassword) redacted.ediPassword = '••••••••';
   if (redacted.portalUsername) redacted.portalUsername = '••••••••';
   if (redacted.portalPassword) redacted.portalPassword = '••••••••';
-  
+
   return redacted;
 }
 
@@ -50,20 +52,17 @@ router.get('/connections', async (req: Request, res: Response) => {
 
   try {
     const { manufacturerType, connectionStatus } = req.query;
-    
-    const connections = await storage.getManufacturerConnections(
-      user.tenantId,
-      {
-        manufacturerType: manufacturerType as string | undefined,
-        connectionStatus: connectionStatus as string | undefined,
-      }
-    );
-    
+
+    const connections = await storage.getManufacturerConnections(user.tenantId, {
+      manufacturerType: manufacturerType as string | undefined,
+      connectionStatus: connectionStatus as string | undefined,
+    });
+
     // Redact sensitive credentials for non-admin users
-    const responseData = isAdminOrManager(user) 
-      ? connections 
+    const responseData = isAdminOrManager(user)
+      ? connections
       : connections.map(redactConnectionCredentials);
-    
+
     res.json(responseData);
   } catch (error) {
     console.error('Get manufacturer connections error:', error);
@@ -80,16 +79,16 @@ router.get('/connections/:id', async (req: Request, res: Response) => {
 
   try {
     const connection = await storage.getManufacturerConnection(req.params.id);
-    
+
     if (!connection || connection.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Connection not found' });
     }
-    
+
     // Redact sensitive credentials for non-admin users
-    const responseData = isAdminOrManager(user) 
-      ? connection 
+    const responseData = isAdminOrManager(user)
+      ? connection
       : redactConnectionCredentials(connection);
-    
+
     res.json(responseData);
   } catch (error) {
     console.error('Get manufacturer connection error:', error);
@@ -106,7 +105,9 @@ router.post('/connections', async (req: Request, res: Response) => {
 
   // Check for admin/manager role
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage manufacturer connections' });
+    return res.status(403).json({
+      error: 'Forbidden: Admin or Manager role required to manage manufacturer connections',
+    });
   }
 
   try {
@@ -115,7 +116,7 @@ router.post('/connections', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(connection);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -135,7 +136,9 @@ router.put('/connections/:id', async (req: Request, res: Response) => {
 
   // Check for admin/manager role
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage manufacturer connections' });
+    return res.status(403).json({
+      error: 'Forbidden: Admin or Manager role required to manage manufacturer connections',
+    });
   }
 
   try {
@@ -146,7 +149,7 @@ router.put('/connections/:id', async (req: Request, res: Response) => {
 
     const data = insertManufacturerConnectionSchema.partial().parse(req.body);
     const updated = await storage.updateManufacturerConnection(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -166,7 +169,9 @@ router.delete('/connections/:id', async (req: Request, res: Response) => {
 
   // Check for admin/manager role
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to manage manufacturer connections' });
+    return res.status(403).json({
+      error: 'Forbidden: Admin or Manager role required to manage manufacturer connections',
+    });
   }
 
   try {
@@ -226,7 +231,7 @@ router.patch('/connections/:id/health', async (req: Request, res: Response) => {
 
     const data = healthSchema.parse(req.body);
     const updated = await storage.updateConnectionHealth(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -248,17 +253,14 @@ router.get('/', async (req: Request, res: Response) => {
 
   try {
     const { connectionId, orderStatus, startDate, endDate } = req.query;
-    
-    const orders = await storage.getManufacturerOrders(
-      user.tenantId,
-      {
-        connectionId: connectionId as string | undefined,
-        orderStatus: orderStatus as string | undefined,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
-      }
-    );
-    
+
+    const orders = await storage.getManufacturerOrders(user.tenantId, {
+      connectionId: connectionId as string | undefined,
+      orderStatus: orderStatus as string | undefined,
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+
     res.json(orders);
   } catch (error) {
     console.error('Get manufacturer orders error:', error);
@@ -275,11 +277,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 
   try {
     const order = await storage.getManufacturerOrder(req.params.id);
-    
+
     if (!order || order.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Order not found' });
     }
-    
+
     res.json(order);
   } catch (error) {
     console.error('Get manufacturer order error:', error);
@@ -300,7 +302,7 @@ router.post('/', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(order);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -326,7 +328,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const data = insertManufacturerOrderSchema.partial().parse(req.body);
     const updated = await storage.updateManufacturerOrder(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -397,8 +399,12 @@ router.post('/:id/acknowledge', async (req: Request, res: Response) => {
     });
 
     const { manufacturerOrderNumber } = acknowledgeSchema.parse(req.body);
-    const acknowledged = await storage.acknowledgeOrder(req.params.id, user.tenantId, manufacturerOrderNumber);
-    
+    const acknowledged = await storage.acknowledgeOrder(
+      req.params.id,
+      user.tenantId,
+      manufacturerOrderNumber,
+    );
+
     res.json(acknowledged);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -430,7 +436,7 @@ router.patch('/:id/fulfillment', async (req: Request, res: Response) => {
 
     const data = fulfillmentSchema.parse(req.body);
     const updated = await storage.updateOrderFulfillment(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -474,11 +480,11 @@ router.get('/line-items/:id', async (req: Request, res: Response) => {
 
   try {
     const lineItem = await storage.getOrderLineItem(req.params.id);
-    
+
     if (!lineItem || lineItem.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Line item not found' });
     }
-    
+
     res.json(lineItem);
   } catch (error) {
     console.error('Get order line item error:', error);
@@ -506,7 +512,7 @@ router.post('/:orderId/line-items', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       orderId: req.params.orderId,
     });
-    
+
     res.status(201).json(lineItem);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -537,13 +543,13 @@ router.post('/:orderId/line-items/bulk', async (req: Request, res: Response) => 
 
     const { lineItems: itemsData } = bulkSchema.parse(req.body);
     const lineItems = await storage.bulkCreateOrderLineItems(
-      itemsData.map(item => ({
+      itemsData.map((item) => ({
         ...item,
         tenantId: user.tenantId,
         orderId: req.params.orderId,
-      }))
+      })),
     );
-    
+
     res.status(201).json(lineItems);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -569,7 +575,7 @@ router.put('/line-items/:id', async (req: Request, res: Response) => {
 
     const data = insertManufacturerOrderLineItemSchema.partial().parse(req.body);
     const updated = await storage.updateOrderLineItem(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -622,7 +628,7 @@ router.patch('/line-items/:id/shipment', async (req: Request, res: Response) => 
 
     const data = shipmentSchema.parse(req.body);
     const updated = await storage.updateLineItemShipment(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -666,11 +672,11 @@ router.get('/confirmations/:id', async (req: Request, res: Response) => {
 
   try {
     const confirmation = await storage.getOrderConfirmation(req.params.id);
-    
+
     if (!confirmation || confirmation.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Confirmation not found' });
     }
-    
+
     res.json(confirmation);
   } catch (error) {
     console.error('Get order confirmation error:', error);
@@ -698,7 +704,7 @@ router.post('/:orderId/confirmations', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       orderId: req.params.orderId,
     });
-    
+
     res.status(201).json(confirmation);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -724,7 +730,7 @@ router.put('/confirmations/:id', async (req: Request, res: Response) => {
 
     const data = insertManufacturerOrderConfirmationSchema.partial().parse(req.body);
     const updated = await storage.updateOrderConfirmation(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -789,11 +795,11 @@ router.get('/shipments/:id', async (req: Request, res: Response) => {
 
   try {
     const shipment = await storage.getOrderShipment(req.params.id);
-    
+
     if (!shipment || shipment.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
-    
+
     res.json(shipment);
   } catch (error) {
     console.error('Get order shipment error:', error);
@@ -809,12 +815,15 @@ router.get('/shipments/tracking/:trackingNumber', async (req: Request, res: Resp
   }
 
   try {
-    const shipment = await storage.getShipmentByTrackingNumber(req.params.trackingNumber, user.tenantId);
-    
+    const shipment = await storage.getShipmentByTrackingNumber(
+      req.params.trackingNumber,
+      user.tenantId,
+    );
+
     if (!shipment) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
-    
+
     res.json(shipment);
   } catch (error) {
     console.error('Get shipment by tracking number error:', error);
@@ -842,7 +851,7 @@ router.post('/:orderId/shipments', async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       orderId: req.params.orderId,
     });
-    
+
     res.status(201).json(shipment);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -868,7 +877,7 @@ router.put('/shipments/:id', async (req: Request, res: Response) => {
 
     const data = insertManufacturerOrderShipmentSchema.partial().parse(req.body);
     const updated = await storage.updateOrderShipment(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -921,7 +930,7 @@ router.patch('/shipments/:id/tracking', async (req: Request, res: Response) => {
 
     const data = trackingSchema.parse(req.body);
     const updated = await storage.updateShipmentTracking(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -953,7 +962,7 @@ router.post('/shipments/:id/deliver', async (req: Request, res: Response) => {
 
     const data = deliverySchema.parse(req.body);
     const delivered = await storage.deliverShipment(req.params.id, user.tenantId, data);
-    
+
     res.json(delivered);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -997,15 +1006,12 @@ router.get('/exceptions/unresolved', async (req: Request, res: Response) => {
 
   try {
     const { severity, exceptionType } = req.query;
-    
-    const exceptions = await storage.getUnresolvedExceptions(
-      user.tenantId,
-      {
-        severity: severity as string | undefined,
-        exceptionType: exceptionType as string | undefined,
-      }
-    );
-    
+
+    const exceptions = await storage.getUnresolvedExceptions(user.tenantId, {
+      severity: severity as string | undefined,
+      exceptionType: exceptionType as string | undefined,
+    });
+
     res.json(exceptions);
   } catch (error) {
     console.error('Get unresolved exceptions error:', error);
@@ -1022,11 +1028,11 @@ router.get('/exceptions/:id', async (req: Request, res: Response) => {
 
   try {
     const exception = await storage.getOrderException(req.params.id);
-    
+
     if (!exception || exception.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Exception not found' });
     }
-    
+
     res.json(exception);
   } catch (error) {
     console.error('Get order exception error:', error);
@@ -1047,7 +1053,7 @@ router.post('/exceptions', async (req: Request, res: Response) => {
       ...data,
       tenantId: user.tenantId,
     });
-    
+
     res.status(201).json(exception);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1073,7 +1079,7 @@ router.put('/exceptions/:id', async (req: Request, res: Response) => {
 
     const data = insertManufacturerOrderExceptionSchema.partial().parse(req.body);
     const updated = await storage.updateOrderException(req.params.id, user.tenantId, data);
-    
+
     res.json(updated);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1106,9 +1112,9 @@ router.post('/exceptions/:id/resolve', async (req: Request, res: Response) => {
       req.params.id,
       user.tenantId,
       user.id,
-      resolutionNotes
+      resolutionNotes,
     );
-    
+
     res.json(resolved);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1151,21 +1157,20 @@ router.get('/analytics/dashboard', async (req: Request, res: Response) => {
 
   // Check for admin/manager role for analytics
   if (!isAdminOrManager(user)) {
-    return res.status(403).json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
+    return res
+      .status(403)
+      .json({ error: 'Forbidden: Admin or Manager role required to view analytics' });
   }
 
   try {
     const { connectionId, startDate, endDate } = req.query;
-    
-    const analytics = await storage.getManufacturerOrderAnalytics(
-      user.tenantId,
-      {
-        connectionId: connectionId as string | undefined,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
-      }
-    );
-    
+
+    const analytics = await storage.getManufacturerOrderAnalytics(user.tenantId, {
+      connectionId: connectionId as string | undefined,
+      startDate: startDate ? new Date(startDate as string) : undefined,
+      endDate: endDate ? new Date(endDate as string) : undefined,
+    });
+
     res.json(analytics);
   } catch (error) {
     console.error('Get manufacturer order analytics error:', error);

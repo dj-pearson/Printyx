@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Trash2, Plus, Save, UserPlus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+} from '@/components/ui/select';
+import { Trash2, Plus, Save, UserPlus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface Contact {
   id?: string;
@@ -43,13 +43,13 @@ export default function MultipleContactsForm({
     ...(existingContacts.length === 0
       ? [
           {
-            firstName: "",
-            lastName: "",
-            email: "",
-            phone: "",
-            title: "",
-            department: "",
-            salutation: "",
+            firstName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            title: '',
+            department: '',
+            salutation: '',
           },
         ]
       : []),
@@ -60,25 +60,25 @@ export default function MultipleContactsForm({
 
   const saveContactsMutation = useMutation({
     mutationFn: async (contactsData: Contact[]) =>
-      apiRequest(`/api/companies/${companyId}/contacts`, "POST", {
+      apiRequest(`/api/companies/${companyId}/contacts`, 'POST', {
         contacts: contactsData,
       }),
     onSuccess: (data) => {
       toast({
-        title: "Success",
-        description: data.message || "Contacts saved successfully!",
+        title: 'Success',
+        description: data.message || 'Contacts saved successfully!',
       });
       queryClient.invalidateQueries({
-        queryKey: ["/api/companies", companyId, "contacts"],
+        queryKey: ['/api/companies', companyId, 'contacts'],
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       onComplete?.();
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to save contacts",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to save contacts',
+        variant: 'destructive',
       });
     },
   });
@@ -87,13 +87,13 @@ export default function MultipleContactsForm({
     setContacts([
       ...contacts,
       {
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        title: "",
-        department: "",
-        salutation: "",
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        title: '',
+        department: '',
+        salutation: '',
       },
     ]);
   };
@@ -104,11 +104,7 @@ export default function MultipleContactsForm({
     }
   };
 
-  const updateContact = (
-    index: number,
-    field: keyof Contact,
-    value: string | boolean
-  ) => {
+  const updateContact = (index: number, field: keyof Contact, value: string | boolean) => {
     const updatedContacts = contacts.map((contact, i) => {
       if (i === index) {
         return { ...contact, [field]: value };
@@ -123,15 +119,14 @@ export default function MultipleContactsForm({
 
     // Validate contacts
     const validContacts = contacts.filter(
-      (contact) => contact.firstName.trim() && contact.lastName.trim()
+      (contact) => contact.firstName.trim() && contact.lastName.trim(),
     );
 
     if (validContacts.length === 0) {
       toast({
-        title: "Validation Error",
-        description:
-          "At least one contact with first and last name is required",
-        variant: "destructive",
+        title: 'Validation Error',
+        description: 'At least one contact with first and last name is required',
+        variant: 'destructive',
       });
       return;
     }
@@ -152,17 +147,14 @@ export default function MultipleContactsForm({
           Company Contacts
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Add multiple contacts for this company. The first contact will be set
-          as the primary contact.
+          Add multiple contacts for this company. The first contact will be set as the primary
+          contact.
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           {contacts.map((contact, index) => (
-            <div
-              key={index}
-              className="border rounded-lg p-4 space-y-4 relative"
-            >
+            <div key={index} className="border rounded-lg p-4 space-y-4 relative">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-semibold text-gray-900">
                   Contact {index + 1}
@@ -190,10 +182,8 @@ export default function MultipleContactsForm({
                 <div>
                   <Label htmlFor={`salutation-${index}`}>Salutation</Label>
                   <Select
-                    value={contact.salutation || ""}
-                    onValueChange={(value) =>
-                      updateContact(index, "salutation", value)
-                    }
+                    value={contact.salutation || ''}
+                    onValueChange={(value) => updateContact(index, 'salutation', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select..." />
@@ -214,9 +204,7 @@ export default function MultipleContactsForm({
                   <Input
                     id={`firstName-${index}`}
                     value={contact.firstName}
-                    onChange={(e) =>
-                      updateContact(index, "firstName", e.target.value)
-                    }
+                    onChange={(e) => updateContact(index, 'firstName', e.target.value)}
                     placeholder="John"
                     required
                   />
@@ -228,9 +216,7 @@ export default function MultipleContactsForm({
                   <Input
                     id={`lastName-${index}`}
                     value={contact.lastName}
-                    onChange={(e) =>
-                      updateContact(index, "lastName", e.target.value)
-                    }
+                    onChange={(e) => updateContact(index, 'lastName', e.target.value)}
                     placeholder="Smith"
                     required
                   />
@@ -241,10 +227,8 @@ export default function MultipleContactsForm({
                   <Label htmlFor={`title-${index}`}>Title</Label>
                   <Input
                     id={`title-${index}`}
-                    value={contact.title || ""}
-                    onChange={(e) =>
-                      updateContact(index, "title", e.target.value)
-                    }
+                    value={contact.title || ''}
+                    onChange={(e) => updateContact(index, 'title', e.target.value)}
                     placeholder="Manager"
                   />
                 </div>
@@ -255,10 +239,8 @@ export default function MultipleContactsForm({
                 <div>
                   <Label htmlFor={`department-${index}`}>Department</Label>
                   <Select
-                    value={contact.department || ""}
-                    onValueChange={(value) =>
-                      updateContact(index, "department", value)
-                    }
+                    value={contact.department || ''}
+                    onValueChange={(value) => updateContact(index, 'department', value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
@@ -272,9 +254,7 @@ export default function MultipleContactsForm({
                       <SelectItem value="Marketing">Marketing</SelectItem>
                       <SelectItem value="Sales">Sales</SelectItem>
                       <SelectItem value="Purchasing">Purchasing</SelectItem>
-                      <SelectItem value="Administration">
-                        Administration
-                      </SelectItem>
+                      <SelectItem value="Administration">Administration</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -284,10 +264,8 @@ export default function MultipleContactsForm({
                   <Label htmlFor={`phone-${index}`}>Phone</Label>
                   <Input
                     id={`phone-${index}`}
-                    value={contact.phone || ""}
-                    onChange={(e) =>
-                      updateContact(index, "phone", e.target.value)
-                    }
+                    value={contact.phone || ''}
+                    onChange={(e) => updateContact(index, 'phone', e.target.value)}
                     placeholder="(555) 123-4567"
                     type="tel"
                   />
@@ -298,10 +276,8 @@ export default function MultipleContactsForm({
                   <Label htmlFor={`email-${index}`}>Email</Label>
                   <Input
                     id={`email-${index}`}
-                    value={contact.email || ""}
-                    onChange={(e) =>
-                      updateContact(index, "email", e.target.value)
-                    }
+                    value={contact.email || ''}
+                    onChange={(e) => updateContact(index, 'email', e.target.value)}
                     placeholder="john.smith@company.com"
                     type="email"
                   />
@@ -326,10 +302,7 @@ export default function MultipleContactsForm({
                   }}
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <Label
-                  htmlFor={`primary-${index}`}
-                  className="text-sm font-medium text-gray-700"
-                >
+                <Label htmlFor={`primary-${index}`} className="text-sm font-medium text-gray-700">
                   Set as primary contact
                 </Label>
               </div>
@@ -357,7 +330,7 @@ export default function MultipleContactsForm({
                 className="flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                {saveContactsMutation.isPending ? "Saving..." : "Save Contacts"}
+                {saveContactsMutation.isPending ? 'Saving...' : 'Save Contacts'}
               </Button>
             </div>
           </div>

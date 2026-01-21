@@ -4,7 +4,7 @@ import {
   subscriptionPlans,
   subscriptionFeatures,
   NewSubscriptionPlan,
-  NewSubscriptionFeature
+  NewSubscriptionFeature,
 } from '@shared/schema';
 
 /**
@@ -469,7 +469,8 @@ const plans: NewSubscriptionPlan[] = [
   {
     name: 'Starter',
     slug: 'starter',
-    description: 'Perfect for small copier dealers (5-20 employees) with core contract management and meter billing',
+    description:
+      'Perfect for small copier dealers (5-20 employees) with core contract management and meter billing',
     monthlyPrice: '79.00',
     annualPrice: '758.00',
     annualDiscount: 20, // 20% discount on annual
@@ -513,7 +514,8 @@ const plans: NewSubscriptionPlan[] = [
   {
     name: 'Professional',
     slug: 'professional',
-    description: 'For growing copier dealers (20-100 employees) with service dispatch, mobile app, and advanced inventory',
+    description:
+      'For growing copier dealers (20-100 employees) with service dispatch, mobile app, and advanced inventory',
     monthlyPrice: '99.00',
     annualPrice: '950.00',
     annualDiscount: 20, // 20% discount on annual
@@ -583,7 +585,8 @@ const plans: NewSubscriptionPlan[] = [
   {
     name: 'Enterprise',
     slug: 'enterprise',
-    description: 'For large copier dealers (100+ employees) with dedicated account manager, API access, and SLA guarantees',
+    description:
+      'For large copier dealers (100+ employees) with dedicated account manager, API access, and SLA guarantees',
     monthlyPrice: '149.00',
     annualPrice: '1430.00',
     annualDiscount: 20, // 20% discount on annual

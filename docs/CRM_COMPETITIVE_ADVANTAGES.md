@@ -13,22 +13,26 @@ Printyx CRM has been redesigned from the ground up to provide copier dealers wit
 ### 1. **Simplified Lead-to-Customer Workflow**
 
 #### Problem with Competitors
+
 - **HubSpot**: Separates leads and customers into different objects, requiring manual conversion with data loss risk
 - **Salesforce**: Complex lead conversion process with multiple steps and potential data migration issues
 - **Generic CRMs**: No industry-specific status tracking
 
 #### Printyx Solution ✅
+
 ```
 Lead → Prospect → Customer = Same Record, Different Status
 ```
 
 **Benefits**:
+
 - ✅ **Zero Data Loss**: All interactions, notes, and history preserved forever
 - ✅ **Instant Status Changes**: One-click status updates with automatic record type transitions
 - ✅ **Complete Audit Trail**: Every status change logged with timestamps and user attribution
 - ✅ **No Manual Migration**: Status field automatically determines current lifecycle stage
 
 **Example Flow**:
+
 ```typescript
 // New lead comes in
 Status: "new" → Record Type: Lead
@@ -51,11 +55,13 @@ Status: "active" → Record Type: Customer (automatic)
 ### 2. **HubSpot-Style Kanban Board with Drag & Drop**
 
 #### Problem with Competitors
+
 - **HubSpot**: Requires expensive Sales Hub tier ($450+/month) for pipeline management
 - **Salesforce**: Clunky drag-and-drop, requires custom Lightning components
 - **Outdated CRMs**: No visual pipeline management
 
 #### Printyx Solution ✅
+
 - **Kanban Board** with drag-and-drop cards across status columns
 - **Real-time Status Updates**: Drag a card to change status instantly
 - **Visual Pipeline**: See your entire sales funnel at a glance
@@ -74,19 +80,22 @@ Status: "active" → Record Type: Customer (automatic)
 ### 3. **Industry-Leading CSV Import System**
 
 #### Problem with Competitors
+
 - **HubSpot**: Basic CSV import, manual column mapping, poor duplicate detection
 - **Salesforce**: Data Loader is complex, requires desktop app installation
 - **Most CRMs**: No validation until after import, resulting in dirty data
 
 #### Printyx Solution ✅
+
 **Multi-Step Import Wizard**:
+
 1. **Entity Selection**: Choose what you're importing (Leads, Customers, Contacts, Products)
 2. **File Upload**: Drag-and-drop CSV with instant validation
-3. **Intelligent Column Mapping**: 
+3. **Intelligent Column Mapping**:
    - Auto-detects columns with 90%+ accuracy
    - AI-powered suggestions (optional)
    - Visual confidence scores
-4. **Data Validation**: 
+4. **Data Validation**:
    - Pre-import validation with error preview
    - Field-level error messages with suggestions
    - Invalid row detection before any database changes
@@ -100,6 +109,7 @@ Status: "active" → Record Type: Customer (automatic)
    - Detailed import report
 
 **Key Features**:
+
 - ✅ **Template Download**: One-click CSV template for any entity type
 - ✅ **50MB File Support**: Import thousands of records at once
 - ✅ **Duplicate Prevention**: Prevents creating duplicate customers
@@ -121,7 +131,9 @@ Status: "active" → Record Type: Customer (automatic)
 ### 4. **Copier Industry-Specific Features**
 
 #### What Generic CRMs Miss
+
 HubSpot and Salesforce are built for **all industries**, which means they lack copier-specific features:
+
 - No equipment tracking
 - No meter reading management
 - No service call history
@@ -131,6 +143,7 @@ HubSpot and Salesforce are built for **all industries**, which means they lack c
 #### Printyx Copier-Specific Advantages ✅
 
 **Business Records Schema Includes**:
+
 ```typescript
 // Equipment lifecycle
 - Equipment installations and deliveries
@@ -162,6 +175,7 @@ HubSpot and Salesforce are built for **all industries**, which means they lack c
 ```
 
 **Example: Full Customer 360 View**
+
 ```
 ABC Corporation
 ├── Contact Information
@@ -178,11 +192,13 @@ ABC Corporation
 ### 5. **Modern Tech Stack = Blazing Fast**
 
 #### Competitor Technology Debt
+
 - **HubSpot**: Proprietary stack, slow load times, frequent outages
 - **Salesforce**: Legacy Java platform from 1999, requires Lightning Experience layer
 - **Zoho**: Outdated UI, poor mobile experience
 
 #### Printyx Modern Architecture ✅
+
 ```
 Frontend: React 18 + TypeScript + Vite
   → Code splitting for instant page loads
@@ -213,13 +229,16 @@ Real-time: WebSocket connections
 ### 6. **Better Import Options (Future Roadmap)**
 
 #### Current: CSV Import ✅ (Completed)
+
 - Drag-and-drop upload
 - Intelligent column mapping
 - Duplicate detection
 - Validation with error preview
 
 #### Q1 2026: OAuth Integrations 🚧
+
 **Import directly from**:
+
 - HubSpot (OAuth 2.0)
 - Salesforce (OAuth 2.0)
 - Zoho CRM (OAuth 2.0)
@@ -227,6 +246,7 @@ Real-time: WebSocket connections
 - Microsoft Dynamics 365 (OAuth 2.0)
 
 **How it works**:
+
 1. Click "Connect HubSpot" in settings
 2. Authorize Printyx to access your HubSpot data
 3. Select what to import (Contacts, Companies, Deals)
@@ -234,12 +254,14 @@ Real-time: WebSocket connections
 5. One-click import with progress tracking
 
 #### Q2 2026: Scheduled Syncs 🔮
+
 - Daily automatic sync from connected CRMs
 - Two-way sync (updates flow both directions)
 - Conflict resolution with user preferences
 - Webhook support for real-time sync
 
 #### Q3 2026: Industry-Specific Imports 🔮
+
 - **E-Automate**: Direct integration with E-Automate DMS
 - **FMAudit**: Import device data and meter readings
 - **Print Tracker**: Automatic device discovery
@@ -251,83 +273,90 @@ Real-time: WebSocket connections
 
 ### vs HubSpot
 
-| Category | HubSpot | Printyx |
-|----------|---------|---------|
-| **Pricing** | $450/mo (Sales Hub) | ✅ Included in Platform |
-| **Lead Management** | Separate objects | ✅ Unified records |
-| **Pipeline View** | Paid feature | ✅ Free, drag-and-drop |
-| **Import** | Basic CSV | ✅ Advanced wizard + OAuth |
-| **Mobile** | Limited | ✅ Full-featured PWA |
-| **Industry Focus** | Generic | ✅ **Copier dealer specific** |
-| **Equipment Tracking** | ❌ | ✅ Built-in |
-| **Service History** | ❌ | ✅ Built-in |
-| **Meter Billing** | ❌ | ✅ Built-in |
+| Category               | HubSpot             | Printyx                       |
+| ---------------------- | ------------------- | ----------------------------- |
+| **Pricing**            | $450/mo (Sales Hub) | ✅ Included in Platform       |
+| **Lead Management**    | Separate objects    | ✅ Unified records            |
+| **Pipeline View**      | Paid feature        | ✅ Free, drag-and-drop        |
+| **Import**             | Basic CSV           | ✅ Advanced wizard + OAuth    |
+| **Mobile**             | Limited             | ✅ Full-featured PWA          |
+| **Industry Focus**     | Generic             | ✅ **Copier dealer specific** |
+| **Equipment Tracking** | ❌                  | ✅ Built-in                   |
+| **Service History**    | ❌                  | ✅ Built-in                   |
+| **Meter Billing**      | ❌                  | ✅ Built-in                   |
 
 ### vs Salesforce
 
-| Category | Salesforce | Printyx |
-|----------|------------|---------|
-| **Pricing** | $150-300/user/mo | ✅ Platform pricing |
-| **Complexity** | Very complex | ✅ Simple & intuitive |
-| **Setup Time** | Weeks/months | ✅ Hours |
-| **Lead Conversion** | Multi-step manual | ✅ One-click automatic |
-| **Customization** | Requires dev | ✅ Built-in flexibility |
-| **Mobile** | Salesforce1 app | ✅ Native PWA |
-| **Speed** | Slow (4-7s loads) | ✅ Fast (< 1s loads) |
-| **Training Required** | Extensive | ✅ Minimal |
+| Category              | Salesforce        | Printyx                 |
+| --------------------- | ----------------- | ----------------------- |
+| **Pricing**           | $150-300/user/mo  | ✅ Platform pricing     |
+| **Complexity**        | Very complex      | ✅ Simple & intuitive   |
+| **Setup Time**        | Weeks/months      | ✅ Hours                |
+| **Lead Conversion**   | Multi-step manual | ✅ One-click automatic  |
+| **Customization**     | Requires dev      | ✅ Built-in flexibility |
+| **Mobile**            | Salesforce1 app   | ✅ Native PWA           |
+| **Speed**             | Slow (4-7s loads) | ✅ Fast (< 1s loads)    |
+| **Training Required** | Extensive         | ✅ Minimal              |
 
 ### vs E-Automate CRM
 
-| Category | E-Automate | Printyx |
-|----------|------------|---------|
-| **User Interface** | 1990s desktop app | ✅ Modern web app |
-| **Mobile** | ❌ None | ✅ Full mobile support |
-| **Accessibility** | On-premise only | ✅ Access anywhere |
-| **Lead Pipeline** | Basic list view | ✅ Visual kanban board |
-| **Import** | Manual data entry | ✅ Smart CSV + OAuth |
-| **Speed** | Slow database queries | ✅ Real-time updates |
-| **Collaboration** | Limited | ✅ Real-time multi-user |
+| Category           | E-Automate            | Printyx                 |
+| ------------------ | --------------------- | ----------------------- |
+| **User Interface** | 1990s desktop app     | ✅ Modern web app       |
+| **Mobile**         | ❌ None               | ✅ Full mobile support  |
+| **Accessibility**  | On-premise only       | ✅ Access anywhere      |
+| **Lead Pipeline**  | Basic list view       | ✅ Visual kanban board  |
+| **Import**         | Manual data entry     | ✅ Smart CSV + OAuth    |
+| **Speed**          | Slow database queries | ✅ Real-time updates    |
+| **Collaboration**  | Limited               | ✅ Real-time multi-user |
 
 ---
 
 ## 💡 Why Copier Dealers Should Choose Printyx CRM
 
 ### 1. **Built FOR Copier Dealers, BY Copier Industry Experts**
+
 - Every field, every workflow, every feature is designed for your business
 - No need to customize or jerry-rig a generic CRM
 - Speak your language: Equipment, Service, Meters, Contracts
 
 ### 2. **No Data Loss, Ever**
+
 - Lead history preserved when converting to customer
 - Service history spans entire customer lifetime
 - Complete audit trail of every interaction
 - Nothing falls through the cracks
 
 ### 3. **Faster Than Competition**
+
 - Modern tech stack = blazing fast performance
 - Instant UI updates (optimistic rendering)
 - Real-time collaboration without lag
 - Works offline (Progressive Web App)
 
 ### 4. **Easier to Use**
+
 - Drag-and-drop everything
 - Inline editing (click to edit any field)
 - One-click status changes
 - No training manual required
 
 ### 5. **Better Imports**
+
 - Smart CSV wizard with validation
 - OAuth integration with HubSpot, Salesforce, etc.
 - Duplicate prevention (no more duplicate customers!)
 - Error preview before import
 
 ### 6. **All-in-One Platform**
+
 - CRM + Service Dispatch + Billing + Reporting
 - No need to juggle multiple systems
 - Data flows automatically between modules
 - Single source of truth
 
 ### 7. **Cost-Effective**
+
 - No per-user pricing tiers
 - All features included (no paid add-ons)
 - Self-hosted option (own your data)
@@ -338,6 +367,7 @@ Real-time: WebSocket connections
 ## 🎯 Migration Path from Competitors
 
 ### From HubSpot
+
 1. **Export HubSpot Data**:
    - Export Contacts, Companies, Deals as CSV
    - Or use OAuth connection (Q1 2026)
@@ -355,6 +385,7 @@ Real-time: WebSocket connections
    - Better mobile experience
 
 ### From Salesforce
+
 1. **Export Salesforce Data**:
    - Use Data Loader or CSV export
    - Export Leads, Accounts, Opportunities
@@ -372,6 +403,7 @@ Real-time: WebSocket connections
    - 5x faster page loads
 
 ### From E-Automate
+
 1. **Export E-Automate Customers**:
    - Export to CSV from E-Automate
    - Include Equipment and Service data
@@ -394,6 +426,7 @@ Real-time: WebSocket connections
 ### Example: 10-Person Sales Team
 
 #### With HubSpot Sales Hub
+
 ```
 $450/month x 12 months = $5,400/year
 + $1,000 setup/training
@@ -402,6 +435,7 @@ $450/month x 12 months = $5,400/year
 ```
 
 #### With Salesforce Professional
+
 ```
 $150/user/month x 10 users x 12 months = $18,000/year
 + $5,000 implementation
@@ -410,6 +444,7 @@ $150/user/month x 10 users x 12 months = $18,000/year
 ```
 
 #### With Printyx (Included in Platform)
+
 ```
 Printyx Platform: Included
 + Migration support: Included
@@ -425,6 +460,7 @@ Printyx Platform: Included
 ## 🚧 Roadmap: What's Next
 
 ### Q1 2026
+
 - [x] Zero-data-loss Lead → Customer workflow ✅
 - [x] Kanban board with drag-and-drop ✅
 - [x] Advanced CSV import wizard ✅
@@ -432,18 +468,21 @@ Printyx Platform: Included
 - [ ] OAuth integration with Salesforce
 
 ### Q2 2026
+
 - [ ] Scheduled syncs (daily/weekly)
 - [ ] Two-way sync with external CRMs
 - [ ] Bulk operations (email, status updates)
 - [ ] Custom field support
 
 ### Q3 2026
+
 - [ ] E-Automate direct integration
 - [ ] FMAudit device import
 - [ ] AI-powered lead scoring
 - [ ] Automated follow-up sequences
 
 ### Q4 2026
+
 - [ ] Real-time collaboration (multi-user editing)
 - [ ] Activity timeline with filtering
 - [ ] Forecasting and goal tracking

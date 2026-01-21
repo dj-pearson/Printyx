@@ -219,10 +219,7 @@ export function setupOpenApi(app: Express): void {
  * Utility to add a path to the OpenAPI specification at runtime
  * Can be used by route files to self-document
  */
-export function addOpenApiPath(
-  path: string,
-  pathItem: OpenAPIV3.PathItemObject,
-): void {
+export function addOpenApiPath(path: string, pathItem: OpenAPIV3.PathItemObject): void {
   if (!openApiConfig.paths) {
     openApiConfig.paths = {};
   }

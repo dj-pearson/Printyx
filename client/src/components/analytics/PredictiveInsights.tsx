@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  AlertTriangle, 
-  Target, 
+import {
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  Target,
   Calendar,
   DollarSign,
   Users,
@@ -16,7 +16,7 @@ import {
   ArrowRight,
   BarChart3,
   PieChart,
-  Activity
+  Activity,
 } from 'lucide-react';
 
 interface RiskScore {
@@ -65,13 +65,13 @@ const mockRiskScores: Record<string, RiskScore> = {
     factors: [
       'Declined meter readings for 2+ months',
       'Multiple service complaints in Q3',
-      'Payment delays averaging 15 days'
+      'Payment delays averaging 15 days',
     ],
     recommendations: [
       'Schedule proactive customer check-in',
       'Offer service quality review',
-      'Consider payment plan options'
-    ]
+      'Consider payment plan options',
+    ],
   },
   revenue: {
     score: 12,
@@ -79,12 +79,9 @@ const mockRiskScores: Record<string, RiskScore> = {
     factors: [
       'Stable equipment utilization',
       'Consistent payment history',
-      'Growing monthly volumes'
+      'Growing monthly volumes',
     ],
-    recommendations: [
-      'Explore upselling opportunities',
-      'Consider multi-year contract incentives'
-    ]
+    recommendations: ['Explore upselling opportunities', 'Consider multi-year contract incentives'],
   },
   service: {
     score: 67,
@@ -92,14 +89,14 @@ const mockRiskScores: Record<string, RiskScore> = {
     factors: [
       'Aging equipment fleet (avg 7 years)',
       'Increased service call frequency',
-      'Parts availability concerns'
+      'Parts availability concerns',
     ],
     recommendations: [
       'Schedule equipment health assessment',
       'Propose preventive maintenance plan',
-      'Present upgrade/refresh options'
-    ]
-  }
+      'Present upgrade/refresh options',
+    ],
+  },
 };
 
 const mockPredictiveMetrics: PredictiveMetric[] = [
@@ -110,7 +107,7 @@ const mockPredictiveMetrics: PredictiveMetric[] = [
     trend: 'up',
     confidence: 87,
     timeframe: 'Next 30 days',
-    category: 'sales'
+    category: 'sales',
   },
   {
     id: 'churn_rate',
@@ -119,7 +116,7 @@ const mockPredictiveMetrics: PredictiveMetric[] = [
     trend: 'down',
     confidence: 92,
     timeframe: 'Next 90 days',
-    category: 'sales'
+    category: 'sales',
   },
   {
     id: 'service_costs',
@@ -128,7 +125,7 @@ const mockPredictiveMetrics: PredictiveMetric[] = [
     trend: 'up',
     confidence: 78,
     timeframe: 'Next quarter',
-    category: 'service'
+    category: 'service',
   },
   {
     id: 'payment_risk',
@@ -137,8 +134,8 @@ const mockPredictiveMetrics: PredictiveMetric[] = [
     trend: 'stable',
     confidence: 84,
     timeframe: 'Current month',
-    category: 'finance'
-  }
+    category: 'finance',
+  },
 ];
 
 const mockRenewalPredictions: CustomerRenewalPrediction[] = [
@@ -150,7 +147,7 @@ const mockRenewalPredictions: CustomerRenewalPrediction[] = [
     currentValue: 45000,
     predictedValue: 52000,
     riskFactors: [],
-    recommendations: ['Present upgrade options early', 'Schedule executive review meeting']
+    recommendations: ['Present upgrade options early', 'Schedule executive review meeting'],
   },
   {
     customerId: '2',
@@ -160,7 +157,11 @@ const mockRenewalPredictions: CustomerRenewalPrediction[] = [
     currentValue: 28000,
     predictedValue: 15000,
     riskFactors: ['Multiple service issues', 'Competitor proposal received'],
-    recommendations: ['Immediate customer retention meeting', 'Service credit consideration', 'Executive escalation']
+    recommendations: [
+      'Immediate customer retention meeting',
+      'Service credit consideration',
+      'Executive escalation',
+    ],
   },
   {
     customerId: '3',
@@ -170,8 +171,8 @@ const mockRenewalPredictions: CustomerRenewalPrediction[] = [
     currentValue: 75000,
     predictedValue: 78000,
     riskFactors: [],
-    recommendations: ['Explore additional services', 'Multi-year contract benefits']
-  }
+    recommendations: ['Explore additional services', 'Multi-year contract benefits'],
+  },
 ];
 
 const mockSalesOpportunities: SalesOpportunityPrediction[] = [
@@ -183,7 +184,7 @@ const mockSalesOpportunities: SalesOpportunityPrediction[] = [
     estimatedValue: 125000,
     stage: 'Proposal',
     riskFactors: ['Budget approval pending'],
-    accelerators: ['Strong technical fit', 'Existing relationship', 'Competitive pricing']
+    accelerators: ['Strong technical fit', 'Existing relationship', 'Competitive pricing'],
   },
   {
     opportunityId: '2',
@@ -193,8 +194,8 @@ const mockSalesOpportunities: SalesOpportunityPrediction[] = [
     estimatedValue: 89000,
     stage: 'Negotiation',
     riskFactors: ['Price concerns', 'Competitor proposal'],
-    accelerators: ['Compliance requirements met', 'Reference customer available']
-  }
+    accelerators: ['Compliance requirements met', 'Reference customer available'],
+  },
 ];
 
 export default function PredictiveInsights() {
@@ -202,18 +203,25 @@ export default function PredictiveInsights() {
 
   const getRiskBadgeVariant = (level: string) => {
     switch (level) {
-      case 'low': return 'default';
-      case 'medium': return 'secondary';
-      case 'high': return 'destructive';
-      default: return 'outline';
+      case 'low':
+        return 'default';
+      case 'medium':
+        return 'secondary';
+      case 'high':
+        return 'destructive';
+      default:
+        return 'outline';
     }
   };
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'down': return <TrendingDown className="h-4 w-4 text-red-600" />;
-      default: return <Activity className="h-4 w-4 text-gray-600" />;
+      case 'up':
+        return <TrendingUp className="h-4 w-4 text-green-600" />;
+      case 'down':
+        return <TrendingDown className="h-4 w-4 text-red-600" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -259,8 +267,8 @@ export default function PredictiveInsights() {
         <TabsContent value="metrics">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {mockPredictiveMetrics.map((metric) => (
-              <Card 
-                key={metric.id} 
+              <Card
+                key={metric.id}
                 className={`cursor-pointer transition-all ${selectedMetric === metric.id ? 'ring-2 ring-primary' : ''}`}
                 onClick={() => setSelectedMetric(metric.id)}
               >
@@ -277,10 +285,9 @@ export default function PredictiveInsights() {
                   <div className="space-y-1">
                     <h3 className="font-semibold text-sm">{metric.title}</h3>
                     <p className="text-2xl font-bold">
-                      {metric.category === 'sales' && metric.id === 'sales_forecast' 
+                      {metric.category === 'sales' && metric.id === 'sales_forecast'
                         ? formatCurrency(metric.value)
-                        : `${metric.value}${metric.id.includes('rate') || metric.id.includes('reduction') ? '%' : ''}`
-                      }
+                        : `${metric.value}${metric.id.includes('rate') || metric.id.includes('reduction') ? '%' : ''}`}
                     </p>
                     <p className="text-xs text-muted-foreground">{metric.timeframe}</p>
                   </div>
@@ -299,8 +306,14 @@ export default function PredictiveInsights() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{renewal.customerName}</CardTitle>
                     <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={renewal.renewalProbability > 70 ? 'default' : renewal.renewalProbability > 40 ? 'secondary' : 'destructive'}
+                      <Badge
+                        variant={
+                          renewal.renewalProbability > 70
+                            ? 'default'
+                            : renewal.renewalProbability > 40
+                              ? 'secondary'
+                              : 'destructive'
+                        }
                       >
                         {formatPercentage(renewal.renewalProbability)} likely
                       </Badge>
@@ -315,16 +328,19 @@ export default function PredictiveInsights() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Current Value</p>
-                      <p className="text-lg font-semibold">{formatCurrency(renewal.currentValue)}</p>
+                      <p className="text-lg font-semibold">
+                        {formatCurrency(renewal.currentValue)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Predicted Value</p>
                       <p className="text-lg font-semibold flex items-center gap-1">
                         {formatCurrency(renewal.predictedValue)}
-                        {renewal.predictedValue > renewal.currentValue ? 
-                          <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                        {renewal.predictedValue > renewal.currentValue ? (
+                          <TrendingUp className="h-4 w-4 text-green-600" />
+                        ) : (
                           <TrendingDown className="h-4 w-4 text-red-600" />
-                        }
+                        )}
                       </p>
                     </div>
                     <div>
@@ -332,7 +348,7 @@ export default function PredictiveInsights() {
                       <p className="text-xs text-muted-foreground mt-1">Renewal Probability</p>
                     </div>
                   </div>
-                  
+
                   {renewal.riskFactors.length > 0 && (
                     <div className="mt-4 p-3 bg-red-50 rounded border border-red-200">
                       <h4 className="font-medium text-red-800 flex items-center gap-1 mb-2">
@@ -346,7 +362,7 @@ export default function PredictiveInsights() {
                       </ul>
                     </div>
                   )}
-                  
+
                   <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
                     <h4 className="font-medium text-blue-800 flex items-center gap-1 mb-2">
                       <Target className="h-4 w-4" />
@@ -373,8 +389,14 @@ export default function PredictiveInsights() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{opp.opportunityName}</CardTitle>
                     <div className="flex items-center gap-2">
-                      <Badge 
-                        variant={opp.closeProbability > 70 ? 'default' : opp.closeProbability > 40 ? 'secondary' : 'destructive'}
+                      <Badge
+                        variant={
+                          opp.closeProbability > 70
+                            ? 'default'
+                            : opp.closeProbability > 40
+                              ? 'secondary'
+                              : 'destructive'
+                        }
                       >
                         {formatPercentage(opp.closeProbability)} close
                       </Badge>
@@ -390,14 +412,16 @@ export default function PredictiveInsights() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Expected Close</p>
-                      <p className="text-lg font-semibold">{new Date(opp.closeDate).toLocaleDateString()}</p>
+                      <p className="text-lg font-semibold">
+                        {new Date(opp.closeDate).toLocaleDateString()}
+                      </p>
                     </div>
                     <div>
                       <Progress value={opp.closeProbability} className="w-full" />
                       <p className="text-xs text-muted-foreground mt-1">Close Probability</p>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {opp.riskFactors.length > 0 && (
                       <div className="p-3 bg-amber-50 rounded border border-amber-200">
@@ -412,7 +436,7 @@ export default function PredictiveInsights() {
                         </ul>
                       </div>
                     )}
-                    
+
                     <div className="p-3 bg-green-50 rounded border border-green-200">
                       <h4 className="font-medium text-green-800 flex items-center gap-1 mb-2">
                         <Award className="h-4 w-4" />
@@ -455,7 +479,7 @@ export default function PredictiveInsights() {
                         ))}
                       </ul>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-medium text-sm mb-2">Recommendations:</h4>
                       <ul className="text-sm text-muted-foreground space-y-1">
@@ -464,7 +488,7 @@ export default function PredictiveInsights() {
                         ))}
                       </ul>
                     </div>
-                    
+
                     <Button variant="outline" size="sm" className="w-full">
                       <ArrowRight className="h-3 w-3 mr-1" />
                       View Details

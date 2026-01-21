@@ -21,5 +21,3 @@ test('app shell loads after auth cookie (smoke)', async ({ page, context }) => {
   await page.goto('/crm');
   await expect(page.locator('text=CRM')).toBeVisible({ timeout: 5000 });
 });
-
-

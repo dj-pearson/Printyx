@@ -4,17 +4,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCustomerPortal } from '@/pages/CustomerPortal';
 import { useLocation } from 'wouter';
-import { 
-  FileText, 
-  Wrench, 
-  Package, 
-  CreditCard, 
+import {
+  FileText,
+  Wrench,
+  Package,
+  CreditCard,
   Bell,
   TrendingUp,
   AlertCircle,
   CheckCircle,
   Clock,
-  DollarSign
+  DollarSign,
 } from 'lucide-react';
 
 interface DashboardSummary {
@@ -40,7 +40,7 @@ export const CustomerDashboard: React.FC = () => {
     try {
       const response = await fetch('/api/customer-portal/dashboard', {
         headers: {
-          'Authorization': `Bearer ${sessionToken}`,
+          Authorization: `Bearer ${sessionToken}`,
         },
       });
 
@@ -83,7 +83,7 @@ export const CustomerDashboard: React.FC = () => {
 
       {/* Summary Cards - Mobile Optimized */}
       <div className="grid gap-3 sm:gap-4 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <Card 
+        <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setLocation('/customer-portal/service-requests')}
         >
@@ -102,7 +102,7 @@ export const CustomerDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setLocation('/customer-portal/meter-readings')}
         >
@@ -121,7 +121,7 @@ export const CustomerDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setLocation('/customer-portal/supplies')}
         >
@@ -140,7 +140,7 @@ export const CustomerDashboard: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setLocation('/customer-portal/payments')}
         >
@@ -151,15 +151,13 @@ export const CustomerDashboard: React.FC = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pending Payments</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {summary?.pendingPayments || 0}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{summary?.pendingPayments || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card 
+        <Card
           className="cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setLocation('/customer-portal/notifications')}
         >
@@ -187,32 +185,32 @@ export const CustomerDashboard: React.FC = () => {
             <CardDescription>Common tasks you can perform</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button 
-              className="w-full justify-start" 
+            <Button
+              className="w-full justify-start"
               variant="outline"
               onClick={() => setLocation('/customer-portal/service-requests')}
             >
               <Wrench className="h-4 w-4 mr-2" />
               Submit Service Request
             </Button>
-            <Button 
-              className="w-full justify-start" 
+            <Button
+              className="w-full justify-start"
               variant="outline"
               onClick={() => setLocation('/customer-portal/meter-readings')}
             >
               <FileText className="h-4 w-4 mr-2" />
               Submit Meter Reading
             </Button>
-            <Button 
-              className="w-full justify-start" 
+            <Button
+              className="w-full justify-start"
               variant="outline"
               onClick={() => setLocation('/customer-portal/supplies')}
             >
               <Package className="h-4 w-4 mr-2" />
               Order Supplies
             </Button>
-            <Button 
-              className="w-full justify-start" 
+            <Button
+              className="w-full justify-start"
               variant="outline"
               onClick={() => setLocation('/customer-portal/payments')}
             >
@@ -309,8 +307,8 @@ export const CustomerDashboard: React.FC = () => {
             </div>
 
             <div className="pt-4 border-t">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
                 onClick={() => setLocation('/customer-portal/notifications')}
               >

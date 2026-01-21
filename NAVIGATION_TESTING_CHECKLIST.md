@@ -1,6 +1,7 @@
 # Navigation & Page Functionality Testing Checklist
 
 ## Overview
+
 This document provides a systematic approach to testing all navigation routes and page functionality in the Printyx application.
 
 **Last Updated**: 2025-12-20
@@ -37,6 +38,7 @@ This document provides a systematic approach to testing all navigation routes an
 ## Public/Marketing Routes
 
 ### Authentication Pages
+
 - [ ] `/login` - Login page loads and functions
   - [ ] Email/password fields work
   - [ ] Form validation displays errors
@@ -73,6 +75,7 @@ This document provides a systematic approach to testing all navigation routes an
   - [ ] Redirects to dashboard
 
 ### Marketing Pages
+
 - [ ] `/` - Homepage
   - [ ] Hero section loads
   - [ ] CTAs function
@@ -85,6 +88,7 @@ This document provides a systematic approach to testing all navigation routes an
 - [ ] `/dealer-expertise` - Expertise page
 
 ### Blog Routes
+
 - [ ] `/blog` - Blog index
   - [ ] Articles list displays
   - [ ] Search/filter works
@@ -96,6 +100,7 @@ This document provides a systematic approach to testing all navigation routes an
   - [ ] Related articles show
 
 ### Conversion Pages
+
 - [ ] `/roi-calculator` - ROI calculator
   - [ ] Calculator inputs work
   - [ ] Calculations are accurate
@@ -106,6 +111,7 @@ This document provides a systematic approach to testing all navigation routes an
 - [ ] `/battle-card` - Competitive battle card
 
 ### Legal Pages
+
 - [ ] `/eula` - End User License Agreement
 - [ ] `/privacy` - Privacy Policy
 - [ ] `/terms` - Terms & Conditions
@@ -115,6 +121,7 @@ This document provides a systematic approach to testing all navigation routes an
 ## Authenticated Application Routes
 
 ### Dashboard & Core
+
 - [ ] `/` - Main Dashboard
   - [ ] Dashboard widgets load
   - [ ] Role-based widgets display
@@ -130,6 +137,7 @@ This document provides a systematic approach to testing all navigation routes an
 ### Sales Hub Routes
 
 #### Lead & Contact Management
+
 - [ ] `/leads-management` - Leads page
   - [ ] Leads table loads
   - [ ] Search/filter works
@@ -176,6 +184,7 @@ This document provides a systematic approach to testing all navigation routes an
   - [ ] Associated company links work
 
 #### Opportunity & Pipeline Management
+
 - [ ] `/opportunities` - Opportunities page
   - [ ] Opportunities list loads
   - [ ] Pipeline stages display
@@ -211,6 +220,7 @@ This document provides a systematic approach to testing all navigation routes an
   - [ ] Goal creation works
 
 #### Quotes & Proposals
+
 - [ ] `/quote-proposal-generation` - Quote/proposal hub
 - [ ] `/quotes` - Quotes management
   - [ ] Quotes list loads
@@ -250,6 +260,7 @@ This document provides a systematic approach to testing all navigation routes an
   - [ ] Save/submit works
 
 #### Deal Management & Approvals
+
 - [ ] `/deal-desk` - Deal desk dashboard
   - [ ] Approval requests load
   - [ ] Pending approvals show
@@ -280,6 +291,7 @@ This document provides a systematic approach to testing all navigation routes an
   - [ ] Stage probability settings work
 
 #### Other Sales Routes
+
 - [ ] `/demo-scheduling` - Demo scheduler
   - [ ] Calendar loads
   - [ ] **Schedule Demo button**
@@ -705,6 +717,7 @@ This document provides a systematic approach to testing all navigation routes an
 - [ ] `/root-admin-dashboard` - Root admin dashboard
 
 #### Tenant & Organization Management
+
 - [ ] `/admin/tenant-management` - Tenant management
   - [ ] Tenants list loads
   - [ ] **Add Tenant button**
@@ -726,6 +739,7 @@ This document provides a systematic approach to testing all navigation routes an
 - [ ] `/customer-self-service-portal` - Customer portal (admin view)
 
 #### User & Access Management
+
 - [ ] `/admin/user-management` - User management
   - [ ] Users list loads
   - [ ] **Add User button**
@@ -746,6 +760,7 @@ This document provides a systematic approach to testing all navigation routes an
 - [ ] `/security-compliance-management` - Audit & compliance
 
 #### System Operations
+
 - [ ] `/database-management` - Database management
   - [ ] Database stats load
   - [ ] **Backup button** works
@@ -763,6 +778,7 @@ This document provides a systematic approach to testing all navigation routes an
 - [ ] `/system-monitoring` - System monitoring
 
 #### Platform Features
+
 - [ ] `/root-admin/seo` - SEO management (platform)
 - [ ] `/social-media-generator` - Social media generator
   - [ ] Template selection works
@@ -957,6 +973,7 @@ This document provides a systematic approach to testing all navigation routes an
 ## Priority Testing Order
 
 ### Phase 1: Critical User Flows (Highest Priority)
+
 1. Authentication (login, signup, password reset)
 2. Dashboard loading
 3. Customer management (CRUD)
@@ -966,6 +983,7 @@ This document provides a systematic approach to testing all navigation routes an
 7. Settings/profile
 
 ### Phase 2: Core Features
+
 1. Opportunities/deals management
 2. Quote builder
 3. Product catalog
@@ -974,6 +992,7 @@ This document provides a systematic approach to testing all navigation routes an
 6. Reports hub
 
 ### Phase 3: Advanced Features
+
 1. AI features
 2. Workflow automation
 3. Advanced billing
@@ -982,6 +1001,7 @@ This document provides a systematic approach to testing all navigation routes an
 6. Platform admin features
 
 ### Phase 4: Supporting Features
+
 1. Knowledge base
 2. Task management
 3. Calendar integration
@@ -994,8 +1014,8 @@ This document provides a systematic approach to testing all navigation routes an
 ## Known Issues Log
 
 | Route | Issue | Severity | Status | Notes |
-|-------|-------|----------|--------|-------|
-| | | | | |
+| ----- | ----- | -------- | ------ | ----- |
+|       |       |          |        |       |
 
 ---
 
@@ -1027,4 +1047,3 @@ This document provides a systematic approach to testing all navigation routes an
 - Navigation visibility controlled by user role and permissions
 - Some routes redirect (e.g., `/task-management` → `/tasks`)
 - Legacy routes kept for backward compatibility
-

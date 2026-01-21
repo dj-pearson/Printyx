@@ -12,6 +12,7 @@
    - Component (e.g., `db`, `postgres`, `database`)
 
 **Example container names:**
+
 - `printyx-supabase-db`
 - `printyx_supabase_postgres`
 - `printyx-db-1`
@@ -54,20 +55,21 @@ When you run `.\fix-postgres-password.ps1`, it will now:
 3. **Let you choose** by entering the number
 
 Example output:
+
 ```
 Found PostgreSQL/Supabase containers:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   [1] printyx-supabase-db ⭐ (Likely PrintyxSupabase)
       Image: supabase/postgres:15.1.0.117
       Status: Up 2 hours
-      
+
   [2] other-project-postgres
       Image: postgres:15
       Status: Up 5 days
-      
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Select the PostgreSQL container number for PrintyxSupabase [1-2]: 
+Select the PostgreSQL container number for PrintyxSupabase [1-2]:
 ```
 
 Just enter **1** to select the PrintyxSupabase container!
@@ -78,8 +80,6 @@ Just enter **1** to select the PrintyxSupabase container!
   - `supabase` in the name
   - `postgres` in the image
   - Recently restarted (if you just changed passwords)
-  
 - The script is safe - it will show you what it found before making changes
 
 - You can always cancel with `Ctrl+C` if you're not sure
-

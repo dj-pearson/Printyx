@@ -86,7 +86,12 @@ class PerformanceMonitor {
     const cpuUsage = await this.getCPUUsage();
 
     const metrics: PerformanceMetric[] = [
-      { name: 'database_query_time', value: dbPerf.averageQueryTime, unit: 'ms', timestamp: new Date() },
+      {
+        name: 'database_query_time',
+        value: dbPerf.averageQueryTime,
+        unit: 'ms',
+        timestamp: new Date(),
+      },
       { name: 'ai_api_latency', value: aiPerf.claudeApiLatency, unit: 'ms', timestamp: new Date() },
       { name: 'cache_hit_rate', value: cachePerf.hitRate, unit: '%', timestamp: new Date() },
       { name: 'memory_usage', value: memoryUsage, unit: 'MB', timestamp: new Date() },
@@ -112,9 +117,10 @@ class PerformanceMonitor {
   async getDatabasePerformance(): Promise<DatabasePerformance> {
     // Mock implementation - in production, this would query actual DB metrics
     const recentMetrics = this.getRecentMetrics('database_query_time', 100);
-    const averageQueryTime = recentMetrics.length > 0 
-      ? recentMetrics.reduce((sum, m) => sum + m.value, 0) / recentMetrics.length
-      : 50; // Default 50ms
+    const averageQueryTime =
+      recentMetrics.length > 0
+        ? recentMetrics.reduce((sum, m) => sum + m.value, 0) / recentMetrics.length
+        : 50; // Default 50ms
 
     return {
       connectionPoolSize: 20,
@@ -132,16 +138,18 @@ class PerformanceMonitor {
     const schedulingMetrics = this.getRecentMetrics('scheduling_algorithm_time', 20);
 
     return {
-      claudeApiLatency: claudeMetrics.length > 0 
-        ? claudeMetrics.reduce((sum, m) => sum + m.value, 0) / claudeMetrics.length
-        : 800, // Default 800ms
+      claudeApiLatency:
+        claudeMetrics.length > 0
+          ? claudeMetrics.reduce((sum, m) => sum + m.value, 0) / claudeMetrics.length
+          : 800, // Default 800ms
       claudeApiSuccess: 98.5, // 98.5% success rate
-      schedulingAlgorithmTime: schedulingMetrics.length > 0
-        ? schedulingMetrics.reduce((sum, m) => sum + m.value, 0) / schedulingMetrics.length
-        : 150, // Default 150ms
+      schedulingAlgorithmTime:
+        schedulingMetrics.length > 0
+          ? schedulingMetrics.reduce((sum, m) => sum + m.value, 0) / schedulingMetrics.length
+          : 150, // Default 150ms
       aiAnalysisAccuracy: 87.2, // 87.2% accuracy
       tokensUsedPerDay: 45000,
-      costPerDay: 12.50, // $12.50 per day
+      costPerDay: 12.5, // $12.50 per day
     };
   }
 
@@ -174,10 +182,15 @@ class PerformanceMonitor {
   /**
    * Monitor Claude API performance
    */
-  monitorClaudeAPI(operation: string, duration: number, success: boolean, tokensUsed?: number): void {
+  monitorClaudeAPI(
+    operation: string,
+    duration: number,
+    success: boolean,
+    tokensUsed?: number,
+  ): void {
     this.recordMetric('claude_api_latency', duration, 'ms', { operation, success });
     this.recordMetric('claude_api_success', success ? 1 : 0, 'boolean', { operation });
-    
+
     if (tokensUsed) {
       this.recordMetric('claude_tokens_used', tokensUsed, 'tokens', { operation });
     }
@@ -188,7 +201,9 @@ class PerformanceMonitor {
    */
   monitorSchedulingAlgorithm(taskCount: number, duration: number, scheduledCount: number): void {
     this.recordMetric('scheduling_algorithm_time', duration, 'ms', { taskCount, scheduledCount });
-    this.recordMetric('scheduling_success_rate', (scheduledCount / taskCount) * 100, '%', { taskCount });
+    this.recordMetric('scheduling_success_rate', (scheduledCount / taskCount) * 100, '%', {
+      taskCount,
+    });
     this.recordMetric('scheduling_throughput', taskCount / (duration / 1000), 'tasks/second', {});
   }
 
@@ -206,12 +221,12 @@ class PerformanceMonitor {
 
     // Analyze critical issues
     const recentMetrics = this.getRecentMetrics('database_query_time', 10);
-    if (recentMetrics.some(m => m.value > 1000)) {
+    if (recentMetrics.some((m) => m.value > 1000)) {
       criticalIssues.push('Database queries are taking longer than 1 second');
     }
 
     const aiLatency = this.getRecentMetrics('claude_api_latency', 10);
-    if (aiLatency.some(m => m.value > 5000)) {
+    if (aiLatency.some((m) => m.value > 5000)) {
       criticalIssues.push('Claude API responses are taking longer than 5 seconds');
     }
 
@@ -222,8 +237,10 @@ class PerformanceMonitor {
     }
 
     const schedulingTime = this.getRecentMetrics('scheduling_algorithm_time', 5);
-    if (schedulingTime.some(m => m.value > 500)) {
-      optimizationOpportunities.push('Task scheduling is taking longer than 500ms - consider algorithm optimization');
+    if (schedulingTime.some((m) => m.value > 500)) {
+      optimizationOpportunities.push(
+        'Task scheduling is taking longer than 500ms - consider algorithm optimization',
+      );
     }
 
     return {
@@ -254,14 +271,15 @@ class PerformanceMonitor {
         break;
     }
 
-    const relevantMetrics = this.metrics.filter(m => m.timestamp >= cutoffTime);
-    
+    const relevantMetrics = this.metrics.filter((m) => m.timestamp >= cutoffTime);
+
     const summary = {
       totalMetrics: relevantMetrics.length,
       averageApiResponseTime: this.calculateAverage(relevantMetrics, 'api_.*_duration'),
       averageDbQueryTime: this.calculateAverage(relevantMetrics, 'database_query_time'),
-      claudeApiCalls: relevantMetrics.filter(m => m.name === 'claude_api_latency').length,
-      schedulingOperations: relevantMetrics.filter(m => m.name === 'scheduling_algorithm_time').length,
+      claudeApiCalls: relevantMetrics.filter((m) => m.name === 'claude_api_latency').length,
+      schedulingOperations: relevantMetrics.filter((m) => m.name === 'scheduling_algorithm_time')
+        .length,
     };
 
     const recommendations = this.generateOptimizationRecommendations(relevantMetrics);
@@ -276,18 +294,16 @@ class PerformanceMonitor {
   // Private helper methods
   private getRecentMetrics(namePattern: string, count: number): PerformanceMetric[] {
     const regex = new RegExp(namePattern);
-    return this.metrics
-      .filter(m => regex.test(m.name))
-      .slice(-count);
+    return this.metrics.filter((m) => regex.test(m.name)).slice(-count);
   }
 
   private isCriticalMetric(name: string, value: number): boolean {
     const criticalThresholds: Record<string, number> = {
-      'database_query_time': 1000, // 1 second
-      'claude_api_latency': 5000, // 5 seconds
-      'memory_usage': 1024, // 1 GB
-      'cpu_usage': 90, // 90%
-      'error_rate': 5, // 5%
+      database_query_time: 1000, // 1 second
+      claude_api_latency: 5000, // 5 seconds
+      memory_usage: 1024, // 1 GB
+      cpu_usage: 90, // 90%
+      error_rate: 5, // 5%
     };
 
     return criticalThresholds[name] !== undefined && value > criticalThresholds[name];
@@ -296,7 +312,7 @@ class PerformanceMonitor {
   private calculateHealthScore(metrics: PerformanceMetric[]): number {
     let score = 100;
 
-    metrics.forEach(metric => {
+    metrics.forEach((metric) => {
       switch (metric.name) {
         case 'database_query_time':
           if (metric.value > 500) score -= 10;
@@ -334,7 +350,7 @@ class PerformanceMonitor {
     metrics: PerformanceMetric[],
     dbPerf: DatabasePerformance,
     aiPerf: AIPerformance,
-    cachePerf: CachePerformance
+    cachePerf: CachePerformance,
   ): string[] {
     const recommendations: string[] = [];
 
@@ -374,7 +390,8 @@ class PerformanceMonitor {
         timestamp: new Date(Date.now() - 5 * 60 * 1000),
       },
       {
-        query: 'SELECT COUNT(*) FROM calendar_events WHERE user_id = ? AND start_time BETWEEN ? AND ?',
+        query:
+          'SELECT COUNT(*) FROM calendar_events WHERE user_id = ? AND start_time BETWEEN ? AND ?',
         duration: 890,
         timestamp: new Date(Date.now() - 15 * 60 * 1000),
       },
@@ -391,22 +408,30 @@ class PerformanceMonitor {
     return Math.floor(Math.random() * 30) + 20; // 20-50%
   }
 
-  private analyzeTrends(): Array<{ metric: string; trend: 'improving' | 'degrading' | 'stable'; change: number }> {
-    const trends: Array<{ metric: string; trend: 'improving' | 'degrading' | 'stable'; change: number }> = [];
-    
+  private analyzeTrends(): Array<{
+    metric: string;
+    trend: 'improving' | 'degrading' | 'stable';
+    change: number;
+  }> {
+    const trends: Array<{
+      metric: string;
+      trend: 'improving' | 'degrading' | 'stable';
+      change: number;
+    }> = [];
+
     const metricNames = ['database_query_time', 'claude_api_latency', 'cache_hit_rate'];
-    
-    metricNames.forEach(metricName => {
+
+    metricNames.forEach((metricName) => {
       const recent = this.getRecentMetrics(metricName, 10);
       if (recent.length >= 5) {
         const firstHalf = recent.slice(0, Math.floor(recent.length / 2));
         const secondHalf = recent.slice(Math.floor(recent.length / 2));
-        
+
         const firstAvg = firstHalf.reduce((sum, m) => sum + m.value, 0) / firstHalf.length;
         const secondAvg = secondHalf.reduce((sum, m) => sum + m.value, 0) / secondHalf.length;
-        
+
         const change = ((secondAvg - firstAvg) / firstAvg) * 100;
-        
+
         let trend: 'improving' | 'degrading' | 'stable' = 'stable';
         if (Math.abs(change) > 5) {
           // For metrics where lower is better (latency, query time)
@@ -417,7 +442,7 @@ class PerformanceMonitor {
             trend = change > 0 ? 'improving' : 'degrading';
           }
         }
-        
+
         trends.push({ metric: metricName, trend, change: Math.round(change * 100) / 100 });
       }
     });
@@ -427,27 +452,31 @@ class PerformanceMonitor {
 
   private calculateAverage(metrics: PerformanceMetric[], namePattern: string): number {
     const regex = new RegExp(namePattern);
-    const relevantMetrics = metrics.filter(m => regex.test(m.name));
-    
+    const relevantMetrics = metrics.filter((m) => regex.test(m.name));
+
     if (relevantMetrics.length === 0) return 0;
-    
+
     return relevantMetrics.reduce((sum, m) => sum + m.value, 0) / relevantMetrics.length;
   }
 
   private generateOptimizationRecommendations(metrics: PerformanceMetric[]): string[] {
     const recommendations: string[] = [];
-    
+
     const avgDbTime = this.calculateAverage(metrics, 'database_query_time');
     if (avgDbTime > 300) {
-      recommendations.push('Database query optimization needed - consider indexing frequently queried columns');
+      recommendations.push(
+        'Database query optimization needed - consider indexing frequently queried columns',
+      );
     }
 
     const avgApiTime = this.calculateAverage(metrics, 'api_.*_duration');
     if (avgApiTime > 200) {
-      recommendations.push('API response times are high - consider response caching or code optimization');
+      recommendations.push(
+        'API response times are high - consider response caching or code optimization',
+      );
     }
 
-    const errorMetrics = metrics.filter(m => m.name.includes('error') && m.value > 0);
+    const errorMetrics = metrics.filter((m) => m.name.includes('error') && m.value > 0);
     if (errorMetrics.length > metrics.length * 0.05) {
       recommendations.push('Error rate is elevated - review error logs and implement fixes');
     }

@@ -1,32 +1,28 @@
-import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { EmptyState } from "@/components/ui/empty-state";
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   BulkOperationsToolbar,
   useBulkSelection,
   BulkAction,
-} from "@/components/ui/bulk-operations-toolbar";
-import {
-  exportToCSV,
-  exportToJSON,
-  createExportColumn,
-} from "@/lib/export-utils";
-import { SavedFilters, useFilterState } from "@/components/ui/saved-filters";
+} from '@/components/ui/bulk-operations-toolbar';
+import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Search,
   Plus,
@@ -38,8 +34,8 @@ import {
   LayoutGrid,
   List as ListIcon,
   Upload,
-} from "lucide-react";
-import { CsvImportWizard } from "@/components/import";
+} from 'lucide-react';
+import { CsvImportWizard } from '@/components/import';
 import {
   Table,
   TableBody,
@@ -47,9 +43,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import { type InventoryItem } from '@shared/schema';
-import WarehouseTeamStatsWidget from "@/components/stats/WarehouseTeamStatsWidget";
+import WarehouseTeamStatsWidget from '@/components/stats/WarehouseTeamStatsWidget';
 
 export default function Inventory() {
   const { toast } = useToast();
@@ -79,10 +75,14 @@ export default function Inventory() {
 
   const getStockBadge = (status: string) => {
     switch (status) {
-      case 'low': return { variant: 'destructive' as const, label: 'Low Stock' };
-      case 'medium': return { variant: 'secondary' as const, label: 'Medium Stock' };
-      case 'good': return { variant: 'default' as const, label: 'In Stock' };
-      default: return { variant: 'outline' as const, label: 'Unknown' };
+      case 'low':
+        return { variant: 'destructive' as const, label: 'Low Stock' };
+      case 'medium':
+        return { variant: 'secondary' as const, label: 'Medium Stock' };
+      case 'good':
+        return { variant: 'default' as const, label: 'In Stock' };
+      default:
+        return { variant: 'outline' as const, label: 'Unknown' };
     }
   };
 
@@ -93,10 +93,8 @@ export default function Inventory() {
     return inventory.filter((item) => {
       // Search filter
       const term = searchTerm.trim().toLowerCase();
-      const matchesSearch = !term || (
-        item.name?.toLowerCase().includes(term) ||
-        item.sku?.toLowerCase().includes(term)
-      );
+      const matchesSearch =
+        !term || item.name?.toLowerCase().includes(term) || item.sku?.toLowerCase().includes(term);
 
       // Stock status filter
       const itemStockStatus = getStockStatus(item.currentStock, item.reorderPoint);
@@ -112,9 +110,7 @@ export default function Inventory() {
   // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (itemIds: string[]) => {
-      await Promise.all(
-        itemIds.map(id => apiRequest(`/api/inventory/${id}`, 'DELETE'))
-      );
+      await Promise.all(itemIds.map((id) => apiRequest(`/api/inventory/${id}`, 'DELETE')));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
@@ -136,7 +132,7 @@ export default function Inventory() {
   // Bulk export function
   const handleBulkExport = (format: 'csv' | 'json') => {
     const selectedItems = filteredInventory.filter((item) =>
-      bulkSelection.selectedIds.includes(item.id)
+      bulkSelection.selectedIds.includes(item.id),
     );
 
     const columns = [
@@ -188,10 +184,7 @@ export default function Inventory() {
 
   if (inventoryLoading) {
     return (
-      <MainLayout 
-        title="Inventory" 
-        description="Manage parts, supplies, and stock levels"
-      >
+      <MainLayout title="Inventory" description="Manage parts, supplies, and stock levels">
         <div className="grid gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -207,10 +200,7 @@ export default function Inventory() {
   }
 
   return (
-    <MainLayout
-      title="Inventory"
-      description="Manage parts, supplies, and stock levels"
-    >
+    <MainLayout title="Inventory" description="Manage parts, supplies, and stock levels">
       <div className="space-y-6">
         {/* Search and Filters */}
         <Card>
@@ -331,73 +321,75 @@ export default function Inventory() {
 
         {filteredInventory.length > 0 ? (
           viewMode === 'cards' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredInventory.map((item: InventoryItem) => {
-              const itemStockStatus = getStockStatus(item.currentStock, item.reorderPoint);
-              const stockBadge = getStockBadge(itemStockStatus);
-              const isSelected = bulkSelection.isSelected(item.id);
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredInventory.map((item: InventoryItem) => {
+                const itemStockStatus = getStockStatus(item.currentStock, item.reorderPoint);
+                const stockBadge = getStockBadge(itemStockStatus);
+                const isSelected = bulkSelection.isSelected(item.id);
 
-              return (
-                <Card
-                  key={item.id}
-                  className={`hover:shadow-md transition-shadow ${
-                    isSelected ? 'ring-2 ring-primary' : ''
-                  }`}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-start space-x-3 flex-1">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => bulkSelection.toggleSelection(item.id)}
-                          aria-label={`Select ${item.name}`}
-                        />
-                        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Package className="h-5 w-5 text-primary-600" />
+                return (
+                  <Card
+                    key={item.id}
+                    className={`hover:shadow-md transition-shadow ${
+                      isSelected ? 'ring-2 ring-primary' : ''
+                    }`}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => bulkSelection.toggleSelection(item.id)}
+                            aria-label={`Select ${item.name}`}
+                          />
+                          <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Package className="h-5 w-5 text-primary-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
+                            <p className="text-sm text-gray-600 mt-1">SKU: {item.sku}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                          <p className="text-sm text-gray-600 mt-1">SKU: {item.sku}</p>
-                        </div>
+                        <Badge variant={stockBadge.variant} className="ml-2 flex-shrink-0">
+                          {stockBadge.label}
+                        </Badge>
                       </div>
-                      <Badge variant={stockBadge.variant} className="ml-2 flex-shrink-0">
-                        {stockBadge.label}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Current Stock</p>
-                        <p className="text-lg font-semibold text-gray-900">{item.currentStock}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Cost</p>
-                        <p className="text-lg font-semibold text-gray-900">
-                          ${Number(item.unitCost || 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
 
-                    {itemStockStatus === 'low' && (
-                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500" />
-                        <span className="text-sm text-red-700">Reorder needed</span>
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">
+                            Current Stock
+                          </p>
+                          <p className="text-lg font-semibold text-gray-900">{item.currentStock}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Cost</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            ${Number(item.unitCost || 0).toFixed(2)}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    
-                    <div className="mt-4 flex gap-2">
-                      <Button variant="outline" size="sm">
-                        View Details
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Update Stock
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+
+                      {itemStockStatus === 'low' && (
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
+                          <AlertTriangle className="h-4 w-4 text-red-500" />
+                          <span className="text-sm text-red-700">Reorder needed</span>
+                        </div>
+                      )}
+
+                      <div className="mt-4 flex gap-2">
+                        <Button variant="outline" size="sm">
+                          View Details
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          Update Stock
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           ) : (
             /* Table View */
             <div className="bg-background rounded-md border">
@@ -476,7 +468,8 @@ export default function Inventory() {
                 type={searchTerm || stockStatus !== 'all' ? 'filter' : 'default'}
                 action={{
                   label: 'Add First Item',
-                  onClick: () => toast({ title: 'Add Item', description: 'Add item dialog would open here' }),
+                  onClick: () =>
+                    toast({ title: 'Add Item', description: 'Add item dialog would open here' }),
                   icon: Plus,
                 }}
                 secondaryAction={
@@ -508,10 +501,10 @@ export default function Inventory() {
           onOpenChange={setIsImportDialogOpen}
           defaultEntityType="inventory"
           onImportComplete={() => {
-            queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+            queryClient.invalidateQueries({ queryKey: ['/api/inventory'] });
             toast({
-              title: "Import Complete",
-              description: "Inventory items have been imported successfully.",
+              title: 'Import Complete',
+              description: 'Inventory items have been imported successfully.',
             });
           }}
         />

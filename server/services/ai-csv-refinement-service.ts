@@ -14,19 +14,19 @@ import {
   ENTITY_TEMPLATES,
   type ColumnMapping,
   type TemplateColumn,
-} from "@shared/csv-import-schema";
-import { db } from "../db";
-import { eq } from "drizzle-orm";
-import { csvImportJobs } from "@shared/csv-import-schema";
+} from '@shared/csv-import-schema';
+import { db } from '../db';
+import { eq } from 'drizzle-orm';
+import { csvImportJobs } from '@shared/csv-import-schema';
 
 interface ClaudeMessage {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }
 
 interface ClaudeResponse {
   content: Array<{
-    type: "text";
+    type: 'text';
     text: string;
   }>;
   usage: {
@@ -71,7 +71,7 @@ interface DataIssue {
   rowNumber: number;
   field: string;
   issue: string;
-  severity: "error" | "warning" | "info";
+  severity: 'error' | 'warning' | 'info';
   suggestion?: string;
 }
 
@@ -86,29 +86,32 @@ interface AIDuplicateMatch {
   matchConfidence: number;
   reasoning: string;
   matchedFields: string[];
-  suggestedAction: "merge" | "create_new" | "skip" | "review";
+  suggestedAction: 'merge' | 'create_new' | 'skip' | 'review';
 }
 
 class AICsvRefinementService {
   private apiKey: string;
-  private baseUrl: string = "https://api.anthropic.com/v1";
-  private model: string = "claude-3-5-sonnet-20241022";
+  private baseUrl: string = 'https://api.anthropic.com/v1';
+  private model: string = 'claude-3-5-sonnet-20241022';
 
   constructor() {
-    this.apiKey = process.env.CLAUDE_API_KEY || "";
+    this.apiKey = process.env.CLAUDE_API_KEY || '';
   }
 
-  private async makeRequest(messages: ClaudeMessage[], systemPrompt: string): Promise<ClaudeResponse> {
+  private async makeRequest(
+    messages: ClaudeMessage[],
+    systemPrompt: string,
+  ): Promise<ClaudeResponse> {
     if (!this.apiKey) {
-      throw new Error("Claude API key not configured. AI refinement requires CLAUDE_API_KEY.");
+      throw new Error('Claude API key not configured. AI refinement requires CLAUDE_API_KEY.');
     }
 
     const response = await fetch(`${this.baseUrl}/messages`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": this.apiKey,
-        "anthropic-version": "2023-06-01",
+        'Content-Type': 'application/json',
+        'X-API-Key': this.apiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
         model: this.model,
@@ -133,7 +136,7 @@ class AICsvRefinementService {
   async aiMapColumns(
     sourceHeaders: string[],
     sampleData: Record<string, any>[],
-    entityType: string
+    entityType: string,
   ): Promise<AIMappingResult> {
     const templateColumns = ENTITY_TEMPLATES[entityType] || [];
 
@@ -141,7 +144,7 @@ class AICsvRefinementService {
     const systemPrompt = `You are a data import specialist. Your job is to map CSV columns to database fields for a ${entityType} import.
 
 Available database fields and their descriptions:
-${templateColumns.map((col) => `- ${col.dbField} (${col.type}): ${col.description}. Example: "${col.example}"`).join("\n")}
+${templateColumns.map((col) => `- ${col.dbField} (${col.type}): ${col.description}. Example: "${col.example}"`).join('\n')}
 
 Rules:
 1. Match columns based on meaning, not just exact name matching
@@ -184,11 +187,11 @@ Respond with this exact JSON structure:
 
     try {
       const response = await this.makeRequest(
-        [{ role: "user", content: userMessage }],
-        systemPrompt
+        [{ role: 'user', content: userMessage }],
+        systemPrompt,
       );
 
-      const responseText = response.content[0]?.text || "{}";
+      const responseText = response.content[0]?.text || '{}';
       const parsed = JSON.parse(responseText);
 
       // Convert AI response to our ColumnMapping format
@@ -198,7 +201,7 @@ Respond with this exact JSON structure:
           sourceColumn: m.sourceColumn,
           targetField: m.targetField,
           confidence: m.confidence,
-          dataType: templateCol?.type || "string",
+          dataType: templateCol?.type || 'string',
           isRequired: templateCol?.required || false,
           aiSuggested: true,
           userConfirmed: m.confidence >= 90,
@@ -213,7 +216,7 @@ Respond with this exact JSON structure:
         tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
       };
     } catch (error: any) {
-      console.error("AI column mapping failed:", error);
+      console.error('AI column mapping failed:', error);
       throw new Error(`AI mapping failed: ${error.message}`);
     }
   }
@@ -224,12 +227,12 @@ Respond with this exact JSON structure:
   async aiCleanData(
     data: Record<string, any>[],
     mappings: ColumnMapping[],
-    entityType: string
+    entityType: string,
   ): Promise<AIDataCleaningResult> {
     const systemPrompt = `You are a data cleaning specialist. Your job is to clean and normalize CSV data for a ${entityType} import.
 
 Field types and expected formats:
-${mappings.map((m) => `- ${m.sourceColumn} -> ${m.targetField} (${m.dataType})`).join("\n")}
+${mappings.map((m) => `- ${m.sourceColumn} -> ${m.targetField} (${m.dataType})`).join('\n')}
 
 Data cleaning rules:
 1. Standardize phone numbers to format: (XXX) XXX-XXXX
@@ -285,11 +288,11 @@ Respond with this JSON structure:
 
       try {
         const response = await this.makeRequest(
-          [{ role: "user", content: userMessage }],
-          systemPrompt
+          [{ role: 'user', content: userMessage }],
+          systemPrompt,
         );
 
-        const responseText = response.content[0]?.text || "{}";
+        const responseText = response.content[0]?.text || '{}';
         const parsed = JSON.parse(responseText);
 
         // Add cleaned rows
@@ -334,7 +337,7 @@ Respond with this JSON structure:
     importRow: Record<string, any>,
     potentialMatches: Record<string, any>[],
     entityType: string,
-    rowNumber: number
+    rowNumber: number,
   ): Promise<AIDuplicateMatch[]> {
     if (potentialMatches.length === 0) {
       return [];
@@ -377,11 +380,11 @@ If none are true duplicates, return { "matches": [] }`;
 
     try {
       const response = await this.makeRequest(
-        [{ role: "user", content: userMessage }],
-        systemPrompt
+        [{ role: 'user', content: userMessage }],
+        systemPrompt,
       );
 
-      const responseText = response.content[0]?.text || "{}";
+      const responseText = response.content[0]?.text || '{}';
       const parsed = JSON.parse(responseText);
 
       return (parsed.matches || []).map((m: any) => ({
@@ -390,10 +393,10 @@ If none are true duplicates, return { "matches": [] }`;
         matchConfidence: m.matchConfidence,
         reasoning: m.reasoning,
         matchedFields: m.matchedFields || [],
-        suggestedAction: m.suggestedAction || "review",
+        suggestedAction: m.suggestedAction || 'review',
       }));
     } catch (error: any) {
-      console.error("AI duplicate analysis failed:", error);
+      console.error('AI duplicate analysis failed:', error);
       return [];
     }
   }
@@ -405,7 +408,7 @@ If none are true duplicates, return { "matches": [] }`;
     jobId: string,
     csvData: Record<string, any>[],
     headers: string[],
-    entityType: string
+    entityType: string,
   ): Promise<{
     mappings: ColumnMapping[];
     cleanedData: Record<string, any>[];
@@ -444,7 +447,7 @@ If none are true duplicates, return { "matches": [] }`;
       // Log transformations for audit
       if (cleaningResult.transformations.length > 0) {
         console.log(
-          `[AI Import] Applied ${cleaningResult.transformations.length} data transformations`
+          `[AI Import] Applied ${cleaningResult.transformations.length} data transformations`,
         );
       }
     }
@@ -472,38 +475,40 @@ If none are true duplicates, return { "matches": [] }`;
    */
   generateProcessingSummary(
     mappingResult: AIMappingResult,
-    cleaningResult?: AIDataCleaningResult
+    cleaningResult?: AIDataCleaningResult,
   ): string {
     const lines: string[] = [];
 
-    lines.push("## AI Import Processing Summary\n");
+    lines.push('## AI Import Processing Summary\n');
 
     // Mapping summary
-    lines.push("### Column Mapping");
+    lines.push('### Column Mapping');
     lines.push(`- Overall Confidence: ${mappingResult.confidence}%`);
     lines.push(`- Mapped Columns: ${mappingResult.mappings.length}`);
     lines.push(`- Unmapped Columns: ${mappingResult.unmappedColumns.length}`);
 
     if (mappingResult.unmappedColumns.length > 0) {
-      lines.push(`- Unmapped: ${mappingResult.unmappedColumns.join(", ")}`);
+      lines.push(`- Unmapped: ${mappingResult.unmappedColumns.join(', ')}`);
     }
 
     if (mappingResult.suggestions.length > 0) {
-      lines.push("\n**Suggestions for Review:**");
+      lines.push('\n**Suggestions for Review:**');
       for (const s of mappingResult.suggestions) {
-        lines.push(`- ${s.sourceColumn}: Consider mapping to "${s.suggestedField}" (${s.confidence}% confidence)`);
+        lines.push(
+          `- ${s.sourceColumn}: Consider mapping to "${s.suggestedField}" (${s.confidence}% confidence)`,
+        );
         lines.push(`  Reason: ${s.reasoning}`);
       }
     }
 
     // Cleaning summary
     if (cleaningResult) {
-      lines.push("\n### Data Cleaning");
+      lines.push('\n### Data Cleaning');
       lines.push(`- Transformations Applied: ${cleaningResult.transformations.length}`);
       lines.push(`- Issues Found: ${cleaningResult.issues.length}`);
 
-      const errors = cleaningResult.issues.filter((i) => i.severity === "error");
-      const warnings = cleaningResult.issues.filter((i) => i.severity === "warning");
+      const errors = cleaningResult.issues.filter((i) => i.severity === 'error');
+      const warnings = cleaningResult.issues.filter((i) => i.severity === 'warning');
 
       if (errors.length > 0) {
         lines.push(`- Errors: ${errors.length}`);
@@ -519,7 +524,7 @@ If none are true duplicates, return { "matches": [] }`;
     lines.push(`- Tokens Used: ${totalTokens.toLocaleString()}`);
     lines.push(`- Estimated Cost: $${(totalTokens * 0.000003).toFixed(4)}`); // Rough estimate
 
-    return lines.join("\n");
+    return lines.join('\n');
   }
 
   /**

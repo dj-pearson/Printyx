@@ -2,21 +2,27 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
-import { 
-  Filter, 
-  X, 
-  Calendar as CalendarIcon, 
-  Search, 
+import {
+  Filter,
+  X,
+  Calendar as CalendarIcon,
+  Search,
   RefreshCw,
   Save,
-  Download
+  Download,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -58,35 +64,35 @@ export default function AdvancedFilter({
   onSave,
   onExport,
   savedFilters = [],
-  className = ''
+  className = '',
 }: AdvancedFilterProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [saveFilterName, setSaveFilterName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   const updateFilter = (id: string, value: any) => {
-    const filter = filters.find(f => f.id === id);
+    const filter = filters.find((f) => f.id === id);
     if (!filter) return;
 
-    const newValues = values.filter(v => v.id !== id);
+    const newValues = values.filter((v) => v.id !== id);
     newValues.push({
       id,
       label: filter.label,
       value,
-      type: filter.type
+      type: filter.type,
     });
     onFiltersChange(newValues);
   };
 
   const removeFilter = (id: string) => {
-    onFiltersChange(values.filter(v => v.id !== id));
+    onFiltersChange(values.filter((v) => v.id !== id));
   };
 
   const getFilterValue = (id: string) => {
-    return values.find(v => v.id === id)?.value;
+    return values.find((v) => v.id === id)?.value;
   };
 
-  const activeFiltersCount = values.filter(v => {
+  const activeFiltersCount = values.filter((v) => {
     if (v.type === 'text') return v.value && v.value.trim() !== '';
     if (v.type === 'multiselect') return v.value && v.value.length > 0;
     if (v.type === 'dateRange') return v.value && (v.value.from || v.value.to);
@@ -99,12 +105,15 @@ export default function AdvancedFilter({
     switch (filter.type) {
       case 'select':
         return (
-          <Select value={currentValue || ''} onValueChange={(value) => updateFilter(filter.id, value)}>
+          <Select
+            value={currentValue || ''}
+            onValueChange={(value) => updateFilter(filter.id, value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder={filter.placeholder || `Select ${filter.label}`} />
             </SelectTrigger>
             <SelectContent>
-              {filter.options?.map(option => (
+              {filter.options?.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -116,7 +125,7 @@ export default function AdvancedFilter({
       case 'multiselect':
         return (
           <div className="space-y-2">
-            {filter.options?.map(option => (
+            {filter.options?.map((option) => (
               <div key={option.value} className="flex items-center space-x-2">
                 <Checkbox
                   id={`${filter.id}-${option.value}`}
@@ -126,7 +135,10 @@ export default function AdvancedFilter({
                     if (checked) {
                       updateFilter(filter.id, [...current, option.value]);
                     } else {
-                      updateFilter(filter.id, current.filter((v: string) => v !== option.value));
+                      updateFilter(
+                        filter.id,
+                        current.filter((v: string) => v !== option.value),
+                      );
                     }
                   }}
                 />
@@ -194,11 +206,11 @@ export default function AdvancedFilter({
                   {currentValue?.from ? (
                     currentValue.to ? (
                       <>
-                        {format(currentValue.from, "LLL dd, y")} -{" "}
-                        {format(currentValue.to, "LLL dd, y")}
+                        {format(currentValue.from, 'LLL dd, y')} -{' '}
+                        {format(currentValue.to, 'LLL dd, y')}
                       </>
                     ) : (
-                      format(currentValue.from, "LLL dd, y")
+                      format(currentValue.from, 'LLL dd, y')
                     )
                   ) : (
                     <span>Pick a date range</span>
@@ -251,7 +263,7 @@ export default function AdvancedFilter({
                 </div>
 
                 <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {filters.map(filter => (
+                  {filters.map((filter) => (
                     <div key={filter.id} className="space-y-2">
                       <Label htmlFor={filter.id}>{filter.label}</Label>
                       {renderFilterInput(filter)}
@@ -260,12 +272,7 @@ export default function AdvancedFilter({
                 </div>
 
                 <div className="flex items-center gap-2 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onReset}
-                    className="flex-1"
-                  >
+                  <Button variant="outline" size="sm" onClick={onReset} className="flex-1">
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Reset
                   </Button>
@@ -326,26 +333,25 @@ export default function AdvancedFilter({
       {activeFiltersCount > 0 && (
         <div className="flex flex-wrap gap-2">
           {values
-            .filter(v => {
+            .filter((v) => {
               if (v.type === 'text') return v.value && v.value.trim() !== '';
               if (v.type === 'multiselect') return v.value && v.value.length > 0;
               if (v.type === 'dateRange') return v.value && (v.value.from || v.value.to);
               return v.value !== undefined && v.value !== null && v.value !== '';
             })
-            .map(filter => (
+            .map((filter) => (
               <Badge key={filter.id} variant="secondary" className="gap-1">
                 <span className="font-medium">{filter.label}:</span>
                 <span>
-                  {filter.type === 'multiselect' 
+                  {filter.type === 'multiselect'
                     ? `${filter.value.length} selected`
                     : filter.type === 'dateRange' && filter.value
                       ? filter.value.from && filter.value.to
-                        ? `${format(filter.value.from, "MMM dd")} - ${format(filter.value.to, "MMM dd")}`
+                        ? `${format(filter.value.from, 'MMM dd')} - ${format(filter.value.to, 'MMM dd')}`
                         : filter.value.from
-                          ? format(filter.value.from, "MMM dd, yyyy")
+                          ? format(filter.value.from, 'MMM dd, yyyy')
                           : 'Date selected'
-                      : String(filter.value)
-                  }
+                      : String(filter.value)}
                 </span>
                 <Button
                   variant="ghost"

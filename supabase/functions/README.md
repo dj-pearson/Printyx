@@ -27,45 +27,39 @@ touch supabase/functions/my-function/index.ts
 ### 2. Function Template
 
 ```typescript
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createSupabaseClient } from '../_shared/supabase.ts'
-import { corsHeaders, handleCors } from '../_shared/cors.ts'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createSupabaseClient } from '../_shared/supabase.ts';
+import { corsHeaders, handleCors } from '../_shared/cors.ts';
 
 serve(async (req) => {
   // Handle CORS preflight
-  const corsResponse = handleCors(req)
-  if (corsResponse) return corsResponse
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   try {
     // Parse request body
-    const body = await req.json()
-    
+    const body = await req.json();
+
     // Get authenticated Supabase client
-    const supabase = createSupabaseClient(req)
-    
+    const supabase = createSupabaseClient(req);
+
     // Your logic here
     const result = {
       success: true,
-      data: body
-    }
+      data: body,
+    };
 
-    return new Response(
-      JSON.stringify(result),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      },
-    )
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
-      },
-    )
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    });
   }
-})
+});
 ```
 
 ### 3. Test Locally
@@ -90,45 +84,40 @@ git push
 
 ```typescript
 // Select data
-const { data, error } = await supabase
-  .from('your_table')
-  .select('*')
-  .eq('tenant_id', tenantId)
+const { data, error } = await supabase.from('your_table').select('*').eq('tenant_id', tenantId);
 
 // Insert data
-const { data, error } = await supabase
-  .from('your_table')
-  .insert({ column: 'value' })
+const { data, error } = await supabase.from('your_table').insert({ column: 'value' });
 
 // Update data
 const { data, error } = await supabase
   .from('your_table')
   .update({ column: 'new_value' })
-  .eq('id', id)
+  .eq('id', id);
 
 // Delete data
-const { data, error } = await supabase
-  .from('your_table')
-  .delete()
-  .eq('id', id)
+const { data, error } = await supabase.from('your_table').delete().eq('id', id);
 ```
 
 ### Authentication
 
 ```typescript
 // Get user from JWT token
-const supabase = createSupabaseClient(req)
-const { data: { user }, error } = await supabase.auth.getUser()
+const supabase = createSupabaseClient(req);
+const {
+  data: { user },
+  error,
+} = await supabase.auth.getUser();
 
 if (error || !user) {
-  return new Response(
-    JSON.stringify({ error: 'Unauthorized' }),
-    { status: 401, headers: corsHeaders }
-  )
+  return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    status: 401,
+    headers: corsHeaders,
+  });
 }
 
 // Use service role for admin operations
-const adminClient = createSupabaseServiceClient()
+const adminClient = createSupabaseServiceClient();
 ```
 
 ### File Storage
@@ -137,12 +126,10 @@ const adminClient = createSupabaseServiceClient()
 // Upload file
 const { data, error } = await supabase.storage
   .from('bucket-name')
-  .upload('path/to/file.pdf', fileBuffer)
+  .upload('path/to/file.pdf', fileBuffer);
 
 // Get public URL
-const { data } = supabase.storage
-  .from('bucket-name')
-  .getPublicUrl('path/to/file.pdf')
+const { data } = supabase.storage.from('bucket-name').getPublicUrl('path/to/file.pdf');
 ```
 
 ### External API Calls
@@ -152,12 +139,12 @@ const response = await fetch('https://api.external.com/data', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${Deno.env.get('EXTERNAL_API_KEY')}`
+    Authorization: `Bearer ${Deno.env.get('EXTERNAL_API_KEY')}`,
   },
-  body: JSON.stringify({ data: 'value' })
-})
+  body: JSON.stringify({ data: 'value' }),
+});
 
-const result = await response.json()
+const result = await response.json();
 ```
 
 ## Environment Variables
@@ -165,8 +152,8 @@ const result = await response.json()
 Access environment variables in functions:
 
 ```typescript
-const apiKey = Deno.env.get('MY_API_KEY')
-const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const apiKey = Deno.env.get('MY_API_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
 ```
 
 Set them in Coolify under your Edge Functions service.
@@ -179,17 +166,17 @@ Always wrap your code in try-catch:
 try {
   // Your code
 } catch (error) {
-  console.error('Function error:', error)
+  console.error('Function error:', error);
   return new Response(
-    JSON.stringify({ 
+    JSON.stringify({
       error: error.message,
-      details: error.stack 
+      details: error.stack,
     }),
-    { 
+    {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    }
-  )
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    },
+  );
 }
 ```
 
@@ -204,6 +191,7 @@ Functions are automatically deployed when you push to GitHub (if auto-deploy is 
 ### Manual Deploy
 
 Trigger a manual deploy in Coolify:
+
 1. Go to your Edge Functions service
 2. Click "Deploy"
 3. Wait for build to complete
@@ -247,4 +235,3 @@ curl -X POST https://your-domain.com/my-function \
 - [Supabase Edge Functions Documentation](https://supabase.com/docs/guides/functions)
 - [Deno Standard Library](https://deno.land/std)
 - [Deno Third Party Modules](https://deno.land/x)
-

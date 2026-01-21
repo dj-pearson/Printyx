@@ -1,27 +1,48 @@
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { 
-  Target, 
-  Users, 
-  TrendingUp, 
-  Phone, 
-  Mail, 
-  Calendar, 
-  UserPlus, 
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  Target,
+  Users,
+  TrendingUp,
+  Phone,
+  Mail,
+  Calendar,
+  UserPlus,
   FileText,
   Activity,
   BarChart3,
@@ -31,19 +52,28 @@ import {
   Eye,
   AlertTriangle,
   CheckCircle,
-  Calculator
-} from "lucide-react";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
-import MainLayout from "@/components/layout/main-layout";
-import TeamStatsWidget from "@/components/stats/TeamStatsWidget";
-import { ScrollArea } from "@/components/ui/scroll-area";
+  Calculator,
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import MainLayout from '@/components/layout/main-layout';
+import TeamStatsWidget from '@/components/stats/TeamStatsWidget';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Form schemas
 const createGoalSchema = z.object({
-  goalType: z.enum(["calls", "emails", "meetings", "reachouts", "proposals", "new_opportunities", "demos", "follow_ups"]),
+  goalType: z.enum([
+    'calls',
+    'emails',
+    'meetings',
+    'reachouts',
+    'proposals',
+    'new_opportunities',
+    'demos',
+    'follow_ups',
+  ]),
   targetCount: z.number().min(1),
-  period: z.enum(["daily", "weekly", "monthly", "quarterly", "yearly"]),
+  period: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly']),
   startDate: z.string(),
   endDate: z.string(),
   assignedToUserId: z.string().optional(),
@@ -61,75 +91,90 @@ type CreateTeamInput = z.infer<typeof createTeamSchema>;
 
 // Simple goal templates
 const GOAL_TEMPLATES = [
-  { id: "new-rep-ramp", name: "New Rep Ramp (Weekly)", period: "weekly", targets: { calls: 150, emails: 100, meetings: 5, proposals: 2 } },
-  { id: "standard-month", name: "Standard Month", period: "monthly", targets: { calls: 500, emails: 350, meetings: 15, proposals: 6 } },
-  { id: "enterprise-quarter", name: "Enterprise Quarter", period: "quarterly", targets: { calls: 1200, emails: 900, meetings: 40, proposals: 15 } },
+  {
+    id: 'new-rep-ramp',
+    name: 'New Rep Ramp (Weekly)',
+    period: 'weekly',
+    targets: { calls: 150, emails: 100, meetings: 5, proposals: 2 },
+  },
+  {
+    id: 'standard-month',
+    name: 'Standard Month',
+    period: 'monthly',
+    targets: { calls: 500, emails: 350, meetings: 15, proposals: 6 },
+  },
+  {
+    id: 'enterprise-quarter',
+    name: 'Enterprise Quarter',
+    period: 'quarterly',
+    targets: { calls: 1200, emails: 900, meetings: 40, proposals: 15 },
+  },
 ];
 
 export default function CrmGoalsDashboard() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [selectedPeriod, setSelectedPeriod] = useState("weekly");
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedPeriod, setSelectedPeriod] = useState('weekly');
   const [showCreateGoalDialog, setShowCreateGoalDialog] = useState(false);
   const [showCreateTeamDialog, setShowCreateTeamDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-  const [ownerFilter, setOwnerFilter] = useState<string>("all");
-  const [goalTypeFilter, setGoalTypeFilter] = useState<string>("all");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [goalTypeFilter, setGoalTypeFilter] = useState<string>('all');
   const queryClient = useQueryClient();
 
   // Dashboard stats query
   const { data: dashboardStats } = useQuery({
-    queryKey: ["/api/crm/dashboard-stats"],
+    queryKey: ['/api/crm/dashboard-stats'],
   });
 
   // Goals query
   const { data: goals = [] } = useQuery({
-    queryKey: ["/api/crm/goals"],
+    queryKey: ['/api/crm/goals'],
   });
 
   // Teams query
   const { data: teams = [] } = useQuery({
-    queryKey: ["/api/crm/teams"],
+    queryKey: ['/api/crm/teams'],
   });
 
   // Users query for dropdowns
   const { data: users = [] } = useQuery({
-    queryKey: ["/api/users"],
+    queryKey: ['/api/users'],
   });
 
   // Goal progress query
   const { data: goalProgress = [] } = useQuery({
-    queryKey: ["/api/crm/goal-progress"],
+    queryKey: ['/api/crm/goal-progress'],
   });
 
   // Create goal mutation
   const createGoalMutation = useMutation({
-    mutationFn: (data: CreateGoalInput) => apiRequest("/api/crm/goals", "POST", data),
+    mutationFn: (data: CreateGoalInput) => apiRequest('/api/crm/goals', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/goals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/goals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/dashboard-stats'] });
       setShowCreateGoalDialog(false);
     },
   });
 
   // Create team mutation
   const createTeamMutation = useMutation({
-    mutationFn: (data: CreateTeamInput) => apiRequest("/api/crm/teams", "POST", data),
+    mutationFn: (data: CreateTeamInput) => apiRequest('/api/crm/teams', 'POST', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/teams"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/teams'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/dashboard-stats'] });
       setShowCreateTeamDialog(false);
     },
   });
 
   // Bulk assign goals from template
   const bulkAssignMutation = useMutation({
-    mutationFn: async (payload: any) => apiRequest("/api/crm/goals/bulk-assign", "POST", payload),
+    mutationFn: async (payload: any) => apiRequest('/api/crm/goals/bulk-assign', 'POST', payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/goals"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/crm/goal-progress"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/goals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/goal-progress'] });
       setShowAssignDialog(false);
-      setSelectedTemplateId("");
+      setSelectedTemplateId('');
     },
   });
 
@@ -137,21 +182,20 @@ export default function CrmGoalsDashboard() {
   const createGoalForm = useForm<CreateGoalInput>({
     resolver: zodResolver(createGoalSchema),
     defaultValues: {
-      goalType: "calls",
+      goalType: 'calls',
       targetCount: 50,
-      period: "weekly",
+      period: 'weekly',
       startDate: new Date().toISOString().slice(0, 10),
-      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
-        .toISOString()
-        .slice(0, 10),
-      notes: "",
+      endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
+      notes: '',
     },
   });
 
   const filteredProgress = useMemo(() => {
     let rows = goalProgress as any[];
-    if (ownerFilter !== "all") rows = rows.filter((r) => r.ownerId === ownerFilter || r.teamId === ownerFilter);
-    if (goalTypeFilter !== "all") rows = rows.filter((r) => r.goalType === goalTypeFilter);
+    if (ownerFilter !== 'all')
+      rows = rows.filter((r) => r.ownerId === ownerFilter || r.teamId === ownerFilter);
+    if (goalTypeFilter !== 'all') rows = rows.filter((r) => r.goalType === goalTypeFilter);
     return rows;
   }, [goalProgress, ownerFilter, goalTypeFilter]);
 
@@ -171,7 +215,10 @@ export default function CrmGoalsDashboard() {
   };
 
   return (
-    <MainLayout title="CRM Goals Dashboard" description="Set sales goals, monitor activity, and track progress">
+    <MainLayout
+      title="CRM Goals Dashboard"
+      description="Set sales goals, monitor activity, and track progress"
+    >
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-3">
           <div>
@@ -179,7 +226,9 @@ export default function CrmGoalsDashboard() {
             <p className="text-gray-600">Manager and rep goals with progress tracking</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowAssignDialog(true)}>Assign Goals</Button>
+            <Button variant="outline" onClick={() => setShowAssignDialog(true)}>
+              Assign Goals
+            </Button>
             <Button onClick={() => setShowCreateGoalDialog(true)}>
               <Plus className="h-4 w-4 mr-2" /> New Goal
             </Button>
@@ -201,11 +250,15 @@ export default function CrmGoalsDashboard() {
                 <SelectItem value="all">All owners</SelectItem>
                 <SelectItem value="teams">— Teams —</SelectItem>
                 {teams?.map((t: any) => (
-                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
                 ))}
                 <SelectItem value="users">— Users —</SelectItem>
                 {users?.map((u: any) => (
-                  <SelectItem key={u.id} value={u.id}>{u.name || `${u.firstName || ""} ${u.lastName || ""}`}</SelectItem>
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name || `${u.firstName || ''} ${u.lastName || ''}`}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -216,8 +269,19 @@ export default function CrmGoalsDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All goal types</SelectItem>
-                {(["calls", "emails", "meetings", "reachouts", "proposals", "new_opportunities", "demos", "follow_ups"])?.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                {[
+                  'calls',
+                  'emails',
+                  'meetings',
+                  'reachouts',
+                  'proposals',
+                  'new_opportunities',
+                  'demos',
+                  'follow_ups',
+                ]?.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -235,11 +299,22 @@ export default function CrmGoalsDashboard() {
               {filteredProgress?.map((row: any) => (
                 <div key={row.id} className="p-3 border rounded-lg">
                   <div className="flex items-center justify-between mb-1">
-                    <div className="font-medium truncate">{row.ownerName || row.teamName || "Goal"}</div>
+                    <div className="font-medium truncate">
+                      {row.ownerName || row.teamName || 'Goal'}
+                    </div>
                     <Badge variant="secondary">{row.goalType}</Badge>
                   </div>
-                  <div className="text-xs text-gray-500 mb-2">{row.period || ""}</div>
-                  <Progress value={Math.min(100, Math.round(((row.currentCount ?? row.currentValue) / ((row.targetCount ?? row.targetValue) || 1)) * 100))} />
+                  <div className="text-xs text-gray-500 mb-2">{row.period || ''}</div>
+                  <Progress
+                    value={Math.min(
+                      100,
+                      Math.round(
+                        ((row.currentCount ?? row.currentValue) /
+                          ((row.targetCount ?? row.targetValue) || 1)) *
+                          100,
+                      ),
+                    )}
+                  />
                   <div className="text-xs text-gray-600 mt-1">
                     {row.currentCount ?? row.currentValue} / {row.targetCount ?? row.targetValue}
                   </div>
@@ -257,16 +332,22 @@ export default function CrmGoalsDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Assign Goals</DialogTitle>
-            <DialogDescription>Choose a template and select users/teams to assign targets quickly.</DialogDescription>
+            <DialogDescription>
+              Choose a template and select users/teams to assign targets quickly.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Template</Label>
               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Select a template" /></SelectTrigger>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a template" />
+                </SelectTrigger>
                 <SelectContent>
-                  {GOAL_TEMPLATES.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  {GOAL_TEMPLATES.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -277,7 +358,14 @@ export default function CrmGoalsDashboard() {
                 <ScrollArea className="h-32 border rounded-md p-2">
                   <div className="grid grid-cols-2 gap-2">
                     {teams?.map((t: any) => (
-                      <Button key={t.id} variant="outline" size="sm" onClick={() => handleApplyTemplate({ userIds: [], teamIds: [t.id] })}>{t.name}</Button>
+                      <Button
+                        key={t.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleApplyTemplate({ userIds: [], teamIds: [t.id] })}
+                      >
+                        {t.name}
+                      </Button>
                     ))}
                   </div>
                 </ScrollArea>
@@ -287,8 +375,13 @@ export default function CrmGoalsDashboard() {
                 <ScrollArea className="h-32 border rounded-md p-2">
                   <div className="grid grid-cols-2 gap-2">
                     {users?.map((u: any) => (
-                      <Button key={u.id} variant="outline" size="sm" onClick={() => handleApplyTemplate({ userIds: [u.id], teamIds: [] })}>
-                        {u.name || `${u.firstName || ""} ${u.lastName || ""}`}
+                      <Button
+                        key={u.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleApplyTemplate({ userIds: [u.id], teamIds: [] })}
+                      >
+                        {u.name || `${u.firstName || ''} ${u.lastName || ''}`}
                       </Button>
                     ))}
                   </div>
@@ -297,7 +390,9 @@ export default function CrmGoalsDashboard() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowAssignDialog(false)}>Close</Button>
+            <Button variant="ghost" onClick={() => setShowAssignDialog(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -310,11 +405,11 @@ export default function CrmGoalsDashboard() {
 // Manager Insights Component
 function ConversionInsights() {
   const { data: insights } = useQuery({
-    queryKey: ["/api/crm/manager-insights"],
+    queryKey: ['/api/crm/manager-insights'],
   });
 
   const { data: conversionAnalysis } = useQuery({
-    queryKey: ["/api/crm/analytics/conversion-analysis"],
+    queryKey: ['/api/crm/analytics/conversion-analysis'],
   });
 
   if (!conversionAnalysis || conversionAnalysis.length === 0) {
@@ -322,7 +417,9 @@ function ConversionInsights() {
       <div className="text-center py-8">
         <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
         <p className="text-muted-foreground">No conversion data available yet</p>
-        <p className="text-sm text-muted-foreground mt-2">Data will appear once sales activities are tracked</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Data will appear once sales activities are tracked
+        </p>
       </div>
     );
   }
@@ -337,80 +434,75 @@ function ConversionInsights() {
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Call Answer Rate</span>
             <span className="text-sm text-muted-foreground">
-              {benchmarks.callAnswerRate?.current || 0}% / {benchmarks.callAnswerRate?.target || 30}%
+              {benchmarks.callAnswerRate?.current || 0}% / {benchmarks.callAnswerRate?.target || 30}
+              %
             </span>
           </div>
-          <Progress 
-            value={Math.min(100, benchmarks.callAnswerRate?.current || 0)} 
+          <Progress
+            value={Math.min(100, benchmarks.callAnswerRate?.current || 0)}
             className="h-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Industry benchmark: 25-35%
-          </p>
+          <p className="text-xs text-muted-foreground">Industry benchmark: 25-35%</p>
         </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Email Response Rate</span>
             <span className="text-sm text-muted-foreground">
-              {benchmarks.emailResponseRate?.current || 0}% / {benchmarks.emailResponseRate?.target || 20}%
+              {benchmarks.emailResponseRate?.current || 0}% /{' '}
+              {benchmarks.emailResponseRate?.target || 20}%
             </span>
           </div>
-          <Progress 
-            value={Math.min(100, benchmarks.emailResponseRate?.current || 0)} 
+          <Progress
+            value={Math.min(100, benchmarks.emailResponseRate?.current || 0)}
             className="h-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Industry benchmark: 15-25%
-          </p>
+          <p className="text-xs text-muted-foreground">Industry benchmark: 15-25%</p>
         </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Activity → Meeting %</span>
             <span className="text-sm text-muted-foreground">
-              {benchmarks.activityToMeetingRate?.current || 0}% / {benchmarks.activityToMeetingRate?.target || 12}%
+              {benchmarks.activityToMeetingRate?.current || 0}% /{' '}
+              {benchmarks.activityToMeetingRate?.target || 12}%
             </span>
           </div>
-          <Progress 
-            value={Math.min(100, benchmarks.activityToMeetingRate?.current || 0)} 
+          <Progress
+            value={Math.min(100, benchmarks.activityToMeetingRate?.current || 0)}
             className="h-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Industry benchmark: 8-15%
-          </p>
+          <p className="text-xs text-muted-foreground">Industry benchmark: 8-15%</p>
         </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Meeting → Proposal %</span>
             <span className="text-sm text-muted-foreground">
-              {benchmarks.meetingToProposalRate?.current || 0}% / {benchmarks.meetingToProposalRate?.target || 40}%
+              {benchmarks.meetingToProposalRate?.current || 0}% /{' '}
+              {benchmarks.meetingToProposalRate?.target || 40}%
             </span>
           </div>
-          <Progress 
-            value={Math.min(100, benchmarks.meetingToProposalRate?.current || 0)} 
+          <Progress
+            value={Math.min(100, benchmarks.meetingToProposalRate?.current || 0)}
             className="h-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Industry benchmark: 30-50%
-          </p>
+          <p className="text-xs text-muted-foreground">Industry benchmark: 30-50%</p>
         </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium">Proposal Closing %</span>
             <span className="text-sm text-muted-foreground">
-              {benchmarks.proposalClosingRate?.current || 0}% / {benchmarks.proposalClosingRate?.target || 25}%
+              {benchmarks.proposalClosingRate?.current || 0}% /{' '}
+              {benchmarks.proposalClosingRate?.target || 25}%
             </span>
           </div>
-          <Progress 
-            value={Math.min(100, benchmarks.proposalClosingRate?.current || 0)} 
+          <Progress
+            value={Math.min(100, benchmarks.proposalClosingRate?.current || 0)}
             className="h-2"
           />
-          <p className="text-xs text-muted-foreground">
-            Industry benchmark: 20-30%
-          </p>
+          <p className="text-xs text-muted-foreground">Industry benchmark: 20-30%</p>
         </div>
       </div>
 
@@ -457,13 +549,13 @@ function ActivityCalculator() {
 
   const calculateActivities = async () => {
     try {
-      const result = await apiRequest("/api/crm/analytics/calculate-activities", {
-        method: "POST",
+      const result = await apiRequest('/api/crm/analytics/calculate-activities', {
+        method: 'POST',
         body: formData,
       });
       setCalculation(result);
     } catch (error) {
-      console.error("Error calculating activities:", error);
+      console.error('Error calculating activities:', error);
     }
   };
 
@@ -475,7 +567,7 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.revenueGoal}
-            onChange={(e) => setFormData({...formData, revenueGoal: Number(e.target.value)})}
+            onChange={(e) => setFormData({ ...formData, revenueGoal: Number(e.target.value) })}
             className="h-8 text-sm"
           />
         </div>
@@ -484,7 +576,7 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.averageDealSize}
-            onChange={(e) => setFormData({...formData, averageDealSize: Number(e.target.value)})}
+            onChange={(e) => setFormData({ ...formData, averageDealSize: Number(e.target.value) })}
             className="h-8 text-sm"
           />
         </div>
@@ -496,7 +588,7 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.callAnswerRate}
-            onChange={(e) => setFormData({...formData, callAnswerRate: Number(e.target.value)})}
+            onChange={(e) => setFormData({ ...formData, callAnswerRate: Number(e.target.value) })}
             className="h-8 text-sm"
           />
         </div>
@@ -505,7 +597,9 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.emailResponseRate}
-            onChange={(e) => setFormData({...formData, emailResponseRate: Number(e.target.value)})}
+            onChange={(e) =>
+              setFormData({ ...formData, emailResponseRate: Number(e.target.value) })
+            }
             className="h-8 text-sm"
           />
         </div>
@@ -517,7 +611,9 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.activityToMeetingRate}
-            onChange={(e) => setFormData({...formData, activityToMeetingRate: Number(e.target.value)})}
+            onChange={(e) =>
+              setFormData({ ...formData, activityToMeetingRate: Number(e.target.value) })
+            }
             className="h-8 text-sm"
           />
         </div>
@@ -526,7 +622,9 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.meetingToProposalRate}
-            onChange={(e) => setFormData({...formData, meetingToProposalRate: Number(e.target.value)})}
+            onChange={(e) =>
+              setFormData({ ...formData, meetingToProposalRate: Number(e.target.value) })
+            }
             className="h-8 text-sm"
           />
         </div>
@@ -538,7 +636,9 @@ function ActivityCalculator() {
           <Input
             type="number"
             value={formData.proposalClosingRate}
-            onChange={(e) => setFormData({...formData, proposalClosingRate: Number(e.target.value)})}
+            onChange={(e) =>
+              setFormData({ ...formData, proposalClosingRate: Number(e.target.value) })
+            }
             className="h-8 text-sm"
           />
         </div>
@@ -582,11 +682,12 @@ function ActivityCalculator() {
               <span>{calculation.dailyBreakdown.totalDaily}</span>
             </div>
           </div>
-          
+
           <div className="mt-3 p-3 bg-green-50 rounded border border-green-200">
             <p className="text-sm font-medium text-green-800">Daily Breakdown:</p>
             <p className="text-xs text-green-700">
-              {calculation.dailyBreakdown.callsDaily} calls + {calculation.dailyBreakdown.emailsDaily} emails per day
+              {calculation.dailyBreakdown.callsDaily} calls +{' '}
+              {calculation.dailyBreakdown.emailsDaily} emails per day
             </p>
           </div>
         </div>

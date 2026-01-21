@@ -52,7 +52,7 @@ Specifically designed for Papercut and similar systems:
 
 ```typescript
 interface PrintManagementConfig {
-  system: "papercut" | "equitrac" | "ysoft" | "other" | "none";
+  system: 'papercut' | 'equitrac' | 'ysoft' | 'other' | 'none';
   queueName: string; // Print queue identifier
   costCenter: string; // Billing/cost center
   userGroups: string[]; // Authorized user groups
@@ -132,7 +132,7 @@ GET /api/companies/{businessRecordId}/contacts
 ```typescript
 // Real-time search with debouncing
 const { data: businessRecords } = useQuery({
-  queryKey: ["/api/business-records", businessRecordSearch],
+  queryKey: ['/api/business-records', businessRecordSearch],
   queryFn: () => apiRequest(`/api/business-records?search=${query}`),
   enabled: businessRecordSearch.length > 2,
 });
@@ -140,8 +140,8 @@ const { data: businessRecords } = useQuery({
 // Auto-populate form when customer selected
 useEffect(() => {
   if (selectedBusinessRecord) {
-    form.setValue("customerData.companyName", record.company_name);
-    form.setValue("customerData.phone", record.phone);
+    form.setValue('customerData.companyName', record.company_name);
+    form.setValue('customerData.phone', record.phone);
     // ... additional field mappings
   }
 }, [selectedBusinessRecord]);
@@ -154,13 +154,11 @@ useEffect(() => {
 const importEquipmentFromQuote = () => {
   const equipmentFromQuote = quoteLineItems
     .filter((item) =>
-      ["printer", "copier", "scanner", "fax", "mfp"].includes(
-        item.product_category?.toLowerCase()
-      )
+      ['printer', 'copier', 'scanner', 'fax', 'mfp'].includes(item.product_category?.toLowerCase()),
     )
     .map((item) => ({
       equipmentType: item.product_category?.toLowerCase(),
-      manufacturer: item.product_name?.split(" ")[0],
+      manufacturer: item.product_name?.split(' ')[0],
       model: item.product_name,
       // ... additional mappings
     }));
@@ -289,7 +287,7 @@ const enhancedOnboardingSchema = z.object({
           // ... network fields
         })
         .optional(),
-    })
+    }),
   ),
   // ... additional form sections
 });
@@ -300,13 +298,13 @@ const enhancedOnboardingSchema = z.object({
 ```typescript
 // Efficient data fetching with React Query
 const { data: businessRecords } = useQuery({
-  queryKey: ["/api/business-records", businessRecordSearch],
+  queryKey: ['/api/business-records', businessRecordSearch],
   queryFn: () => apiRequest(`/api/business-records?search=${query}`),
   enabled: businessRecordSearch.length > 2,
 });
 
 const { data: quoteLineItems } = useQuery({
-  queryKey: ["/api/quote-line-items", selectedQuote?.id],
+  queryKey: ['/api/quote-line-items', selectedQuote?.id],
   queryFn: () => apiRequest(`/api/quotes/${selectedQuote.id}/line-items`),
   enabled: !!selectedQuote?.id,
 });

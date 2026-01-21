@@ -1,4 +1,5 @@
 # Printyx CRM Comprehensive Review & Recommendations
+
 ## Expert Analysis: Lead Generation to Customer Retention
 
 **Analysis Date:** 2025-11-06
@@ -12,6 +13,7 @@
 After conducting a comprehensive review of the Printyx CRM system, I can confidently state that **you have built an enterprise-grade CRM platform that already matches or exceeds HubSpot** in most core areas, with significant advantages in industry-specific functionality for copier/equipment dealers.
 
 ### Current State: Strengths ✅
+
 - **Sophisticated lead scoring** with BANT qualification framework (superior to HubSpot)
 - **Unified business records** model (zero data loss in lead-to-customer conversion)
 - **Advanced workflow automation** with 13+ action types and complex branching
@@ -26,6 +28,7 @@ After conducting a comprehensive review of the Printyx CRM system, I can confide
 Based on HubSpot best practices and copier dealer industry needs for 2025, I've identified **12 strategic improvement areas** that will elevate Printyx to become the definitive CRM platform for the office equipment industry.
 
 **Priority Rating Legend:**
+
 - 🔴 **P0 - Critical** (Implement in next 30 days)
 - 🟠 **P1 - High** (Implement in 1-2 months)
 - 🟡 **P2 - Medium** (Implement in 2-4 months)
@@ -36,7 +39,9 @@ Based on HubSpot best practices and copier dealer industry needs for 2025, I've 
 ## Part 1: Lead Generation & Capture
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Apollo.io integration for lead enrichment ✅
 - Lead scoring rules engine with configurable weights ✅
 - BANT qualification criteria tracking ✅
@@ -45,6 +50,7 @@ Based on HubSpot best practices and copier dealer industry needs for 2025, I've 
 - Lead qualification history with full audit trail ✅
 
 **What's Missing:**
+
 - Native web form builder with embed codes
 - Live chat/chatbot integration
 - Landing page builder
@@ -55,40 +61,43 @@ Based on HubSpot best practices and copier dealer industry needs for 2025, I've 
 ### Recommendations
 
 #### 🔴 P0: Native Web Form Builder
+
 **Problem:** Currently relying on external form tools limits lead capture automation.
 
 **Solution:** Build integrated form builder with:
+
 ```typescript
 // Proposed schema addition
-export const webForms = pgTable("web_forms", {
-  id: varchar("id").primaryKey(),
-  tenantId: varchar("tenant_id").notNull(),
-  formName: varchar("form_name").notNull(),
-  formType: varchar("form_type"), // contact, quote_request, demo_request, newsletter
+export const webForms = pgTable('web_forms', {
+  id: varchar('id').primaryKey(),
+  tenantId: varchar('tenant_id').notNull(),
+  formName: varchar('form_name').notNull(),
+  formType: varchar('form_type'), // contact, quote_request, demo_request, newsletter
 
   // Form Configuration
-  fields: jsonb("fields").notNull(), // Dynamic field definitions
-  submitAction: varchar("submit_action"), // create_lead, create_contact, assign_to_rep
-  autoResponse: boolean("auto_response").default(true),
-  thankYouMessage: text("thank_you_message"),
-  redirectUrl: varchar("redirect_url"),
+  fields: jsonb('fields').notNull(), // Dynamic field definitions
+  submitAction: varchar('submit_action'), // create_lead, create_contact, assign_to_rep
+  autoResponse: boolean('auto_response').default(true),
+  thankYouMessage: text('thank_you_message'),
+  redirectUrl: varchar('redirect_url'),
 
   // Assignment Rules
-  assignmentRules: jsonb("assignment_rules"), // Round-robin, territory-based, lead scoring
-  notifyUsers: text("notify_users").array(),
+  assignmentRules: jsonb('assignment_rules'), // Round-robin, territory-based, lead scoring
+  notifyUsers: text('notify_users').array(),
 
   // Tracking
-  embedCode: text("embed_code"),
-  submissionCount: integer("submission_count").default(0),
-  conversionRate: decimal("conversion_rate"),
+  embedCode: text('embed_code'),
+  submissionCount: integer('submission_count').default(0),
+  conversionRate: decimal('conversion_rate'),
 
   // Integration
-  integrationWebhook: varchar("integration_webhook"),
-  crmFieldMapping: jsonb("crm_field_mapping"),
+  integrationWebhook: varchar('integration_webhook'),
+  crmFieldMapping: jsonb('crm_field_mapping'),
 });
 ```
 
 **Features to Include:**
+
 - Drag-and-drop form builder
 - Conditional logic (show/hide fields based on selections)
 - Spam protection with CAPTCHA
@@ -100,6 +109,7 @@ export const webForms = pgTable("web_forms", {
 - GDPR consent checkboxes
 
 **Expected Impact:**
+
 - 40% faster lead capture setup time
 - 25% increase in form conversion rates (progressive profiling)
 - 100% immediate lead assignment (no manual routing)
@@ -109,60 +119,63 @@ export const webForms = pgTable("web_forms", {
 ---
 
 #### 🟠 P1: Live Chat & AI Chatbot Integration
+
 **Problem:** Website visitors can't get instant answers, leading to lost leads.
 
 **Solution:** Implement live chat system with AI-powered chatbot:
 
 **Architecture:**
+
 ```typescript
-export const chatConversations = pgTable("chat_conversations", {
-  id: varchar("id").primaryKey(),
-  tenantId: varchar("tenant_id").notNull(),
-  visitorId: varchar("visitor_id"), // Anonymous before lead creation
-  leadId: varchar("lead_id"), // Created when conversation converts
+export const chatConversations = pgTable('chat_conversations', {
+  id: varchar('id').primaryKey(),
+  tenantId: varchar('tenant_id').notNull(),
+  visitorId: varchar('visitor_id'), // Anonymous before lead creation
+  leadId: varchar('lead_id'), // Created when conversation converts
 
   // Conversation State
-  status: varchar("status"), // active, assigned, resolved, abandoned
-  assignedTo: varchar("assigned_to"), // Sales rep ID
-  conversationType: varchar("conversation_type"), // bot_only, human_takeover, human_initiated
+  status: varchar('status'), // active, assigned, resolved, abandoned
+  assignedTo: varchar('assigned_to'), // Sales rep ID
+  conversationType: varchar('conversation_type'), // bot_only, human_takeover, human_initiated
 
   // Visitor Context
-  visitorInfo: jsonb("visitor_info"), // Browser, location, referring page
-  pageUrl: varchar("page_url"), // Where chat was initiated
-  utmParameters: jsonb("utm_parameters"),
+  visitorInfo: jsonb('visitor_info'), // Browser, location, referring page
+  pageUrl: varchar('page_url'), // Where chat was initiated
+  utmParameters: jsonb('utm_parameters'),
 
   // Lead Qualification
-  qualificationScore: integer("qualification_score"),
-  qualificationData: jsonb("qualification_data"), // BANT info collected
-  autoQualified: boolean("auto_qualified"),
+  qualificationScore: integer('qualification_score'),
+  qualificationData: jsonb('qualification_data'), // BANT info collected
+  autoQualified: boolean('auto_qualified'),
 
   // Timing
-  startedAt: timestamp("started_at").defaultNow(),
-  firstResponseTime: integer("first_response_time_seconds"),
-  resolvedAt: timestamp("resolved_at"),
-  averageResponseTime: integer("avg_response_time_seconds"),
+  startedAt: timestamp('started_at').defaultNow(),
+  firstResponseTime: integer('first_response_time_seconds'),
+  resolvedAt: timestamp('resolved_at'),
+  averageResponseTime: integer('avg_response_time_seconds'),
 });
 
-export const chatMessages = pgTable("chat_messages", {
-  id: varchar("id").primaryKey(),
-  conversationId: varchar("conversation_id").notNull(),
+export const chatMessages = pgTable('chat_messages', {
+  id: varchar('id').primaryKey(),
+  conversationId: varchar('conversation_id').notNull(),
 
   // Message Content
-  senderType: varchar("sender_type"), // visitor, agent, bot
-  senderId: varchar("sender_id"),
-  messageText: text("message_text"),
-  messageType: varchar("message_type"), // text, file, quick_reply, button_response
+  senderType: varchar('sender_type'), // visitor, agent, bot
+  senderId: varchar('sender_id'),
+  messageText: text('message_text'),
+  messageType: varchar('message_type'), // text, file, quick_reply, button_response
 
   // AI Features
-  intent: varchar("intent"), // pricing_request, demo_request, support_question
-  confidence: decimal("confidence"), // AI confidence score
-  suggestedResponses: jsonb("suggested_responses"), // AI suggestions for agent
+  intent: varchar('intent'), // pricing_request, demo_request, support_question
+  confidence: decimal('confidence'), // AI confidence score
+  suggestedResponses: jsonb('suggested_responses'), // AI suggestions for agent
 
-  sentAt: timestamp("sent_at").defaultNow(),
+  sentAt: timestamp('sent_at').defaultNow(),
 });
 ```
 
 **Key Features:**
+
 1. **AI-Powered Chatbot:**
    - Pre-qualify leads with conversational BANT questions
    - Schedule demos automatically
@@ -185,12 +198,14 @@ export const chatMessages = pgTable("chat_messages", {
    - Route to appropriate rep based on territory/product interest
 
 **Integration Points:**
+
 - Claude AI for natural language understanding
 - Your existing workflow automation (trigger workflows based on chat events)
 - Calendar integration for demo scheduling
 - Email follow-up sequences after chat
 
 **Expected Impact:**
+
 - 60% of website visitors engage with chat
 - 30% of chat conversations convert to qualified leads
 - 50% reduction in time-to-first-contact
@@ -201,11 +216,13 @@ export const chatMessages = pgTable("chat_messages", {
 ---
 
 #### 🟡 P2: Landing Page Builder
+
 **Problem:** Sales reps can't quickly create targeted landing pages for campaigns.
 
 **Solution:** Drag-and-drop landing page builder with templates:
 
 **Features:**
+
 - Industry-specific templates (copier promotions, lease buyout offers, maintenance contracts)
 - Dynamic content personalization (different copy for manufacturing vs. healthcare)
 - Built-in A/B testing
@@ -216,6 +233,7 @@ export const chatMessages = pgTable("chat_messages", {
 - UTM parameter tracking
 
 **Templates to Include:**
+
 1. Equipment lease promotion
 2. Trade-in program
 3. Maintenance contract signup
@@ -225,6 +243,7 @@ export const chatMessages = pgTable("chat_messages", {
 7. ROI calculator
 
 **Expected Impact:**
+
 - Sales reps can launch campaigns 5x faster
 - 20-30% higher conversion rates vs. generic pages
 - Better tracking of campaign effectiveness
@@ -234,39 +253,41 @@ export const chatMessages = pgTable("chat_messages", {
 ---
 
 #### 🟢 P3: Intent Signal Tracking
+
 **Problem:** Not capturing behavioral signals that indicate buying intent.
 
 **Solution:** Implement advanced tracking:
 
 ```typescript
-export const intentSignals = pgTable("intent_signals", {
-  id: varchar("id").primaryKey(),
-  tenantId: varchar("tenant_id").notNull(),
-  leadId: varchar("lead_id"),
+export const intentSignals = pgTable('intent_signals', {
+  id: varchar('id').primaryKey(),
+  tenantId: varchar('tenant_id').notNull(),
+  leadId: varchar('lead_id'),
 
   // Signal Type
-  signalType: varchar("signal_type"),
+  signalType: varchar('signal_type'),
   // pricing_page_view, competitor_comparison, calculator_usage,
   // return_visitor, document_download, video_watched, demo_request
 
   // Signal Strength
-  signalStrength: varchar("signal_strength"), // weak, medium, strong, very_strong
-  scoreImpact: integer("score_impact"), // How much to add to lead score
+  signalStrength: varchar('signal_strength'), // weak, medium, strong, very_strong
+  scoreImpact: integer('score_impact'), // How much to add to lead score
 
   // Context
-  pageUrl: varchar("page_url"),
-  timeSpent: integer("time_spent_seconds"),
-  metadata: jsonb("metadata"),
+  pageUrl: varchar('page_url'),
+  timeSpent: integer('time_spent_seconds'),
+  metadata: jsonb('metadata'),
 
   // Action Triggered
-  automationTriggered: boolean("automation_triggered"),
-  notificationSent: boolean("notification_sent"),
+  automationTriggered: boolean('automation_triggered'),
+  notificationSent: boolean('notification_sent'),
 
-  detectedAt: timestamp("detected_at").defaultNow(),
+  detectedAt: timestamp('detected_at').defaultNow(),
 });
 ```
 
 **High-Value Signals to Track:**
+
 1. **Hot Signals (notify sales immediately):**
    - Pricing calculator usage
    - Demo request form view (didn't submit)
@@ -288,6 +309,7 @@ export const intentSignals = pgTable("intent_signals", {
    - Career page views (might be job seeker, not buyer)
 
 **Automation Rules:**
+
 ```typescript
 // Example: Alert rep when hot signal detected
 if (intentSignal.signalType === 'pricing_calculator_usage') {
@@ -310,6 +332,7 @@ if (intentSignal.signalType === 'pricing_calculator_usage') {
 ```
 
 **Expected Impact:**
+
 - Identify buying-ready leads 3-5 days earlier
 - 35% higher conversion rate on nurtured intent signals
 - Sales reps spend time on the right leads
@@ -321,7 +344,9 @@ if (intentSignal.signalType === 'pricing_calculator_usage') {
 ## Part 2: Automated Outreach & Communication
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Email templates ✅
 - Email campaigns (one-time, drip, automated) ✅
 - Email tracking (opens, clicks, bounces) ✅
@@ -330,6 +355,7 @@ if (intentSignal.signalType === 'pricing_calculator_usage') {
 - Workflow automation engine ✅
 
 **What's Missing:**
+
 - Multi-step email sequences (cadences)
 - Native Gmail/Outlook integration (two-way sync)
 - Email send scheduling
@@ -342,104 +368,106 @@ if (intentSignal.signalType === 'pricing_calculator_usage') {
 ### Recommendations
 
 #### 🔴 P0: Sales Email Sequences (Cadences)
+
 **Problem:** Reps manually send follow-up emails, leading to inconsistency and forgotten tasks.
 
 **Solution:** Implement automated sales sequences similar to HubSpot Sequences:
 
 ```typescript
-export const emailSequences = pgTable("email_sequences", {
-  id: varchar("id").primaryKey(),
-  tenantId: varchar("tenant_id").notNull(),
+export const emailSequences = pgTable('email_sequences', {
+  id: varchar('id').primaryKey(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Sequence Details
-  sequenceName: varchar("sequence_name").notNull(),
-  sequenceDescription: text("sequence_description"),
-  sequenceGoal: varchar("sequence_goal"), // book_meeting, get_response, nurture, onboard
+  sequenceName: varchar('sequence_name').notNull(),
+  sequenceDescription: text('sequence_description'),
+  sequenceGoal: varchar('sequence_goal'), // book_meeting, get_response, nurture, onboard
 
   // Configuration
-  isActive: boolean("is_active").default(true),
-  enrollmentCriteria: jsonb("enrollment_criteria"), // Auto-enroll based on triggers
-  exitCriteria: jsonb("exit_criteria"), // Auto-unenroll (e.g., when reply received)
+  isActive: boolean('is_active').default(true),
+  enrollmentCriteria: jsonb('enrollment_criteria'), // Auto-enroll based on triggers
+  exitCriteria: jsonb('exit_criteria'), // Auto-unenroll (e.g., when reply received)
 
   // Performance
-  totalEnrolled: integer("total_enrolled").default(0),
-  activeEnrollments: integer("active_enrollments").default(0),
-  completedEnrollments: integer("completed_enrollments").default(0),
-  replyRate: decimal("reply_rate"),
-  meetingBookedRate: decimal("meeting_booked_rate"),
+  totalEnrolled: integer('total_enrolled').default(0),
+  activeEnrollments: integer('active_enrollments').default(0),
+  completedEnrollments: integer('completed_enrollments').default(0),
+  replyRate: decimal('reply_rate'),
+  meetingBookedRate: decimal('meeting_booked_rate'),
 
-  createdBy: varchar("created_by"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdBy: varchar('created_by'),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const sequenceSteps = pgTable("sequence_steps", {
-  id: varchar("id").primaryKey(),
-  sequenceId: varchar("sequence_id").notNull(),
+export const sequenceSteps = pgTable('sequence_steps', {
+  id: varchar('id').primaryKey(),
+  sequenceId: varchar('sequence_id').notNull(),
 
   // Step Configuration
-  stepNumber: integer("step_number").notNull(),
-  stepType: varchar("step_type").notNull(), // email, task, call, linkedin_message, sms, wait
+  stepNumber: integer('step_number').notNull(),
+  stepType: varchar('step_type').notNull(), // email, task, call, linkedin_message, sms, wait
 
   // Timing
-  delayDays: integer("delay_days").default(0), // Days after previous step
-  delayHours: integer("delay_hours").default(0),
-  sendTime: varchar("send_time"), // morning, afternoon, evening, or specific time
-  skipWeekends: boolean("skip_weekends").default(true),
+  delayDays: integer('delay_days').default(0), // Days after previous step
+  delayHours: integer('delay_hours').default(0),
+  sendTime: varchar('send_time'), // morning, afternoon, evening, or specific time
+  skipWeekends: boolean('skip_weekends').default(true),
 
   // Email Step Details
-  emailTemplateId: varchar("email_template_id"),
-  emailSubject: varchar("email_subject"),
-  emailBody: text("email_body"),
+  emailTemplateId: varchar('email_template_id'),
+  emailSubject: varchar('email_subject'),
+  emailBody: text('email_body'),
 
   // Task Step Details
-  taskDescription: text("task_description"),
-  taskPriority: varchar("task_priority"),
+  taskDescription: text('task_description'),
+  taskPriority: varchar('task_priority'),
 
   // Conditional Logic
-  executeOnlyIf: jsonb("execute_only_if"), // Skip step if conditions not met
+  executeOnlyIf: jsonb('execute_only_if'), // Skip step if conditions not met
 
   // Performance
-  sentCount: integer("sent_count").default(0),
-  openRate: decimal("open_rate"),
-  clickRate: decimal("click_rate"),
-  replyRate: decimal("reply_rate"),
+  sentCount: integer('sent_count').default(0),
+  openRate: decimal('open_rate'),
+  clickRate: decimal('click_rate'),
+  replyRate: decimal('reply_rate'),
 });
 
-export const sequenceEnrollments = pgTable("sequence_enrollments", {
-  id: varchar("id").primaryKey(),
-  sequenceId: varchar("sequence_id").notNull(),
-  leadId: varchar("lead_id").notNull(),
-  contactId: varchar("contact_id"),
-  tenantId: varchar("tenant_id").notNull(),
+export const sequenceEnrollments = pgTable('sequence_enrollments', {
+  id: varchar('id').primaryKey(),
+  sequenceId: varchar('sequence_id').notNull(),
+  leadId: varchar('lead_id').notNull(),
+  contactId: varchar('contact_id'),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Enrollment Details
-  enrolledBy: varchar("enrolled_by"), // User or "system" for auto-enrollment
-  enrollmentSource: varchar("enrollment_source"), // manual, workflow, form_submission
+  enrolledBy: varchar('enrolled_by'), // User or "system" for auto-enrollment
+  enrollmentSource: varchar('enrollment_source'), // manual, workflow, form_submission
 
   // State
-  status: varchar("status").notNull(), // active, paused, completed, cancelled, bounced, replied
-  currentStepNumber: integer("current_step_number").default(1),
+  status: varchar('status').notNull(), // active, paused, completed, cancelled, bounced, replied
+  currentStepNumber: integer('current_step_number').default(1),
 
   // Exit Tracking
-  exitReason: varchar("exit_reason"), // replied, unsubscribed, meeting_booked, manual_unenroll
-  exitedAt: timestamp("exited_at"),
+  exitReason: varchar('exit_reason'), // replied, unsubscribed, meeting_booked, manual_unenroll
+  exitedAt: timestamp('exited_at'),
 
   // Performance
-  emailsSent: integer("emails_sent").default(0),
-  emailsOpened: integer("emails_opened").default(0),
-  emailsClicked: integer("emails_clicked").default(0),
-  replied: boolean("replied").default(false),
-  repliedAt: timestamp("replied_at"),
-  meetingBooked: boolean("meeting_booked").default(false),
+  emailsSent: integer('emails_sent').default(0),
+  emailsOpened: integer('emails_opened').default(0),
+  emailsClicked: integer('emails_clicked').default(0),
+  replied: boolean('replied').default(false),
+  repliedAt: timestamp('replied_at'),
+  meetingBooked: boolean('meeting_booked').default(false),
 
-  enrolledAt: timestamp("enrolled_at").defaultNow(),
-  completedAt: timestamp("completed_at"),
+  enrolledAt: timestamp('enrolled_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
 });
 ```
 
 **Example Sequences to Pre-Build:**
 
 **1. Cold Outreach - Equipment Dealer (7-step, 14 days)**
+
 ```
 Day 1: Initial email - "Helping [Industry] reduce print costs by 30%"
 Day 3: Follow-up - Share case study
@@ -451,6 +479,7 @@ Day 14: Final email - "Should I close your file?"
 ```
 
 **2. Demo Follow-Up (5-step, 7 days)**
+
 ```
 Day 1: Thank you email + meeting recap + proposal
 Day 2: Task - Check if they reviewed proposal
@@ -460,6 +489,7 @@ Day 7: Task - Final call attempt
 ```
 
 **3. Stalled Deal Re-Engagement (4-step, 10 days)**
+
 ```
 Day 1: "Checking in" email
 Day 4: Email - "New financing options available"
@@ -468,6 +498,7 @@ Day 10: Task - Phone call to close or disqualify
 ```
 
 **Key Features:**
+
 1. **Smart Sending:**
    - Respect time zones (send at 9am recipient's time)
    - Skip weekends and holidays
@@ -501,6 +532,7 @@ Day 10: Task - Phone call to close or disqualify
    - Manual enrollment with one click
 
 **Expected Impact:**
+
 - 70% reduction in follow-up time for reps
 - 40% increase in response rates (consistent follow-up)
 - 3x more meetings booked (automated persistence)
@@ -511,6 +543,7 @@ Day 10: Task - Phone call to close or disqualify
 ---
 
 #### 🔴 P0: Native Gmail/Outlook Integration (Two-Way Sync)
+
 **Problem:** Reps work in email all day but activities don't automatically log in CRM.
 
 **Solution:** Deep email integration with automatic activity logging:
@@ -526,33 +559,34 @@ Day 10: Task - Phone call to close or disqualify
    - Send and track from Gmail/Outlook
 
 2. **Automatic Email Sync (Two-Way):**
+
    ```typescript
    // Sync Configuration
-   export const emailSyncSettings = pgTable("email_sync_settings", {
-     id: varchar("id").primaryKey(),
-     userId: varchar("user_id").notNull(),
-     tenantId: varchar("tenant_id").notNull(),
+   export const emailSyncSettings = pgTable('email_sync_settings', {
+     id: varchar('id').primaryKey(),
+     userId: varchar('user_id').notNull(),
+     tenantId: varchar('tenant_id').notNull(),
 
      // Provider
-     provider: varchar("provider").notNull(), // gmail, outlook, exchange
-     emailAddress: varchar("email_address").notNull(),
+     provider: varchar('provider').notNull(), // gmail, outlook, exchange
+     emailAddress: varchar('email_address').notNull(),
 
      // Sync Rules
-     autoLogOutbound: boolean("auto_log_outbound").default(true),
-     autoLogInbound: boolean("auto_log_inbound").default(true),
-     onlyLogKnownContacts: boolean("only_log_known_contacts").default(true),
+     autoLogOutbound: boolean('auto_log_outbound').default(true),
+     autoLogInbound: boolean('auto_log_inbound').default(true),
+     onlyLogKnownContacts: boolean('only_log_known_contacts').default(true),
 
      // OAuth Tokens (encrypted)
-     accessToken: varchar("access_token"), // Encrypted
-     refreshToken: varchar("refresh_token"), // Encrypted
-     tokenExpiresAt: timestamp("token_expires_at"),
+     accessToken: varchar('access_token'), // Encrypted
+     refreshToken: varchar('refresh_token'), // Encrypted
+     tokenExpiresAt: timestamp('token_expires_at'),
 
      // Status
-     syncStatus: varchar("sync_status"), // active, error, paused
-     lastSyncAt: timestamp("last_sync_at"),
+     syncStatus: varchar('sync_status'), // active, error, paused
+     lastSyncAt: timestamp('last_sync_at'),
 
-     isActive: boolean("is_active").default(true),
-     connectedAt: timestamp("connected_at").defaultNow(),
+     isActive: boolean('is_active').default(true),
+     connectedAt: timestamp('connected_at').defaultNow(),
    });
    ```
 
@@ -580,6 +614,7 @@ Day 10: Task - Phone call to close or disqualify
    - Send calendar links in emails
 
 **Expected Impact:**
+
 - 95% of emails automatically logged (zero manual entry)
 - Reps gain context instantly (no switching between apps)
 - 100% visibility into customer communications
@@ -588,6 +623,7 @@ Day 10: Task - Phone call to close or disqualify
 **Implementation Effort:** 4-5 weeks (complex OAuth flows)
 
 **Technical Approach:**
+
 - Use Gmail API / Microsoft Graph API
 - OAuth 2.0 for secure authentication
 - Webhook subscriptions for real-time sync
@@ -597,12 +633,15 @@ Day 10: Task - Phone call to close or disqualify
 ---
 
 #### 🟠 P1: AI-Powered Email Writing Assistant
+
 **Problem:** Reps spend 20-30 minutes crafting emails, struggle with writer's block.
 
 **Solution:** Integrate Claude AI to help write better emails faster:
 
 **Features:**
+
 1. **Email Generation:**
+
    ```typescript
    // API Endpoint
    POST /api/ai/generate-email
@@ -645,6 +684,7 @@ Day 10: Task - Phone call to close or disqualify
    - Auto-insert relevant content into email
 
 **Expected Impact:**
+
 - 60% faster email composition
 - 35% higher response rates (better copy)
 - Consistent messaging across team
@@ -654,47 +694,49 @@ Day 10: Task - Phone call to close or disqualify
 ---
 
 #### 🟡 P2: SMS Sequences
+
 **Problem:** Email open rates declining, need additional channel.
 
 **Solution:** Add SMS to your sequence capabilities:
 
 ```typescript
-export const smsSequences = pgTable("sms_sequences", {
+export const smsSequences = pgTable('sms_sequences', {
   // Similar structure to email sequences
-  id: varchar("id").primaryKey(),
-  tenantId: varchar("tenant_id").notNull(),
-  sequenceName: varchar("sequence_name").notNull(),
+  id: varchar('id').primaryKey(),
+  tenantId: varchar('tenant_id').notNull(),
+  sequenceName: varchar('sequence_name').notNull(),
   // ... similar fields
 });
 
-export const smsMessages = pgTable("sms_messages", {
-  id: varchar("id").primaryKey(),
-  sequenceEnrollmentId: varchar("sequence_enrollment_id"),
-  leadId: varchar("lead_id").notNull(),
-  tenantId: varchar("tenant_id").notNull(),
+export const smsMessages = pgTable('sms_messages', {
+  id: varchar('id').primaryKey(),
+  sequenceEnrollmentId: varchar('sequence_enrollment_id'),
+  leadId: varchar('lead_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Message Details
-  toPhoneNumber: varchar("to_phone_number").notNull(),
-  fromPhoneNumber: varchar("from_phone_number").notNull(),
-  messageBody: text("message_body").notNull(),
+  toPhoneNumber: varchar('to_phone_number').notNull(),
+  fromPhoneNumber: varchar('from_phone_number').notNull(),
+  messageBody: text('message_body').notNull(),
 
   // Status
-  status: varchar("status"), // queued, sent, delivered, failed, replied
-  deliveredAt: timestamp("delivered_at"),
+  status: varchar('status'), // queued, sent, delivered, failed, replied
+  deliveredAt: timestamp('delivered_at'),
 
   // Reply Handling
-  isReply: boolean("is_reply").default(false),
-  repliedToMessageId: varchar("replied_to_message_id"),
+  isReply: boolean('is_reply').default(false),
+  repliedToMessageId: varchar('replied_to_message_id'),
 
   // Provider
-  providerId: varchar("provider_id"), // Twilio message SID
-  providerResponse: jsonb("provider_response"),
+  providerId: varchar('provider_id'), // Twilio message SID
+  providerResponse: jsonb('provider_response'),
 
-  sentAt: timestamp("sent_at").defaultNow(),
+  sentAt: timestamp('sent_at').defaultNow(),
 });
 ```
 
 **Best Practices for SMS:**
+
 1. Always get explicit opt-in (TCPA compliance)
 2. Include opt-out instructions in first message
 3. Use for time-sensitive communications only
@@ -703,6 +745,7 @@ export const smsMessages = pgTable("sms_messages", {
 6. Include your company name
 
 **Use Cases:**
+
 - Meeting reminders (24 hours before)
 - "Quick question" after proposal sent
 - Trade show follow-up
@@ -710,6 +753,7 @@ export const smsMessages = pgTable("sms_messages", {
 - Installation appointment confirmations
 
 **Example SMS Sequence:**
+
 ```
 Day 1: "Hi {{firstName}}, this is {{repName}} from {{companyName}}.
 Great meeting you at [Trade Show]! I'm sending the info we discussed
@@ -724,6 +768,7 @@ Should I check back in 3 months? - {{repName}}"
 ```
 
 **Expected Impact:**
+
 - 98% open rate on SMS (vs. 20-25% for email)
 - 20-30% response rate
 - Faster deal velocity (immediate notifications)
@@ -733,11 +778,13 @@ Should I check back in 3 months? - {{repName}}"
 ---
 
 #### 🟢 P3: Call Recording & Transcription
+
 **Problem:** No visibility into sales call quality, reps can't review their pitches.
 
 **Solution:** Integrate call recording with AI transcription:
 
 **Features:**
+
 1. **Call Recording:**
    - VoIP integration (if using cloud phone system)
    - OR dial-in conferencing number that records
@@ -764,6 +811,7 @@ Should I check back in 3 months? - {{repName}}"
    - Track improvement over time
 
 5. **Automatic CRM Updates:**
+
    ```typescript
    // After call ends
    const transcript = await transcribeCall(callRecordingUrl);
@@ -788,6 +836,7 @@ Should I check back in 3 months? - {{repName}}"
    ```
 
 **Expected Impact:**
+
 - 40% improvement in call quality (coaching)
 - 90% time savings on note-taking
 - Better lead qualification (all BANT info captured)
@@ -799,7 +848,9 @@ Should I check back in 3 months? - {{repName}}"
 ## Part 3: Sales Pipeline & Deal Management
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Opportunities table with stages ✅
 - Deals management with activities ✅
 - Pipeline visualization (likely in frontend) ✅
@@ -813,11 +864,13 @@ Your pipeline management is already very strong. The opportunities + deals dual 
 **Minor Enhancements:**
 
 #### 🟡 P2: Visual Pipeline Board (Kanban)
+
 **Problem:** List views don't give at-a-glance pipeline health.
 
 **Solution:** Build drag-and-drop pipeline board similar to HubSpot:
 
 **Frontend Features:**
+
 - Kanban board with columns for each stage
 - Drag cards between stages
 - Color coding by deal size, age, probability
@@ -826,12 +879,13 @@ Your pipeline management is already very strong. The opportunities + deals dual 
 - Quick actions (send proposal, schedule meeting, mark won/lost)
 
 **Smart Features:**
+
 ```typescript
 // When deal moves to "Proposal" stage
 if (newStage === 'proposal' && !deal.proposalId) {
   // Suggest creating proposal
   showModal({
-    title: "Create Proposal",
+    title: 'Create Proposal',
     message: "This deal doesn't have a proposal yet. Create one now?",
     actions: ['Create Proposal', 'Skip'],
   });
@@ -850,6 +904,7 @@ if (daysInCurrentStage > stageDurationTarget) {
 ```
 
 **Expected Impact:**
+
 - Visual pipeline health assessment in 5 seconds
 - 25% faster deal updates (drag vs. dropdown)
 - Early identification of stalled deals
@@ -859,36 +914,38 @@ if (daysInCurrentStage > stageDurationTarget) {
 ---
 
 #### 🟡 P2: Deal Health Scoring
+
 **Problem:** Hard to identify which deals need attention.
 
 **Solution:** Implement deal health scores:
 
 ```typescript
-export const dealHealthScores = pgTable("deal_health_scores", {
-  id: varchar("id").primaryKey(),
-  dealId: varchar("deal_id").notNull(),
-  tenantId: varchar("tenant_id").notNull(),
+export const dealHealthScores = pgTable('deal_health_scores', {
+  id: varchar('id').primaryKey(),
+  dealId: varchar('deal_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Health Score
-  overallScore: integer("overall_score").notNull(), // 0-100
-  healthStatus: varchar("health_status").notNull(), // critical, at_risk, healthy, excellent
+  overallScore: integer('overall_score').notNull(), // 0-100
+  healthStatus: varchar('health_status').notNull(), // critical, at_risk, healthy, excellent
 
   // Score Factors
-  activityScore: integer("activity_score"), // Recent touchpoints
-  timeScore: integer("time_score"), // Time in stage vs. average
-  engagementScore: integer("engagement_score"), // Email opens, meeting attendance
-  progressScore: integer("progress_score"), // Moving through stages
-  competitionScore: integer("competition_score"), // Competing vendors
+  activityScore: integer('activity_score'), // Recent touchpoints
+  timeScore: integer('time_score'), // Time in stage vs. average
+  engagementScore: integer('engagement_score'), // Email opens, meeting attendance
+  progressScore: integer('progress_score'), // Moving through stages
+  competitionScore: integer('competition_score'), // Competing vendors
 
   // Risk Factors
-  riskFactors: jsonb("risk_factors"), // Array of issues
-  recommendations: jsonb("recommendations"), // Suggested actions
+  riskFactors: jsonb('risk_factors'), // Array of issues
+  recommendations: jsonb('recommendations'), // Suggested actions
 
-  calculatedAt: timestamp("calculated_at").defaultNow(),
+  calculatedAt: timestamp('calculated_at').defaultNow(),
 });
 ```
 
 **Scoring Logic:**
+
 ```typescript
 function calculateDealHealth(deal, activities) {
   let score = 100;
@@ -898,7 +955,7 @@ function calculateDealHealth(deal, activities) {
   const daysSinceLastActivity = getDaysSince(deal.lastActivityDate);
   if (daysSinceLastActivity > 14) {
     score -= 20;
-    risks.push("No contact in 14+ days");
+    risks.push('No contact in 14+ days');
   } else if (daysSinceLastActivity > 7) {
     score -= 10;
   }
@@ -908,7 +965,7 @@ function calculateDealHealth(deal, activities) {
   const avgDaysInStage = getAverageDaysInStage(deal.stageName);
   if (daysInStage > avgDaysInStage * 2) {
     score -= 25;
-    risks.push("Deal stalled - 2x average time in stage");
+    risks.push('Deal stalled - 2x average time in stage');
   } else if (daysInStage > avgDaysInStage * 1.5) {
     score -= 15;
   }
@@ -917,13 +974,13 @@ function calculateDealHealth(deal, activities) {
   const recentEngagement = getRecentEngagement(deal.id, 7); // Last 7 days
   if (recentEngagement.emailOpens === 0 && recentEngagement.proposalViews === 0) {
     score -= 15;
-    risks.push("No engagement with sent materials");
+    risks.push('No engagement with sent materials');
   }
 
   // Progress Score (0-15 points)
   if (deal.nextStep === null || deal.nextStep === '') {
     score -= 10;
-    risks.push("No next step defined");
+    risks.push('No next step defined');
   }
 
   // Competition (0-10 points)
@@ -935,7 +992,7 @@ function calculateDealHealth(deal, activities) {
   // Expected close date
   if (deal.closeDate < new Date()) {
     score -= 20;
-    risks.push("Close date passed - update timeline");
+    risks.push('Close date passed - update timeline');
   }
 
   return {
@@ -954,11 +1011,13 @@ function getHealthStatus(score) {
 ```
 
 **Dashboard View:**
+
 - List of "at risk" deals
 - Suggested actions for each deal
 - Manager view: team's deal health overview
 
 **Expected Impact:**
+
 - Identify problems before deals are lost
 - 15-20% improvement in close rate (proactive intervention)
 
@@ -969,7 +1028,9 @@ function getHealthStatus(score) {
 ## Part 4: Follow-Up Tracking & Task Management
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Tasks table with hierarchy ✅
 - Task comments and time tracking ✅
 - Projects for grouping tasks ✅
@@ -981,6 +1042,7 @@ function getHealthStatus(score) {
 **Minor Enhancement:**
 
 #### 🟢 P3: Smart Task Suggestions
+
 **Problem:** Reps forget to create follow-up tasks.
 
 **Solution:** AI-powered task suggestions:
@@ -992,14 +1054,14 @@ async function suggestNextTasks(activityType, leadId, dealId) {
 
   if (activityType === 'demo_completed') {
     suggestions.push({
-      title: "Send proposal to [Lead Name]",
+      title: 'Send proposal to [Lead Name]',
       dueDate: addDays(new Date(), 1), // Tomorrow
       priority: 'high',
-      description: "Follow up on demo discussion",
+      description: 'Follow up on demo discussion',
     });
 
     suggestions.push({
-      title: "Check if [Lead Name] reviewed proposal",
+      title: 'Check if [Lead Name] reviewed proposal',
       dueDate: addDays(new Date(), 3),
       priority: 'medium',
     });
@@ -1007,10 +1069,10 @@ async function suggestNextTasks(activityType, leadId, dealId) {
 
   if (activityType === 'proposal_sent' && deal.daysInStage > 3) {
     suggestions.push({
-      title: "Call [Lead Name] - proposal follow-up",
+      title: 'Call [Lead Name] - proposal follow-up',
       dueDate: addToday(),
       priority: 'high',
-      description: "Proposal sent 3 days ago with no response",
+      description: 'Proposal sent 3 days ago with no response',
     });
   }
 
@@ -1020,11 +1082,13 @@ async function suggestNextTasks(activityType, leadId, dealId) {
 
 **Show suggestions as notifications:**
 "Would you like to create these follow-up tasks?"
+
 - [ ] Send proposal (due tomorrow)
 - [ ] Schedule check-in call (due in 3 days)
-[Create All] [Customize] [Dismiss]
+      [Create All] [Customize] [Dismiss]
 
 **Expected Impact:**
+
 - 80% fewer forgotten follow-ups
 - Faster deal velocity
 
@@ -1035,7 +1099,9 @@ async function suggestNextTasks(activityType, leadId, dealId) {
 ## Part 5: Reporting & Analytics
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Report definitions table ✅
 - KPI definitions and values ✅
 - Sales goals and quotas ✅
@@ -1048,11 +1114,13 @@ Your reporting infrastructure is very robust. The hierarchical rollup is particu
 **Enhancements:**
 
 #### 🟠 P1: Pre-Built Report Library
+
 **Problem:** Users don't know what reports to create.
 
 **Solution:** Ship 20-30 pre-built reports that cover common needs:
 
 **Sales Reports:**
+
 1. **Sales Activity Report**
    - Calls, emails, meetings by rep
    - Activity trending
@@ -1089,11 +1157,11 @@ Your reporting infrastructure is very robust. The hierarchical rollup is particu
    - Lead distribution
    - Penetration rate
 
-**Customer Success Reports:**
-7. **Customer Health Dashboard**
-   - Health score distribution
-   - At-risk customers
-   - Churn risk trending
+**Customer Success Reports:** 7. **Customer Health Dashboard**
+
+- Health score distribution
+- At-risk customers
+- Churn risk trending
 
 8. **Churn Analysis**
    - Churn rate by cohort
@@ -1110,11 +1178,7 @@ Your reporting infrastructure is very robust. The hierarchical rollup is particu
     - CSAT by service type
     - Survey response rates
 
-**Operations Reports:**
-11. **Installation Schedule**
-    - Scheduled installations
-    - Installation cycle time
-    - Customer satisfaction by technician
+**Operations Reports:** 11. **Installation Schedule** - Scheduled installations - Installation cycle time - Customer satisfaction by technician
 
 12. **Service Contract Performance**
     - Active contracts
@@ -1126,11 +1190,7 @@ Your reporting infrastructure is very robust. The hierarchical rollup is particu
     - Commission by product
     - Pending vs. paid
 
-**Executive Reports:**
-14. **Revenue Dashboard**
-    - Monthly recurring revenue (MRR)
-    - Annual contract value (ACV)
-    - New vs. renewal revenue
+**Executive Reports:** 14. **Revenue Dashboard** - Monthly recurring revenue (MRR) - Annual contract value (ACV) - New vs. renewal revenue
 
 15. **Business Review**
     - Key metrics snapshot
@@ -1141,6 +1201,7 @@ Your reporting infrastructure is very robust. The hierarchical rollup is particu
 **Implementation:** Create report definitions for each, with proper SQL queries and visualizations.
 
 **Expected Impact:**
+
 - Users get value from day 1 (no report building required)
 - Consistency across organization
 - Best practices embedded
@@ -1150,53 +1211,55 @@ Your reporting infrastructure is very robust. The hierarchical rollup is particu
 ---
 
 #### 🟡 P2: Custom Dashboards
+
 **Problem:** Users want personalized views.
 
 **Solution:** Allow users to create custom dashboards:
 
 ```typescript
-export const customDashboards = pgTable("custom_dashboards", {
-  id: varchar("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
-  tenantId: varchar("tenant_id").notNull(),
+export const customDashboards = pgTable('custom_dashboards', {
+  id: varchar('id').primaryKey(),
+  userId: varchar('user_id').notNull(),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Dashboard Config
-  dashboardName: varchar("dashboard_name").notNull(),
-  isDefault: boolean("is_default").default(false),
-  layout: jsonb("layout"), // Grid layout configuration
+  dashboardName: varchar('dashboard_name').notNull(),
+  isDefault: boolean('is_default').default(false),
+  layout: jsonb('layout'), // Grid layout configuration
 
   // Sharing
-  isShared: boolean("is_shared").default(false),
-  sharedWith: text("shared_with").array(), // User IDs or team IDs
+  isShared: boolean('is_shared').default(false),
+  sharedWith: text('shared_with').array(), // User IDs or team IDs
 
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const dashboardWidgets = pgTable("dashboard_widgets", {
-  id: varchar("id").primaryKey(),
-  dashboardId: varchar("dashboard_id").notNull(),
+export const dashboardWidgets = pgTable('dashboard_widgets', {
+  id: varchar('id').primaryKey(),
+  dashboardId: varchar('dashboard_id').notNull(),
 
   // Widget Configuration
-  widgetType: varchar("widget_type").notNull(), // chart, table, metric, list
-  widgetTitle: varchar("widget_title"),
-  reportId: varchar("report_id"), // Link to report_definitions
+  widgetType: varchar('widget_type').notNull(), // chart, table, metric, list
+  widgetTitle: varchar('widget_title'),
+  reportId: varchar('report_id'), // Link to report_definitions
 
   // Visualization
-  chartType: varchar("chart_type"), // bar, line, pie, table
-  chartConfig: jsonb("chart_config"),
+  chartType: varchar('chart_type'), // bar, line, pie, table
+  chartConfig: jsonb('chart_config'),
 
   // Layout
-  gridPosition: jsonb("grid_position"), // x, y, width, height
+  gridPosition: jsonb('grid_position'), // x, y, width, height
 
   // Filters
-  widgetFilters: jsonb("widget_filters"),
+  widgetFilters: jsonb('widget_filters'),
 
   // Refresh
-  refreshInterval: integer("refresh_interval_seconds"),
+  refreshInterval: integer('refresh_interval_seconds'),
 });
 ```
 
 **Widget Types:**
+
 - Number metrics (big number with trend arrow)
 - Charts (bar, line, pie, funnel)
 - Tables (sortable, filterable)
@@ -1204,6 +1267,7 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 - Gauges (goal progress)
 
 **Pre-Built Dashboard Templates:**
+
 1. **Sales Rep Dashboard:**
    - My pipeline value
    - My activities this week
@@ -1223,6 +1287,7 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
    - Pipeline coverage
 
 **Expected Impact:**
+
 - Personalized views increase CRM usage
 - Faster access to relevant data
 
@@ -1233,7 +1298,9 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 ## Part 6: Contract Management & Quotes
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Service contracts table ✅
 - Equipment tracking ✅
 - Proposal system with templates ✅
@@ -1247,11 +1314,13 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 **Minor Enhancement:**
 
 #### 🟢 P3: Interactive Proposal Viewer
+
 **Problem:** Static PDF proposals don't allow customer interaction.
 
 **Solution:** Build modern interactive proposals:
 
 **Features:**
+
 1. **Web-Based Proposal:**
    - Clean, mobile-friendly design
    - Company branding
@@ -1260,6 +1329,7 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
    - Customer comments/questions inline
 
 2. **Configuration Tool:**
+
    ```typescript
    // Customer can customize their package
    <ProposalConfigurator>
@@ -1293,6 +1363,7 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
    - Triggers installation workflow
 
 **Expected Impact:**
+
 - 45% faster deal cycles (customer can review and sign immediately)
 - 25% higher close rates (better experience)
 - Reduce back-and-forth (customer can self-configure)
@@ -1304,7 +1375,9 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 ## Part 7: Installation & Onboarding
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Equipment installations table ✅
 - Installation lifecycle tracking ✅
 - Customer satisfaction ratings ✅
@@ -1316,89 +1389,93 @@ export const dashboardWidgets = pgTable("dashboard_widgets", {
 **Enhancement:**
 
 #### 🟠 P1: Automated Onboarding Workflows
+
 **Problem:** Manual onboarding is inconsistent.
 
 **Solution:** Pre-built onboarding workflows:
 
 **Customer Onboarding Workflow (Triggered when deal closed won):**
+
 ```yaml
 1. Day 0 - Deal Closed Won:
-   - Send "Welcome to [Company]!" email to customer
-   - Create installation project
-   - Assign project manager
-   - Notify operations team
+  - Send "Welcome to [Company]!" email to customer
+  - Create installation project
+  - Assign project manager
+  - Notify operations team
 
 2. Day 1 - Kickoff:
-   - Schedule kickoff call
-   - Send pre-installation checklist to customer
-   - Request site information (power, network, space)
+  - Schedule kickoff call
+  - Send pre-installation checklist to customer
+  - Request site information (power, network, space)
 
 3. Day 3 - Equipment Order:
-   - Check if equipment in stock
-   - If not: Order from manufacturer
-   - Send customer estimated delivery date
+  - Check if equipment in stock
+  - If not: Order from manufacturer
+  - Send customer estimated delivery date
 
 4. Day 7 - Pre-Installation:
-   - Confirm site readiness
-   - Schedule installation date
-   - Send installation confirmation to customer
-   - Assign installation technician
+  - Confirm site readiness
+  - Schedule installation date
+  - Send installation confirmation to customer
+  - Assign installation technician
 
 5. Day of Installation:
-   - Send technician dispatch notification
-   - Installation checklist for tech
-   - Customer training session
-   - Equipment testing
-   - Customer sign-off
+  - Send technician dispatch notification
+  - Installation checklist for tech
+  - Customer training session
+  - Equipment testing
+  - Customer sign-off
 
 6. Day After Installation:
-   - Send "How did we do?" survey
-   - Check for any issues
-   - Enable meter reading access
+  - Send "How did we do?" survey
+  - Check for any issues
+  - Enable meter reading access
 
 7. Week 1 Post-Installation:
-   - Follow-up call
-   - Answer any questions
-   - Upsell opportunities (supplies, additional services)
+  - Follow-up call
+  - Answer any questions
+  - Upsell opportunities (supplies, additional services)
 
 8. Month 1:
-   - Schedule first meter reading
-   - Send "Getting the Most from Your Equipment" guide
-   - Check satisfaction
+  - Schedule first meter reading
+  - Send "Getting the Most from Your Equipment" guide
+  - Check satisfaction
 
 9. Month 3:
-   - Quarterly business review (for large accounts)
-   - Identify expansion opportunities
+  - Quarterly business review (for large accounts)
+  - Identify expansion opportunities
 
 10. Month 6:
-    - Mid-year check-in
-    - Preventive maintenance reminder
+  - Mid-year check-in
+  - Preventive maintenance reminder
 ```
 
 **Checklist Automation:**
+
 ```typescript
-export const onboardingChecklists = pgTable("onboarding_checklists", {
-  id: varchar("id").primaryKey(),
-  customerId: varchar("customer_id").notNull(),
-  dealId: varchar("deal_id"),
-  templateId: varchar("template_id"),
-  tenantId: varchar("tenant_id").notNull(),
+export const onboardingChecklists = pgTable('onboarding_checklists', {
+  id: varchar('id').primaryKey(),
+  customerId: varchar('customer_id').notNull(),
+  dealId: varchar('deal_id'),
+  templateId: varchar('template_id'),
+  tenantId: varchar('tenant_id').notNull(),
 
   // Status
-  status: varchar("status"), // not_started, in_progress, completed
-  completionPercentage: integer("completion_percentage"),
+  status: varchar('status'), // not_started, in_progress, completed
+  completionPercentage: integer('completion_percentage'),
 
   // Checklist Items
-  checklistItems: jsonb("checklist_items"), // Array of tasks
+  checklistItems: jsonb('checklist_items'), // Array of tasks
 
   // Dates
-  startedAt: timestamp("started_at"),
-  targetCompletionDate: timestamp("target_completion_date"),
-  completedAt: timestamp("completed_at"),
+  startedAt: timestamp('started_at'),
+  targetCompletionDate: timestamp('target_completion_date'),
+  completedAt: timestamp('completed_at'),
 });
 ```
 
 **Expected Impact:**
+
 - 100% consistent onboarding experience
 - 30% faster time-to-value
 - Higher customer satisfaction
@@ -1411,7 +1488,9 @@ export const onboardingChecklists = pgTable("onboarding_checklists", {
 ## Part 8: Customer Retention & Success
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Customer health scores ✅
 - Churn predictions ✅
 - Success interventions ✅
@@ -1424,6 +1503,7 @@ export const onboardingChecklists = pgTable("onboarding_checklists", {
 **Enhancement:**
 
 #### 🟡 P2: Customer Success Playbooks
+
 **Problem:** CSMs don't know what actions to take for different situations.
 
 **Solution:** Pre-defined playbooks with automated execution:
@@ -1431,6 +1511,7 @@ export const onboardingChecklists = pgTable("onboarding_checklists", {
 **Playbook Examples:**
 
 **1. At-Risk Customer Playbook:**
+
 ```yaml
 Trigger: Customer health score drops below 60
 
@@ -1456,6 +1537,7 @@ Actions:
 ```
 
 **2. Renewal Approaching Playbook:**
+
 ```yaml
 Trigger: Contract expiring in 90 days
 
@@ -1472,6 +1554,7 @@ Actions:
 ```
 
 **3. Expansion Opportunity Playbook:**
+
 ```yaml
 Trigger: Customer adds new location OR health score > 80
 
@@ -1486,6 +1569,7 @@ Actions:
 ```
 
 **4. Low Engagement Playbook:**
+
 ```yaml
 Trigger: No portal logins in 30 days
 
@@ -1499,6 +1583,7 @@ Actions:
 ```
 
 **Expected Impact:**
+
 - 20% reduction in churn
 - More proactive customer success
 - Consistent approach across team
@@ -1510,11 +1595,13 @@ Actions:
 ## Part 9: Mobile Experience
 
 ### Current State Analysis
+
 Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mobile CRM experience.
 
 ### Recommendation
 
 #### 🟠 P1: Native Mobile CRM App (or PWA)
+
 **Problem:** Reps in the field need quick access to CRM data.
 
 **Solution:** Build mobile-optimized CRM:
@@ -1556,12 +1643,14 @@ Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mo
    - Recent emails
 
 **Implementation Decision:**
+
 - **Option A:** Progressive Web App (PWA) - Works on all devices, easier to build
 - **Option B:** Native apps (iOS/Android) - Better performance, offline mode, push notifications
 
 **Recommendation:** Start with PWA, graduate to native if usage is high.
 
 **Expected Impact:**
+
 - 50% increase in mobile CRM usage
 - Real-time updates from the field
 - Better rep productivity
@@ -1573,7 +1662,9 @@ Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mo
 ## Part 10: Integrations & Data Enrichment
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Apollo.io integration ✅
 - Salesforce integration ✅
 - QuickBooks integration ✅
@@ -1585,6 +1676,7 @@ Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mo
 **Enhancement:**
 
 #### 🟢 P3: Pre-Built Integration Marketplace
+
 **Problem:** Customers want more integrations without custom development.
 
 **Solution:** Build integration marketplace with one-click installations:
@@ -1592,32 +1684,38 @@ Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mo
 **Priority Integrations:**
 
 **Communication:**
+
 - Zoom (auto-log meetings)
 - Microsoft Teams (chat integration)
 - Slack (notifications)
 - RingCentral / Dialpad (phone integration)
 
 **Marketing:**
+
 - Mailchimp (email marketing)
 - Google Ads (lead attribution)
 - LinkedIn Sales Navigator (social selling)
 
 **Productivity:**
+
 - Google Calendar / Outlook Calendar (two-way sync)
 - Zapier (connect to 5000+ apps)
 - DocuSign (e-signature)
 
 **Finance:**
+
 - Stripe (payment processing)
 - Bill.com (AP automation)
 - QuickBooks (deeper integration)
 
 **Data Enrichment:**
+
 - Clearbit
 - FullContact
 - LinkedIn Company Data
 
 **Industry-Specific:**
+
 - E-Automate (deeper integration)
 - Nexogy (VoIP)
 - PrintFleet / FM Audit (meter reading automation)
@@ -1625,6 +1723,7 @@ Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mo
 - Ricoh Smart Integration
 
 **Expected Impact:**
+
 - Attract more customers (they want integrations)
 - Reduce custom development work
 - Better data flow
@@ -1636,17 +1735,21 @@ Your CLAUDE.md mentions "mobile-first design" but I need to verify the actual mo
 ## Part 11: Ease of Use (HubSpot-Level UX)
 
 ### Current State Analysis
+
 I haven't seen your UI, but let me provide best practices for "ease of use":
 
 ### Recommendations
 
 #### 🟠 P1: Guided Setup & Onboarding
+
 **Problem:** New users are overwhelmed.
 
 **Solution:** Interactive product tours:
 
 **Features:**
+
 1. **Welcome Wizard (5-7 steps):**
+
    ```
    Step 1: Import your first contacts (CSV upload)
    Step 2: Connect your email (Gmail/Outlook)
@@ -1673,6 +1776,7 @@ I haven't seen your UI, but let me provide best practices for "ease of use":
    - Example: "You don't have any deals yet. Create your first deal to see how it works!"
 
 **Expected Impact:**
+
 - 60% faster user onboarding
 - 40% reduction in support tickets
 
@@ -1681,11 +1785,13 @@ I haven't seen your UI, but let me provide best practices for "ease of use":
 ---
 
 #### 🟡 P2: Smart Search (Global)
+
 **Problem:** Users can't find things quickly.
 
 **Solution:** Universal search like HubSpot:
 
 **Features:**
+
 - Search across all objects (leads, deals, contacts, companies, tasks)
 - Fuzzy matching ("john smtih" finds "John Smith")
 - Search by any field (email, phone, company name, deal value)
@@ -1712,6 +1818,7 @@ Response:
 ```
 
 **Expected Impact:**
+
 - Find anything in <3 seconds
 - Reduced frustration
 
@@ -1720,11 +1827,13 @@ Response:
 ---
 
 #### 🟢 P3: Bulk Actions
+
 **Problem:** Updating multiple records one-by-one is tedious.
 
 **Solution:** Enable bulk operations:
 
 **Actions:**
+
 - Bulk assign to rep
 - Bulk change stage
 - Bulk add to sequence
@@ -1733,12 +1842,14 @@ Response:
 - Bulk tag
 
 **UI:**
+
 ```
 [✓] Select all 47 leads
 Actions: [Assign] [Add to Sequence] [Delete] [Export] [Tag]
 ```
 
 **Expected Impact:**
+
 - 10x faster for bulk operations
 
 **Implementation Effort:** 1 week
@@ -1748,7 +1859,9 @@ Actions: [Assign] [Add to Sequence] [Delete] [Export] [Tag]
 ## Part 12: AI & Automation (Next Generation)
 
 ### Current State Analysis
+
 **What You Have:**
+
 - Workflow automation ✅
 - ML-based lead scoring ✅
 - Churn prediction ✅
@@ -1756,11 +1869,13 @@ Actions: [Assign] [Add to Sequence] [Delete] [Export] [Tag]
 **Enhancements:**
 
 #### 🟠 P1: AI Sales Assistant
+
 **Problem:** Reps need guidance on what to do next.
 
 **Solution:** AI assistant that suggests next actions:
 
 **Features:**
+
 ```typescript
 // AI Assistant Panel (always visible in sidebar)
 <AIAssistant>
@@ -1786,6 +1901,7 @@ Actions: [Assign] [Add to Sequence] [Delete] [Export] [Tag]
 ```
 
 **AI Capabilities:**
+
 - Predict best time to call (based on past answer rates)
 - Suggest email subject lines (based on open rates)
 - Recommend next deal stage
@@ -1793,6 +1909,7 @@ Actions: [Assign] [Add to Sequence] [Delete] [Export] [Tag]
 - Detect missing information in deals
 
 **Expected Impact:**
+
 - 25% increase in rep productivity
 - Better prioritization
 
@@ -1801,6 +1918,7 @@ Actions: [Assign] [Add to Sequence] [Delete] [Export] [Tag]
 ---
 
 #### 🟡 P2: Revenue Intelligence
+
 **Problem:** Hard to predict which deals will close.
 
 **Solution:** AI-powered deal scoring:
@@ -1834,11 +1952,13 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ```
 
 **Model Training:**
+
 - Train on historical won/lost deals
 - Features: email engagement, call frequency, deal value, time in stage, company size, etc.
 - Retrain monthly as more data accumulates
 
 **Expected Impact:**
+
 - More accurate forecasts
 - Early identification of at-risk deals
 
@@ -1849,25 +1969,31 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ## Implementation Roadmap
 
 ### Phase 1 (Months 1-2): Foundation & Quick Wins 🔴 P0
+
 **Goal:** Reach feature parity with HubSpot
 
 **Week 1-2:**
+
 - Native web form builder
 - Email sequences (cadences)
 
 **Week 3-4:**
+
 - Gmail/Outlook integration (two-way sync)
 - Live chat & chatbot integration
 
 **Week 5-6:**
+
 - Automated onboarding workflows
 - Pre-built report library
 
 **Week 7-8:**
+
 - AI email writing assistant
 - Mobile PWA (basic version)
 
 **Expected Outcomes:**
+
 - 50% reduction in manual follow-up work
 - 40% faster lead response time
 - HubSpot-level sales automation
@@ -1875,25 +2001,31 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ---
 
 ### Phase 2 (Months 3-4): Differentiation & Polish 🟠 P1
+
 **Goal:** Exceed HubSpot in key areas
 
 **Week 9-10:**
+
 - Landing page builder
 - Visual pipeline board (Kanban)
 
 **Week 11-12:**
+
 - Deal health scoring
 - Custom dashboards
 
 **Week 13-14:**
+
 - SMS sequences (Twilio)
 - Call recording & transcription
 
 **Week 15-16:**
+
 - Customer success playbooks
 - Guided setup & onboarding
 
 **Expected Outcomes:**
+
 - Best-in-class sales automation
 - Industry-leading customer success features
 - "Easy to use" reputation
@@ -1901,21 +2033,25 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ---
 
 ### Phase 3 (Months 5-6): Advanced & Competitive Edge 🟡🟢 P2-P3
+
 **Goal:** Become the undisputed leader for copier dealers
 
 **Week 17-20:**
+
 - Intent signal tracking
 - Interactive proposal viewer
 - Smart task suggestions
 - AI sales assistant
 
 **Week 21-24:**
+
 - Revenue intelligence
 - Pre-built integration marketplace
 - Bulk actions
 - Smart search
 
 **Expected Outcomes:**
+
 - AI-powered selling capabilities
 - Deepest integration ecosystem
 - Platform lock-in (customers can't leave)
@@ -1925,17 +2061,20 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ## Success Metrics
 
 ### Adoption Metrics
+
 - **User Login Frequency:** Target 5x/week (currently ?)
 - **Mobile App Usage:** Target 40% of users (currently 0%)
 - **Feature Adoption:** Target 70% using sequences (currently 0%)
 
 ### Sales Efficiency Metrics
+
 - **Lead Response Time:** Target <5 minutes (currently ?)
 - **Follow-Up Rate:** Target 95% (vs. 60-70% manual)
 - **Time in CRM:** Target 15 min/day (down from 45 min/day)
 - **Pipeline Accuracy:** Target ±10% (vs. ±30% without AI)
 
 ### Business Outcomes
+
 - **Sales Cycle Length:** Target 15% reduction (better follow-up)
 - **Win Rate:** Target 20% increase (better qualification + nurture)
 - **Customer Churn:** Target 25% reduction (proactive interventions)
@@ -1946,7 +2085,9 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ## Competitive Positioning
 
 ### vs. HubSpot
+
 **Advantages:**
+
 - ✅ Industry-specific (copier dealers)
 - ✅ Equipment lifecycle management
 - ✅ Installation workflows
@@ -1956,6 +2097,7 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 - ✅ Better multi-tenant architecture
 
 **After Implementing Recommendations:**
+
 - ✅ Equal sales automation
 - ✅ Equal ease of use
 - ✅ Better AI (more contextual to industry)
@@ -1963,7 +2105,9 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 **Positioning:** "HubSpot for Copier Dealers - but better"
 
 ### vs. SalesChain (Copier CRM Incumbent)
+
 **Advantages:**
+
 - ✅ Modern UI/UX
 - ✅ Better reporting
 - ✅ AI-powered features
@@ -1974,7 +2118,9 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 **Positioning:** "The modern CRM for next-generation dealers"
 
 ### vs. E-Automate
+
 **Advantages:**
+
 - ✅ Better CRM workflow
 - ✅ Sales automation
 - ✅ Modern user experience
@@ -1989,16 +2135,19 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ### Development Costs (Rough Estimates)
 
 **Phase 1 (8 weeks):**
+
 - 2 full-stack developers @ $150/hr × 40 hrs/week × 8 weeks = $96,000
 - 1 designer @ $125/hr × 20 hrs/week × 8 weeks = $20,000
 - **Total Phase 1:** ~$116,000
 
 **Phase 2 (8 weeks):**
+
 - 2 full-stack developers × 8 weeks = $96,000
 - 1 designer × 8 weeks = $20,000
 - **Total Phase 2:** ~$116,000
 
 **Phase 3 (8 weeks):**
+
 - 2 full-stack developers × 8 weeks = $96,000
 - 1 ML engineer @ $175/hr × 40 hrs/week × 4 weeks = $28,000
 - **Total Phase 3:** ~$124,000
@@ -2014,29 +2163,34 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ### Scenario: You have 100 dealer customers
 
 **Without Improvements:**
+
 - Average deal: $500/month/customer = $50,000 MRR
 - Churn: 15%/year
 - ARR: $50k × 12 = $600k
 
 **With Improvements:**
+
 - **Pricing Power:** Can charge $750/month (+50%) due to HubSpot-level features
 - **New MRR:** $750 × 100 = $75,000 (+$25k/month)
 - **Reduced Churn:** 15% → 10% (better product, more features)
 - **New Logo Acquisition:** 2x faster (better product, easier to sell)
 
 **Year 1 Impact:**
+
 - Additional MRR: $25k/month × 12 = $300k
 - Churn reduction savings: $600k × 5% = $30k
 - New customers (faster sales): +20 customers × $750 × 6 months avg = $90k
 - **Total Additional Revenue Year 1:** $420k
 
 **Return on Investment:**
+
 - Investment: $356k
 - Year 1 Return: $420k
 - ROI: 18% in Year 1
 - Break-even: ~10 months
 
 **Year 2+ Impact:**
+
 - Higher pricing on existing customers
 - Lower churn (compounding)
 - Faster new customer acquisition
@@ -2049,7 +2203,9 @@ export const dealAIScores = pgTable("deal_ai_scores", {
 ## Summary & Next Steps
 
 ### What You've Built: 🏆 EXCEPTIONAL
+
 You've created an enterprise-grade CRM platform that rivals or exceeds HubSpot in:
+
 - Data architecture
 - Multi-tenant security
 - Workflow automation
@@ -2057,7 +2213,9 @@ You've created an enterprise-grade CRM platform that rivals or exceeds HubSpot i
 - Industry-specific functionality
 
 ### Where to Focus: 🎯 USER EXPERIENCE & AUTOMATION
+
 To become the "HubSpot of Copier Dealers," prioritize:
+
 1. **Sales automation** (sequences, email integration)
 2. **Ease of use** (better UX, guided onboarding)
 3. **Mobile experience** (PWA or native app)
@@ -2066,29 +2224,22 @@ To become the "HubSpot of Copier Dealers," prioritize:
 ### Immediate Action Items: 📋
 
 **This Week:**
+
 1. Review this document with your team
 2. Prioritize the P0 recommendations
 3. Validate investment vs. expected return
 4. Decide: in-house vs. outsourced development
 
-**Next Week:**
-5. Create detailed specifications for Phase 1 items
-6. Set up development sprints (2-week cycles)
-7. Identify beta customers for testing
+**Next Week:** 5. Create detailed specifications for Phase 1 items 6. Set up development sprints (2-week cycles) 7. Identify beta customers for testing
 
-**Month 1:**
-8. Launch web form builder
-9. Launch email sequences
-10. Begin Gmail/Outlook integration
+**Month 1:** 8. Launch web form builder 9. Launch email sequences 10. Begin Gmail/Outlook integration
 
-**Month 2:**
-11. Launch live chat
-12. Launch mobile PWA
-13. Start Phase 2 planning
+**Month 2:** 11. Launch live chat 12. Launch mobile PWA 13. Start Phase 2 planning
 
 ### Competitive Advantage: 🚀
 
 If you execute on these recommendations, you'll have:
+
 - The **best CRM for copier dealers** (no competition)
 - The **only industry CRM** with HubSpot-level automation
 - A **platform** that dealers can't leave (too valuable)
@@ -2099,6 +2250,7 @@ If you execute on these recommendations, you'll have:
 ## Conclusion
 
 You've already built 80% of what you need. The remaining 20% is focused on:
+
 - **User experience** (make it as easy as HubSpot)
 - **Sales automation** (sequences, email integration, AI)
 - **Mobile-first** (reps in the field)
@@ -2118,35 +2270,41 @@ The opportunity is clear: execute on these recommendations and you'll have a pro
 ## Appendix: Technology Recommendations
 
 ### For Email Integration:
+
 - **Gmail:** Gmail API + OAuth 2.0
 - **Outlook:** Microsoft Graph API
 - **Tracking:** Invisible 1×1 pixel + unique tracking links
 
 ### For Live Chat:
+
 - **Framework:** Socket.io (WebSocket)
 - **AI:** Claude API (you're already integrated!)
 - **UI Library:** Intercom-style widget
 
 ### For Mobile:
+
 - **PWA Framework:** React + Vite PWA plugin (you're already using this!)
 - **Offline:** Workbox for service workers
 - **Native (later):** React Native (code reuse with web)
 
 ### For AI Features:
+
 - **Provider:** Claude API (Anthropic) - you already have this!
 - **Training:** Your own deal data for revenue intelligence
 - **Infrastructure:** Background jobs for predictions
 
 ### For SMS:
+
 - **Provider:** Twilio (industry standard)
 - **Compliance:** Built-in opt-out handling
 - **Cost:** ~$0.01/message
 
 ### For Call Recording:
+
 - **Provider:** Twilio Voice or RingCentral
 - **Transcription:** Claude AI or OpenAI Whisper
 - **Storage:** S3 with encryption
 
 ---
 
-*End of Report*
+_End of Report_

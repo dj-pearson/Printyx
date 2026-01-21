@@ -523,7 +523,9 @@ export const dashboardWidgetDefinitions = [
     requiredPermission: 'analytics.view_dashboards',
     applicableRoles: ['company_admin'],
     applicableModules: ['Analytics'],
-    defaultConfig: { showMetrics: ['tickets_created', 'deals_won', 'invoices_sent', 'new_customers'] },
+    defaultConfig: {
+      showMetrics: ['tickets_created', 'deals_won', 'invoices_sent', 'new_customers'],
+    },
     configurableFields: ['metrics'],
     isDraggable: true,
     isResizable: true,

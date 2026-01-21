@@ -140,7 +140,7 @@ export class SalesReportingService {
    */
   static async getPersonalPipeline(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<PipelineStage[]> {
     const cacheKey = `pipeline:${userContext.id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<PipelineStage[]>(cacheKey);
@@ -219,7 +219,7 @@ export class SalesReportingService {
   static async getPersonalActivity(
     userContext: EnhancedUserContext,
     dateRange: DateRange,
-    granularity: 'day' | 'week' = 'day'
+    granularity: 'day' | 'week' = 'day',
   ): Promise<ActivityMetric[]> {
     const cacheKey = `activity:${userContext.id}:${granularity}:${dateRange.dateFrom}-${dateRange.dateTo}`;
     const cached = ReportCache.get<ActivityMetric[]>(cacheKey);
@@ -263,7 +263,7 @@ export class SalesReportingService {
    */
   static async getPersonalQuotaAttainment(
     userContext: EnhancedUserContext,
-    period: 'current' | 'previous' | 'ytd' = 'current'
+    period: 'current' | 'previous' | 'ytd' = 'current',
   ): Promise<QuotaAttainment> {
     const cacheKey = `quota:${userContext.id}:${period}`;
     const cached = ReportCache.get<QuotaAttainment>(cacheKey);
@@ -348,7 +348,7 @@ export class SalesReportingService {
   static async getPersonalCommissions(
     userContext: EnhancedUserContext,
     dateRange: DateRange,
-    status?: 'pending' | 'approved' | 'paid'
+    status?: 'pending' | 'approved' | 'paid',
   ): Promise<CommissionEarning[]> {
     const cacheKey = `commission:${userContext.id}:${dateRange.dateFrom}-${dateRange.dateTo}:${status}`;
     const cached = ReportCache.get<CommissionEarning[]>(cacheKey);
@@ -401,7 +401,7 @@ export class SalesReportingService {
   static async getLeaderboard(
     userContext: EnhancedUserContext,
     metric: 'revenue' | 'deals' | 'pipeline' | 'activities' = 'revenue',
-    scope: 'team' | 'location' | 'company' = 'location'
+    scope: 'team' | 'location' | 'company' = 'location',
   ): Promise<LeaderboardEntry[]> {
     const cacheKey = `leaderboard:${metric}:${scope}:${userContext.tenantId}`;
     const cached = ReportCache.get<LeaderboardEntry[]>(cacheKey);
@@ -487,9 +487,7 @@ export class SalesReportingService {
    * Report 6 & 7: Team Comparison Reports
    * Shows performance comparison across team members
    */
-  static async getTeamComparison(
-    userContext: EnhancedUserContext
-  ): Promise<TeamComparison[]> {
+  static async getTeamComparison(userContext: EnhancedUserContext): Promise<TeamComparison[]> {
     const cacheKey = `team-comparison:${userContext.id}`;
     const cached = ReportCache.get<TeamComparison[]>(cacheKey);
     if (cached) return cached;
@@ -565,7 +563,7 @@ export class SalesReportingService {
    */
   static async getTeamPipelineSummary(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<{
     teamPipeline: PipelineStage[];
     individualPipelines: Array<{
@@ -603,9 +601,10 @@ export class SalesReportingService {
       };
     }
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Get aggregated team pipeline
     const teamPipelineResult = await db.execute(sql`
@@ -617,7 +616,7 @@ export class SalesReportingService {
         AVG(o.amount)::decimal as average_deal_size,
         COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as conversion_rate
       FROM opportunities o
-      WHERE o.owner_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map(id => `'${id}'`).join(',')}]`)})
+      WHERE o.owner_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
         AND o.tenant_id = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
@@ -649,7 +648,8 @@ export class SalesReportingService {
       totalValue: number;
     }> = [];
 
-    for (const userId of accessibleUserIds.slice(0, 20)) { // Limit to top 20 users for performance
+    for (const userId of accessibleUserIds.slice(0, 20)) {
+      // Limit to top 20 users for performance
       const userResult = await db.execute(sql`
         SELECT
           u.id as user_id,
@@ -703,15 +703,16 @@ export class SalesReportingService {
     const totalTeamValue = teamPipeline.reduce((sum, stage) => sum + stage.totalValue, 0);
     const totalTeamDeals = teamPipeline.reduce((sum, stage) => sum + stage.count, 0);
     const averageDealSize = totalTeamDeals > 0 ? totalTeamValue / totalTeamDeals : 0;
-    const closedWonStage = teamPipeline.find(s => s.stage === 'Closed Won');
+    const closedWonStage = teamPipeline.find((s) => s.stage === 'Closed Won');
     const teamConversionRate = closedWonStage ? closedWonStage.conversionRate : 0;
-    const topPerformer = individualPipelines.length > 0
-      ? {
-          userId: individualPipelines[0].userId,
-          userName: individualPipelines[0].userName,
-          value: individualPipelines[0].totalValue,
-        }
-      : null;
+    const topPerformer =
+      individualPipelines.length > 0
+        ? {
+            userId: individualPipelines[0].userId,
+            userName: individualPipelines[0].userName,
+            value: individualPipelines[0].totalValue,
+          }
+        : null;
 
     const result = {
       teamPipeline,

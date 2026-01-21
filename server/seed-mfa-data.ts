@@ -1,8 +1,8 @@
-import { db } from "./db";
-import { users, mfaBackupCodes, mfaAuditLogs } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
-import bcrypt from "bcrypt";
-import crypto from "crypto";
+import { db } from './db';
+import { users, mfaBackupCodes, mfaAuditLogs } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 function generateTOTPSecret(): string {
   // Generate a random base32-encoded secret (20 bytes = 32 base32 chars)
@@ -41,40 +41,33 @@ async function generateBackupCode(): Promise<{ code: string; hash: string }> {
 }
 
 async function seedMfaData() {
-  console.log("🔐 Seeding MFA data...");
+  console.log('🔐 Seeding MFA data...');
 
   try {
     // Clean up existing MFA test data first
-    console.log("Cleaning up existing MFA test data...");
-    
+    console.log('Cleaning up existing MFA test data...');
+
     // Get test users - try to find any user to enable MFA on
-    const testUsers = await db
-      .select()
-      .from(users)
-      .limit(1);
+    const testUsers = await db.select().from(users).limit(1);
 
     if (testUsers.length === 0) {
-      console.log("⚠️  No users found in database. Skipping MFA seed.");
+      console.log('⚠️  No users found in database. Skipping MFA seed.');
       return;
     }
 
     const testUser = testUsers[0];
 
     // Delete existing backup codes for test users
-    await db
-      .delete(mfaBackupCodes)
-      .where(eq(mfaBackupCodes.userId, testUser.id));
+    await db.delete(mfaBackupCodes).where(eq(mfaBackupCodes.userId, testUser.id));
 
     // Delete existing audit logs for test users
-    await db
-      .delete(mfaAuditLogs)
-      .where(eq(mfaAuditLogs.userId, testUser.id));
+    await db.delete(mfaAuditLogs).where(eq(mfaAuditLogs.userId, testUser.id));
 
-    console.log("✓ Cleaned up existing MFA data");
+    console.log('✓ Cleaned up existing MFA data');
 
     // 1. Enable MFA for admin user
     const mfaSecret = generateTOTPSecret();
-    
+
     await db
       .update(users)
       .set({
@@ -90,7 +83,7 @@ async function seedMfaData() {
 
     // 2. Generate backup codes
     const backupCodes: { code: string; hash: string }[] = [];
-    
+
     for (let i = 0; i < 10; i++) {
       const { code, hash } = await generateBackupCode();
       backupCodes.push({ code, hash });
@@ -102,7 +95,7 @@ async function seedMfaData() {
         tenantId: testUser.tenantId,
         codeHash: hash,
         isUsed: false,
-      }))
+      })),
     );
 
     console.log(`✓ Generated 10 backup codes for ${testUser.email}:`);
@@ -114,10 +107,7 @@ async function seedMfaData() {
     const usedBackupCodes = await db
       .select()
       .from(mfaBackupCodes)
-      .where(and(
-        eq(mfaBackupCodes.userId, testUser.id),
-        eq(mfaBackupCodes.isUsed, false)
-      ))
+      .where(and(eq(mfaBackupCodes.userId, testUser.id), eq(mfaBackupCodes.isUsed, false)))
       .limit(1);
 
     if (usedBackupCodes.length > 0) {
@@ -126,7 +116,7 @@ async function seedMfaData() {
         .set({
           isUsed: true,
           usedAt: new Date(),
-          usedIpAddress: "192.168.1.100",
+          usedIpAddress: '192.168.1.100',
         })
         .where(eq(mfaBackupCodes.id, usedBackupCodes[0].id));
 
@@ -230,8 +220,8 @@ async function seedMfaData() {
 
     console.log(`✓ Created 5 MFA audit log entries`);
 
-    console.log("\n✅ MFA data seeded successfully!");
-    console.log("\n📝 Test User MFA Details:");
+    console.log('\n✅ MFA data seeded successfully!');
+    console.log('\n📝 Test User MFA Details:');
     console.log(`   Email: ${testUser.email}`);
     console.log(`   MFA Enabled: true`);
     console.log(`   TOTP Secret: ${mfaSecret}`);
@@ -239,9 +229,8 @@ async function seedMfaData() {
     console.log(`   Audit Logs: 5 entries`);
     console.log(`\n🔗 otpauth://totp/Printyx:${testUser.email}?secret=${mfaSecret}&issuer=Printyx`);
     console.log(`\n💡 Use this URL in an authenticator app (Google Authenticator, Authy, etc.)`);
-
   } catch (error) {
-    console.error("❌ Error seeding MFA data:", error);
+    console.error('❌ Error seeding MFA data:', error);
     throw error;
   }
 }
@@ -251,10 +240,10 @@ export { seedMfaData };
 // Run the seed if this file is executed directly
 seedMfaData()
   .then(() => {
-    console.log("✓ Seeding complete");
+    console.log('✓ Seeding complete');
     process.exit(0);
   })
   .catch((error) => {
-    console.error("✗ Seeding failed:", error);
+    console.error('✗ Seeding failed:', error);
     process.exit(1);
   });

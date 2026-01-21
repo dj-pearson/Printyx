@@ -1,17 +1,11 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import { useAuth } from "@/hooks/useAuth";
-import MainLayout from "@/components/layout/main-layout";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState } from 'react';
+import { Link } from 'wouter';
+import { useAuth } from '@/hooks/useAuth';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Monitor,
   Wrench,
@@ -25,7 +19,7 @@ import {
   BarChart3,
   FileText,
   Settings,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ProductModule {
   id: string;
@@ -35,192 +29,177 @@ interface ProductModule {
   path: string;
   category: string;
   itemCount?: number;
-  status: "active" | "setup" | "coming-soon";
+  status: 'active' | 'setup' | 'coming-soon';
 }
 
 const productModules: ProductModule[] = [
   {
-    id: "product-catalog",
-    title: "Master Product Catalog",
-    description:
-      "Browse Printyx's master catalog and enable products for your organization",
+    id: 'product-catalog',
+    title: 'Master Product Catalog',
+    description: "Browse Printyx's master catalog and enable products for your organization",
     icon: Package,
-    path: "/product-catalog",
-    category: "Catalog",
+    path: '/product-catalog',
+    category: 'Catalog',
     itemCount: 150,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "product-models",
-    title: "Product Models",
-    description:
-      "Manage copier equipment with CPC rates and manufacturer specifications",
+    id: 'product-models',
+    title: 'Product Models',
+    description: 'Manage copier equipment with CPC rates and manufacturer specifications',
     icon: Monitor,
-    path: "/product-models",
-    category: "Hardware",
+    path: '/product-models',
+    category: 'Hardware',
     itemCount: 45,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "product-accessories",
-    title: "Product Accessories",
-    description: "Hardware add-ons with model compatibility tracking",
+    id: 'product-accessories',
+    title: 'Product Accessories',
+    description: 'Hardware add-ons with model compatibility tracking',
     icon: Wrench,
-    path: "/product-accessories",
-    category: "Hardware",
+    path: '/product-accessories',
+    category: 'Hardware',
     itemCount: 23,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "professional-services",
-    title: "Professional Services",
-    description: "Consulting, installation, and training service offerings",
+    id: 'professional-services',
+    title: 'Professional Services',
+    description: 'Consulting, installation, and training service offerings',
     icon: Users,
-    path: "/professional-services",
-    category: "Services",
+    path: '/professional-services',
+    category: 'Services',
     itemCount: 12,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "service-products",
-    title: "Service Products",
-    description: "Ongoing service offerings with subscription models",
+    id: 'service-products',
+    title: 'Service Products',
+    description: 'Ongoing service offerings with subscription models',
     icon: Cog,
-    path: "/service-products",
-    category: "Services",
+    path: '/service-products',
+    category: 'Services',
     itemCount: 8,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "supplies",
-    title: "Supplies",
-    description:
-      "Consumables, toner, paper, and maintenance kits with inventory tracking",
+    id: 'supplies',
+    title: 'Supplies',
+    description: 'Consumables, toner, paper, and maintenance kits with inventory tracking',
     icon: Package,
-    path: "/supplies",
-    category: "Consumables",
+    path: '/supplies',
+    category: 'Consumables',
     itemCount: 156,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "inventory",
-    title: "Inventory",
-    description: "Stock levels, adjustments, reorders, and receiving",
+    id: 'inventory',
+    title: 'Inventory',
+    description: 'Stock levels, adjustments, reorders, and receiving',
     icon: Package,
-    path: "/inventory",
-    category: "Operations",
+    path: '/inventory',
+    category: 'Operations',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "it-services",
-    title: "IT & Managed Services",
-    description: "Network management, cloud services, security, and IT support",
+    id: 'it-services',
+    title: 'IT & Managed Services',
+    description: 'Network management, cloud services, security, and IT support',
     icon: Server,
-    path: "/managed-services",
-    category: "Technology",
+    path: '/managed-services',
+    category: 'Technology',
     itemCount: 18,
-    status: "active",
+    status: 'active',
   },
   {
-    id: "software-products",
-    title: "Software Products",
-    description: "Licenses and software offerings with pricing and bundles",
+    id: 'software-products',
+    title: 'Software Products',
+    description: 'Licenses and software offerings with pricing and bundles',
     icon: Layers,
-    path: "/software-products",
-    category: "Technology",
+    path: '/software-products',
+    category: 'Technology',
     itemCount: 0,
-    status: "active",
+    status: 'active',
   },
 ];
 
 const quickActions = [
-  { title: "Bulk Import Products", icon: FileText, action: "import" },
-  { title: "Generate Product Reports", icon: BarChart3, action: "reports" },
-  { title: "Product Settings", icon: Settings, action: "settings" },
+  { title: 'Bulk Import Products', icon: FileText, action: 'import' },
+  { title: 'Generate Product Reports', icon: BarChart3, action: 'reports' },
+  { title: 'Product Settings', icon: Settings, action: 'settings' },
 ];
 
 export default function ProductHub() {
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Filter modules based on search and category
   const filteredModules = productModules.filter((module) => {
     const matchesSearch =
       module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       module.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || module.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || module.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const categories = [
-    "all",
-    ...Array.from(new Set(productModules.map((m) => m.category))),
-  ];
+  const categories = ['all', ...Array.from(new Set(productModules.map((m) => m.category)))];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "setup":
-        return "bg-yellow-100 text-yellow-800";
-      case "coming-soon":
-        return "bg-gray-100 text-gray-800";
+      case 'active':
+        return 'bg-green-100 text-green-800';
+      case 'setup':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'coming-soon':
+        return 'bg-gray-100 text-gray-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "active":
-        return "Active";
-      case "setup":
-        return "Setup Required";
-      case "coming-soon":
-        return "Coming Soon";
+      case 'active':
+        return 'Active';
+      case 'setup':
+        return 'Setup Required';
+      case 'coming-soon':
+        return 'Coming Soon';
       default:
-        return "Unknown";
+        return 'Unknown';
     }
   };
 
   return (
-    <MainLayout 
-      title="Product Management Hub" 
+    <MainLayout
+      title="Product Management Hub"
       description="Centralized management for all product categories and services"
     >
       <div className="space-y-6">
-
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Products
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Total Products</CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {productModules.reduce(
-                  (sum, module) => sum + (module.itemCount || 0),
-                  0
-                )}
+                {productModules.reduce((sum, module) => sum + (module.itemCount || 0), 0)}
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Active Modules
-              </CardTitle>
+              <CardTitle className="text-sm font-medium">Active Modules</CardTitle>
               <Monitor className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {productModules.filter((m) => m.status === "active").length}
+                {productModules.filter((m) => m.status === 'active').length}
               </div>
             </CardContent>
           </Card>
@@ -241,7 +220,7 @@ export default function ProductHub() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {productModules
-                  .filter((m) => m.category === "Services")
+                  .filter((m) => m.category === 'Services')
                   .reduce((sum, module) => sum + (module.itemCount || 0), 0)}
               </div>
             </CardContent>
@@ -263,12 +242,12 @@ export default function ProductHub() {
             {categories.map((category) => (
               <Button
                 key={category}
-                variant={selectedCategory === category ? "default" : "outline"}
+                variant={selectedCategory === category ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setSelectedCategory(category)}
                 className="capitalize"
               >
-                {category === "all" ? "All Categories" : category}
+                {category === 'all' ? 'All Categories' : category}
               </Button>
             ))}
           </div>
@@ -301,10 +280,7 @@ export default function ProductHub() {
           {filteredModules.map((module) => {
             const IconComponent = module.icon;
             return (
-              <Card
-                key={module.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-              >
+              <Card key={module.id} className="hover:shadow-lg transition-shadow cursor-pointer">
                 <Link href={module.path}>
                   <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between">
@@ -313,30 +289,22 @@ export default function ProductHub() {
                           <IconComponent className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                          <CardTitle className="text-lg">
-                            {module.title}
-                          </CardTitle>
+                          <CardTitle className="text-lg">{module.title}</CardTitle>
                           <Badge variant="secondary" className="text-xs">
                             {module.category}
                           </Badge>
                         </div>
                       </div>
-                      <Badge
-                        className={`text-xs ${getStatusColor(module.status)}`}
-                      >
+                      <Badge className={`text-xs ${getStatusColor(module.status)}`}>
                         {getStatusText(module.status)}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <CardDescription className="text-sm mb-4">
-                      {module.description}
-                    </CardDescription>
+                    <CardDescription className="text-sm mb-4">{module.description}</CardDescription>
                     <div className="flex items-center justify-between">
                       <div className="text-sm text-muted-foreground">
-                        {module.itemCount
-                          ? `${module.itemCount} items`
-                          : "No items"}
+                        {module.itemCount ? `${module.itemCount} items` : 'No items'}
                       </div>
                       <Button size="sm" variant="ghost">
                         Manage <Plus className="ml-1 h-3 w-3" />

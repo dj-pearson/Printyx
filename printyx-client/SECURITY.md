@@ -9,23 +9,27 @@ The Printyx Monitoring Client is designed for deployment in secure enterprise en
 ### 1. Transport Layer Security (TLS)
 
 **HTTPS Only Enforcement**
+
 - Client enforces HTTPS for all API communication
 - HTTP endpoints are rejected with security error
 - All traffic to Printyx platform encrypted over TLS
 
 **TLS Version Requirements**
+
 - Minimum: TLS 1.2 (configurable)
 - Maximum: TLS 1.3
 - Disabled: SSLv2, SSLv3, TLS 1.0, TLS 1.1
 - Secure renegotiation enforced
 
 **Certificate Validation**
+
 - Full chain validation enabled by default
 - Hostname verification enforced
 - Self-signed certificates rejected (configurable for testing only)
 - Custom CA certificate support for private CAs
 
 **Configuration Example:**
+
 ```json
 {
   "api": {
@@ -44,6 +48,7 @@ The Printyx Monitoring Client is designed for deployment in secure enterprise en
 For maximum security environments, the client supports certificate pinning to prevent man-in-the-middle attacks.
 
 **Fingerprint Pinning:**
+
 ```json
 {
   "api": {
@@ -60,21 +65,21 @@ For maximum security environments, the client supports certificate pinning to pr
 ```
 
 **How to Get Certificate Fingerprint:**
+
 ```bash
 # For your Printyx server
 echo | openssl s_client -connect your-printyx.com:443 2>/dev/null | openssl x509 -noout -fingerprint -sha256
 ```
 
 **Public Key Pinning** (more resilient to certificate rotation):
+
 ```json
 {
   "api": {
     "security": {
       "certificatePinning": {
         "enabled": true,
-        "publicKeys": [
-          "base64-encoded-public-key-here"
-        ]
+        "publicKeys": ["base64-encoded-public-key-here"]
       }
     }
   }
@@ -84,6 +89,7 @@ echo | openssl s_client -connect your-printyx.com:443 2>/dev/null | openssl x509
 ### 3. Credential Encryption
 
 **At Rest Encryption**
+
 - AES-256-GCM authenticated encryption
 - API keys encrypted in configuration file
 - Device passwords and SNMP communities encrypted
@@ -91,6 +97,7 @@ echo | openssl s_client -connect your-printyx.com:443 2>/dev/null | openssl x509
 - PBKDF2 with 100,000 iterations
 
 **Enable Encryption:**
+
 ```json
 {
   "encryption": {
@@ -105,6 +112,7 @@ echo | openssl s_client -connect your-printyx.com:443 2>/dev/null | openssl x509
 When encryption is enabled, the client automatically encrypts sensitive fields on save and decrypts on load.
 
 **Encrypted Config Example:**
+
 ```json
 {
   "encryption": {
@@ -121,6 +129,7 @@ When encryption is enabled, the client automatically encrypts sensitive fields o
 For maximum security when monitoring printers, use SNMPv3 with authentication and encryption.
 
 **Configuration:**
+
 ```json
 {
   "devices": [
@@ -139,6 +148,7 @@ For maximum security when monitoring printers, use SNMPv3 with authentication an
 ```
 
 **SNMPv3 Security Levels:**
+
 - `noAuthNoPriv`: No authentication, no encryption (not recommended)
 - `authNoPriv`: Authentication only
 - `authPriv`: Authentication + encryption (recommended)
@@ -146,15 +156,18 @@ For maximum security when monitoring printers, use SNMPv3 with authentication an
 ### 5. File System Security
 
 **Configuration File Permissions:**
+
 - Automatically set to 600 (owner read/write only) on Unix systems
 - Prevents unauthorized access to sensitive credentials
 - Windows: NTFS permissions should be manually restricted to administrator
 
 **Secure File Locations:**
+
 - Linux: `/etc/printyx-client/config.json` (root only)
 - Windows: `C:\ProgramData\Printyx\config.json` (Administrators only)
 
 **Set Permissions Manually:**
+
 ```bash
 # Linux
 sudo chown root:root /etc/printyx-client/config.json
@@ -168,16 +181,19 @@ ls -la /etc/printyx-client/config.json
 ### 6. Network Security
 
 **Outbound Traffic Only:**
+
 - Client initiates all connections
 - No inbound ports required
 - Firewall-friendly design
 
 **Required Outbound Ports:**
+
 - **443/TCP**: HTTPS to Printyx platform (REQUIRED)
 - **161/UDP**: SNMP to local printers (optional, local network only)
 - **80/TCP** or **443/TCP**: HTTP/HTTPS to local printers (optional, local network only)
 
 **Firewall Rules Example (Linux iptables):**
+
 ```bash
 # Allow outbound HTTPS to Printyx
 iptables -A OUTPUT -p tcp --dport 443 -d your-printyx.com -j ACCEPT
@@ -192,6 +208,7 @@ iptables -A OUTPUT -p udp --dport 161 -d 192.168.1.0/24 -j ACCEPT
 ### 7. Audit Logging
 
 **Security Event Logging:**
+
 ```json
 {
   "logging": {
@@ -203,6 +220,7 @@ iptables -A OUTPUT -p udp --dport 161 -d 192.168.1.0/24 -j ACCEPT
 ```
 
 **Logged Security Events:**
+
 - TLS connection attempts and failures
 - Certificate validation failures
 - Certificate pinning violations
@@ -211,6 +229,7 @@ iptables -A OUTPUT -p udp --dport 161 -d 192.168.1.0/24 -j ACCEPT
 - Unauthorized access attempts
 
 **Log Rotation:**
+
 ```bash
 # Linux logrotate example
 # /etc/logrotate.d/printyx-client
@@ -230,11 +249,13 @@ iptables -A OUTPUT -p udp --dport 161 -d 192.168.1.0/24 -j ACCEPT
 ### 8. API Key Security
 
 **Key Rotation:**
+
 - Regular rotation recommended (90 days)
 - Zero-downtime rotation supported
 - Old keys invalidated immediately after rotation
 
 **Rotate API Key:**
+
 1. Generate new key via Printyx platform
 2. Update configuration file
 3. Restart client service
@@ -252,6 +273,7 @@ sudo systemctl status printyx-client
 ```
 
 **Key Storage Best Practices:**
+
 - Enable encryption for at-rest protection
 - Use file permissions (600) to restrict access
 - Never commit API keys to version control
@@ -262,6 +284,7 @@ sudo systemctl status printyx-client
 ### HIPAA (Healthcare)
 
 **Requirements Met:**
+
 - ✅ Encryption in transit (TLS 1.2+)
 - ✅ Encryption at rest (AES-256)
 - ✅ Access controls (file permissions, authentication)
@@ -269,6 +292,7 @@ sudo systemctl status printyx-client
 - ✅ Integrity controls (authenticated encryption)
 
 **Additional Recommendations:**
+
 - Enable certificate pinning
 - Use SNMPv3 with encryption
 - Enable encryption for config files
@@ -278,12 +302,14 @@ sudo systemctl status printyx-client
 ### PCI DSS (Payment Card Industry)
 
 **Requirements Met:**
+
 - ✅ Strong cryptography (TLS 1.2+, AES-256)
 - ✅ Secure key management
 - ✅ Access restrictions
 - ✅ Audit trails
 
 **Additional Recommendations:**
+
 - Dedicated network segment for printers
 - Regular security scans
 - Penetration testing
@@ -292,6 +318,7 @@ sudo systemctl status printyx-client
 ### SOC 2
 
 **Requirements Met:**
+
 - ✅ Security (encryption, access controls)
 - ✅ Availability (monitoring, uptime)
 - ✅ Confidentiality (data protection)
@@ -300,12 +327,14 @@ sudo systemctl status printyx-client
 ### Government (FedRAMP, NIST 800-53)
 
 **Requirements Met:**
+
 - ✅ FIPS 140-2 compatible encryption
 - ✅ Certificate-based authentication
 - ✅ Audit logging
 - ✅ Access controls
 
 **Additional Recommendations:**
+
 - Use FIPS-compliant crypto libraries
 - Enable certificate pinning
 - Implement continuous monitoring
@@ -354,10 +383,12 @@ sudo systemctl status printyx-client
 ### Authentication Failures
 
 **Symptoms:**
+
 - Error: "Authentication failed: Invalid API key or tenant ID"
 - HTTP 401 responses in logs
 
 **Actions:**
+
 1. Verify API key hasn't been rotated
 2. Check tenant ID is correct
 3. Verify client status in Printyx platform (not disabled)
@@ -367,11 +398,13 @@ sudo systemctl status printyx-client
 ### Certificate Validation Failures
 
 **Symptoms:**
+
 - Error: "CERT_HAS_EXPIRED"
 - Error: "UNABLE_TO_VERIFY_LEAF_SIGNATURE"
 - Error: "SELF_SIGNED_CERT_IN_CHAIN"
 
 **Actions:**
+
 1. Check Printyx server certificate expiration
 2. Verify system time is correct (NTP sync)
 3. Check for man-in-the-middle attack (unusual for TLS)
@@ -381,10 +414,12 @@ sudo systemctl status printyx-client
 ### Certificate Pinning Violations
 
 **Symptoms:**
+
 - Error: "Certificate fingerprint does not match pinned fingerprints"
 - Connection immediately rejected
 
 **Actions:**
+
 1. **DO NOT DISABLE** certificate pinning without investigation
 2. Verify Printyx server certificate hasn't been legitimately rotated
 3. Check for man-in-the-middle attack
@@ -395,6 +430,7 @@ sudo systemctl status printyx-client
 ### Data Breach Response
 
 **If Config File Compromised:**
+
 1. Immediately rotate API key via Printyx platform
 2. Review audit logs for unauthorized activity
 3. Identify how compromise occurred
@@ -405,6 +441,7 @@ sudo systemctl status printyx-client
 ## Security Contact
 
 For security issues or questions:
+
 - **Product Security**: Printyx Support
 - **Vulnerability Reports**: security@printyx.com
 - **Emergency**: Contact Printyx support hotline

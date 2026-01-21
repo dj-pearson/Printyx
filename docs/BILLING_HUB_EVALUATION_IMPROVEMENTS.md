@@ -9,6 +9,7 @@
 ## Executive Summary
 
 The Billing Hub is a **comprehensive enterprise billing system** with sophisticated features including:
+
 - AI-powered insights and anomaly detection
 - Automated invoice generation from service tickets and meter readings
 - Complex pricing rules (tiered, volume-based, time-based, overage)
@@ -121,7 +122,6 @@ Extract all billing calculation logic into a dedicated service:
 // server/services/billing-engine-service.ts
 
 export class BillingEngineService {
-
   // ========================================
   // INVOICE GENERATION
   // ========================================
@@ -137,7 +137,7 @@ export class BillingEngineService {
       billingPeriodStart?: Date;
       billingPeriodEnd?: Date;
       meterReadings?: MeterReading[];
-    }
+    },
   ): Promise<Invoice> {
     // 1. Load contract and related data
     // 2. Get applicable billing rules
@@ -153,10 +153,7 @@ export class BillingEngineService {
   /**
    * Auto-generate invoices triggered by service completion
    */
-  async autoGenerateFromServiceTicket(
-    ticketId: number,
-    tenantId: number
-  ): Promise<Invoice> {
+  async autoGenerateFromServiceTicket(ticketId: number, tenantId: number): Promise<Invoice> {
     // 1. Load service ticket with parts and labor
     // 2. Determine billable items
     // 3. Apply pricing rules
@@ -170,7 +167,7 @@ export class BillingEngineService {
    */
   async autoGenerateFromWarehouseOperation(
     operationId: number,
-    tenantId: number
+    tenantId: number,
   ): Promise<Invoice> {
     // Similar to service ticket generation
   }
@@ -180,7 +177,7 @@ export class BillingEngineService {
    */
   async batchGenerateForSchedule(
     scheduleId: number,
-    tenantId: number
+    tenantId: number,
   ): Promise<BulkGenerationResult> {
     // 1. Load billing schedule
     // 2. Identify customers for billing
@@ -199,7 +196,7 @@ export class BillingEngineService {
   async calculateLineItemPrice(
     item: LineItemInput,
     contract: Contract,
-    billingRules: BillingRule[]
+    billingRules: BillingRule[],
   ): Promise<LineItemCalculation> {
     // 1. Apply tiered rates
     // 2. Apply volume discounts
@@ -213,10 +210,7 @@ export class BillingEngineService {
   /**
    * Apply tiered pricing based on usage volume
    */
-  private applyTieredPricing(
-    usage: number,
-    tiers: TieredRate[]
-  ): PricingBreakdown {
+  private applyTieredPricing(usage: number, tiers: TieredRate[]): PricingBreakdown {
     // Complex tier calculation logic
     // Support for progressive vs flat tiers
   }
@@ -226,7 +220,7 @@ export class BillingEngineService {
    */
   private applyVolumeDiscounts(
     totalAmount: number,
-    discountRules: VolumeDiscount[]
+    discountRules: VolumeDiscount[],
   ): DiscountCalculation {
     // Volume discount calculation
   }
@@ -237,7 +231,7 @@ export class BillingEngineService {
   private applyTimeBasedPricing(
     baseAmount: number,
     timestamp: Date,
-    timeRules: TimeBasedPricing[]
+    timeRules: TimeBasedPricing[],
   ): PricingBreakdown {
     // Time-based multiplier logic
   }
@@ -248,7 +242,7 @@ export class BillingEngineService {
   private calculateOverageCharges(
     usage: number,
     contractedAmount: number,
-    overageRate: number
+    overageRate: number,
   ): OverageCalculation {
     // Overage calculation
   }
@@ -263,7 +257,7 @@ export class BillingEngineService {
   async validateMeterReadings(
     readings: MeterReading[],
     equipmentId: number,
-    tenantId: number
+    tenantId: number,
   ): Promise<ValidationResult> {
     // 1. Check for negative readings
     // 2. Detect usage spikes
@@ -279,7 +273,7 @@ export class BillingEngineService {
    */
   private async detectAnomalies(
     currentReading: MeterReading,
-    historicalReadings: MeterReading[]
+    historicalReadings: MeterReading[],
   ): Promise<Anomaly[]> {
     // Statistical analysis
     // Pattern detection
@@ -298,7 +292,7 @@ export class BillingEngineService {
     customerId: number,
     equipmentId: number | null,
     effectiveDate: Date,
-    tenantId: number
+    tenantId: number,
   ): Promise<BillingRule[]> {
     // 1. Fetch all active rules
     // 2. Filter by applicability (customer, equipment, global)
@@ -312,7 +306,7 @@ export class BillingEngineService {
    */
   private async evaluateCustomRule(
     rule: BillingRule,
-    context: BillingContext
+    context: BillingContext,
   ): Promise<RuleEvaluationResult> {
     // Safe execution of custom rules
     // Sandbox environment for security
@@ -328,7 +322,7 @@ export class BillingEngineService {
   async calculateTaxes(
     invoice: Invoice,
     lineItems: InvoiceLineItem[],
-    customer: Customer
+    customer: Customer,
   ): Promise<TaxCalculation> {
     // 1. Determine tax jurisdiction
     // 2. Identify taxable items
@@ -347,7 +341,7 @@ export class BillingEngineService {
   async generateCreditMemo(
     disputeId: number,
     approvedAmount: number,
-    tenantId: number
+    tenantId: number,
   ): Promise<CreditMemo> {
     // 1. Load dispute details
     // 2. Create credit memo
@@ -362,7 +356,7 @@ export class BillingEngineService {
   async applyCreditToInvoice(
     creditMemoId: number,
     invoiceId: number,
-    tenantId: number
+    tenantId: number,
   ): Promise<ApplicationResult> {
     // 1. Validate credit availability
     // 2. Calculate application amount
@@ -378,10 +372,7 @@ export class BillingEngineService {
   /**
    * Process scheduled billing cycle
    */
-  async processScheduledBilling(
-    scheduleId: number,
-    tenantId: number
-  ): Promise<ProcessingResult> {
+  async processScheduledBilling(scheduleId: number, tenantId: number): Promise<ProcessingResult> {
     // 1. Load billing schedule
     // 2. Identify due customers
     // 3. Generate invoices
@@ -393,10 +384,7 @@ export class BillingEngineService {
   /**
    * Apply late fees to overdue invoices
    */
-  async applyLateFees(
-    invoiceId: number,
-    tenantId: number
-  ): Promise<LateFeeResult> {
+  async applyLateFees(invoiceId: number, tenantId: number): Promise<LateFeeResult> {
     // 1. Check overdue status
     // 2. Calculate late fee
     // 3. Add line item
@@ -411,10 +399,7 @@ export class BillingEngineService {
   /**
    * Calculate comprehensive billing metrics
    */
-  async calculateBillingMetrics(
-    tenantId: number,
-    dateRange: DateRange
-  ): Promise<BillingMetrics> {
+  async calculateBillingMetrics(tenantId: number, dateRange: DateRange): Promise<BillingMetrics> {
     // 1. Total revenue
     // 2. Outstanding balance
     // 3. Collection rate
@@ -427,9 +412,7 @@ export class BillingEngineService {
   /**
    * Generate billing health score
    */
-  async calculateBillingHealthScore(
-    tenantId: number
-  ): Promise<HealthScore> {
+  async calculateBillingHealthScore(tenantId: number): Promise<HealthScore> {
     // 4-metric health score:
     // 1. Collection efficiency
     // 2. Issuance timeliness
@@ -461,7 +444,7 @@ export class BillingEngineService {
   async syncToExternalSystem(
     invoiceId: number,
     system: 'quickbooks' | 'eautomate',
-    tenantId: number
+    tenantId: number,
   ): Promise<SyncResult> {
     // 1. Load invoice with line items
     // 2. Format for target system
@@ -497,9 +480,13 @@ app.post('/api/billing/invoices', requireAuth, requireTenant, async (req: Tenant
       validated.contractId,
       req.tenantId,
       {
-        billingPeriodStart: validated.billingPeriodStart ? new Date(validated.billingPeriodStart) : undefined,
-        billingPeriodEnd: validated.billingPeriodEnd ? new Date(validated.billingPeriodEnd) : undefined,
-      }
+        billingPeriodStart: validated.billingPeriodStart
+          ? new Date(validated.billingPeriodStart)
+          : undefined,
+        billingPeriodEnd: validated.billingPeriodEnd
+          ? new Date(validated.billingPeriodEnd)
+          : undefined,
+      },
     );
 
     res.status(201).json(invoice);
@@ -513,35 +500,41 @@ app.post('/api/billing/invoices', requireAuth, requireTenant, async (req: Tenant
 ### 📊 **Expected Benefits**
 
 **1. Reduced Code Duplication**
+
 - Consolidate 1,073 lines across 3 files → ~600 lines in single file + ~800 lines in service
 - Eliminate duplicate endpoints
 - Single source of truth for billing logic
 
 **2. Improved Maintainability**
+
 - Changes in one location
 - Easier to understand billing flow
 - Better separation of concerns (routes vs business logic)
 - Simplified testing (service methods in isolation)
 
 **3. Enhanced Performance**
+
 - Caching of complex calculations
 - Optimized database queries
 - Parallel processing for batch operations
 - Reduced redundant API calls
 
 **4. Better Developer Experience**
+
 - Clear API surface
 - Comprehensive service documentation
 - Easier onboarding for new developers
 - Consistent patterns throughout
 
 **5. Scalability**
+
 - Service layer can be extracted to microservice if needed
 - Support for horizontal scaling
 - Queue-based background processing for batch operations
 - Prepared for multi-tenant growth
 
 **6. Testing Improvements**
+
 - Unit tests for billing engine methods
 - Integration tests for route handlers
 - Mock service layer for frontend testing
@@ -550,6 +543,7 @@ app.post('/api/billing/invoices', requireAuth, requireTenant, async (req: Tenant
 ### 📋 **Implementation Plan**
 
 **Phase 1: Service Layer Creation** (Estimated: 2-3 days)
+
 1. Create `server/services/billing-engine-service.ts` skeleton
 2. Extract invoice generation logic from routes
 3. Implement pricing calculation methods
@@ -558,6 +552,7 @@ app.post('/api/billing/invoices', requireAuth, requireTenant, async (req: Tenant
 6. Document all methods with JSDoc
 
 **Phase 2: Route Consolidation** (Estimated: 1-2 days)
+
 1. Create new `server/routes/billing.ts`
 2. Migrate endpoints from old files
 3. Update all handlers to use billing engine service
@@ -566,12 +561,14 @@ app.post('/api/billing/invoices', requireAuth, requireTenant, async (req: Tenant
 6. Update route registration in `server/index.ts`
 
 **Phase 3: Integration Updates** (Estimated: 1 day)
+
 1. Update auto-invoice generation in service-dispatch routes
 2. Update auto-invoice generation in warehouse routes
 3. Ensure all callers use new service methods
 4. Update frontend API calls if endpoint paths changed
 
 **Phase 4: Testing & Validation** (Estimated: 1 day)
+
 1. Run comprehensive test suite
 2. Manual testing of all billing workflows
 3. Performance testing with large datasets
@@ -579,6 +576,7 @@ app.post('/api/billing/invoices', requireAuth, requireTenant, async (req: Tenant
 5. Fix any regressions
 
 **Phase 5: Cleanup** (Estimated: 0.5 day)
+
 1. Delete old route files: `routes-billing.ts`, `routes-enhanced-billing.ts`, `routes-invoices.ts`
 2. Update documentation
 3. Update CLAUDE.md with new architecture
@@ -1237,10 +1235,7 @@ router.get('/api/customer-portal/invoices', requireAuth, requireTenant, async (r
   try {
     // Get customer associated with logged-in user
     const customer = await db.query.customers.findFirst({
-      where: and(
-        eq(customers.userId, req.session.userId),
-        eq(customers.tenantId, req.tenantId)
-      ),
+      where: and(eq(customers.userId, req.session.userId), eq(customers.tenantId, req.tenantId)),
     });
 
     if (!customer) {
@@ -1249,10 +1244,7 @@ router.get('/api/customer-portal/invoices', requireAuth, requireTenant, async (r
 
     // Get customer's invoices
     const customerInvoices = await db.query.invoices.findMany({
-      where: and(
-        eq(invoices.customerId, customer.id),
-        eq(invoices.tenantId, req.tenantId)
-      ),
+      where: and(eq(invoices.customerId, customer.id), eq(invoices.tenantId, req.tenantId)),
       orderBy: (invoices, { desc }) => [desc(invoices.invoiceDate)],
     });
 
@@ -1272,10 +1264,7 @@ router.post('/api/billing/stripe/payment-intent', requireAuth, requireTenant, as
 
     // Get invoice
     const invoice = await db.query.invoices.findFirst({
-      where: and(
-        eq(invoices.id, invoiceId),
-        eq(invoices.tenantId, req.tenantId)
-      ),
+      where: and(eq(invoices.id, invoiceId), eq(invoices.tenantId, req.tenantId)),
     });
 
     if (!invoice) {
@@ -1316,10 +1305,7 @@ router.post('/api/billing/invoices/:id/pay', requireAuth, requireTenant, async (
 
     // Get invoice
     const invoice = await db.query.invoices.findFirst({
-      where: and(
-        eq(invoices.id, invoiceId),
-        eq(invoices.tenantId, req.tenantId)
-      ),
+      where: and(eq(invoices.id, invoiceId), eq(invoices.tenantId, req.tenantId)),
     });
 
     if (!invoice) {
@@ -1329,7 +1315,8 @@ router.post('/api/billing/invoices/:id/pay', requireAuth, requireTenant, async (
     // Update invoice
     const newPaid = invoice.paid + amount;
     const newBalance = invoice.total - newPaid;
-    const newStatus = newBalance <= 0 ? 'paid' : newBalance < invoice.total ? 'partial' : invoice.status;
+    const newStatus =
+      newBalance <= 0 ? 'paid' : newBalance < invoice.total ? 'partial' : invoice.status;
 
     const [updated] = await db
       .update(invoices)
@@ -1404,12 +1391,14 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 ### 📊 **Expected Benefits**
 
 **1. Improved Cash Flow**
+
 - Faster payments (customers can pay immediately)
 - Reduced Days Sales Outstanding (DSO)
 - Higher payment conversion rate (less friction)
 - Enable auto-pay for recurring customers
 
 **2. Enhanced Customer Experience**
+
 - Self-service 24/7 payment capability
 - Transparent invoice and payment history
 - Saved payment methods for convenience
@@ -1417,24 +1406,28 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 - Mobile-friendly payment interface
 
 **3. Reduced Operational Costs**
+
 - Less manual payment processing
 - Fewer support inquiries about payments
 - Automated payment recording
 - Reduced payment errors
 
 **4. Increased Security**
+
 - PCI-compliant payment handling (Stripe)
 - No storage of card details (tokenization)
 - Secure 3D Secure authentication
 - Audit trail for all transactions
 
 **5. Better Analytics**
+
 - Real-time payment tracking
 - Payment method preferences
 - Payment timing patterns
 - Customer payment behavior insights
 
 **6. Competitive Advantage**
+
 - Modern payment experience
 - Meet customer expectations
 - Professional brand image
@@ -1443,6 +1436,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 ### 📋 **Implementation Plan**
 
 **Phase 1: Complete Stripe Integration** (Estimated: 1-2 days)
+
 1. Install required Stripe packages: `@stripe/stripe-js`, `@stripe/react-stripe-js`
 2. Update `client/src/pages/Billing.tsx` with functional Stripe Elements
 3. Add payment intent creation to `stripe-service.ts`
@@ -1450,6 +1444,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 5. Verify webhook handling for payment method events
 
 **Phase 2: Build Customer Payment Portal** (Estimated: 2-3 days)
+
 1. Create `client/src/pages/CustomerPaymentPortal.tsx`
 2. Implement invoice listing with status badges
 3. Add payment form with Stripe Elements
@@ -1458,6 +1453,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 6. Ensure mobile-responsive design
 
 **Phase 3: Backend API Development** (Estimated: 1-2 days)
+
 1. Create `server/routes/customer-portal-billing.ts`
 2. Add `/api/customer-portal/invoices` endpoint
 3. Add `/api/billing/stripe/payment-intent` endpoint
@@ -1466,6 +1462,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 6. Add payment logging and audit trail
 
 **Phase 4: Integration & Testing** (Estimated: 1-2 days)
+
 1. Test full payment flow end-to-end
 2. Test with Stripe test cards (success, decline, 3D Secure)
 3. Verify webhook handling
@@ -1474,6 +1471,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 6. Verify multi-tenant isolation
 
 **Phase 5: Security & Compliance** (Estimated: 0.5 day)
+
 1. Verify PCI compliance (no card data stored)
 2. Add rate limiting to payment endpoints
 3. Implement CSRF protection for payment forms
@@ -1481,6 +1479,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 5. Security audit of payment flow
 
 **Phase 6: Documentation & Rollout** (Estimated: 0.5 day)
+
 1. Update user documentation
 2. Create customer onboarding guide
 3. Train support staff
@@ -1512,6 +1511,7 @@ async getPaymentIntent(paymentIntentId: string): Promise<any> {
 **Improvement #2 (Payment Portal)** addresses a **critical missing feature** that directly impacts **revenue, customer satisfaction, and operational efficiency**. It's an investment in **immediate business value**.
 
 Together, these improvements:
+
 - ✅ Strengthen the technical foundation (consolidation)
 - ✅ Deliver tangible business value (payment portal)
 - ✅ Improve developer experience (centralized service)
@@ -1522,6 +1522,7 @@ Together, these improvements:
 ### **Prioritization Recommendation**
 
 **Option A: Sequential Implementation** (Recommended)
+
 1. **Start with Improvement #1** (Backend Consolidation) - 5.5-7.5 days
 2. **Then Improvement #2** (Payment Portal) - 5.5-9.5 days
 3. **Total: 11-17 days**
@@ -1529,6 +1530,7 @@ Together, these improvements:
 **Rationale**: Building the payment portal on top of a clean, consolidated billing architecture will be easier and result in better code quality.
 
 **Option B: Parallel Implementation** (If resources available)
+
 1. **Team A**: Backend consolidation
 2. **Team B**: Payment portal (can work on frontend while Team A refactors backend)
 3. **Total: 5.5-9.5 days** (parallelized)
@@ -1553,6 +1555,7 @@ Together, these improvements:
 10. **Billing Analytics Export** - No CSV/Excel export capability
 
 These are all valid improvements but ranked lower than the two selected due to:
+
 - Lower immediate business impact
 - Dependencies on the two primary improvements
 - Smaller scope/complexity

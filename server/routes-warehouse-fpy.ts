@@ -1,8 +1,8 @@
-import express from "express";
-import { eq, and, desc, sql, gte, lte, count, avg } from "drizzle-orm";
-import { db } from "./db";
-import { billingEngine } from "./services/billing-engine-service";
-import { 
+import express from 'express';
+import { eq, and, desc, sql, gte, lte, count, avg } from 'drizzle-orm';
+import { db } from './db';
+import { billingEngine } from './services/billing-engine-service';
+import {
   warehouseKittingOperations,
   fpyMetrics,
   autoInvoiceGeneration,
@@ -11,17 +11,17 @@ import {
   insertAutoInvoiceGenerationSchema,
   type WarehouseKittingOperation,
   type FpyMetric,
-  type AutoInvoiceGeneration
-} from "@shared/warehouse-fpy-schema";
-import { serviceTickets, businessRecords } from "@shared/schema";
+  type AutoInvoiceGeneration,
+} from '@shared/warehouse-fpy-schema';
+import { serviceTickets, businessRecords } from '@shared/schema';
 
 const router = express.Router();
 
 // Create warehouse kitting operation
-router.post("/warehouse-kitting-operations", async (req, res) => {
+router.post('/warehouse-kitting-operations', async (req, res) => {
   try {
     const validatedData = insertWarehouseKittingOperationSchema.parse(req.body);
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const [operation] = await db
       .insert(warehouseKittingOperations)
@@ -33,15 +33,15 @@ router.post("/warehouse-kitting-operations", async (req, res) => {
 
     res.json(operation);
   } catch (error) {
-    console.error("Error creating warehouse kitting operation:", error);
-    res.status(500).json({ error: "Failed to create warehouse kitting operation" });
+    console.error('Error creating warehouse kitting operation:', error);
+    res.status(500).json({ error: 'Failed to create warehouse kitting operation' });
   }
 });
 
 // Get warehouse kitting operations
-router.get("/warehouse-kitting-operations", async (req, res) => {
+router.get('/warehouse-kitting-operations', async (req, res) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const { status, technician, fromDate, toDate } = req.query;
 
     let query = db
@@ -69,16 +69,16 @@ router.get("/warehouse-kitting-operations", async (req, res) => {
 
     res.json(operations);
   } catch (error) {
-    console.error("Error fetching warehouse kitting operations:", error);
-    res.status(500).json({ error: "Failed to fetch warehouse kitting operations" });
+    console.error('Error fetching warehouse kitting operations:', error);
+    res.status(500).json({ error: 'Failed to fetch warehouse kitting operations' });
   }
 });
 
 // Update warehouse kitting operation
-router.patch("/warehouse-kitting-operations/:id", async (req, res) => {
+router.patch('/warehouse-kitting-operations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const updates = req.body;
 
     // Calculate FPY if operation is being completed
@@ -95,27 +95,27 @@ router.patch("/warehouse-kitting-operations/:id", async (req, res) => {
       .where(
         and(
           eq(warehouseKittingOperations.id, id),
-          eq(warehouseKittingOperations.tenantId, tenantId)
-        )
+          eq(warehouseKittingOperations.tenantId, tenantId),
+        ),
       )
       .returning();
 
     if (!operation) {
-      return res.status(404).json({ error: "Operation not found" });
+      return res.status(404).json({ error: 'Operation not found' });
     }
 
     res.json(operation);
   } catch (error) {
-    console.error("Error updating warehouse kitting operation:", error);
-    res.status(500).json({ error: "Failed to update warehouse kitting operation" });
+    console.error('Error updating warehouse kitting operation:', error);
+    res.status(500).json({ error: 'Failed to update warehouse kitting operation' });
   }
 });
 
 // Complete warehouse kitting operation with FPY calculation
-router.post("/warehouse-kitting-operations/:id/complete", async (req, res) => {
+router.post('/warehouse-kitting-operations/:id/complete', async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const { completedBy, supervisorApproval, notes } = req.body;
 
     const [operation] = await db
@@ -124,23 +124,26 @@ router.post("/warehouse-kitting-operations/:id/complete", async (req, res) => {
       .where(
         and(
           eq(warehouseKittingOperations.id, id),
-          eq(warehouseKittingOperations.tenantId, tenantId)
-        )
+          eq(warehouseKittingOperations.tenantId, tenantId),
+        ),
       )
       .limit(1);
 
     if (!operation) {
-      return res.status(404).json({ error: "Operation not found" });
+      return res.status(404).json({ error: 'Operation not found' });
     }
 
     // Calculate final FPY
-    const firstPassYield = !operation.reworkRequired && 
-                          operation.qualityStatus === 'pass' && 
-                          operation.reworkCount === 0;
+    const firstPassYield =
+      !operation.reworkRequired &&
+      operation.qualityStatus === 'pass' &&
+      operation.reworkCount === 0;
 
     // Calculate duration
     const startTime = operation.startedAt || operation.createdAt;
-    const totalDurationMinutes = Math.round((new Date().getTime() - startTime.getTime()) / (1000 * 60));
+    const totalDurationMinutes = Math.round(
+      (new Date().getTime() - startTime.getTime()) / (1000 * 60),
+    );
 
     const [updatedOperation] = await db
       .update(warehouseKittingOperations)
@@ -159,15 +162,15 @@ router.post("/warehouse-kitting-operations/:id/complete", async (req, res) => {
 
     res.json(updatedOperation);
   } catch (error) {
-    console.error("Error completing warehouse kitting operation:", error);
-    res.status(500).json({ error: "Failed to complete warehouse kitting operation" });
+    console.error('Error completing warehouse kitting operation:', error);
+    res.status(500).json({ error: 'Failed to complete warehouse kitting operation' });
   }
 });
 
 // Get FPY metrics
-router.get("/fpy-metrics", async (req, res) => {
+router.get('/fpy-metrics', async (req, res) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const { period = 'week' } = req.query;
 
     // Calculate date range based on period
@@ -196,52 +199,61 @@ router.get("/fpy-metrics", async (req, res) => {
         and(
           eq(warehouseKittingOperations.tenantId, tenantId),
           gte(warehouseKittingOperations.createdAt, startDate),
-          eq(warehouseKittingOperations.operationStatus, 'completed')
-        )
+          eq(warehouseKittingOperations.operationStatus, 'completed'),
+        ),
       );
 
     // Calculate FPY metrics
     const totalOperations = operations.length;
-    const firstPassOperations = operations.filter(op => op.firstPassYield).length;
+    const firstPassOperations = operations.filter((op) => op.firstPassYield).length;
     const fpyPercentage = totalOperations > 0 ? (firstPassOperations / totalOperations) * 100 : 0;
 
     // Calculate breakdown by technician
-    const fpyByTechnician = operations.reduce((acc, op) => {
-      const tech = op.assignedTechnician;
-      if (!acc[tech]) acc[tech] = { total: 0, firstPass: 0, percentage: 0 };
-      acc[tech].total++;
-      if (op.firstPassYield) acc[tech].firstPass++;
-      acc[tech].percentage = (acc[tech].firstPass / acc[tech].total) * 100;
-      return acc;
-    }, {} as Record<string, { total: number; firstPass: number; percentage: number }>);
+    const fpyByTechnician = operations.reduce(
+      (acc, op) => {
+        const tech = op.assignedTechnician;
+        if (!acc[tech]) acc[tech] = { total: 0, firstPass: 0, percentage: 0 };
+        acc[tech].total++;
+        if (op.firstPassYield) acc[tech].firstPass++;
+        acc[tech].percentage = (acc[tech].firstPass / acc[tech].total) * 100;
+        return acc;
+      },
+      {} as Record<string, { total: number; firstPass: number; percentage: number }>,
+    );
 
     // Calculate breakdown by equipment type
-    const fpyByEquipmentType = operations.reduce((acc, op) => {
-      const equipment = op.equipmentModel || 'Unknown';
-      if (!acc[equipment]) acc[equipment] = { total: 0, firstPass: 0, percentage: 0 };
-      acc[equipment].total++;
-      if (op.firstPassYield) acc[equipment].firstPass++;
-      acc[equipment].percentage = (acc[equipment].firstPass / acc[equipment].total) * 100;
-      return acc;
-    }, {} as Record<string, { total: number; firstPass: number; percentage: number }>);
+    const fpyByEquipmentType = operations.reduce(
+      (acc, op) => {
+        const equipment = op.equipmentModel || 'Unknown';
+        if (!acc[equipment]) acc[equipment] = { total: 0, firstPass: 0, percentage: 0 };
+        acc[equipment].total++;
+        if (op.firstPassYield) acc[equipment].firstPass++;
+        acc[equipment].percentage = (acc[equipment].firstPass / acc[equipment].total) * 100;
+        return acc;
+      },
+      {} as Record<string, { total: number; firstPass: number; percentage: number }>,
+    );
 
     // Analyze defects
-    const allDefects = operations.flatMap(op => op.defectsFound || []);
-    const defectCounts = allDefects.reduce((acc, defect) => {
-      acc[defect.defectType] = (acc[defect.defectType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const allDefects = operations.flatMap((op) => op.defectsFound || []);
+    const defectCounts = allDefects.reduce(
+      (acc, defect) => {
+        acc[defect.defectType] = (acc[defect.defectType] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     const topDefectTypes = Object.entries(defectCounts)
       .map(([defectType, count]) => ({
         defectType,
         count,
-        percentage: (count / totalOperations) * 100
+        percentage: (count / totalOperations) * 100,
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    const reworkOperations = operations.filter(op => op.reworkRequired).length;
+    const reworkOperations = operations.filter((op) => op.reworkRequired).length;
     const reworkRate = totalOperations > 0 ? (reworkOperations / totalOperations) * 100 : 0;
 
     const metrics = {
@@ -257,17 +269,17 @@ router.get("/fpy-metrics", async (req, res) => {
 
     res.json(metrics);
   } catch (error) {
-    console.error("Error fetching FPY metrics:", error);
-    res.status(500).json({ error: "Failed to fetch FPY metrics" });
+    console.error('Error fetching FPY metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch FPY metrics' });
   }
 });
 
 // Trigger auto-invoice generation using billing engine service
 // NOTE: This endpoint now delegates to the centralized billing engine
-router.post("/auto-invoice/:sourceType/:sourceId", async (req, res) => {
+router.post('/auto-invoice/:sourceType/:sourceId', async (req, res) => {
   try {
     const { sourceType, sourceId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     // Use centralized billing engine service for auto-invoice generation
     let invoice;
@@ -277,24 +289,26 @@ router.post("/auto-invoice/:sourceType/:sourceId", async (req, res) => {
     } else if (sourceType === 'warehouse_operation') {
       invoice = await billingEngine.autoGenerateFromWarehouseOperation(sourceId, tenantId);
     } else {
-      return res.status(400).json({ error: 'Invalid sourceType. Must be service_ticket or warehouse_operation' });
+      return res
+        .status(400)
+        .json({ error: 'Invalid sourceType. Must be service_ticket or warehouse_operation' });
     }
 
     res.status(201).json(invoice);
   } catch (error: any) {
-    console.error("Error creating auto-invoice:", error);
+    console.error('Error creating auto-invoice:', error);
     res.status(500).json({
-      error: "Failed to create auto-invoice",
-      message: error.message
+      error: 'Failed to create auto-invoice',
+      message: error.message,
     });
   }
 });
 
 // Get auto-invoice status
-router.get("/auto-invoice/:sourceType/:sourceId", async (req, res) => {
+router.get('/auto-invoice/:sourceType/:sourceId', async (req, res) => {
   try {
     const { sourceType, sourceId } = req.params;
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
 
     const [autoInvoice] = await db
       .select()
@@ -303,26 +317,26 @@ router.get("/auto-invoice/:sourceType/:sourceId", async (req, res) => {
         and(
           eq(autoInvoiceGeneration.tenantId, tenantId),
           eq(autoInvoiceGeneration.sourceType, sourceType),
-          eq(autoInvoiceGeneration.sourceId, sourceId)
-        )
+          eq(autoInvoiceGeneration.sourceId, sourceId),
+        ),
       )
       .limit(1);
 
     if (!autoInvoice) {
-      return res.status(404).json({ error: "Auto-invoice not found" });
+      return res.status(404).json({ error: 'Auto-invoice not found' });
     }
 
     res.json(autoInvoice);
   } catch (error) {
-    console.error("Error fetching auto-invoice:", error);
-    res.status(500).json({ error: "Failed to fetch auto-invoice" });
+    console.error('Error fetching auto-invoice:', error);
+    res.status(500).json({ error: 'Failed to fetch auto-invoice' });
   }
 });
 
 // Get auto-invoice list with filtering
-router.get("/auto-invoices", async (req, res) => {
+router.get('/auto-invoices', async (req, res) => {
   try {
-    const tenantId = req.headers["x-tenant-id"] as string;
+    const tenantId = req.headers['x-tenant-id'] as string;
     const { status, fromDate, toDate, delayFilter } = req.query;
 
     let query = db
@@ -351,8 +365,8 @@ router.get("/auto-invoices", async (req, res) => {
 
     res.json(invoices);
   } catch (error) {
-    console.error("Error fetching auto-invoices:", error);
-    res.status(500).json({ error: "Failed to fetch auto-invoices" });
+    console.error('Error fetching auto-invoices:', error);
+    res.status(500).json({ error: 'Failed to fetch auto-invoices' });
   }
 });
 

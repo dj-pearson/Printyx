@@ -1,64 +1,78 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Printer, TrendingUp, Users, CheckCircle, ArrowRight, Building2, MapPin } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Printer,
+  TrendingUp,
+  Users,
+  CheckCircle,
+  ArrowRight,
+  Building2,
+  MapPin,
+} from 'lucide-react';
 
 const CaseStudies = () => {
   const caseStudies = [
     {
-      company: "MidAtlantic Office Solutions",
-      location: "Virginia",
-      size: "15 technicians, 500 contracts",
-      industry: "Multi-brand Dealer",
-      challenge: "High emergency call volume eating into profitability, manual meter billing taking 3 days per month",
-      solution: "Implemented Printyx predictive maintenance and automated billing",
+      company: 'MidAtlantic Office Solutions',
+      location: 'Virginia',
+      size: '15 technicians, 500 contracts',
+      industry: 'Multi-brand Dealer',
+      challenge:
+        'High emergency call volume eating into profitability, manual meter billing taking 3 days per month',
+      solution: 'Implemented Printyx predictive maintenance and automated billing',
       results: [
-        { metric: "38% reduction", description: "in emergency service calls" },
-        { metric: "$47,000", description: "annual service cost savings" },
-        { metric: "3.8 → 4.4", description: "customer satisfaction score (out of 5)" },
-        { metric: "82% → 91%", description: "contract renewal rate" },
+        { metric: '38% reduction', description: 'in emergency service calls' },
+        { metric: '$47,000', description: 'annual service cost savings' },
+        { metric: '3.8 → 4.4', description: 'customer satisfaction score (out of 5)' },
+        { metric: '82% → 91%', description: 'contract renewal rate' },
       ],
-      quote: "Printyx's predictive maintenance has transformed our service operations. We're preventing problems instead of reacting to them, and our customers notice the difference.",
-      author: "Sarah Johnson",
-      title: "VP of Operations",
-      color: "blue"
+      quote:
+        "Printyx's predictive maintenance has transformed our service operations. We're preventing problems instead of reacting to them, and our customers notice the difference.",
+      author: 'Sarah Johnson',
+      title: 'VP of Operations',
+      color: 'blue',
     },
     {
-      company: "Pacific Print Services",
-      location: "California",
-      size: "40 technicians, 1,200 contracts",
-      industry: "Canon Authorized Dealer",
-      challenge: "Underpriced contracts losing money, no visibility into per-contract profitability",
-      solution: "Deployed AI-powered dynamic pricing and contract profitability analytics",
+      company: 'Pacific Print Services',
+      location: 'California',
+      size: '40 technicians, 1,200 contracts',
+      industry: 'Canon Authorized Dealer',
+      challenge:
+        'Underpriced contracts losing money, no visibility into per-contract profitability',
+      solution: 'Deployed AI-powered dynamic pricing and contract profitability analytics',
       results: [
-        { metric: "$1.2M", description: "additional annual profit" },
-        { metric: "23% increase", description: "in average contract margins" },
-        { metric: "147 contracts", description: "repriced at renewal" },
-        { metric: "6 months", description: "payback period" },
+        { metric: '$1.2M', description: 'additional annual profit' },
+        { metric: '23% increase', description: 'in average contract margins' },
+        { metric: '147 contracts', description: 'repriced at renewal' },
+        { metric: '6 months', description: 'payback period' },
       ],
-      quote: "We had no idea how many contracts were underwater until Printyx showed us. The dynamic pricing recommendations have been a game-changer for our bottom line.",
-      author: "Michael Chen",
-      title: "CFO",
-      color: "purple"
+      quote:
+        'We had no idea how many contracts were underwater until Printyx showed us. The dynamic pricing recommendations have been a game-changer for our bottom line.',
+      author: 'Michael Chen',
+      title: 'CFO',
+      color: 'purple',
     },
     {
-      company: "Southern Business Systems",
-      location: "Georgia",
-      size: "8 technicians, 300 contracts",
-      industry: "Regional Dealer",
-      challenge: "Legacy e-automate system limiting growth, technicians struggling with clunky mobile app",
-      solution: "Migrated to Printyx modern cloud platform with offline-first mobile",
+      company: 'Southern Business Systems',
+      location: 'Georgia',
+      size: '8 technicians, 300 contracts',
+      industry: 'Regional Dealer',
+      challenge:
+        'Legacy e-automate system limiting growth, technicians struggling with clunky mobile app',
+      solution: 'Migrated to Printyx modern cloud platform with offline-first mobile',
       results: [
-        { metric: "6 weeks", description: "complete migration timeline" },
-        { metric: "Zero", description: "data loss during migration" },
-        { metric: "45 minutes", description: "average daily time saved per tech" },
-        { metric: "92%", description: "technician satisfaction with mobile app" },
+        { metric: '6 weeks', description: 'complete migration timeline' },
+        { metric: 'Zero', description: 'data loss during migration' },
+        { metric: '45 minutes', description: 'average daily time saved per tech' },
+        { metric: '92%', description: 'technician satisfaction with mobile app' },
       ],
-      quote: "The migration from e-automate was smoother than we expected. Within a month, our technicians were more productive and happier with the tools. We should have done this years ago.",
-      author: "David Martinez",
-      title: "Owner",
-      color: "green"
-    }
+      quote:
+        'The migration from e-automate was smoother than we expected. Within a month, our technicians were more productive and happier with the tools. We should have done this years ago.',
+      author: 'David Martinez',
+      title: 'Owner',
+      color: 'green',
+    },
   ];
 
   return (
@@ -66,11 +80,12 @@ const CaseStudies = () => {
       {/* Schema.org WebPage Markup */}
       <script type="application/ld+json">
         {JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "Customer Success Stories - Printyx Case Studies",
-          "description": "See how copier dealers increased profitability 15-25%, reduced emergency calls 30-40%, and improved customer satisfaction with Printyx's predictive intelligence platform.",
-          "url": "https://printyx.com/case-studies"
+          '@context': 'https://schema.org',
+          '@type': 'WebPage',
+          name: 'Customer Success Stories - Printyx Case Studies',
+          description:
+            "See how copier dealers increased profitability 15-25%, reduced emergency calls 30-40%, and improved customer satisfaction with Printyx's predictive intelligence platform.",
+          url: 'https://printyx.com/case-studies',
         })}
       </script>
 
@@ -82,7 +97,7 @@ const CaseStudies = () => {
               <div className="flex items-center">
                 <Button
                   variant="ghost"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = '/')}
                   className="hover:bg-gray-100"
                 >
                   <Printer className="h-6 w-6 text-blue-600 mr-2" />
@@ -90,15 +105,12 @@ const CaseStudies = () => {
                 </Button>
               </div>
               <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.href = '/login'}
-                >
+                <Button variant="outline" onClick={() => (window.location.href = '/login')}>
                   Login
                 </Button>
                 <Button
                   className="bg-gradient-to-r from-blue-600 to-blue-700"
-                  onClick={() => window.location.href = '/signup'}
+                  onClick={() => (window.location.href = '/signup')}
                 >
                   Start Free Trial
                 </Button>
@@ -115,14 +127,15 @@ const CaseStudies = () => {
                 Customer Success Stories
               </Badge>
               <h1 className="text-5xl md:text-6xl font-bold mb-6">
-                Real Dealers.<br />
+                Real Dealers.
+                <br />
                 <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
                   Real Results.
                 </span>
               </h1>
               <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed">
-                See how copier dealers are transforming their operations with predictive intelligence,
-                modern architecture, and AI-powered automation.
+                See how copier dealers are transforming their operations with predictive
+                intelligence, modern architecture, and AI-powered automation.
               </p>
             </div>
           </div>
@@ -176,7 +189,9 @@ const CaseStudies = () => {
             <div className="space-y-12">
               {caseStudies.map((study, index) => (
                 <Card key={index} className={`border-2 border-${study.color}-200 overflow-hidden`}>
-                  <div className={`bg-gradient-to-r from-${study.color}-50 to-${study.color}-100 p-6 border-b-2 border-${study.color}-200`}>
+                  <div
+                    className={`bg-gradient-to-r from-${study.color}-50 to-${study.color}-100 p-6 border-b-2 border-${study.color}-200`}
+                  >
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                       <div>
                         <div className="flex items-center mb-2">
@@ -210,7 +225,9 @@ const CaseStudies = () => {
                           <p className="text-gray-700">{study.solution}</p>
                         </div>
 
-                        <div className={`bg-${study.color}-50 p-6 rounded-xl border-2 border-${study.color}-200`}>
+                        <div
+                          className={`bg-${study.color}-50 p-6 rounded-xl border-2 border-${study.color}-200`}
+                        >
                           <p className="text-gray-800 italic mb-4">"{study.quote}"</p>
                           <div className="text-sm">
                             <div className="font-bold text-gray-900">{study.author}</div>
@@ -228,7 +245,9 @@ const CaseStudies = () => {
                               key={resultIndex}
                               className="flex items-start p-4 bg-gray-50 rounded-lg border-2 border-gray-200"
                             >
-                              <CheckCircle className={`h-6 w-6 text-${study.color}-600 mr-3 flex-shrink-0 mt-0.5`} />
+                              <CheckCircle
+                                className={`h-6 w-6 text-${study.color}-600 mr-3 flex-shrink-0 mt-0.5`}
+                              />
                               <div>
                                 <div className={`text-2xl font-bold text-${study.color}-600 mb-1`}>
                                   {result.metric}
@@ -251,9 +270,7 @@ const CaseStudies = () => {
         <section className="py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Common Success Patterns
-              </h2>
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">Common Success Patterns</h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
                 What these dealers have in common
               </p>
@@ -326,8 +343,8 @@ const CaseStudies = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-700 mb-4">
-                    High adoption rates across all roles, especially field technicians who love
-                    the offline-first mobile app and intuitive workflows.
+                    High adoption rates across all roles, especially field technicians who love the
+                    offline-first mobile app and intuitive workflows.
                   </p>
                   <ul className="space-y-2 text-sm text-gray-700">
                     <li className="flex items-start">
@@ -360,14 +377,14 @@ const CaseStudies = () => {
               Ready to Write Your Success Story?
             </h2>
             <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
-              Join these dealers and start seeing results in weeks, not months.
-              Try Printyx free for 14 days.
+              Join these dealers and start seeing results in weeks, not months. Try Printyx free for
+              14 days.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
                 className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-10 py-7"
-                onClick={() => window.location.href = '/signup'}
+                onClick={() => (window.location.href = '/signup')}
               >
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -376,7 +393,7 @@ const CaseStudies = () => {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-7 border-2 border-white text-white hover:bg-white hover:text-blue-600"
-                onClick={() => window.location.href = '/roi-calculator'}
+                onClick={() => (window.location.href = '/roi-calculator')}
               >
                 Calculate Your ROI
               </Button>

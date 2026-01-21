@@ -1,530 +1,533 @@
-import { db } from "./db";
-import { roles } from "@shared/schema";
+import { db } from './db';
+import { roles } from '@shared/schema';
 
 // Comprehensive multi-location role definitions for 1000+ employee scaling
 const multiLocationRoles = [
   // Level 8: Platform Admin
   {
-    name: "Root Admin",
-    code: "ROOT_ADMIN",
-    roleType: "platform_admin" as const,
-    department: "platform",
+    name: 'Root Admin',
+    code: 'ROOT_ADMIN',
+    roleType: 'platform_admin' as const,
+    department: 'platform',
     level: 8,
-    description: "Printyx system administrator with full platform access",
+    description: 'Printyx system administrator with full platform access',
     permissions: {
-      modules: ["all"],
-      actions: ["all"]
+      modules: ['all'],
+      actions: ['all'],
     },
     canAccessAllTenants: true,
     canViewSystemMetrics: true,
     canAccessAuditLogs: true,
     canManageIntegrations: true,
-    isSystemRole: true
+    isSystemRole: true,
   },
   {
-    name: "Platform Support",
-    code: "PLATFORM_SUPPORT",
-    roleType: "platform_admin" as const,
-    department: "platform",
+    name: 'Platform Support',
+    code: 'PLATFORM_SUPPORT',
+    roleType: 'platform_admin' as const,
+    department: 'platform',
     level: 8,
-    description: "Printyx customer support with tenant access",
+    description: 'Printyx customer support with tenant access',
     permissions: {
-      modules: ["all"],
-      actions: ["read", "support"]
+      modules: ['all'],
+      actions: ['read', 'support'],
     },
     canAccessAllTenants: true,
     canViewSystemMetrics: true,
-    isSystemRole: true
+    isSystemRole: true,
   },
 
   // Level 7: Company Admin (C-Level)
   {
-    name: "CEO",
-    code: "CEO",
-    roleType: "company_admin" as const,
-    department: "executive",
+    name: 'CEO',
+    code: 'CEO',
+    roleType: 'company_admin' as const,
+    department: 'executive',
     level: 7,
-    description: "Chief Executive Officer with full company access",
+    description: 'Chief Executive Officer with full company access',
     permissions: {
-      modules: ["all"],
-      actions: ["all"]
+      modules: ['all'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageCompanyUsers: true,
     canCreateLocations: true,
     canViewCompanyFinancials: true,
     canAccessAuditLogs: true,
-    isSystemRole: true
+    isSystemRole: true,
   },
   {
-    name: "President",
-    code: "PRESIDENT",
-    roleType: "company_admin" as const,
-    department: "executive",
+    name: 'President',
+    code: 'PRESIDENT',
+    roleType: 'company_admin' as const,
+    department: 'executive',
     level: 7,
-    description: "Company President with full operational access",
+    description: 'Company President with full operational access',
     permissions: {
-      modules: ["all"],
-      actions: ["all"]
+      modules: ['all'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageCompanyUsers: true,
     canCreateLocations: true,
     canViewCompanyFinancials: true,
-    isSystemRole: true
+    isSystemRole: true,
   },
   {
-    name: "COO",
-    code: "COO",
-    roleType: "company_admin" as const,
-    department: "operations",
+    name: 'COO',
+    code: 'COO',
+    roleType: 'company_admin' as const,
+    department: 'operations',
     level: 7,
-    description: "Chief Operating Officer with operational oversight",
+    description: 'Chief Operating Officer with operational oversight',
     permissions: {
-      modules: ["operations", "service", "inventory", "reports"],
-      actions: ["all"]
+      modules: ['operations', 'service', 'inventory', 'reports'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageCompanyUsers: true,
     canViewCompanyFinancials: true,
-    isSystemRole: true
+    isSystemRole: true,
   },
   {
-    name: "CFO",
-    code: "CFO",
-    roleType: "company_admin" as const,
-    department: "finance",
+    name: 'CFO',
+    code: 'CFO',
+    roleType: 'company_admin' as const,
+    department: 'finance',
     level: 7,
-    description: "Chief Financial Officer with financial oversight",
+    description: 'Chief Financial Officer with financial oversight',
     permissions: {
-      modules: ["finance", "billing", "contracts", "reports"],
-      actions: ["all"]
+      modules: ['finance', 'billing', 'contracts', 'reports'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageCompanyUsers: true,
     canViewCompanyFinancials: true,
-    isSystemRole: true
+    isSystemRole: true,
   },
 
   // Level 6: Company Directors
   {
-    name: "VP Sales",
-    code: "VP_SALES",
-    roleType: "company_admin" as const,
-    department: "sales",
+    name: 'VP Sales',
+    code: 'VP_SALES',
+    roleType: 'company_admin' as const,
+    department: 'sales',
     level: 6,
-    description: "Vice President of Sales with company-wide sales oversight",
+    description: 'Vice President of Sales with company-wide sales oversight',
     permissions: {
-      modules: ["sales", "crm", "leads", "customers", "contracts", "reports"],
-      actions: ["all"]
+      modules: ['sales', 'crm', 'leads', 'customers', 'contracts', 'reports'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageCompanyUsers: true,
-    canViewCompanyFinancials: true
+    canViewCompanyFinancials: true,
   },
   {
-    name: "VP Service",
-    code: "VP_SERVICE",
-    roleType: "company_admin" as const,
-    department: "service",
+    name: 'VP Service',
+    code: 'VP_SERVICE',
+    roleType: 'company_admin' as const,
+    department: 'service',
     level: 6,
-    description: "Vice President of Service with company-wide service oversight",
+    description: 'Vice President of Service with company-wide service oversight',
     permissions: {
-      modules: ["service", "dispatch", "technicians", "parts", "reports"],
-      actions: ["all"]
+      modules: ['service', 'dispatch', 'technicians', 'parts', 'reports'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
-    canManageCompanyUsers: true
+    canManageCompanyUsers: true,
   },
   {
-    name: "Compliance Officer",
-    code: "COMPLIANCE_OFFICER",
-    roleType: "company_admin" as const,
-    department: "compliance",
+    name: 'Compliance Officer',
+    code: 'COMPLIANCE_OFFICER',
+    roleType: 'company_admin' as const,
+    department: 'compliance',
     level: 6,
-    description: "Company-wide compliance monitoring and audit coordination",
+    description: 'Company-wide compliance monitoring and audit coordination',
     permissions: {
-      modules: ["compliance", "audit", "reports", "users"],
-      actions: ["read", "audit", "report"]
+      modules: ['compliance', 'audit', 'reports', 'users'],
+      actions: ['read', 'audit', 'report'],
     },
     canAccessAllLocations: true,
     canManageCompliance: true,
-    canAccessAuditLogs: true
+    canAccessAuditLogs: true,
   },
   {
-    name: "IT Administrator",
-    code: "IT_ADMIN",
-    roleType: "company_admin" as const,
-    department: "it",
+    name: 'IT Administrator',
+    code: 'IT_ADMIN',
+    roleType: 'company_admin' as const,
+    department: 'it',
     level: 6,
-    description: "Technical systems management across all locations",
+    description: 'Technical systems management across all locations',
     permissions: {
-      modules: ["system", "integrations", "users", "security"],
-      actions: ["all"]
+      modules: ['system', 'integrations', 'users', 'security'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageIT: true,
     canManageIntegrations: true,
-    canAccessAuditLogs: true
+    canAccessAuditLogs: true,
   },
   {
-    name: "HR Director",
-    code: "HR_DIRECTOR",
-    roleType: "company_admin" as const,
-    department: "hr",
+    name: 'HR Director',
+    code: 'HR_DIRECTOR',
+    roleType: 'company_admin' as const,
+    department: 'hr',
     level: 6,
-    description: "Human resources policies and management company-wide",
+    description: 'Human resources policies and management company-wide',
     permissions: {
-      modules: ["hr", "users", "training", "compliance", "reports"],
-      actions: ["all"]
+      modules: ['hr', 'users', 'training', 'compliance', 'reports'],
+      actions: ['all'],
     },
     canAccessAllLocations: true,
     canManageCompanyUsers: true,
     canManageHR: true,
-    canManageTraining: true
+    canManageTraining: true,
   },
 
   // Level 6: Regional Managers
   {
-    name: "Regional Sales Manager",
-    code: "REGIONAL_SALES_MGR",
-    roleType: "regional_manager" as const,
-    department: "sales",
+    name: 'Regional Sales Manager',
+    code: 'REGIONAL_SALES_MGR',
+    roleType: 'regional_manager' as const,
+    department: 'sales',
     level: 6,
-    description: "Regional sales management and oversight",
+    description: 'Regional sales management and oversight',
     permissions: {
-      modules: ["sales", "crm", "leads", "customers", "reports"],
-      actions: ["manage", "approve_regional"]
+      modules: ['sales', 'crm', 'leads', 'customers', 'reports'],
+      actions: ['manage', 'approve_regional'],
     },
     canManageRegionalUsers: true,
     canViewRegionalReports: true,
-    canApproveRegionalDeals: true
+    canApproveRegionalDeals: true,
   },
   {
-    name: "Regional Service Manager",
-    code: "REGIONAL_SERVICE_MGR",
-    roleType: "regional_manager" as const,
-    department: "service",
+    name: 'Regional Service Manager',
+    code: 'REGIONAL_SERVICE_MGR',
+    roleType: 'regional_manager' as const,
+    department: 'service',
     level: 6,
-    description: "Regional service operations and technician oversight",
+    description: 'Regional service operations and technician oversight',
     permissions: {
-      modules: ["service", "dispatch", "technicians", "parts", "reports"],
-      actions: ["manage", "approve_regional"]
+      modules: ['service', 'dispatch', 'technicians', 'parts', 'reports'],
+      actions: ['manage', 'approve_regional'],
     },
     canManageRegionalUsers: true,
-    canViewRegionalReports: true
+    canViewRegionalReports: true,
   },
 
   // Level 5: Regional Directors and Location Managers
   {
-    name: "Regional Training Manager",
-    code: "REGIONAL_TRAINING_MGR",
-    roleType: "regional_manager" as const,
-    department: "training",
+    name: 'Regional Training Manager',
+    code: 'REGIONAL_TRAINING_MGR',
+    roleType: 'regional_manager' as const,
+    department: 'training',
     level: 5,
-    description: "Training programs across multiple regions",
+    description: 'Training programs across multiple regions',
     permissions: {
-      modules: ["training", "users", "reports"],
-      actions: ["manage", "train"]
+      modules: ['training', 'users', 'reports'],
+      actions: ['manage', 'train'],
     },
     canViewRegionalReports: true,
-    canManageTraining: true
+    canManageTraining: true,
   },
   {
-    name: "Regional HR Manager",
-    code: "REGIONAL_HR_MGR",
-    roleType: "regional_manager" as const,
-    department: "hr",
+    name: 'Regional HR Manager',
+    code: 'REGIONAL_HR_MGR',
+    roleType: 'regional_manager' as const,
+    department: 'hr',
     level: 5,
-    description: "HR support and coordination for regional locations",
+    description: 'HR support and coordination for regional locations',
     permissions: {
-      modules: ["hr", "users", "training", "reports"],
-      actions: ["manage", "support"]
+      modules: ['hr', 'users', 'training', 'reports'],
+      actions: ['manage', 'support'],
     },
     canManageRegionalUsers: true,
     canViewRegionalReports: true,
-    canManageHR: true
+    canManageHR: true,
   },
   {
-    name: "Regional QA Manager",
-    code: "REGIONAL_QA_MGR",
-    roleType: "regional_manager" as const,
-    department: "quality",
+    name: 'Regional QA Manager',
+    code: 'REGIONAL_QA_MGR',
+    roleType: 'regional_manager' as const,
+    department: 'quality',
     level: 5,
-    description: "Quality assurance and process improvement across regions",
+    description: 'Quality assurance and process improvement across regions',
     permissions: {
-      modules: ["quality", "service", "reports", "compliance"],
-      actions: ["audit", "improve", "report"]
+      modules: ['quality', 'service', 'reports', 'compliance'],
+      actions: ['audit', 'improve', 'report'],
     },
     canViewRegionalReports: true,
-    canManageQuality: true
+    canManageQuality: true,
   },
   {
-    name: "Location Manager",
-    code: "LOCATION_MGR",
-    roleType: "location_manager" as const,
-    department: "admin",
+    name: 'Location Manager',
+    code: 'LOCATION_MGR',
+    roleType: 'location_manager' as const,
+    department: 'admin',
     level: 5,
-    description: "Branch manager with full location oversight",
+    description: 'Branch manager with full location oversight',
     permissions: {
-      modules: ["all"],
-      actions: ["manage_location"]
+      modules: ['all'],
+      actions: ['manage_location'],
     },
     canManageLocationUsers: true,
     canViewLocationReports: true,
-    canApproveLocationDeals: true
+    canApproveLocationDeals: true,
   },
 
   // Level 4: Department Managers (Location-Specific)
   {
-    name: "Sales Manager",
-    code: "SALES_MGR",
-    roleType: "location_manager" as const,
-    department: "sales",
+    name: 'Sales Manager',
+    code: 'SALES_MGR',
+    roleType: 'location_manager' as const,
+    department: 'sales',
     level: 4,
-    description: "Location sales team management",
+    description: 'Location sales team management',
     permissions: {
-      modules: ["sales", "crm", "leads", "customers"],
-      actions: ["manage", "approve_location"]
+      modules: ['sales', 'crm', 'leads', 'customers'],
+      actions: ['manage', 'approve_location'],
     },
     canManageLocationUsers: true,
     canViewLocationReports: true,
-    canApproveLocationDeals: true
+    canApproveLocationDeals: true,
   },
   {
-    name: "Service Manager",
-    code: "SERVICE_MGR",
-    roleType: "location_manager" as const,
-    department: "service",
+    name: 'Service Manager',
+    code: 'SERVICE_MGR',
+    roleType: 'location_manager' as const,
+    department: 'service',
     level: 4,
-    description: "Location service operations management",
+    description: 'Location service operations management',
     permissions: {
-      modules: ["service", "dispatch", "technicians", "parts"],
-      actions: ["manage", "approve_location"]
+      modules: ['service', 'dispatch', 'technicians', 'parts'],
+      actions: ['manage', 'approve_location'],
     },
     canManageLocationUsers: true,
-    canViewLocationReports: true
+    canViewLocationReports: true,
   },
   {
-    name: "Business Analyst",
-    code: "BUSINESS_ANALYST",
-    roleType: "department_role" as const,
-    department: "admin",
+    name: 'Business Analyst',
+    code: 'BUSINESS_ANALYST',
+    roleType: 'department_role' as const,
+    department: 'admin',
     level: 4,
-    description: "Data analysis and reporting for location performance",
+    description: 'Data analysis and reporting for location performance',
     permissions: {
-      modules: ["reports", "analytics", "dashboard"],
-      actions: ["analyze", "report"]
+      modules: ['reports', 'analytics', 'dashboard'],
+      actions: ['analyze', 'report'],
     },
     canViewLocationReports: true,
-    canViewAnalytics: true
+    canViewAnalytics: true,
   },
   {
-    name: "Location Training Coordinator",
-    code: "LOC_TRAINING_COORD",
-    roleType: "department_role" as const,
-    department: "training",
+    name: 'Location Training Coordinator',
+    code: 'LOC_TRAINING_COORD',
+    roleType: 'department_role' as const,
+    department: 'training',
     level: 4,
-    description: "Training delivery and coordination at location level",
+    description: 'Training delivery and coordination at location level',
     permissions: {
-      modules: ["training", "users"],
-      actions: ["train", "coordinate"]
+      modules: ['training', 'users'],
+      actions: ['train', 'coordinate'],
     },
-    canManageTraining: true
+    canManageTraining: true,
   },
   {
-    name: "Location IT Specialist",
-    code: "LOC_IT_SPECIALIST",
-    roleType: "department_role" as const,
-    department: "it",
+    name: 'Location IT Specialist',
+    code: 'LOC_IT_SPECIALIST',
+    roleType: 'department_role' as const,
+    department: 'it',
     level: 4,
-    description: "Technical support and system maintenance for location",
+    description: 'Technical support and system maintenance for location',
     permissions: {
-      modules: ["system", "integrations", "support"],
-      actions: ["support", "maintain"]
+      modules: ['system', 'integrations', 'support'],
+      actions: ['support', 'maintain'],
     },
-    canManageIT: true
+    canManageIT: true,
   },
 
   // Level 3: Supervisors/Team Leads
   {
-    name: "Senior Sales Rep",
-    code: "SR_SALES_REP",
-    roleType: "department_role" as const,
-    department: "sales",
+    name: 'Senior Sales Rep',
+    code: 'SR_SALES_REP',
+    roleType: 'department_role' as const,
+    department: 'sales',
     level: 3,
-    description: "Senior sales representative with team leadership",
+    description: 'Senior sales representative with team leadership',
     permissions: {
-      modules: ["sales", "crm", "leads", "customers"],
-      actions: ["sell", "lead_team"]
-    }
+      modules: ['sales', 'crm', 'leads', 'customers'],
+      actions: ['sell', 'lead_team'],
+    },
   },
   {
-    name: "Lead Technician",
-    code: "LEAD_TECH",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Lead Technician',
+    code: 'LEAD_TECH',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 3,
-    description: "Lead service technician with team oversight",
+    description: 'Lead service technician with team oversight',
     permissions: {
-      modules: ["service", "dispatch", "parts"],
-      actions: ["service", "lead_team"]
-    }
+      modules: ['service', 'dispatch', 'parts'],
+      actions: ['service', 'lead_team'],
+    },
   },
   {
-    name: "Installation Supervisor",
-    code: "INSTALL_SUPERVISOR",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Installation Supervisor',
+    code: 'INSTALL_SUPERVISOR',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 3,
-    description: "Oversee equipment installations and coordinate with technicians",
+    description: 'Oversee equipment installations and coordinate with technicians',
     permissions: {
-      modules: ["service", "installation", "equipment"],
-      actions: ["install", "supervise"]
-    }
+      modules: ['service', 'installation', 'equipment'],
+      actions: ['install', 'supervise'],
+    },
   },
   {
-    name: "Parts Specialist",
-    code: "PARTS_SPECIALIST",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Parts Specialist',
+    code: 'PARTS_SPECIALIST',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 3,
-    description: "Manage parts inventory and coordinate with suppliers",
+    description: 'Manage parts inventory and coordinate with suppliers',
     permissions: {
-      modules: ["parts", "inventory", "suppliers"],
-      actions: ["manage_parts", "order"]
-    }
+      modules: ['parts', 'inventory', 'suppliers'],
+      actions: ['manage_parts', 'order'],
+    },
   },
 
   // Level 1: Individual Contributors
   {
-    name: "Sales Rep",
-    code: "SALES_REP",
-    roleType: "department_role" as const,
-    department: "sales",
+    name: 'Sales Rep',
+    code: 'SALES_REP',
+    roleType: 'department_role' as const,
+    department: 'sales',
     level: 1,
-    description: "Individual sales representative",
+    description: 'Individual sales representative',
     permissions: {
-      modules: ["sales", "crm", "leads", "customers"],
-      actions: ["sell", "manage_assigned"]
-    }
+      modules: ['sales', 'crm', 'leads', 'customers'],
+      actions: ['sell', 'manage_assigned'],
+    },
   },
   {
-    name: "Technician",
-    code: "TECHNICIAN",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Technician',
+    code: 'TECHNICIAN',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 1,
-    description: "Service technician",
+    description: 'Service technician',
     permissions: {
-      modules: ["service", "dispatch", "mobile"],
-      actions: ["service", "update_tickets"]
-    }
+      modules: ['service', 'dispatch', 'mobile'],
+      actions: ['service', 'update_tickets'],
+    },
   },
   {
-    name: "Customer Service Rep",
-    code: "CUSTOMER_SERVICE_REP",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Customer Service Rep',
+    code: 'CUSTOMER_SERVICE_REP',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 1,
-    description: "Handle customer inquiries and support requests",
+    description: 'Handle customer inquiries and support requests',
     permissions: {
-      modules: ["customers", "service", "support"],
-      actions: ["support", "communicate"]
-    }
+      modules: ['customers', 'service', 'support'],
+      actions: ['support', 'communicate'],
+    },
   },
   {
-    name: "Installation Technician",
-    code: "INSTALL_TECH",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Installation Technician',
+    code: 'INSTALL_TECH',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 1,
-    description: "Install and configure equipment at customer sites",
+    description: 'Install and configure equipment at customer sites',
     permissions: {
-      modules: ["installation", "equipment", "service"],
-      actions: ["install", "configure"]
-    }
+      modules: ['installation', 'equipment', 'service'],
+      actions: ['install', 'configure'],
+    },
   },
   {
-    name: "Parts Clerk",
-    code: "PARTS_CLERK",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Parts Clerk',
+    code: 'PARTS_CLERK',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 1,
-    description: "Handle parts orders and inventory management",
+    description: 'Handle parts orders and inventory management',
     permissions: {
-      modules: ["parts", "inventory", "orders"],
-      actions: ["manage_inventory", "process_orders"]
-    }
+      modules: ['parts', 'inventory', 'orders'],
+      actions: ['manage_inventory', 'process_orders'],
+    },
   },
   {
-    name: "Meter Reader",
-    code: "METER_READER",
-    roleType: "department_role" as const,
-    department: "service",
+    name: 'Meter Reader',
+    code: 'METER_READER',
+    roleType: 'department_role' as const,
+    department: 'service',
     level: 1,
-    description: "Collect meter readings and manage billing data",
+    description: 'Collect meter readings and manage billing data',
     permissions: {
-      modules: ["meters", "billing", "customers"],
-      actions: ["read_meters", "update_billing"]
-    }
+      modules: ['meters', 'billing', 'customers'],
+      actions: ['read_meters', 'update_billing'],
+    },
   },
   {
-    name: "Delivery Driver",
-    code: "DELIVERY_DRIVER",
-    roleType: "department_role" as const,
-    department: "operations",
+    name: 'Delivery Driver',
+    code: 'DELIVERY_DRIVER',
+    roleType: 'department_role' as const,
+    department: 'operations',
     level: 1,
-    description: "Manage deliveries and coordinate with customers",
+    description: 'Manage deliveries and coordinate with customers',
     permissions: {
-      modules: ["delivery", "customers", "mobile"],
-      actions: ["deliver", "coordinate"]
-    }
-  }
+      modules: ['delivery', 'customers', 'mobile'],
+      actions: ['deliver', 'coordinate'],
+    },
+  },
 ];
 
 export async function seedMultiLocationRoles() {
-  console.log("Seeding multi-location roles...");
-  
+  console.log('Seeding multi-location roles...');
+
   try {
     // Insert all roles
     for (const role of multiLocationRoles) {
-      await db.insert(roles).values({
-        name: role.name,
-        code: role.code,
-        roleType: role.roleType,
-        department: role.department,
-        level: role.level,
-        description: role.description,
-        permissions: role.permissions,
-        canAccessAllTenants: role.canAccessAllTenants || false,
-        canViewSystemMetrics: role.canViewSystemMetrics || false,
-        canAccessAllLocations: role.canAccessAllLocations || false,
-        canManageCompanyUsers: role.canManageCompanyUsers || false,
-        canCreateLocations: role.canCreateLocations || false,
-        canViewCompanyFinancials: role.canViewCompanyFinancials || false,
-        canManageRegionalUsers: role.canManageRegionalUsers || false,
-        canViewRegionalReports: role.canViewRegionalReports || false,
-        canApproveRegionalDeals: role.canApproveRegionalDeals || false,
-        canManageLocationUsers: role.canManageLocationUsers || false,
-        canViewLocationReports: role.canViewLocationReports || false,
-        canApproveLocationDeals: role.canApproveLocationDeals || false,
-        canManageCompliance: role.canManageCompliance || false,
-        canManageTraining: role.canManageTraining || false,
-        canManageHR: role.canManageHR || false,
-        canManageIT: role.canManageIT || false,
-        canViewAnalytics: role.canViewAnalytics || false,
-        canManageQuality: role.canManageQuality || false,
-        canAccessAuditLogs: role.canAccessAuditLogs || false,
-        canManageIntegrations: role.canManageIntegrations || false,
-        canManageUsers: false, // Deprecated
-        isSystemRole: role.isSystemRole || false
-      }).onConflictDoNothing();
+      await db
+        .insert(roles)
+        .values({
+          name: role.name,
+          code: role.code,
+          roleType: role.roleType,
+          department: role.department,
+          level: role.level,
+          description: role.description,
+          permissions: role.permissions,
+          canAccessAllTenants: role.canAccessAllTenants || false,
+          canViewSystemMetrics: role.canViewSystemMetrics || false,
+          canAccessAllLocations: role.canAccessAllLocations || false,
+          canManageCompanyUsers: role.canManageCompanyUsers || false,
+          canCreateLocations: role.canCreateLocations || false,
+          canViewCompanyFinancials: role.canViewCompanyFinancials || false,
+          canManageRegionalUsers: role.canManageRegionalUsers || false,
+          canViewRegionalReports: role.canViewRegionalReports || false,
+          canApproveRegionalDeals: role.canApproveRegionalDeals || false,
+          canManageLocationUsers: role.canManageLocationUsers || false,
+          canViewLocationReports: role.canViewLocationReports || false,
+          canApproveLocationDeals: role.canApproveLocationDeals || false,
+          canManageCompliance: role.canManageCompliance || false,
+          canManageTraining: role.canManageTraining || false,
+          canManageHR: role.canManageHR || false,
+          canManageIT: role.canManageIT || false,
+          canViewAnalytics: role.canViewAnalytics || false,
+          canManageQuality: role.canManageQuality || false,
+          canAccessAuditLogs: role.canAccessAuditLogs || false,
+          canManageIntegrations: role.canManageIntegrations || false,
+          canManageUsers: false, // Deprecated
+          isSystemRole: role.isSystemRole || false,
+        })
+        .onConflictDoNothing();
     }
-    
+
     console.log(`Successfully seeded ${multiLocationRoles.length} multi-location roles`);
   } catch (error) {
-    console.error("Error seeding multi-location roles:", error);
+    console.error('Error seeding multi-location roles:', error);
     throw error;
   }
 }

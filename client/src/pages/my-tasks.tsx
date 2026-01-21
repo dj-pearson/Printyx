@@ -169,14 +169,14 @@ export default function MyTasks() {
       task.dueDate &&
       !isPast(new Date(task.dueDate)) &&
       new Date(task.dueDate).toDateString() === new Date().toDateString() &&
-      task.status !== 'completed'
+      task.status !== 'completed',
   );
   const upcomingTasks = filteredTasks.filter(
     (task) =>
       task.dueDate &&
       !isPast(new Date(task.dueDate)) &&
       new Date(task.dueDate).toDateString() !== new Date().toDateString() &&
-      task.status !== 'completed'
+      task.status !== 'completed',
   );
   const completedTasks = filteredTasks.filter((task) => task.status === 'completed');
 
@@ -322,9 +322,7 @@ export default function MyTasks() {
                       <div>
                         <div className="font-medium flex items-center gap-2">
                           {task.title}
-                          {isOverdue(task) && (
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                          )}
+                          {isOverdue(task) && <AlertCircle className="w-4 h-4 text-red-500" />}
                         </div>
                         {task.description && (
                           <div className="text-sm text-muted-foreground line-clamp-1">
@@ -351,11 +349,7 @@ export default function MyTasks() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewDetails(task)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleViewDetails(task)}>
                           View Details
                         </Button>
                         {task.status !== 'completed' && (
@@ -383,9 +377,7 @@ export default function MyTasks() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedTask?.title}</DialogTitle>
-            <DialogDescription>
-              Task details and workflow context
-            </DialogDescription>
+            <DialogDescription>Task details and workflow context</DialogDescription>
           </DialogHeader>
 
           {selectedTask && (
@@ -430,7 +422,7 @@ export default function MyTasks() {
                           <span className="font-medium">{key}:</span>{' '}
                           <span className="text-muted-foreground">{String(value)}</span>
                         </div>
-                      )
+                      ),
                     )}
                   </div>
                 </div>

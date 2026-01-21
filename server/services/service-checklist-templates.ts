@@ -619,10 +619,10 @@ export const SERVICE_CHECKLIST_TEMPLATES: ServiceChecklistTemplate[] = [
 
 // Helper function to get template by ID
 export function getTemplateById(templateId: string): ServiceChecklistTemplate | undefined {
-  return SERVICE_CHECKLIST_TEMPLATES.find(t => t.id === templateId);
+  return SERVICE_CHECKLIST_TEMPLATES.find((t) => t.id === templateId);
 }
 
 // Helper function to get templates by service type
 export function getTemplatesByServiceType(serviceType: string): ServiceChecklistTemplate[] {
-  return SERVICE_CHECKLIST_TEMPLATES.filter(t => t.serviceType === serviceType);
+  return SERVICE_CHECKLIST_TEMPLATES.filter((t) => t.serviceType === serviceType);
 }

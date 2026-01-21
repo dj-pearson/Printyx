@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import {
   Search,
   Users,
@@ -22,7 +22,7 @@ import {
   TrendingUp,
   AlertCircle,
   Loader2,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface ApolloContact {
   id: string;
@@ -62,30 +62,30 @@ interface SearchFilters {
 }
 
 const SENIORITIES = [
-  { value: "owner", label: "Owner" },
-  { value: "founder", label: "Founder" },
-  { value: "c_suite", label: "C-Suite" },
-  { value: "vp", label: "VP" },
-  { value: "director", label: "Director" },
-  { value: "manager", label: "Manager" },
+  { value: 'owner', label: 'Owner' },
+  { value: 'founder', label: 'Founder' },
+  { value: 'c_suite', label: 'C-Suite' },
+  { value: 'vp', label: 'VP' },
+  { value: 'director', label: 'Director' },
+  { value: 'manager', label: 'Manager' },
 ];
 
 const DEPARTMENTS = [
-  { value: "master_operations", label: "Operations" },
-  { value: "master_information_technology", label: "IT" },
-  { value: "master_finance", label: "Finance" },
-  { value: "master_human_resources", label: "HR" },
-  { value: "master_sales", label: "Sales" },
-  { value: "master_marketing", label: "Marketing" },
+  { value: 'master_operations', label: 'Operations' },
+  { value: 'master_information_technology', label: 'IT' },
+  { value: 'master_finance', label: 'Finance' },
+  { value: 'master_human_resources', label: 'HR' },
+  { value: 'master_sales', label: 'Sales' },
+  { value: 'master_marketing', label: 'Marketing' },
 ];
 
 const EMPLOYEE_RANGES = [
-  { value: "1,10", label: "1-10" },
-  { value: "11,50", label: "11-50" },
-  { value: "51,200", label: "51-200" },
-  { value: "201,500", label: "201-500" },
-  { value: "501,1000", label: "501-1,000" },
-  { value: "1001,10000", label: "1,001+" },
+  { value: '1,10', label: '1-10' },
+  { value: '11,50', label: '11-50' },
+  { value: '51,200', label: '51-200' },
+  { value: '201,500', label: '201-500' },
+  { value: '501,1000', label: '501-1,000' },
+  { value: '1001,10000', label: '1,001+' },
 ];
 
 interface ApolloLeadEnrichmentProps {
@@ -95,36 +95,36 @@ interface ApolloLeadEnrichmentProps {
 export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnrichmentProps = {}) {
   const { toast } = useToast();
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
-  
+
   const [filters, setFilters] = useState<SearchFilters>({
     personTitles: [],
     personSeniorities: [],
     personDepartments: [],
     personLocations: [],
-    contactEmailStatus: ["verified"],
+    contactEmailStatus: ['verified'],
     organizationIndustries: [],
     organizationNumEmployeesRanges: [],
     page: 1,
     perPage: 25,
   });
 
-  const [locationInput, setLocationInput] = useState("");
-  const [titleInput, setTitleInput] = useState("");
+  const [locationInput, setLocationInput] = useState('');
+  const [titleInput, setTitleInput] = useState('');
   const [searchResults, setSearchResults] = useState<any>(null);
 
   // Search leads mutation (POST request)
   const searchMutation = useMutation({
     mutationFn: async (searchFilters: SearchFilters) => {
-      return await apiRequest("/api/apollo/search", "POST", searchFilters);
+      return await apiRequest('/api/apollo/search', 'POST', searchFilters);
     },
     onSuccess: (data) => {
       setSearchResults(data);
     },
     onError: (error: any) => {
       toast({
-        title: "Search Error",
-        description: error.message || "Failed to search leads",
-        variant: "destructive",
+        title: 'Search Error',
+        description: error.message || 'Failed to search leads',
+        variant: 'destructive',
       });
     },
   });
@@ -132,20 +132,20 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   // Add single lead mutation
   const addSingleMutation = useMutation({
     mutationFn: async (contactId: string) => {
-      return await apiRequest(`/api/apollo/leads/${contactId}/add-to-crm`, "POST");
+      return await apiRequest(`/api/apollo/leads/${contactId}/add-to-crm`, 'POST');
     },
     onSuccess: () => {
       toast({
-        title: "Lead Added",
-        description: "Lead successfully added to your CRM",
+        title: 'Lead Added',
+        description: 'Lead successfully added to your CRM',
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/apollo/search"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/apollo/search'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add lead",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to add lead',
+        variant: 'destructive',
       });
     },
   });
@@ -153,28 +153,28 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   // Bulk add mutation
   const bulkAddMutation = useMutation({
     mutationFn: async (contactIds: string[]) => {
-      return await apiRequest("/api/apollo/leads/bulk-add", "POST", { contactIds });
+      return await apiRequest('/api/apollo/leads/bulk-add', 'POST', { contactIds });
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Bulk Add Complete",
+        title: 'Bulk Add Complete',
         description: `Added ${data.added} leads. Skipped ${data.skipped} duplicates.`,
       });
       setSelectedContacts(new Set());
-      queryClient.invalidateQueries({ queryKey: ["/api/apollo/search"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/apollo/search'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to bulk add leads",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to bulk add leads',
+        variant: 'destructive',
       });
     },
   });
 
   // Stats query
   const { data: stats } = useQuery({
-    queryKey: ["/api/apollo/stats"],
+    queryKey: ['/api/apollo/stats'],
   });
 
   const handleSearch = () => {
@@ -214,7 +214,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
         ...prev,
         personLocations: [...prev.personLocations, locationInput.trim()],
       }));
-      setLocationInput("");
+      setLocationInput('');
     }
   };
 
@@ -224,7 +224,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
         ...prev,
         personTitles: [...prev.personTitles, titleInput.trim()],
       }));
-      setTitleInput("");
+      setTitleInput('');
     }
   };
 
@@ -250,15 +250,13 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   const pagination = searchResults?.pagination;
 
   return (
-    <div className={embedded ? "space-y-6" : "p-6 space-y-6"}>
+    <div className={embedded ? 'space-y-6' : 'p-6 space-y-6'}>
       {/* Header - only show in standalone mode */}
       {!embedded && (
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Apollo.io Lead Enrichment</h1>
-            <p className="text-gray-600">
-              Search for qualified leads and add them to your CRM
-            </p>
+            <p className="text-gray-600">Search for qualified leads and add them to your CRM</p>
           </div>
           {stats && (
             <Card>
@@ -299,7 +297,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
                 placeholder="e.g., Des Moines, Iowa"
                 value={locationInput}
                 onChange={(e) => setLocationInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddLocation()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
                 data-testid="input-location"
               />
               <Button onClick={handleAddLocation} size="sm" data-testid="button-add-location">
@@ -335,7 +333,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
                 placeholder="e.g., Office Manager, IT Director"
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddTitle()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddTitle()}
                 data-testid="input-job-title"
               />
               <Button onClick={handleAddTitle} size="sm" data-testid="button-add-title">
@@ -445,7 +443,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
                 <CardTitle>Search Results</CardTitle>
                 <CardDescription>
                   {pagination?.totalEntries || 0} leads found
-                  {searchResults.fromCache && " (from cache)"}
+                  {searchResults.fromCache && ' (from cache)'}
                 </CardDescription>
               </div>
               {selectedContacts.size > 0 && (
@@ -472,7 +470,11 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
           <CardContent>
             <div className="space-y-4">
               {contacts.map((contact: ApolloContact) => (
-                <Card key={contact.id} className="border" data-testid={`card-contact-${contact.apolloId}`}>
+                <Card
+                  key={contact.id}
+                  className="border"
+                  data-testid={`card-contact-${contact.apolloId}`}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
@@ -493,7 +495,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
                               <div className="flex items-center gap-2">
                                 <Mail className="h-4 w-4 text-gray-400" />
                                 <span className="truncate">{contact.email}</span>
-                                {contact.emailStatus === "verified" && (
+                                {contact.emailStatus === 'verified' && (
                                   <CheckCircle className="h-4 w-4 text-green-600" />
                                 )}
                               </div>

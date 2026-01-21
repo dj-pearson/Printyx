@@ -7,19 +7,19 @@ import { fileURLToPath } from 'url';
 
 async function runAIEmployeesMigration() {
   console.log('🤖 Starting AI Employees Migration...');
-  
+
   try {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
-    
+
     const migrationSql = fs.readFileSync(
       path.join(__dirname, '../migrations/ai-employees-migration.sql'),
-      'utf8'
+      'utf8',
     );
-    
+
     // Execute the migration
     await db.execute(sql.raw(migrationSql));
-    
+
     console.log('✅ AI Employees Migration completed successfully.');
     console.log('');
     console.log('📋 Migration Summary:');
@@ -46,7 +46,6 @@ async function runAIEmployeesMigration() {
     console.log('   • Support Agent AI - Customer support and issue resolution');
     console.log('   • Data Analyst AI - Business intelligence and reporting');
     console.log('   • Project Manager AI - Task coordination and project management');
-    
   } catch (error) {
     console.error('❌ Error running AI Employees Migration:', error);
     process.exit(1);

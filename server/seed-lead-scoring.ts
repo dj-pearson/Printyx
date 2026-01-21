@@ -186,7 +186,7 @@ async function seedLeadScoring() {
 
     // Get existing leads or create sample ones
     const existingLeads = await storage.getBusinessRecords(tenantId, 'lead');
-    
+
     if (existingLeads.length === 0) {
       // Create sample leads
       const sampleLeads = [
@@ -278,7 +278,9 @@ async function seedLeadScoring() {
             needNotes: 'Multiple pain points identified',
             // Timeline
             timelineIdentified: true,
-            expectedCloseDate: new Date(Date.now() + (leadData.status === 'proposal' ? 30 : 90) * 24 * 60 * 60 * 1000),
+            expectedCloseDate: new Date(
+              Date.now() + (leadData.status === 'proposal' ? 30 : 90) * 24 * 60 * 60 * 1000,
+            ),
             decisionTimeline: leadData.status === 'proposal' ? '30_days' : '90_days',
             implementationTimeline: '2_weeks',
             blockers: leadData.status === 'proposal' ? [] : ['budget_approval_pending'],
@@ -302,7 +304,10 @@ async function seedLeadScoring() {
             { type: 'call_answered', channel: 'phone', value: 10 },
           ];
 
-          for (const engagement of engagementTypes.slice(0, leadData.status === 'proposal' ? 4 : 2)) {
+          for (const engagement of engagementTypes.slice(
+            0,
+            leadData.status === 'proposal' ? 4 : 2,
+          )) {
             await storage.createLeadEngagement({
               leadId: lead.id,
               tenantId,
@@ -405,9 +410,16 @@ async function seedLeadScoring() {
         bantScore = Math.min(bantScore, 25);
 
         // Calculate total
-        const totalScore = Math.min(Math.round(
-          demographicScore + firmographicScore + behavioralScore + engagementScore + (bantScore * 0.8)
-        ), 100);
+        const totalScore = Math.min(
+          Math.round(
+            demographicScore +
+              firmographicScore +
+              behavioralScore +
+              engagementScore +
+              bantScore * 0.8,
+          ),
+          100,
+        );
 
         // Determine grade
         let leadGrade: string;

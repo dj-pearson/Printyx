@@ -55,7 +55,7 @@ export class CronScheduler {
     try {
       // Convert cron expression to interval (simplified - every 5 minutes for now)
       const intervalMs = this.parseCronToInterval(cronExpression);
-      
+
       const job: ScheduledJob = {
         name,
         cronExpression,
@@ -136,14 +136,16 @@ export class CronScheduler {
     // Wait for running jobs to complete (with timeout)
     const timeout = 30000; // 30 seconds
     const startTime = Date.now();
-    
-    while (this.runningJobs.size > 0 && (Date.now() - startTime) < timeout) {
+
+    while (this.runningJobs.size > 0 && Date.now() - startTime < timeout) {
       this.logger.debug(`Waiting for ${this.runningJobs.size} jobs to complete...`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     if (this.runningJobs.size > 0) {
-      this.logger.warn(`Timeout waiting for jobs to complete: ${Array.from(this.runningJobs).join(', ')}`);
+      this.logger.warn(
+        `Timeout waiting for jobs to complete: ${Array.from(this.runningJobs).join(', ')}`,
+      );
     }
 
     // Stop all jobs
@@ -162,7 +164,7 @@ export class CronScheduler {
    * Get status of all jobs
    */
   getStatus() {
-    const jobs = Array.from(this.jobs.values()).map(job => ({
+    const jobs = Array.from(this.jobs.values()).map((job) => ({
       name: job.name,
       cronExpression: job.cronExpression,
       isRunning: this.runningJobs.has(job.name),
@@ -185,11 +187,11 @@ export class CronScheduler {
    */
   getNextExecutions(): Record<string, Date | null> {
     const nextExecutions: Record<string, Date | null> = {};
-    
+
     for (const job of this.jobs.values()) {
       nextExecutions[job.name] = this.getNextExecutionTime(job);
     }
-    
+
     return nextExecutions;
   }
 
@@ -207,7 +209,7 @@ export class CronScheduler {
     }
 
     this.logger.info(`Manually executing job: ${name}`);
-    
+
     try {
       await this.executeJobHandler(job);
     } catch (error) {
@@ -227,7 +229,7 @@ export class CronScheduler {
 
     // Unschedule existing job
     this.unschedule(name);
-    
+
     // Reschedule with new expression
     this.schedule(name, newCronExpression, job.handler);
   }
@@ -255,17 +257,17 @@ export class CronScheduler {
    */
   private async executeJobHandler(job: ScheduledJob): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       this.runningJobs.add(job.name);
-      
+
       this.logger.debug(`Executing scheduled job: ${job.name}`);
-      
+
       await job.handler();
-      
+
       job.executionCount++;
       job.lastExecution = new Date();
-      
+
       const executionTime = Date.now() - startTime;
       this.logger.info(`Completed scheduled job: ${job.name}`, {
         executionTime: `${executionTime}ms`,
@@ -273,7 +275,7 @@ export class CronScheduler {
       });
     } catch (error) {
       job.errorCount++;
-      
+
       const executionTime = Date.now() - startTime;
       this.logger.error(`Scheduled job failed: ${job.name}`, {
         error,
@@ -298,10 +300,10 @@ export class CronScheduler {
       // This is a simplified calculation - in a real implementation,
       // you'd use the cron library's ability to get next execution time
       // For now, we'll return null or implement a basic calculation
-      
+
       // Note: node-cron doesn't have a built-in method to get next execution time
       // You might want to use a library like 'cron-parser' for this functionality
-      
+
       return null; // Placeholder
     } catch (error) {
       this.logger.error(`Failed to calculate next execution time for job: ${job.name}`, error);
@@ -335,14 +337,14 @@ export class CronScheduler {
    */
   getStatistics() {
     const jobs = Array.from(this.jobs.values());
-    
+
     return {
       totalJobs: jobs.length,
       totalExecutions: jobs.reduce((sum, job) => sum + job.executionCount, 0),
       totalErrors: jobs.reduce((sum, job) => sum + job.errorCount, 0),
       runningJobs: this.runningJobs.size,
-      averageExecutionsPerJob: jobs.length > 0 ? 
-        jobs.reduce((sum, job) => sum + job.executionCount, 0) / jobs.length : 0,
+      averageExecutionsPerJob:
+        jobs.length > 0 ? jobs.reduce((sum, job) => sum + job.executionCount, 0) / jobs.length : 0,
     };
   }
 

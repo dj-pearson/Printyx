@@ -9,6 +9,7 @@ This implementation provides a complete, lightweight monitoring client system fo
 ### 1. Server-Side Components
 
 #### Database Schema (`shared/client-monitor-schema.ts`)
+
 - **`monitoringClients`** - Client registration and authentication
   - API key authentication (hashed)
   - Client configuration and settings
@@ -26,9 +27,11 @@ This implementation provides a complete, lightweight monitoring client system fo
   - Link to registered devices
 
 #### API Endpoints (`server/routes-client-monitoring.ts`)
+
 All endpoints support tenant-aware authentication and authorization.
 
 **Management Endpoints** (User authenticated):
+
 - `GET /api/monitoring-clients` - List all clients
 - `POST /api/monitoring-clients` - Create new client (returns API key)
 - `GET /api/monitoring-clients/:id` - Get client details
@@ -39,6 +42,7 @@ All endpoints support tenant-aware authentication and authorization.
 - `GET /api/monitoring-clients/:id/discovered-devices` - View discovered devices
 
 **Client Submission Endpoints** (API key authenticated):
+
 - `POST /api/client-metrics/submit` - Submit device metrics
   - Validates and processes device data
   - Auto-registers new devices
@@ -55,6 +59,7 @@ A standalone Node.js application that runs on customer servers to monitor printe
 #### Core Components
 
 **Configuration Management** (`src/config/config-manager.ts`)
+
 - JSON-based configuration
 - Validation of required fields
 - Support for multiple devices
@@ -62,6 +67,7 @@ A standalone Node.js application that runs on customer servers to monitor printe
 - Configurable polling intervals
 
 **SNMP Collector** (`src/collectors/snmp-collector.ts`)
+
 - Standard Printer MIB (RFC 3805) support
 - Vendor-specific OID support (Canon, Xerox, HP, Ricoh)
 - Collects:
@@ -72,23 +78,27 @@ A standalone Node.js application that runs on customer servers to monitor printe
   - Device information (serial, model, manufacturer)
 
 **HTTP Collector** (`src/collectors/http-collector.ts`)
+
 - Web interface polling support
 - Manufacturer detection
 - Extensible for vendor-specific implementations
 
 **Network Scanner** (`src/discovery/network-scanner.ts`)
+
 - CIDR notation support (e.g., 192.168.1.0/24)
 - Auto-discovery of printers via SNMP and HTTP
 - Batch scanning with configurable concurrency
 - Protocol detection
 
 **API Client** (`src/api/printyx-client.ts`)
+
 - Secure communication with Printyx platform
 - Bearer token authentication
 - Automatic retry logic
 - Error handling and logging
 
 **Scheduler** (`src/services/scheduler.ts`)
+
 - Cron-based scheduling
 - Configurable polling intervals
 - Automatic device discovery
@@ -96,6 +106,7 @@ A standalone Node.js application that runs on customer servers to monitor printe
 - Concurrent metric collection
 
 **Main Application** (`src/index.ts`)
+
 - CLI interface with Commander.js
 - Commands:
   - `start` - Run monitoring daemon
@@ -106,11 +117,13 @@ A standalone Node.js application that runs on customer servers to monitor printe
 #### Installation Scripts
 
 **Linux** (`scripts/install-linux.sh`)
+
 - Installs as systemd service
 - Auto-start on boot
 - Journal logging integration
 
 **Uninstall** (`scripts/uninstall-linux.sh`)
+
 - Clean removal of service and files
 - Optional config retention
 
@@ -191,9 +204,11 @@ The client seamlessly integrates with existing Printyx infrastructure:
 ### Server-Side Deployment
 
 1. **Apply Database Schema**
+
    ```bash
    npm run db:push
    ```
+
    This creates the new tables:
    - `monitoring_clients`
    - `client_activity_logs`
@@ -288,11 +303,13 @@ Edit `config.json`:
 ## Testing
 
 ### Test Individual Device
+
 ```bash
 printyx-client test 192.168.1.100
 ```
 
 Expected output:
+
 - Device serial number
 - Manufacturer and model
 - Toner levels by color
@@ -300,20 +317,24 @@ Expected output:
 - Meter readings
 
 ### Test Network Discovery
+
 ```bash
 printyx-client discover 192.168.1.0/24
 ```
 
 Expected output:
+
 - List of discovered printers
 - IP addresses
 - Detected manufacturers
 - Supported protocols
 
 ### Test API Connection
+
 The client will automatically test the API connection on startup.
 
 ### Monitor Logs
+
 ```bash
 # Systemd
 sudo journalctl -u printyx-client -f
@@ -325,24 +346,28 @@ tail -f /etc/printyx-client/printyx-client.log
 ## Troubleshooting
 
 ### Client Can't Connect to API
+
 - Verify endpoint URL is correct
 - Check API key hasn't been rotated
 - Confirm tenant ID matches
 - Check firewall allows outbound HTTPS
 
 ### No Devices Found
+
 - Enable SNMP on printers (check printer web interface)
 - Verify SNMP community string (default: "public")
 - Check network connectivity (ping test)
 - Ensure no firewall blocking UDP port 161
 
 ### Incomplete Metrics
+
 - Some printers use proprietary MIBs
 - Try SNMP v2c instead of v1
 - Check printer SNMP configuration
 - Some metrics may not be available on all models
 
 ### High Resource Usage
+
 - Increase polling interval
 - Reduce number of devices per client
 - Use multiple clients for large installations
@@ -413,6 +438,7 @@ Client Application:
 ## Dependencies
 
 ### Client Application
+
 - `net-snmp` - SNMP protocol implementation
 - `axios` - HTTP client
 - `node-cron` - Job scheduling
@@ -420,6 +446,7 @@ Client Application:
 - `commander` - CLI interface
 
 ### Server
+
 No new dependencies required - uses existing Drizzle ORM and Express.js setup.
 
 ## Performance Considerations
@@ -439,6 +466,7 @@ No new dependencies required - uses existing Drizzle ORM and Express.js setup.
 ## Summary
 
 This implementation provides a production-ready, enterprise-grade monitoring solution that:
+
 - ✅ Replaces unreliable third-party tools
 - ✅ Provides direct, reliable SNMP monitoring
 - ✅ Integrates seamlessly with existing Printyx infrastructure

@@ -47,14 +47,11 @@ export default function ScanQRScreen() {
                 Alert.alert('Coming Soon', 'Equipment detail view');
               },
             },
-          ]
+          ],
         );
       }
     } catch (error: any) {
-      Alert.alert(
-        'Not Found',
-        error.response?.data?.message || 'Equipment not found in database'
-      );
+      Alert.alert('Not Found', error.response?.data?.message || 'Equipment not found in database');
     } finally {
       // Allow scanning again after 2 seconds
       setTimeout(() => setScanned(false), 2000);
@@ -113,14 +110,8 @@ export default function ScanQRScreen() {
               style={styles.flashButton}
               onPress={() => setFlashEnabled(!flashEnabled)}
             >
-              <Ionicons
-                name={flashEnabled ? 'flash' : 'flash-off'}
-                size={24}
-                color="#ffffff"
-              />
-              <Text style={styles.flashText}>
-                {flashEnabled ? 'Flash On' : 'Flash Off'}
-              </Text>
+              <Ionicons name={flashEnabled ? 'flash' : 'flash-off'} size={24} color="#ffffff" />
+              <Text style={styles.flashText}>{flashEnabled ? 'Flash On' : 'Flash Off'}</Text>
             </TouchableOpacity>
 
             {scanned && (

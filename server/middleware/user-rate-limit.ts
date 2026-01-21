@@ -136,7 +136,7 @@ function getBucketKey(windowMs: number): string {
 function checkRateLimit(
   identifier: string,
   category: string,
-  config: RateLimitConfig
+  config: RateLimitConfig,
 ): {
   allowed: boolean;
   remaining: number;
@@ -189,7 +189,7 @@ function setRateLimitHeaders(
   res: Response,
   limit: number,
   remaining: number,
-  resetAt: number
+  resetAt: number,
 ): void {
   res.setHeader('X-RateLimit-Limit', limit.toString());
   res.setHeader('X-RateLimit-Remaining', remaining.toString());
@@ -205,7 +205,7 @@ function setRateLimitHeaders(
  */
 export function userRateLimit(
   category: RateLimitCategory = 'general',
-  customConfig?: Partial<RateLimitConfig>
+  customConfig?: Partial<RateLimitConfig>,
 ) {
   const config: RateLimitConfig = {
     ...RATE_LIMIT_CONFIGS[category],
@@ -277,12 +277,15 @@ export function autoRateLimit() {
 /**
  * Get current rate limit stats for a user (for debugging/admin)
  */
-export function getRateLimitStats(req: Request): Record<string, {
-  count: number;
-  limit: number;
-  remaining: number;
-  resetAt: Date;
-}> {
+export function getRateLimitStats(req: Request): Record<
+  string,
+  {
+    count: number;
+    limit: number;
+    remaining: number;
+    resetAt: Date;
+  }
+> {
   const identifier = getRateLimitKey(req);
   const stats: Record<string, any> = {};
 
@@ -303,9 +306,7 @@ export function getRateLimitStats(req: Request): Record<string, {
         count: 0,
         limit: config.limit,
         remaining: config.limit,
-        resetAt: new Date(
-          Math.ceil(Date.now() / config.windowMs) * config.windowMs
-        ),
+        resetAt: new Date(Math.ceil(Date.now() / config.windowMs) * config.windowMs),
       };
     }
   }

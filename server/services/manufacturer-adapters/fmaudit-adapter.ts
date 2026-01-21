@@ -1,4 +1,10 @@
-import { BaseManufacturerAdapter, DeviceInfo, MeterReading, CollectionResult, IntegrationConfig } from './base-adapter';
+import {
+  BaseManufacturerAdapter,
+  DeviceInfo,
+  MeterReading,
+  CollectionResult,
+  IntegrationConfig,
+} from './base-adapter';
 
 /**
  * FMAudit/Printanista Integration Adapter
@@ -15,15 +21,12 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
   async testConnection(): Promise<boolean> {
     try {
       this.validateConfig();
-      
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/status`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
-      
+
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/status`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
       return response.ok;
     } catch (error) {
       console.error('FMAudit connection test failed:', error);
@@ -48,24 +51,21 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
   private async authenticateBasicAuth(): Promise<boolean> {
     try {
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/auth/login`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${btoa(`${this.config.authCredentials.username}:${this.config.authCredentials.password}`)}`
-          },
-          body: JSON.stringify({
-            dealer_id: this.config.authCredentials.dealerId
-          })
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${btoa(`${this.config.authCredentials.username}:${this.config.authCredentials.password}`)}`,
+        },
+        body: JSON.stringify({
+          dealer_id: this.config.authCredentials.dealerId,
+        }),
+      });
 
       const data = await this.handleApiResponse(response);
       this.accessToken = data.access_token || data.token;
       this.tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      
+
       return true;
     } catch (error) {
       console.error('FMAudit basic auth failed:', error);
@@ -82,17 +82,14 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
   async discoverDevices(): Promise<DeviceInfo[]> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
-      const response = await this.makeHttpRequest(
-        `${this.config.apiEndpoint}/api/devices`,
-        {
-          method: 'GET',
-          headers: this.getAuthHeaders()
-        }
-      );
+      const response = await this.makeHttpRequest(`${this.config.apiEndpoint}/api/devices`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
       const data = await this.handleApiResponse(response);
       return this.mapFMAuditDevices(data.devices || data.printers || []);
@@ -103,7 +100,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
   }
 
   private mapFMAuditDevices(devices: any[]): DeviceInfo[] {
-    return devices.map(device => ({
+    return devices.map((device) => ({
       deviceId: device.device_id || device.id || device.serial_number,
       serialNumber: device.serial_number,
       modelNumber: device.model || device.model_name,
@@ -122,16 +119,16 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         'duplex_pages',
         'large_format_pages',
         'device_uptime',
-        'toner_coverage'
-      ]
+        'toner_coverage',
+      ],
     }));
   }
 
   async collectDeviceMetrics(deviceId: string): Promise<CollectionResult> {
     const startTime = Date.now();
-    
+
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -140,19 +137,19 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         `${this.config.apiEndpoint}/api/devices/${deviceId}/meters`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
-        }
+          headers: this.getAuthHeaders(),
+        },
       );
 
       const data = await this.handleApiResponse(response);
       const metrics = this.mapFMAuditMetrics(data);
-      
+
       return {
         success: true,
         deviceId,
         metrics,
         rawResponse: data,
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     } catch (error) {
       return {
@@ -160,7 +157,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         deviceId,
         metrics: [],
         error: error instanceof Error ? error.message : 'Unknown error',
-        responseTimeMs: Date.now() - startTime
+        responseTimeMs: Date.now() - startTime,
       };
     }
   }
@@ -172,7 +169,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
     // FMAudit meter structure
     if (data.meters || data.counters) {
       const meters = data.meters || data.counters;
-      
+
       // Total pages
       if (meters.total_pages !== undefined) {
         metrics.push({
@@ -182,7 +179,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.total_pages,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { total_pages: meters.total_pages }
+          rawData: { total_pages: meters.total_pages },
         });
       }
 
@@ -196,7 +193,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: value,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { black_pages: value }
+          rawData: { black_pages: value },
         });
       }
 
@@ -209,7 +206,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.color_pages,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { color_pages: meters.color_pages }
+          rawData: { color_pages: meters.color_pages },
         });
       }
 
@@ -222,7 +219,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.total_prints,
           unit: 'prints',
           measurementTimestamp: timestamp,
-          rawData: { total_prints: meters.total_prints }
+          rawData: { total_prints: meters.total_prints },
         });
       }
 
@@ -235,7 +232,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.total_copies,
           unit: 'copies',
           measurementTimestamp: timestamp,
-          rawData: { total_copies: meters.total_copies }
+          rawData: { total_copies: meters.total_copies },
         });
       }
 
@@ -248,7 +245,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.total_scans,
           unit: 'scans',
           measurementTimestamp: timestamp,
-          rawData: { total_scans: meters.total_scans }
+          rawData: { total_scans: meters.total_scans },
         });
       }
 
@@ -261,7 +258,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.total_fax,
           unit: 'fax',
           measurementTimestamp: timestamp,
-          rawData: { total_fax: meters.total_fax }
+          rawData: { total_fax: meters.total_fax },
         });
       }
 
@@ -274,7 +271,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.duplex_pages,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { duplex_pages: meters.duplex_pages }
+          rawData: { duplex_pages: meters.duplex_pages },
         });
       }
 
@@ -287,7 +284,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: meters.large_format_pages,
           unit: 'pages',
           measurementTimestamp: timestamp,
-          rawData: { large_format_pages: meters.large_format_pages }
+          rawData: { large_format_pages: meters.large_format_pages },
         });
       }
     }
@@ -300,7 +297,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         metricCategory: 'status',
         stringValue: data.device_status.status || 'unknown',
         measurementTimestamp: timestamp,
-        rawData: data.device_status
+        rawData: data.device_status,
       });
 
       // Device uptime
@@ -312,7 +309,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           numericValue: data.device_status.uptime,
           unit: 'hours',
           measurementTimestamp: timestamp,
-          rawData: { uptime: data.device_status.uptime }
+          rawData: { uptime: data.device_status.uptime },
         });
       }
     }
@@ -328,7 +325,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
             numericValue: coverage,
             unit: 'percent',
             measurementTimestamp: timestamp,
-            rawData: { [`toner_coverage_${color}`]: coverage }
+            rawData: { [`toner_coverage_${color}`]: coverage },
           });
         }
       });
@@ -342,7 +339,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         metricCategory: 'error',
         jsonValue: data.errors,
         measurementTimestamp: timestamp,
-        rawData: { errors: data.errors }
+        rawData: { errors: data.errors },
       });
     }
 
@@ -351,7 +348,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
   async getDeviceInfo(deviceId: string): Promise<DeviceInfo | null> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -359,8 +356,8 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         `${this.config.apiEndpoint}/api/devices/${deviceId}`,
         {
           method: 'GET',
-          headers: this.getAuthHeaders()
-        }
+          headers: this.getAuthHeaders(),
+        },
       );
 
       const device = await this.handleApiResponse(response);
@@ -373,7 +370,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
   async updateDeviceConfig(deviceId: string, config: any): Promise<boolean> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -382,8 +379,8 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         {
           method: 'PUT',
           headers: this.getAuthHeaders(),
-          body: JSON.stringify(config)
-        }
+          body: JSON.stringify(config),
+        },
       );
 
       return response.ok;
@@ -398,7 +395,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
    */
   async getBatchMeterReadings(deviceIds: string[]): Promise<CollectionResult[]> {
     try {
-      if (!await this.authenticate()) {
+      if (!(await this.authenticate())) {
         throw new Error('Authentication failed');
       }
 
@@ -409,9 +406,9 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
           headers: this.getAuthHeaders(),
           body: JSON.stringify({
             device_ids: deviceIds,
-            include_status: true
-          })
-        }
+            include_status: true,
+          }),
+        },
       );
 
       const data = await this.handleApiResponse(response);
@@ -424,7 +421,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
             success: true,
             deviceId: deviceData.device_id,
             metrics,
-            rawResponse: deviceData
+            rawResponse: deviceData,
           });
         });
       }
@@ -432,19 +429,19 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
       return results;
     } catch (error) {
       console.error('FMAudit batch meter reading failed:', error);
-      return deviceIds.map(deviceId => ({
+      return deviceIds.map((deviceId) => ({
         success: false,
         deviceId,
         metrics: [],
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       }));
     }
   }
 
   protected getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
     };
 
     if (this.accessToken) {
@@ -466,7 +463,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
     // Clear existing token and re-authenticate
     this.accessToken = undefined;
     this.tokenExpiresAt = undefined;
-    
+
     const success = await this.authenticate();
     if (!success) {
       throw new Error('Re-authentication failed');

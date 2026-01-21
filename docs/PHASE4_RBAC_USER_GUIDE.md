@@ -20,6 +20,7 @@ Welcome to the Printyx RBAC (Role-Based Access Control) Reporting System! This g
 ### What is RBAC?
 
 RBAC automatically shows you only the reports and data you're authorized to see based on your:
+
 - **Role Level** (1-8): Your position in the organization
 - **Permissions**: Specific actions you can perform
 - **Scope**: The breadth of data you can access (own, team, location, regional, company, platform)
@@ -42,6 +43,7 @@ RBAC automatically shows you only the reports and data you're authorized to see 
 ### I'm a Sales Rep - What can I see?
 
 ✅ **Your Reports (4 reports)**:
+
 - My Sales Pipeline
 - My Activity Report
 - My Win/Loss Analysis
@@ -56,6 +58,7 @@ RBAC automatically shows you only the reports and data you're authorized to see 
 ### I'm a Manager - What can I see?
 
 ✅ **Your Reports (16+ reports)**:
+
 - All Individual Reports (your own data)
 - Team Performance Dashboard
 - Location-Wide Metrics
@@ -71,6 +74,7 @@ RBAC automatically shows you only the reports and data you're authorized to see 
 ### I'm a Director - What can I see?
 
 ✅ **Your Reports (35+ reports)**:
+
 - All Manager Reports
 - Regional Performance Dashboard
 - Multi-Location Comparisons
@@ -86,6 +90,7 @@ RBAC automatically shows you only the reports and data you're authorized to see 
 ### I'm an Executive - What can I see?
 
 ✅ **Your Reports (60+ reports)**:
+
 - All Lower-Level Reports
 - Executive Dashboard
 - Board Reports
@@ -162,12 +167,14 @@ RBAC automatically shows you only the reports and data you're authorized to see 
 ### How to Access Reports
 
 **Desktop**:
+
 1. Click **Reports** in the main navigation
 2. Select your department (Sales, Service, etc.)
 3. Click the report name
 4. Report loads automatically
 
 **Mobile**:
+
 1. Tap menu (☰)
 2. Tap **Reports**
 3. Reports are optimized for mobile viewing
@@ -176,12 +183,14 @@ RBAC automatically shows you only the reports and data you're authorized to see 
 ### Tips for Individual Contributors
 
 ✅ **Do**:
+
 - Check your reports daily to stay on track
 - Use filters to narrow down data
 - Share report screenshots with your manager
 - Set goals based on your metrics
 
 ❌ **Don't**:
+
 - Try to access team or location reports (you won't have permission)
 - Share report data externally
 - Modify report formulas or calculations
@@ -197,6 +206,7 @@ You have access to **all individual reports** PLUS team/location reports (16 tot
 #### Sales Managers (8 Reports)
 
 **Team Reports**:
+
 1. **Team Sales Dashboard** (`SALES_TEAM_DASHBOARD`)
    - Team pipeline, win rates, quota attainment
    - Compare team members side-by-side
@@ -205,19 +215,19 @@ You have access to **all individual reports** PLUS team/location reports (16 tot
    - Team productivity metrics
    - Identify top performers and coaching opportunities
 
-**Location Reports**:
-3. **Location Sales Performance** (`SALES_LOCATION_DASHBOARD`)
-   - All sales across your location
-   - Month-over-month growth
+**Location Reports**: 3. **Location Sales Performance** (`SALES_LOCATION_DASHBOARD`)
+
+- All sales across your location
+- Month-over-month growth
 
 4. **Sales Forecast - Location** (`SALES_FORECAST_LOCATION`)
    - Predicted revenue for next 30/60/90 days
    - AI-powered projections
 
-**Management Tools**:
-5. **Rep Performance Comparison** (`SALES_REP_COMPARISON`)
-   - Leaderboard of your team
-   - Identify training needs
+**Management Tools**: 5. **Rep Performance Comparison** (`SALES_REP_COMPARISON`)
+
+- Leaderboard of your team
+- Identify training needs
 
 6. **Deal Stage Velocity** (`SALES_STAGE_VELOCITY_LOCATION`)
    - How fast deals move through pipeline
@@ -234,22 +244,23 @@ You have access to **all individual reports** PLUS team/location reports (16 tot
 #### Service Managers (8 Reports)
 
 **Team Reports**:
+
 1. **Team Service Dashboard** (`SERVICE_TEAM_DASHBOARD`)
    - Team metrics: FTF rate, response time, CSAT
 
 2. **Technician Utilization** (`SERVICE_UTILIZATION_LOCATION`)
    - Billable hours, capacity planning
 
-**Location Reports**:
-3. **Service Call Volume** (`SERVICE_VOLUME_LOCATION`)
-   - Call trends and patterns
+**Location Reports**: 3. **Service Call Volume** (`SERVICE_VOLUME_LOCATION`)
+
+- Call trends and patterns
 
 4. **SLA Compliance** (`SERVICE_SLA_LOCATION`)
    - Response time compliance by priority
 
-**Management Tools**:
-5. **Parts Inventory** (`SERVICE_PARTS_LOCATION`)
-   - Stock levels at your location
+**Management Tools**: 5. **Parts Inventory** (`SERVICE_PARTS_LOCATION`)
+
+- Stock levels at your location
 
 6. **Customer Satisfaction** (`SERVICE_CSAT_LOCATION`)
    - Aggregate CSAT scores and trends
@@ -265,12 +276,14 @@ You have access to **all individual reports** PLUS team/location reports (16 tot
 #### 1. Report Filters
 
 Apply filters to drill down:
+
 - **Date Range**: Last 7/30/90 days, custom ranges
 - **Team Member**: Individual team member
 - **Product Line**: Specific product categories
 - **Customer Segment**: By industry, size, etc.
 
 **How to use**:
+
 1. Open any report
 2. Click **Filters** button (🔍)
 3. Select criteria
@@ -281,11 +294,13 @@ Apply filters to drill down:
 Export data for presentations or offline analysis:
 
 **Supported Formats**:
+
 - CSV (Excel-friendly)
 - Excel (.xlsx) with formatting
 - PDF for printing
 
 **How to export**:
+
 1. Open report
 2. Click **Export** button (📥)
 3. Choose format
@@ -298,6 +313,7 @@ Export data for presentations or offline analysis:
 Receive reports automatically via email:
 
 **How to schedule**:
+
 1. Open report
 2. Click **Schedule** button (🕐)
 3. Set frequency (Daily, Weekly, Monthly)
@@ -318,6 +334,7 @@ You have access to **all manager reports** PLUS regional/company reports (35+ to
 ### Multi-Location Analysis
 
 As a director, you can:
+
 - Compare performance across locations
 - Identify best practices to share
 - Spot underperforming locations for intervention
@@ -382,16 +399,19 @@ As a director, you can:
 ### Director Tips & Best Practices
 
 ✅ **Weekly Routine**:
+
 - Monday: Review regional dashboard
 - Wednesday: Check forecast accuracy
 - Friday: Review location comparisons
 
 ✅ **Monthly Tasks**:
+
 - Deep-dive into underperforming locations
 - Share best practices from top locations
 - Adjust territory assignments if needed
 
 ✅ **Quarterly Activities**:
+
 - Strategic planning reviews
 - Market share analysis
 - Compensation plan adjustments
@@ -407,21 +427,25 @@ As an executive, you have **unrestricted access** to all 75 reports across all d
 #### CEO Dashboard (`EXECUTIVE_CEO_DASHBOARD`)
 
 **Financial Metrics**:
+
 - Revenue (MRR, ARR, Growth %)
 - Gross Margin & Operating Margin
 - Cash Flow & Runway
 
 **Operational Metrics**:
+
 - Customer Acquisition Cost (CAC)
 - Customer Lifetime Value (CLV)
 - Net Promoter Score (NPS)
 
 **People Metrics**:
+
 - Employee Headcount & Attrition
 - Engagement Scores
 - Open Positions
 
 **Strategic Metrics**:
+
 - Market Share
 - Product Adoption
 - Innovation Pipeline
@@ -429,21 +453,25 @@ As an executive, you have **unrestricted access** to all 75 reports across all d
 #### CFO Dashboard (`EXECUTIVE_CFO_DASHBOARD`)
 
 **Financial Performance**:
+
 - P&L Summary
 - Balance Sheet Highlights
 - Cash Flow Statement
 
 **AR/AP Metrics**:
+
 - DSO (Days Sales Outstanding)
 - Aging Reports
 - Collection Efficiency
 
 **Profitability Analysis**:
+
 - Gross Margin by Product/Service
 - Department P&L
 - Cost Center Analysis
 
 **Forecasting**:
+
 - Revenue Forecast (with confidence intervals)
 - Expense Projections
 - Scenario Planning
@@ -451,16 +479,19 @@ As an executive, you have **unrestricted access** to all 75 reports across all d
 #### COO Dashboard (`EXECUTIVE_COO_DASHBOARD`)
 
 **Operations Metrics**:
+
 - Service Delivery Metrics (SLA Compliance)
 - Warehouse Efficiency (FPY, Inventory Turns)
 - Fleet Utilization
 
 **Customer Success**:
+
 - Churn Rate
 - Retention Rate
 - Expansion Revenue
 
 **Supply Chain**:
+
 - Supplier Performance
 - Lead Times
 - Stock-outs
@@ -468,16 +499,19 @@ As an executive, you have **unrestricted access** to all 75 reports across all d
 #### Board Report (`EXECUTIVE_BOARD_REPORT`)
 
 **Quarterly Highlights**:
+
 - Revenue & Profitability
 - Key Wins & Losses
 - Strategic Initiatives Progress
 
 **Risk Dashboard**:
+
 - Customer Concentration
 - Competitive Threats
 - Compliance Status
 
 **Forward-Looking**:
+
 - Growth Projections
 - Investment Needs
 - Market Opportunities
@@ -485,6 +519,7 @@ As an executive, you have **unrestricted access** to all 75 reports across all d
 ### Platform Admin Reports (Level 8)
 
 **System Health**:
+
 1. **Platform Metrics** (`PLATFORM_SYSTEM_METRICS`)
    - Uptime, API Response Times
    - Error Rates
@@ -514,6 +549,7 @@ As an executive, you have **unrestricted access** to all 75 reports across all d
 #### 1. Real-Time Data
 
 Most reports refresh automatically:
+
 - **Every 5 minutes**: Sales pipelines, service calls
 - **Every 15 minutes**: Dashboards, activity reports
 - **Daily**: Historical analysis, win/loss reports
@@ -522,6 +558,7 @@ Most reports refresh automatically:
 #### 2. Interactive Visualizations
 
 Click on any chart to:
+
 - **Drill down**: See underlying data
 - **Filter**: Focus on specific segments
 - **Compare**: Side-by-side comparisons
@@ -529,6 +566,7 @@ Click on any chart to:
 #### 3. AI-Powered Insights
 
 Reports include:
+
 - **Automated insights**: "Your win rate is up 12% this month"
 - **Anomaly detection**: "Unusual spike in service calls detected"
 - **Recommendations**: "Consider focusing on mid-market segment"
@@ -536,6 +574,7 @@ Reports include:
 #### 4. Mobile Optimization
 
 All reports work on:
+
 - **Desktop**: Full-featured experience
 - **Tablet**: Touch-optimized interface
 - **Mobile**: Streamlined views for on-the-go
@@ -543,20 +582,26 @@ All reports work on:
 ### Manager+ Features
 
 #### Bulk Export
+
 Export multiple reports at once:
+
 1. Go to **Reports** → **Bulk Export**
 2. Select reports to export
 3. Choose format and delivery method
 4. Reports emailed as ZIP file
 
 #### Custom Date Ranges
+
 Beyond standard ranges:
+
 - Fiscal year vs calendar year
 - Custom rolling periods (e.g., "last 45 days")
 - Comparison periods (YoY, MoM)
 
 #### Annotations
+
 Add notes to reports:
+
 1. Click **Annotate** on any data point
 2. Add context (e.g., "New product launch")
 3. Annotations visible to your team
@@ -564,20 +609,26 @@ Add notes to reports:
 ### Director+ Features
 
 #### Multi-Report Dashboards
+
 Create custom dashboards:
+
 1. **Dashboard Builder**: Drag-and-drop interface
 2. **Layout**: Choose 2, 3, or 4-column layouts
 3. **Widgets**: Add charts, tables, KPIs
 4. **Sharing**: Share with team or keep private
 
 #### Alert Configuration
+
 Set up proactive alerts:
+
 - **Threshold Alerts**: "Notify me if SLA drops below 95%"
 - **Trend Alerts**: "Alert if calls increase 20% week-over-week"
 - **Anomaly Alerts**: AI detects unusual patterns
 
 #### Forecast Scenarios
+
 Run what-if analyses:
+
 - "What if we add 2 sales reps?"
 - "Impact of 10% price increase?"
 - "Effect of entering new market?"
@@ -607,6 +658,7 @@ A: 13 months of data is available in reports. For longer historical analysis, co
 
 **Q: Report is loading slowly**
 A: Large reports may take 10-30 seconds to load. Try:
+
 - Narrowing date range
 - Applying filters to reduce data
 - Clearing browser cache
@@ -614,6 +666,7 @@ A: Large reports may take 10-30 seconds to load. Try:
 
 **Q: Data looks incorrect**
 A: First, check the "Last Updated" timestamp. If recently updated but still looks wrong:
+
 1. Verify filters aren't hiding data
 2. Check date range settings
 3. Contact support with report code and screenshot
@@ -623,6 +676,7 @@ A: Use the search function (🔍) in the Reports menu. If you still can't find i
 
 **Q: Export is failing**
 A: Exports have size limits (10,000 rows). Try:
+
 - Narrowing date range
 - Applying filters
 - Splitting into multiple exports
@@ -660,6 +714,7 @@ A: Yes, via CSV export. Excel and PDF exports include formatting. Maximum 10,000
 ### Feedback
 
 We're always improving! Share your feedback:
+
 - **Feature Requests**: Click "Suggest Feature" in Reports menu
 - **Bug Reports**: Use "Report Issue" button
 - **General Feedback**: feedback@printyx.com

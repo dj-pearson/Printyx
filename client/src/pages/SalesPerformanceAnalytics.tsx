@@ -5,14 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Target, 
-  TrendingUp, 
+import {
+  Target,
+  TrendingUp,
   TrendingDown,
-  Users, 
+  Users,
   Phone,
   Calendar,
   DollarSign,
@@ -27,24 +33,39 @@ import {
   Download,
   RefreshCw,
   MessageSquare,
-  Lightbulb
+  Lightbulb,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, FunnelChart, Funnel, LabelList } from 'recharts';
-import AdvancedFilter, { type FilterValue, type FilterOption } from '@/components/reports/AdvancedFilter';
-import { 
-  TrendLineChart, 
-  ComparisonBarChart, 
-  KPICard, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  FunnelChart,
+  Funnel,
+  LabelList,
+} from 'recharts';
+import AdvancedFilter, {
+  type FilterValue,
+  type FilterOption,
+} from '@/components/reports/AdvancedFilter';
+import {
+  TrendLineChart,
+  ComparisonBarChart,
+  KPICard,
   SalesFunnelChart,
-  chartExportUtils 
+  chartExportUtils,
 } from '@/components/reports/DataVisualization';
-import { 
-  type BusinessRecord,
-  type Deal,
-  type ServiceTicket
-} from '@shared/schema';
+import { type BusinessRecord, type Deal, type ServiceTicket } from '@shared/schema';
 
 // Sales rep performance data types
 interface SalesRep {
@@ -64,27 +85,27 @@ interface SalesPerformance {
   totalPipelineValue: number;
   dealsInPipeline: number;
   avgDealSize: number;
-  
+
   // Conversion rates
   leadToMeetingRate: number;
   meetingToProposalRate: number;
   proposalToCloseRate: number;
   overallCloseRate: number;
-  
+
   // Activity metrics
   callsMade: number;
   emailsSent: number;
   meetingsHeld: number;
   proposalsSent: number;
-  
+
   // Performance vs peers
   rankingPercentile: number;
   peerComparison: 'above' | 'average' | 'below';
-  
+
   // Time-based metrics
   avgDealCycle: number; // days
   avgResponseTime: number; // hours
-  
+
   // Revenue metrics
   monthlyRevenue: number;
   quarterlyRevenue: number;
@@ -142,8 +163,8 @@ export default function SalesPerformanceAnalytics() {
         { value: 'north', label: 'North Territory' },
         { value: 'south', label: 'South Territory' },
         { value: 'east', label: 'East Territory' },
-        { value: 'west', label: 'West Territory' }
-      ]
+        { value: 'west', label: 'West Territory' },
+      ],
     },
     {
       id: 'performanceLevel',
@@ -152,8 +173,8 @@ export default function SalesPerformanceAnalytics() {
       options: [
         { value: 'top', label: 'Top Performers (80%+)' },
         { value: 'middle', label: 'Middle Performers (50-80%)' },
-        { value: 'bottom', label: 'Bottom Performers (<50%)' }
-      ]
+        { value: 'bottom', label: 'Bottom Performers (<50%)' },
+      ],
     },
     {
       id: 'revenueRange',
@@ -161,14 +182,14 @@ export default function SalesPerformanceAnalytics() {
       type: 'slider',
       min: 0,
       max: 500000,
-      step: 10000
+      step: 10000,
     },
     {
       id: 'dealSizeMin',
       label: 'Minimum Deal Size',
       type: 'number',
       min: 0,
-      placeholder: 'Enter minimum deal size'
+      placeholder: 'Enter minimum deal size',
     },
     {
       id: 'closeRateMin',
@@ -176,20 +197,20 @@ export default function SalesPerformanceAnalytics() {
       type: 'number',
       min: 0,
       max: 100,
-      placeholder: 'Enter minimum close rate'
+      placeholder: 'Enter minimum close rate',
     },
     {
       id: 'hireDate',
       label: 'Hire Date Range',
-      type: 'dateRange'
+      type: 'dateRange',
     },
     {
       id: 'hasCoachingNeeds',
       label: 'Needs Coaching',
-      type: 'boolean'
-    }
+      type: 'boolean',
+    },
   ];
-  
+
   // Fetch sales reps (filtered by manager permissions)
   const { data: salesReps = [], isLoading: repsLoading } = useQuery<SalesRep[]>({
     queryKey: ['/api/reports/sales-reps', dateRange],
@@ -199,17 +220,19 @@ export default function SalesPerformanceAnalytics() {
   // Fetch team performance metrics
   const { data: teamMetrics } = useQuery({
     queryKey: ['/api/reports/team-performance', selectedRep, dateRange],
-    queryFn: () => apiRequest(`/api/reports/team-performance?rep=${selectedRep}&period=${dateRange}`),
+    queryFn: () =>
+      apiRequest(`/api/reports/team-performance?rep=${selectedRep}&period=${dateRange}`),
   });
 
   // Fetch pipeline funnel data
   const { data: pipelineFunnel = [] } = useQuery<PipelineFunnel[]>({
     queryKey: ['/api/reports/pipeline-funnel', selectedRep, dateRange],
-    queryFn: () => apiRequest(`/api/reports/pipeline-funnel?rep=${selectedRep}&period=${dateRange}`),
+    queryFn: () =>
+      apiRequest(`/api/reports/pipeline-funnel?rep=${selectedRep}&period=${dateRange}`),
   });
 
   // Get selected rep details
-  const currentRep = salesReps.find(rep => rep.id === selectedRep);
+  const currentRep = salesReps.find((rep) => rep.id === selectedRep);
 
   // Filter handling functions
   const handleFiltersChange = (newFilters: FilterValue[]) => {
@@ -221,18 +244,18 @@ export default function SalesPerformanceAnalytics() {
   };
 
   const handleExportData = () => {
-    const exportData = salesReps.map(rep => ({
+    const exportData = salesReps.map((rep) => ({
       name: `${rep.firstName} ${rep.lastName}`,
       territory: rep.territory || 'N/A',
       revenue: rep.performance.monthlyRevenue,
       quota_attainment: rep.performance.revenueAttainment,
       close_rate: rep.performance.overallCloseRate,
       pipeline_value: rep.performance.totalPipelineValue,
-      deals_in_pipeline: rep.performance.dealsInPipeline
+      deals_in_pipeline: rep.performance.dealsInPipeline,
     }));
     chartExportUtils.exportToCSV(exportData, 'sales-performance-data');
   };
-  
+
   // Performance trend colors
   const getTrendColor = (value: number, benchmark: number) => {
     if (value >= benchmark * 1.1) return 'text-green-600';
@@ -249,9 +272,12 @@ export default function SalesPerformanceAnalytics() {
   // Coaching priority color
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'destructive';
-      case 'medium': return 'secondary';
-      default: return 'outline';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
@@ -272,7 +298,7 @@ export default function SalesPerformanceAnalytics() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Team Members</SelectItem>
-                    {salesReps.map(rep => (
+                    {salesReps.map((rep) => (
                       <SelectItem key={rep.id} value={rep.id}>
                         {rep.firstName} {rep.lastName}
                       </SelectItem>
@@ -337,16 +363,28 @@ export default function SalesPerformanceAnalytics() {
                 value={`$${teamMetrics?.totalPipeline?.toLocaleString() || '0'}`}
                 change={teamMetrics?.pipelineGrowth || 0}
                 icon={Target}
-                trend={teamMetrics?.pipelineGrowth > 0 ? 'up' : teamMetrics?.pipelineGrowth < 0 ? 'down' : 'neutral'}
+                trend={
+                  teamMetrics?.pipelineGrowth > 0
+                    ? 'up'
+                    : teamMetrics?.pipelineGrowth < 0
+                      ? 'down'
+                      : 'neutral'
+                }
               />
-              
+
               <KPICard
                 title="Avg Close Rate"
                 value={`${teamMetrics?.avgCloseRate || 0}%`}
                 change={teamMetrics?.closeRateChange || 0}
                 period="vs benchmark"
                 icon={Award}
-                trend={teamMetrics?.closeRateChange > 0 ? 'up' : teamMetrics?.closeRateChange < 0 ? 'down' : 'neutral'}
+                trend={
+                  teamMetrics?.closeRateChange > 0
+                    ? 'up'
+                    : teamMetrics?.closeRateChange < 0
+                      ? 'down'
+                      : 'neutral'
+                }
               />
 
               <KPICard
@@ -375,7 +413,7 @@ export default function SalesPerformanceAnalytics() {
                 config={{
                   title: 'Team Sales Funnel',
                   description: 'Conversion rates at each pipeline stage',
-                  height: 350
+                  height: 350,
                 }}
                 onExport={() => chartExportUtils.exportToCSV(pipelineFunnel, 'sales-funnel-data')}
               />
@@ -389,11 +427,16 @@ export default function SalesPerformanceAnalytics() {
                 <CardContent>
                   <div className="space-y-4">
                     {salesReps.slice(0, 6).map((rep, index) => (
-                      <div key={rep.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div
+                        key={rep.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
                           <Badge variant="outline">#{index + 1}</Badge>
                           <div>
-                            <p className="font-medium">{rep.firstName} {rep.lastName}</p>
+                            <p className="font-medium">
+                              {rep.firstName} {rep.lastName}
+                            </p>
                             <p className="text-sm text-muted-foreground">{rep.territory}</p>
                           </div>
                         </div>
@@ -430,11 +473,15 @@ export default function SalesPerformanceAnalytics() {
                           <p className="text-muted-foreground">{currentRep.territory} Territory</p>
                         </div>
                       </div>
-                      <Badge variant={
-                        currentRep.performance.peerComparison === 'above' ? 'default' :
-                        currentRep.performance.peerComparison === 'average' ? 'secondary' :
-                        'destructive'
-                      }>
+                      <Badge
+                        variant={
+                          currentRep.performance.peerComparison === 'above'
+                            ? 'default'
+                            : currentRep.performance.peerComparison === 'average'
+                              ? 'secondary'
+                              : 'destructive'
+                        }
+                      >
                         {currentRep.performance.rankingPercentile}th Percentile
                       </Badge>
                     </div>
@@ -454,14 +501,22 @@ export default function SalesPerformanceAnalytics() {
                           <span className="text-2xl font-bold">
                             {currentRep.performance.revenueAttainment}%
                           </span>
-                          <Badge variant={currentRep.performance.revenueAttainment >= 100 ? 'default' : 'secondary'}>
-                            {currentRep.performance.revenueAttainment >= 100 ? 'On Track' : 'Below Target'}
+                          <Badge
+                            variant={
+                              currentRep.performance.revenueAttainment >= 100
+                                ? 'default'
+                                : 'secondary'
+                            }
+                          >
+                            {currentRep.performance.revenueAttainment >= 100
+                              ? 'On Track'
+                              : 'Below Target'}
                           </Badge>
                         </div>
                         <Progress value={currentRep.performance.revenueAttainment} />
                         <div className="text-sm text-muted-foreground">
-                          ${currentRep.performance.monthlyRevenue.toLocaleString()} / 
-                          ${currentRep.performance.revenueTarget.toLocaleString()}
+                          ${currentRep.performance.monthlyRevenue.toLocaleString()} / $
+                          {currentRep.performance.revenueTarget.toLocaleString()}
                         </div>
                       </div>
                     </CardContent>
@@ -482,7 +537,9 @@ export default function SalesPerformanceAnalytics() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm">Active Deals:</span>
-                          <span className="font-medium">{currentRep.performance.dealsInPipeline}</span>
+                          <span className="font-medium">
+                            {currentRep.performance.dealsInPipeline}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm">Avg Deal Size:</span>
@@ -492,7 +549,9 @@ export default function SalesPerformanceAnalytics() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm">Deal Cycle:</span>
-                          <span className="font-medium">{currentRep.performance.avgDealCycle} days</span>
+                          <span className="font-medium">
+                            {currentRep.performance.avgDealCycle} days
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -515,11 +574,15 @@ export default function SalesPerformanceAnalytics() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm">Proposals Sent:</span>
-                          <span className="font-medium">{currentRep.performance.proposalsSent}</span>
+                          <span className="font-medium">
+                            {currentRep.performance.proposalsSent}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm">Response Time:</span>
-                          <span className="font-medium">{currentRep.performance.avgResponseTime}h</span>
+                          <span className="font-medium">
+                            {currentRep.performance.avgResponseTime}h
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -538,7 +601,13 @@ export default function SalesPerformanceAnalytics() {
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm">Lead → Meeting</span>
-                            <Badge variant={currentRep.performance.leadToMeetingRate >= 25 ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={
+                                currentRep.performance.leadToMeetingRate >= 25
+                                  ? 'default'
+                                  : 'secondary'
+                              }
+                            >
                               {currentRep.performance.leadToMeetingRate}%
                             </Badge>
                           </div>
@@ -548,7 +617,13 @@ export default function SalesPerformanceAnalytics() {
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm">Meeting → Proposal</span>
-                            <Badge variant={currentRep.performance.meetingToProposalRate >= 60 ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={
+                                currentRep.performance.meetingToProposalRate >= 60
+                                  ? 'default'
+                                  : 'secondary'
+                              }
+                            >
                               {currentRep.performance.meetingToProposalRate}%
                             </Badge>
                           </div>
@@ -558,7 +633,13 @@ export default function SalesPerformanceAnalytics() {
                         <div className="space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm">Proposal → Close</span>
-                            <Badge variant={currentRep.performance.proposalToCloseRate >= 30 ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={
+                                currentRep.performance.proposalToCloseRate >= 30
+                                  ? 'default'
+                                  : 'secondary'
+                              }
+                            >
                               {currentRep.performance.proposalToCloseRate}%
                             </Badge>
                           </div>
@@ -568,7 +649,13 @@ export default function SalesPerformanceAnalytics() {
                         <div className="pt-3 border-t">
                           <div className="flex justify-between items-center">
                             <span className="font-medium">Overall Close Rate</span>
-                            <Badge variant={currentRep.performance.overallCloseRate >= 15 ? 'default' : 'destructive'}>
+                            <Badge
+                              variant={
+                                currentRep.performance.overallCloseRate >= 15
+                                  ? 'default'
+                                  : 'destructive'
+                              }
+                            >
                               {currentRep.performance.overallCloseRate}%
                             </Badge>
                           </div>
@@ -585,15 +672,19 @@ export default function SalesPerformanceAnalytics() {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4">
-                        {Object.entries(currentRep.coaching.skillAssessment).map(([skill, score]) => (
-                          <div key={skill} className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="capitalize">{skill.replace(/([A-Z])/g, ' $1')}</span>
-                              <span className="font-medium">{score}/10</span>
+                        {Object.entries(currentRep.coaching.skillAssessment).map(
+                          ([skill, score]) => (
+                            <div key={skill} className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="capitalize">
+                                  {skill.replace(/([A-Z])/g, ' $1')}
+                                </span>
+                                <span className="font-medium">{score}/10</span>
+                              </div>
+                              <Progress value={score * 10} />
                             </div>
-                            <Progress value={score * 10} />
-                          </div>
-                        ))}
+                          ),
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -631,7 +722,10 @@ export default function SalesPerformanceAnalytics() {
                     <CardContent>
                       <div className="space-y-3">
                         {currentRep.coaching.strengths.map((strength, index) => (
-                          <div key={index} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                          <div
+                            key={index}
+                            className="flex items-start gap-3 p-3 bg-green-50 rounded-lg"
+                          >
                             <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
                             <p className="text-sm">{strength}</p>
                           </div>
@@ -651,7 +745,10 @@ export default function SalesPerformanceAnalytics() {
                     <CardContent>
                       <div className="space-y-3">
                         {currentRep.coaching.improvementAreas.map((area, index) => (
-                          <div key={index} className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg">
+                          <div
+                            key={index}
+                            className="flex items-start gap-3 p-3 bg-orange-50 rounded-lg"
+                          >
                             <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
                             <p className="text-sm">{area}</p>
                           </div>
@@ -665,7 +762,9 @@ export default function SalesPerformanceAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Actionable Recommendations</CardTitle>
-                    <CardDescription>Specific coaching suggestions with expected impact</CardDescription>
+                    <CardDescription>
+                      Specific coaching suggestions with expected impact
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -677,7 +776,7 @@ export default function SalesPerformanceAnalytics() {
                               {rec.priority} priority
                             </Badge>
                           </div>
-                          
+
                           <div className="space-y-2 text-sm">
                             <div>
                               <span className="font-medium text-red-700">Issue: </span>

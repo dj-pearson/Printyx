@@ -103,8 +103,13 @@ export class GeofenceAlertsService {
     });
     const dayName = formatter.format(now);
     const dayMap: { [key: string]: number } = {
-      'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
-      'Thursday': 4, 'Friday': 5, 'Saturday': 6
+      Sunday: 0,
+      Monday: 1,
+      Tuesday: 2,
+      Wednesday: 3,
+      Thursday: 4,
+      Friday: 5,
+      Saturday: 6,
     };
     const currentDay = dayMap[dayName];
 
@@ -136,7 +141,10 @@ export class GeofenceAlertsService {
       .replace(/{date}/g, new Date().toLocaleDateString())
       .replace(/{customer}/g, context.customerName || 'N/A')
       .replace(/{duration}/g, context.dwellDurationMinutes?.toString() || '0')
-      .replace(/{location}/g, context.location.address || `${context.location.lat}, ${context.location.lng}`);
+      .replace(
+        /{location}/g,
+        context.location.address || `${context.location.lat}, ${context.location.lng}`,
+      );
   }
 
   /**
@@ -145,7 +153,7 @@ export class GeofenceAlertsService {
   async getApplicableRules(
     tenantId: string,
     geofenceId: string,
-    eventType: 'entry' | 'exit' | 'dwell'
+    eventType: 'entry' | 'exit' | 'dwell',
   ): Promise<GeofenceAlertRule[]> {
     // Map event types to trigger types
     const triggerTypes: string[] = [eventType];
@@ -162,13 +170,13 @@ export class GeofenceAlertsService {
         and(
           eq(geofenceAlertRules.tenantId, tenantId),
           eq(geofenceAlertRules.geofenceId, geofenceId),
-          eq(geofenceAlertRules.isActive, true)
-        )
+          eq(geofenceAlertRules.isActive, true),
+        ),
       )
       .orderBy(desc(geofenceAlertRules.priority));
 
     // Filter rules by trigger type and time conditions
-    return rules.filter(rule => {
+    return rules.filter((rule) => {
       // Check trigger type match
       if (!triggerTypes.includes(rule.triggerType)) {
         return false;
@@ -198,7 +206,7 @@ export class GeofenceAlertsService {
    */
   async sendNotifications(
     alert: GeofenceAlert,
-    rule: GeofenceAlertRule
+    rule: GeofenceAlertRule,
   ): Promise<NotificationResult> {
     const result: NotificationResult = {
       email: false,
@@ -215,7 +223,7 @@ export class GeofenceAlertsService {
 
     // Add users from rule configuration
     if (rule.notifyUsers) {
-      (rule.notifyUsers as string[]).forEach(u => usersToNotify.add(u));
+      (rule.notifyUsers as string[]).forEach((u) => usersToNotify.add(u));
     }
 
     // TODO: Add users based on roles when user/role system is available
@@ -292,7 +300,7 @@ export class GeofenceAlertsService {
   async triggerAlert(
     tenantId: string,
     rule: GeofenceAlertRule,
-    context: TriggerContext
+    context: TriggerContext,
   ): Promise<GeofenceAlert> {
     // Determine alert type
     let alertType = context.eventType as string;
@@ -338,10 +346,7 @@ export class GeofenceAlertsService {
       message,
     };
 
-    const [alert] = await db
-      .insert(geofenceAlerts)
-      .values(alertData)
-      .returning();
+    const [alert] = await db.insert(geofenceAlerts).values(alertData).returning();
 
     // Update rule's last triggered timestamp
     await db
@@ -398,7 +403,7 @@ export class GeofenceAlertsService {
       customerId?: string;
       routeId?: string;
       dwellDurationMinutes?: number;
-    }
+    },
   ): Promise<GeofenceAlert[]> {
     const triggeredAlerts: GeofenceAlert[] = [];
 
@@ -406,12 +411,7 @@ export class GeofenceAlertsService {
     const [geofence] = await db
       .select()
       .from(geofences)
-      .where(
-        and(
-          eq(geofences.id, geofenceId),
-          eq(geofences.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenantId, tenantId)))
       .limit(1);
 
     if (!geofence) {
@@ -426,8 +426,8 @@ export class GeofenceAlertsService {
       .where(
         and(
           eq(technicianLocations.technicianId, technicianId),
-          eq(technicianLocations.tenantId, tenantId)
-        )
+          eq(technicianLocations.tenantId, tenantId),
+        ),
       )
       .limit(1);
 
@@ -478,7 +478,12 @@ export class GeofenceAlertsService {
     geofenceId: string,
     entryLocation: { lat: number; lng: number },
     entryEventId?: string,
-    context?: { ticketId?: string; customerId?: string; routeId?: string; expectedDwellMinutes?: number }
+    context?: {
+      ticketId?: string;
+      customerId?: string;
+      routeId?: string;
+      expectedDwellMinutes?: number;
+    },
   ): Promise<TechnicianDwellSession> {
     const sessionData: InsertTechnicianDwellSession = {
       tenantId,
@@ -495,10 +500,7 @@ export class GeofenceAlertsService {
       expectedDwellMinutes: context?.expectedDwellMinutes,
     };
 
-    const [session] = await db
-      .insert(technicianDwellSessions)
-      .values(sessionData)
-      .returning();
+    const [session] = await db.insert(technicianDwellSessions).values(sessionData).returning();
 
     return session;
   }
@@ -511,7 +513,7 @@ export class GeofenceAlertsService {
     technicianId: string,
     geofenceId: string,
     exitLocation: { lat: number; lng: number },
-    exitEventId?: string
+    exitEventId?: string,
   ): Promise<TechnicianDwellSession | null> {
     // Find active session
     const [activeSession] = await db
@@ -522,8 +524,8 @@ export class GeofenceAlertsService {
           eq(technicianDwellSessions.tenantId, tenantId),
           eq(technicianDwellSessions.technicianId, technicianId),
           eq(technicianDwellSessions.geofenceId, geofenceId),
-          eq(technicianDwellSessions.isActive, true)
-        )
+          eq(technicianDwellSessions.isActive, true),
+        ),
       )
       .orderBy(desc(technicianDwellSessions.entryTime))
       .limit(1);
@@ -535,7 +537,9 @@ export class GeofenceAlertsService {
     // Calculate dwell duration
     const entryTime = new Date(activeSession.entryTime);
     const exitTime = new Date();
-    const dwellDurationMinutes = Math.round((exitTime.getTime() - entryTime.getTime()) / (1000 * 60));
+    const dwellDurationMinutes = Math.round(
+      (exitTime.getTime() - entryTime.getTime()) / (1000 * 60),
+    );
 
     // Update session
     const [updatedSession] = await db
@@ -568,8 +572,8 @@ export class GeofenceAlertsService {
       .where(
         and(
           eq(technicianDwellSessions.tenantId, tenantId),
-          eq(technicianDwellSessions.isActive, true)
-        )
+          eq(technicianDwellSessions.isActive, true),
+        ),
       );
 
     for (const session of activeSessions) {
@@ -583,7 +587,7 @@ export class GeofenceAlertsService {
         // Check if dwell threshold is met
         if (rule.dwellTimeMinutes && currentDwell >= rule.dwellTimeMinutes) {
           // Check if we already triggered an alert for this session/rule combination
-          const existingAlerts = session.alertsTriggered as string[] || [];
+          const existingAlerts = (session.alertsTriggered as string[]) || [];
 
           if (!existingAlerts.includes(rule.id)) {
             // Trigger dwell alert
@@ -628,7 +632,7 @@ export class GeofenceAlertsService {
     alertId: string,
     tenantId: string,
     acknowledgedBy: string,
-    notes?: string
+    notes?: string,
   ): Promise<GeofenceAlert | null> {
     const [updated] = await db
       .update(geofenceAlerts)
@@ -638,12 +642,7 @@ export class GeofenceAlertsService {
         acknowledgedBy,
         acknowledgmentNotes: notes,
       })
-      .where(
-        and(
-          eq(geofenceAlerts.id, alertId),
-          eq(geofenceAlerts.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -657,7 +656,7 @@ export class GeofenceAlertsService {
     tenantId: string,
     resolvedBy: string,
     resolutionType: 'auto_resolved' | 'manual_resolved' | 'false_alarm' | 'escalated',
-    notes?: string
+    notes?: string,
   ): Promise<GeofenceAlert | null> {
     const [updated] = await db
       .update(geofenceAlerts)
@@ -668,12 +667,7 @@ export class GeofenceAlertsService {
         resolutionType,
         resolutionNotes: notes,
       })
-      .where(
-        and(
-          eq(geofenceAlerts.id, alertId),
-          eq(geofenceAlerts.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -686,7 +680,7 @@ export class GeofenceAlertsService {
     alertId: string,
     tenantId: string,
     escalatedTo: string,
-    reason: string
+    reason: string,
   ): Promise<GeofenceAlert | null> {
     const [updated] = await db
       .update(geofenceAlerts)
@@ -696,12 +690,7 @@ export class GeofenceAlertsService {
         escalatedTo,
         escalationReason: reason,
       })
-      .where(
-        and(
-          eq(geofenceAlerts.id, alertId),
-          eq(geofenceAlerts.tenantId, tenantId)
-        )
-      )
+      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -712,17 +701,12 @@ export class GeofenceAlertsService {
    */
   async getUnacknowledgedAlerts(
     tenantId: string,
-    options?: { severity?: string; limit?: number }
+    options?: { severity?: string; limit?: number },
   ): Promise<GeofenceAlert[]> {
     let query = db
       .select()
       .from(geofenceAlerts)
-      .where(
-        and(
-          eq(geofenceAlerts.tenantId, tenantId),
-          eq(geofenceAlerts.isAcknowledged, false)
-        )
-      )
+      .where(and(eq(geofenceAlerts.tenantId, tenantId), eq(geofenceAlerts.isAcknowledged, false)))
       .orderBy(desc(geofenceAlerts.triggeredAt));
 
     if (options?.limit) {
@@ -738,7 +722,7 @@ export class GeofenceAlertsService {
   async getAlertStatistics(
     tenantId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<{
     totalAlerts: number;
     byType: { [key: string]: number };
@@ -755,8 +739,8 @@ export class GeofenceAlertsService {
         and(
           eq(geofenceAlerts.tenantId, tenantId),
           gte(geofenceAlerts.triggeredAt, startDate),
-          lte(geofenceAlerts.triggeredAt, endDate)
-        )
+          lte(geofenceAlerts.triggeredAt, endDate),
+        ),
       );
 
     const byType: { [key: string]: number } = {};
@@ -786,7 +770,8 @@ export class GeofenceAlertsService {
 
       // Calculate response time (time to acknowledge)
       if (alert.acknowledgedAt && alert.triggeredAt) {
-        const responseTime = new Date(alert.acknowledgedAt).getTime() - new Date(alert.triggeredAt).getTime();
+        const responseTime =
+          new Date(alert.acknowledgedAt).getTime() - new Date(alert.triggeredAt).getTime();
         totalResponseTime += responseTime;
         responseTimeCount++;
       }
@@ -804,9 +789,8 @@ export class GeofenceAlertsService {
       bySeverity,
       acknowledgedCount,
       resolvedCount,
-      avgResponseTimeMinutes: responseTimeCount > 0
-        ? Math.round(totalResponseTime / responseTimeCount / (1000 * 60))
-        : 0,
+      avgResponseTimeMinutes:
+        responseTimeCount > 0 ? Math.round(totalResponseTime / responseTimeCount / (1000 * 60)) : 0,
       topGeofences,
     };
   }

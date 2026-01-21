@@ -4,7 +4,16 @@
  * WCAG 2.1 Compliance
  */
 
-import { pgTable, uuid, timestamp, varchar, boolean, jsonb, index, pgEnum } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  timestamp,
+  varchar,
+  boolean,
+  jsonb,
+  index,
+  pgEnum,
+} from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -69,7 +78,7 @@ export const userAccessibilityPreferences = pgTable(
   (table) => ({
     userIdIdx: index('a11y_user_id_idx').on(table.userId),
     tenantIdIdx: index('a11y_tenant_id_idx').on(table.tenantId),
-  })
+  }),
 );
 
 /**
@@ -114,7 +123,7 @@ export const accessibilityFeedback = pgTable(
     categoryIdx: index('a11y_feedback_category_idx').on(table.category),
     statusIdx: index('a11y_feedback_status_idx').on(table.status),
     tenantIdIdx: index('a11y_feedback_tenant_id_idx').on(table.tenantId),
-  })
+  }),
 );
 
 /**
@@ -156,7 +165,7 @@ export const accessibilityAuditLog = pgTable(
     auditTypeIdx: index('a11y_audit_type_idx').on(table.auditType),
     pageUrlIdx: index('a11y_audit_page_url_idx').on(table.pageUrl),
     tenantIdIdx: index('a11y_audit_tenant_id_idx').on(table.tenantId),
-  })
+  }),
 );
 
 // Zod Schemas
@@ -166,15 +175,19 @@ export const insertUserAccessibilityPreferencesSchema = createInsertSchema(
     userId: z.string().uuid(),
     tenantId: z.string().uuid(),
     fontSize: z.enum(['small', 'normal', 'large', 'extra-large']).optional(),
-    colorBlind: z.enum(['none', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia']).optional(),
+    colorBlind: z
+      .enum(['none', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia'])
+      .optional(),
     cursorSize: z.enum(['normal', 'large']).optional(),
-  }
+  },
 );
 
 export const updateUserAccessibilityPreferencesSchema = z.object({
   highContrast: z.boolean().optional(),
   fontSize: z.enum(['small', 'normal', 'large', 'extra-large']).optional(),
-  colorBlind: z.enum(['none', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia']).optional(),
+  colorBlind: z
+    .enum(['none', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia'])
+    .optional(),
   focusIndicators: z.boolean().optional(),
   underlineLinks: z.boolean().optional(),
   cursorSize: z.enum(['normal', 'large']).optional(),

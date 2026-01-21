@@ -116,7 +116,7 @@ class ReportCache {
       return;
     }
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -134,15 +134,16 @@ export class ExecutiveReportingService {
    */
   static async getExecutiveDashboard(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<ExecutiveDashboard> {
     const cacheKey = `executive-dashboard:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<ExecutiveDashboard>(cacheKey);
     if (cached) return cached;
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Get comprehensive executive metrics
     const result = await db.execute(sql`
@@ -185,7 +186,7 @@ export class ExecutiveReportingService {
         totalRevenue,
         revenueGrowth: 15.3, // Would calculate from historical data
         grossMargin: 65.0,
-        netProfit: totalRevenue * 0.20,
+        netProfit: totalRevenue * 0.2,
         arr: parseFloat(row.arr || 0),
         mrr: parseFloat(row.mrr || 0),
       },
@@ -199,15 +200,20 @@ export class ExecutiveReportingService {
       },
       strategic: {
         marketShare: 12.5,
-        cac: totalRevenue / customerCount * 0.3,
-        ltv: totalRevenue / customerCount * 3,
+        cac: (totalRevenue / customerCount) * 0.3,
+        ltv: (totalRevenue / customerCount) * 3,
         ltvCacRatio: 3.0,
         monthsToRecover: 8,
       },
       kpis: [
         { name: 'Revenue Growth', value: 15.3, target: 20, status: 'yellow' },
         { name: 'Gross Margin', value: 65.0, target: 60, status: 'green' },
-        { name: 'Customer Satisfaction', value: parseFloat(row.csat || 0), target: 4.5, status: parseFloat(row.csat || 0) >= 4.5 ? 'green' : 'yellow' },
+        {
+          name: 'Customer Satisfaction',
+          value: parseFloat(row.csat || 0),
+          target: 4.5,
+          status: parseFloat(row.csat || 0) >= 4.5 ? 'green' : 'yellow',
+        },
         { name: 'NPS', value: 45, target: 50, status: 'yellow' },
         { name: 'Churn Rate', value: 2.1, target: 3.0, status: 'green' },
       ],

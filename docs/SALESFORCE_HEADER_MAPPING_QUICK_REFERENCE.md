@@ -14,32 +14,32 @@ company_name,external_salesforce_id,account_type,website,industry,notes,lead_sou
 
 Use Find & Replace (Ctrl+H) for the header row only:
 
-| Find | Replace With |
-|---|---|
-| `Business Name` | `company_name` |
-| `Business ID` | `external_salesforce_id` |
-| `Business Record Type` | `account_type` |
-| `Business Description` | `notes` |
-| `Lead Source` | `lead_source` |
-| `EA Customer Number` | `customer_number` |
-| `Prospect Status` | `status` |
-| `First Name` | `contact_first_name` |
-| `Last Name` | `contact_last_name` |
-| `Title` | `primary_contact_title` |
-| `Mailing Street` | `address_line1` |
-| `Mailing City` | `city` |
-| `Mailing State/Province` | `state` |
-| `Mailing Zip/Postal Code` | `postal_code` |
-| `Mailing Country` | `country` |
-| `Phone` | `phone` |
-| `Fax` | `fax` |
-| `Mobile` | `mobile_phone` |
-| `Email` | `primary_contact_email` |
-| `Business Owner` | `account_manager_name` |
-| `Business Owner Alias` | `owner_id` |
-| `Created Date` | `created_at` |
-| `Last Modified Date` | `updated_at` |
-| `Created By` | `created_by_name` |
+| Find                      | Replace With             |
+| ------------------------- | ------------------------ |
+| `Business Name`           | `company_name`           |
+| `Business ID`             | `external_salesforce_id` |
+| `Business Record Type`    | `account_type`           |
+| `Business Description`    | `notes`                  |
+| `Lead Source`             | `lead_source`            |
+| `EA Customer Number`      | `customer_number`        |
+| `Prospect Status`         | `status`                 |
+| `First Name`              | `contact_first_name`     |
+| `Last Name`               | `contact_last_name`      |
+| `Title`                   | `primary_contact_title`  |
+| `Mailing Street`          | `address_line1`          |
+| `Mailing City`            | `city`                   |
+| `Mailing State/Province`  | `state`                  |
+| `Mailing Zip/Postal Code` | `postal_code`            |
+| `Mailing Country`         | `country`                |
+| `Phone`                   | `phone`                  |
+| `Fax`                     | `fax`                    |
+| `Mobile`                  | `mobile_phone`           |
+| `Email`                   | `primary_contact_email`  |
+| `Business Owner`          | `account_manager_name`   |
+| `Business Owner Alias`    | `owner_id`               |
+| `Created Date`            | `created_at`             |
+| `Last Modified Date`      | `updated_at`             |
+| `Created By`              | `created_by_name`        |
 
 ---
 
@@ -63,6 +63,7 @@ Done!
 ## 📌 Fields NOT in Salesforce (Added Automatically by Printyx)
 
 These are added during import - don't worry about them:
+
 - ✅ `tenant_id` - Added automatically
 - ✅ `record_type` - Set to "customer" or "lead"
 - ✅ `external_system_id` - Set to "salesforce"

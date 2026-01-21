@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertCircle,
   TrendingUp,
@@ -18,13 +18,13 @@ import {
   Info,
   Sparkles,
   Target,
-} from "lucide-react";
-import { useState } from "react";
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface ContentGap {
   topic: string;
   confidence: number;
-  priority: "critical" | "high" | "medium" | "low";
+  priority: 'critical' | 'high' | 'medium' | 'low';
   category: string;
   evidence: {
     searchVolume?: number;
@@ -45,7 +45,7 @@ interface CategoryHealth {
   articleCount: number;
   targetArticles: number;
   coverageScore: number;
-  status: "excellent" | "good" | "fair" | "poor";
+  status: 'excellent' | 'good' | 'fair' | 'poor';
   missingTopics: string[];
 }
 
@@ -61,8 +61,12 @@ interface AnalysisReport {
 export default function ContentGapDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data: report, isLoading, refetch } = useQuery<{ report: AnalysisReport }>({
-    queryKey: ["/api/content-gap-analysis"],
+  const {
+    data: report,
+    isLoading,
+    refetch,
+  } = useQuery<{ report: AnalysisReport }>({
+    queryKey: ['/api/content-gap-analysis'],
   });
 
   const handleRefresh = async () => {
@@ -73,13 +77,13 @@ export default function ContentGapDashboard() {
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case "critical":
+      case 'critical':
         return <XCircle className="h-4 w-4 text-red-500" />;
-      case "high":
+      case 'high':
         return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-      case "medium":
+      case 'medium':
         return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-      case "low":
+      case 'low':
         return <Info className="h-4 w-4 text-blue-500" />;
       default:
         return null;
@@ -88,38 +92,35 @@ export default function ContentGapDashboard() {
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      critical: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-      high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
-      medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
-      low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      critical: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+      high: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      low: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     };
     return colors[priority] || colors.low;
   };
 
   const getHealthStatus = (status: string) => {
-    const statusConfig: Record<
-      string,
-      { color: string; icon: React.ReactNode; label: string }
-    > = {
+    const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
       excellent: {
-        color: "text-green-600",
+        color: 'text-green-600',
         icon: <CheckCircle2 className="h-5 w-5" />,
-        label: "Excellent",
+        label: 'Excellent',
       },
       good: {
-        color: "text-blue-600",
+        color: 'text-blue-600',
         icon: <TrendingUp className="h-5 w-5" />,
-        label: "Good",
+        label: 'Good',
       },
       fair: {
-        color: "text-yellow-600",
+        color: 'text-yellow-600',
         icon: <AlertCircle className="h-5 w-5" />,
-        label: "Fair",
+        label: 'Fair',
       },
       poor: {
-        color: "text-red-600",
+        color: 'text-red-600',
         icon: <XCircle className="h-5 w-5" />,
-        label: "Needs Attention",
+        label: 'Needs Attention',
       },
     };
     return statusConfig[status] || statusConfig.fair;
@@ -163,7 +164,7 @@ export default function ContentGapDashboard() {
           </p>
         </div>
         <Button onClick={handleRefresh} disabled={isRefreshing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh Analysis
         </Button>
       </div>
@@ -193,12 +194,8 @@ export default function ContentGapDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">
-              {analysisReport.criticalGaps}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Immediate attention required
-            </p>
+            <div className="text-3xl font-bold text-red-600">{analysisReport.criticalGaps}</div>
+            <p className="text-xs text-muted-foreground mt-1">Immediate attention required</p>
           </CardContent>
         </Card>
 
@@ -213,9 +210,7 @@ export default function ContentGapDashboard() {
             <div className="text-3xl font-bold text-orange-600">
               {analysisReport.highPriorityGaps}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Important gaps to address soon
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Important gaps to address soon</p>
           </CardContent>
         </Card>
       </div>
@@ -243,7 +238,7 @@ export default function ContentGapDashboard() {
                             {gap.priority.toUpperCase()}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
-                            {gap.category.replace(/_/g, " ")}
+                            {gap.category.replace(/_/g, ' ')}
                           </Badge>
                           <Badge variant="secondary" className="text-xs">
                             {gap.confidence}% confidence
@@ -297,9 +292,7 @@ export default function ContentGapDashboard() {
                                   {article.difficultyLevel}
                                 </Badge>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {article.rationale}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{article.rationale}</p>
                             </div>
                           ))}
                         </div>
@@ -333,7 +326,7 @@ export default function ContentGapDashboard() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg capitalize">
-                        {slug.replace(/-/g, " ")}
+                        {slug.replace(/-/g, ' ')}
                       </CardTitle>
                       <div className={`flex items-center gap-1 ${healthStatus.color}`}>
                         {healthStatus.icon}

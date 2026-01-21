@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express } from 'express';
 import { db } from './db';
 import {
   salesTerritories,
@@ -11,18 +11,18 @@ import {
   type InsertRepCapacity,
   type InsertLeadAssignmentHistory,
   type InsertLeadAssignmentQueue,
-} from "@shared/schema";
-import { eq, and, desc, asc, sql, inArray } from "drizzle-orm";
+} from '@shared/schema';
+import { eq, and, desc, asc, sql, inArray } from 'drizzle-orm';
 
 export function registerLeadAssignmentRoutes(app: Express) {
   // ==================== Sales Territories ====================
 
   // Get all territories for tenant
-  app.get("/api/sales-territories", async (req, res) => {
+  app.get('/api/sales-territories', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const territories = await db.query.salesTerritories.findMany({
@@ -32,41 +32,38 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(territories);
     } catch (error) {
-      console.error("Error fetching sales territories:", error);
-      res.status(500).json({ error: "Failed to fetch sales territories" });
+      console.error('Error fetching sales territories:', error);
+      res.status(500).json({ error: 'Failed to fetch sales territories' });
     }
   });
 
   // Get single territory
-  app.get("/api/sales-territories/:id", async (req, res) => {
+  app.get('/api/sales-territories/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const territory = await db.query.salesTerritories.findFirst({
-        where: and(
-          eq(salesTerritories.id, id),
-          eq(salesTerritories.tenantId, tenantId)
-        ),
+        where: and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)),
       });
 
       if (!territory) {
-        return res.status(404).json({ error: "Territory not found" });
+        return res.status(404).json({ error: 'Territory not found' });
       }
 
       res.json(territory);
     } catch (error) {
-      console.error("Error fetching territory:", error);
-      res.status(500).json({ error: "Failed to fetch territory" });
+      console.error('Error fetching territory:', error);
+      res.status(500).json({ error: 'Failed to fetch territory' });
     }
   });
 
   // Create territory
-  app.post("/api/sales-territories", async (req, res) => {
+  app.post('/api/sales-territories', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const territoryData: InsertSalesTerritory = {
@@ -74,74 +71,68 @@ export function registerLeadAssignmentRoutes(app: Express) {
         tenantId,
       };
 
-      const [newTerritory] = await db.insert(salesTerritories)
-        .values(territoryData)
-        .returning();
+      const [newTerritory] = await db.insert(salesTerritories).values(territoryData).returning();
 
       res.status(201).json(newTerritory);
     } catch (error) {
-      console.error("Error creating territory:", error);
-      res.status(500).json({ error: "Failed to create territory" });
+      console.error('Error creating territory:', error);
+      res.status(500).json({ error: 'Failed to create territory' });
     }
   });
 
   // Update territory
-  app.put("/api/sales-territories/:id", async (req, res) => {
+  app.put('/api/sales-territories/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [updated] = await db.update(salesTerritories)
+      const [updated] = await db
+        .update(salesTerritories)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(
-          eq(salesTerritories.id, id),
-          eq(salesTerritories.tenantId, tenantId)
-        ))
+        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Territory not found" });
+        return res.status(404).json({ error: 'Territory not found' });
       }
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating territory:", error);
-      res.status(500).json({ error: "Failed to update territory" });
+      console.error('Error updating territory:', error);
+      res.status(500).json({ error: 'Failed to update territory' });
     }
   });
 
   // Delete territory
-  app.delete("/api/sales-territories/:id", async (req, res) => {
+  app.delete('/api/sales-territories/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [deleted] = await db.delete(salesTerritories)
-        .where(and(
-          eq(salesTerritories.id, id),
-          eq(salesTerritories.tenantId, tenantId)
-        ))
+      const [deleted] = await db
+        .delete(salesTerritories)
+        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)))
         .returning();
 
       if (!deleted) {
-        return res.status(404).json({ error: "Territory not found" });
+        return res.status(404).json({ error: 'Territory not found' });
       }
 
       res.json({ success: true, deleted });
     } catch (error) {
-      console.error("Error deleting territory:", error);
-      res.status(500).json({ error: "Failed to delete territory" });
+      console.error('Error deleting territory:', error);
+      res.status(500).json({ error: 'Failed to delete territory' });
     }
   });
 
   // ==================== Lead Assignment Rules ====================
 
   // Get all assignment rules
-  app.get("/api/lead-assignment-rules", async (req, res) => {
+  app.get('/api/lead-assignment-rules', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const rules = await db.query.leadAssignmentRules.findMany({
@@ -151,41 +142,38 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(rules);
     } catch (error) {
-      console.error("Error fetching assignment rules:", error);
-      res.status(500).json({ error: "Failed to fetch assignment rules" });
+      console.error('Error fetching assignment rules:', error);
+      res.status(500).json({ error: 'Failed to fetch assignment rules' });
     }
   });
 
   // Get single rule
-  app.get("/api/lead-assignment-rules/:id", async (req, res) => {
+  app.get('/api/lead-assignment-rules/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const rule = await db.query.leadAssignmentRules.findFirst({
-        where: and(
-          eq(leadAssignmentRules.id, id),
-          eq(leadAssignmentRules.tenantId, tenantId)
-        ),
+        where: and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenantId, tenantId)),
       });
 
       if (!rule) {
-        return res.status(404).json({ error: "Assignment rule not found" });
+        return res.status(404).json({ error: 'Assignment rule not found' });
       }
 
       res.json(rule);
     } catch (error) {
-      console.error("Error fetching assignment rule:", error);
-      res.status(500).json({ error: "Failed to fetch assignment rule" });
+      console.error('Error fetching assignment rule:', error);
+      res.status(500).json({ error: 'Failed to fetch assignment rule' });
     }
   });
 
   // Create assignment rule
-  app.post("/api/lead-assignment-rules", async (req, res) => {
+  app.post('/api/lead-assignment-rules', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const ruleData: InsertLeadAssignmentRule = {
@@ -193,98 +181,89 @@ export function registerLeadAssignmentRoutes(app: Express) {
         tenantId,
       };
 
-      const [newRule] = await db.insert(leadAssignmentRules)
-        .values(ruleData)
-        .returning();
+      const [newRule] = await db.insert(leadAssignmentRules).values(ruleData).returning();
 
       res.status(201).json(newRule);
     } catch (error) {
-      console.error("Error creating assignment rule:", error);
-      res.status(500).json({ error: "Failed to create assignment rule" });
+      console.error('Error creating assignment rule:', error);
+      res.status(500).json({ error: 'Failed to create assignment rule' });
     }
   });
 
   // Update assignment rule
-  app.put("/api/lead-assignment-rules/:id", async (req, res) => {
+  app.put('/api/lead-assignment-rules/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [updated] = await db.update(leadAssignmentRules)
+      const [updated] = await db
+        .update(leadAssignmentRules)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(
-          eq(leadAssignmentRules.id, id),
-          eq(leadAssignmentRules.tenantId, tenantId)
-        ))
+        .where(and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Assignment rule not found" });
+        return res.status(404).json({ error: 'Assignment rule not found' });
       }
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating assignment rule:", error);
-      res.status(500).json({ error: "Failed to update assignment rule" });
+      console.error('Error updating assignment rule:', error);
+      res.status(500).json({ error: 'Failed to update assignment rule' });
     }
   });
 
   // Delete assignment rule
-  app.delete("/api/lead-assignment-rules/:id", async (req, res) => {
+  app.delete('/api/lead-assignment-rules/:id', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [deleted] = await db.delete(leadAssignmentRules)
-        .where(and(
-          eq(leadAssignmentRules.id, id),
-          eq(leadAssignmentRules.tenantId, tenantId)
-        ))
+      const [deleted] = await db
+        .delete(leadAssignmentRules)
+        .where(and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenantId, tenantId)))
         .returning();
 
       if (!deleted) {
-        return res.status(404).json({ error: "Assignment rule not found" });
+        return res.status(404).json({ error: 'Assignment rule not found' });
       }
 
       res.json({ success: true, deleted });
     } catch (error) {
-      console.error("Error deleting assignment rule:", error);
-      res.status(500).json({ error: "Failed to delete assignment rule" });
+      console.error('Error deleting assignment rule:', error);
+      res.status(500).json({ error: 'Failed to delete assignment rule' });
     }
   });
 
   // ==================== Rep Capacity ====================
 
   // Get rep capacity by user ID
-  app.get("/api/rep-capacity/:userId", async (req, res) => {
+  app.get('/api/rep-capacity/:userId', async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const capacity = await db.query.repCapacity.findFirst({
-        where: and(
-          eq(repCapacity.userId, userId),
-          eq(repCapacity.tenantId, tenantId)
-        ),
+        where: and(eq(repCapacity.userId, userId), eq(repCapacity.tenantId, tenantId)),
       });
 
       if (!capacity) {
-        return res.status(404).json({ error: "Rep capacity not found" });
+        return res.status(404).json({ error: 'Rep capacity not found' });
       }
 
       res.json(capacity);
     } catch (error) {
-      console.error("Error fetching rep capacity:", error);
-      res.status(500).json({ error: "Failed to fetch rep capacity" });
+      console.error('Error fetching rep capacity:', error);
+      res.status(500).json({ error: 'Failed to fetch rep capacity' });
     }
   });
 
   // Get all rep capacities for tenant
-  app.get("/api/rep-capacity", async (req, res) => {
+  app.get('/api/rep-capacity', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const capacities = await db.query.repCapacity.findMany({
@@ -294,17 +273,17 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(capacities);
     } catch (error) {
-      console.error("Error fetching rep capacities:", error);
-      res.status(500).json({ error: "Failed to fetch rep capacities" });
+      console.error('Error fetching rep capacities:', error);
+      res.status(500).json({ error: 'Failed to fetch rep capacities' });
     }
   });
 
   // Create or update rep capacity
-  app.post("/api/rep-capacity", async (req, res) => {
+  app.post('/api/rep-capacity', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const capacityData: InsertRepCapacity = {
@@ -314,67 +293,61 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       // Check if capacity already exists
       const existing = await db.query.repCapacity.findFirst({
-        where: and(
-          eq(repCapacity.userId, capacityData.userId),
-          eq(repCapacity.tenantId, tenantId)
-        ),
+        where: and(eq(repCapacity.userId, capacityData.userId), eq(repCapacity.tenantId, tenantId)),
       });
 
       if (existing) {
         // Update existing
-        const [updated] = await db.update(repCapacity)
+        const [updated] = await db
+          .update(repCapacity)
           .set({ ...req.body, updatedAt: new Date() })
           .where(eq(repCapacity.id, existing.id))
           .returning();
         return res.json(updated);
       } else {
         // Create new
-        const [newCapacity] = await db.insert(repCapacity)
-          .values(capacityData)
-          .returning();
+        const [newCapacity] = await db.insert(repCapacity).values(capacityData).returning();
         return res.status(201).json(newCapacity);
       }
     } catch (error) {
-      console.error("Error saving rep capacity:", error);
-      res.status(500).json({ error: "Failed to save rep capacity" });
+      console.error('Error saving rep capacity:', error);
+      res.status(500).json({ error: 'Failed to save rep capacity' });
     }
   });
 
   // Update rep availability
-  app.patch("/api/rep-capacity/:userId/availability", async (req, res) => {
+  app.patch('/api/rep-capacity/:userId/availability', async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
       const { isAvailable, unavailableReason, unavailableUntil } = req.body;
 
-      const [updated] = await db.update(repCapacity)
+      const [updated] = await db
+        .update(repCapacity)
         .set({
           isAvailable,
           unavailableReason,
           unavailableUntil,
           updatedAt: new Date(),
         })
-        .where(and(
-          eq(repCapacity.userId, userId),
-          eq(repCapacity.tenantId, tenantId)
-        ))
+        .where(and(eq(repCapacity.userId, userId), eq(repCapacity.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
-        return res.status(404).json({ error: "Rep capacity not found" });
+        return res.status(404).json({ error: 'Rep capacity not found' });
       }
 
       res.json(updated);
     } catch (error) {
-      console.error("Error updating rep availability:", error);
-      res.status(500).json({ error: "Failed to update rep availability" });
+      console.error('Error updating rep availability:', error);
+      res.status(500).json({ error: 'Failed to update rep availability' });
     }
   });
 
   // ==================== Lead Assignment History ====================
 
   // Get assignment history for a lead
-  app.get("/api/lead-assignment-history/:leadId", async (req, res) => {
+  app.get('/api/lead-assignment-history/:leadId', async (req, res) => {
     try {
       const { leadId } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -382,20 +355,20 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const history = await db.query.leadAssignmentHistory.findMany({
         where: and(
           eq(leadAssignmentHistory.leadId, leadId),
-          eq(leadAssignmentHistory.tenantId, tenantId)
+          eq(leadAssignmentHistory.tenantId, tenantId),
         ),
         orderBy: [desc(leadAssignmentHistory.assignedAt)],
       });
 
       res.json(history);
     } catch (error) {
-      console.error("Error fetching assignment history:", error);
-      res.status(500).json({ error: "Failed to fetch assignment history" });
+      console.error('Error fetching assignment history:', error);
+      res.status(500).json({ error: 'Failed to fetch assignment history' });
     }
   });
 
   // Get assignments for a user
-  app.get("/api/user-assignments/:userId", async (req, res) => {
+  app.get('/api/user-assignments/:userId', async (req, res) => {
     try {
       const { userId } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
@@ -403,7 +376,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const assignments = await db.query.leadAssignmentHistory.findMany({
         where: and(
           eq(leadAssignmentHistory.assignedTo, userId),
-          eq(leadAssignmentHistory.tenantId, tenantId)
+          eq(leadAssignmentHistory.tenantId, tenantId),
         ),
         orderBy: [desc(leadAssignmentHistory.assignedAt)],
         limit: 100,
@@ -411,17 +384,17 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(assignments);
     } catch (error) {
-      console.error("Error fetching user assignments:", error);
-      res.status(500).json({ error: "Failed to fetch user assignments" });
+      console.error('Error fetching user assignments:', error);
+      res.status(500).json({ error: 'Failed to fetch user assignments' });
     }
   });
 
   // Record assignment
-  app.post("/api/lead-assignment-history", async (req, res) => {
+  app.post('/api/lead-assignment-history', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const assignmentData: InsertLeadAssignmentHistory = {
@@ -429,21 +402,22 @@ export function registerLeadAssignmentRoutes(app: Express) {
         tenantId,
       };
 
-      const [newAssignment] = await db.insert(leadAssignmentHistory)
+      const [newAssignment] = await db
+        .insert(leadAssignmentHistory)
         .values(assignmentData)
         .returning();
 
       res.status(201).json(newAssignment);
     } catch (error) {
-      console.error("Error recording assignment:", error);
-      res.status(500).json({ error: "Failed to record assignment" });
+      console.error('Error recording assignment:', error);
+      res.status(500).json({ error: 'Failed to record assignment' });
     }
   });
 
   // ==================== Lead Assignment Queue ====================
 
   // Get queued assignments
-  app.get("/api/lead-assignment-queue", async (req, res) => {
+  app.get('/api/lead-assignment-queue', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       const { status } = req.query;
@@ -457,7 +431,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
         query = db.query.leadAssignmentQueue.findMany({
           where: and(
             eq(leadAssignmentQueue.tenantId, tenantId),
-            eq(leadAssignmentQueue.status, status as string)
+            eq(leadAssignmentQueue.status, status as string),
           ),
           orderBy: [desc(leadAssignmentQueue.priority), asc(leadAssignmentQueue.scheduleFor)],
         });
@@ -466,17 +440,17 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const queue = await query;
       res.json(queue);
     } catch (error) {
-      console.error("Error fetching assignment queue:", error);
-      res.status(500).json({ error: "Failed to fetch assignment queue" });
+      console.error('Error fetching assignment queue:', error);
+      res.status(500).json({ error: 'Failed to fetch assignment queue' });
     }
   });
 
   // Add to assignment queue
-  app.post("/api/lead-assignment-queue", async (req, res) => {
+  app.post('/api/lead-assignment-queue', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const queueData: InsertLeadAssignmentQueue = {
@@ -484,36 +458,32 @@ export function registerLeadAssignmentRoutes(app: Express) {
         tenantId,
       };
 
-      const [newQueueItem] = await db.insert(leadAssignmentQueue)
-        .values(queueData)
-        .returning();
+      const [newQueueItem] = await db.insert(leadAssignmentQueue).values(queueData).returning();
 
       res.status(201).json(newQueueItem);
     } catch (error) {
-      console.error("Error adding to assignment queue:", error);
-      res.status(500).json({ error: "Failed to add to assignment queue" });
+      console.error('Error adding to assignment queue:', error);
+      res.status(500).json({ error: 'Failed to add to assignment queue' });
     }
   });
 
   // Process assignment from queue
-  app.post("/api/lead-assignment-queue/:id/process", async (req, res) => {
+  app.post('/api/lead-assignment-queue/:id/process', async (req, res) => {
     try {
       const { id } = req.params;
       const tenantId = req.headers['x-tenant-id'] as string;
 
-      const [processed] = await db.update(leadAssignmentQueue)
+      const [processed] = await db
+        .update(leadAssignmentQueue)
         .set({
           status: 'processing',
           processedAt: new Date(),
         })
-        .where(and(
-          eq(leadAssignmentQueue.id, id),
-          eq(leadAssignmentQueue.tenantId, tenantId)
-        ))
+        .where(and(eq(leadAssignmentQueue.id, id), eq(leadAssignmentQueue.tenantId, tenantId)))
         .returning();
 
       if (!processed) {
-        return res.status(404).json({ error: "Queue item not found" });
+        return res.status(404).json({ error: 'Queue item not found' });
       }
 
       // Here you would trigger the actual assignment logic
@@ -521,19 +491,19 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(processed);
     } catch (error) {
-      console.error("Error processing assignment:", error);
-      res.status(500).json({ error: "Failed to process assignment" });
+      console.error('Error processing assignment:', error);
+      res.status(500).json({ error: 'Failed to process assignment' });
     }
   });
 
   // ==================== Lead Assignment Engine ====================
 
   // Assign lead based on rules
-  app.post("/api/assign-lead", async (req, res) => {
+  app.post('/api/assign-lead', async (req, res) => {
     try {
       const tenantId = req.headers['x-tenant-id'] as string;
       if (!tenantId) {
-        return res.status(400).json({ error: "Tenant ID required" });
+        return res.status(400).json({ error: 'Tenant ID required' });
       }
 
       const { leadId, leadData, assignedBy } = req.body;
@@ -542,7 +512,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const rules = await db.query.leadAssignmentRules.findMany({
         where: and(
           eq(leadAssignmentRules.tenantId, tenantId),
-          eq(leadAssignmentRules.isActive, true)
+          eq(leadAssignmentRules.isActive, true),
         ),
         orderBy: [desc(leadAssignmentRules.priority)],
       });
@@ -557,7 +527,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       }
 
       if (!matchedRule) {
-        return res.status(400).json({ error: "No matching assignment rule found" });
+        return res.status(400).json({ error: 'No matching assignment rule found' });
       }
 
       let assignedTo = null;
@@ -570,7 +540,8 @@ export function registerLeadAssignmentRoutes(app: Express) {
             assignedTo = config.userIds[config.currentIndex % config.userIds.length];
 
             // Update round robin index
-            await db.update(leadAssignmentRules)
+            await db
+              .update(leadAssignmentRules)
               .set({
                 roundRobinConfig: {
                   ...config,
@@ -595,11 +566,12 @@ export function registerLeadAssignmentRoutes(app: Express) {
       }
 
       if (!assignedTo) {
-        return res.status(400).json({ error: "Could not determine assignment target" });
+        return res.status(400).json({ error: 'Could not determine assignment target' });
       }
 
       // Record assignment
-      const [assignment] = await db.insert(leadAssignmentHistory)
+      const [assignment] = await db
+        .insert(leadAssignmentHistory)
         .values({
           tenantId,
           leadId,
@@ -611,7 +583,8 @@ export function registerLeadAssignmentRoutes(app: Express) {
         .returning();
 
       // Update rule stats
-      await db.update(leadAssignmentRules)
+      await db
+        .update(leadAssignmentRules)
         .set({
           assignmentsCount: sql`${leadAssignmentRules.assignmentsCount} + 1`,
           lastAssignedAt: new Date(),
@@ -625,8 +598,8 @@ export function registerLeadAssignmentRoutes(app: Express) {
         ruleUsed: matchedRule.ruleName,
       });
     } catch (error) {
-      console.error("Error assigning lead:", error);
-      res.status(500).json({ error: "Failed to assign lead" });
+      console.error('Error assigning lead:', error);
+      res.status(500).json({ error: 'Failed to assign lead' });
     }
   });
 }
@@ -695,9 +668,10 @@ function matchesRule(leadData: any, rule: any): boolean {
 
   // Check product interest
   if (criteria.productInterest && criteria.productInterest.length > 0) {
-    if (!leadData.productInterest || !criteria.productInterest.some((p: string) =>
-      leadData.productInterest.includes(p)
-    )) {
+    if (
+      !leadData.productInterest ||
+      !criteria.productInterest.some((p: string) => leadData.productInterest.includes(p))
+    ) {
       return false;
     }
   }

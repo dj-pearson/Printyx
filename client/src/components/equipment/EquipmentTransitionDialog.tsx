@@ -14,14 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import {
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  ArrowRight,
-  Clock,
-  Loader2,
-} from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, ArrowRight, Clock, Loader2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -110,13 +103,13 @@ export function EquipmentTransitionDialog({
 
         // Invalidate relevant queries
         queryClient.invalidateQueries({
-          queryKey: [`/api/equipment-lifecycle/${equipmentId}`]
+          queryKey: [`/api/equipment-lifecycle/${equipmentId}`],
         });
         queryClient.invalidateQueries({
-          queryKey: ['/api/equipment-lifecycle/stages']
+          queryKey: ['/api/equipment-lifecycle/stages'],
         });
         queryClient.invalidateQueries({
-          queryKey: ['/api/equipment-lifecycle/metrics']
+          queryKey: ['/api/equipment-lifecycle/metrics'],
         });
 
         onTransitionComplete?.();
@@ -156,7 +149,7 @@ export function EquipmentTransitionDialog({
   const formatStageName = (stage: string) => {
     return stage
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
   };
 
@@ -190,9 +183,7 @@ export function EquipmentTransitionDialog({
         <div className="space-y-6">
           {/* Available Transitions */}
           <div>
-            <Label className="text-base font-semibold mb-3 block">
-              Select Target Stage
-            </Label>
+            <Label className="text-base font-semibold mb-3 block">Select Target Stage</Label>
 
             {loadingAvailable ? (
               <div className="flex items-center justify-center py-8">
@@ -221,9 +212,7 @@ export function EquipmentTransitionDialog({
                     `}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">
-                        {formatStageName(transition.toStage)}
-                      </span>
+                      <span className="font-medium">{formatStageName(transition.toStage)}</span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                     {transition.validationRequirements.length > 0 && (
@@ -250,31 +239,25 @@ export function EquipmentTransitionDialog({
               {validationDetails && (
                 <>
                   {/* Overall Status */}
-                  <Alert
-                    variant={validationDetails.validation.isValid ? 'default' : 'destructive'}
-                  >
+                  <Alert variant={validationDetails.validation.isValid ? 'default' : 'destructive'}>
                     {validationDetails.validation.isValid ? (
                       <CheckCircle2 className="h-4 w-4" />
                     ) : (
                       <AlertCircle className="h-4 w-4" />
                     )}
-                    <AlertDescription>
-                      {validationDetails.message}
-                    </AlertDescription>
+                    <AlertDescription>{validationDetails.message}</AlertDescription>
                   </Alert>
 
                   {/* Validation Requirements */}
                   {validationDetails.validationRequirements.length > 0 && (
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">
-                        Required Validations:
-                      </Label>
+                      <Label className="text-sm font-medium">Required Validations:</Label>
                       <div className="space-y-2">
                         {validationDetails.validationRequirements.map((req, index) => {
                           const check = [
                             ...validationDetails.validation.passed,
                             ...validationDetails.validation.failed,
-                          ].find(c => c.name === req);
+                          ].find((c) => c.name === req);
 
                           const isPassed = check?.passed ?? false;
 

@@ -16,9 +16,9 @@ async function testEndpoints() {
       headers: {
         'Content-Type': 'application/json',
         // You'd need to add proper authentication headers here
-      }
+      },
     });
-    
+
     console.log(`   Status: ${response.status}`);
     if (response.ok) {
       const alerts = await response.json();

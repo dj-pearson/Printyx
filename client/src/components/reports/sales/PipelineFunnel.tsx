@@ -18,7 +18,7 @@ interface PipelineFunnelProps {
 export default function PipelineFunnel({ stages, detailed = false }: PipelineFunnelProps) {
   // Calculate max value for sizing
   const maxValue = useMemo(() => {
-    return Math.max(...stages.map(s => s.totalValue), 1);
+    return Math.max(...stages.map((s) => s.totalValue), 1);
   }, [stages]);
 
   // Calculate width percentage for each stage
@@ -38,12 +38,12 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
 
   // Stage colors
   const stageColors: Record<string, string> = {
-    'Lead': 'bg-slate-500',
-    'Qualified': 'bg-blue-500',
-    'Proposal': 'bg-indigo-500',
-    'Negotiation': 'bg-purple-500',
+    Lead: 'bg-slate-500',
+    Qualified: 'bg-blue-500',
+    Proposal: 'bg-indigo-500',
+    Negotiation: 'bg-purple-500',
     'Closed Won': 'bg-green-500',
-    'default': 'bg-gray-500'
+    default: 'bg-gray-500',
   };
 
   const getStageColor = (stage: string) => {
@@ -82,9 +82,7 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-lg">
-                    {formatCurrency(stage.totalValue)}
-                  </div>
+                  <div className="font-bold text-lg">{formatCurrency(stage.totalValue)}</div>
                   {detailed && (
                     <div className="text-xs opacity-90">
                       Avg: {formatCurrency(stage.averageDealSize)}
@@ -97,7 +95,15 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
             {/* Conversion rate arrow (between stages) */}
             {!isLastStage && stage.conversionRate > 0 && (
               <div className="absolute -bottom-2 left-4 bg-background border border-border rounded px-2 py-0.5 text-xs font-medium z-10">
-                <span className={stage.conversionRate >= 50 ? 'text-green-600' : stage.conversionRate >= 25 ? 'text-yellow-600' : 'text-red-600'}>
+                <span
+                  className={
+                    stage.conversionRate >= 50
+                      ? 'text-green-600'
+                      : stage.conversionRate >= 25
+                        ? 'text-yellow-600'
+                        : 'text-red-600'
+                  }
+                >
                   {stage.conversionRate.toFixed(0)}%
                 </span>
                 <span className="text-muted-foreground ml-1">→</span>
@@ -113,13 +119,23 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
                 </div>
                 <div>
                   <span className="font-medium">Conversion:</span>{' '}
-                  <span className={stage.conversionRate >= 50 ? 'text-green-600' : stage.conversionRate >= 25 ? 'text-yellow-600' : 'text-red-600'}>
+                  <span
+                    className={
+                      stage.conversionRate >= 50
+                        ? 'text-green-600'
+                        : stage.conversionRate >= 25
+                          ? 'text-yellow-600'
+                          : 'text-red-600'
+                    }
+                  >
                     {stage.conversionRate > 0 ? `${stage.conversionRate.toFixed(1)}%` : 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span className="font-medium">Win Rate:</span>{' '}
-                  {stage.stage === 'Closed Won' ? '100%' : `${((stage.count / stages[0].count) * 100).toFixed(1)}%`}
+                  {stage.stage === 'Closed Won'
+                    ? '100%'
+                    : `${((stage.count / stages[0].count) * 100).toFixed(1)}%`}
                 </div>
               </div>
             )}
@@ -131,9 +147,7 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
       <div className="pt-4 border-t mt-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold">
-              {stages.reduce((sum, s) => sum + s.count, 0)}
-            </div>
+            <div className="text-2xl font-bold">{stages.reduce((sum, s) => sum + s.count, 0)}</div>
             <div className="text-xs text-muted-foreground">Total Deals</div>
           </div>
           <div>
@@ -152,7 +166,7 @@ export default function PipelineFunnel({ stages, detailed = false }: PipelineFun
             <div className="text-2xl font-bold">
               {formatCurrency(
                 stages.reduce((sum, s) => sum + s.totalValue, 0) /
-                stages.reduce((sum, s) => sum + s.count, 0)
+                  stages.reduce((sum, s) => sum + s.count, 0),
               )}
             </div>
             <div className="text-xs text-muted-foreground">Avg Deal Size</div>

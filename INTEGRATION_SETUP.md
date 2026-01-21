@@ -39,6 +39,7 @@ The Integration Hub has been completely reworked to support real OAuth integrati
 ### Database Schema
 
 The system uses the existing `systemIntegrations` table to store:
+
 - OAuth tokens (encrypted)
 - Integration configurations
 - User information

@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,15 +26,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import {
   FileText,
   Plus,
@@ -53,8 +53,8 @@ import {
   TrendingUp,
   Target,
   UserCheck,
-} from "lucide-react";
-import { format } from "date-fns";
+} from 'lucide-react';
+import { format } from 'date-fns';
 
 interface Proposal {
   id: string;
@@ -79,12 +79,12 @@ interface LeadProposalsProps {
 }
 
 const statusColors = {
-  draft: "bg-gray-100 text-gray-800",
-  sent: "bg-blue-100 text-blue-800",
-  viewed: "bg-yellow-100 text-yellow-800",
-  accepted: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-  expired: "bg-orange-100 text-orange-800",
+  draft: 'bg-gray-100 text-gray-800',
+  sent: 'bg-blue-100 text-blue-800',
+  viewed: 'bg-yellow-100 text-yellow-800',
+  accepted: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+  expired: 'bg-orange-100 text-orange-800',
 };
 
 const statusIcons = {
@@ -97,17 +97,17 @@ const statusIcons = {
 };
 
 const proposalTypes = [
-  { value: "equipment_lease", label: "Equipment Lease" },
-  { value: "service_contract", label: "Service Contract" },
-  { value: "maintenance_agreement", label: "Maintenance Agreement" },
-  { value: "managed_print", label: "Managed Print Services" },
-  { value: "custom_solution", label: "Custom Solution" },
+  { value: 'equipment_lease', label: 'Equipment Lease' },
+  { value: 'service_contract', label: 'Service Contract' },
+  { value: 'maintenance_agreement', label: 'Maintenance Agreement' },
+  { value: 'managed_print', label: 'Managed Print Services' },
+  { value: 'custom_solution', label: 'Custom Solution' },
 ];
 
 export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [isCreateProposalOpen, setIsCreateProposalOpen] = useState(false);
 
   const { toast } = useToast();
@@ -116,34 +116,33 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
   // Fetch lead proposals
   const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
     queryKey: [`/api/proposals?businessRecordId=${leadId}`],
-    queryFn: async () =>
-      apiRequest(`/api/proposals?businessRecordId=${leadId}`),
+    queryFn: async () => apiRequest(`/api/proposals?businessRecordId=${leadId}`),
   });
 
   // Fetch proposal templates
   const { data: templates = [] } = useQuery<any[]>({
-    queryKey: ["/api/proposals/proposal-templates"],
-    queryFn: async () => apiRequest("/api/proposals/proposal-templates"),
+    queryKey: ['/api/proposals/proposal-templates'],
+    queryFn: async () => apiRequest('/api/proposals/proposal-templates'),
   });
 
   // Create proposal mutation
   const createProposalMutation = useMutation({
-    mutationFn: async (data: any) => apiRequest("/api/proposals", "POST", data),
+    mutationFn: async (data: any) => apiRequest('/api/proposals', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/proposals?businessRecordId=${leadId}`],
       });
       setIsCreateProposalOpen(false);
       toast({
-        title: "Success",
-        description: "Proposal created successfully",
+        title: 'Success',
+        description: 'Proposal created successfully',
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to create proposal",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to create proposal',
+        variant: 'destructive',
       });
     },
   });
@@ -151,41 +150,37 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
   // Update proposal status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) =>
-      apiRequest(`/api/proposals/${id}/status`, "PATCH", { status }),
+      apiRequest(`/api/proposals/${id}/status`, 'PATCH', { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [`/api/proposals?businessRecordId=${leadId}`],
       });
       toast({
-        title: "Success",
-        description: "Proposal status updated",
+        title: 'Success',
+        description: 'Proposal status updated',
       });
     },
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(amount || 0);
   };
 
   const formatDate = (date: string) => {
-    return format(new Date(date), "MMM dd, yyyy");
+    return format(new Date(date), 'MMM dd, yyyy');
   };
 
   // Filter proposals
   const filteredProposals = proposals.filter((proposal) => {
     const matchesSearch =
-      proposal.proposalNumber
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
+      proposal.proposalNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       proposal.title.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || proposal.status === statusFilter;
-    const matchesType =
-      typeFilter === "all" || proposal.proposalType === typeFilter;
+    const matchesStatus = statusFilter === 'all' || proposal.status === statusFilter;
+    const matchesType = typeFilter === 'all' || proposal.proposalType === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -194,14 +189,11 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
   const stats = {
     total: proposals.length,
     totalValue: proposals.reduce((sum, p) => sum + (p.totalAmount || 0), 0),
-    pending: proposals.filter((p) =>
-      ["draft", "sent", "viewed"].includes(p.status)
-    ).length,
-    accepted: proposals.filter((p) => p.status === "accepted").length,
+    pending: proposals.filter((p) => ['draft', 'sent', 'viewed'].includes(p.status)).length,
+    accepted: proposals.filter((p) => p.status === 'accepted').length,
     conversionPotential:
       proposals.length > 0
-        ? (proposals.filter((p) => ["sent", "viewed"].includes(p.status))
-            .length /
+        ? (proposals.filter((p) => ['sent', 'viewed'].includes(p.status)).length /
             proposals.length) *
           100
         : 0,
@@ -232,9 +224,7 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {formatCurrency(stats.totalValue)}
-                </p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
                 <p className="text-sm text-gray-600">Pipeline Value</p>
               </div>
             </div>
@@ -256,9 +246,7 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
             <div className="flex items-center">
               <TrendingUp className="h-8 w-8 text-purple-600" />
               <div className="ml-3">
-                <p className="text-2xl font-bold">
-                  {stats.conversionPotential.toFixed(1)}%
-                </p>
+                <p className="text-2xl font-bold">{stats.conversionPotential.toFixed(1)}%</p>
                 <p className="text-sm text-gray-600">Engagement Rate</p>
               </div>
             </div>
@@ -309,10 +297,7 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
                   ))}
                 </SelectContent>
               </Select>
-              <Dialog
-                open={isCreateProposalOpen}
-                onOpenChange={setIsCreateProposalOpen}
-              >
+              <Dialog open={isCreateProposalOpen} onOpenChange={setIsCreateProposalOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm">
                     <Plus className="h-4 w-4 mr-2" />
@@ -364,31 +349,23 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
                   {filteredProposals.map((proposal) => (
                     <TableRow key={proposal.id} className="hover:bg-gray-50">
                       <TableCell>
-                        <div className="font-medium text-blue-600">
-                          {proposal.proposalNumber}
-                        </div>
+                        <div className="font-medium text-blue-600">{proposal.proposalNumber}</div>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium">{proposal.title}</div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {proposal.proposalType?.replace("_", " ")}
+                          {proposal.proposalType?.replace('_', ' ')}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
-                          className={
-                            statusColors[
-                              proposal.status as keyof typeof statusColors
-                            ]
-                          }
+                          className={statusColors[proposal.status as keyof typeof statusColors]}
                         >
                           <div className="flex items-center space-x-1">
                             {getStatusIcon(proposal.status)}
-                            <span className="capitalize">
-                              {proposal.status}
-                            </span>
+                            <span className="capitalize">{proposal.status}</span>
                           </div>
                         </Badge>
                       </TableCell>
@@ -396,16 +373,12 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
                         {formatCurrency(proposal.totalAmount)}
                       </TableCell>
                       <TableCell>
-                        {proposal.validUntil
-                          ? formatDate(proposal.validUntil)
-                          : "-"}
+                        {proposal.validUntil ? formatDate(proposal.validUntil) : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-1">
                           <Eye className="h-3 w-3 text-gray-400" />
-                          <span className="text-sm">
-                            {proposal.openCount} views
-                          </span>
+                          <span className="text-sm">{proposal.openCount} views</span>
                         </div>
                       </TableCell>
                       <TableCell>{formatDate(proposal.createdAt)}</TableCell>
@@ -435,12 +408,12 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
                               <Download className="mr-2 h-4 w-4" />
                               Download PDF
                             </DropdownMenuItem>
-                            {proposal.status === "draft" && (
+                            {proposal.status === 'draft' && (
                               <DropdownMenuItem
                                 onClick={() =>
                                   updateStatusMutation.mutate({
                                     id: proposal.id,
-                                    status: "sent",
+                                    status: 'sent',
                                   })
                                 }
                               >
@@ -448,7 +421,7 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
                                 Send to Lead
                               </DropdownMenuItem>
                             )}
-                            {proposal.status === "accepted" && (
+                            {proposal.status === 'accepted' && (
                               <DropdownMenuItem>
                                 <UserCheck className="mr-2 h-4 w-4" />
                                 Convert to Customer
@@ -471,13 +444,11 @@ export function LeadProposals({ leadId, leadName }: LeadProposalsProps) {
         <Card>
           <CardContent className="p-12 text-center">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No proposals found
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No proposals found</h3>
             <p className="text-gray-600 mb-4">
               {searchTerm
-                ? "No proposals match your search criteria."
-                : "No proposals have been created for this lead yet."}
+                ? 'No proposals match your search criteria.'
+                : 'No proposals have been created for this lead yet.'}
             </p>
             <Button onClick={() => setIsCreateProposalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
@@ -505,11 +476,11 @@ function ProposalForm({
   isLoading: boolean;
 }) {
   const [formData, setFormData] = useState({
-    title: "",
-    proposalType: "equipment_lease",
-    templateId: "",
-    description: "",
-    validUntil: "",
+    title: '',
+    proposalType: 'equipment_lease',
+    templateId: '',
+    description: '',
+    validUntil: '',
     businessRecordId: leadId,
   });
 
@@ -525,9 +496,7 @@ function ProposalForm({
           <label className="text-sm font-medium">Proposal Title *</label>
           <Input
             value={formData.title}
-            onChange={(e) =>
-              setFormData({ ...formData, title: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Equipment Lease Proposal"
             required
           />
@@ -536,9 +505,7 @@ function ProposalForm({
           <label className="text-sm font-medium">Proposal Type *</label>
           <Select
             value={formData.proposalType}
-            onValueChange={(value) =>
-              setFormData({ ...formData, proposalType: value })
-            }
+            onValueChange={(value) => setFormData({ ...formData, proposalType: value })}
           >
             <SelectTrigger>
               <SelectValue />
@@ -559,9 +526,7 @@ function ProposalForm({
           <label className="text-sm font-medium">Template</label>
           <Select
             value={formData.templateId}
-            onValueChange={(value) =>
-              setFormData({ ...formData, templateId: value })
-            }
+            onValueChange={(value) => setFormData({ ...formData, templateId: value })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select template (optional)" />
@@ -580,9 +545,7 @@ function ProposalForm({
           <Input
             type="date"
             value={formData.validUntil}
-            onChange={(e) =>
-              setFormData({ ...formData, validUntil: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, validUntil: e.target.value })}
           />
         </div>
       </div>
@@ -592,16 +555,14 @@ function ProposalForm({
         <textarea
           className="w-full min-h-[80px] px-3 py-2 border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-md"
           value={formData.description}
-          onChange={(e) =>
-            setFormData({ ...formData, description: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Brief description of the proposal..."
         />
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
         <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating..." : "Create Proposal"}
+          {isLoading ? 'Creating...' : 'Create Proposal'}
         </Button>
       </div>
     </form>

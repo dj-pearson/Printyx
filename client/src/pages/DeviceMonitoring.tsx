@@ -6,7 +6,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -97,8 +103,11 @@ export default function DeviceMonitoring() {
 
     // Sort by timestamp descending and take the most recent for each device
     metrics
-      .sort((a, b) => new Date(b.collectionTimestamp).getTime() - new Date(a.collectionTimestamp).getTime())
-      .forEach(metric => {
+      .sort(
+        (a, b) =>
+          new Date(b.collectionTimestamp).getTime() - new Date(a.collectionTimestamp).getTime(),
+      )
+      .forEach((metric) => {
         if (!deviceMap.has(metric.serialNumber)) {
           deviceMap.set(metric.serialNumber, metric);
         }
@@ -111,7 +120,7 @@ export default function DeviceMonitoring() {
   const alerts = alertsData?.alerts || [];
 
   // Filter devices based on search and status
-  const filteredDevices = devices.filter(device => {
+  const filteredDevices = devices.filter((device) => {
     const matchesSearch =
       device.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       device.deviceName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -127,41 +136,58 @@ export default function DeviceMonitoring() {
   // Calculate stats
   const stats = {
     total: devices.length,
-    online: devices.filter(d => d.deviceStatus === 'online').length,
-    offline: devices.filter(d => d.deviceStatus === 'offline').length,
-    warning: devices.filter(d => d.deviceStatus === 'warning' || d.deviceStatus === 'error').length,
+    online: devices.filter((d) => d.deviceStatus === 'online').length,
+    offline: devices.filter((d) => d.deviceStatus === 'offline').length,
+    warning: devices.filter((d) => d.deviceStatus === 'warning' || d.deviceStatus === 'error')
+      .length,
     alerts: alerts.length,
     totalImpressions: devices.reduce((sum, d) => sum + (d.totalImpressions || 0), 0),
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'text-green-600 bg-green-50 border-green-200';
-      case 'offline': return 'text-gray-600 bg-gray-50 border-gray-200';
-      case 'warning': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'error': return 'text-red-600 bg-red-50 border-red-200';
-      case 'maintenance': return 'text-blue-600 bg-blue-50 border-blue-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'online':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'offline':
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'warning':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'error':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'maintenance':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'online': return <CheckCircle className="h-4 w-4" />;
-      case 'offline': return <XCircle className="h-4 w-4" />;
-      case 'warning': return <AlertCircle className="h-4 w-4" />;
-      case 'error': return <XCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
+      case 'online':
+        return <CheckCircle className="h-4 w-4" />;
+      case 'offline':
+        return <XCircle className="h-4 w-4" />;
+      case 'warning':
+        return <AlertCircle className="h-4 w-4" />;
+      case 'error':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
     }
   };
 
   const getTonerColor = (color: string) => {
     switch (color) {
-      case 'black': return 'bg-gray-800';
-      case 'cyan': return 'bg-cyan-500';
-      case 'magenta': return 'bg-pink-500';
-      case 'yellow': return 'bg-yellow-400';
-      default: return 'bg-gray-400';
+      case 'black':
+        return 'bg-gray-800';
+      case 'cyan':
+        return 'bg-cyan-500';
+      case 'magenta':
+        return 'bg-pink-500';
+      case 'yellow':
+        return 'bg-yellow-400';
+      default:
+        return 'bg-gray-400';
     }
   };
 
@@ -192,22 +218,30 @@ export default function DeviceMonitoring() {
   };
 
   const DeviceCard = ({ device }: { device: DeviceMetric }) => {
-    const deviceAlerts = alerts.filter(a => a.serialNumber === device.serialNumber);
+    const deviceAlerts = alerts.filter((a) => a.serialNumber === device.serialNumber);
 
     return (
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedDevice(device.serialNumber)}>
+      <Card
+        className="hover:shadow-lg transition-shadow cursor-pointer"
+        onClick={() => setSelectedDevice(device.serialNumber)}
+      >
         <CardHeader className="pb-3">
           <div className="flex justify-between items-start">
             <div className="flex items-center gap-2">
               <Printer className="h-5 w-5 text-gray-600" />
               <div>
-                <CardTitle className="text-base">{device.deviceName || device.serialNumber}</CardTitle>
+                <CardTitle className="text-base">
+                  {device.deviceName || device.serialNumber}
+                </CardTitle>
                 <CardDescription className="text-xs">
                   {device.manufacturer} {device.model}
                 </CardDescription>
               </div>
             </div>
-            <Badge variant="outline" className={`flex items-center gap-1 ${getStatusColor(device.deviceStatus)}`}>
+            <Badge
+              variant="outline"
+              className={`flex items-center gap-1 ${getStatusColor(device.deviceStatus)}`}
+            >
               {getStatusIcon(device.deviceStatus)}
               {device.deviceStatus}
             </Badge>
@@ -226,10 +260,12 @@ export default function DeviceMonitoring() {
           {/* Alerts */}
           {deviceAlerts.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-2 space-y-1">
-              {deviceAlerts.slice(0, 2).map(alert => (
+              {deviceAlerts.slice(0, 2).map((alert) => (
                 <div key={alert.id} className="flex items-center gap-2 text-xs text-red-800">
                   <AlertCircle className="h-3 w-3" />
-                  <span>{alert.supplyType.toUpperCase()} at {alert.currentLevel}%</span>
+                  <span>
+                    {alert.supplyType.toUpperCase()} at {alert.currentLevel}%
+                  </span>
                 </div>
               ))}
               {deviceAlerts.length > 2 && (
@@ -242,7 +278,9 @@ export default function DeviceMonitoring() {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
               <div className="text-gray-500">Total Prints</div>
-              <div className="font-medium">{device.totalImpressions?.toLocaleString() || 'N/A'}</div>
+              <div className="font-medium">
+                {device.totalImpressions?.toLocaleString() || 'N/A'}
+              </div>
             </div>
             <div>
               <div className="text-gray-500">IP Address</div>
@@ -266,9 +304,7 @@ export default function DeviceMonitoring() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Device Monitoring</h1>
-          <p className="text-gray-500 mt-1">
-            Real-time printer status and supply levels
-          </p>
+          <p className="text-gray-500 mt-1">Real-time printer status and supply levels</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">
@@ -340,7 +376,9 @@ export default function DeviceMonitoring() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(stats.totalImpressions / 1000000).toFixed(1)}M</div>
+            <div className="text-2xl font-bold">
+              {(stats.totalImpressions / 1000000).toFixed(1)}M
+            </div>
             <p className="text-xs text-gray-500 mt-1">All devices</p>
           </CardContent>
         </Card>
@@ -420,7 +458,7 @@ export default function DeviceMonitoring() {
         </Card>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDevices.map(device => (
+          {filteredDevices.map((device) => (
             <DeviceCard key={device.serialNumber} device={device} />
           ))}
         </div>
@@ -439,8 +477,8 @@ export default function DeviceMonitoring() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDevices.map(device => {
-                  const deviceAlerts = alerts.filter(a => a.serialNumber === device.serialNumber);
+                {filteredDevices.map((device) => {
+                  const deviceAlerts = alerts.filter((a) => a.serialNumber === device.serialNumber);
 
                   return (
                     <TableRow
@@ -450,29 +488,58 @@ export default function DeviceMonitoring() {
                     >
                       <TableCell>
                         <div>
-                          <div className="font-medium">{device.deviceName || device.serialNumber}</div>
+                          <div className="font-medium">
+                            {device.deviceName || device.serialNumber}
+                          </div>
                           <div className="text-xs text-gray-500">
                             {device.manufacturer} {device.model}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={`${getStatusColor(device.deviceStatus)}`}>
+                        <Badge
+                          variant="outline"
+                          className={`${getStatusColor(device.deviceStatus)}`}
+                        >
                           {device.deviceStatus}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2 text-xs">
-                          <span className={device.tonerBlack && device.tonerBlack <= 15 ? 'text-red-600 font-bold' : ''}>
+                          <span
+                            className={
+                              device.tonerBlack && device.tonerBlack <= 15
+                                ? 'text-red-600 font-bold'
+                                : ''
+                            }
+                          >
                             {device.tonerBlack ?? '-'}%
                           </span>
-                          <span className={device.tonerCyan && device.tonerCyan <= 15 ? 'text-red-600 font-bold' : ''}>
+                          <span
+                            className={
+                              device.tonerCyan && device.tonerCyan <= 15
+                                ? 'text-red-600 font-bold'
+                                : ''
+                            }
+                          >
                             {device.tonerCyan ?? '-'}%
                           </span>
-                          <span className={device.tonerMagenta && device.tonerMagenta <= 15 ? 'text-red-600 font-bold' : ''}>
+                          <span
+                            className={
+                              device.tonerMagenta && device.tonerMagenta <= 15
+                                ? 'text-red-600 font-bold'
+                                : ''
+                            }
+                          >
                             {device.tonerMagenta ?? '-'}%
                           </span>
-                          <span className={device.tonerYellow && device.tonerYellow <= 15 ? 'text-red-600 font-bold' : ''}>
+                          <span
+                            className={
+                              device.tonerYellow && device.tonerYellow <= 15
+                                ? 'text-red-600 font-bold'
+                                : ''
+                            }
+                          >
                             {device.tonerYellow ?? '-'}%
                           </span>
                         </div>
@@ -488,7 +555,9 @@ export default function DeviceMonitoring() {
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(device.collectionTimestamp), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(device.collectionTimestamp), {
+                          addSuffix: true,
+                        })}
                       </TableCell>
                     </TableRow>
                   );
@@ -504,10 +573,10 @@ export default function DeviceMonitoring() {
         <Dialog open={!!selectedDevice} onOpenChange={() => setSelectedDevice(null)}>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             {(() => {
-              const device = devices.find(d => d.serialNumber === selectedDevice);
+              const device = devices.find((d) => d.serialNumber === selectedDevice);
               if (!device) return null;
 
-              const deviceAlerts = alerts.filter(a => a.serialNumber === device.serialNumber);
+              const deviceAlerts = alerts.filter((a) => a.serialNumber === device.serialNumber);
 
               return (
                 <>
@@ -552,7 +621,10 @@ export default function DeviceMonitoring() {
                           </div>
                           <div>
                             <div className="text-sm text-gray-500">Status</div>
-                            <Badge variant="outline" className={getStatusColor(device.deviceStatus)}>
+                            <Badge
+                              variant="outline"
+                              className={getStatusColor(device.deviceStatus)}
+                            >
                               {device.deviceStatus}
                             </Badge>
                           </div>
@@ -605,7 +677,9 @@ export default function DeviceMonitoring() {
                         </CardContent>
                       </Card>
 
-                      {(device.paperTray1 !== undefined || device.paperTray2 !== undefined || device.paperTray3 !== undefined) && (
+                      {(device.paperTray1 !== undefined ||
+                        device.paperTray2 !== undefined ||
+                        device.paperTray3 !== undefined) && (
                         <Card>
                           <CardHeader>
                             <CardTitle className="text-base">Paper Levels</CardTitle>
@@ -659,7 +733,7 @@ export default function DeviceMonitoring() {
                           </CardContent>
                         </Card>
                       ) : (
-                        deviceAlerts.map(alert => (
+                        deviceAlerts.map((alert) => (
                           <Card key={alert.id} className="border-red-200 bg-red-50">
                             <CardContent className="p-4">
                               <div className="flex justify-between items-start">
@@ -667,14 +741,19 @@ export default function DeviceMonitoring() {
                                   <div className="flex items-center gap-2 mb-1">
                                     <AlertCircle className="h-4 w-4 text-red-600" />
                                     <span className="font-medium text-red-900">
-                                      {alert.supplyType.toUpperCase()} Toner - {alert.alertType.replace('_', ' ')}
+                                      {alert.supplyType.toUpperCase()} Toner -{' '}
+                                      {alert.alertType.replace('_', ' ')}
                                     </span>
                                   </div>
                                   <p className="text-sm text-red-800">
-                                    Current level: {alert.currentLevel}% (threshold: {alert.threshold}%)
+                                    Current level: {alert.currentLevel}% (threshold:{' '}
+                                    {alert.threshold}%)
                                   </p>
                                   <p className="text-xs text-red-600 mt-2">
-                                    Created {formatDistanceToNow(new Date(alert.createdAt), { addSuffix: true })}
+                                    Created{' '}
+                                    {formatDistanceToNow(new Date(alert.createdAt), {
+                                      addSuffix: true,
+                                    })}
                                   </p>
                                 </div>
                                 <Button size="sm" variant="outline">

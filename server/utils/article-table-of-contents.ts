@@ -35,7 +35,7 @@ interface TableOfContents {
  */
 export function generateTableOfContents(content: ArticleContent): TableOfContents {
   const headers = content.sections
-    .filter(section => section.type === 'header')
+    .filter((section) => section.type === 'header')
     .map((section, index) => ({
       id: generateAnchorId(String(section.content)),
       title: String(section.content),
@@ -82,7 +82,11 @@ function inferHeaderLevel(headerText: string, index: number): number {
 
   // Level 1 indicators
   if (index === 0) return 1;
-  if (text.includes('overview') || text.includes('introduction') || text.includes('what you\'ll learn')) {
+  if (
+    text.includes('overview') ||
+    text.includes('introduction') ||
+    text.includes("what you'll learn")
+  ) {
     return 1;
   }
 
@@ -99,7 +103,9 @@ function inferHeaderLevel(headerText: string, index: number): number {
 /**
  * Build hierarchical structure from flat list of headers
  */
-function buildHierarchy(headers: Array<{ id: string; title: string; level: number; order: number }>): TOCItem[] {
+function buildHierarchy(
+  headers: Array<{ id: string; title: string; level: number; order: number }>,
+): TOCItem[] {
   const root: TOCItem[] = [];
   const stack: TOCItem[] = [];
 
@@ -143,14 +149,16 @@ function calculateWordCount(content: ArticleContent): number {
   for (const section of content.sections) {
     if (section.type === 'paragraph' || section.type === 'header') {
       const text = String(section.content);
-      totalWords += text.split(/\s+/).filter(word => word.length > 0).length;
+      totalWords += text.split(/\s+/).filter((word) => word.length > 0).length;
     } else if (section.type === 'list' && Array.isArray(section.content)) {
       for (const item of section.content) {
-        totalWords += String(item).split(/\s+/).filter(word => word.length > 0).length;
+        totalWords += String(item)
+          .split(/\s+/)
+          .filter((word) => word.length > 0).length;
       }
     } else if (section.type === 'callout') {
       const text = String(section.content);
-      totalWords += text.split(/\s+/).filter(word => word.length > 0).length;
+      totalWords += text.split(/\s+/).filter((word) => word.length > 0).length;
     }
   }
 
@@ -226,15 +234,9 @@ export function addHeaderIdsToHTML(htmlContent: string, toc: TableOfContents): s
 
   for (const item of flattenTOC(toc.items)) {
     // Find h1-h6 tags with this content and add ID
-    const headerRegex = new RegExp(
-      `<h([1-6])([^>]*)>${escapeRegex(item.title)}</h\\1>`,
-      'gi'
-    );
+    const headerRegex = new RegExp(`<h([1-6])([^>]*)>${escapeRegex(item.title)}</h\\1>`, 'gi');
 
-    updatedHTML = updatedHTML.replace(
-      headerRegex,
-      `<h$1$2 id="${item.id}">${item.title}</h$1>`
-    );
+    updatedHTML = updatedHTML.replace(headerRegex, `<h$1$2 id="${item.id}">${item.title}</h$1>`);
   }
 
   return updatedHTML;
@@ -271,7 +273,7 @@ function escapeHTML(text: string): string {
     "'": '&#039;',
   };
 
-  return text.replace(/[&<>"']/g, char => map[char]);
+  return text.replace(/[&<>"']/g, (char) => map[char]);
 }
 
 /**
@@ -286,7 +288,7 @@ function escapeRegex(text: string): string {
  */
 export function calculateReadingProgress(toc: TableOfContents, currentHeaderId: string): number {
   const flat = flattenTOC(toc.items);
-  const currentIndex = flat.findIndex(item => item.id === currentHeaderId);
+  const currentIndex = flat.findIndex((item) => item.id === currentHeaderId);
 
   if (currentIndex === -1) return 0;
 
@@ -296,13 +298,16 @@ export function calculateReadingProgress(toc: TableOfContents, currentHeaderId: 
 /**
  * Get next/previous sections for navigation
  */
-export function getSectionNavigation(toc: TableOfContents, currentHeaderId: string): {
+export function getSectionNavigation(
+  toc: TableOfContents,
+  currentHeaderId: string,
+): {
   previous: TOCItem | null;
   next: TOCItem | null;
   current: TOCItem | null;
 } {
   const flat = flattenTOC(toc.items);
-  const currentIndex = flat.findIndex(item => item.id === currentHeaderId);
+  const currentIndex = flat.findIndex((item) => item.id === currentHeaderId);
 
   if (currentIndex === -1) {
     return { previous: null, next: null, current: null };

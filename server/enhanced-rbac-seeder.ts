@@ -8,7 +8,7 @@ import {
   type InsertOrganizationalUnit,
   type InsertEnhancedRole,
   type InsertPermission,
-  type InsertRolePermission
+  type InsertRolePermission,
 } from './enhanced-rbac-schema';
 
 interface RoleDefinition {
@@ -64,78 +64,414 @@ export class EnhancedRBACSeeder {
       lft: 1,
       rght: 2,
       depth: 0,
-      isActive: true
+      isActive: true,
     };
 
-    const [unit] = await db.insert(organizationalUnits)
+    const [unit] = await db
+      .insert(organizationalUnits)
       .values(unitData)
       .onConflictDoNothing()
       .returning();
 
-    return unit || await db.select().from(organizationalUnits)
-      .where(eq(organizationalUnits.tenantId, tenantId))
-      .limit(1)
-      .then(rows => rows[0]);
+    return (
+      unit ||
+      (await db
+        .select()
+        .from(organizationalUnits)
+        .where(eq(organizationalUnits.tenantId, tenantId))
+        .limit(1)
+        .then((rows) => rows[0]))
+    );
   }
 
   private async seedPermissions(): Promise<void> {
     const permissionDefinitions: PermissionDefinition[] = [
       // Sales & CRM Permissions
-      { name: 'View Own Leads', code: 'lead.view_own', description: 'View own assigned leads', module: 'sales', resourceType: 'lead', action: 'view', scopeLevel: 'own' },
-      { name: 'View Team Leads', code: 'lead.view_team', description: 'View team leads', module: 'sales', resourceType: 'lead', action: 'view', scopeLevel: 'team' },
-      { name: 'View Location Leads', code: 'lead.view_location', description: 'View all location leads', module: 'sales', resourceType: 'lead', action: 'view', scopeLevel: 'location' },
-      { name: 'View Regional Leads', code: 'lead.view_regional', description: 'View regional leads', module: 'sales', resourceType: 'lead', action: 'view', scopeLevel: 'regional' },
-      { name: 'View Company Leads', code: 'lead.view_company', description: 'View all company leads', module: 'sales', resourceType: 'lead', action: 'view', scopeLevel: 'company' },
-      
-      { name: 'Create Leads', code: 'lead.create', description: 'Create new leads', module: 'sales', resourceType: 'lead', action: 'create', scopeLevel: 'own' },
-      { name: 'Edit Own Leads', code: 'lead.edit_own', description: 'Edit own assigned leads', module: 'sales', resourceType: 'lead', action: 'edit', scopeLevel: 'own' },
-      { name: 'Edit Team Leads', code: 'lead.edit_team', description: 'Edit team leads', module: 'sales', resourceType: 'lead', action: 'edit', scopeLevel: 'team' },
-      { name: 'Assign Leads', code: 'lead.assign', description: 'Assign leads to team members', module: 'sales', resourceType: 'lead', action: 'assign', scopeLevel: 'team', requiresApproval: true },
-      
+      {
+        name: 'View Own Leads',
+        code: 'lead.view_own',
+        description: 'View own assigned leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'view',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'View Team Leads',
+        code: 'lead.view_team',
+        description: 'View team leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'view',
+        scopeLevel: 'team',
+      },
+      {
+        name: 'View Location Leads',
+        code: 'lead.view_location',
+        description: 'View all location leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'view',
+        scopeLevel: 'location',
+      },
+      {
+        name: 'View Regional Leads',
+        code: 'lead.view_regional',
+        description: 'View regional leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'view',
+        scopeLevel: 'regional',
+      },
+      {
+        name: 'View Company Leads',
+        code: 'lead.view_company',
+        description: 'View all company leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'view',
+        scopeLevel: 'company',
+      },
+
+      {
+        name: 'Create Leads',
+        code: 'lead.create',
+        description: 'Create new leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'create',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'Edit Own Leads',
+        code: 'lead.edit_own',
+        description: 'Edit own assigned leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'edit',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'Edit Team Leads',
+        code: 'lead.edit_team',
+        description: 'Edit team leads',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'edit',
+        scopeLevel: 'team',
+      },
+      {
+        name: 'Assign Leads',
+        code: 'lead.assign',
+        description: 'Assign leads to team members',
+        module: 'sales',
+        resourceType: 'lead',
+        action: 'assign',
+        scopeLevel: 'team',
+        requiresApproval: true,
+      },
+
       // Quote & Proposal Permissions
-      { name: 'Create Quotes', code: 'quote.create', description: 'Create new quotes', module: 'sales', resourceType: 'quote', action: 'create', scopeLevel: 'own' },
-      { name: 'Approve Standard Quotes', code: 'quote.approve_standard', description: 'Approve standard quotes', module: 'sales', resourceType: 'quote', action: 'approve', scopeLevel: 'team', riskLevel: 'medium' },
-      { name: 'Approve High Value Quotes', code: 'quote.approve_high_value', description: 'Approve high value quotes', module: 'sales', resourceType: 'quote', action: 'approve', scopeLevel: 'location', riskLevel: 'high', requiresApproval: true },
-      { name: 'Approve Enterprise Quotes', code: 'quote.approve_enterprise', description: 'Approve enterprise quotes', module: 'sales', resourceType: 'quote', action: 'approve', scopeLevel: 'company', riskLevel: 'critical', requiresMFA: true },
-      
+      {
+        name: 'Create Quotes',
+        code: 'quote.create',
+        description: 'Create new quotes',
+        module: 'sales',
+        resourceType: 'quote',
+        action: 'create',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'Approve Standard Quotes',
+        code: 'quote.approve_standard',
+        description: 'Approve standard quotes',
+        module: 'sales',
+        resourceType: 'quote',
+        action: 'approve',
+        scopeLevel: 'team',
+        riskLevel: 'medium',
+      },
+      {
+        name: 'Approve High Value Quotes',
+        code: 'quote.approve_high_value',
+        description: 'Approve high value quotes',
+        module: 'sales',
+        resourceType: 'quote',
+        action: 'approve',
+        scopeLevel: 'location',
+        riskLevel: 'high',
+        requiresApproval: true,
+      },
+      {
+        name: 'Approve Enterprise Quotes',
+        code: 'quote.approve_enterprise',
+        description: 'Approve enterprise quotes',
+        module: 'sales',
+        resourceType: 'quote',
+        action: 'approve',
+        scopeLevel: 'company',
+        riskLevel: 'critical',
+        requiresMFA: true,
+      },
+
       // Service Management Permissions
-      { name: 'View Own Tickets', code: 'ticket.view_own', description: 'View own assigned service tickets', module: 'service', resourceType: 'ticket', action: 'view', scopeLevel: 'own' },
-      { name: 'View Team Tickets', code: 'ticket.view_team', description: 'View team service tickets', module: 'service', resourceType: 'ticket', action: 'view', scopeLevel: 'team' },
-      { name: 'View Location Tickets', code: 'ticket.view_location', description: 'View location service tickets', module: 'service', resourceType: 'ticket', action: 'view', scopeLevel: 'location' },
-      { name: 'Create Service Tickets', code: 'ticket.create', description: 'Create service tickets', module: 'service', resourceType: 'ticket', action: 'create', scopeLevel: 'own' },
-      { name: 'Assign Service Tickets', code: 'ticket.assign', description: 'Assign service tickets', module: 'service', resourceType: 'ticket', action: 'assign', scopeLevel: 'team' },
-      
+      {
+        name: 'View Own Tickets',
+        code: 'ticket.view_own',
+        description: 'View own assigned service tickets',
+        module: 'service',
+        resourceType: 'ticket',
+        action: 'view',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'View Team Tickets',
+        code: 'ticket.view_team',
+        description: 'View team service tickets',
+        module: 'service',
+        resourceType: 'ticket',
+        action: 'view',
+        scopeLevel: 'team',
+      },
+      {
+        name: 'View Location Tickets',
+        code: 'ticket.view_location',
+        description: 'View location service tickets',
+        module: 'service',
+        resourceType: 'ticket',
+        action: 'view',
+        scopeLevel: 'location',
+      },
+      {
+        name: 'Create Service Tickets',
+        code: 'ticket.create',
+        description: 'Create service tickets',
+        module: 'service',
+        resourceType: 'ticket',
+        action: 'create',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'Assign Service Tickets',
+        code: 'ticket.assign',
+        description: 'Assign service tickets',
+        module: 'service',
+        resourceType: 'ticket',
+        action: 'assign',
+        scopeLevel: 'team',
+      },
+
       // Equipment Management
-      { name: 'Install Equipment', code: 'equipment.install', description: 'Install and configure equipment', module: 'service', resourceType: 'equipment', action: 'install', scopeLevel: 'own' },
-      { name: 'Configure Equipment', code: 'equipment.configure', description: 'Configure equipment settings', module: 'service', resourceType: 'equipment', action: 'configure', scopeLevel: 'team' },
-      { name: 'Remote Equipment Access', code: 'equipment.remote_access', description: 'Remote access to equipment', module: 'service', resourceType: 'equipment', action: 'remote_access', scopeLevel: 'location', riskLevel: 'high' },
-      
+      {
+        name: 'Install Equipment',
+        code: 'equipment.install',
+        description: 'Install and configure equipment',
+        module: 'service',
+        resourceType: 'equipment',
+        action: 'install',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'Configure Equipment',
+        code: 'equipment.configure',
+        description: 'Configure equipment settings',
+        module: 'service',
+        resourceType: 'equipment',
+        action: 'configure',
+        scopeLevel: 'team',
+      },
+      {
+        name: 'Remote Equipment Access',
+        code: 'equipment.remote_access',
+        description: 'Remote access to equipment',
+        module: 'service',
+        resourceType: 'equipment',
+        action: 'remote_access',
+        scopeLevel: 'location',
+        riskLevel: 'high',
+      },
+
       // Financial Permissions
-      { name: 'View Own Commission', code: 'commission.view_own', description: 'View own commission data', module: 'finance', resourceType: 'commission', action: 'view', scopeLevel: 'own' },
-      { name: 'View Team Commission', code: 'commission.view_team', description: 'View team commission data', module: 'finance', resourceType: 'commission', action: 'view', scopeLevel: 'team' },
-      { name: 'View Location Financials', code: 'financial.view_location', description: 'View location financial reports', module: 'finance', resourceType: 'report', action: 'view', scopeLevel: 'location', riskLevel: 'medium' },
-      { name: 'View Regional Financials', code: 'financial.view_regional', description: 'View regional financial reports', module: 'finance', resourceType: 'report', action: 'view', scopeLevel: 'regional', riskLevel: 'high' },
-      { name: 'View Company Financials', code: 'financial.view_company', description: 'View company financial reports', module: 'finance', resourceType: 'report', action: 'view', scopeLevel: 'company', riskLevel: 'critical', requiresMFA: true },
-      
+      {
+        name: 'View Own Commission',
+        code: 'commission.view_own',
+        description: 'View own commission data',
+        module: 'finance',
+        resourceType: 'commission',
+        action: 'view',
+        scopeLevel: 'own',
+      },
+      {
+        name: 'View Team Commission',
+        code: 'commission.view_team',
+        description: 'View team commission data',
+        module: 'finance',
+        resourceType: 'commission',
+        action: 'view',
+        scopeLevel: 'team',
+      },
+      {
+        name: 'View Location Financials',
+        code: 'financial.view_location',
+        description: 'View location financial reports',
+        module: 'finance',
+        resourceType: 'report',
+        action: 'view',
+        scopeLevel: 'location',
+        riskLevel: 'medium',
+      },
+      {
+        name: 'View Regional Financials',
+        code: 'financial.view_regional',
+        description: 'View regional financial reports',
+        module: 'finance',
+        resourceType: 'report',
+        action: 'view',
+        scopeLevel: 'regional',
+        riskLevel: 'high',
+      },
+      {
+        name: 'View Company Financials',
+        code: 'financial.view_company',
+        description: 'View company financial reports',
+        module: 'finance',
+        resourceType: 'report',
+        action: 'view',
+        scopeLevel: 'company',
+        riskLevel: 'critical',
+        requiresMFA: true,
+      },
+
       // User Management
-      { name: 'Create Location Users', code: 'user.create_location', description: 'Create location-level users', module: 'admin', resourceType: 'user', action: 'create', scopeLevel: 'location', requiresApproval: true },
-      { name: 'Create Regional Users', code: 'user.create_regional', description: 'Create regional-level users', module: 'admin', resourceType: 'user', action: 'create', scopeLevel: 'regional', requiresApproval: true },
-      { name: 'Create Company Users', code: 'user.create_company', description: 'Create company-level users', module: 'admin', resourceType: 'user', action: 'create', scopeLevel: 'company', riskLevel: 'high', requiresMFA: true },
-      { name: 'Manage Role Permissions', code: 'role.manage_permissions', description: 'Manage role permissions', module: 'admin', resourceType: 'role', action: 'manage', scopeLevel: 'company', riskLevel: 'critical', requiresMFA: true },
-      
+      {
+        name: 'Create Location Users',
+        code: 'user.create_location',
+        description: 'Create location-level users',
+        module: 'admin',
+        resourceType: 'user',
+        action: 'create',
+        scopeLevel: 'location',
+        requiresApproval: true,
+      },
+      {
+        name: 'Create Regional Users',
+        code: 'user.create_regional',
+        description: 'Create regional-level users',
+        module: 'admin',
+        resourceType: 'user',
+        action: 'create',
+        scopeLevel: 'regional',
+        requiresApproval: true,
+      },
+      {
+        name: 'Create Company Users',
+        code: 'user.create_company',
+        description: 'Create company-level users',
+        module: 'admin',
+        resourceType: 'user',
+        action: 'create',
+        scopeLevel: 'company',
+        riskLevel: 'high',
+        requiresMFA: true,
+      },
+      {
+        name: 'Manage Role Permissions',
+        code: 'role.manage_permissions',
+        description: 'Manage role permissions',
+        module: 'admin',
+        resourceType: 'role',
+        action: 'manage',
+        scopeLevel: 'company',
+        riskLevel: 'critical',
+        requiresMFA: true,
+      },
+
       // Territory Management
-      { name: 'Manage Territory Assignments', code: 'territory.manage_assignments', description: 'Manage territory assignments', module: 'sales', resourceType: 'territory', action: 'manage', scopeLevel: 'regional', riskLevel: 'medium' },
-      { name: 'View Territory Performance', code: 'territory.view_performance', description: 'View territory performance metrics', module: 'sales', resourceType: 'territory', action: 'view', scopeLevel: 'regional' },
-      
+      {
+        name: 'Manage Territory Assignments',
+        code: 'territory.manage_assignments',
+        description: 'Manage territory assignments',
+        module: 'sales',
+        resourceType: 'territory',
+        action: 'manage',
+        scopeLevel: 'regional',
+        riskLevel: 'medium',
+      },
+      {
+        name: 'View Territory Performance',
+        code: 'territory.view_performance',
+        description: 'View territory performance metrics',
+        module: 'sales',
+        resourceType: 'territory',
+        action: 'view',
+        scopeLevel: 'regional',
+      },
+
       // Audit & Compliance
-      { name: 'View Location Audit Logs', code: 'audit.view_location', description: 'View location audit logs', module: 'admin', resourceType: 'audit', action: 'view', scopeLevel: 'location', riskLevel: 'medium' },
-      { name: 'View Regional Audit Logs', code: 'audit.view_regional', description: 'View regional audit logs', module: 'admin', resourceType: 'audit', action: 'view', scopeLevel: 'regional', riskLevel: 'high' },
-      { name: 'View Company Audit Logs', code: 'audit.view_company', description: 'View company audit logs', module: 'admin', resourceType: 'audit', action: 'view', scopeLevel: 'company', riskLevel: 'critical' },
-      { name: 'Manage Compliance', code: 'compliance.manage', description: 'Manage compliance settings', module: 'admin', resourceType: 'compliance', action: 'manage', scopeLevel: 'platform', riskLevel: 'critical', requiresMFA: true },
-      
+      {
+        name: 'View Location Audit Logs',
+        code: 'audit.view_location',
+        description: 'View location audit logs',
+        module: 'admin',
+        resourceType: 'audit',
+        action: 'view',
+        scopeLevel: 'location',
+        riskLevel: 'medium',
+      },
+      {
+        name: 'View Regional Audit Logs',
+        code: 'audit.view_regional',
+        description: 'View regional audit logs',
+        module: 'admin',
+        resourceType: 'audit',
+        action: 'view',
+        scopeLevel: 'regional',
+        riskLevel: 'high',
+      },
+      {
+        name: 'View Company Audit Logs',
+        code: 'audit.view_company',
+        description: 'View company audit logs',
+        module: 'admin',
+        resourceType: 'audit',
+        action: 'view',
+        scopeLevel: 'company',
+        riskLevel: 'critical',
+      },
+      {
+        name: 'Manage Compliance',
+        code: 'compliance.manage',
+        description: 'Manage compliance settings',
+        module: 'admin',
+        resourceType: 'compliance',
+        action: 'manage',
+        scopeLevel: 'platform',
+        riskLevel: 'critical',
+        requiresMFA: true,
+      },
+
       // Platform Administration
-      { name: 'Access All Tenants', code: 'platform.access_all_tenants', description: 'Access all tenant data', module: 'platform', resourceType: 'tenant', action: 'access', scopeLevel: 'platform', riskLevel: 'critical', requiresMFA: true },
-      { name: 'View System Metrics', code: 'platform.view_system_metrics', description: 'View system performance metrics', module: 'platform', resourceType: 'metrics', action: 'view', scopeLevel: 'platform', riskLevel: 'medium' }
+      {
+        name: 'Access All Tenants',
+        code: 'platform.access_all_tenants',
+        description: 'Access all tenant data',
+        module: 'platform',
+        resourceType: 'tenant',
+        action: 'access',
+        scopeLevel: 'platform',
+        riskLevel: 'critical',
+        requiresMFA: true,
+      },
+      {
+        name: 'View System Metrics',
+        code: 'platform.view_system_metrics',
+        description: 'View system performance metrics',
+        module: 'platform',
+        resourceType: 'metrics',
+        action: 'view',
+        scopeLevel: 'platform',
+        riskLevel: 'medium',
+      },
     ];
 
     for (const permDef of permissionDefinitions) {
@@ -150,18 +486,20 @@ export class EnhancedRBACSeeder {
         riskLevel: permDef.riskLevel || 'low',
         requiresApproval: permDef.requiresApproval || false,
         requiresMFA: permDef.requiresMFA || false,
-        isActive: true
+        isActive: true,
       };
 
-      await db.insert(permissions)
-        .values(permissionData)
-        .onConflictDoNothing();
+      await db.insert(permissions).values(permissionData).onConflictDoNothing();
     }
 
     console.log(`✅ Seeded ${permissionDefinitions.length} permissions`);
   }
 
-  private async seedRoles(tenantId: string, organizationalUnitId: string, createdBy: string): Promise<void> {
+  private async seedRoles(
+    tenantId: string,
+    organizationalUnitId: string,
+    createdBy: string,
+  ): Promise<void> {
     const roleDefinitions: RoleDefinition[] = [
       // Level 8: Platform Administrators (Fixed Printyx Roles)
       {
@@ -173,7 +511,12 @@ export class EnhancedRBACSeeder {
         department: 'platform',
         isSystemRole: true,
         isCustomizable: false,
-        permissions: ['platform.access_all_tenants', 'platform.view_system_metrics', 'compliance.manage', 'audit.view_company']
+        permissions: [
+          'platform.access_all_tenants',
+          'platform.view_system_metrics',
+          'compliance.manage',
+          'audit.view_company',
+        ],
       },
       {
         name: 'Support Engineer',
@@ -184,9 +527,9 @@ export class EnhancedRBACSeeder {
         department: 'platform',
         isSystemRole: true,
         isCustomizable: false,
-        permissions: ['platform.view_system_metrics', 'audit.view_company']
+        permissions: ['platform.view_system_metrics', 'audit.view_company'],
       },
-      
+
       // Level 7: Company Executives
       {
         name: 'Company Admin',
@@ -197,7 +540,14 @@ export class EnhancedRBACSeeder {
         department: 'admin',
         isSystemRole: false,
         isCustomizable: false,
-        permissions: ['role.manage_permissions', 'user.create_company', 'financial.view_company', 'lead.view_company', 'audit.view_company', 'territory.manage_assignments']
+        permissions: [
+          'role.manage_permissions',
+          'user.create_company',
+          'financial.view_company',
+          'lead.view_company',
+          'audit.view_company',
+          'territory.manage_assignments',
+        ],
       },
       {
         name: 'CEO',
@@ -208,7 +558,12 @@ export class EnhancedRBACSeeder {
         department: 'executive',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['financial.view_company', 'lead.view_company', 'quote.approve_enterprise', 'territory.view_performance']
+        permissions: [
+          'financial.view_company',
+          'lead.view_company',
+          'quote.approve_enterprise',
+          'territory.view_performance',
+        ],
       },
       {
         name: 'CFO',
@@ -219,9 +574,9 @@ export class EnhancedRBACSeeder {
         department: 'finance',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['financial.view_company', 'commission.view_team', 'quote.approve_enterprise']
+        permissions: ['financial.view_company', 'commission.view_team', 'quote.approve_enterprise'],
       },
-      
+
       // Level 6: Company Directors
       {
         name: 'VP Sales',
@@ -232,7 +587,13 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_company', 'quote.approve_high_value', 'territory.manage_assignments', 'commission.view_team', 'user.create_regional']
+        permissions: [
+          'lead.view_company',
+          'quote.approve_high_value',
+          'territory.manage_assignments',
+          'commission.view_team',
+          'user.create_regional',
+        ],
       },
       {
         name: 'VP Service',
@@ -243,7 +604,7 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_location', 'equipment.remote_access', 'user.create_regional']
+        permissions: ['ticket.view_location', 'equipment.remote_access', 'user.create_regional'],
       },
       {
         name: 'Operations Director',
@@ -254,9 +615,9 @@ export class EnhancedRBACSeeder {
         department: 'operations',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['financial.view_regional', 'audit.view_regional', 'user.create_regional']
+        permissions: ['financial.view_regional', 'audit.view_regional', 'user.create_regional'],
       },
-      
+
       // Level 5: Regional Managers
       {
         name: 'Regional Sales Director',
@@ -267,7 +628,12 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_regional', 'quote.approve_high_value', 'territory.manage_assignments', 'commission.view_team']
+        permissions: [
+          'lead.view_regional',
+          'quote.approve_high_value',
+          'territory.manage_assignments',
+          'commission.view_team',
+        ],
       },
       {
         name: 'Regional Service Manager',
@@ -278,9 +644,9 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_location', 'equipment.remote_access', 'ticket.assign']
+        permissions: ['ticket.view_location', 'equipment.remote_access', 'ticket.assign'],
       },
-      
+
       // Level 4: Location Managers
       {
         name: 'Branch Manager',
@@ -291,7 +657,13 @@ export class EnhancedRBACSeeder {
         department: 'admin',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['financial.view_location', 'lead.view_location', 'ticket.view_location', 'user.create_location', 'audit.view_location']
+        permissions: [
+          'financial.view_location',
+          'lead.view_location',
+          'ticket.view_location',
+          'user.create_location',
+          'audit.view_location',
+        ],
       },
       {
         name: 'Sales Manager',
@@ -302,7 +674,12 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_location', 'quote.approve_standard', 'lead.assign', 'commission.view_team']
+        permissions: [
+          'lead.view_location',
+          'quote.approve_standard',
+          'lead.assign',
+          'commission.view_team',
+        ],
       },
       {
         name: 'Service Manager',
@@ -313,9 +690,9 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_location', 'ticket.assign', 'equipment.configure']
+        permissions: ['ticket.view_location', 'ticket.assign', 'equipment.configure'],
       },
-      
+
       // Level 3: Department Supervisors
       {
         name: 'Sales Supervisor',
@@ -326,7 +703,12 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_team', 'lead.edit_team', 'quote.approve_standard', 'commission.view_team']
+        permissions: [
+          'lead.view_team',
+          'lead.edit_team',
+          'quote.approve_standard',
+          'commission.view_team',
+        ],
       },
       {
         name: 'Service Supervisor',
@@ -337,9 +719,9 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_team', 'ticket.assign', 'equipment.configure']
+        permissions: ['ticket.view_team', 'ticket.assign', 'equipment.configure'],
       },
-      
+
       // Level 2: Team Leads
       {
         name: 'Senior Sales Rep',
@@ -350,7 +732,7 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_team', 'lead.create', 'quote.create', 'commission.view_own']
+        permissions: ['lead.view_team', 'lead.create', 'quote.create', 'commission.view_own'],
       },
       {
         name: 'Senior Technician',
@@ -361,9 +743,9 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_team', 'equipment.install', 'equipment.configure']
+        permissions: ['ticket.view_team', 'equipment.install', 'equipment.configure'],
       },
-      
+
       // Level 1: Individual Contributors
       {
         name: 'Sales Representative',
@@ -374,7 +756,13 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_own', 'lead.create', 'lead.edit_own', 'quote.create', 'commission.view_own']
+        permissions: [
+          'lead.view_own',
+          'lead.create',
+          'lead.edit_own',
+          'quote.create',
+          'commission.view_own',
+        ],
       },
       {
         name: 'Field Technician',
@@ -385,7 +773,7 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_own', 'ticket.create', 'equipment.install']
+        permissions: ['ticket.view_own', 'ticket.create', 'equipment.install'],
       },
       {
         name: 'Administrative Assistant',
@@ -396,8 +784,8 @@ export class EnhancedRBACSeeder {
         department: 'admin',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.create', 'lead.create']
-      }
+        permissions: ['ticket.create', 'lead.create'],
+      },
     ];
 
     let position = 1;
@@ -418,10 +806,11 @@ export class EnhancedRBACSeeder {
         depth: 0,
         isSystemRole: roleDef.isSystemRole,
         isCustomizable: roleDef.isCustomizable,
-        createdBy
+        createdBy,
       };
 
-      const [role] = await db.insert(enhancedRoles)
+      const [role] = await db
+        .insert(enhancedRoles)
         .values(roleData)
         .onConflictDoNothing()
         .returning();
@@ -429,7 +818,9 @@ export class EnhancedRBACSeeder {
       if (role) {
         // Assign permissions to role
         await this.assignPermissionsToRole(role.id, roleDef.permissions);
-        console.log(`✅ Created role: ${roleDef.name} with ${roleDef.permissions.length} permissions`);
+        console.log(
+          `✅ Created role: ${roleDef.name} with ${roleDef.permissions.length} permissions`,
+        );
       }
 
       position += 2;
@@ -440,7 +831,8 @@ export class EnhancedRBACSeeder {
 
   private async assignPermissionsToRole(roleId: string, permissionCodes: string[]): Promise<void> {
     for (const permissionCode of permissionCodes) {
-      const [permission] = await db.select()
+      const [permission] = await db
+        .select()
         .from(permissions)
         .where(eq(permissions.code, permissionCode))
         .limit(1);
@@ -450,12 +842,10 @@ export class EnhancedRBACSeeder {
           roleId,
           permissionId: permission.id,
           effect: 'ALLOW',
-          isCustomized: false
+          isCustomized: false,
         };
 
-        await db.insert(rolePermissions)
-          .values(rolePermissionData)
-          .onConflictDoNothing();
+        await db.insert(rolePermissions).values(rolePermissionData).onConflictDoNothing();
       }
     }
   }
@@ -463,7 +853,11 @@ export class EnhancedRBACSeeder {
   /**
    * Create roles optimized for small dealers ($500K revenue)
    */
-  async seedSmallDealerRoles(tenantId: string, organizationalUnitId: string, createdBy: string): Promise<void> {
+  async seedSmallDealerRoles(
+    tenantId: string,
+    organizationalUnitId: string,
+    createdBy: string,
+  ): Promise<void> {
     const smallDealerRoles: RoleDefinition[] = [
       {
         name: 'Owner/Manager',
@@ -474,7 +868,14 @@ export class EnhancedRBACSeeder {
         department: 'admin',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['role.manage_permissions', 'user.create_company', 'financial.view_company', 'lead.view_company', 'ticket.view_location', 'quote.approve_high_value']
+        permissions: [
+          'role.manage_permissions',
+          'user.create_company',
+          'financial.view_company',
+          'lead.view_company',
+          'ticket.view_location',
+          'quote.approve_high_value',
+        ],
       },
       {
         name: 'Sales Manager',
@@ -485,7 +886,13 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_location', 'quote.approve_standard', 'lead.assign', 'commission.view_team', 'ticket.view_team']
+        permissions: [
+          'lead.view_location',
+          'quote.approve_standard',
+          'lead.assign',
+          'commission.view_team',
+          'ticket.view_team',
+        ],
       },
       {
         name: 'Service Manager',
@@ -496,7 +903,13 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_location', 'ticket.assign', 'equipment.configure', 'equipment.remote_access', 'lead.create']
+        permissions: [
+          'ticket.view_location',
+          'ticket.assign',
+          'equipment.configure',
+          'equipment.remote_access',
+          'lead.create',
+        ],
       },
       {
         name: 'Sales Rep',
@@ -507,7 +920,13 @@ export class EnhancedRBACSeeder {
         department: 'sales',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['lead.view_own', 'lead.create', 'quote.create', 'ticket.create', 'commission.view_own']
+        permissions: [
+          'lead.view_own',
+          'lead.create',
+          'quote.create',
+          'ticket.create',
+          'commission.view_own',
+        ],
       },
       {
         name: 'Technician',
@@ -518,8 +937,8 @@ export class EnhancedRBACSeeder {
         department: 'service',
         isSystemRole: false,
         isCustomizable: true,
-        permissions: ['ticket.view_own', 'equipment.install', 'equipment.configure', 'lead.create']
-      }
+        permissions: ['ticket.view_own', 'equipment.install', 'equipment.configure', 'lead.create'],
+      },
     ];
 
     let position = 1;
@@ -538,10 +957,11 @@ export class EnhancedRBACSeeder {
         depth: 0,
         isSystemRole: roleDef.isSystemRole,
         isCustomizable: roleDef.isCustomizable,
-        createdBy
+        createdBy,
       };
 
-      const [role] = await db.insert(enhancedRoles)
+      const [role] = await db
+        .insert(enhancedRoles)
         .values(roleData)
         .onConflictDoNothing()
         .returning();

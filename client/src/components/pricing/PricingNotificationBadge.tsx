@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { Bell, DollarSign } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useQuery } from '@tanstack/react-query';
+import { Bell, DollarSign } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +9,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Link } from "wouter";
-import { usePricingVisibility } from "@/hooks/usePricingVisibility";
+} from '@/components/ui/dropdown-menu';
+import { Link } from 'wouter';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
 interface ApprovalRequest {
   approval: {
@@ -41,9 +41,9 @@ export function PricingNotificationBadge() {
 
   const formatCurrency = (value: string) => {
     const num = parseFloat(value);
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(num);
@@ -60,7 +60,7 @@ export function PricingNotificationBadge() {
     if (diffDays > 0) return `${diffDays}d ago`;
     if (diffHours > 0) return `${diffHours}h ago`;
     if (diffMins > 0) return `${diffMins}m ago`;
-    return "Just now";
+    return 'Just now';
   };
 
   return (
@@ -82,9 +82,7 @@ export function PricingNotificationBadge() {
         <DropdownMenuLabel>Price Approval Requests</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {pendingCount === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            No pending approvals
-          </div>
+          <div className="p-4 text-center text-sm text-muted-foreground">No pending approvals</div>
         ) : (
           <>
             <div className="max-h-96 overflow-y-auto">

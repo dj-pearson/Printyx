@@ -63,7 +63,7 @@ After deployment completes, test the new endpoints:
 curl https://functions.printyx.net/software-products \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
-# Test enabled-products  
+# Test enabled-products
 curl https://functions.printyx.net/enabled-products \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 
@@ -85,14 +85,16 @@ curl https://functions.printyx.net/products/with-pricing \
 The software products page (`/quotes` → Software Products tab) was failing with:
 
 ❌ **Before:**
+
 ```
 404 /software-products
-404 /enabled-products  
+404 /enabled-products
 404 /product-models
 404 /products/with-pricing
 ```
 
 ✅ **After:**
+
 - All product management pages will load correctly
 - Software product creation will work
 - Product catalog queries will succeed
@@ -102,12 +104,12 @@ The software products page (`/quotes` → Software Products tab) was failing wit
 
 ## 📊 Summary
 
-| Edge Function | Status | Purpose |
-|---------------|--------|---------|
-| `/software-products` | ✅ NEW | Software catalog CRUD |
-| `/enabled-products` | ✅ NEW | Tenant product enablement |
-| `/product-models` | ✅ NEW | Equipment models CRUD |
-| `/products` | ✅ NEW | Combined products API |
+| Edge Function        | Status | Purpose                   |
+| -------------------- | ------ | ------------------------- |
+| `/software-products` | ✅ NEW | Software catalog CRUD     |
+| `/enabled-products`  | ✅ NEW | Tenant product enablement |
+| `/product-models`    | ✅ NEW | Equipment models CRUD     |
+| `/products`          | ✅ NEW | Combined products API     |
 
 **Commit:** `a44594b`
 **Date:** 2026-01-16

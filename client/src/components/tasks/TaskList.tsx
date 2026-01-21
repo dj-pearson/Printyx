@@ -3,15 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { 
-  CheckCircle2, 
-  Clock, 
-  Calendar, 
-  User, 
-  Tag, 
+import {
+  CheckCircle2,
+  Clock,
+  Calendar,
+  User,
+  Tag,
   Brain,
   Plus,
   Filter,
@@ -21,7 +27,7 @@ import {
   Pause,
   Edit,
   Trash2,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { format, isToday, isTomorrow, isPast } from 'date-fns';
 
@@ -64,7 +70,8 @@ export default function TaskList({ className }: TaskListProps) {
       {
         id: 'task-1',
         title: 'Follow up with ABC Corp lead',
-        description: 'Call to discuss their copier lease requirements and answer questions about service packages',
+        description:
+          'Call to discuss their copier lease requirements and answer questions about service packages',
         priority: 'high',
         status: 'pending',
         estimatedDuration: 30,
@@ -81,7 +88,8 @@ export default function TaskList({ className }: TaskListProps) {
       {
         id: 'task-2',
         title: 'Prepare proposal for XYZ Manufacturing',
-        description: 'Create comprehensive proposal for their multifunction printer needs including cost analysis and service terms',
+        description:
+          'Create comprehensive proposal for their multifunction printer needs including cost analysis and service terms',
         priority: 'high',
         status: 'in_progress',
         estimatedDuration: 120,
@@ -100,7 +108,8 @@ export default function TaskList({ className }: TaskListProps) {
       {
         id: 'task-3',
         title: 'Service call - Printer maintenance',
-        description: 'Routine maintenance for Canon imageRUNNER at Tech Solutions including toner replacement and cleaning',
+        description:
+          'Routine maintenance for Canon imageRUNNER at Tech Solutions including toner replacement and cleaning',
         priority: 'medium',
         status: 'pending',
         estimatedDuration: 90,
@@ -117,7 +126,8 @@ export default function TaskList({ className }: TaskListProps) {
       {
         id: 'task-4',
         title: 'Update CRM with quarterly activities',
-        description: 'Input all Q3 customer interactions, service calls, and sales activities into the CRM system',
+        description:
+          'Input all Q3 customer interactions, service calls, and sales activities into the CRM system',
         priority: 'low',
         status: 'pending',
         estimatedDuration: 60,
@@ -155,11 +165,12 @@ export default function TaskList({ className }: TaskListProps) {
   }, []);
 
   // Filter tasks
-  const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.tags?.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
-    
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      task.tags?.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+
     const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
 
@@ -168,30 +179,40 @@ export default function TaskList({ className }: TaskListProps) {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'asap': return 'bg-red-100 text-red-800 border-red-200';
-      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'asap':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'on_hold': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'on_hold':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const formatDueDate = (dueDateString?: string) => {
     if (!dueDateString) return null;
-    
+
     const dueDate = new Date(dueDateString);
     const now = new Date();
-    
+
     if (isPast(dueDate) && !isToday(dueDate)) {
       return { text: `Overdue (${format(dueDate, 'MMM d')})`, className: 'text-red-600' };
     } else if (isToday(dueDate)) {
@@ -204,7 +225,7 @@ export default function TaskList({ className }: TaskListProps) {
   };
 
   const toggleTimer = (taskId: string) => {
-    setActiveTimers(prev => {
+    setActiveTimers((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(taskId)) {
         newSet.delete(taskId);
@@ -216,11 +237,17 @@ export default function TaskList({ className }: TaskListProps) {
   };
 
   const updateTaskStatus = (taskId: string, newStatus: string) => {
-    setTasks(prev => prev.map(task => 
-      task.id === taskId 
-        ? { ...task, status: newStatus as Task['status'], completionPercentage: newStatus === 'completed' ? 100 : task.completionPercentage }
-        : task
-    ));
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status: newStatus as Task['status'],
+              completionPercentage: newStatus === 'completed' ? 100 : task.completionPercentage,
+            }
+          : task,
+      ),
+    );
   };
 
   if (loading) {
@@ -308,53 +335,59 @@ export default function TaskList({ className }: TaskListProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredTasks.map(task => {
+            {filteredTasks.map((task) => {
               const dueInfo = formatDueDate(task.dueDate);
               const isTimerActive = activeTimers.has(task.id);
-              
+
               return (
-                <div key={task.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
+                <div
+                  key={task.id}
+                  className="border rounded-lg p-4 hover:shadow-sm transition-shadow"
+                >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start space-x-3 flex-1">
-                      <Checkbox 
+                      <Checkbox
                         checked={task.status === 'completed'}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           updateTaskStatus(task.id, checked ? 'completed' : 'pending')
                         }
                         className="mt-1"
                       />
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <h4 className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : ''}`}>
+                          <h4
+                            className={`font-medium ${task.status === 'completed' ? 'line-through text-gray-500' : ''}`}
+                          >
                             {task.title}
                           </h4>
                           {task.isAiGenerated && (
                             <Brain className="h-4 w-4 text-blue-600" title="AI Generated Task" />
                           )}
                         </div>
-                        
+
                         {task.description && (
                           <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                         )}
-                        
+
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <div className="flex items-center">
                             <Clock className="h-3 w-3 mr-1" />
                             {task.estimatedDuration}min
                             {task.actualDuration && ` (${task.actualDuration}min spent)`}
                           </div>
-                          
+
                           {dueInfo && (
                             <div className={`flex items-center ${dueInfo.className}`}>
                               <Calendar className="h-3 w-3 mr-1" />
                               {dueInfo.text}
-                              {isPast(new Date(task.dueDate!)) && !isToday(new Date(task.dueDate!)) && (
-                                <AlertCircle className="h-3 w-3 ml-1" />
-                              )}
+                              {isPast(new Date(task.dueDate!)) &&
+                                !isToday(new Date(task.dueDate!)) && (
+                                  <AlertCircle className="h-3 w-3 ml-1" />
+                                )}
                             </div>
                           )}
-                          
+
                           {task.relatedEntityType && (
                             <div className="flex items-center">
                               <Tag className="h-3 w-3 mr-1" />
@@ -406,7 +439,7 @@ export default function TaskList({ className }: TaskListProps) {
                   {task.tags && task.tags.length > 0 && (
                     <div className="mb-3">
                       <div className="flex flex-wrap gap-1">
-                        {task.tags.map(tag => (
+                        {task.tags.map((tag) => (
                           <Badge key={tag} variant="secondary" className="text-xs">
                             {tag}
                           </Badge>
@@ -436,7 +469,7 @@ export default function TaskList({ className }: TaskListProps) {
                           </>
                         )}
                       </Button>
-                      
+
                       {task.status !== 'completed' && (
                         <Button variant="outline" size="sm">
                           <Edit className="h-3 w-3 mr-1" />

@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Build and Development
+
 ```bash
 npm run dev              # Start dev server (tsx for backend, Vite HMR for frontend)
 npm run dev:frontend     # Start frontend only (Vite)
@@ -15,6 +16,7 @@ npm run check            # TypeScript type checking (tsc --noEmit)
 ```
 
 ### Code Quality
+
 ```bash
 npm run lint             # ESLint (TS/TSX files)
 npm run format           # Check Prettier formatting
@@ -22,12 +24,14 @@ npm run format:write     # Apply Prettier formatting
 ```
 
 ### Database
+
 ```bash
 npm run db:push          # Push schema changes to main database
 npm run db:push:forecast # Push to forecasting database
 ```
 
 ### Testing
+
 ```bash
 npm run test             # Run Vitest unit tests
 npm run test:watch       # Vitest in watch mode
@@ -40,6 +44,7 @@ npm run test:all         # All tests (unit + E2E)
 ```
 
 ### Seeding & Setup
+
 ```bash
 npm run seed:rbac        # Seed RBAC permissions and roles
 npm run seed:reports     # Seed 75 report definitions
@@ -50,6 +55,7 @@ npm run stripe:setup:live # Setup Stripe products (live mode)
 ```
 
 ### CLI Tools
+
 ```bash
 npm run updater          # Database updater CLI (test data generation)
 npm run updater:start    # Start CRON-based updaters
@@ -61,6 +67,7 @@ npm run kb:create        # Create new KB article
 ## Project Architecture
 
 ### Tech Stack
+
 - **Frontend**: React 18 + TypeScript + Vite + Wouter (routing) + TanStack Query + Tailwind CSS + shadcn/ui
 - **Backend**: Node.js + Express.js + TypeScript (tsx runtime)
 - **Database**: Self-hosted Supabase PostgreSQL (`209.145.59.219:5433`) + Drizzle ORM
@@ -68,6 +75,7 @@ npm run kb:create        # Create new KB article
 - **Edge Functions**: Supabase Edge Functions (`supabase/functions/`)
 
 ### Directory Structure
+
 ```
 ├── client/src/
 │   ├── components/       # React components (ui/, mobile/, dashboards/, etc.)
@@ -89,6 +97,7 @@ npm run kb:create        # Create new KB article
 ```
 
 ### Path Aliases
+
 - `@/*` → `client/src/*`
 - `@shared/*` → `shared/*`
 - `@assets/*` → `attached_assets/*`
@@ -96,34 +105,38 @@ npm run kb:create        # Create new KB article
 ## Key Architectural Patterns
 
 ### Multi-Tenant Architecture
+
 - **4-Tier Hierarchy**: Platform → Company → Regional → Location
 - **8-Level Role Hierarchy**: Platform Admin (8) → Guest (1)
 - **Tenant Isolation**: Row-level security with `tenantId` filtering on ALL queries
 - **Tenant Resolution Priority**: `x-tenant-id` header → JWT `app_metadata.tenantId` → Session
 
 ### Unified Business Records (Zero-Data-Loss)
+
 Leads and customers share the same `business_records` table. Status field determines state. Lead-to-customer conversion is a status update, preserving all history.
 
 ### Authentication Pattern
+
 ```typescript
 import { getUserId, getTenantId, isAuthenticated } from '../utils/auth-helpers';
 
 app.get('/api/resource', requireAuth, requireTenant, async (req, res) => {
-  const userId = getUserId(req);    // Supports JWT + session fallback
+  const userId = getUserId(req); // Supports JWT + session fallback
   const tenantId = getTenantId(req);
   // Always filter by tenantId!
   const data = await db.query.table.findMany({
-    where: eq(table.tenantId, tenantId)
+    where: eq(table.tenantId, tenantId),
   });
 });
 ```
 
 ### RBAC Permission Format
+
 ```typescript
 // Format: <module>.<resource>.<action>_<scope>
-'sales.lead.view_own'        // View own leads
-'sales.lead.view_team'       // View team's leads
-'sales.quote.approve_standard' // Approve standard quotes
+'sales.lead.view_own'; // View own leads
+'sales.lead.view_team'; // View team's leads
+'sales.quote.approve_standard'; // Approve standard quotes
 
 import { requirePermission, hasPermission } from './middleware/enhanced-rbac-middleware';
 app.get('/leads', requirePermission(['sales.lead.view_own', 'sales.lead.view_team']), handler);
@@ -132,20 +145,23 @@ app.get('/leads', requirePermission(['sales.lead.view_own', 'sales.lead.view_tea
 ## Database & Schema
 
 ### Main Schema
+
 - `shared/schema.ts` (293KB) - Core business entities
 - Specialized schemas in `shared/*-schema.ts` (43 files)
 
 ### Migration Workflow
+
 1. Update schema in `shared/` directory
 2. Run `npm run db:push` to apply changes
 3. Test in development
 4. Commit schema changes
 
 ### Critical: Always Include Tenant Filtering
+
 ```typescript
 // CORRECT
 const data = await db.query.customers.findMany({
-  where: eq(customers.tenantId, tenantId)
+  where: eq(customers.tenantId, tenantId),
 });
 
 // WRONG - Security vulnerability!
@@ -155,6 +171,7 @@ const data = await db.query.customers.findMany();
 ## API Development
 
 ### RESTful Conventions
+
 ```
 GET    /api/[resource]         - List with pagination
 GET    /api/[resource]/:id     - Get single item
@@ -165,6 +182,7 @@ DELETE /api/[resource]/:id     - Delete
 ```
 
 ### Error Response Format
+
 ```json
 {
   "message": "Error description",
@@ -175,6 +193,7 @@ DELETE /api/[resource]/:id     - Delete
 ```
 
 ### New Route File Pattern
+
 1. Create `server/routes-[feature].ts`
 2. Register in `server/routes.ts`
 3. Use middleware: `requireAuth`, `requireTenant`, `requirePermission`
@@ -183,18 +202,21 @@ DELETE /api/[resource]/:id     - Delete
 ## Frontend Development
 
 ### Component Development
+
 - Use shadcn/ui components from `client/src/components/ui/`
 - Mobile-first design with breakpoints: sm(640px), md(768px), lg(1024px), xl(1280px)
 - Touch targets: minimum 48px
 - Mobile components: `client/src/components/mobile/`
 
 ### State Management
+
 - **Server State**: TanStack Query for all API data
 - **Form State**: React Hook Form + Zod validation
 - **Local State**: useState/useReducer for component-local state
 - **Real-time**: WebSocket via `useWebSocket` hook
 
 ### Key Hooks
+
 - `useAuth` - Authentication state
 - `usePaginatedQuery` - Server-side pagination
 - `useOptimisticMutations` - Optimistic UI updates
@@ -203,11 +225,13 @@ DELETE /api/[resource]/:id     - Delete
 ## Supabase Infrastructure
 
 ### Connection Details
+
 - **API**: `https://api.printyx.net`
 - **Edge Functions**: `https://functions.printyx.net`
 - **Database Pooler**: `209.145.59.219:5433`
 
 ### Environment Variables
+
 ```env
 DATABASE_URL=postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres
 DB_SSL=true
@@ -218,7 +242,9 @@ SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ```
 
 ### Edge Functions
+
 Located in `supabase/functions/`:
+
 - `activities/` - Business activity tracking
 - `invoices/` - Invoice management with line items
 - `contracts/` - Contracts with tiered rates
@@ -228,32 +254,37 @@ Located in `supabase/functions/`:
 
 ## Key Files Reference
 
-| Task | Files |
-|------|-------|
-| Add API endpoint | Create `server/routes-*.ts`, register in `server/routes.ts` |
-| Add page | Create `client/src/pages/*.tsx`, add route in `client/src/App.tsx` |
-| Add schema | Update `shared/schema.ts` or create `shared/*-schema.ts` |
-| Get user ID | `import { getUserId } from '../utils/auth-helpers'` |
-| Get tenant ID | `import { getTenantId } from '../utils/auth-helpers'` |
-| RBAC middleware | `server/middleware/enhanced-rbac-middleware.ts` |
-| Query scoping | `server/middleware/hierarchical-query-builder.ts` |
+| Task             | Files                                                              |
+| ---------------- | ------------------------------------------------------------------ |
+| Add API endpoint | Create `server/routes-*.ts`, register in `server/routes.ts`        |
+| Add page         | Create `client/src/pages/*.tsx`, add route in `client/src/App.tsx` |
+| Add schema       | Update `shared/schema.ts` or create `shared/*-schema.ts`           |
+| Get user ID      | `import { getUserId } from '../utils/auth-helpers'`                |
+| Get tenant ID    | `import { getTenantId } from '../utils/auth-helpers'`              |
+| RBAC middleware  | `server/middleware/enhanced-rbac-middleware.ts`                    |
+| Query scoping    | `server/middleware/hierarchical-query-builder.ts`                  |
 
 ## Development Workflow: Plan → Execute → Test → Commit
 
 Follow this 4-step cycle for each feature or change:
 
 ### 1. Plan
+
 Think through the approach together before writing any code. Discuss the strategy and get alignment on what you're building. Consider:
+
 - What files need to change?
 - What's the data flow?
 - Are there edge cases to handle?
 - Does this affect multi-tenant isolation?
 
 ### 2. Execute
+
 Write the code that matches the plan. The AI isn't figuring out what to build—you've already done that together. Focus on implementation details.
 
 ### 3. Test
+
 Validate the implementation matches the plan:
+
 ```bash
 npm run check            # Type safety
 npm run test             # Unit tests
@@ -262,9 +293,11 @@ npm run dev              # Manual QA
 ```
 
 ### 4. Commit
+
 Commit the working code and start the cycle again for the next piece.
 
 ### Pre-Flight Checks
+
 - **Before starting**: `npm run check` - Ensure no existing type errors
 - **Before committing**: `npm run build` - Verify build passes
 - **Code style**: `npm run format:write && npm run lint`

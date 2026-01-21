@@ -2,17 +2,8 @@ import React, { useState } from 'react';
 import { useLocation, useRoute } from 'wouter';
 import MainLayout from '@/components/layout/main-layout';
 import QuoteBuilder from '@/components/quote-builder/QuoteBuilder';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Calculator,
-  ArrowLeft,
-} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calculator, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
@@ -47,13 +38,22 @@ export default function QuoteBuilderPage() {
   };
 
   return (
-    <MainLayout title={isProposalMode ? 'Create Proposal' : (isEditing ? 'Edit Quote' : 'Quote Builder')} description={isProposalMode ? `Creating proposal from quote ${sourceQuoteId} with template ${templateId}` : (isEditing ? 'Modify your existing quote with line-by-line product selection' : 'Create a comprehensive quote with line-by-line product selection')}>
+    <MainLayout
+      title={isProposalMode ? 'Create Proposal' : isEditing ? 'Edit Quote' : 'Quote Builder'}
+      description={
+        isProposalMode
+          ? `Creating proposal from quote ${sourceQuoteId} with template ${templateId}`
+          : isEditing
+            ? 'Modify your existing quote with line-by-line product selection'
+            : 'Create a comprehensive quote with line-by-line product selection'
+      }
+    >
       <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6 touch-manipulation">
         {/* Contextual Help */}
         <ContextualHelp page="quote-builder" />
 
         {/* In-context Page Alerts (business/performance) */}
-        <PageAlerts categories={["business", "performance"]} className="mt-2" />
+        <PageAlerts categories={['business', 'performance']} className="mt-2" />
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-4">

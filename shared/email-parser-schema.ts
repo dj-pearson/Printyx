@@ -11,7 +11,9 @@ import { serviceTickets } from './schema';
  * Tracks processed emails to prevent duplicates (idempotency)
  */
 export const processedEmails = pgTable('processed_emails', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   tenantId: text('tenant_id').notNull(),
   emailId: text('email_id').notNull().unique(), // Message-ID header from email
   from: text('from').notNull(),
@@ -33,7 +35,9 @@ export const processedEmails = pgTable('processed_emails', {
  * Store corrections to AI parsing for learning and improvement
  */
 export const parsingCorrections = pgTable('parsing_corrections', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   emailId: text('email_id').notNull(),
   aiParsedData: jsonb('ai_parsed_data').notNull(),
   correctedData: jsonb('corrected_data').notNull(),
@@ -46,7 +50,9 @@ export const parsingCorrections = pgTable('parsing_corrections', {
  * Email monitor configuration per tenant
  */
 export const emailMonitorConfig = pgTable('email_monitor_config', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   tenantId: text('tenant_id').notNull().unique(), // One config per tenant
   emailAddress: text('email_address').notNull(),
   protocol: text('protocol').notNull(), // imap, graph, gmail
@@ -85,7 +91,9 @@ export const emailMonitorConfig = pgTable('email_monitor_config', {
  * Auto-response templates for different issue categories
  */
 export const emailAutoResponses = pgTable('email_auto_responses', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   tenantId: text('tenant_id').notNull(),
   issueCategory: text('issue_category').notNull(), // paper_jam, toner_empty, etc.
   subject: text('subject').notNull(),

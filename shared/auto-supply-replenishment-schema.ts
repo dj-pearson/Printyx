@@ -1,5 +1,14 @@
-import { pgTable, text, integer, boolean, timestamp, jsonb, decimal, pgEnum } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  decimal,
+  pgEnum,
+} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 /**
  * Auto-Supply Replenishment Schema
@@ -13,15 +22,15 @@ import { relations } from "drizzle-orm";
  */
 
 export const supplyReplenishmentStatusEnum = pgEnum('supply_replenishment_status', [
-  'monitoring',           // Actively tracking supply levels
-  'predicted_low',        // AI predicts will be low soon
-  'low',                  // Below threshold, order triggered
-  'order_placed',         // Order automatically created
-  'order_confirmed',      // Order confirmed with supplier
-  'in_transit',           // Supply shipment in transit
-  'delivered',            // Delivered to customer
-  'installed',            // Technician installed the supply
-  'cancelled'             // Order cancelled
+  'monitoring', // Actively tracking supply levels
+  'predicted_low', // AI predicts will be low soon
+  'low', // Below threshold, order triggered
+  'order_placed', // Order automatically created
+  'order_confirmed', // Order confirmed with supplier
+  'in_transit', // Supply shipment in transit
+  'delivered', // Delivered to customer
+  'installed', // Technician installed the supply
+  'cancelled', // Order cancelled
 ]);
 
 export const supplyTypeEnum = pgEnum('supply_type', [
@@ -34,15 +43,15 @@ export const supplyTypeEnum = pgEnum('supply_type', [
   'transfer_belt',
   'waste_toner_bottle',
   'staples',
-  'paper'
+  'paper',
 ]);
 
 export const orderPriorityEnum = pgEnum('order_priority', [
-  'low',              // 30+ days remaining
-  'medium',           // 15-30 days remaining
-  'high',             // 7-14 days remaining
-  'urgent',           // <7 days remaining
-  'critical'          // <3 days or depleted
+  'low', // 30+ days remaining
+  'medium', // 15-30 days remaining
+  'high', // 7-14 days remaining
+  'urgent', // <7 days remaining
+  'critical', // <3 days or depleted
 ]);
 
 /**
@@ -61,25 +70,25 @@ export const supplyMonitoring = pgTable('supply_monitoring', {
 
   // Supply Details
   supplyType: supplyTypeEnum('supply_type').notNull(),
-  supplyName: text('supply_name').notNull(),              // e.g., "Black Toner TN-221BK"
-  partNumber: text('part_number'),                        // Manufacturer part number
-  currentLevel: integer('current_level').notNull(),       // Current level (0-100%)
-  capacityPages: integer('capacity_pages'),               // Total page capacity
+  supplyName: text('supply_name').notNull(), // e.g., "Black Toner TN-221BK"
+  partNumber: text('part_number'), // Manufacturer part number
+  currentLevel: integer('current_level').notNull(), // Current level (0-100%)
+  capacityPages: integer('capacity_pages'), // Total page capacity
 
   // Usage Analytics
   dailyUsageAverage: decimal('daily_usage_average', { precision: 10, scale: 2 }), // Pages per day
   weeklyUsageAverage: decimal('weekly_usage_average', { precision: 10, scale: 2 }),
   monthlyUsageAverage: decimal('monthly_usage_average', { precision: 10, scale: 2 }),
-  usageTrend: text('usage_trend'),                        // 'increasing', 'stable', 'decreasing'
+  usageTrend: text('usage_trend'), // 'increasing', 'stable', 'decreasing'
 
   // AI Predictions
   predictedDepletionDate: timestamp('predicted_depletion_date'),
   daysUntilDepletion: integer('days_until_depletion'),
-  confidenceScore: integer('confidence_score'),           // 0-100 confidence in prediction
-  aiAnalysis: jsonb('ai_analysis'),                       // Detailed AI analysis from Claude
+  confidenceScore: integer('confidence_score'), // 0-100 confidence in prediction
+  aiAnalysis: jsonb('ai_analysis'), // Detailed AI analysis from Claude
 
   // Ordering Configuration
-  reorderThreshold: integer('reorder_threshold').default(20),  // Reorder at 20% remaining
+  reorderThreshold: integer('reorder_threshold').default(20), // Reorder at 20% remaining
   reorderQuantity: integer('reorder_quantity').default(1),
   autoOrderEnabled: boolean('auto_order_enabled').default(true),
 
@@ -95,7 +104,7 @@ export const supplyMonitoring = pgTable('supply_monitoring', {
 
   // Metadata
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow()
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
@@ -112,7 +121,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
   serialNumber: text('serial_number').notNull(),
 
   // Order Details
-  orderNumber: text('order_number').notNull().unique(),   // AUTO-{timestamp}-{random}
+  orderNumber: text('order_number').notNull().unique(), // AUTO-{timestamp}-{random}
   supplyType: supplyTypeEnum('supply_type').notNull(),
   supplyName: text('supply_name').notNull(),
   partNumber: text('part_number'),
@@ -121,7 +130,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
   // Supplier Information
   supplierId: integer('supplier_id'),
   supplierName: text('supplier_name'),
-  supplierOrderId: text('supplier_order_id'),             // External order ID
+  supplierOrderId: text('supplier_order_id'), // External order ID
 
   // Pricing
   unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
@@ -139,7 +148,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
   priority: orderPriorityEnum('priority').default('medium'),
 
   // Automation Details
-  triggeredBy: text('triggered_by').default('ai_prediction'),  // 'ai_prediction', 'threshold', 'manual'
+  triggeredBy: text('triggered_by').default('ai_prediction'), // 'ai_prediction', 'threshold', 'manual'
   preventedEmergency: boolean('prevented_emergency').default(false),
   customerNotified: boolean('customer_notified').default(false),
   customerNotifiedAt: timestamp('customer_notified_at'),
@@ -155,7 +164,7 @@ export const autoSupplyOrders = pgTable('auto_supply_orders', {
 
   // Metadata
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow()
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
@@ -177,19 +186,19 @@ export const supplyUsageHistory = pgTable('supply_usage_history', {
 
   // Usage Data
   dateRecorded: timestamp('date_recorded').notNull().defaultNow(),
-  levelPercentage: integer('level_percentage').notNull(),  // Level at time of recording
+  levelPercentage: integer('level_percentage').notNull(), // Level at time of recording
   pagesRemaining: integer('pages_remaining'),
-  pagesPrinted: integer('pages_printed'),                  // Total pages on device
+  pagesPrinted: integer('pages_printed'), // Total pages on device
   pagesSinceLastReading: integer('pages_since_last_reading'),
 
   // Context
-  dayOfWeek: integer('day_of_week'),                       // 0-6 (Sunday-Saturday)
-  monthOfYear: integer('month_of_year'),                   // 1-12
+  dayOfWeek: integer('day_of_week'), // 0-6 (Sunday-Saturday)
+  monthOfYear: integer('month_of_year'), // 1-12
   isWeekend: boolean('is_weekend').default(false),
   isHoliday: boolean('is_holiday').default(false),
 
   // Metadata
-  createdAt: timestamp('created_at').notNull().defaultNow()
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 /**
@@ -206,17 +215,17 @@ export const supplyReplenishmentRules = pgTable('supply_replenishment_rules', {
   approvalThreshold: decimal('approval_threshold', { precision: 10, scale: 2 }).default('500.00'), // Dollar amount
 
   // Default Thresholds
-  defaultReorderThreshold: integer('default_reorder_threshold').default(20),  // 20%
-  urgentThreshold: integer('urgent_threshold').default(10),                   // 10%
-  criticalThreshold: integer('critical_threshold').default(5),                // 5%
+  defaultReorderThreshold: integer('default_reorder_threshold').default(20), // 20%
+  urgentThreshold: integer('urgent_threshold').default(10), // 10%
+  criticalThreshold: integer('critical_threshold').default(5), // 5%
 
   // Lead Times (days)
   defaultLeadTime: integer('default_lead_time').default(3),
-  bufferDays: integer('buffer_days').default(7),           // Safety buffer for predictions
+  bufferDays: integer('buffer_days').default(7), // Safety buffer for predictions
 
   // Supplier Preferences
   preferredSupplierId: integer('preferred_supplier_id'),
-  alternateSupplierIds: jsonb('alternate_supplier_ids'),   // Array of supplier IDs
+  alternateSupplierIds: jsonb('alternate_supplier_ids'), // Array of supplier IDs
 
   // Notifications
   notifyOnOrderPlaced: boolean('notify_on_order_placed').default(true),
@@ -226,15 +235,15 @@ export const supplyReplenishmentRules = pgTable('supply_replenishment_rules', {
   notificationPhone: text('notification_phone'),
 
   // Business Rules
-  orderDaysOfWeek: jsonb('order_days_of_week').default('[1,2,3,4,5]'),  // Mon-Fri
+  orderDaysOfWeek: jsonb('order_days_of_week').default('[1,2,3,4,5]'), // Mon-Fri
   noOrderHolidays: boolean('no_order_holidays').default(true),
-  consolidateOrders: boolean('consolidate_orders').default(true),        // Batch orders from same customer
-  consolidationWindow: integer('consolidation_window').default(24),      // Hours
+  consolidateOrders: boolean('consolidate_orders').default(true), // Batch orders from same customer
+  consolidationWindow: integer('consolidation_window').default(24), // Hours
 
   // AI Configuration
   aiPredictionEnabled: boolean('ai_prediction_enabled').default(true),
-  minimumConfidenceScore: integer('minimum_confidence_score').default(70),  // 70%
-  usageHistoryDays: integer('usage_history_days').default(90),              // 90 days of history for AI
+  minimumConfidenceScore: integer('minimum_confidence_score').default(70), // 70%
+  usageHistoryDays: integer('usage_history_days').default(90), // 90 days of history for AI
 
   // Cost Controls
   maxOrderValue: decimal('max_order_value', { precision: 10, scale: 2 }),
@@ -243,7 +252,7 @@ export const supplyReplenishmentRules = pgTable('supply_replenishment_rules', {
 
   // Metadata
   createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow()
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
 /**
@@ -257,7 +266,7 @@ export const supplyReplenishmentAnalytics = pgTable('supply_replenishment_analyt
   // Time Period
   periodStart: timestamp('period_start').notNull(),
   periodEnd: timestamp('period_end').notNull(),
-  periodType: text('period_type').notNull(),              // 'daily', 'weekly', 'monthly'
+  periodType: text('period_type').notNull(), // 'daily', 'weekly', 'monthly'
 
   // Order Metrics
   totalOrders: integer('total_orders').default(0),
@@ -267,40 +276,46 @@ export const supplyReplenishmentAnalytics = pgTable('supply_replenishment_analyt
 
   // Financial Metrics
   totalSpend: decimal('total_spend', { precision: 10, scale: 2 }).default('0.00'),
-  emergencyCostSavings: decimal('emergency_cost_savings', { precision: 10, scale: 2 }).default('0.00'),
-  bulkDiscountSavings: decimal('bulk_discount_savings', { precision: 10, scale: 2 }).default('0.00'),
+  emergencyCostSavings: decimal('emergency_cost_savings', { precision: 10, scale: 2 }).default(
+    '0.00',
+  ),
+  bulkDiscountSavings: decimal('bulk_discount_savings', { precision: 10, scale: 2 }).default(
+    '0.00',
+  ),
 
   // Performance Metrics
-  averageLeadTime: decimal('average_lead_time', { precision: 10, scale: 2 }),        // Days
+  averageLeadTime: decimal('average_lead_time', { precision: 10, scale: 2 }), // Days
   onTimeDeliveryRate: decimal('on_time_delivery_rate', { precision: 5, scale: 2 }), // Percentage
-  predictionAccuracy: decimal('prediction_accuracy', { precision: 5, scale: 2 }),   // Percentage
+  predictionAccuracy: decimal('prediction_accuracy', { precision: 5, scale: 2 }), // Percentage
   stockoutsPrevented: integer('stockouts_prevented').default(0),
-  downtimeHoursPrevented: decimal('downtime_hours_prevented', { precision: 10, scale: 2 }).default('0.00'),
+  downtimeHoursPrevented: decimal('downtime_hours_prevented', { precision: 10, scale: 2 }).default(
+    '0.00',
+  ),
 
   // Customer Impact
   customerSatisfactionScore: decimal('customer_satisfaction_score', { precision: 5, scale: 2 }),
   complaintsReceived: integer('complaints_received').default(0),
 
   // Metadata
-  createdAt: timestamp('created_at').notNull().defaultNow()
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // Relations
 export const supplyMonitoringRelations = relations(supplyMonitoring, ({ many }) => ({
   orders: many(autoSupplyOrders),
-  usageHistory: many(supplyUsageHistory)
+  usageHistory: many(supplyUsageHistory),
 }));
 
 export const autoSupplyOrdersRelations = relations(autoSupplyOrders, ({ one }) => ({
   supplyMonitoring: one(supplyMonitoring, {
     fields: [autoSupplyOrders.supplyMonitoringId],
-    references: [supplyMonitoring.id]
-  })
+    references: [supplyMonitoring.id],
+  }),
 }));
 
 export const supplyUsageHistoryRelations = relations(supplyUsageHistory, ({ one }) => ({
   supplyMonitoring: one(supplyMonitoring, {
     fields: [supplyUsageHistory.supplyMonitoringId],
-    references: [supplyMonitoring.id]
-  })
+    references: [supplyMonitoring.id],
+  }),
 }));

@@ -32,29 +32,37 @@ tools/schema-validation/
 ## 🚀 Quick Commands
 
 ### Extract Schema from SQL Files
+
 ```powershell
 npx tsx tools/schema-validation/extract-schema.ts
 ```
+
 **Found**: 41 tables from migration files
 
 ### Validate Codebase
+
 ```powershell
 npx tsx tools/schema-validation/validate-code.ts
 ```
+
 **Found**: 634 issues across 77 files
 
 ### Generate Report
+
 ```powershell
 npx tsx tools/schema-validation/generate-report.ts
 ```
+
 **Created**: VALIDATION_REPORT.md with detailed analysis
 
 ### View All Tables
+
 ```powershell
 npx tsx tools/schema-validation/view-table.ts
 ```
 
 ### View Specific Table
+
 ```powershell
 npx tsx tools/schema-validation/view-table.ts companies
 ```
@@ -62,11 +70,13 @@ npx tsx tools/schema-validation/view-table.ts companies
 ## 📊 Current Status
 
 ### Schema Extraction
+
 - ✅ **41 tables** extracted from SQL migration files
 - ⚠️ **Core tables missing**: `users`, `customers`, `companies`, `company_contacts`
 - 💡 **Reason**: These tables exist in your database but aren't in the migration SQL files
 
 ### Validation Results
+
 - **634 issues** found
 - **77 files** affected
 - **211 unique invalid columns**
@@ -104,18 +114,21 @@ Add complete CREATE TABLE statements for core tables to your migrations folder.
 Based on the validation report, fix these files first:
 
 ### Server Side (High Impact)
+
 1. `server/services/service-manager-reporting-service.ts` (38 issues)
 2. `server/routes-sales-pipeline.ts` (34 issues)
 3. `server/services/sales-reporting-service.ts` (34 issues)
 4. `supabase/functions/me/index.ts` (27 issues)
 
 ### Client Side (Medium Impact)
+
 1. `client/src/pages/LeadsManagement.tsx` (17 issues)
 2. `client/src/pages/ServiceAnalytics.tsx` (16 issues)
 
 ## 🎯 Example Issues We Already Fixed
 
 ### Issue #1: `users.access_scope` doesn't exist
+
 ```typescript
 // ❌ BEFORE
 .select('id, email, access_scope, is_platform_user')
@@ -125,6 +138,7 @@ Based on the validation report, fix these files first:
 ```
 
 ### Issue #2: `customers.customer_since` doesn't exist
+
 ```typescript
 // ❌ BEFORE
 .order('customer_since', { ascending: false })
@@ -135,35 +149,40 @@ Based on the validation report, fix these files first:
 ```
 
 ### Issue #3: Nested data structure
+
 ```typescript
 // ❌ BEFORE
-customer.companyName  // undefined!
+customer.companyName; // undefined!
 
 // ✅ AFTER (we fixed this!)
-customer.companies.business_name  // "ABC Company"
+customer.companies.business_name; // "ABC Company"
 ```
 
 ## 💡 How to Use Going Forward
 
 ### 1. After Schema Changes
+
 ```powershell
 # Re-extract schema after adding/modifying tables
 npx tsx tools/schema-validation/extract-schema.ts
 ```
 
 ### 2. Before Committing Code
+
 ```powershell
 # Check for column errors
 npx tsx tools/schema-validation/validate-code.ts
 ```
 
 ### 3. Regular Audits
+
 ```powershell
 # Generate report for review
 npx tsx tools/schema-validation/generate-report.ts
 ```
 
 ### 4. Check Specific Table
+
 ```powershell
 # View table structure
 npx tsx tools/schema-validation/view-table.ts customers
@@ -235,6 +254,7 @@ jobs:
 ## 📞 Support
 
 Questions? Check:
+
 - `QUICK_START.md` for quick commands
 - `README.md` for detailed docs
 - `VALIDATION_REPORT.md` for current issues
@@ -242,6 +262,7 @@ Questions? Check:
 ## 🎉 Success Metrics
 
 After implementing this system:
+
 - **Zero** column-not-found errors
 - **Faster** development (no guessing column names)
 - **Better** code quality (type-safe queries)

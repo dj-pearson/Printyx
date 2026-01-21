@@ -16,6 +16,7 @@ Uses PowerShell to handle everything automatically via SSH.
 ```
 
 **What it does**:
+
 1. Tests SSH connection
 2. Uploads NEON export to server
 3. Creates migration script
@@ -83,9 +84,9 @@ docker exec $CONTAINER psql -U postgres -t -c "SELECT COUNT(*) FROM information_
 
 # Check core tables
 docker exec $CONTAINER psql -U postgres -c "
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
 AND table_name IN ('users', 'companies', 'customers', 'invoices', 'quotes', 'service_tickets', 'equipment')
 ORDER BY table_name;"
 ```
@@ -193,15 +194,17 @@ psql -U postgres -p 5433 -h localhost < /tmp/neon-export.sql
 ### Before Migration:
 
 1. **Always backup first!**
+
    ```bash
    # Docker
    docker exec <container> pg_dump -U postgres > backup.sql
-   
+
    # Direct
    pg_dump "postgresql://postgres:PASSWORD@localhost:5433/postgres" > backup.sql
    ```
 
 2. **Check disk space:**
+
    ```bash
    df -h
    # Make sure you have at least 5GB free
@@ -222,12 +225,14 @@ psql -U postgres -p 5433 -h localhost < /tmp/neon-export.sql
 ### After Migration:
 
 1. **Verify table count:**
+
    ```bash
    # Should show ~218 tables (181 from NEON + 37 new)
    docker exec <container> psql -U postgres -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';"
    ```
 
 2. **Check data counts:**
+
    ```bash
    docker exec <container> psql -U postgres -c "
    SELECT 'users' as table, COUNT(*) FROM users
@@ -265,24 +270,28 @@ psql "postgresql://postgres:PASSWORD@localhost:5433/postgres" < /tmp/backup-XXXX
 ## 🆘 Troubleshooting
 
 ### "Permission denied"
+
 ```bash
 # Make sure you're root or use sudo
 sudo docker exec -i <container> psql -U postgres < /tmp/neon-export.sql
 ```
 
 ### "Could not translate host name to address"
+
 ```bash
 # Database is inside Docker, use container name
 docker exec -i <container> psql -U postgres < /tmp/neon-export.sql
 ```
 
 ### "relation already exists"
+
 ```bash
 # This is OK - it means table already exists
 # The import will skip it and continue
 ```
 
 ### "out of memory"
+
 ```bash
 # Split the import into chunks
 grep "CREATE TABLE" /tmp/neon-export.sql > schema-only.sql
@@ -339,7 +348,7 @@ After migration, you should have:
 
 ```bash
 ssh root@209.145.59.219 "
-docker exec $(docker ps | grep supabase-db | awk '{print $1}') pg_dump -U postgres > /tmp/backup.sql && 
+docker exec $(docker ps | grep supabase-db | awk '{print $1}') pg_dump -U postgres > /tmp/backup.sql &&
 scp YOUR_LOCAL_MACHINE:/path/to/complete-with-schema.sql /tmp/neon.sql &&
 docker exec -i $(docker ps | grep supabase-db | awk '{print $1}') psql -U postgres < /tmp/neon.sql
 "

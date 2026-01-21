@@ -14,13 +14,16 @@ export function OptionalCostsStep({ data, onChange }: OptionalCostsStepProps) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">Current Costs (Optional)</h2>
-        <p className="text-gray-600">Provide actual costs for more accurate calculations, or skip to use industry estimates</p>
+        <p className="text-gray-600">
+          Provide actual costs for more accurate calculations, or skip to use industry estimates
+        </p>
       </div>
 
       <Alert>
         <InfoIcon className="h-4 w-4" />
         <AlertDescription>
-          These fields are optional. If you don't have exact numbers, our calculator will estimate based on industry averages for your fleet size and age.
+          These fields are optional. If you don't have exact numbers, our calculator will estimate
+          based on industry averages for your fleet size and age.
         </AlertDescription>
       </Alert>
 
@@ -35,7 +38,9 @@ export function OptionalCostsStep({ data, onChange }: OptionalCostsStepProps) {
             min={0}
             step={50}
             value={data.monthlySupplieCost || ''}
-            onChange={(e) => onChange({ monthlySupplieCost: parseFloat(e.target.value) || undefined })}
+            onChange={(e) =>
+              onChange({ monthlySupplieCost: parseFloat(e.target.value) || undefined })
+            }
             placeholder="Leave blank to estimate..."
             className="pl-7"
           />
@@ -53,7 +58,9 @@ export function OptionalCostsStep({ data, onChange }: OptionalCostsStepProps) {
             min={0}
             step={50}
             value={data.monthlyServiceCost || ''}
-            onChange={(e) => onChange({ monthlyServiceCost: parseFloat(e.target.value) || undefined })}
+            onChange={(e) =>
+              onChange({ monthlyServiceCost: parseFloat(e.target.value) || undefined })
+            }
             placeholder="Leave blank to estimate..."
             className="pl-7"
           />
@@ -69,10 +76,14 @@ export function OptionalCostsStep({ data, onChange }: OptionalCostsStepProps) {
           min={0}
           step={0.5}
           value={data.monthlyDowntimeHours || ''}
-          onChange={(e) => onChange({ monthlyDowntimeHours: parseFloat(e.target.value) || undefined })}
+          onChange={(e) =>
+            onChange({ monthlyDowntimeHours: parseFloat(e.target.value) || undefined })
+          }
           placeholder="Leave blank to estimate..."
         />
-        <p className="text-xs text-gray-500">Time when devices are unavailable due to breakdowns or maintenance</p>
+        <p className="text-xs text-gray-500">
+          Time when devices are unavailable due to breakdowns or maintenance
+        </p>
       </div>
 
       {/* Monthly Energy Costs */}
@@ -86,7 +97,9 @@ export function OptionalCostsStep({ data, onChange }: OptionalCostsStepProps) {
             min={0}
             step={10}
             value={data.monthlyEnergyCost || ''}
-            onChange={(e) => onChange({ monthlyEnergyCost: parseFloat(e.target.value) || undefined })}
+            onChange={(e) =>
+              onChange({ monthlyEnergyCost: parseFloat(e.target.value) || undefined })
+            }
             placeholder="Leave blank to estimate..."
             className="pl-7"
           />

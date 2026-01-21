@@ -3,9 +3,9 @@
  * Displays tasks in a grouped table format with inline editing
  */
 
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -13,10 +13,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
-import { InlineStatusSelect, InlinePrioritySelect, InlineAssigneeSelect, InlineDatePicker } from "./InlineEditors";
-import { Timer, MessageSquare, Paperclip } from "lucide-react";
+} from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
+import {
+  InlineStatusSelect,
+  InlinePrioritySelect,
+  InlineAssigneeSelect,
+  InlineDatePicker,
+} from './InlineEditors';
+import { Timer, MessageSquare, Paperclip } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -62,9 +67,7 @@ export function TaskListView({
         <Card key={groupName}>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold">
-                {groupName}
-              </CardTitle>
+              <CardTitle className="text-lg font-semibold">{groupName}</CardTitle>
               <Badge variant="outline">{(groupTasks as Task[]).length}</Badge>
             </div>
           </CardHeader>
@@ -110,34 +113,31 @@ export function TaskListView({
                       <TableCell>
                         <InlineStatusSelect
                           value={task.status}
-                          onChange={(value) => onInlineEdit(task.id, "status", value)}
+                          onChange={(value) => onInlineEdit(task.id, 'status', value)}
                         />
                       </TableCell>
                       <TableCell>
                         <InlinePrioritySelect
                           value={task.priority}
-                          onChange={(value) => onInlineEdit(task.id, "priority", value)}
+                          onChange={(value) => onInlineEdit(task.id, 'priority', value)}
                         />
                       </TableCell>
                       <TableCell>
                         <InlineAssigneeSelect
                           value={task.assignedTo}
                           teamMembers={teamMembers}
-                          onChange={(value) => onInlineEdit(task.id, "assignedTo", value)}
+                          onChange={(value) => onInlineEdit(task.id, 'assignedTo', value)}
                         />
                       </TableCell>
                       <TableCell>
                         <InlineDatePicker
                           value={task.dueDate}
-                          onChange={(value) => onInlineEdit(task.id, "dueDate", value)}
+                          onChange={(value) => onInlineEdit(task.id, 'dueDate', value)}
                         />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Progress
-                            value={task.completionPercentage}
-                            className="flex-1 h-2"
-                          />
+                          <Progress value={task.completionPercentage} className="flex-1 h-2" />
                           <span className="text-xs text-gray-500 w-8">
                             {task.completionPercentage}%
                           </span>
@@ -164,40 +164,43 @@ export function TaskListView({
 // Helper function to group tasks
 function groupTasksBy(tasks: Task[], groupBy: string): Record<string, Task[]> {
   const statusConfig: Record<string, { label: string }> = {
-    todo: { label: "To Do" },
-    in_progress: { label: "In Progress" },
-    review: { label: "Review" },
-    completed: { label: "Completed" },
-    cancelled: { label: "Cancelled" },
+    todo: { label: 'To Do' },
+    in_progress: { label: 'In Progress' },
+    review: { label: 'Review' },
+    completed: { label: 'Completed' },
+    cancelled: { label: 'Cancelled' },
   };
 
   const priorityConfig: Record<string, { label: string }> = {
-    urgent: { label: "Urgent" },
-    high: { label: "High" },
-    medium: { label: "Medium" },
-    low: { label: "Low" },
+    urgent: { label: 'Urgent' },
+    high: { label: 'High' },
+    medium: { label: 'Medium' },
+    low: { label: 'Low' },
   };
 
-  return tasks.reduce((acc, task) => {
-    let key = "Ungrouped";
+  return tasks.reduce(
+    (acc, task) => {
+      let key = 'Ungrouped';
 
-    switch (groupBy) {
-      case "status":
-        key = statusConfig[task.status]?.label || task.status;
-        break;
-      case "priority":
-        key = priorityConfig[task.priority]?.label || task.priority;
-        break;
-      case "assignee":
-        key = task.assignedToName || "Unassigned";
-        break;
-      case "project":
-        key = task.projectName || "No Project";
-        break;
-    }
+      switch (groupBy) {
+        case 'status':
+          key = statusConfig[task.status]?.label || task.status;
+          break;
+        case 'priority':
+          key = priorityConfig[task.priority]?.label || task.priority;
+          break;
+        case 'assignee':
+          key = task.assignedToName || 'Unassigned';
+          break;
+        case 'project':
+          key = task.projectName || 'No Project';
+          break;
+      }
 
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(task);
-    return acc;
-  }, {} as Record<string, Task[]>);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(task);
+      return acc;
+    },
+    {} as Record<string, Task[]>,
+  );
 }

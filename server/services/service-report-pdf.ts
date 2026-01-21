@@ -75,8 +75,8 @@ export class ServiceReportPDFGenerator {
         top: 50,
         bottom: 50,
         left: 50,
-        right: 50
-      }
+        right: 50,
+      },
     });
 
     const stream = new PassThrough();
@@ -124,23 +124,14 @@ export class ServiceReportPDFGenerator {
 
   private addHeader(doc: PDFKit.PDFDocument, data: ServiceReportData) {
     // Company name/logo area (placeholder)
-    doc
-      .fontSize(24)
-      .font('Helvetica-Bold')
-      .text('SERVICE REPORT', { align: 'center' });
+    doc.fontSize(24).font('Helvetica-Bold').text('SERVICE REPORT', { align: 'center' });
 
-    doc
-      .fontSize(10)
-      .font('Helvetica')
-      .text(`Report #${data.reportId}`, { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text(`Report #${data.reportId}`, { align: 'center' });
 
     doc.moveDown(0.5);
 
     // Horizontal line
-    doc
-      .moveTo(50, doc.y)
-      .lineTo(562, doc.y)
-      .stroke();
+    doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
   }
 
   private addServiceDetails(doc: PDFKit.PDFDocument, data: ServiceReportData) {
@@ -242,10 +233,7 @@ export class ServiceReportPDFGenerator {
       doc.text('Cost', 420, tableTop, { width: 80, align: 'right' });
 
       doc.moveDown(0.3);
-      doc
-        .moveTo(50, doc.y)
-        .lineTo(510, doc.y)
-        .stroke();
+      doc.moveTo(50, doc.y).lineTo(510, doc.y).stroke();
       doc.moveDown(0.3);
 
       // Table rows
@@ -274,10 +262,7 @@ export class ServiceReportPDFGenerator {
     doc.text(`$${data.partsAndMaterials.laborCost.toFixed(2)}`, { width: 80, align: 'right' });
 
     doc.moveDown(0.3);
-    doc
-      .moveTo(summaryX, doc.y)
-      .lineTo(530, doc.y)
-      .stroke();
+    doc.moveTo(summaryX, doc.y).lineTo(530, doc.y).stroke();
     doc.moveDown(0.3);
 
     doc.font('Helvetica-Bold');
@@ -316,10 +301,10 @@ export class ServiceReportPDFGenerator {
       { label: 'Functional Test', value: data.qualityChecks.functionalTest },
       { label: 'Print Quality Test', value: data.qualityChecks.printQualityTest },
       { label: 'Network Connectivity', value: data.qualityChecks.networkConnectivity },
-      { label: 'Customer Training', value: data.qualityChecks.customerTraining }
+      { label: 'Customer Training', value: data.qualityChecks.customerTraining },
     ];
 
-    checks.forEach(check => {
+    checks.forEach((check) => {
       const symbol = check.value ? '✓' : '✗';
       const text = check.value ? 'PASS' : 'N/A';
       doc.text(`${symbol} ${check.label}: ${text}`);
@@ -335,8 +320,9 @@ export class ServiceReportPDFGenerator {
     doc.fontSize(10).font('Helvetica');
 
     if (data.customerApproval.satisfactionRating) {
-      const rating = '★'.repeat(data.customerApproval.satisfactionRating) +
-                    '☆'.repeat(5 - data.customerApproval.satisfactionRating);
+      const rating =
+        '★'.repeat(data.customerApproval.satisfactionRating) +
+        '☆'.repeat(5 - data.customerApproval.satisfactionRating);
       doc.text(`Satisfaction Rating: ${rating} (${data.customerApproval.satisfactionRating}/5)`);
     }
 
@@ -372,8 +358,8 @@ export class ServiceReportPDFGenerator {
         footerTop,
         {
           align: 'center',
-          width: 512
-        }
+          width: 512,
+        },
       );
 
     doc.text(
@@ -382,8 +368,8 @@ export class ServiceReportPDFGenerator {
       footerTop + 12,
       {
         align: 'center',
-        width: 512
-      }
+        width: 512,
+      },
     );
   }
 
@@ -391,7 +377,7 @@ export class ServiceReportPDFGenerator {
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   }
 
@@ -402,7 +388,7 @@ export class ServiceReportPDFGenerator {
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   }
 }

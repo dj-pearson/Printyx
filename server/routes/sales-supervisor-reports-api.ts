@@ -39,22 +39,27 @@ router.get(
 
       const { dateFrom, dateTo } = req.query;
 
-      const dateRange = dateFrom && dateTo ? {
-        dateFrom: new Date(dateFrom as string),
-        dateTo: new Date(dateTo as string),
-      } : undefined;
+      const dateRange =
+        dateFrom && dateTo
+          ? {
+              dateFrom: new Date(dateFrom as string),
+              dateTo: new Date(dateTo as string),
+            }
+          : undefined;
 
       const result = await SalesSupervisorReportingService.getLocationPipelineOverview(
         req.user,
-        dateRange
+        dateRange,
       );
 
       res.json(result);
     } catch (error: any) {
       console.error('Error fetching location pipeline overview:', error);
-      res.status(500).json({ error: 'Failed to fetch location pipeline overview', details: error.message });
+      res
+        .status(500)
+        .json({ error: 'Failed to fetch location pipeline overview', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -80,26 +85,32 @@ router.get(
 
       const { dateFrom, dateTo } = req.query;
 
-      const dateRange = dateFrom && dateTo ? {
-        dateFrom: new Date(dateFrom as string),
-        dateTo: new Date(dateTo as string),
-      } : undefined;
+      const dateRange =
+        dateFrom && dateTo
+          ? {
+              dateFrom: new Date(dateFrom as string),
+              dateTo: new Date(dateTo as string),
+            }
+          : undefined;
 
       const result = await SalesSupervisorReportingService.getLocationPerformanceMetrics(
         req.user,
-        dateRange
+        dateRange,
       );
 
       // Calculate performance insights
       const insights = {
-        performanceSpread: result.locations.length > 1
-          ? ((result.summary.topLocation?.totalRevenue || 0) - (result.summary.bottomLocation?.totalRevenue || 0))
-          : 0,
-        averageTeamSize: result.locations.length > 0
-          ? result.locations.reduce((sum, l) => sum + l.teamSize, 0) / result.locations.length
-          : 0,
+        performanceSpread:
+          result.locations.length > 1
+            ? (result.summary.topLocation?.totalRevenue || 0) -
+              (result.summary.bottomLocation?.totalRevenue || 0)
+            : 0,
+        averageTeamSize:
+          result.locations.length > 0
+            ? result.locations.reduce((sum, l) => sum + l.teamSize, 0) / result.locations.length
+            : 0,
         topPerformers: result.locations.slice(0, 3),
-        needsAttention: result.locations.filter(l => l.quotaAttainment < 75),
+        needsAttention: result.locations.filter((l) => l.quotaAttainment < 75),
       };
 
       res.json({
@@ -108,9 +119,11 @@ router.get(
       });
     } catch (error: any) {
       console.error('Error fetching location performance:', error);
-      res.status(500).json({ error: 'Failed to fetch location performance', details: error.message });
+      res
+        .status(500)
+        .json({ error: 'Failed to fetch location performance', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -137,19 +150,22 @@ router.get(
 
       const result = await SalesSupervisorReportingService.getLocationQuotaTracking(
         req.user,
-        period as 'current' | 'previous' | 'ytd'
+        period as 'current' | 'previous' | 'ytd',
       );
 
       // Calculate quota insights
       const insights = {
         attainmentDistribution: {
-          exceeding: result.quotas.filter(q => q.attainmentPercent >= 100).length,
-          onTrack: result.quotas.filter(q => q.attainmentPercent >= 90 && q.attainmentPercent < 100).length,
-          atRisk: result.quotas.filter(q => q.attainmentPercent >= 75 && q.attainmentPercent < 90).length,
-          critical: result.quotas.filter(q => q.attainmentPercent < 75).length,
+          exceeding: result.quotas.filter((q) => q.attainmentPercent >= 100).length,
+          onTrack: result.quotas.filter(
+            (q) => q.attainmentPercent >= 90 && q.attainmentPercent < 100,
+          ).length,
+          atRisk: result.quotas.filter((q) => q.attainmentPercent >= 75 && q.attainmentPercent < 90)
+            .length,
+          critical: result.quotas.filter((q) => q.attainmentPercent < 75).length,
         },
         totalGap: result.quotas.reduce((sum, q) => sum + Math.max(0, q.gap), 0),
-        projectedShortfall: result.quotas.filter(q => q.projectedAttainment < 100).length,
+        projectedShortfall: result.quotas.filter((q) => q.projectedAttainment < 100).length,
       };
 
       res.json({
@@ -160,7 +176,7 @@ router.get(
       console.error('Error fetching location quota:', error);
       res.status(500).json({ error: 'Failed to fetch location quota', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -186,14 +202,17 @@ router.get(
 
       const { dateFrom, dateTo } = req.query;
 
-      const dateRange = dateFrom && dateTo ? {
-        dateFrom: new Date(dateFrom as string),
-        dateTo: new Date(dateTo as string),
-      } : undefined;
+      const dateRange =
+        dateFrom && dateTo
+          ? {
+              dateFrom: new Date(dateFrom as string),
+              dateTo: new Date(dateTo as string),
+            }
+          : undefined;
 
       const result = await SalesSupervisorReportingService.getLocationActivitySummary(
         req.user,
-        dateRange
+        dateRange,
       );
 
       // Calculate activity insights
@@ -206,7 +225,8 @@ router.get(
           proposals: result.activities.reduce((sum, a) => sum + a.proposals, 0),
         },
         performanceGap: result.summary.mostActiveLocation
-          ? result.summary.averagePerLocation - (result.activities[result.activities.length - 1]?.totalActivities || 0)
+          ? result.summary.averagePerLocation -
+            (result.activities[result.activities.length - 1]?.totalActivities || 0)
           : 0,
         topPerformers: result.activities.slice(0, 3),
       };
@@ -219,7 +239,7 @@ router.get(
       console.error('Error fetching location activity:', error);
       res.status(500).json({ error: 'Failed to fetch location activity', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================
@@ -251,7 +271,7 @@ router.post(
       console.error('Error invalidating cache:', error);
       res.status(500).json({ error: 'Failed to invalidate cache', details: error.message });
     }
-  }
+  },
 );
 
 // =====================================================================

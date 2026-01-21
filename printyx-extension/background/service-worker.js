@@ -19,12 +19,12 @@ chrome.runtime.onInstalled.addListener((details) => {
     // Set default configuration
     chrome.storage.sync.set({
       apiBaseUrl: 'http://localhost:5000', // Default to local development
-      configured: false
+      configured: false,
     });
 
     // Open configuration page
     chrome.tabs.create({
-      url: 'popup/popup.html'
+      url: 'popup/popup.html',
     });
   } else if (details.reason === 'update') {
     // Extension updated
@@ -39,7 +39,7 @@ function showWelcomeNotification() {
     iconUrl: 'assets/icons/icon128.png',
     title: 'Welcome to Printyx CRM Extension!',
     message: 'Click the extension icon to configure your Printyx account.',
-    priority: 2
+    priority: 2,
   });
 }
 
@@ -86,7 +86,7 @@ function handleImportSuccess(data) {
     iconUrl: 'assets/icons/icon128.png',
     title: 'Contact Added to Printyx!',
     message: `${data.name} has been imported to your CRM.`,
-    priority: 1
+    priority: 1,
   });
 }
 
@@ -111,7 +111,7 @@ async function checkApiHealth() {
     const baseUrl = config.apiBaseUrl || 'http://localhost:5000';
 
     const response = await fetch(`${baseUrl}/api/extension/health`, {
-      credentials: 'include'
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -122,24 +122,20 @@ async function checkApiHealth() {
 
     return {
       healthy: data.status === 'healthy',
-      data
+      data,
     };
   } catch (error) {
     console.error('[Printyx Extension] Health check failed:', error);
     return {
       healthy: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
 
 // Get current configuration
 async function getConfiguration() {
-  const config = await chrome.storage.sync.get([
-    'apiBaseUrl',
-    'tenantId',
-    'configured'
-  ]);
+  const config = await chrome.storage.sync.get(['apiBaseUrl', 'tenantId', 'configured']);
 
   return config;
 }

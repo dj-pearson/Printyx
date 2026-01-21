@@ -55,7 +55,9 @@ interface MaintenanceSummary {
 }
 
 export default function ProactiveServiceDashboard() {
-  const [selectedTab, setSelectedTab] = useState<'overdue' | 'urgent' | 'soon' | 'scheduled' | 'all'>('overdue');
+  const [selectedTab, setSelectedTab] = useState<
+    'overdue' | 'urgent' | 'soon' | 'scheduled' | 'all'
+  >('overdue');
   const [schedulingEquipment, setSchedulingEquipment] = useState<string | null>(null);
 
   // Fetch proactive maintenance data
@@ -71,7 +73,7 @@ export default function ProactiveServiceDashboard() {
     setSchedulingEquipment(equipmentId);
     try {
       // In production, this would create a service ticket
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log('Service scheduled for equipment:', equipmentId);
       refetch();
     } catch (err) {
@@ -87,11 +89,19 @@ export default function ProactiveServiceDashboard() {
       case 'overdue':
         return <Badge variant="destructive">Overdue</Badge>;
       case 'urgent':
-        return <Badge variant="default" className="bg-orange-500">Urgent - Within 7 Days</Badge>;
+        return (
+          <Badge variant="default" className="bg-orange-500">
+            Urgent - Within 7 Days
+          </Badge>
+        );
       case 'soon':
         return <Badge variant="secondary">Due Soon - 8-30 Days</Badge>;
       case 'scheduled':
-        return <Badge variant="outline" className="text-green-600">Scheduled</Badge>;
+        return (
+          <Badge variant="outline" className="text-green-600">
+            Scheduled
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{urgency}</Badge>;
     }
@@ -114,13 +124,13 @@ export default function ProactiveServiceDashboard() {
   const getEquipmentByTab = () => {
     switch (selectedTab) {
       case 'overdue':
-        return equipment.filter(e => e.urgency === 'overdue');
+        return equipment.filter((e) => e.urgency === 'overdue');
       case 'urgent':
-        return equipment.filter(e => e.urgency === 'urgent');
+        return equipment.filter((e) => e.urgency === 'urgent');
       case 'soon':
-        return equipment.filter(e => e.urgency === 'soon');
+        return equipment.filter((e) => e.urgency === 'soon');
       case 'scheduled':
-        return equipment.filter(e => e.urgency === 'scheduled');
+        return equipment.filter((e) => e.urgency === 'scheduled');
       case 'all':
         return equipment;
       default:
@@ -178,12 +188,8 @@ export default function ProactiveServiceDashboard() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {summary?.overdueCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Requires immediate attention
-            </p>
+            <div className="text-2xl font-bold text-destructive">{summary?.overdueCount || 0}</div>
+            <p className="text-xs text-muted-foreground">Requires immediate attention</p>
           </CardContent>
         </Card>
 
@@ -193,12 +199,8 @@ export default function ProactiveServiceDashboard() {
             <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {summary?.urgentCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Schedule within 7 days
-            </p>
+            <div className="text-2xl font-bold text-orange-600">{summary?.urgentCount || 0}</div>
+            <p className="text-xs text-muted-foreground">Schedule within 7 days</p>
           </CardContent>
         </Card>
 
@@ -208,12 +210,12 @@ export default function ProactiveServiceDashboard() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getHealthScoreColor(summary?.averageHealthScore || 0)}`}>
+            <div
+              className={`text-2xl font-bold ${getHealthScoreColor(summary?.averageHealthScore || 0)}`}
+            >
               {summary?.averageHealthScore?.toFixed(0) || 0}%
             </div>
-            <p className="text-xs text-muted-foreground">
-              Fleet-wide equipment health
-            </p>
+            <p className="text-xs text-muted-foreground">Fleet-wide equipment health</p>
           </CardContent>
         </Card>
 
@@ -226,9 +228,7 @@ export default function ProactiveServiceDashboard() {
             <div className="text-2xl font-bold text-green-600">
               {summary?.preventableEmergencies || 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              This month via proactive PM
-            </p>
+            <p className="text-xs text-muted-foreground">This month via proactive PM</p>
           </CardContent>
         </Card>
       </div>
@@ -256,21 +256,13 @@ export default function ProactiveServiceDashboard() {
         <CardContent>
           <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)}>
             <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overdue">
-                Overdue ({summary?.overdueCount || 0})
-              </TabsTrigger>
-              <TabsTrigger value="urgent">
-                Urgent ({summary?.urgentCount || 0})
-              </TabsTrigger>
-              <TabsTrigger value="soon">
-                Soon ({summary?.soonCount || 0})
-              </TabsTrigger>
+              <TabsTrigger value="overdue">Overdue ({summary?.overdueCount || 0})</TabsTrigger>
+              <TabsTrigger value="urgent">Urgent ({summary?.urgentCount || 0})</TabsTrigger>
+              <TabsTrigger value="soon">Soon ({summary?.soonCount || 0})</TabsTrigger>
               <TabsTrigger value="scheduled">
                 Scheduled ({summary?.scheduledCount || 0})
               </TabsTrigger>
-              <TabsTrigger value="all">
-                All ({summary?.totalEquipment || 0})
-              </TabsTrigger>
+              <TabsTrigger value="all">All ({summary?.totalEquipment || 0})</TabsTrigger>
             </TabsList>
 
             <TabsContent value={selectedTab} className="mt-6">
@@ -297,16 +289,16 @@ export default function ProactiveServiceDashboard() {
                       {displayEquipment.map((item) => (
                         <TableRow key={item.equipmentId}>
                           <TableCell>
-                            <div className="font-medium">{item.make} {item.model}</div>
+                            <div className="font-medium">
+                              {item.make} {item.model}
+                            </div>
                             <div className="text-sm text-muted-foreground">
                               SN: {item.serialNumber}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div>{item.customerName}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {item.location}
-                            </div>
+                            <div className="text-sm text-muted-foreground">{item.location}</div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -316,7 +308,9 @@ export default function ProactiveServiceDashboard() {
                                 // @ts-ignore
                                 indicatorClassName={getHealthScoreProgress(item.healthScore)}
                               />
-                              <span className={`text-sm font-medium ${getHealthScoreColor(item.healthScore)}`}>
+                              <span
+                                className={`text-sm font-medium ${getHealthScoreColor(item.healthScore)}`}
+                              >
                                 {item.healthScore}%
                               </span>
                             </div>
@@ -334,13 +328,15 @@ export default function ProactiveServiceDashboard() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className={
-                              item.daysUntilDue <= 0
-                                ? 'text-destructive font-semibold'
-                                : item.daysUntilDue <= 7
-                                ? 'text-orange-600 font-semibold'
-                                : ''
-                            }>
+                            <div
+                              className={
+                                item.daysUntilDue <= 0
+                                  ? 'text-destructive font-semibold'
+                                  : item.daysUntilDue <= 7
+                                    ? 'text-orange-600 font-semibold'
+                                    : ''
+                              }
+                            >
                               {item.daysUntilDue <= 0 ? 'OVERDUE' : `${item.daysUntilDue} days`}
                             </div>
                             <div className="text-sm text-muted-foreground">

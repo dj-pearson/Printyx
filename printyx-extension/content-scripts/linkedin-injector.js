@@ -4,7 +4,7 @@
  * Injects "Add to Printyx CRM" button on LinkedIn profile pages
  */
 
-(function() {
+(function () {
   'use strict';
 
   let parser = null;
@@ -62,7 +62,7 @@
       '.pvs-profile-actions',
       '.pv-top-card-v2-ctas',
       '.pv-top-card--list-bullet',
-      '.pv-text-details__left-panel'
+      '.pv-text-details__left-panel',
     ];
 
     for (const selector of selectors) {
@@ -124,16 +124,18 @@
       const duplicateCheck = await apiClient.checkDuplicate({
         linkedinUrl: profileData.linkedinUrl,
         name: profileData.name,
-        company: profileData.company
+        company: profileData.company,
       });
 
       if (duplicateCheck.exists) {
         setButtonState('exists', 'Already in CRM');
 
         // Show notification
-        showNotification('Contact Already Exists',
+        showNotification(
+          'Contact Already Exists',
           `${duplicateCheck.record.name} is already in your CRM`,
-          'info');
+          'info',
+        );
 
         setTimeout(() => {
           setButtonState('exists', 'In CRM ✓');
@@ -149,9 +151,10 @@
         setButtonState('success', 'Added to CRM ✓');
 
         // Show success notification with enrichment info
-        const message = result.enrichmentSource === 'apollo'
-          ? `Enriched with ${result.enrichedFields.email ? 'email' : 'profile'} data`
-          : 'Added successfully';
+        const message =
+          result.enrichmentSource === 'apollo'
+            ? `Enriched with ${result.enrichedFields.email ? 'email' : 'profile'} data`
+            : 'Added successfully';
 
         showNotification('Contact Added!', message, 'success');
 
@@ -160,7 +163,6 @@
       } else {
         throw new Error('Import failed');
       }
-
     } catch (error) {
       console.error('[Printyx Extension] Import error:', error);
 
@@ -185,10 +187,14 @@
     button.className = `printyx-import-btn printyx-import-btn--${state}`;
 
     const icons = {
-      loading: '<svg class="printyx-spinner" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>',
-      success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
-      error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-      exists: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>'
+      loading:
+        '<svg class="printyx-spinner" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>',
+      success:
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+      error:
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+      exists:
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>',
     };
 
     button.innerHTML = `${icons[state] || ''}<span>${text}</span>`;
@@ -235,14 +241,14 @@
    * Store import in local history
    */
   async function storeImportHistory(profileData, result) {
-    const history = await chrome.storage.local.get(['importHistory']) || { importHistory: [] };
+    const history = (await chrome.storage.local.get(['importHistory'])) || { importHistory: [] };
     const imports = history.importHistory || [];
 
     imports.unshift({
       ...profileData,
       importedAt: new Date().toISOString(),
       recordId: result.businessRecord?.id,
-      enrichmentSource: result.enrichmentSource
+      enrichmentSource: result.enrichmentSource,
     });
 
     // Keep only last 50 imports
@@ -301,7 +307,7 @@
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
     });
   }
 

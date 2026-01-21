@@ -94,9 +94,7 @@ export default function QuotaGauge({ current, target, percent }: QuotaGaugeProps
           <div className="text-4xl font-bold" style={{ color }}>
             {percent.toFixed(0)}%
           </div>
-          <div className="text-xs text-muted-foreground mt-1 font-medium">
-            {status}
-          </div>
+          <div className="text-xs text-muted-foreground mt-1 font-medium">{status}</div>
         </div>
 
         {/* Target icon */}

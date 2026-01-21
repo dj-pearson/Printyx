@@ -12,6 +12,7 @@
 An intelligent system that monitors a dedicated email inbox (e.g., service@company.com), uses AI to parse customer service requests, and automatically creates structured service tickets. This "quick win" project delivers immediate time savings (2-4 hours/day) with minimal development effort.
 
 **Key Benefits:**
+
 - Eliminates manual ticket entry (saves 5-10 minutes per ticket)
 - 24/7 availability (customers can report issues anytime)
 - Consistent data quality (AI extracts structured information)
@@ -94,19 +95,12 @@ An intelligent system that monitors a dedicated email inbox (e.g., service@compa
 {
   "email-monitor": {
     "language": "Node.js 20 LTS",
-    "libraries": [
-      "imap",
-      "mailparser",
-      "@microsoft/microsoft-graph-client"
-    ],
+    "libraries": ["imap", "mailparser", "@microsoft/microsoft-graph-client"],
     "purpose": "Monitor inbox and fetch emails"
   },
   "ai-parser": {
     "language": "Node.js 20 LTS",
-    "libraries": [
-      "@anthropic-ai/sdk (already integrated)",
-      "zod (already integrated)"
-    ],
+    "libraries": ["@anthropic-ai/sdk (already integrated)", "zod (already integrated)"],
     "purpose": "AI-powered email parsing"
   },
   "ticket-creation": {
@@ -126,16 +120,19 @@ An intelligent system that monitors a dedicated email inbox (e.g., service@compa
 #### Email Connection Options
 
 **Option 1: IMAP (Most Common)**
+
 - Works with Gmail, Outlook.com, most email providers
 - Requires IMAP enabled and app password
 - Library: `imap` or `imap-simple`
 
 **Option 2: Microsoft Graph API (Enterprise)**
+
 - Best for Microsoft 365 / Exchange Online
 - OAuth 2.0 authentication
 - Library: `@microsoft/microsoft-graph-client` (already integrated)
 
 **Option 3: Gmail API (Google Workspace)**
+
 - OAuth 2.0 authentication
 - Pub/Sub for instant notifications (optional)
 - Library: `googleapis` (already integrated)
@@ -332,6 +329,7 @@ export function startEmailMonitor(config: EmailConfig) {
 #### Configuration
 
 **Environment Variables** (add to `.env`):
+
 ```bash
 # Email monitoring
 EMAIL_MONITOR_ENABLED=true
@@ -343,6 +341,7 @@ EMAIL_TLS=true
 ```
 
 **Start in Server** (`server/index.ts`):
+
 ```typescript
 import { startEmailMonitor } from './services/email-monitor-service';
 
@@ -380,7 +379,10 @@ const anthropic = new Anthropic({
 const TicketDataSchema = z.object({
   customerName: z.string().optional(),
   customerEmail: z.string().email(),
-  equipmentIdentifier: z.string().optional().describe('Serial number, model, or location description'),
+  equipmentIdentifier: z
+    .string()
+    .optional()
+    .describe('Serial number, model, or location description'),
   issueCategory: z.enum([
     'paper_jam',
     'toner_empty',
@@ -389,7 +391,7 @@ const TicketDataSchema = z.object({
     'error_code',
     'supply_order',
     'general_service',
-    'other'
+    'other',
   ]),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   issueDescription: z.string().describe('Clear description of the issue'),
@@ -473,9 +475,16 @@ Body:
 ${email.body}
 
 CONTEXT (Customer's Equipment):
-${context.equipment.length > 0 ? context.equipment.map((e: any) =>
-  `- ${e.manufacturer} ${e.model}, Serial: ${e.serialNumber}, Location: ${e.location}`
-).join('\n') : 'No equipment found for this customer'}
+${
+  context.equipment.length > 0
+    ? context.equipment
+        .map(
+          (e: any) =>
+            `- ${e.manufacturer} ${e.model}, Serial: ${e.serialNumber}, Location: ${e.location}`,
+        )
+        .join('\n')
+    : 'No equipment found for this customer'
+}
 
 CUSTOMER INFORMATION:
 ${context.customer ? `Name: ${context.customer.name}, Phone: ${context.customer.phone}` : 'New customer'}
@@ -534,19 +543,17 @@ Return ONLY the JSON, no other text.`;
   /**
    * Enhance parsed data with database lookups
    */
-  private async enhanceTicketData(
-    ticketData: TicketData,
-    context: any
-  ): Promise<TicketData> {
+  private async enhanceTicketData(ticketData: TicketData, context: any): Promise<TicketData> {
     // If equipment identifier provided, try to match
     if (ticketData.equipmentIdentifier && context.equipment.length > 0) {
       const identifier = ticketData.equipmentIdentifier.toLowerCase();
 
       // Try to find matching equipment
-      const match = context.equipment.find((e: any) =>
-        e.serialNumber?.toLowerCase().includes(identifier) ||
-        e.model?.toLowerCase().includes(identifier) ||
-        e.location?.toLowerCase().includes(identifier)
+      const match = context.equipment.find(
+        (e: any) =>
+          e.serialNumber?.toLowerCase().includes(identifier) ||
+          e.model?.toLowerCase().includes(identifier) ||
+          e.location?.toLowerCase().includes(identifier),
       );
 
       if (match) {
@@ -581,6 +588,7 @@ Return ONLY the JSON, no other text.`;
 #### Claude API Prompt Engineering
 
 **Key Techniques:**
+
 - **Few-Shot Examples:** Include 2-3 example emails and their parsed output
 - **Strict JSON Schema:** Define exact output format
 - **Context Awareness:** Provide customer's equipment list
@@ -588,6 +596,7 @@ Return ONLY the JSON, no other text.`;
 - **Confidence Scoring:** Ask Claude to indicate confidence level
 
 **Optimized Prompt Template:**
+
 ```typescript
 const SYSTEM_PROMPT = `You are an expert service ticket parser for managed print services. You excel at:
 - Identifying copier/printer issues from customer descriptions
@@ -623,12 +632,15 @@ export class TicketCreationService {
 
     if (!customer) {
       // Create new customer
-      const [newCustomer] = await db.insert(customers).values({
-        name: ticketData.customerName || ticketData.customerEmail,
-        email: ticketData.customerEmail,
-        phone: ticketData.contactPhone,
-        tenantId: 'default', // TODO: Determine tenant from email domain
-      }).returning();
+      const [newCustomer] = await db
+        .insert(customers)
+        .values({
+          name: ticketData.customerName || ticketData.customerEmail,
+          email: ticketData.customerEmail,
+          phone: ticketData.contactPhone,
+          tenantId: 'default', // TODO: Determine tenant from email domain
+        })
+        .returning();
 
       customer = newCustomer;
     }
@@ -646,10 +658,11 @@ export class TicketCreationService {
 
       // Simple fuzzy match (could be improved)
       const identifier = ticketData.equipmentIdentifier.toLowerCase();
-      const match = potentialEquipment.find(e =>
-        e.serialNumber?.toLowerCase().includes(identifier) ||
-        e.model?.toLowerCase().includes(identifier) ||
-        e.location?.toLowerCase().includes(identifier)
+      const match = potentialEquipment.find(
+        (e) =>
+          e.serialNumber?.toLowerCase().includes(identifier) ||
+          e.model?.toLowerCase().includes(identifier) ||
+          e.location?.toLowerCase().includes(identifier),
       );
 
       if (match) {
@@ -658,21 +671,24 @@ export class TicketCreationService {
     }
 
     // Create service ticket
-    const [ticket] = await db.insert(serviceTickets).values({
-      customerId: customer.id,
-      equipmentId,
-      title: `${ticketData.issueCategory.replace('_', ' ')} - ${customer.name}`,
-      description: ticketData.issueDescription,
-      category: ticketData.issueCategory,
-      priority: ticketData.priority,
-      status: 'open',
-      errorCodes: ticketData.errorCodes,
-      requestedDate: ticketData.requestedDate,
-      locationDetails: ticketData.locationDetails,
-      source: 'email',
-      tenantId: customer.tenantId,
-      createdAt: new Date(),
-    }).returning();
+    const [ticket] = await db
+      .insert(serviceTickets)
+      .values({
+        customerId: customer.id,
+        equipmentId,
+        title: `${ticketData.issueCategory.replace('_', ' ')} - ${customer.name}`,
+        description: ticketData.issueDescription,
+        category: ticketData.issueCategory,
+        priority: ticketData.priority,
+        status: 'open',
+        errorCodes: ticketData.errorCodes,
+        requestedDate: ticketData.requestedDate,
+        locationDetails: ticketData.locationDetails,
+        source: 'email',
+        tenantId: customer.tenantId,
+        createdAt: new Date(),
+      })
+      .returning();
 
     // Auto-assign to technician
     await assignTicketToTechnician(ticket.id);
@@ -742,7 +758,7 @@ export async function assignTicketToTechnician(ticketId: string): Promise<void> 
     where: and(
       eq(users.role, 'Technician'),
       eq(users.tenantId, ticket.tenantId),
-      eq(users.status, 'active')
+      eq(users.status, 'active'),
     ),
   });
 
@@ -755,10 +771,7 @@ export async function assignTicketToTechnician(ticketId: string): Promise<void> 
 
     // Factor 1: Current workload (fewer tickets = higher score)
     const currentTickets = await db.query.serviceTickets.findMany({
-      where: and(
-        eq(serviceTickets.assignedTo, tech.id),
-        eq(serviceTickets.status, 'open')
-      ),
+      where: and(eq(serviceTickets.assignedTo, tech.id), eq(serviceTickets.status, 'open')),
     });
     score += (10 - currentTickets.length) * 10; // Max 100 points
 
@@ -772,7 +785,7 @@ export async function assignTicketToTechnician(ticketId: string): Promise<void> 
     const previousTickets = await db.query.serviceTickets.findMany({
       where: and(
         eq(serviceTickets.customerId, ticket.customerId),
-        eq(serviceTickets.assignedTo, tech.id)
+        eq(serviceTickets.assignedTo, tech.id),
       ),
       limit: 1,
     });
@@ -788,7 +801,8 @@ export async function assignTicketToTechnician(ticketId: string): Promise<void> 
   }
 
   if (bestTechnician) {
-    await db.update(serviceTickets)
+    await db
+      .update(serviceTickets)
       .set({ assignedTo: bestTechnician.id })
       .where(eq(serviceTickets.id, ticketId));
 
@@ -808,6 +822,7 @@ export async function assignTicketToTechnician(ticketId: string): Promise<void> 
 #### Testing Strategy
 
 **Unit Tests:**
+
 ```typescript
 // test/ai-email-parser.test.ts
 import { AIEmailParserService } from '../server/services/ai-email-parser-service';
@@ -845,6 +860,7 @@ describe('AIEmailParserService', () => {
 ```
 
 **Integration Tests:**
+
 ```typescript
 // test/email-to-ticket-flow.test.ts
 describe('Email to Ticket Flow', () => {
@@ -860,6 +876,7 @@ describe('Email to Ticket Flow', () => {
 ```
 
 **Manual Testing Checklist:**
+
 - [ ] Paper jam emails
 - [ ] Toner/supply requests
 - [ ] Error code issues
@@ -876,6 +893,7 @@ describe('Email to Ticket Flow', () => {
 #### Monitoring & Observability
 
 **Metrics to Track:**
+
 ```typescript
 // Prometheus metrics
 const emailsProcessedCounter = new Counter({
@@ -898,6 +916,7 @@ const ticketCreationDuration = new Histogram({
 ```
 
 **Logging:**
+
 ```typescript
 // Structured logging
 logger.info('Email processed', {
@@ -911,6 +930,7 @@ logger.info('Email processed', {
 ```
 
 **Alerting:**
+
 - Email parsing failures (> 5% failure rate)
 - IMAP connection failures
 - AI API errors
@@ -924,6 +944,7 @@ logger.info('Email processed', {
 ### Feature 1: Multi-Language Support
 
 **Implementation:**
+
 - Claude natively supports multiple languages
 - No changes needed to prompt for basic support
 - For better accuracy, detect language and include in prompt:
@@ -932,14 +953,14 @@ logger.info('Email processed', {
 import { franc } from 'franc';
 
 const language = franc(email.body);
-const languagePrompt = language === 'spa'
-  ? '\n\nNote: This email is in Spanish. Parse accordingly.'
-  : '';
+const languagePrompt =
+  language === 'spa' ? '\n\nNote: This email is in Spanish. Parse accordingly.' : '';
 ```
 
 ### Feature 2: Attachment Processing
 
 **Image Analysis:**
+
 - Upload images to Claude API (supports image input)
 - Extract information from photos (error screen, meter reading, etc.)
 - OCR for text in images
@@ -996,7 +1017,7 @@ if (isFollowUp) {
 
 ```typescript
 // Add to prompt
-"Also analyze the customer's sentiment (frustrated, angry, neutral, satisfied) and indicate if this requires immediate attention."
+"Also analyze the customer's sentiment (frustrated, angry, neutral, satisfied) and indicate if this requires immediate attention.";
 
 // If sentiment is "angry" or "frustrated", escalate priority
 if (ticketData.sentiment === 'angry') {
@@ -1106,6 +1127,7 @@ export const emailMonitorConfig = pgTable('email_monitor_config', {
 **Location:** `client/src/pages/settings/email-parser.tsx`
 
 **Features:**
+
 - Enable/disable email monitoring
 - Configure email account (IMAP, Microsoft, Gmail)
 - Test connection
@@ -1116,6 +1138,7 @@ export const emailMonitorConfig = pgTable('email_monitor_config', {
 - Manage auto-response templates
 
 **Mockup:**
+
 ```
 ┌────────────────────────────────────────────────┐
 │  Email to Ticket Parser Configuration         │
@@ -1195,6 +1218,7 @@ function decryptPassword(encrypted: string): string {
 ### Email Validation
 
 **Prevent abuse:**
+
 - Whitelist sender domains (only accept from known customers)
 - Rate limiting (max 100 emails/hour per customer)
 - Spam detection (reject emails with spam characteristics)
@@ -1213,18 +1237,22 @@ function decryptPassword(encrypted: string): string {
 ### AI API Costs
 
 **Claude Sonnet 4.5 Pricing:**
+
 - Input: $3 per million tokens
 - Output: $15 per million tokens
 
 **Typical Email:**
+
 - Prompt: ~1,500 tokens (email + context + instructions)
 - Response: ~300 tokens (JSON output)
 - **Cost per email: ~$0.009 (less than 1 cent)**
 
 **Monthly Costs (1000 emails):**
+
 - 1000 emails × $0.009 = **$9/month**
 
 **Annual Costs (12,000 emails):**
+
 - 12,000 emails × $0.009 = **$108/year**
 
 **Extremely cost-effective!**
@@ -1234,6 +1262,7 @@ function decryptPassword(encrypted: string): string {
 **IMAP (Existing Email):** $0 (use existing service@company email)
 
 **Dedicated Email Service:**
+
 - Google Workspace: $6/user/month
 - Microsoft 365: $6/user/month
 
@@ -1244,16 +1273,19 @@ function decryptPassword(encrypted: string): string {
 ### Time Savings
 
 **Current Process:**
+
 - Average time to manually create ticket: 5-8 minutes
 - Admin handling 20-30 tickets/day
 - Time spent: 2-4 hours/day
 
 **With AI Parser:**
+
 - Average time: < 30 seconds (automated)
 - Admin only handles failed parses (5%)
 - Time spent: 10-15 minutes/day
 
 **Time Saved:**
+
 - 2-4 hours/day × $20/hour (admin wage) = **$40-80/day**
 - **$10,000-$20,000/year in labor costs**
 
@@ -1272,11 +1304,13 @@ function decryptPassword(encrypted: string): string {
 ### ROI Summary
 
 **Investment:**
+
 - Development: $15,000 (1 developer, 4 weeks)
 - AI API costs: $108/year
 - **Total Year 1: $15,108**
 
 **Savings:**
+
 - Labor: $10,000-$20,000/year
 - Improved efficiency: $5,000/year (reduced errors, faster response)
 - **Total Annual Benefit: $15,000-$25,000**
@@ -1289,22 +1323,26 @@ function decryptPassword(encrypted: string): string {
 ## Success Metrics
 
 ### Accuracy Metrics
+
 - **Parsing Success Rate:** Target 95%+
 - **Equipment Matching Accuracy:** Target 90%+
 - **Category Classification Accuracy:** Target 92%+
 - **Priority Assignment Accuracy:** Target 85%+
 
 ### Efficiency Metrics
+
 - **Average Processing Time:** < 30 seconds
 - **Time Saved per Ticket:** 4-7 minutes
 - **Admin Time Saved:** 2-4 hours/day
 
 ### Quality Metrics
+
 - **Customer Satisfaction:** +15% improvement in ticket creation experience
 - **Response Time:** < 5 minutes (vs 1-4 hours previously)
 - **Ticket Quality:** 95%+ complete information on first pass
 
 ### Adoption Metrics
+
 - **Emails Processed:** Target 80% of inbound service requests within 3 months
 - **Fallback Rate:** < 5% (emails that require manual intervention)
 
@@ -1313,24 +1351,28 @@ function decryptPassword(encrypted: string): string {
 ## Rollout Plan
 
 ### Week 1: Internal Testing
+
 - Deploy to staging environment
 - Test with synthetic emails
 - Invite 3-5 admin users to test
 - Fix critical bugs
 
 ### Week 2: Pilot (Limited Rollout)
+
 - Enable for 10% of customers
 - Monitor closely
 - Gather feedback
 - Iterate on prompts
 
 ### Week 3: Beta (Expanded Rollout)
+
 - Enable for 50% of customers
 - A/B test (email parser vs manual for comparison)
 - Measure metrics
 - Refine auto-assignment logic
 
 ### Week 4: General Availability
+
 - Enable for 100% of customers
 - Announce feature to customers
 - Provide documentation
@@ -1341,12 +1383,14 @@ function decryptPassword(encrypted: string): string {
 ## Support & Training
 
 ### Admin Training
+
 - 30-minute training video
 - Quick start guide (PDF)
 - FAQ document
 - Practice emails for testing
 
 ### Customer Communication
+
 - Announcement email: "New way to request service"
 - Include email address: service@company.com
 - Instructions: "Just send an email describing your issue"
@@ -1357,6 +1401,7 @@ function decryptPassword(encrypted: string): string {
 ## Future Enhancements
 
 **Phase 2 (Future):**
+
 1. **SMS/Text Message Parser:** Accept service requests via SMS
 2. **Voice-to-Text:** Call transcription and auto-ticket creation
 3. **WhatsApp Integration:** Accept tickets via WhatsApp
@@ -1372,12 +1417,14 @@ function decryptPassword(encrypted: string): string {
 The AI Email-to-Ticket Parser is a high-ROI, quick-win project that delivers immediate value. With minimal development effort (3-4 weeks) and low ongoing costs (~$10/month for AI), it saves 2-4 hours of admin time per day and provides 24/7 ticket creation capability.
 
 **Key Success Factors:**
+
 - Robust email monitoring (handle connection failures gracefully)
 - Accurate AI parsing (continuously improve prompts based on corrections)
 - Reliable ticket creation (validate data, handle edge cases)
 - Excellent customer communication (confirmations, updates)
 
 **Next Steps:**
+
 1. Set up development environment
 2. Configure test email account
 3. Build email monitor service
@@ -1389,7 +1436,6 @@ The AI Email-to-Ticket Parser is a high-ROI, quick-win project that delivers imm
 
 ## Document History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-11-23 | Claude | Initial implementation plan |
-
+| Version | Date       | Author | Changes                     |
+| ------- | ---------- | ------ | --------------------------- |
+| 1.0     | 2025-11-23 | Claude | Initial implementation plan |

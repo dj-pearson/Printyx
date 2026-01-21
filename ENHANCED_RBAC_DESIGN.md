@@ -1,5 +1,6 @@
 # Enhanced RBAC Design for Printyx Multi-Tenant Platform
-*Based on RBAC.md research - August 7, 2025*
+
+_Based on RBAC.md research - August 7, 2025_
 
 ## Executive Summary
 
@@ -16,21 +17,25 @@ This document outlines the enhanced Role-Based Access Control (RBAC) system for 
 ## 4-Tier Organizational Architecture
 
 ### Tier 1: Platform Level (Printyx System)
+
 - **Purpose**: Global system administration and support
 - **Scope**: Cross-tenant operations and system maintenance
 - **Key Roles**: Platform Admin, Support Engineer, Compliance Officer
 
 ### Tier 2: Company Level (Copier Dealer)
+
 - **Purpose**: Enterprise-wide operations across all locations
 - **Scope**: Company-wide policies, multi-location coordination
 - **Key Roles**: CEO, CFO, VP Sales, Company Admin
 
 ### Tier 3: Regional Level (Geographic Territories)
+
 - **Purpose**: Multi-location coordination within territories
 - **Scope**: Regional oversight and territory management
 - **Key Roles**: Regional Manager, Regional Sales Director, Territory Manager
 
 ### Tier 4: Location Level (Individual Branches)
+
 - **Purpose**: Day-to-day operations at specific locations
 - **Scope**: Location-specific operations and customer interactions
 - **Key Roles**: Branch Manager, Sales Manager, Service Manager, Technician
@@ -38,44 +43,52 @@ This document outlines the enhanced Role-Based Access Control (RBAC) system for 
 ## Enhanced 8-Level Role Hierarchy
 
 ### Level 8: Platform Administrator
+
 - **Fixed Printyx Roles** (Non-customizable)
 - **Root Admin**: Full system access across all tenants
 - **Support Engineer**: Limited cross-tenant access for support
 - **Compliance Officer**: Audit and compliance access
 
 ### Level 7: Company Executive
+
 - **Company Admin**: Full company access, can customize all lower roles
 - **CEO/Owner**: Strategic oversight, financial visibility
 - **CFO**: Financial management and reporting
 
 ### Level 6: Company Directors
+
 - **VP Sales**: Sales strategy and territory management
 - **VP Service**: Service operations and technician management
 - **VP Finance**: Accounting and financial operations
 - **Operations Director**: Operational oversight
 
 ### Level 5: Regional Managers
+
 - **Regional Sales Director**: Multi-location sales management
 - **Regional Service Manager**: Multi-location service coordination
 - **Regional Operations Manager**: Multi-location operational oversight
 
 ### Level 4: Location Managers
+
 - **Branch Manager**: Complete location oversight
 - **Sales Manager**: Location sales team management
 - **Service Manager**: Location service team management
 - **Finance Manager**: Location financial operations
 
 ### Level 3: Department Supervisors
+
 - **Sales Supervisor**: Team lead for sales representatives
 - **Service Supervisor**: Team lead for technicians
 - **Administrative Supervisor**: Office operations oversight
 
 ### Level 2: Team Leads
+
 - **Senior Sales Rep**: Lead sales representative
 - **Senior Technician**: Lead field technician
 - **Office Manager**: Administrative team lead
 
 ### Level 1: Individual Contributors
+
 - **Sales Representative**: Individual sales activities
 - **Field Technician**: Individual service activities
 - **Administrative Assistant**: Support functions
@@ -86,6 +99,7 @@ This document outlines the enhanced Role-Based Access Control (RBAC) system for 
 ### Core Business Modules
 
 #### 1. Sales & CRM Module
+
 ```javascript
 SALES_PERMISSIONS = {
   // Lead Management
@@ -94,27 +108,28 @@ SALES_PERMISSIONS = {
   'lead.view_location': ['branch_manager', 'sales_manager'],
   'lead.view_regional': ['regional_sales_director'],
   'lead.view_company': ['vp_sales', 'ceo', 'company_admin'],
-  
+
   // Quote & Proposal Management
   'quote.create': ['sales_rep', 'senior_sales_rep'],
   'quote.approve_standard': ['sales_supervisor', 'sales_manager'],
   'quote.approve_high_value': ['sales_manager', 'regional_sales_director'],
   'quote.approve_enterprise': ['vp_sales', 'ceo'],
-  
+
   // Territory Management
   'territory.manage_assignments': ['regional_sales_director', 'vp_sales'],
   'territory.view_performance': ['sales_manager', 'regional_sales_director'],
-  
+
   // Commission Access
   'commission.view_own': ['sales_rep', 'senior_sales_rep'],
   'commission.view_team': ['sales_supervisor', 'sales_manager'],
   'commission.view_location': ['branch_manager'],
   'commission.view_regional': ['regional_sales_director'],
-  'commission.manage_plans': ['vp_sales', 'cfo']
-}
+  'commission.manage_plans': ['vp_sales', 'cfo'],
+};
 ```
 
 #### 2. Service Management Module
+
 ```javascript
 SERVICE_PERMISSIONS = {
   // Service Tickets
@@ -124,20 +139,21 @@ SERVICE_PERMISSIONS = {
   'ticket.view_team': ['service_supervisor'],
   'ticket.view_location': ['service_manager', 'branch_manager'],
   'ticket.view_regional': ['regional_service_manager'],
-  
+
   // Equipment Management
   'equipment.install': ['field_technician', 'senior_technician'],
   'equipment.configure': ['senior_technician', 'service_supervisor'],
   'equipment.remote_access': ['service_manager', 'regional_service_manager'],
-  
+
   // Parts & Inventory
   'parts.order': ['field_technician', 'senior_technician'],
   'parts.approve_order': ['service_supervisor', 'service_manager'],
-  'parts.manage_inventory': ['service_manager', 'operations_director']
-}
+  'parts.manage_inventory': ['service_manager', 'operations_director'],
+};
 ```
 
 #### 3. Financial Management Module
+
 ```javascript
 FINANCE_PERMISSIONS = {
   // Invoice Management
@@ -146,19 +162,20 @@ FINANCE_PERMISSIONS = {
   'invoice.view_location': ['finance_manager', 'branch_manager'],
   'invoice.view_regional': ['regional_operations_manager'],
   'invoice.view_company': ['cfo', 'vp_finance'],
-  
+
   // Payment Processing
   'payment.process': ['finance_manager', 'vp_finance'],
   'payment.refund': ['finance_manager', 'cfo'],
-  
+
   // Financial Reporting
   'report.location_financials': ['finance_manager', 'branch_manager'],
   'report.regional_financials': ['regional_operations_manager'],
-  'report.company_financials': ['cfo', 'vp_finance', 'ceo']
-}
+  'report.company_financials': ['cfo', 'vp_finance', 'ceo'],
+};
 ```
 
 #### 4. Administrative Module
+
 ```javascript
 ADMIN_PERMISSIONS = {
   // User Management
@@ -167,18 +184,18 @@ ADMIN_PERMISSIONS = {
   'user.create_company': ['company_admin'],
   'user.manage_roles': ['company_admin'],
   'user.deactivate': ['branch_manager', 'regional_manager', 'company_admin'],
-  
+
   // System Configuration
   'config.location_settings': ['branch_manager'],
   'config.regional_settings': ['regional_manager'],
   'config.company_settings': ['company_admin'],
-  
+
   // Audit & Compliance
   'audit.view_location': ['branch_manager', 'compliance_officer'],
   'audit.view_regional': ['regional_manager', 'compliance_officer'],
   'audit.view_company': ['company_admin', 'compliance_officer'],
-  'audit.manage_compliance': ['compliance_officer', 'platform_admin']
-}
+  'audit.manage_compliance': ['compliance_officer', 'platform_admin'],
+};
 ```
 
 ## Role Customization Framework
@@ -205,6 +222,7 @@ Company Admins can customize roles at Level 6 and below through:
 ### Small Dealer Optimization ($500K Revenue)
 
 **Simplified Role Structure:**
+
 - Company Admin (Owner/Manager)
 - Sales Manager (may handle multiple functions)
 - Service Manager (may handle multiple functions)
@@ -213,6 +231,7 @@ Company Admins can customize roles at Level 6 and below through:
 - Administrative Assistant
 
 **Consolidated Permissions:**
+
 - Fewer hierarchy levels (combine regional and location)
 - Cross-functional role capabilities
 - Simplified approval workflows
@@ -220,12 +239,14 @@ Company Admins can customize roles at Level 6 and below through:
 ### Large Enterprise Optimization ($300M Revenue)
 
 **Full Hierarchy Structure:**
+
 - All 8 levels actively used
 - Strict segregation of duties
 - Complex approval workflows
 - Territory-based access controls
 
 **Advanced Features:**
+
 - Automated role assignment based on organizational charts
 - Integration with HR systems
 - Advanced audit trails and compliance reporting
@@ -234,6 +255,7 @@ Company Admins can customize roles at Level 6 and below through:
 ## Implementation Strategy
 
 ### Phase 1: Core Infrastructure
+
 1. **Database Schema Updates**
    - Implement nested set model for hierarchies
    - Add organizational_units table
@@ -246,6 +268,7 @@ Company Admins can customize roles at Level 6 and below through:
    - Create permission inheritance algorithms
 
 ### Phase 2: Business Logic
+
 1. **Module-Specific Permissions**
    - Implement sales territory controls
    - Add service assignment logic
@@ -257,6 +280,7 @@ Company Admins can customize roles at Level 6 and below through:
    - Add exception management workflows
 
 ### Phase 3: Advanced Features
+
 1. **Performance Optimization**
    - Implement L1/L2/L3 caching
    - Add permission precomputation
@@ -268,6 +292,7 @@ Company Admins can customize roles at Level 6 and below through:
    - Create role analytics
 
 ### Phase 4: Integration & Scaling
+
 1. **External Integrations**
    - HR system synchronization
    - Single sign-on (SSO)

@@ -53,7 +53,7 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
     { name: 'Equipment Upgrade', value: results.savingsOpportunities.upgradeEquipment },
     { name: 'Print Policies', value: results.savingsOpportunities.printPolicies },
     { name: 'Supply Management', value: results.savingsOpportunities.supplyManagement },
-  ].filter(item => item.value > 0);
+  ].filter((item) => item.value > 0);
 
   const hiddenCostsData = [
     { name: 'Supply Waste', value: results.hiddenCosts.supplyWaste },
@@ -101,7 +101,9 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">${results.costPerPageBW.toFixed(3)}</div>
-            <p className="text-sm text-gray-500 mt-1">Black & White (Color: ${results.costPerPageColor.toFixed(3)})</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Black & White (Color: ${results.costPerPageColor.toFixed(3)})
+            </p>
           </CardContent>
         </Card>
 
@@ -123,10 +125,14 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
         <Alert className="border-orange-200 bg-orange-50">
           <AlertCircle className="h-4 w-4 text-orange-600" />
           <AlertDescription className="text-orange-800">
-            <strong>You're spending {formatPercentage(results.benchmarking.percentageAboveIndustry)} more than industry average!</strong>
+            <strong>
+              You're spending {formatPercentage(results.benchmarking.percentageAboveIndustry)} more
+              than industry average!
+            </strong>
             <br />
-            Companies in your industry typically spend {formatCurrency(results.benchmarking.industryAverageCostPerEmployee)} per employee annually.
-            You're at {formatCurrency(results.benchmarking.costPerEmployee)} per employee.
+            Companies in your industry typically spend{' '}
+            {formatCurrency(results.benchmarking.industryAverageCostPerEmployee)} per employee
+            annually. You're at {formatCurrency(results.benchmarking.costPerEmployee)} per employee.
           </AlertDescription>
         </Alert>
       )}
@@ -138,7 +144,8 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
           <AlertDescription className="text-blue-800">
             <strong>Fleet Utilization: {results.benchmarking.utilizationScore}%</strong>
             <br />
-            Your devices are underutilized. Consolidating your fleet could reduce costs without impacting productivity.
+            Your devices are underutilized. Consolidating your fleet could reduce costs without
+            impacting productivity.
           </AlertDescription>
         </Alert>
       )}
@@ -220,7 +227,10 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={savingsOpportunitiesData} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}K`}
+                  />
                   <YAxis type="category" dataKey="name" width={120} />
                   <Tooltip formatter={(value) => formatCurrency(value as number)} />
                   <Bar dataKey="value" fill="#10b981" />
@@ -242,9 +252,7 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     {rec.title}
-                    {rec.priority === 'high' && (
-                      <Badge variant="destructive">High Priority</Badge>
-                    )}
+                    {rec.priority === 'high' && <Badge variant="destructive">High Priority</Badge>}
                     {rec.priority === 'medium' && (
                       <Badge variant="secondary">Medium Priority</Badge>
                     )}
@@ -285,7 +293,8 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
               Download Complete Report
             </CardTitle>
             <CardDescription>
-              Get a comprehensive 12-page PDF with device-level analysis, implementation roadmap, and ROI calculator
+              Get a comprehensive 12-page PDF with device-level analysis, implementation roadmap,
+              and ROI calculator
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -306,7 +315,8 @@ export function CalculatorResults({ session, onDownloadPDF, onBookDemo }: Calcul
               See Your Real-Time Data
             </CardTitle>
             <CardDescription>
-              Book a 15-minute demo to see how Printyx tracks these costs automatically with real-time monitoring
+              Book a 15-minute demo to see how Printyx tracks these costs automatically with
+              real-time monitoring
             </CardDescription>
           </CardHeader>
           <CardContent>

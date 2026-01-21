@@ -111,7 +111,10 @@ Error responses:
     { name: 'Inventory', description: 'Inventory and parts management' },
     { name: 'Reports', description: 'Reporting and analytics' },
     { name: 'Knowledge Base', description: 'Support articles and documentation' },
-    { name: 'Integrations', description: 'Third-party integrations (Salesforce, QuickBooks, etc.)' },
+    {
+      name: 'Integrations',
+      description: 'Third-party integrations (Salesforce, QuickBooks, etc.)',
+    },
     { name: 'Admin', description: 'Platform administration' },
     { name: 'Health', description: 'System health and monitoring' },
   ],
@@ -189,7 +192,10 @@ Error responses:
           title: { type: 'string' },
           description: { type: 'string' },
           priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
-          status: { type: 'string', enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled'] },
+          status: {
+            type: 'string',
+            enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled'],
+          },
           assignedTechnicianId: { type: 'string', format: 'uuid' },
           scheduledDate: { type: 'string', format: 'date-time' },
           createdAt: { type: 'string', format: 'date-time' },
@@ -251,7 +257,10 @@ Error responses:
           readingDate: { type: 'string', format: 'date-time' },
           bwMeterReading: { type: 'integer' },
           colorMeterReading: { type: 'integer' },
-          collectionMethod: { type: 'string', enum: ['manual', 'dca', 'email', 'api', 'remote_monitoring'] },
+          collectionMethod: {
+            type: 'string',
+            enum: ['manual', 'dca', 'email', 'api', 'remote_monitoring'],
+          },
           isVerified: { type: 'boolean' },
           createdAt: { type: 'string', format: 'date-time' },
         },
@@ -716,7 +725,10 @@ export const corePaths: OpenAPIV3.PathsObject = {
         {
           name: 'status',
           in: 'query',
-          schema: { type: 'string', enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled'] },
+          schema: {
+            type: 'string',
+            enum: ['open', 'assigned', 'in-progress', 'completed', 'cancelled'],
+          },
         },
         {
           name: 'priority',

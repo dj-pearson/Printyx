@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -150,9 +144,7 @@ export default function PredictiveMaintenanceHub() {
 
   // Filter equipment based on urgency
   const filteredEquipment =
-    filterUrgency === 'all'
-      ? equipment
-      : equipment.filter((e) => e.urgency === filterUrgency);
+    filterUrgency === 'all' ? equipment : equipment.filter((e) => e.urgency === filterUrgency);
 
   // Schedule maintenance mutation
   const scheduleMutation = useMutation({
@@ -250,7 +242,11 @@ export default function PredictiveMaintenanceHub() {
       case 'medium':
         return <Badge variant="secondary">Medium Risk</Badge>;
       case 'low':
-        return <Badge variant="outline" className="text-green-600">Low Risk</Badge>;
+        return (
+          <Badge variant="outline" className="text-green-600">
+            Low Risk
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{riskLevel}</Badge>;
     }
@@ -358,7 +354,9 @@ export default function PredictiveMaintenanceHub() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-3xl font-bold ${getHealthScoreColor(overview?.averageHealthScore || 0)}`}>
+              <div
+                className={`text-3xl font-bold ${getHealthScoreColor(overview?.averageHealthScore || 0)}`}
+              >
                 {overview?.averageHealthScore || 0}%
               </div>
               <Progress value={overview?.averageHealthScore || 0} className="mt-2" />
@@ -388,9 +386,7 @@ export default function PredictiveMaintenanceHub() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">
-                ${overview?.costSavings || 0}
-              </div>
+              <div className="text-3xl font-bold text-green-600">${overview?.costSavings || 0}</div>
               <p className="text-sm text-muted-foreground mt-1">
                 {overview?.uptimeImprovement || '0.00%'} uptime improvement
               </p>
@@ -473,7 +469,9 @@ export default function PredictiveMaintenanceHub() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <span className={`text-lg font-bold ${getHealthScoreColor(equip.healthScore)}`}>
+                            <span
+                              className={`text-lg font-bold ${getHealthScoreColor(equip.healthScore)}`}
+                            >
                               {equip.healthScore}%
                             </span>
                             <Progress value={equip.healthScore} className="w-20" />
@@ -563,7 +561,9 @@ export default function PredictiveMaintenanceHub() {
               <Card>
                 <CardHeader>
                   <CardTitle>Upcoming Maintenance</CardTitle>
-                  <CardDescription>{overview?.soonCount || 0} devices due within 30 days</CardDescription>
+                  <CardDescription>
+                    {overview?.soonCount || 0} devices due within 30 days
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -583,7 +583,11 @@ export default function PredictiveMaintenanceHub() {
                               Due in {equip.daysUntilDue} days
                             </div>
                           </div>
-                          <Button size="sm" variant="outline" onClick={() => handleScheduleClick(equip)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleScheduleClick(equip)}
+                          >
                             Schedule
                           </Button>
                         </div>
@@ -662,9 +666,7 @@ export default function PredictiveMaintenanceHub() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="border rounded p-3">
                         <div className="text-sm text-muted-foreground">Total Parts</div>
-                        <div className="text-2xl font-bold">
-                          {partsForecast.summary.totalParts}
-                        </div>
+                        <div className="text-2xl font-bold">{partsForecast.summary.totalParts}</div>
                       </div>
                       <div className="border rounded p-3">
                         <div className="text-sm text-muted-foreground">Unique Parts</div>

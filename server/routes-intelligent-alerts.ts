@@ -106,7 +106,8 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
       });
     }
 
-    const [updated] = await db.update(alertTriageResults)
+    const [updated] = await db
+      .update(alertTriageResults)
       .set({
         humanReviewed: true,
         reviewedBy,
@@ -137,14 +138,7 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
  */
 router.post('/containment/execute', async (req, res) => {
   try {
-    const {
-      alertId,
-      tenantId,
-      actionType,
-      target,
-      reason,
-      executedBy,
-    } = req.body;
+    const { alertId, tenantId, actionType, target, reason, executedBy } = req.body;
 
     // Validate required fields
     if (!alertId || !tenantId || !actionType || !target || !reason) {
@@ -224,7 +218,8 @@ router.post('/containment/:logId/reverse', async (req, res) => {
       });
     }
 
-    const [updated] = await db.update(automatedContainmentLogs)
+    const [updated] = await db
+      .update(automatedContainmentLogs)
       .set({
         reversed: true,
         reversedAt: new Date(),
@@ -342,7 +337,7 @@ router.post('/patterns', async (req, res) => {
       category,
       resolutionSteps,
       resolutionTime,
-      successful
+      successful,
     );
 
     res.status(201).json({
@@ -415,7 +410,8 @@ router.post('/suggestions/:suggestionId/feedback', async (req, res) => {
       });
     }
 
-    const [feedbackRecord] = await db.insert(resolutionSuggestionFeedback)
+    const [feedbackRecord] = await db
+      .insert(resolutionSuggestionFeedback)
       .values({
         suggestionId: req.params.suggestionId,
         triageResultId,
@@ -532,7 +528,8 @@ router.put('/threats/:threatId', async (req, res) => {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const [updated] = await db.update(proactiveThreatDetection)
+    const [updated] = await db
+      .update(proactiveThreatDetection)
       .set({
         status,
         resolutionNotes,
@@ -584,24 +581,28 @@ router.get('/routing-rules', async (req, res) => {
 });
 
 // SECURITY FIX: Add validation schemas to prevent mass assignment
-const routingRuleSchema = z.object({
-  name: z.string().max(255),
-  description: z.string().optional(),
-  priority: z.number().int().min(0),
-  enabled: z.boolean(),
-  conditions: z.any(), // JSON field
-  actions: z.any(), // JSON field
-  tenantId: z.string().uuid(),
-}).strict();
+const routingRuleSchema = z
+  .object({
+    name: z.string().max(255),
+    description: z.string().optional(),
+    priority: z.number().int().min(0),
+    enabled: z.boolean(),
+    conditions: z.any(), // JSON field
+    actions: z.any(), // JSON field
+    tenantId: z.string().uuid(),
+  })
+  .strict();
 
-const updateRoutingRuleSchema = z.object({
-  name: z.string().max(255).optional(),
-  description: z.string().optional(),
-  priority: z.number().int().min(0).optional(),
-  enabled: z.boolean().optional(),
-  conditions: z.any().optional(),
-  actions: z.any().optional(),
-}).strict();
+const updateRoutingRuleSchema = z
+  .object({
+    name: z.string().max(255).optional(),
+    description: z.string().optional(),
+    priority: z.number().int().min(0).optional(),
+    enabled: z.boolean().optional(),
+    conditions: z.any().optional(),
+    actions: z.any().optional(),
+  })
+  .strict();
 
 /**
  * POST /api/security/routing-rules
@@ -612,9 +613,7 @@ router.post('/routing-rules', async (req, res) => {
     // SECURITY FIX: Validate input
     const validatedData = routingRuleSchema.parse(req.body);
 
-    const [rule] = await db.insert(alertRoutingRules)
-      .values(validatedData)
-      .returning();
+    const [rule] = await db.insert(alertRoutingRules).values(validatedData).returning();
 
     res.status(201).json({
       success: true,
@@ -638,7 +637,8 @@ router.put('/routing-rules/:ruleId', async (req, res) => {
     // SECURITY FIX: Validate input to prevent mass assignment
     const validatedData = updateRoutingRuleSchema.parse(req.body);
 
-    const [updated] = await db.update(alertRoutingRules)
+    const [updated] = await db
+      .update(alertRoutingRules)
       .set(validatedData)
       .where(eq(alertRoutingRules.id, req.params.ruleId))
       .returning();
@@ -659,8 +659,7 @@ router.put('/routing-rules/:ruleId', async (req, res) => {
  */
 router.delete('/routing-rules/:ruleId', async (req, res) => {
   try {
-    await db.delete(alertRoutingRules)
-      .where(eq(alertRoutingRules.id, req.params.ruleId));
+    await db.delete(alertRoutingRules).where(eq(alertRoutingRules.id, req.params.ruleId));
 
     res.json({
       success: true,

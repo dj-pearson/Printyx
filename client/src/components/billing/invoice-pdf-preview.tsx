@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Download, Loader2, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Download, Loader2, AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface InvoicePDFPreviewProps {
   open: boolean;
@@ -54,12 +54,12 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
     } catch (err: any) {
-      console.error("Error loading PDF:", err);
-      setError(err.message || "Failed to load invoice PDF");
+      console.error('Error loading PDF:', err);
+      setError(err.message || 'Failed to load invoice PDF');
       toast({
-        title: "Failed to load PDF",
-        description: err.message || "Please try again",
-        variant: "destructive",
+        title: 'Failed to load PDF',
+        description: err.message || 'Please try again',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -73,7 +73,7 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
       const response = await fetch(`/api/billing/invoices/${invoiceId}/pdf`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = `invoice-${invoiceId}.pdf`;
       document.body.appendChild(a);
@@ -82,14 +82,14 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
       document.body.removeChild(a);
 
       toast({
-        title: "Download started",
-        description: "Invoice PDF is downloading.",
+        title: 'Download started',
+        description: 'Invoice PDF is downloading.',
       });
     } catch (error) {
       toast({
-        title: "Download failed",
-        description: "Failed to download invoice PDF",
-        variant: "destructive",
+        title: 'Download failed',
+        description: 'Failed to download invoice PDF',
+        variant: 'destructive',
       });
     }
   };
@@ -101,15 +101,9 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle>Invoice Preview</DialogTitle>
-              <DialogDescription>
-                Preview invoice before sending or downloading
-              </DialogDescription>
+              <DialogDescription>Preview invoice before sending or downloading</DialogDescription>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleDownload}
-              disabled={isLoading || !!error}
-            >
+            <Button variant="outline" onClick={handleDownload} disabled={isLoading || !!error}>
               <Download className="mr-2 h-4 w-4" />
               Download
             </Button>
@@ -142,11 +136,7 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
           )}
 
           {pdfUrl && !isLoading && !error && (
-            <iframe
-              src={pdfUrl}
-              className="w-full h-full"
-              title="Invoice PDF Preview"
-            />
+            <iframe src={pdfUrl} className="w-full h-full" title="Invoice PDF Preview" />
           )}
         </div>
       </DialogContent>

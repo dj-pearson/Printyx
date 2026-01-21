@@ -20,33 +20,22 @@ const requireAuth = (req: any, res: any, next: any) => {
  */
 router.post('/documents', async (req, res) => {
   try {
-    const {
+    const { title, description, documentTypeId, sourceType, sourceId, initialContent, tags } =
+      req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: 'Document title is required' });
+    }
+
+    const document = await AIDocumentationService.createDocument(req.user.tenantId, req.user.id, {
       title,
       description,
       documentTypeId,
       sourceType,
       sourceId,
       initialContent,
-      tags
-    } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ error: 'Document title is required' });
-    }
-
-    const document = await AIDocumentationService.createDocument(
-      req.user.tenantId,
-      req.user.id,
-      {
-        title,
-        description,
-        documentTypeId,
-        sourceType,
-        sourceId,
-        initialContent,
-        tags
-      }
-    );
+      tags,
+    });
 
     res.status(201).json(document);
   } catch (error) {
@@ -61,15 +50,7 @@ router.post('/documents', async (req, res) => {
  */
 router.get('/documents', async (req, res) => {
   try {
-    const {
-      status,
-      documentType,
-      tags,
-      createdBy,
-      page = 1,
-      limit = 20,
-      search
-    } = req.query;
+    const { status, documentType, tags, createdBy, page = 1, limit = 20, search } = req.query;
 
     // Mock documents data
     const documents = [
@@ -84,9 +65,12 @@ router.get('/documents', async (req, res) => {
           summary: 'Strategic planning session focused on Q4 objectives and resource allocation',
           sections: [
             { type: 'header', content: 'Q4 Strategic Planning Session' },
-            { type: 'attendees', content: ['John Smith', 'Sarah Johnson', 'Mike Chen', 'Lisa Wang'] },
-            { type: 'discussion', content: 'Key discussion points around Q4 growth strategy...' }
-          ]
+            {
+              type: 'attendees',
+              content: ['John Smith', 'Sarah Johnson', 'Mike Chen', 'Lisa Wang'],
+            },
+            { type: 'discussion', content: 'Key discussion points around Q4 growth strategy...' },
+          ],
         },
         wordCount: 1247,
         estimatedReadingTime: 6,
@@ -97,13 +81,14 @@ router.get('/documents', async (req, res) => {
         sourceId: 'meeting-1',
         tags: ['meeting', 'strategic', 'Q4', 'planning'],
         keywords: ['strategic planning', 'Q4 objectives', 'resource allocation'],
-        summary: 'Strategic planning session outlining Q4 growth objectives and resource requirements',
+        summary:
+          'Strategic planning session outlining Q4 growth objectives and resource requirements',
         viewCount: 45,
         editCount: 3,
         createdBy: req.user.id,
         createdAt: new Date('2025-09-27T10:00:00Z'),
         updatedAt: new Date('2025-09-27T14:30:00Z'),
-        publishedAt: new Date('2025-09-27T15:00:00Z')
+        publishedAt: new Date('2025-09-27T15:00:00Z'),
       },
       {
         id: 'doc-2',
@@ -117,8 +102,8 @@ router.get('/documents', async (req, res) => {
           sections: [
             { type: 'executive_summary', content: 'Executive overview of proposed solution' },
             { type: 'problem_statement', content: 'Current challenges and pain points' },
-            { type: 'solution', content: 'Proposed comprehensive solution approach' }
-          ]
+            { type: 'solution', content: 'Proposed comprehensive solution approach' },
+          ],
         },
         wordCount: 2156,
         estimatedReadingTime: 11,
@@ -137,7 +122,7 @@ router.get('/documents', async (req, res) => {
         approvalStatus: 'pending',
         createdBy: req.user.id,
         createdAt: new Date('2025-09-26T09:00:00Z'),
-        updatedAt: new Date('2025-09-27T11:15:00Z')
+        updatedAt: new Date('2025-09-27T11:15:00Z'),
       },
       {
         id: 'doc-3',
@@ -151,8 +136,8 @@ router.get('/documents', async (req, res) => {
           sections: [
             { type: 'overview', content: 'Project overview and current status' },
             { type: 'progress', content: 'Milestone achievements and progress metrics' },
-            { type: 'challenges', content: 'Current challenges and mitigation strategies' }
-          ]
+            { type: 'challenges', content: 'Current challenges and mitigation strategies' },
+          ],
         },
         wordCount: 892,
         estimatedReadingTime: 4,
@@ -167,23 +152,24 @@ router.get('/documents', async (req, res) => {
         editCount: 5,
         createdBy: req.user.id,
         createdAt: new Date('2025-09-25T14:00:00Z'),
-        updatedAt: new Date('2025-09-27T09:45:00Z')
-      }
+        updatedAt: new Date('2025-09-27T09:45:00Z'),
+      },
     ];
 
     // Apply basic filtering
     let filteredDocuments = documents;
-    
+
     if (status) {
-      filteredDocuments = filteredDocuments.filter(doc => doc.status === status);
+      filteredDocuments = filteredDocuments.filter((doc) => doc.status === status);
     }
-    
+
     if (search) {
       const searchLower = (search as string).toLowerCase();
-      filteredDocuments = filteredDocuments.filter(doc => 
-        doc.title.toLowerCase().includes(searchLower) ||
-        doc.description?.toLowerCase().includes(searchLower) ||
-        doc.tags.some(tag => tag.toLowerCase().includes(searchLower))
+      filteredDocuments = filteredDocuments.filter(
+        (doc) =>
+          doc.title.toLowerCase().includes(searchLower) ||
+          doc.description?.toLowerCase().includes(searchLower) ||
+          doc.tags.some((tag) => tag.toLowerCase().includes(searchLower)),
       );
     }
 
@@ -198,9 +184,9 @@ router.get('/documents', async (req, res) => {
         page: Number(page),
         limit: Number(limit),
         total: filteredDocuments.length,
-        pages: Math.ceil(filteredDocuments.length / Number(limit))
+        pages: Math.ceil(filteredDocuments.length / Number(limit)),
       },
-      filters: { status, documentType, tags, createdBy, search }
+      filters: { status, documentType, tags, createdBy, search },
     });
   } catch (error) {
     console.error('Error fetching documents:', error);
@@ -226,48 +212,50 @@ router.get('/documents/:documentId', async (req, res) => {
       status: 'published',
       version: 2,
       parentDocumentId: null,
-      
+
       content: {
         header: {
           meetingTitle: 'Q4 Strategic Planning Session',
           date: '2025-09-27',
           time: '10:00 AM - 12:00 PM',
-          location: 'Conference Room A / Zoom Hybrid'
+          location: 'Conference Room A / Zoom Hybrid',
         },
         attendees: [
           { name: 'John Smith', role: 'CEO', present: true },
           { name: 'Sarah Johnson', role: 'VP Sales', present: true },
           { name: 'Mike Chen', role: 'VP Marketing', present: true },
-          { name: 'Lisa Wang', role: 'VP Operations', present: true }
+          { name: 'Lisa Wang', role: 'VP Operations', present: true },
         ],
         agenda: [
           'Q3 Performance Review',
           'Q4 Strategic Objectives',
           'Resource Allocation',
           'Market Expansion Plans',
-          'Budget Approval'
+          'Budget Approval',
         ],
         discussion: {
           q3Performance: {
-            content: 'Sarah presented exceptional Q3 results with 23% revenue increase over Q2. The new client acquisition strategy exceeded all projections.',
+            content:
+              'Sarah presented exceptional Q3 results with 23% revenue increase over Q2. The new client acquisition strategy exceeded all projections.',
             keyPoints: [
               '23% revenue increase over Q2',
               'Client acquisition strategy success',
-              'All Q3 targets exceeded'
+              'All Q3 targets exceeded',
             ],
             speaker: 'Sarah Johnson',
-            timestamp: '10:15 AM'
+            timestamp: '10:15 AM',
           },
           q4Objectives: {
-            content: 'Team aligned on aggressive Q4 growth strategy focusing on market expansion and team scaling.',
+            content:
+              'Team aligned on aggressive Q4 growth strategy focusing on market expansion and team scaling.',
             keyPoints: [
               'Aggressive growth strategy',
               'Market expansion focus',
-              'Team scaling initiatives'
+              'Team scaling initiatives',
             ],
             speaker: 'John Smith',
-            timestamp: '10:30 AM'
-          }
+            timestamp: '10:30 AM',
+          },
         },
         decisions: [
           {
@@ -275,15 +263,15 @@ router.get('/documents/:documentId', async (req, res) => {
             decisionMaker: 'John Smith',
             context: 'To support aggressive growth strategy and market expansion',
             impact: 'high',
-            timestamp: '11:15 AM'
+            timestamp: '11:15 AM',
           },
           {
             decision: 'Hire 3 additional sales representatives',
             decisionMaker: 'Team Consensus',
             context: 'To handle increased demand from successful client acquisition',
             impact: 'high',
-            timestamp: '11:30 AM'
-          }
+            timestamp: '11:30 AM',
+          },
         ],
         actionItems: [
           {
@@ -291,44 +279,45 @@ router.get('/documents/:documentId', async (req, res) => {
             assignee: 'Mike Chen',
             dueDate: '2025-10-05',
             priority: 'high',
-            status: 'open'
+            status: 'open',
           },
           {
             task: 'Begin recruitment process for sales representatives',
             assignee: 'Sarah Johnson',
             dueDate: '2025-10-10',
             priority: 'high',
-            status: 'open'
+            status: 'open',
           },
           {
             task: 'Research customer support infrastructure options',
             assignee: 'Lisa Wang',
             dueDate: '2025-10-08',
             priority: 'medium',
-            status: 'open'
-          }
+            status: 'open',
+          },
         ],
         nextSteps: [
           'Schedule Q4 budget review meeting for October 8th',
           'Finalize sales team expansion timeline',
-          'Develop customer success metrics for account management program'
-        ]
+          'Develop customer success metrics for account management program',
+        ],
       },
-      
-      plainTextContent: 'Q4 Strategic Planning Session meeting minutes with key decisions and action items...',
+
+      plainTextContent:
+        'Q4 Strategic Planning Session meeting minutes with key decisions and action items...',
       wordCount: 1247,
       estimatedReadingTime: 6,
-      
+
       // AI metadata
       aiGeneratedPercentage: 0.85,
       aiModelUsed: 'claude-3-5-sonnet-20241022',
       aiGenerationPrompts: [
         'Generate professional meeting minutes from transcription',
         'Extract key decisions and action items',
-        'Structure content for business documentation'
+        'Structure content for business documentation',
       ],
       aiConfidenceScore: 0.92,
-      
+
       // Source information
       sourceType: 'meeting_transcription',
       sourceId: 'meeting-1',
@@ -336,14 +325,14 @@ router.get('/documents/:documentId', async (req, res) => {
         meetingDuration: '120 minutes',
         transcriptionConfidence: 0.94,
         speakerCount: 4,
-        recordingQuality: 'excellent'
+        recordingQuality: 'excellent',
       },
-      
+
       // Collaboration
       assignedTo: null,
       reviewers: [],
       approvalStatus: 'approved',
-      
+
       // Access control
       isPublic: false,
       publicUrl: null,
@@ -351,26 +340,27 @@ router.get('/documents/:documentId', async (req, res) => {
       sharingSettings: {
         allowComments: true,
         allowDownload: true,
-        expirationDate: null
+        expirationDate: null,
       },
-      
+
       // Categorization
       tags: ['meeting', 'strategic', 'Q4', 'planning', 'ai-generated'],
       keywords: ['strategic planning', 'Q4 objectives', 'resource allocation', 'growth strategy'],
-      summary: 'Strategic planning session outlining Q4 growth objectives, budget approvals, and resource requirements with specific action items and timelines.',
-      
+      summary:
+        'Strategic planning session outlining Q4 growth objectives, budget approvals, and resource requirements with specific action items and timelines.',
+
       // Analytics
       viewCount: 45,
       editCount: 3,
       lastViewedAt: new Date('2025-09-27T16:30:00Z'),
       lastEditedAt: new Date('2025-09-27T14:30:00Z'),
-      
+
       // Timestamps
       createdBy: req.user.id,
       createdAt: new Date('2025-09-27T10:00:00Z'),
       updatedAt: new Date('2025-09-27T14:30:00Z'),
       publishedAt: new Date('2025-09-27T15:00:00Z'),
-      archivedAt: null
+      archivedAt: null,
     };
 
     // Include edit history if requested
@@ -381,15 +371,15 @@ router.get('/documents/:documentId', async (req, res) => {
           editedBy: req.user.id,
           editedAt: new Date('2025-09-27T12:00:00Z'),
           changes: ['Initial AI generation from meeting transcription'],
-          changesSummary: 'Document created from meeting transcription'
+          changesSummary: 'Document created from meeting transcription',
         },
         {
           version: 2,
           editedBy: req.user.id,
           editedAt: new Date('2025-09-27T14:30:00Z'),
           changes: ['Added detailed action item assignments', 'Enhanced decision context'],
-          changesSummary: 'Added action item details and decision context'
-        }
+          changesSummary: 'Added action item details and decision context',
+        },
       ];
     }
 
@@ -403,7 +393,7 @@ router.get('/documents/:documentId', async (req, res) => {
           description: 'Consider adding a visual timeline for the action items to improve clarity',
           importance: 'medium',
           confidenceScore: 0.78,
-          status: 'pending'
+          status: 'pending',
         },
         {
           id: 'suggestion-2',
@@ -412,8 +402,8 @@ router.get('/documents/:documentId', async (req, res) => {
           description: 'Group action items by department or theme for better organization',
           importance: 'low',
           confidenceScore: 0.65,
-          status: 'pending'
-        }
+          status: 'pending',
+        },
       ];
     }
 
@@ -441,7 +431,7 @@ router.post('/documents/from-meeting', async (req, res) => {
       req.user.id,
       meetingId,
       transcriptionData,
-      documentType
+      documentType,
     );
 
     res.status(201).json(document);
@@ -468,7 +458,7 @@ router.post('/documents/:documentId/sections/generate', async (req, res) => {
       documentId,
       sectionType,
       prompt,
-      context
+      context,
     );
 
     res.json(result);
@@ -495,7 +485,7 @@ router.post('/documents/:documentId/improve', async (req, res) => {
       documentId,
       content,
       improvementType,
-      context
+      context,
     );
 
     res.json(result);
@@ -520,7 +510,7 @@ router.post('/knowledge/articles', async (req, res) => {
     const result = await AIDocumentationService.createKnowledgeArticle(
       req.user.tenantId,
       req.user.id,
-      { title, category, subcategory, content, tags, targetAudience }
+      { title, category, subcategory, content, tags, targetAudience },
     );
 
     res.status(201).json(result);
@@ -547,20 +537,28 @@ router.get('/knowledge/articles', async (req, res) => {
         slug: 'how-to-set-up-ai-powered-meeting-transcription',
         category: 'tutorials',
         subcategory: 'meeting_management',
-        excerpt: 'Learn how to configure and use AI-powered meeting transcription for automatic note generation and action item tracking.',
+        excerpt:
+          'Learn how to configure and use AI-powered meeting transcription for automatic note generation and action item tracking.',
         content: {
-          introduction: 'AI-powered meeting transcription transforms how teams capture and process meeting information...',
+          introduction:
+            'AI-powered meeting transcription transforms how teams capture and process meeting information...',
           steps: [
             'Configure your meeting platform integration',
             'Set up automatic recording and transcription',
             'Customize AI note generation settings',
-            'Review and edit AI-generated content'
-          ]
+            'Review and edit AI-generated content',
+          ],
         },
         wordCount: 1456,
         estimatedReadingTime: 7,
-        aiGeneratedSummary: 'Comprehensive guide for setting up AI meeting transcription with step-by-step instructions and best practices.',
-        aiExtractedKeywords: ['meeting transcription', 'AI automation', 'note generation', 'setup guide'],
+        aiGeneratedSummary:
+          'Comprehensive guide for setting up AI meeting transcription with step-by-step instructions and best practices.',
+        aiExtractedKeywords: [
+          'meeting transcription',
+          'AI automation',
+          'note generation',
+          'setup guide',
+        ],
         aiRelatedTopics: ['Meeting Management', 'AI Automation', 'Productivity Tools'],
         aiDifficultyLevel: 'intermediate',
         aiContentQualityScore: 0.91,
@@ -578,7 +576,7 @@ router.get('/knowledge/articles', async (req, res) => {
         createdBy: req.user.id,
         createdAt: new Date('2025-09-20T10:00:00Z'),
         updatedAt: new Date('2025-09-25T14:30:00Z'),
-        publishedAt: new Date('2025-09-20T15:00:00Z')
+        publishedAt: new Date('2025-09-20T15:00:00Z'),
       },
       {
         id: 'article-2',
@@ -587,20 +585,28 @@ router.get('/knowledge/articles', async (req, res) => {
         slug: 'best-practices-for-ai-document-generation',
         category: 'best_practices',
         subcategory: 'documentation',
-        excerpt: 'Essential best practices for creating high-quality documents using AI assistance and maintaining consistency across your organization.',
+        excerpt:
+          'Essential best practices for creating high-quality documents using AI assistance and maintaining consistency across your organization.',
         content: {
-          introduction: 'AI document generation can significantly improve productivity when used effectively...',
+          introduction:
+            'AI document generation can significantly improve productivity when used effectively...',
           practices: [
             'Define clear document templates and structures',
             'Provide context and specific instructions to AI',
             'Review and refine AI-generated content',
-            'Maintain consistent tone and style'
-          ]
+            'Maintain consistent tone and style',
+          ],
         },
         wordCount: 892,
         estimatedReadingTime: 4,
-        aiGeneratedSummary: 'Essential best practices for effective AI document generation with tips for quality and consistency.',
-        aiExtractedKeywords: ['AI documentation', 'best practices', 'content quality', 'document templates'],
+        aiGeneratedSummary:
+          'Essential best practices for effective AI document generation with tips for quality and consistency.',
+        aiExtractedKeywords: [
+          'AI documentation',
+          'best practices',
+          'content quality',
+          'document templates',
+        ],
         aiRelatedTopics: ['Document Management', 'AI Writing', 'Content Strategy'],
         aiDifficultyLevel: 'beginner',
         aiContentQualityScore: 0.88,
@@ -618,27 +624,28 @@ router.get('/knowledge/articles', async (req, res) => {
         createdBy: req.user.id,
         createdAt: new Date('2025-09-18T09:00:00Z'),
         updatedAt: new Date('2025-09-23T11:15:00Z'),
-        publishedAt: new Date('2025-09-18T12:00:00Z')
-      }
+        publishedAt: new Date('2025-09-18T12:00:00Z'),
+      },
     ];
 
     // Apply filtering
     let filteredArticles = articles;
-    
+
     if (category) {
-      filteredArticles = filteredArticles.filter(article => article.category === category);
+      filteredArticles = filteredArticles.filter((article) => article.category === category);
     }
-    
+
     if (featured === 'true') {
-      filteredArticles = filteredArticles.filter(article => article.featured);
+      filteredArticles = filteredArticles.filter((article) => article.featured);
     }
-    
+
     if (search) {
       const searchLower = (search as string).toLowerCase();
-      filteredArticles = filteredArticles.filter(article =>
-        article.title.toLowerCase().includes(searchLower) ||
-        article.excerpt.toLowerCase().includes(searchLower) ||
-        article.tags.some(tag => tag.toLowerCase().includes(searchLower))
+      filteredArticles = filteredArticles.filter(
+        (article) =>
+          article.title.toLowerCase().includes(searchLower) ||
+          article.excerpt.toLowerCase().includes(searchLower) ||
+          article.tags.some((tag) => tag.toLowerCase().includes(searchLower)),
       );
     }
 
@@ -653,9 +660,9 @@ router.get('/knowledge/articles', async (req, res) => {
         page: Number(page),
         limit: Number(limit),
         total: filteredArticles.length,
-        pages: Math.ceil(filteredArticles.length / Number(limit))
+        pages: Math.ceil(filteredArticles.length / Number(limit)),
       },
-      filters: { category, subcategory, difficulty, featured, search }
+      filters: { category, subcategory, difficulty, featured, search },
     });
   } catch (error) {
     console.error('Error fetching knowledge articles:', error);
@@ -679,7 +686,7 @@ router.post('/documents/search', async (req, res) => {
       req.user.tenantId,
       query,
       filters,
-      options
+      options,
     );
 
     res.json(searchResults);
@@ -697,16 +704,13 @@ router.get('/analytics/writing', async (req, res) => {
   try {
     const {
       start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      end_date = new Date().toISOString()
+      end_date = new Date().toISOString(),
     } = req.query;
 
-    const analytics = await AIDocumentationService.getWritingAnalytics(
-      req.user.tenantId,
-      {
-        start: new Date(start_date as string),
-        end: new Date(end_date as string)
-      }
-    );
+    const analytics = await AIDocumentationService.getWritingAnalytics(req.user.tenantId, {
+      start: new Date(start_date as string),
+      end: new Date(end_date as string),
+    });
 
     res.json(analytics);
   } catch (error) {
@@ -731,12 +735,12 @@ router.get('/document-types', async (req, res) => {
         description: 'Structured meeting minutes with action items and decisions',
         category: 'meeting',
         templateStructure: {
-          sections: ['header', 'attendees', 'agenda', 'discussion', 'decisions', 'action_items']
+          sections: ['header', 'attendees', 'agenda', 'discussion', 'decisions', 'action_items'],
         },
         aiWritingPrompts: [
           'Generate professional meeting minutes from transcription',
           'Extract key decisions and action items',
-          'Identify next steps and follow-up items'
+          'Identify next steps and follow-up items',
         ],
         requiredSections: ['header', 'attendees', 'discussion', 'action_items'],
         optionalSections: ['agenda', 'appendix'],
@@ -746,7 +750,7 @@ router.get('/document-types', async (req, res) => {
         usageCount: 156,
         successRate: 0.91,
         isSystemTemplate: true,
-        isActive: true
+        isActive: true,
       },
       {
         id: 'type-2',
@@ -754,12 +758,19 @@ router.get('/document-types', async (req, res) => {
         description: 'Comprehensive business proposal template',
         category: 'proposal',
         templateStructure: {
-          sections: ['executive_summary', 'problem_statement', 'solution', 'benefits', 'timeline', 'pricing']
+          sections: [
+            'executive_summary',
+            'problem_statement',
+            'solution',
+            'benefits',
+            'timeline',
+            'pricing',
+          ],
         },
         aiWritingPrompts: [
           'Create compelling executive summary',
           'Define clear problem statement and solution',
-          'Highlight key benefits and value proposition'
+          'Highlight key benefits and value proposition',
         ],
         requiredSections: ['executive_summary', 'solution', 'benefits', 'pricing'],
         optionalSections: ['appendix', 'references'],
@@ -769,7 +780,7 @@ router.get('/document-types', async (req, res) => {
         usageCount: 89,
         successRate: 0.87,
         isSystemTemplate: true,
-        isActive: true
+        isActive: true,
       },
       {
         id: 'type-3',
@@ -777,12 +788,12 @@ router.get('/document-types', async (req, res) => {
         description: 'Structured knowledge base article with step-by-step instructions',
         category: 'knowledge_base',
         templateStructure: {
-          sections: ['introduction', 'prerequisites', 'steps', 'examples', 'troubleshooting']
+          sections: ['introduction', 'prerequisites', 'steps', 'examples', 'troubleshooting'],
         },
         aiWritingPrompts: [
           'Write clear introduction and overview',
           'Create step-by-step instructions',
-          'Provide practical examples and troubleshooting'
+          'Provide practical examples and troubleshooting',
         ],
         requiredSections: ['introduction', 'steps'],
         optionalSections: ['prerequisites', 'examples', 'troubleshooting', 'related_articles'],
@@ -792,18 +803,18 @@ router.get('/document-types', async (req, res) => {
         usageCount: 67,
         successRate: 0.93,
         isSystemTemplate: true,
-        isActive: true
-      }
+        isActive: true,
+      },
     ];
 
     let filteredTypes = documentTypes;
-    
+
     if (category) {
-      filteredTypes = filteredTypes.filter(type => type.category === category);
+      filteredTypes = filteredTypes.filter((type) => type.category === category);
     }
-    
+
     if (active_only === 'true') {
-      filteredTypes = filteredTypes.filter(type => type.isActive);
+      filteredTypes = filteredTypes.filter((type) => type.isActive);
     }
 
     res.json(filteredTypes);
@@ -814,5 +825,3 @@ router.get('/document-types', async (req, res) => {
 });
 
 export default router;
-
-

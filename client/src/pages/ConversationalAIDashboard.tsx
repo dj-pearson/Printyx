@@ -476,167 +476,171 @@ const ConversationalAIDashboard: React.FC = () => {
   );
 
   return (
-    <MainLayout 
-      title="Conversation AI" 
+    <MainLayout
+      title="Conversation AI"
       description="Advanced conversational AI dashboard for customer interactions and support automation"
     >
       <div className="h-[calc(100vh-12rem)] flex">
         {/* Sidebar */}
         <div className="w-80 border-r bg-gray-50 flex flex-col">
           <Tabs defaultValue="conversations" className="flex-1 flex flex-col">
-          <TabsList className="grid w-full grid-cols-2 m-2">
-            <TabsTrigger value="conversations">
-              <MessageSquare className="h-4 w-4 mr-1" />
-              Chats
-            </TabsTrigger>
-            <TabsTrigger value="capabilities">
-              <Sparkles className="h-4 w-4 mr-1" />
-              Features
-            </TabsTrigger>
-          </TabsList>
+            <TabsList className="grid w-full grid-cols-2 m-2">
+              <TabsTrigger value="conversations">
+                <MessageSquare className="h-4 w-4 mr-1" />
+                Chats
+              </TabsTrigger>
+              <TabsTrigger value="capabilities">
+                <Sparkles className="h-4 w-4 mr-1" />
+                Features
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="conversations" className="flex-1 m-0">
-            <ScrollArea className="h-full">
-              <div className="p-2 space-y-2">
-                <Button className="w-full justify-start" variant="outline">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  New Conversation
-                </Button>
-                <Separator />
-                {conversations.map((conv) => (
-                  <Card
-                    key={conv.id}
-                    className={`p-3 cursor-pointer transition-colors ${
-                      currentConversation === conv.id ? 'ring-2 ring-blue-500' : 'hover:bg-gray-50'
-                    }`}
-                    onClick={() => setCurrentConversation(conv.id)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{conv.title}</p>
-                        <p className="text-xs text-gray-600 mt-1">{conv.summary}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {conv.messageCount} messages
-                          </Badge>
-                          <span className="text-xs text-gray-500">
-                            {conv.lastActivity.toLocaleDateString()}
-                          </span>
+            <TabsContent value="conversations" className="flex-1 m-0">
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-2">
+                  <Button className="w-full justify-start" variant="outline">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    New Conversation
+                  </Button>
+                  <Separator />
+                  {conversations.map((conv) => (
+                    <Card
+                      key={conv.id}
+                      className={`p-3 cursor-pointer transition-colors ${
+                        currentConversation === conv.id
+                          ? 'ring-2 ring-blue-500'
+                          : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => setCurrentConversation(conv.id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{conv.title}</p>
+                          <p className="text-xs text-gray-600 mt-1">{conv.summary}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {conv.messageCount} messages
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {conv.lastActivity.toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          </TabsContent>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
 
-          <TabsContent value="capabilities" className="flex-1 m-0">
-            <ScrollArea className="h-full">
-              <div className="p-2 space-y-2">
-                {capabilities.map((capability) => (
-                  <Card key={capability.name} className="p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {getActionIcon(capability.type)}
-                        <div>
-                          <p className="font-medium text-sm">{capability.name.replace('_', ' ')}</p>
-                          <p className="text-xs text-gray-600">{capability.description}</p>
+            <TabsContent value="capabilities" className="flex-1 m-0">
+              <ScrollArea className="h-full">
+                <div className="p-2 space-y-2">
+                  {capabilities.map((capability) => (
+                    <Card key={capability.name} className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {getActionIcon(capability.type)}
+                          <div>
+                            <p className="font-medium text-sm">
+                              {capability.name.replace('_', ' ')}
+                            </p>
+                            <p className="text-xs text-gray-600">{capability.description}</p>
+                          </div>
                         </div>
+                        <Badge variant={capability.enabled ? 'default' : 'secondary'}>
+                          {capability.enabled ? 'Enabled' : 'Disabled'}
+                        </Badge>
                       </div>
-                      <Badge variant={capability.enabled ? 'default' : 'secondary'}>
-                        {capability.enabled ? 'Enabled' : 'Disabled'}
-                      </Badge>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="p-4 border-b bg-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold">AI Assistant Chat</h2>
-              <p className="text-sm text-gray-600">
-                Ask questions, request actions, and get intelligent assistance
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-green-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-                Online
-              </Badge>
-              <Button variant="outline" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </div>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.map(renderMessage)}
-            {isLoading && (
-              <div className="flex gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>
-                    <Bot className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="bg-gray-100 rounded-lg p-3">
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-gray-600">AI is thinking...</span>
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col">
+          {/* Chat Header */}
+          <div className="p-4 border-b bg-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">AI Assistant Chat</h2>
+                <p className="text-sm text-gray-600">
+                  Ask questions, request actions, and get intelligent assistance
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-green-600">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                  Online
+                </Badge>
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {messages.map(renderMessage)}
+              {isLoading && (
+                <div className="flex gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      <Bot className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-gray-100 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-gray-600">AI is thinking...</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-
-        {/* Message Input */}
-        <div className="p-4 border-t bg-white">
-          <div className="flex gap-2">
-            <Textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Ask me anything or request an action..."
-              className="min-h-[60px] resize-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isLoading}
-              className="h-[60px]"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span>Press Enter to send, Shift+Enter for new line</span>
+              )}
+              <div ref={messagesEndRef} />
             </div>
-            <div className="flex items-center gap-2">
-              <Target className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-gray-500">AI Ready</span>
+          </ScrollArea>
+
+          {/* Message Input */}
+          <div className="p-4 border-t bg-white">
+            <div className="flex gap-2">
+              <Textarea
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Ask me anything or request an action..."
+                className="min-h-[60px] resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputMessage.trim() || isLoading}
+                className="h-[60px]"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-4 text-xs text-gray-500">
+                <span>Press Enter to send, Shift+Enter for new line</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Target className="h-3 w-3 text-green-500" />
+                <span className="text-xs text-gray-500">AI Ready</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </MainLayout>
   );
 };

@@ -67,7 +67,7 @@ async function seedArticles(categoryMap: Map<string, string>) {
     ...crmSalesArticles,
     ...serviceManagementArticles,
     ...meterBillingArticles,
-    ...troubleshootingArticles
+    ...troubleshootingArticles,
   ];
 
   let insertedCount = 0;
@@ -85,9 +85,10 @@ async function seedArticles(categoryMap: Map<string, string>) {
       }
 
       // Create the article
-      const plainText = typeof article.content === 'object'
-        ? JSON.stringify(article.content)
-        : String(article.content);
+      const plainText =
+        typeof article.content === 'object'
+          ? JSON.stringify(article.content)
+          : String(article.content);
       const wordCount = plainText.split(/\s+/).length;
 
       const [inserted] = await db

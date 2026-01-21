@@ -109,7 +109,7 @@ class ReportCache {
       return;
     }
     const keys = Array.from(this.cache.keys());
-    keys.forEach(key => {
+    keys.forEach((key) => {
       if (key.includes(pattern)) {
         this.cache.delete(key);
       }
@@ -127,15 +127,16 @@ export class DirectorReportingService {
    */
   static async getCompanySalesPerformance(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<CompanySalesPerformance> {
     const cacheKey = `company-sales-performance:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<CompanySalesPerformance>(cacheKey);
     if (cached) return cached;
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND o.closed_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND o.closed_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     // Get company-wide metrics
     const result = await db.execute(sql`
@@ -221,9 +222,11 @@ export class DirectorReportingService {
     const response: CompanySalesPerformance = {
       totalRevenue,
       totalDeals,
-      averageWinRate: totalClosed > 0 ? Math.round((totalDeals / totalClosed) * 100 * 100) / 100 : 0,
+      averageWinRate:
+        totalClosed > 0 ? Math.round((totalDeals / totalClosed) * 100 * 100) / 100 : 0,
       averageDealSize: totalDeals > 0 ? Math.round((totalRevenue / totalDeals) * 100) / 100 : 0,
-      quotaAttainment: totalQuota > 0 ? Math.round((totalRevenue / totalQuota) * 100 * 100) / 100 : 0,
+      quotaAttainment:
+        totalQuota > 0 ? Math.round((totalRevenue / totalQuota) * 100 * 100) / 100 : 0,
       pipelineValue: parseFloat(row.pipeline_value || 0),
       regions: row.regions || [],
       topPerformers: row.top_performers || [],
@@ -243,15 +246,16 @@ export class DirectorReportingService {
    */
   static async getCompanyServicePerformance(
     userContext: EnhancedUserContext,
-    dateRange?: Partial<DateRange>
+    dateRange?: Partial<DateRange>,
   ): Promise<CompanyServicePerformance> {
     const cacheKey = `company-service-performance:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<CompanyServicePerformance>(cacheKey);
     if (cached) return cached;
 
-    const dateFilter = dateRange?.dateFrom && dateRange?.dateTo
-      ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
-      : sql``;
+    const dateFilter =
+      dateRange?.dateFrom && dateRange?.dateTo
+        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        : sql``;
 
     const result = await db.execute(sql`
       WITH company_metrics AS (

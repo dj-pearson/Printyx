@@ -1,4 +1,5 @@
 # Printyx Copier Dealer Platform Audit Report
+
 **Date:** February 2025
 **Focus Areas:** Service Dispatch Efficiency & Contract Renewal Rates
 **Executive Summary:** Comprehensive audit of sales and service operations
@@ -29,6 +30,7 @@ Printyx is an **exceptionally comprehensive enterprise-grade copier dealer manag
 **Implemented Features (Excellent Foundation):**
 
 #### Core Dispatch System (`server/routes-service-dispatch.ts`)
+
 - ✅ **AI-Optimized Dispatch Recommendations** (line 17-88)
   - Smart ticket-to-technician matching
   - Skill-based assignment algorithm
@@ -50,6 +52,7 @@ Printyx is an **exceptionally comprehensive enterprise-grade copier dealer manag
   - Next job scheduling
 
 #### Enhanced Service Workflows (`server/routes-enhanced-service.ts`)
+
 - ✅ **Phone-In Ticket Intake** (line 140-244)
   - Quick customer lookup with pre-fill data
   - One-click conversion to service tickets
@@ -76,6 +79,7 @@ Printyx is an **exceptionally comprehensive enterprise-grade copier dealer manag
   - Integration with billing system
 
 #### Mobile Field Service (`server/routes-mobile.ts`)
+
 - ✅ **Mobile Dashboard** (line 17-222)
   - Today's job queue with priority sorting
   - Route optimization with drive times
@@ -103,11 +107,13 @@ Printyx is an **exceptionally comprehensive enterprise-grade copier dealer manag
 ### 1.2 Dispatch Time Bottlenecks Identified
 
 #### **Bottleneck #1: Manual Dispatch Decision Making**
+
 **Location:** `server/routes-service-dispatch.ts:59-80`
 **Issue:** While AI recommendations exist, dispatchers must manually review and assign each ticket
 **Impact:** 3-5 minutes per ticket × 20 tickets/day = 60-100 minutes wasted daily
 
 **Current Code:**
+
 ```typescript
 // Line 59-80: Recommendations are generated but require manual action
 const recommendations = pendingTickets.map((ticket, index) => {
@@ -115,58 +121,64 @@ const recommendations = pendingTickets.map((ticket, index) => {
   return {
     id: `rec-${ticket.id}`,
     ticketId: ticket.id,
-    recommendedTechnician: availableTech ? {
-      id: availableTech.id,
-      name: availableTech.name,
-      skillMatch: 90,
-      availabilityScore: 100,
-      overallScore: 95  // AI score but not auto-executing
-    } : null,
+    recommendedTechnician: availableTech
+      ? {
+          id: availableTech.id,
+          name: availableTech.name,
+          skillMatch: 90,
+          availabilityScore: 100,
+          overallScore: 95, // AI score but not auto-executing
+        }
+      : null,
   };
 });
 ```
 
 #### **Bottleneck #2: Parts Availability Not Pre-Checked**
+
 **Location:** `server/routes-enhanced-service.ts:531-553`
 **Issue:** Technicians request parts after arriving on-site, causing delays
 **Impact:** 30-60 minute delays when parts aren't in van or warehouse
 
 **Current Code:**
+
 ```typescript
 // Line 531-553: Parts requests are reactive, not proactive
-router.post("/service-tickets/:ticketId/request-parts", async (req, res) => {
+router.post('/service-tickets/:ticketId/request-parts', async (req, res) => {
   // Parts requested AFTER technician is on-site
   // No pre-dispatch parts availability check
-  const [partsRequest] = await db.insert(ticketPartsRequests)
-    .values(partsData)
-    .returning();
+  const [partsRequest] = await db.insert(ticketPartsRequests).values(partsData).returning();
 });
 ```
 
 #### **Bottleneck #3: Customer Communication Delays**
+
 **Location:** `server/routes-mobile.ts:409-438`
 **Issue:** Customer notifications are manual; no automated ETA updates
 **Impact:** Callbacks and rescheduling due to missed communication
 
 **Current Code:**
+
 ```typescript
 // Line 409-438: Notifications triggered on status change only
 switch (status) {
   case 'in_progress':
     statusUpdate.automatedActions.push({
       action: 'notify_customer',
-      message: 'Technician has arrived' // Only after arrival, no ETA updates
+      message: 'Technician has arrived', // Only after arrival, no ETA updates
     });
     break;
 }
 ```
 
 #### **Bottleneck #4: No Predictive Scheduling**
+
 **Location:** `server/routes-service-dispatch.ts:17-88`
 **Issue:** Dispatch is reactive (ticket comes in → assign); no proactive scheduling based on preventive maintenance or equipment health
 **Impact:** Emergency tickets bump scheduled work, causing cascading delays
 
 #### **Bottleneck #5: Service History Not Pre-Loaded**
+
 **Location:** `server/routes-mobile.ts:321-338`
 **Issue:** Service history shown but not analyzed for common issues/parts needed
 **Impact:** Technicians may arrive without correct parts or knowledge
@@ -174,11 +186,13 @@ switch (status) {
 ### 1.3 Quick Win Recommendations for Service Dispatch
 
 #### **Quick Win #1: Auto-Accept AI Recommendations (5-Minute Fix)**
+
 **File:** `server/routes-service-dispatch.ts`
 **Impact:** Reduce dispatch time from 5 min to 30 seconds per ticket
 **Implementation:**
 
 Add configuration flag for auto-assignment:
+
 ```typescript
 // Add after line 16
 const AUTO_ASSIGN_THRESHOLD = 90; // Auto-assign if AI confidence > 90%
@@ -191,12 +205,13 @@ const recommendations = pendingTickets.map((ticket, index) => {
   // AUTO-ASSIGN if high confidence
   if (overallScore >= AUTO_ASSIGN_THRESHOLD && availableTech) {
     // Execute assignment immediately
-    await db.update(serviceTickets)
+    await db
+      .update(serviceTickets)
       .set({
         technicianId: availableTech.id,
         status: 'assigned',
         autoAssigned: true,
-        autoAssignConfidence: overallScore
+        autoAssignConfidence: overallScore,
       })
       .where(eq(serviceTickets.id, ticket.id));
   }
@@ -210,11 +225,13 @@ const recommendations = pendingTickets.map((ticket, index) => {
 ---
 
 #### **Quick Win #2: Pre-Dispatch Parts Availability Check (10-Minute Fix)**
+
 **File:** `server/routes-service-dispatch.ts`
 **Impact:** Eliminate 30-60 minute on-site delays due to missing parts
 **Implementation:**
 
 Add parts check to dispatch recommendations (after line 46):
+
 ```typescript
 // Check parts availability before dispatching
 router.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) => {
@@ -227,15 +244,15 @@ router.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) =
       const commonParts = await db
         .select({
           partNumber: serviceTickets.partsUsed,
-          frequency: sql`COUNT(*)`.as('frequency')
+          frequency: sql`COUNT(*)`.as('frequency'),
         })
         .from(serviceTickets)
         .where(
           and(
             eq(serviceTickets.tenantId, tenantId),
             eq(serviceTickets.equipmentId, ticket.equipmentId),
-            eq(serviceTickets.status, 'completed')
-          )
+            eq(serviceTickets.status, 'completed'),
+          ),
         )
         .groupBy(serviceTickets.partsUsed)
         .orderBy(desc(sql`COUNT(*)`))
@@ -246,30 +263,33 @@ router.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) =
         .select({
           partNumber: inventoryItems.partNumber,
           available: inventoryItems.quantityAvailable,
-          location: inventoryItems.binLocation
+          location: inventoryItems.binLocation,
         })
         .from(inventoryItems)
         .where(
           and(
             eq(inventoryItems.tenantId, tenantId),
-            inArray(inventoryItems.partNumber, commonParts.map(p => p.partNumber))
-          )
+            inArray(
+              inventoryItems.partNumber,
+              commonParts.map((p) => p.partNumber),
+            ),
+          ),
         );
 
       return {
         ...ticket,
         predictedParts: commonParts,
-        partsAvailable: partsAvailability.every(p => p.available > 0),
-        partsLocation: partsAvailability
+        partsAvailable: partsAvailability.every((p) => p.available > 0),
+        partsLocation: partsAvailability,
       };
-    })
+    }),
   );
 
   // Flag tickets with missing parts
-  recommendations = recommendations.map(rec => ({
+  recommendations = recommendations.map((rec) => ({
     ...rec,
     partsStatus: rec.partsAvailable ? 'ready' : 'needs_staging',
-    stagingRequired: !rec.partsAvailable
+    stagingRequired: !rec.partsAvailable,
   }));
 });
 ```
@@ -279,11 +299,13 @@ router.get('/api/dispatch/recommendations', requireAuth, async (req: any, res) =
 ---
 
 #### **Quick Win #3: Automated Customer ETA Notifications (15-Minute Fix)**
+
 **File:** `server/routes-service-dispatch.ts` + new SMS/email service
 **Impact:** Reduce customer callbacks by 60%, improve satisfaction scores
 **Implementation:**
 
 Add automated ETA notifications:
+
 ```typescript
 // After line 346 in auto-assign function
 if (updatePromises.length > 0) {
@@ -291,8 +313,8 @@ if (updatePromises.length > 0) {
 
   // NEW: Send automated ETA notifications
   for (const assignment of assignments) {
-    const ticket = tickets.find(t => t.id === assignment.ticketId);
-    const tech = availableTechnicians.find(t => t.id === assignment.technicianId);
+    const ticket = tickets.find((t) => t.id === assignment.ticketId);
+    const tech = availableTechnicians.find((t) => t.id === assignment.technicianId);
 
     // Calculate ETA based on current location and route
     const eta = calculateETA(tech.currentLocation, ticket.customerAddress);
@@ -303,14 +325,14 @@ if (updatePromises.length > 0) {
       customerPhone: ticket.customerPhone,
       customerEmail: ticket.customerEmail,
       message: `Your service call is scheduled. Technician ${tech.name} will arrive between ${eta.start} and ${eta.end}. Track in real-time: ${getTrackingLink(ticket.id)}`,
-      channels: ['sms', 'email']
+      channels: ['sms', 'email'],
     });
 
     // Schedule 30-min reminder
     scheduleNotification({
       ticketId: ticket.id,
       delay: eta.minutes - 30,
-      message: `Technician ${tech.name} will arrive in 30 minutes`
+      message: `Technician ${tech.name} will arrive in 30 minutes`,
     });
   }
 }
@@ -321,11 +343,13 @@ if (updatePromises.length > 0) {
 ---
 
 #### **Quick Win #4: Proactive Service Scheduling Dashboard (20-Minute Fix)**
+
 **File:** New route `server/routes-proactive-scheduling.ts`
 **Impact:** Reduce emergency tickets by 30%, optimize tech utilization
 **Implementation:**
 
 Create proactive scheduling endpoint:
+
 ```typescript
 router.get('/api/dispatch/proactive-schedule', requireAuth, async (req: any, res) => {
   const tenantId = req.user?.tenantId;
@@ -393,11 +417,13 @@ router.get('/api/dispatch/proactive-schedule', requireAuth, async (req: any, res
 ---
 
 #### **Quick Win #5: Service History AI Summary (15-Minute Fix)**
+
 **File:** `server/routes-mobile.ts:225-369`
 **Impact:** Technicians arrive better prepared, 15% faster diagnosis
 **Implementation:**
 
 Add AI-generated service summary (after line 320):
+
 ```typescript
 // After service history query (line 321-338)
 const serviceHistory = [...]; // existing query
@@ -438,15 +464,15 @@ const jobDetail = {
 
 ### 1.4 Service Dispatch Summary Scorecard
 
-| Metric | Current Performance | Target with Quick Wins | Improvement |
-|--------|-------------------|----------------------|-------------|
-| **Average Dispatch Time** | 5 min/ticket | 30 sec/ticket | **90% faster** |
-| **Parts Availability** | 65% first visit | 95% first visit | **46% improvement** |
-| **Emergency Tickets** | 35% of workload | 25% of workload | **29% reduction** |
-| **First-Time Fix Rate** | 78% | 93% | **19% improvement** |
-| **Customer CSAT** | 4.2/5.0 | 4.7/5.0 | **12% improvement** |
-| **Technician Utilization** | 73% | 85% | **16% improvement** |
-| **Average Service Time** | 95 minutes | 75 minutes | **21% faster** |
+| Metric                     | Current Performance | Target with Quick Wins | Improvement         |
+| -------------------------- | ------------------- | ---------------------- | ------------------- |
+| **Average Dispatch Time**  | 5 min/ticket        | 30 sec/ticket          | **90% faster**      |
+| **Parts Availability**     | 65% first visit     | 95% first visit        | **46% improvement** |
+| **Emergency Tickets**      | 35% of workload     | 25% of workload        | **29% reduction**   |
+| **First-Time Fix Rate**    | 78%                 | 93%                    | **19% improvement** |
+| **Customer CSAT**          | 4.2/5.0             | 4.7/5.0                | **12% improvement** |
+| **Technician Utilization** | 73%                 | 85%                    | **16% improvement** |
+| **Average Service Time**   | 95 minutes          | 75 minutes             | **21% faster**      |
 
 **Total Time Savings:** 4-6 hours/day in dispatch operations + 25% reduction in service completion time
 
@@ -459,6 +485,7 @@ const jobDetail = {
 **Implemented Features (Outstanding Foundation):**
 
 #### Customer Success Schema (`shared/customer-success-schema.ts`)
+
 The platform has an **enterprise-grade customer success and renewal tracking system**:
 
 - ✅ **Customer Health Scores** (line 8-61)
@@ -507,6 +534,7 @@ The platform has an **enterprise-grade customer success and renewal tracking sys
   - Win/loss reason capture
 
 #### Customer Success Routes (`server/routes-customer-success.ts`)
+
 - ✅ **Health Score Dashboard** (line 12-311)
   - Real-time health scoring
   - Component score breakdown
@@ -517,6 +545,7 @@ The platform has an **enterprise-grade customer success and renewal tracking sys
 ### 2.2 Contract Renewal Gaps Identified
 
 #### **Gap #1: Renewal Dashboard Not Prominent**
+
 **Issue:** Despite excellent backend schema, no dedicated contract renewal dashboard page
 **Location:** `client/src/pages/` - missing `ContractRenewalDashboard.tsx`
 **Impact:** CSMs don't have dedicated workspace to manage renewals
@@ -524,55 +553,62 @@ The platform has an **enterprise-grade customer success and renewal tracking sys
 **Current Workaround:** Health scores visible in CustomerSuccessManagement.tsx but not renewal-focused
 
 #### **Gap #2: Automated Renewal Outreach Not Active**
+
 **Issue:** Schema supports automated interventions, but workflow automation doesn't trigger renewal campaigns
 **Location:** `server/routes-workflow-automation.ts` - no renewal-specific workflows
 **Impact:** Renewals missed due to lack of timely outreach
 
 **Current State:** Workflow automation exists (line 18-250) but no renewal triggers like:
+
 - 180 days before expiration → start outreach
 - 90 days before expiration → escalate to sales
 - 30 days before expiration → executive review
 
 #### **Gap #3: Contract Expiration Alerts Not Integrated**
+
 **Issue:** Contract expiration data exists in schema but not surfaced in alerts system
 **Location:** `shared/schema.ts:contracts` table has `endDate` but no active monitoring
 **Impact:** Contracts lapse before renewal conversation begins
 
 #### **Gap #4: Customer Usage Analytics Not Linked to Renewals**
+
 **Issue:** Customer portal has usage analytics, but not presented during renewal discussions
 **Location:** `client/src/components/customer-portal/UsageAnalyticsDashboard.tsx` isolated from renewal workflow
 **Impact:** Lost upsell opportunities (high usage → equipment upgrade)
 
 #### **Gap #5: No Renewal Playbooks**
+
 **Issue:** System tracks renewal status but doesn't guide CSMs through renewal process
 **Impact:** Inconsistent renewal approaches across team
 
 ### 2.3 Quick Win Recommendations for Contract Renewals
 
 #### **Quick Win #1: Contract Renewal Dashboard (30-Minute Fix)**
+
 **File:** Create `client/src/pages/ContractRenewalDashboard.tsx`
 **Impact:** 40% improvement in renewal rate through better visibility
 **Implementation:**
 
 Create dedicated renewal dashboard:
+
 ```tsx
 // client/src/pages/ContractRenewalDashboard.tsx
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, TrendingUp, Calendar, DollarSign } from "lucide-react";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 
 export default function ContractRenewalDashboard() {
-  const [timeRange, setTimeRange] = useState("90_days");
+  const [timeRange, setTimeRange] = useState('90_days');
 
   const { data: renewalPipeline } = useQuery({
     queryKey: ['renewal-pipeline', timeRange],
     queryFn: async () => {
       const response = await fetch(`/api/customer-success/renewal-opportunities?days=${timeRange}`);
       return response.json();
-    }
+    },
   });
 
   // Renewal stages
@@ -584,7 +620,8 @@ export default function ContractRenewalDashboard() {
   ];
 
   // At-risk renewals
-  const atRiskRenewals = renewalPipeline?.filter(r => r.renewalRisk === 'high' || r.renewalRisk === 'critical') || [];
+  const atRiskRenewals =
+    renewalPipeline?.filter((r) => r.renewalRisk === 'high' || r.renewalRisk === 'critical') || [];
 
   return (
     <div className="p-6 space-y-6">
@@ -648,15 +685,22 @@ export default function ContractRenewalDashboard() {
         <CardContent>
           <div className="space-y-4">
             {stages.map((stage) => (
-              <div key={stage.name} className="flex items-center justify-between p-4 border rounded-lg">
+              <div
+                key={stage.name}
+                className="flex items-center justify-between p-4 border rounded-lg"
+              >
                 <div className="flex items-center gap-4">
                   <Badge variant={stage.color as any}>{stage.count}</Badge>
                   <div>
                     <p className="font-medium">{stage.name}</p>
-                    <p className="text-sm text-muted-foreground">${(stage.value / 1000).toFixed(0)}K in ARR</p>
+                    <p className="text-sm text-muted-foreground">
+                      ${(stage.value / 1000).toFixed(0)}K in ARR
+                    </p>
                   </div>
                 </div>
-                <Button size="sm" variant="outline">View Details</Button>
+                <Button size="sm" variant="outline">
+                  View Details
+                </Button>
               </div>
             ))}
           </div>
@@ -674,7 +718,10 @@ export default function ContractRenewalDashboard() {
         <CardContent>
           <div className="space-y-2">
             {atRiskRenewals.slice(0, 10).map((renewal) => (
-              <div key={renewal.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50">
+              <div
+                key={renewal.id}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+              >
                 <div className="flex-1">
                   <p className="font-medium">{renewal.customerName}</p>
                   <p className="text-sm text-muted-foreground">
@@ -700,11 +747,13 @@ export default function ContractRenewalDashboard() {
 ---
 
 #### **Quick Win #2: Automated Renewal Workflow Triggers (20-Minute Fix)**
+
 **File:** `server/routes-workflow-automation.ts`
 **Impact:** Zero missed renewals, 30% increase in on-time renewal rate
 **Implementation:**
 
 Add renewal automation workflow:
+
 ```typescript
 // Add to existing workflow automation
 {
@@ -855,11 +904,13 @@ Add renewal automation workflow:
 ---
 
 #### **Quick Win #3: Contract Expiration Alert System (15-Minute Fix)**
+
 **File:** `server/routes.ts` + `client/src/components/layout/SystemAlertBell.tsx`
 **Impact:** Zero surprise expirations, proactive management
 **Implementation:**
 
 Add contract monitoring route:
+
 ```typescript
 // server/routes.ts - add new endpoint
 router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res) => {
@@ -877,7 +928,7 @@ router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res
       monthlyValue: contracts.monthlyBaseRate,
       annualValue: sql`${contracts.monthlyBaseRate} * 12`.as('annualValue'),
       renewalStatus: renewalOpportunities.renewalStatus,
-      churnRisk: churnPredictions.churnRisk
+      churnRisk: churnPredictions.churnRisk,
     })
     .from(contracts)
     .leftJoin(businessRecords, eq(contracts.customerId, businessRecords.id))
@@ -888,20 +939,24 @@ router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res
         eq(contracts.tenantId, tenantId),
         eq(contracts.status, 'active'),
         lte(contracts.endDate, sql`NOW() + INTERVAL '180 days'`),
-        gte(contracts.endDate, sql`NOW()`)
-      )
+        gte(contracts.endDate, sql`NOW()`),
+      ),
     )
     .orderBy(asc(contracts.endDate));
 
   // Categorize by urgency
   const alerts = {
-    critical: expiringContracts.filter(c => c.daysUntilExpiration <= 30),
-    high: expiringContracts.filter(c => c.daysUntilExpiration > 30 && c.daysUntilExpiration <= 90),
-    medium: expiringContracts.filter(c => c.daysUntilExpiration > 90 && c.daysUntilExpiration <= 180),
+    critical: expiringContracts.filter((c) => c.daysUntilExpiration <= 30),
+    high: expiringContracts.filter(
+      (c) => c.daysUntilExpiration > 30 && c.daysUntilExpiration <= 90,
+    ),
+    medium: expiringContracts.filter(
+      (c) => c.daysUntilExpiration > 90 && c.daysUntilExpiration <= 180,
+    ),
     totalValue: expiringContracts.reduce((sum, c) => sum + parseFloat(c.annualValue), 0),
-    actionRequired: expiringContracts.filter(c =>
-      !c.renewalStatus || c.renewalStatus === 'upcoming'
-    ).length
+    actionRequired: expiringContracts.filter(
+      (c) => !c.renewalStatus || c.renewalStatus === 'upcoming',
+    ).length,
   };
 
   res.json(alerts);
@@ -909,6 +964,7 @@ router.get('/api/alerts/contract-expirations', requireAuth, async (req: any, res
 ```
 
 Update SystemAlertBell component to show contract alerts:
+
 ```tsx
 // client/src/components/layout/SystemAlertBell.tsx
 const { data: contractAlerts } = useQuery({
@@ -917,7 +973,7 @@ const { data: contractAlerts } = useQuery({
     const res = await fetch('/api/alerts/contract-expirations');
     return res.json();
   },
-  refetchInterval: 300000 // 5 minutes
+  refetchInterval: 300000, // 5 minutes
 });
 
 // Add to alerts dropdown
@@ -928,7 +984,7 @@ const { data: contractAlerts } = useQuery({
       <Badge variant="destructive">{contractAlerts.critical.length}</Badge>
     )}
   </div>
-  {contractAlerts?.critical?.map(contract => (
+  {contractAlerts?.critical?.map((contract) => (
     <Link
       key={contract.contractId}
       to={`/contracts/${contract.contractId}`}
@@ -943,7 +999,7 @@ const { data: contractAlerts } = useQuery({
       </div>
     </Link>
   ))}
-</div>
+</div>;
 ```
 
 **Expected Result:** 100% renewal awareness, 45% reduction in expired contracts, $50K+ saved ARR
@@ -951,11 +1007,13 @@ const { data: contractAlerts } = useQuery({
 ---
 
 #### **Quick Win #4: Renewal ROI Report Generator (25-Minute Fix)**
+
 **File:** Create `server/routes-renewal-analytics.ts`
 **Impact:** Data-driven renewal conversations, 35% higher upsell rate
 **Implementation:**
 
 Create ROI report endpoint:
+
 ```typescript
 // server/routes-renewal-analytics.ts
 router.get('/api/renewals/:contractId/roi-report', requireAuth, async (req: any, res) => {
@@ -966,10 +1024,7 @@ router.get('/api/renewals/:contractId/roi-report', requireAuth, async (req: any,
   const [contract] = await db
     .select()
     .from(contracts)
-    .where(and(
-      eq(contracts.id, contractId),
-      eq(contracts.tenantId, tenantId)
-    ))
+    .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, tenantId)))
     .limit(1);
 
   // Calculate usage metrics
@@ -977,29 +1032,35 @@ router.get('/api/renewals/:contractId/roi-report', requireAuth, async (req: any,
     .select({
       totalPages: sql`SUM(pages_printed)`.as('totalPages'),
       avgMonthlyPages: sql`AVG(monthly_pages)`.as('avgMonthlyPages'),
-      costPerPage: sql`${contract.monthlyBaseRate} / AVG(monthly_pages)`.as('costPerPage')
+      costPerPage: sql`${contract.monthlyBaseRate} / AVG(monthly_pages)`.as('costPerPage'),
     })
     .from(meterReadings)
-    .where(and(
-      eq(meterReadings.equipmentId, contract.equipmentId),
-      eq(meterReadings.tenantId, tenantId),
-      gte(meterReadings.readingDate, sql`NOW() - INTERVAL '12 months'`)
-    ));
+    .where(
+      and(
+        eq(meterReadings.equipmentId, contract.equipmentId),
+        eq(meterReadings.tenantId, tenantId),
+        gte(meterReadings.readingDate, sql`NOW() - INTERVAL '12 months'`),
+      ),
+    );
 
   // Service history
   const serviceMetrics = await db
     .select({
       totalTickets: sql`COUNT(*)`.as('totalTickets'),
       resolvedTickets: sql`COUNT(CASE WHEN status = 'completed' THEN 1 END)`.as('resolved'),
-      avgResolutionTime: sql`AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`.as('avgHours'),
-      customerSatisfaction: sql`AVG(customer_satisfaction)`.as('csat')
+      avgResolutionTime: sql`AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)`.as(
+        'avgHours',
+      ),
+      customerSatisfaction: sql`AVG(customer_satisfaction)`.as('csat'),
     })
     .from(serviceTickets)
-    .where(and(
-      eq(serviceTickets.equipmentId, contract.equipmentId),
-      eq(serviceTickets.tenantId, tenantId),
-      gte(serviceTickets.createdAt, sql`NOW() - INTERVAL '12 months'`)
-    ));
+    .where(
+      and(
+        eq(serviceTickets.equipmentId, contract.equipmentId),
+        eq(serviceTickets.tenantId, tenantId),
+        gte(serviceTickets.createdAt, sql`NOW() - INTERVAL '12 months'`),
+      ),
+    );
 
   // Calculate ROI
   const roiReport = {
@@ -1008,27 +1069,27 @@ router.get('/api/renewals/:contractId/roi-report', requireAuth, async (req: any,
       startDate: contract.startDate,
       endDate: contract.endDate,
       monthlyInvestment: contract.monthlyBaseRate,
-      annualInvestment: contract.monthlyBaseRate * 12
+      annualInvestment: contract.monthlyBaseRate * 12,
     },
     usageAnalysis: {
       totalPagesYear: usageMetrics[0].totalPages,
       avgMonthlyPages: usageMetrics[0].avgMonthlyPages,
       effectiveCostPerPage: usageMetrics[0].costPerPage,
       industryAvgCostPerPage: 0.05, // Industry benchmark
-      savings: (0.05 - parseFloat(usageMetrics[0].costPerPage)) * usageMetrics[0].totalPages
+      savings: (0.05 - parseFloat(usageMetrics[0].costPerPage)) * usageMetrics[0].totalPages,
     },
     servicePerformance: {
       totalServiceCalls: serviceMetrics[0].totalTickets,
       resolutionRate: (serviceMetrics[0].resolvedTickets / serviceMetrics[0].totalTickets) * 100,
       avgResolutionTime: serviceMetrics[0].avgResolutionTime,
       customerSatisfaction: serviceMetrics[0].csat,
-      uptimePercentage: 99.2 // Calculate from downtime logs
+      uptimePercentage: 99.2, // Calculate from downtime logs
     },
     financialImpact: {
       totalSavings: calculateTotalSavings(usageMetrics, serviceMetrics, contract),
       avoidedCosts: calculateAvoidedCosts(serviceMetrics), // No emergency repair costs, etc.
       roi: calculateROI(contract.monthlyBaseRate * 12, usageMetrics, serviceMetrics),
-      recommendedUpsell: identifyUpsellOpportunities(usageMetrics, contract)
+      recommendedUpsell: identifyUpsellOpportunities(usageMetrics, contract),
     },
     recommendations: [
       usageMetrics[0].avgMonthlyPages > contract.includedPages * 1.2
@@ -1038,7 +1099,7 @@ router.get('/api/renewals/:contractId/roi-report', requireAuth, async (req: any,
         ? 'Priority support tier recommended for improved satisfaction'
         : null,
       // Add more conditional recommendations
-    ].filter(Boolean)
+    ].filter(Boolean),
   };
 
   res.json(roiReport);
@@ -1050,95 +1111,99 @@ router.get('/api/renewals/:contractId/roi-report', requireAuth, async (req: any,
 ---
 
 #### **Quick Win #5: One-Click Renewal Proposal Generator (20-Minute Fix)**
+
 **File:** `server/routes-renewals.ts` + integration with proposals system
 **Impact:** 60% faster proposal creation, consistent renewal offers
 **Implementation:**
 
 ```typescript
-router.post('/api/renewals/:opportunityId/generate-proposal', requireAuth, async (req: any, res) => {
-  const { opportunityId } = req.params;
-  const tenantId = req.user?.tenantId;
+router.post(
+  '/api/renewals/:opportunityId/generate-proposal',
+  requireAuth,
+  async (req: any, res) => {
+    const { opportunityId } = req.params;
+    const tenantId = req.user?.tenantId;
 
-  // Get renewal opportunity
-  const [renewal] = await db
-    .select()
-    .from(renewalOpportunities)
-    .where(and(
-      eq(renewalOpportunities.id, opportunityId),
-      eq(renewalOpportunities.tenantId, tenantId)
-    ))
-    .limit(1);
+    // Get renewal opportunity
+    const [renewal] = await db
+      .select()
+      .from(renewalOpportunities)
+      .where(
+        and(
+          eq(renewalOpportunities.id, opportunityId),
+          eq(renewalOpportunities.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
 
-  // Get current contract
-  const [currentContract] = await db
-    .select()
-    .from(contracts)
-    .where(eq(contracts.id, renewal.contractId))
-    .limit(1);
+    // Get current contract
+    const [currentContract] = await db
+      .select()
+      .from(contracts)
+      .where(eq(contracts.id, renewal.contractId))
+      .limit(1);
 
-  // Get customer usage data for smart recommendations
-  const usageData = await fetch(`/api/renewals/${renewal.contractId}/roi-report`);
-  const roi = await usageData.json();
+    // Get customer usage data for smart recommendations
+    const usageData = await fetch(`/api/renewals/${renewal.contractId}/roi-report`);
+    const roi = await usageData.json();
 
-  // Generate proposal with smart recommendations
-  const proposalData = {
-    tenantId,
-    customerId: renewal.customerId,
-    proposalType: 'contract_renewal',
-    title: `Contract Renewal Proposal - ${currentContract.contractNumber}`,
-    status: 'draft',
-    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    // Generate proposal with smart recommendations
+    const proposalData = {
+      tenantId,
+      customerId: renewal.customerId,
+      proposalType: 'contract_renewal',
+      title: `Contract Renewal Proposal - ${currentContract.contractNumber}`,
+      status: 'draft',
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
 
-    sections: [
-      {
-        sectionType: 'executive_summary',
-        title: 'Partnership Overview',
-        content: `We've valued our partnership over the past ${getContractDuration(currentContract)} months. This renewal proposal reflects your usage patterns and includes recommendations for optimal service.`
-      },
-      {
-        sectionType: 'roi_analysis',
-        title: 'Return on Investment',
-        content: generateROISection(roi),
-        metadata: { roiData: roi }
-      },
-      {
-        sectionType: 'pricing',
-        title: 'Renewal Investment',
-        content: generatePricingSection(renewal, currentContract, roi)
-      },
-      {
-        sectionType: 'recommendations',
-        title: 'Recommended Enhancements',
-        content: renewal.suggestedUpgrades?.map(upgrade =>
-          `• ${upgrade}: ${getUpgradeDescription(upgrade)}`
-        ).join('\n')
-      }
-    ],
+      sections: [
+        {
+          sectionType: 'executive_summary',
+          title: 'Partnership Overview',
+          content: `We've valued our partnership over the past ${getContractDuration(currentContract)} months. This renewal proposal reflects your usage patterns and includes recommendations for optimal service.`,
+        },
+        {
+          sectionType: 'roi_analysis',
+          title: 'Return on Investment',
+          content: generateROISection(roi),
+          metadata: { roiData: roi },
+        },
+        {
+          sectionType: 'pricing',
+          title: 'Renewal Investment',
+          content: generatePricingSection(renewal, currentContract, roi),
+        },
+        {
+          sectionType: 'recommendations',
+          title: 'Recommended Enhancements',
+          content: renewal.suggestedUpgrades
+            ?.map((upgrade) => `• ${upgrade}: ${getUpgradeDescription(upgrade)}`)
+            .join('\n'),
+        },
+      ],
 
-    lineItems: generateLineItems(renewal, currentContract, roi)
-  };
+      lineItems: generateLineItems(renewal, currentContract, roi),
+    };
 
-  // Create proposal
-  const [proposal] = await db
-    .insert(proposals)
-    .values(proposalData)
-    .returning();
+    // Create proposal
+    const [proposal] = await db.insert(proposals).values(proposalData).returning();
 
-  // Update renewal opportunity
-  await db
-    .update(renewalOpportunities)
-    .set({
-      quoteId: proposal.id,
-      renewalStatus: 'in_progress'
-    })
-    .where(eq(renewalOpportunities.id, opportunityId));
+    // Update renewal opportunity
+    await db
+      .update(renewalOpportunities)
+      .set({
+        quoteId: proposal.id,
+        renewalStatus: 'in_progress',
+      })
+      .where(eq(renewalOpportunities.id, opportunityId));
 
-  res.json({
-    proposal,
-    pdfUrl: `/api/proposals/${proposal.id}/pdf`,
-    editUrl: `/proposals/${proposal.id}/edit`
-  });
-});
+    res.json({
+      proposal,
+      pdfUrl: `/api/proposals/${proposal.id}/pdf`,
+      editUrl: `/proposals/${proposal.id}/edit`,
+    });
+  },
+);
 ```
 
 **Expected Result:** 60% faster proposal generation, 25% higher proposal acceptance rate
@@ -1147,15 +1212,15 @@ router.post('/api/renewals/:opportunityId/generate-proposal', requireAuth, async
 
 ### 2.4 Contract Renewal Summary Scorecard
 
-| Metric | Current Performance | Target with Quick Wins | Improvement |
-|--------|-------------------|----------------------|-------------|
-| **Renewal Rate** | 82% | 92% | **12% improvement** |
-| **On-Time Renewals** | 65% | 95% | **46% improvement** |
-| **Expired Contracts** | 8% | 2% | **75% reduction** |
-| **Expansion Rate** | 18% | 35% | **94% improvement** |
-| **Avg Renewal Value** | $12,400 | $15,800 | **27% increase** |
-| **Days to Close Renewal** | 45 days | 28 days | **38% faster** |
-| **CSM Productivity** | 15 renewals/mo | 25 renewals/mo | **67% improvement** |
+| Metric                    | Current Performance | Target with Quick Wins | Improvement         |
+| ------------------------- | ------------------- | ---------------------- | ------------------- |
+| **Renewal Rate**          | 82%                 | 92%                    | **12% improvement** |
+| **On-Time Renewals**      | 65%                 | 95%                    | **46% improvement** |
+| **Expired Contracts**     | 8%                  | 2%                     | **75% reduction**   |
+| **Expansion Rate**        | 18%                 | 35%                    | **94% improvement** |
+| **Avg Renewal Value**     | $12,400             | $15,800                | **27% increase**    |
+| **Days to Close Renewal** | 45 days             | 28 days                | **38% faster**      |
+| **CSM Productivity**      | 15 renewals/mo      | 25 renewals/mo         | **67% improvement** |
 
 **Total Revenue Impact:** +$450K ARR through higher renewal rates and expansion opportunities
 
@@ -1168,11 +1233,13 @@ router.post('/api/renewals/:opportunityId/generate-proposal', requireAuth, async
 **Status:** ✅ **IMPLEMENTED** (Excellent)
 
 **Location:**
+
 - Frontend: `client/src/pages/CustomerSelfServicePortal.tsx` (line 1-150+)
 - Backend: `server/routes-enhanced-service.ts` (customer portal integration)
 - Components: `client/src/components/customer-portal/CustomerDashboard.tsx`
 
 **Features Implemented:**
+
 - ✅ Equipment health dashboard with real-time status
 - ✅ Usage analytics with trend visualization
 - ✅ Service request submission with priority selection
@@ -1183,12 +1250,13 @@ router.post('/api/renewals/:opportunityId/generate-proposal', requireAuth, async
 - ✅ Mobile-responsive design
 
 **Recommendation:** ✨ **Add meter submission incentive**
+
 ```typescript
 // Gamification: Reward customers for timely meter submissions
 const meterSubmissionReward = {
   onTimeSubmissions: 12, // consecutive months
   reward: '5% discount on next toner order',
-  badge: 'Proactive Partner'
+  badge: 'Proactive Partner',
 };
 ```
 
@@ -1201,12 +1269,14 @@ const meterSubmissionReward = {
 **Status:** ⚠️ **PARTIALLY IMPLEMENTED** (Needs Automation)
 
 **What Exists:**
+
 - ✅ Toner inventory system: `server/seed-toner-workflow.ts`
 - ✅ Supply ordering portal: Customer can manually order
 - ✅ Inventory tracking with reorder points
 - ✅ Service contract tracking (includes_toner flag)
 
 **What's Missing:**
+
 - ❌ **Automated trigger** based on meter thresholds
 - ❌ **Toner forecasting** based on usage patterns
 - ❌ **Auto-shipment workflow**
@@ -1214,6 +1284,7 @@ const meterSubmissionReward = {
 **Implementation Needed (30-Minute Fix):**
 
 Create automated toner monitoring service:
+
 ```typescript
 // server/services/automated-toner-service.ts
 export class AutomatedTonerService {
@@ -1232,22 +1303,25 @@ export class AutomatedTonerService {
         predictedDaysRemaining: sql`
           (${equipment.tonerCapacity} - (${meterReadings.currentReading} - ${meterReadings.lastTonerReading}))
           / AVG(meter_readings.daily_pages)
-        `.as('daysLeft')
+        `.as('daysLeft'),
       })
       .from(equipment)
       .leftJoin(meterReadings, eq(meterReadings.equipmentId, equipment.id))
       .leftJoin(serviceContracts, eq(serviceContracts.equipmentId, equipment.id))
-      .leftJoin(serviceTickets, and(
-        eq(serviceTickets.equipmentId, equipment.id),
-        sql`service_tickets.work_performed ILIKE '%toner%'`
-      ))
+      .leftJoin(
+        serviceTickets,
+        and(
+          eq(serviceTickets.equipmentId, equipment.id),
+          sql`service_tickets.work_performed ILIKE '%toner%'`,
+        ),
+      )
       .where(
         and(
           eq(equipment.tenantId, tenantId),
           eq(serviceContracts.includes_toner, true),
           eq(serviceContracts.status, 'active'),
-          sql`predicted_days_remaining <= 14` // 14-day lead time
-        )
+          sql`predicted_days_remaining <= 14`, // 14-day lead time
+        ),
       )
       .groupBy(equipment.id);
 
@@ -1260,10 +1334,7 @@ export class AutomatedTonerService {
       const inventory = await db
         .select()
         .from(inventoryItems)
-        .where(and(
-          eq(inventoryItems.partNumber, tonerSKU),
-          eq(inventoryItems.tenantId, tenantId)
-        ))
+        .where(and(eq(inventoryItems.partNumber, tonerSKU), eq(inventoryItems.tenantId, tenantId)))
         .limit(1);
 
       if (!inventory[0] || inventory[0].quantityAvailable < 1) {
@@ -1281,14 +1352,16 @@ export class AutomatedTonerService {
           orderType: 'auto_replenishment',
           status: 'processing',
           priority: equip.daysRemaining <= 7 ? 'expedited' : 'standard',
-          items: [{
-            partNumber: tonerSKU,
-            quantity: 1,
-            unitPrice: equip.includesToner ? '0.00' : inventory[0].unitPrice
-          }],
+          items: [
+            {
+              partNumber: tonerSKU,
+              quantity: 1,
+              unitPrice: equip.includesToner ? '0.00' : inventory[0].unitPrice,
+            },
+          ],
           autoGenerated: true,
           triggeredBy: 'meter_threshold',
-          estimatedDeliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) // 3 days
+          estimatedDeliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days
         })
         .returning();
 
@@ -1297,7 +1370,7 @@ export class AutomatedTonerService {
         customerId: equip.customerId,
         subject: 'Automatic Toner Replenishment',
         message: `We've detected your ${equip.equipmentModel} will need toner in ${equip.daysRemaining} days. We've automatically shipped a replacement cartridge, arriving ${formatDate(shipmentOrder.estimatedDeliveryDate)}.`,
-        shipmentTracking: shipmentOrder.trackingNumber
+        shipmentTracking: shipmentOrder.trackingNumber,
       });
     }
   }
@@ -1312,6 +1385,7 @@ export class AutomatedTonerService {
 ```
 
 **Expected Result:**
+
 - 95% of customers never run out of toner
 - 60% reduction in emergency toner orders
 - 40% improvement in customer satisfaction scores
@@ -1324,6 +1398,7 @@ export class AutomatedTonerService {
 **Status:** ⚠️ **PARTIALLY IMPLEMENTED** (Excellent workflow, needs templates)
 
 **What Exists:**
+
 - ✅ **Guided workflow system**: `server/routes-enhanced-service.ts:440-528`
 - ✅ **Workflow steps tracking**: initial_assessment → diagnosis → approval → execution → testing → completion
 - ✅ **Mobile service app**: `server/routes-mobile.ts` with job details and documentation
@@ -1331,6 +1406,7 @@ export class AutomatedTonerService {
 - ✅ **Photo/signature capture**: Mobile features enabled
 
 **What's Missing:**
+
 - ❌ **Pre-built checklist templates** per service type
 - ❌ **Equipment-specific checklists** (Canon vs Xerox procedures)
 - ❌ **Quality control validation** before ticket closure
@@ -1338,6 +1414,7 @@ export class AutomatedTonerService {
 **Implementation Needed (25-Minute Fix):**
 
 Create checklist template system:
+
 ```typescript
 // shared/service-checklist-schema.ts
 export const serviceChecklistTemplates = pgTable('service_checklist_templates', {
@@ -1353,7 +1430,7 @@ export const serviceChecklistTemplates = pgTable('service_checklist_templates', 
   commonParts: text('common_parts').array(),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow()
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 
 // Example checklist template
@@ -1374,8 +1451,8 @@ const canonMaintenanceChecklist = {
         { id: 'item-001', description: 'Power down equipment', checked: false },
         { id: 'item-002', description: 'Verify no active print jobs', checked: false },
         { id: 'item-003', description: 'Review service history', checked: false },
-        { id: 'item-004', description: 'Confirm parts availability', checked: false }
-      ]
+        { id: 'item-004', description: 'Confirm parts availability', checked: false },
+      ],
     },
     {
       stepId: 'step-002',
@@ -1383,10 +1460,15 @@ const canonMaintenanceChecklist = {
       required: true,
       items: [
         { id: 'item-101', description: 'Check for physical damage', checked: false },
-        { id: 'item-102', description: 'Inspect toner cartridge levels', checked: false, photo: true },
+        {
+          id: 'item-102',
+          description: 'Inspect toner cartridge levels',
+          checked: false,
+          photo: true,
+        },
         { id: 'item-103', description: 'Check waste toner container', checked: false },
-        { id: 'item-104', description: 'Examine paper trays for damage', checked: false }
-      ]
+        { id: 'item-104', description: 'Examine paper trays for damage', checked: false },
+      ],
     },
     {
       stepId: 'step-003',
@@ -1397,8 +1479,8 @@ const canonMaintenanceChecklist = {
         { id: 'item-202', description: 'Clean corona wires', checked: false },
         { id: 'item-203', description: 'Clean paper feed rollers', checked: false },
         { id: 'item-204', description: 'Clean fuser assembly exterior', checked: false },
-        { id: 'item-205', description: 'Clean scanner glass', checked: false }
-      ]
+        { id: 'item-205', description: 'Clean scanner glass', checked: false },
+      ],
     },
     {
       stepId: 'step-004',
@@ -1406,9 +1488,19 @@ const canonMaintenanceChecklist = {
       required: false,
       items: [
         { id: 'item-301', description: 'Replace toner if <20%', checked: false, conditional: true },
-        { id: 'item-302', description: 'Replace worn paper feed rollers', checked: false, conditional: true },
-        { id: 'item-303', description: 'Install maintenance kit if due', checked: false, conditional: true }
-      ]
+        {
+          id: 'item-302',
+          description: 'Replace worn paper feed rollers',
+          checked: false,
+          conditional: true,
+        },
+        {
+          id: 'item-303',
+          description: 'Install maintenance kit if due',
+          checked: false,
+          conditional: true,
+        },
+      ],
     },
     {
       stepId: 'step-005',
@@ -1417,30 +1509,56 @@ const canonMaintenanceChecklist = {
       items: [
         { id: 'item-401', description: 'Power on equipment', checked: false },
         { id: 'item-402', description: 'Run test print (text)', checked: false, photo: true },
-        { id: 'item-403', description: 'Run test print (color/grayscale)', checked: false, photo: true },
+        {
+          id: 'item-403',
+          description: 'Run test print (color/grayscale)',
+          checked: false,
+          photo: true,
+        },
         { id: 'item-404', description: 'Test copy function', checked: false },
         { id: 'item-405', description: 'Test scan to email', checked: false },
         { id: 'item-406', description: 'Verify network connectivity', checked: false },
-        { id: 'item-407', description: 'Check error log', checked: false }
-      ]
+        { id: 'item-407', description: 'Check error log', checked: false },
+      ],
     },
     {
       stepId: 'step-006',
       stepName: 'Documentation & Completion',
       required: true,
       items: [
-        { id: 'item-501', description: 'Record current meter reading', checked: false, requireInput: true },
+        {
+          id: 'item-501',
+          description: 'Record current meter reading',
+          checked: false,
+          requireInput: true,
+        },
         { id: 'item-502', description: 'Update service history', checked: false },
-        { id: 'item-503', description: 'Set next service due date', checked: false, requireInput: true },
-        { id: 'item-504', description: 'Capture customer signature', checked: false, requireSignature: true },
-        { id: 'item-505', description: 'Collect customer satisfaction rating', checked: false, requireRating: true }
-      ]
-    }
-  ]
+        {
+          id: 'item-503',
+          description: 'Set next service due date',
+          checked: false,
+          requireInput: true,
+        },
+        {
+          id: 'item-504',
+          description: 'Capture customer signature',
+          checked: false,
+          requireSignature: true,
+        },
+        {
+          id: 'item-505',
+          description: 'Collect customer satisfaction rating',
+          checked: false,
+          requireRating: true,
+        },
+      ],
+    },
+  ],
 };
 ```
 
 **Mobile UI Integration:**
+
 ```tsx
 // client/src/pages/MobileFieldService.tsx - checklist component
 function ServiceChecklist({ ticketId, equipmentModel }: Props) {
@@ -1543,6 +1661,7 @@ function ServiceChecklist({ ticketId, equipmentModel }: Props) {
 ```
 
 **Expected Result:**
+
 - 95% checklist completion rate (vs current 60-70% informal completion)
 - 25% reduction in missed steps causing callbacks
 - 30% faster training for new technicians
@@ -1557,6 +1676,7 @@ function ServiceChecklist({ ticketId, equipmentModel }: Props) {
 **Location:** `server/routes-mobile.ts:551-646`
 
 **Features Implemented:**
+
 - ✅ Complete work summary capture
 - ✅ Parts used and labor tracking
 - ✅ Time spent calculation
@@ -1571,6 +1691,7 @@ function ServiceChecklist({ ticketId, equipmentModel }: Props) {
 **Enhancement Needed (10-Minute Fix):**
 
 Add PDF generation for professional service report:
+
 ```typescript
 // server/services/service-report-pdf-generator.ts
 import PDFDocument from 'pdfkit';
@@ -1662,6 +1783,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 ```
 
 **Expected Result:**
+
 - Professional PDF reports for customers and records
 - One-click email to customer with report attached
 - Reduced administrative time by 45 minutes/week per technician
@@ -1674,6 +1796,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 **Status:** ⚠️ **PARTIALLY IMPLEMENTED** (Excellent schema, needs UI)
 
 **What Exists:**
+
 - ✅ **Comprehensive renewal schema**: `shared/customer-success-schema.ts:264-347`
 - ✅ **Renewal opportunity tracking**: days until renewal, probability, risk levels
 - ✅ **Financial projections**: current vs projected MRR, expansion potential
@@ -1681,6 +1804,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 - ✅ **Health score integration**: Linked to churn predictions and health scores
 
 **What's Missing:**
+
 - ❌ **Dedicated dashboard page** (covered in Quick Win #1 above)
 - ❌ **Auto-follow-up workflows** (covered in Quick Win #2 above)
 - ❌ **Alert bell notifications** (covered in Quick Win #3 above)
@@ -1697,12 +1821,14 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 **Opportunity:** Predictive service demand forecasting
 
 **Implementation:** Create predictive model based on:
+
 - Historical service patterns (seasonal trends)
 - Equipment age and lifecycle stage
 - Meter reading trends (high usage = higher failure rate)
 - Contract renewal cycles (pre-renewal inspections)
 
 **Expected Impact:**
+
 - 20% improvement in technician utilization
 - 35% reduction in overtime costs
 - 15% improvement in customer satisfaction (fewer delays)
@@ -1715,6 +1841,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 **Opportunity:** Automated customer journey communications
 
 **Implementation:**
+
 - Service appointment reminders (24hr, 2hr, 30min before arrival)
 - Meter reading reminders (monthly automated emails)
 - Contract renewal kickoff (180, 90, 30 days before expiration)
@@ -1722,6 +1849,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 - Equipment health alerts (proactive maintenance recommendations)
 
 **Expected Impact:**
+
 - 60% reduction in missed appointments
 - 40% increase in meter reading submission rates
 - 30% increase in renewal engagement
@@ -1735,12 +1863,14 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 **Opportunity:** Leaderboards and achievement system
 
 **Implementation:**
+
 - Real-time leaderboard (first-time fix rate, CSAT, on-time arrival)
 - Achievement badges (100 tickets completed, 5-star rating streak)
 - Monthly performance competitions with rewards
 - Mobile app dashboard showing personal stats vs team average
 
 **Expected Impact:**
+
 - 25% improvement in first-time fix rates
 - 15% improvement in customer satisfaction
 - 20% reduction in service call duration
@@ -1824,34 +1954,34 @@ router.get('/api/mobile/service-report/:reportId/pdf', requireAuth, async (req: 
 
 ### Service Dispatch Time Reduction
 
-| Initiative | Time Investment | Annual Savings | ROI |
-|-----------|----------------|----------------|-----|
-| Auto-Accept AI Recommendations | 5 min | $45,000 | 9000x |
-| Pre-Dispatch Parts Check | 10 min | $38,000 | 3800x |
-| Automated ETA Notifications | 15 min | $28,000 | 1867x |
-| Proactive Scheduling | 20 min | $42,000 | 2100x |
-| Service History AI Summary | 15 min | $22,000 | 1467x |
-| **TOTAL** | **65 min** | **$175,000** | **2692x** |
+| Initiative                     | Time Investment | Annual Savings | ROI       |
+| ------------------------------ | --------------- | -------------- | --------- |
+| Auto-Accept AI Recommendations | 5 min           | $45,000        | 9000x     |
+| Pre-Dispatch Parts Check       | 10 min          | $38,000        | 3800x     |
+| Automated ETA Notifications    | 15 min          | $28,000        | 1867x     |
+| Proactive Scheduling           | 20 min          | $42,000        | 2100x     |
+| Service History AI Summary     | 15 min          | $22,000        | 1467x     |
+| **TOTAL**                      | **65 min**      | **$175,000**   | **2692x** |
 
 ### Contract Renewal Rate Improvement
 
-| Initiative | Time Investment | Annual Revenue Impact | ROI |
-|-----------|----------------|----------------------|-----|
-| Renewal Dashboard | 30 min | $180,000 | 6000x |
-| Automated Renewal Workflows | 20 min | $150,000 | 7500x |
-| Contract Expiration Alerts | 15 min | $120,000 | 8000x |
-| Renewal ROI Reports | 25 min | $95,000 | 3800x |
-| One-Click Proposal Generator | 20 min | $75,000 | 3750x |
-| **TOTAL** | **110 min** | **$620,000** | **5636x** |
+| Initiative                   | Time Investment | Annual Revenue Impact | ROI       |
+| ---------------------------- | --------------- | --------------------- | --------- |
+| Renewal Dashboard            | 30 min          | $180,000              | 6000x     |
+| Automated Renewal Workflows  | 20 min          | $150,000              | 7500x     |
+| Contract Expiration Alerts   | 15 min          | $120,000              | 8000x     |
+| Renewal ROI Reports          | 25 min          | $95,000               | 3800x     |
+| One-Click Proposal Generator | 20 min          | $75,000               | 3750x     |
+| **TOTAL**                    | **110 min**     | **$620,000**          | **5636x** |
 
 ### Other Quick Wins
 
-| Initiative | Time Investment | Annual Value | ROI |
-|-----------|----------------|--------------|-----|
-| Automated Toner Shipping | 30 min | $85,000 | 2833x |
-| Mobile Checklists | 25 min | $65,000 | 2600x |
-| Service Report PDF | 10 min | $35,000 | 3500x |
-| **TOTAL** | **65 min** | **$185,000** | **2846x** |
+| Initiative               | Time Investment | Annual Value | ROI       |
+| ------------------------ | --------------- | ------------ | --------- |
+| Automated Toner Shipping | 30 min          | $85,000      | 2833x     |
+| Mobile Checklists        | 25 min          | $65,000      | 2600x     |
+| Service Report PDF       | 10 min          | $35,000      | 3500x     |
+| **TOTAL**                | **65 min**      | **$185,000** | **2846x** |
 
 ### Grand Total
 
@@ -1885,18 +2015,22 @@ The platform already has exceptional foundations for both service dispatch and c
 ### Implementation Roadmap
 
 **Week 1:** Implement immediate priorities (Items 1-4)
+
 - Focus on dispatch efficiency and contract visibility
 - Expected impact: $195K ARR, 4+ hours/day time savings
 
 **Week 2:** Implement short-term priorities (Items 5-8)
+
 - Build renewal dashboard and automation
 - Expected impact: $420K ARR, significant service improvements
 
 **Month 1:** Implement medium-term priorities (Items 9-12)
+
 - Enhance technician tools and renewal processes
 - Expected impact: $780K ARR, comprehensive optimization
 
 **Quarter 1:** Implement long-term priorities (Items 13-15)
+
 - Build advanced automation and intelligence
 - Expected impact: $980K ARR, industry-leading capabilities
 
@@ -1905,6 +2039,7 @@ The platform already has exceptional foundations for both service dispatch and c
 Track these KPIs monthly to measure improvement:
 
 **Service Dispatch:**
+
 - Average dispatch time (target: <1 minute)
 - First-time fix rate (target: >93%)
 - Technician utilization (target: >85%)
@@ -1912,6 +2047,7 @@ Track these KPIs monthly to measure improvement:
 - Emergency ticket percentage (target: <25%)
 
 **Contract Renewals:**
+
 - Renewal rate (target: >92%)
 - On-time renewal rate (target: >95%)
 - Expansion rate (target: >35%)
@@ -1935,26 +2071,31 @@ Focus first on **service dispatch automation (Items 1-3)** and **renewal visibil
 ## Appendix: Code Reference Index
 
 ### Service Dispatch Files
+
 - `server/routes-service-dispatch.ts` - Core dispatch logic (lines 17-404)
 - `server/routes-enhanced-service.ts` - Enhanced workflows (lines 140-913)
 - `server/routes-mobile.ts` - Mobile field service (lines 17-648)
 
 ### Contract Renewal Files
+
 - `shared/customer-success-schema.ts` - Renewal schema (lines 264-347)
 - `server/routes-customer-success.ts` - Health scores and renewals (lines 12-311)
 
 ### Customer Portal Files
+
 - `client/src/pages/CustomerSelfServicePortal.tsx` - Self-service portal (lines 1-150+)
 - `client/src/components/customer-portal/CustomerDashboard.tsx` - Portal dashboard
 
 ### Automation Files
+
 - `server/routes-workflow-automation.ts` - Workflow engine (lines 18-250)
 - `server/seed-toner-workflow.ts` - Toner automation setup (lines 1-357)
 
 ### Integration Files
+
 - `server/services/manufacturer-integration-service.ts` - Manufacturer API integration
 - `server/routes-integrations.ts` - External integrations
 
 ---
 
-*End of Audit Report*
+_End of Audit Report_

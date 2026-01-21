@@ -6,7 +6,13 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { db } from './db';
-import { auditLogs, dataAccessLogs, encryptedFields, gdprRequests, securitySessions } from '../shared/security-schema';
+import {
+  auditLogs,
+  dataAccessLogs,
+  encryptedFields,
+  gdprRequests,
+  securitySessions,
+} from '../shared/security-schema';
 import { eq } from 'drizzle-orm';
 import { TenantRequest } from './middleware/tenancy';
 
@@ -51,7 +57,7 @@ export function encryptSensitiveData(text: string): EncryptedData {
   return {
     encrypted,
     iv: iv.toString('hex'),
-    tag: tag.toString('hex')
+    tag: tag.toString('hex'),
   };
 }
 
@@ -64,7 +70,7 @@ export function decryptSensitiveData(encryptedData: EncryptedData): string {
   const decipher = crypto.createDecipheriv(
     ENCRYPTION_ALGORITHM,
     ENCRYPTION_KEY,
-    Buffer.from(encryptedData.iv, 'hex')
+    Buffer.from(encryptedData.iv, 'hex'),
   );
   decipher.setAuthTag(Buffer.from(encryptedData.tag, 'hex'));
 
@@ -88,7 +94,13 @@ export interface AuditLogEntry {
   userAgent: string;
   sessionId: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
-  category: 'authentication' | 'authorization' | 'data_access' | 'data_modification' | 'system' | 'security';
+  category:
+    | 'authentication'
+    | 'authorization'
+    | 'data_access'
+    | 'data_modification'
+    | 'system'
+    | 'security';
 }
 
 export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
@@ -115,7 +127,12 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
   }
 }
 
-export function auditLogMiddleware(action: string, resource: string, severity: AuditLogEntry['severity'] = 'medium', category: AuditLogEntry['category'] = 'data_access') {
+export function auditLogMiddleware(
+  action: string,
+  resource: string,
+  severity: AuditLogEntry['severity'] = 'medium',
+  category: AuditLogEntry['category'] = 'data_access',
+) {
   return async (req: TenantRequest, res: Response, next: NextFunction) => {
     const originalSend = res.send;
     const startTime = Date.now();
@@ -129,9 +146,9 @@ export function auditLogMiddleware(action: string, resource: string, severity: A
     };
 
     // Override response to capture response data
-    res.send = function(data) {
+    res.send = function (data) {
       const responseTime = Date.now() - startTime;
-      
+
       // Log the audit event
       if (req.tenantId && req.user?.id) {
         logAuditEvent({
@@ -194,12 +211,14 @@ export async function logDataAccess(entry: DataAccessEntry): Promise<void> {
   }
 }
 
-export function dataAccessLogMiddleware(resource: string, classification: DataAccessEntry['dataClassification'] = 'internal') {
+export function dataAccessLogMiddleware(
+  resource: string,
+  classification: DataAccessEntry['dataClassification'] = 'internal',
+) {
   return async (req: TenantRequest, res: Response, next: NextFunction) => {
     if (req.tenantId && req.user?.id) {
-      const accessType: DataAccessEntry['accessType'] = 
-        req.method === 'GET' ? 'read' :
-        req.method === 'DELETE' ? 'delete' : 'write';
+      const accessType: DataAccessEntry['accessType'] =
+        req.method === 'GET' ? 'read' : req.method === 'DELETE' ? 'delete' : 'write';
 
       await logDataAccess({
         tenantId: req.tenantId,
@@ -221,7 +240,13 @@ export function dataAccessLogMiddleware(resource: string, classification: DataAc
 // ============= GDPR COMPLIANCE =============
 
 export interface GDPRRequest {
-  type: 'access' | 'rectification' | 'erasure' | 'portability' | 'restrict_processing' | 'object_processing';
+  type:
+    | 'access'
+    | 'rectification'
+    | 'erasure'
+    | 'portability'
+    | 'restrict_processing'
+    | 'object_processing';
   tenantId: string;
   subjectId: string; // User or customer ID
   subjectEmail: string;
@@ -237,9 +262,11 @@ export interface GDPRRequest {
   affectedSystems: string[];
 }
 
-export async function createGDPRRequest(request: Omit<GDPRRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+export async function createGDPRRequest(
+  request: Omit<GDPRRequest, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<string> {
   const requestId = crypto.randomUUID();
-  
+
   await db.insert(gdprRequests).values({
     id: requestId,
     type: request.type,
@@ -281,17 +308,30 @@ export async function createGDPRRequest(request: Omit<GDPRRequest, 'id' | 'creat
 export async function processDataSubjectAccess(tenantId: string, subjectId: string): Promise<any> {
   // Collect all personal data across the system
   const personalData = {
-    user: await db.query.users.findFirst({ where: (users, { eq, and }) => and(eq(users.tenantId, tenantId), eq(users.id, subjectId)) }),
-    businessRecords: await db.query.businessRecords.findMany({ where: (records, { eq, and }) => and(eq(records.tenantId, tenantId), eq(records.primaryContactEmail, subjectId)) }),
-    serviceTickets: await db.query.serviceTickets.findMany({ where: (tickets, { eq, and }) => and(eq(tickets.tenantId, tenantId), eq(tickets.customerId, subjectId)) }),
-    auditLogs: await db.query.auditLogs.findMany({ where: (logs, { eq, and }) => and(eq(logs.tenantId, tenantId), eq(logs.userId, subjectId)) }),
+    user: await db.query.users.findFirst({
+      where: (users, { eq, and }) => and(eq(users.tenantId, tenantId), eq(users.id, subjectId)),
+    }),
+    businessRecords: await db.query.businessRecords.findMany({
+      where: (records, { eq, and }) =>
+        and(eq(records.tenantId, tenantId), eq(records.primaryContactEmail, subjectId)),
+    }),
+    serviceTickets: await db.query.serviceTickets.findMany({
+      where: (tickets, { eq, and }) =>
+        and(eq(tickets.tenantId, tenantId), eq(tickets.customerId, subjectId)),
+    }),
+    auditLogs: await db.query.auditLogs.findMany({
+      where: (logs, { eq, and }) => and(eq(logs.tenantId, tenantId), eq(logs.userId, subjectId)),
+    }),
     // Add other relevant tables
   };
 
   return personalData;
 }
 
-export async function processDataSubjectErasure(tenantId: string, subjectId: string): Promise<void> {
+export async function processDataSubjectErasure(
+  tenantId: string,
+  subjectId: string,
+): Promise<void> {
   // Implement data erasure while maintaining referential integrity
   // This should be carefully implemented based on business requirements
   console.warn('Data erasure requested for subject:', subjectId);
@@ -316,7 +356,13 @@ export interface SecuritySession {
 const SESSION_TIMEOUT_MINUTES = 30;
 const SESSION_WARNING_MINUTES = 25;
 
-export async function createSecuritySession(userId: string, tenantId: string, sessionId: string, ipAddress: string, userAgent: string): Promise<void> {
+export async function createSecuritySession(
+  userId: string,
+  tenantId: string,
+  sessionId: string,
+  ipAddress: string,
+  userAgent: string,
+): Promise<void> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000);
 
@@ -339,7 +385,8 @@ export async function updateSessionActivity(sessionId: string): Promise<void> {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000);
 
-  await db.update(securitySessions)
+  await db
+    .update(securitySessions)
     .set({
       lastActivity: now,
       expiresAt,
@@ -348,9 +395,12 @@ export async function updateSessionActivity(sessionId: string): Promise<void> {
     .where(eq(securitySessions.sessionId, sessionId));
 }
 
-export async function checkSessionTimeout(sessionId: string): Promise<{ valid: boolean; showWarning: boolean }> {
+export async function checkSessionTimeout(
+  sessionId: string,
+): Promise<{ valid: boolean; showWarning: boolean }> {
   const session = await db.query.securitySessions.findFirst({
-    where: (sessions, { eq, and }) => and(eq(sessions.sessionId, sessionId), eq(sessions.isActive, true))
+    where: (sessions, { eq, and }) =>
+      and(eq(sessions.sessionId, sessionId), eq(sessions.isActive, true)),
   });
 
   if (!session) {
@@ -362,19 +412,21 @@ export async function checkSessionTimeout(sessionId: string): Promise<{ valid: b
 
   if (now >= session.expiresAt) {
     // Session expired
-    await db.update(securitySessions)
+    await db
+      .update(securitySessions)
       .set({ isActive: false })
       .where(eq(securitySessions.sessionId, sessionId));
-    
+
     return { valid: false, showWarning: false };
   }
 
   if (now >= warningTime && !session.timeoutWarningShown) {
     // Show warning
-    await db.update(securitySessions)
+    await db
+      .update(securitySessions)
       .set({ timeoutWarningShown: true })
       .where(eq(securitySessions.sessionId, sessionId));
-    
+
     return { valid: true, showWarning: true };
   }
 
@@ -385,24 +437,27 @@ export function sessionTimeoutMiddleware() {
   return async (req: TenantRequest, res: Response, next: NextFunction) => {
     if (req.sessionID && req.user?.id) {
       const sessionCheck = await checkSessionTimeout(req.sessionID);
-      
+
       if (!sessionCheck.valid) {
-        return res.status(401).json({ 
-          error: 'Session expired', 
+        return res.status(401).json({
+          error: 'Session expired',
           code: 'SESSION_EXPIRED',
-          redirectTo: '/login' 
+          redirectTo: '/login',
         });
       }
 
       if (sessionCheck.showWarning) {
         res.setHeader('X-Session-Warning', 'true');
-        res.setHeader('X-Session-Expires', new Date(Date.now() + SESSION_TIMEOUT_MINUTES * 60 * 1000).toISOString());
+        res.setHeader(
+          'X-Session-Expires',
+          new Date(Date.now() + SESSION_TIMEOUT_MINUTES * 60 * 1000).toISOString(),
+        );
       }
 
       // Update session activity
       await updateSessionActivity(req.sessionID);
     }
-    
+
     next();
   };
 }
@@ -411,20 +466,20 @@ export function sessionTimeoutMiddleware() {
 
 export function sanitizeForAudit(data: any): any {
   if (!data) return data;
-  
+
   const sanitized = { ...data };
-  
+
   // Remove sensitive fields from audit logs
   const sensitiveFields = ['password', 'token', 'secret', 'key', 'credit_card', 'ssn', 'tax_id'];
-  
+
   function recursiveSanitize(obj: any): any {
     if (typeof obj !== 'object' || obj === null) return obj;
-    
+
     const result: any = Array.isArray(obj) ? [] : {};
-    
+
     for (const [key, value] of Object.entries(obj)) {
       const lowerKey = key.toLowerCase();
-      if (sensitiveFields.some(field => lowerKey.includes(field))) {
+      if (sensitiveFields.some((field) => lowerKey.includes(field))) {
         result[key] = '[REDACTED]';
       } else if (typeof value === 'object' && value !== null) {
         result[key] = recursiveSanitize(value);
@@ -432,16 +487,19 @@ export function sanitizeForAudit(data: any): any {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
-  
+
   return recursiveSanitize(sanitized);
 }
 
-export function maskSensitiveData(value: string, type: 'email' | 'phone' | 'ssn' | 'credit_card' = 'email'): string {
+export function maskSensitiveData(
+  value: string,
+  type: 'email' | 'phone' | 'ssn' | 'credit_card' = 'email',
+): string {
   if (!value) return value;
-  
+
   switch (type) {
     case 'email':
       const [local, domain] = value.split('@');
@@ -463,26 +521,26 @@ export default {
   // Encryption
   encryptSensitiveData,
   decryptSensitiveData,
-  
+
   // Audit Logging
   logAuditEvent,
   auditLogMiddleware,
-  
+
   // Data Access Logging
   logDataAccess,
   dataAccessLogMiddleware,
-  
+
   // GDPR Compliance
   createGDPRRequest,
   processDataSubjectAccess,
   processDataSubjectErasure,
-  
+
   // Session Management
   createSecuritySession,
   updateSessionActivity,
   checkSessionTimeout,
   sessionTimeoutMiddleware,
-  
+
   // Utilities
   sanitizeForAudit,
   maskSensitiveData,

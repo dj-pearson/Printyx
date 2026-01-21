@@ -96,15 +96,15 @@ class TouchHandler {
     this.touches = new Map();
     this.setupEventListeners();
   }
-  
+
   handleTouchStart(event) {
     event.preventDefault(); // Prevent mouse events
-    
+
     for (const touch of event.changedTouches) {
       this.touches.set(touch.identifier, {
         startX: touch.pageX,
         startY: touch.pageY,
-        startTime: performance.now()
+        startTime: performance.now(),
       });
     }
   }
@@ -116,10 +116,10 @@ class TouchHandler {
 ```javascript
 async function processLargeDataset(data) {
   let lastYield = performance.now();
-  
+
   for (const item of data) {
     processItem(item);
-    
+
     if (performance.now() - lastYield > 50) {
       await scheduler.yield(); // Yield to main thread
       lastYield = performance.now();
@@ -131,7 +131,7 @@ async function processLargeDataset(data) {
 **Service workers enable sophisticated caching strategies** tailored to mobile usage patterns. Cache-first approaches for static assets combined with network-first for API calls optimize for intermittent connectivity:
 
 ```javascript
-self.addEventListener('fetch', event => {
+self.addEventListener('fetch', (event) => {
   if (request.destination === 'image') {
     event.respondWith(cacheFirstWithRefresh(request));
   } else if (request.url.includes('/api/')) {
@@ -163,20 +163,23 @@ The optimal approach combines **bottom tabs for 3-5 primary sections** with hamb
 ```html
 <style>
   /* Critical above-the-fold styles only */
-  .header, .hero { /* essential styles */ }
+  .header,
+  .hero {
+    /* essential styles */
+  }
 </style>
 
-<link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet" href="styles.css"></noscript>
+<link rel="preload" href="styles.css" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+<noscript><link rel="stylesheet" href="styles.css" /></noscript>
 ```
 
 **Image optimization** leverages modern formats with **AVIF providing up to 50% smaller files** than WebP, while native lazy loading reaches universal browser support:
 
 ```html
 <picture>
-  <source srcset="hero.avif" type="image/avif">
-  <source srcset="hero.webp" type="image/webp">
-  <img src="hero.jpg" loading="lazy" alt="Description">
+  <source srcset="hero.avif" type="image/avif" />
+  <source srcset="hero.webp" type="image/webp" />
+  <img src="hero.jpg" loading="lazy" alt="Description" />
 </picture>
 ```
 
@@ -188,7 +191,7 @@ module.exports = {
     hints: 'error',
     maxAssetSize: 150000,
     maxEntrypointSize: 400000,
-  }
+  },
 };
 ```
 

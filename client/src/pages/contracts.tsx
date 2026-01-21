@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import MainLayout from "@/components/layout/main-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import MainLayout from '@/components/layout/main-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -12,31 +12,27 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Search, Plus, FileText, Loader2 } from "lucide-react";
-import { format } from "date-fns";
-import { apiRequest } from "@/lib/queryClient";
-import { cn } from "@/lib/utils";
-import { useLocation } from "wouter";
-import { 
-  type Contract, 
-  type InsertContract,
-  insertContractSchema 
-} from "@shared/schema";
+} from '@/components/ui/select';
+import { Search, Plus, FileText, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
+import { useLocation } from 'wouter';
+import { type Contract, type InsertContract, insertContractSchema } from '@shared/schema';
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
@@ -45,32 +41,32 @@ export default function Contracts() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({
-    queryKey: ["/api/contracts"],
+    queryKey: ['/api/contracts'],
   });
 
   // Create Contract dialog state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [quoteSearch, setQuoteSearch] = useState("");
-  const [selectedQuoteId, setSelectedQuoteId] = useState<string>("");
+  const [quoteSearch, setQuoteSearch] = useState('');
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string>('');
   const [contractForm, setContractForm] = useState({
-    customerId: "",
-    startDate: "",
-    endDate: "",
-    monthlyBase: "",
-    blackRate: "",
-    colorRate: "",
-    terms: "",
+    customerId: '',
+    startDate: '',
+    endDate: '',
+    monthlyBase: '',
+    blackRate: '',
+    colorRate: '',
+    terms: '',
   });
 
   // Fetch active/accepted quotes for building contracts
   const { data: availableQuotes = [], isLoading: quotesLoading } = useQuery({
-    queryKey: ["/api/quotes", "contract-source", quoteSearch],
+    queryKey: ['/api/quotes', 'contract-source', quoteSearch],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (quoteSearch.trim()) params.append("search", quoteSearch.trim());
+      if (quoteSearch.trim()) params.append('search', quoteSearch.trim());
       // Prefer active/accepted quotes for contracts; fall back to all if API ignores param
-      params.append("status", "accepted");
-      params.append("limit", "50");
+      params.append('status', 'accepted');
+      params.append('limit', '50');
       return apiRequest(`/api/quotes?${params.toString()}`);
     },
     enabled: isCreateOpen,
@@ -78,27 +74,22 @@ export default function Contracts() {
 
   // Fetch line items when a quote is selected
   const { data: quoteLineItems = [], isLoading: lineItemsLoading } = useQuery({
-    queryKey: ["/api/quotes", selectedQuoteId, "line-items"],
+    queryKey: ['/api/quotes', selectedQuoteId, 'line-items'],
     enabled: !!selectedQuoteId,
   });
 
   useEffect(() => {
     // When quote changes, prefill customer and dates if present
     if (!selectedQuoteId) return;
-    const quote = (availableQuotes as any[]).find(
-      (q) => q.id === selectedQuoteId
-    );
+    const quote = (availableQuotes as any[]).find((q) => q.id === selectedQuoteId);
     if (quote) {
       setContractForm((prev) => ({
         ...prev,
         customerId: quote.customerId || prev.customerId,
-        startDate: prev.startDate || format(new Date(), "yyyy-MM-dd"),
+        startDate: prev.startDate || format(new Date(), 'yyyy-MM-dd'),
         endDate:
           prev.endDate ||
-          format(
-            new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-            "yyyy-MM-dd"
-          ),
+          format(new Date(new Date().setFullYear(new Date().getFullYear() + 1)), 'yyyy-MM-dd'),
       }));
     }
   }, [selectedQuoteId, availableQuotes]);
@@ -106,7 +97,7 @@ export default function Contracts() {
   // Auto-open create dialog when navigated from Proposal Builder with quoteId
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const quoteIdFromUrl = params.get("quoteId");
+    const quoteIdFromUrl = params.get('quoteId');
     if (quoteIdFromUrl) {
       setIsCreateOpen(true);
       setQuoteSearch(quoteIdFromUrl);
@@ -116,12 +107,10 @@ export default function Contracts() {
 
   const createContractMutation = useMutation({
     mutationFn: async () => {
-      const selectedQuote = (availableQuotes as any[]).find(
-        (q) => q.id === selectedQuoteId
-      );
+      const selectedQuote = (availableQuotes as any[]).find((q) => q.id === selectedQuoteId);
       const customerId = contractForm.customerId || selectedQuote?.customerId;
 
-      console.log("Creating contract with:", {
+      console.log('Creating contract with:', {
         selectedQuoteId,
         selectedQuote,
         customerId,
@@ -130,7 +119,7 @@ export default function Contracts() {
 
       if (!customerId) {
         throw new Error(
-          "No customer ID available. Please select a quote with a linked customer or select a customer manually."
+          'No customer ID available. Please select a quote with a linked customer or select a customer manually.',
         );
       }
 
@@ -138,53 +127,44 @@ export default function Contracts() {
         customerId: customerId,
         startDate: contractForm.startDate,
         endDate: contractForm.endDate,
-        monthlyBase: contractForm.monthlyBase
-          ? Number(contractForm.monthlyBase)
-          : undefined,
-        blackRate: contractForm.blackRate
-          ? Number(contractForm.blackRate)
-          : undefined,
-        colorRate: contractForm.colorRate
-          ? Number(contractForm.colorRate)
-          : undefined,
-        status: "active",
+        monthlyBase: contractForm.monthlyBase ? Number(contractForm.monthlyBase) : undefined,
+        blackRate: contractForm.blackRate ? Number(contractForm.blackRate) : undefined,
+        colorRate: contractForm.colorRate ? Number(contractForm.colorRate) : undefined,
+        status: 'active',
         sourceQuoteId: selectedQuoteId || undefined,
         terms: contractForm.terms,
       };
-      return await apiRequest("/api/contracts", "POST", payload);
+      return await apiRequest('/api/contracts', 'POST', payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/contracts"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contracts'] });
       setIsCreateOpen(false);
-      setSelectedQuoteId("");
+      setSelectedQuoteId('');
     },
   });
 
   const formatCurrency = (amount?: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
     }).format(Number(amount ?? 0));
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case "active":
-        return "default";
-      case "expired":
-        return "destructive";
-      case "pending":
-        return "secondary";
+      case 'active':
+        return 'default';
+      case 'expired':
+        return 'destructive';
+      case 'pending':
+        return 'secondary';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
   if (contractsLoading) {
     return (
-      <MainLayout
-        title="Contracts"
-        description="Manage service contracts and billing agreements"
-      >
+      <MainLayout title="Contracts" description="Manage service contracts and billing agreements">
         <div className="grid gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -200,19 +180,16 @@ export default function Contracts() {
   }
 
   return (
-    <MainLayout
-      title="Contracts"
-      description="Manage service contracts and billing agreements"
-    >
+    <MainLayout title="Contracts" description="Manage service contracts and billing agreements">
       <div className="space-y-6">
         {/* Process Help Banner */}
-        <ProcessHelpBanner 
+        <ProcessHelpBanner
           processType="proposal-to-contract"
           currentStage="contract-preparation"
           nextStage="signature-collection"
           estimatedTime="30-60 min"
         />
-        
+
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -233,9 +210,7 @@ export default function Contracts() {
                 {/* Quote selector */}
                 <Card className="md:col-span-1">
                   <CardHeader>
-                    <CardTitle className="text-sm">
-                      Select Quote (optional)
-                    </CardTitle>
+                    <CardTitle className="text-sm">Select Quote (optional)</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="relative">
@@ -256,21 +231,18 @@ export default function Contracts() {
                         (availableQuotes as any[])
                           .filter((q) =>
                             quoteSearch
-                              ? (q.title || "")
-                                  .toLowerCase()
-                                  .includes(quoteSearch.toLowerCase()) ||
-                                (q.quoteNumber || "")
+                              ? (q.title || '').toLowerCase().includes(quoteSearch.toLowerCase()) ||
+                                (q.quoteNumber || '')
                                   .toLowerCase()
                                   .includes(quoteSearch.toLowerCase())
-                              : true
+                              : true,
                           )
                           .map((q) => (
                             <button
                               key={q.id}
                               className={cn(
-                                "w-full text-left rounded border p-2 hover:bg-muted",
-                                selectedQuoteId === q.id &&
-                                  "ring-2 ring-primary"
+                                'w-full text-left rounded border p-2 hover:bg-muted',
+                                selectedQuoteId === q.id && 'ring-2 ring-primary',
                               )}
                               onClick={() => setSelectedQuoteId(q.id)}
                             >
@@ -382,9 +354,7 @@ export default function Contracts() {
 
                       {/* Quote line items preview */}
                       <div className="border rounded">
-                        <div className="px-3 py-2 text-sm font-medium border-b">
-                          Quote Items
-                        </div>
+                        <div className="px-3 py-2 text-sm font-medium border-b">Quote Items</div>
                         <div className="max-h-56 overflow-y-auto">
                           {lineItemsLoading ? (
                             <div className="flex items-center justify-center py-6">
@@ -395,36 +365,23 @@ export default function Contracts() {
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>Description</TableHead>
-                                  <TableHead className="w-24 text-right">
-                                    Qty
-                                  </TableHead>
-                                  <TableHead className="w-24 text-right">
-                                    Price
-                                  </TableHead>
-                                  <TableHead className="w-28 text-right">
-                                    Total
-                                  </TableHead>
+                                  <TableHead className="w-24 text-right">Qty</TableHead>
+                                  <TableHead className="w-24 text-right">Price</TableHead>
+                                  <TableHead className="w-28 text-right">Total</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {(quoteLineItems as any[]).map((li) => (
                                   <TableRow key={li.id}>
-                                    <TableCell>
-                                      {li.description || li.productName}
-                                    </TableCell>
+                                    <TableCell>{li.description || li.productName}</TableCell>
+                                    <TableCell className="text-right">{li.quantity ?? 1}</TableCell>
                                     <TableCell className="text-right">
-                                      {li.quantity ?? 1}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      {Number(
-                                        li.unitPrice ?? li.price ?? 0
-                                      ).toFixed(2)}
+                                      {Number(li.unitPrice ?? li.price ?? 0).toFixed(2)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                       {Number(
                                         li.total ??
-                                          (li.quantity ?? 1) *
-                                            (li.unitPrice ?? li.price ?? 0)
+                                          (li.quantity ?? 1) * (li.unitPrice ?? li.price ?? 0),
                                       ).toFixed(2)}
                                     </TableCell>
                                   </TableRow>
@@ -439,10 +396,7 @@ export default function Contracts() {
                         </div>
                       </div>
                       <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsCreateOpen(false)}
-                        >
+                        <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
                           Cancel
                         </Button>
                         <Button
@@ -484,10 +438,7 @@ export default function Contracts() {
           <div className="space-y-4">
             {Array.isArray(contracts) &&
               contracts.map((contract: Contract) => (
-                <Card
-                  key={contract.id}
-                  className="hover:shadow-md transition-shadow"
-                >
+                <Card key={contract.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-start space-x-4">
@@ -495,30 +446,17 @@ export default function Contracts() {
                           <FileText className="h-5 w-5 text-primary-600" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900">
-                            {contract.contractNumber}
-                          </h3>
+                          <h3 className="font-semibold text-gray-900">{contract.contractNumber}</h3>
                           <p className="text-sm text-gray-600 mt-1">
                             Customer ID: {contract.customerId}
                           </p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                            <span>
-                              Start:{" "}
-                              {new Date(
-                                contract.startDate
-                              ).toLocaleDateString()}
-                            </span>
-                            <span>
-                              End:{" "}
-                              {new Date(contract.endDate).toLocaleDateString()}
-                            </span>
+                            <span>Start: {new Date(contract.startDate).toLocaleDateString()}</span>
+                            <span>End: {new Date(contract.endDate).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
-                      <Badge
-                        variant={getStatusVariant(contract.status)}
-                        className="capitalize"
-                      >
+                      <Badge variant={getStatusVariant(contract.status)} className="capitalize">
                         {contract.status}
                       </Badge>
                     </div>
@@ -529,32 +467,19 @@ export default function Contracts() {
                           Monthly Base
                         </p>
                         <p className="text-lg font-semibold text-gray-900">
-                          $
-                          {contract.monthlyBase
-                            ? Number(contract.monthlyBase).toFixed(2)
-                            : "0.00"}
+                          ${contract.monthlyBase ? Number(contract.monthlyBase).toFixed(2) : '0.00'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
-                          Black Rate
-                        </p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Black Rate</p>
                         <p className="text-lg font-semibold text-gray-900">
-                          $
-                          {contract.blackRate
-                            ? Number(contract.blackRate).toFixed(4)
-                            : "0.0000"}
+                          ${contract.blackRate ? Number(contract.blackRate).toFixed(4) : '0.0000'}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
-                          Color Rate
-                        </p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Color Rate</p>
                         <p className="text-lg font-semibold text-gray-900">
-                          $
-                          {contract.colorRate
-                            ? Number(contract.colorRate).toFixed(4)
-                            : "0.0000"}
+                          ${contract.colorRate ? Number(contract.colorRate).toFixed(4) : '0.0000'}
                         </p>
                       </div>
                     </div>
@@ -566,14 +491,14 @@ export default function Contracts() {
                       <Button variant="outline" size="sm">
                         Edit Contract
                       </Button>
-                        <Button
-                          size="sm"
-                          onClick={() =>
-                            setLocation(`/admin/purchase-orders?contractId=${contract.id}`)
-                          }
-                        >
-                          Book Order
-                        </Button>
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          setLocation(`/admin/purchase-orders?contractId=${contract.id}`)
+                        }
+                      >
+                        Book Order
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -584,9 +509,7 @@ export default function Contracts() {
             <CardContent className="py-12">
               <div className="text-center">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No contracts found
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No contracts found</h3>
                 <p className="text-gray-600 mb-6">
                   Create your first service contract to get started.
                 </p>

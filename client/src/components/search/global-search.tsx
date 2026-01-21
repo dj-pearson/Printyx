@@ -1,7 +1,7 @@
-import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
+import * as React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'wouter';
+import { apiRequest } from '@/lib/queryClient';
 import {
   CommandDialog,
   CommandEmpty,
@@ -10,7 +10,7 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@/components/ui/command";
+} from '@/components/ui/command';
 import {
   Building2,
   User,
@@ -22,9 +22,9 @@ import {
   Search,
   Clock,
   TrendingUp,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface SearchResult {
   id: string;
@@ -61,7 +61,7 @@ const SEARCH_LABELS = {
 };
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState('');
   const [, setLocation] = useLocation();
   const [recentSearches, setRecentSearches] = React.useState<SearchResult[]>([]);
 
@@ -79,10 +79,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   // Save recent search
   const saveRecentSearch = (result: SearchResult) => {
-    const updated = [
-      result,
-      ...recentSearches.filter((r) => r.id !== result.id),
-    ].slice(0, 5); // Keep only 5 most recent
+    const updated = [result, ...recentSearches.filter((r) => r.id !== result.id)].slice(0, 5); // Keep only 5 most recent
 
     setRecentSearches(updated);
     localStorage.setItem('recentSearches', JSON.stringify(updated));
@@ -105,9 +102,10 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         try {
           const quotes = JSON.parse(quotesStr);
           quotes
-            .filter((q: any) =>
-              q.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              q.proposalNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+            .filter(
+              (q: any) =>
+                q.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                q.proposalNumber?.toLowerCase().includes(searchQuery.toLowerCase()),
             )
             .slice(0, 3)
             .forEach((q: any) => {
@@ -148,12 +146,12 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     saveRecentSearch(result);
     setLocation(result.url);
     onOpenChange(false);
-    setSearchQuery("");
+    setSearchQuery('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     // cmd+k / ctrl+k to close
-    if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       onOpenChange(false);
     }
@@ -178,8 +176,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               <Search className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
               <p className="text-muted-foreground">
                 {searchQuery.length < 2
-                  ? "Type at least 2 characters to search"
-                  : "No results found"}
+                  ? 'Type at least 2 characters to search'
+                  : 'No results found'}
               </p>
             </div>
           )}
@@ -188,12 +186,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         {/* Recent Searches */}
         {!searchQuery && recentSearches.length > 0 && (
           <>
-            <CommandGroup heading={
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                <span>Recent Searches</span>
-              </div>
-            }>
+            <CommandGroup
+              heading={
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>Recent Searches</span>
+                </div>
+              }
+            >
               {recentSearches.map((result) => {
                 const Icon = SEARCH_ICONS[result.type];
                 return (
@@ -212,9 +212,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       )}
                     </div>
                     {result.metadata && (
-                      <span className="text-xs text-muted-foreground">
-                        {result.metadata}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{result.metadata}</span>
                     )}
                     <Badge variant="outline" className="text-xs">
                       {SEARCH_LABELS[result.type]}
@@ -234,15 +232,17 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
           return (
             <React.Fragment key={type}>
-              <CommandGroup heading={
-                <div className="flex items-center gap-2">
-                  <Icon className="h-4 w-4" />
-                  <span>{label}</span>
-                  <Badge variant="secondary" className="ml-auto">
-                    {items.length}
-                  </Badge>
-                </div>
-              }>
+              <CommandGroup
+                heading={
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    <span>{label}</span>
+                    <Badge variant="secondary" className="ml-auto">
+                      {items.length}
+                    </Badge>
+                  </div>
+                }
+              >
                 {items.map((result) => (
                   <CommandItem
                     key={result.id}
@@ -259,9 +259,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       )}
                     </div>
                     {result.metadata && (
-                      <span className="text-xs text-muted-foreground">
-                        {result.metadata}
-                      </span>
+                      <span className="text-xs text-muted-foreground">{result.metadata}</span>
                     )}
                   </CommandItem>
                 ))}
@@ -275,7 +273,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
       <div className="border-t p-2 text-xs text-muted-foreground text-center">
         <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
           <span className="text-xs">⌘</span>K
-        </kbd>{" "}
+        </kbd>{' '}
         to close
       </div>
     </CommandDialog>
@@ -291,14 +289,14 @@ export function useGlobalSearch() {
   // cmd+k / ctrl+k to open
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setOpen((open) => !open);
       }
     };
 
-    document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
   }, []);
 
   return { open, setOpen };

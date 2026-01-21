@@ -26,7 +26,11 @@ export default function SalesManagerDashboard() {
   });
 
   // Fetch regional pipeline overview (Report 12)
-  const { data: pipelineData, isLoading: pipelineLoading, refetch: refetchPipeline } = useQuery({
+  const {
+    data: pipelineData,
+    isLoading: pipelineLoading,
+    refetch: refetchPipeline,
+  } = useQuery({
     queryKey: ['sales-manager-reports', 'regional', 'pipeline', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -96,12 +100,7 @@ export default function SalesManagerDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={pipelineLoading}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={pipelineLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${pipelineLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -116,12 +115,8 @@ export default function SalesManagerDashboard() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {pipelineData?.summary?.totalRegions || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Across your territory
-            </p>
+            <div className="text-2xl font-bold">{pipelineData?.summary?.totalRegions || 0}</div>
+            <p className="text-xs text-muted-foreground">Across your territory</p>
           </CardContent>
         </Card>
 
@@ -150,7 +145,8 @@ export default function SalesManagerDashboard() {
               {quotaData?.summary?.overallAttainment?.toFixed(1) || 0}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {quotaData?.summary?.regionsOnTrack || 0} on track / {quotaData?.summary?.regionsAtRisk || 0} at risk
+              {quotaData?.summary?.regionsOnTrack || 0} on track /{' '}
+              {quotaData?.summary?.regionsAtRisk || 0} at risk
             </p>
           </CardContent>
         </Card>
@@ -192,7 +188,10 @@ export default function SalesManagerDashboard() {
               ) : (
                 <div className="space-y-4">
                   {pipelineData?.aggregated?.map((stage: any) => (
-                    <div key={stage.stage} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={stage.stage}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div>
                         <div className="font-medium">{stage.stage}</div>
                         <div className="text-sm text-muted-foreground">
@@ -225,17 +224,26 @@ export default function SalesManagerDashboard() {
               ) : (
                 <div className="space-y-2">
                   {performanceData?.regions?.map((region: any) => (
-                    <div key={region.regionId} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={region.regionId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
-                        <div className="font-medium">#{region.ranking} {region.regionName}</div>
+                        <div className="font-medium">
+                          #{region.ranking} {region.regionName}
+                        </div>
                         <div className="text-sm text-muted-foreground">
-                          {region.locationCount} locations · {region.teamSize} reps · {region.dealsWon} deals won
+                          {region.locationCount} locations · {region.teamSize} reps ·{' '}
+                          {region.dealsWon} deals won
                         </div>
                       </div>
                       <div className="text-right space-y-1">
-                        <div className="text-lg font-bold">${(region.totalRevenue / 1000).toFixed(0)}K</div>
+                        <div className="text-lg font-bold">
+                          ${(region.totalRevenue / 1000).toFixed(0)}K
+                        </div>
                         <div className="text-sm text-muted-foreground">
-                          {region.winRate.toFixed(1)}% win rate · {region.quotaAttainment.toFixed(0)}% quota
+                          {region.winRate.toFixed(1)}% win rate ·{' '}
+                          {region.quotaAttainment.toFixed(0)}% quota
                         </div>
                       </div>
                     </div>
@@ -258,19 +266,26 @@ export default function SalesManagerDashboard() {
               ) : (
                 <div className="space-y-2">
                   {quotaData?.quotas?.map((quota: any) => (
-                    <div key={quota.regionId} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={quota.regionId}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="space-y-1">
                         <div className="font-medium">{quota.regionName}</div>
                         <div className="text-sm text-muted-foreground">
-                          {quota.locationCount} locations · ${(quota.quotaAmount / 1000).toFixed(0)}K quota
+                          {quota.locationCount} locations · ${(quota.quotaAmount / 1000).toFixed(0)}
+                          K quota
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`text-2xl font-bold ${quota.onTrack ? 'text-green-600' : 'text-red-600'}`}>
+                        <div
+                          className={`text-2xl font-bold ${quota.onTrack ? 'text-green-600' : 'text-red-600'}`}
+                        >
                           {quota.attainmentPercent.toFixed(1)}%
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          ${(quota.actualRevenue / 1000).toFixed(0)}K / ${(quota.quotaAmount / 1000).toFixed(0)}K
+                          ${(quota.actualRevenue / 1000).toFixed(0)}K / $
+                          {(quota.quotaAmount / 1000).toFixed(0)}K
                         </div>
                       </div>
                     </div>
@@ -304,7 +319,8 @@ export default function SalesManagerDashboard() {
                         <div className="font-medium">Total: {activity.totalActivities}</div>
                       </div>
                       <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
-                        {activity.locationCount} locations · {activity.activitiesPerRep.toFixed(1)} per rep
+                        {activity.locationCount} locations · {activity.activitiesPerRep.toFixed(1)}{' '}
+                        per rep
                       </div>
                     </div>
                   ))}

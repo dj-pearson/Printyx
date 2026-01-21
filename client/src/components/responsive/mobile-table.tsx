@@ -1,8 +1,8 @@
-import { ReactNode } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ReactNode } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface MobileTableProps {
   data: any[];
@@ -21,24 +21,26 @@ interface MobileTableProps {
   emptyMessage?: string;
 }
 
-export default function MobileTable({ 
-  data, 
-  columns, 
-  onRowClick, 
-  className, 
+export default function MobileTable({
+  data,
+  columns,
+  onRowClick,
+  className,
   loading = false,
-  emptyMessage = "No data available" 
+  emptyMessage = 'No data available',
 }: MobileTableProps) {
-  const mobileColumns = columns.filter(col => col.mobile !== false);
-  const primaryColumn = mobileColumns.find(col => col.priority === 'high') || mobileColumns[0];
-  const secondaryColumns = mobileColumns.filter(col => 
-    col.priority === 'medium' || (col.priority !== 'high' && col !== primaryColumn)
-  ).slice(0, 2);
-  const lowPriorityColumns = mobileColumns.filter(col => col.priority === 'low').slice(0, 2);
+  const mobileColumns = columns.filter((col) => col.mobile !== false);
+  const primaryColumn = mobileColumns.find((col) => col.priority === 'high') || mobileColumns[0];
+  const secondaryColumns = mobileColumns
+    .filter(
+      (col) => col.priority === 'medium' || (col.priority !== 'high' && col !== primaryColumn),
+    )
+    .slice(0, 2);
+  const lowPriorityColumns = mobileColumns.filter((col) => col.priority === 'low').slice(0, 2);
 
   if (loading) {
     return (
-      <div className={cn("space-y-3", className)}>
+      <div className={cn('space-y-3', className)}>
         {[...Array(3)].map((_, index) => (
           <Card key={index} className="animate-pulse">
             <CardContent className="p-4">
@@ -68,19 +70,19 @@ export default function MobileTable({
   }
 
   return (
-    <div className={cn("space-y-3", className)} role="list">
+    <div className={cn('space-y-3', className)} role="list">
       {data.map((item, index) => (
-        <Card 
+        <Card
           key={item.id || index}
           role="listitem"
           tabIndex={onRowClick ? 0 : undefined}
           className={cn(
-            "touch-manipulation transition-all duration-200",
+            'touch-manipulation transition-all duration-200',
             onRowClick && [
-              "cursor-pointer hover:shadow-md hover:bg-accent/50",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              "active:scale-[0.98] active:bg-accent/80"
-            ]
+              'cursor-pointer hover:shadow-md hover:bg-accent/50',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              'active:scale-[0.98] active:bg-accent/80',
+            ],
           )}
           onClick={() => onRowClick?.(item)}
           onKeyDown={(e) => {
@@ -102,10 +104,9 @@ export default function MobileTable({
                       </span>
                     )}
                     <div className="font-medium text-foreground text-base leading-tight truncate">
-                      {primaryColumn.render 
+                      {primaryColumn.render
                         ? primaryColumn.render(item[primaryColumn.key], item)
-                        : item[primaryColumn.key]
-                      }
+                        : item[primaryColumn.key]}
                     </div>
                   </div>
                 </div>
@@ -115,24 +116,20 @@ export default function MobileTable({
                     <div className="text-sm text-muted-foreground text-right">
                       {secondaryColumns[0].badge ? (
                         <Badge variant="outline" className="text-xs">
-                          {secondaryColumns[0].render 
+                          {secondaryColumns[0].render
                             ? secondaryColumns[0].render(item[secondaryColumns[0].key], item)
-                            : item[secondaryColumns[0].key]
-                          }
+                            : item[secondaryColumns[0].key]}
                         </Badge>
                       ) : (
                         <>
-                          {secondaryColumns[0].render 
+                          {secondaryColumns[0].render
                             ? secondaryColumns[0].render(item[secondaryColumns[0].key], item)
-                            : item[secondaryColumns[0].key]
-                          }
+                            : item[secondaryColumns[0].key]}
                         </>
                       )}
                     </div>
                   )}
-                  {onRowClick && (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  )}
+                  {onRowClick && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                 </div>
               </div>
 
@@ -140,25 +137,21 @@ export default function MobileTable({
               {secondaryColumns[1] && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {secondaryColumns[1].icon && (
-                    <span className="flex-shrink-0">
-                      {secondaryColumns[1].icon}
-                    </span>
+                    <span className="flex-shrink-0">{secondaryColumns[1].icon}</span>
                   )}
                   <span className="font-medium">{secondaryColumns[1].label}:</span>
                   <span className="truncate">
                     {secondaryColumns[1].badge ? (
                       <Badge variant="secondary" className="text-xs ml-1">
-                        {secondaryColumns[1].render 
+                        {secondaryColumns[1].render
                           ? secondaryColumns[1].render(item[secondaryColumns[1].key], item)
-                          : item[secondaryColumns[1].key]
-                        }
+                          : item[secondaryColumns[1].key]}
                       </Badge>
                     ) : (
                       <>
-                        {secondaryColumns[1].render 
+                        {secondaryColumns[1].render
                           ? secondaryColumns[1].render(item[secondaryColumns[1].key], item)
-                          : item[secondaryColumns[1].key]
-                        }
+                          : item[secondaryColumns[1].key]}
                       </>
                     )}
                   </span>
@@ -168,29 +161,20 @@ export default function MobileTable({
               {/* Additional low-priority columns */}
               {lowPriorityColumns.length > 0 && (
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  {lowPriorityColumns.map(col => (
-                    <div key={col.key} className="text-xs text-muted-foreground flex items-center gap-1">
-                      {col.icon && (
-                        <span className="flex-shrink-0">
-                          {col.icon}
-                        </span>
-                      )}
+                  {lowPriorityColumns.map((col) => (
+                    <div
+                      key={col.key}
+                      className="text-xs text-muted-foreground flex items-center gap-1"
+                    >
+                      {col.icon && <span className="flex-shrink-0">{col.icon}</span>}
                       <span className="font-medium">{col.label}:</span>
                       <span>
                         {col.badge ? (
                           <Badge variant="outline" className="text-xs ml-1">
-                            {col.render 
-                              ? col.render(item[col.key], item)
-                              : item[col.key]
-                            }
+                            {col.render ? col.render(item[col.key], item) : item[col.key]}
                           </Badge>
                         ) : (
-                          <>
-                            {col.render 
-                              ? col.render(item[col.key], item)
-                              : item[col.key]
-                            }
-                          </>
+                          <>{col.render ? col.render(item[col.key], item) : item[col.key]}</>
                         )}
                       </span>
                     </div>

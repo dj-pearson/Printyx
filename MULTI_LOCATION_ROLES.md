@@ -1,26 +1,32 @@
 # Multi-Location Role Architecture for Printyx
 
 ## Overview
+
 This document defines the comprehensive role hierarchy for Printyx's multi-location support, designed to scale to 1000+ employees across multiple locations within individual company tenants.
 
 ## Architecture Layers
 
 ### 1. Platform Level (Printyx System)
+
 **Level 8: Platform Admin**
+
 - **Role**: Root Admin
 - **Access**: All tenants, all system metrics, platform management
 - **Users**: Printyx engineering team, system administrators
 
 **Level 8: Platform Support**
+
 - **Role**: Printyx Support Staff
 - **Access**: All tenants (support mode), limited system metrics
 - **Users**: Customer support representatives
 
 ### 2. Company Level (Tenant-wide)
+
 **Level 7: Company Admin (C-Level Executive)**
+
 - **Roles**: CEO, President, COO, CFO
 - **Access**: All locations within company, all departments, financial reports
-- **Permissions**: 
+- **Permissions**:
   - Create/manage locations and regions
   - Assign regional managers
   - View company-wide financials and metrics
@@ -28,6 +34,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
   - Set company policies and configurations
 
 **Level 6: Company Director**
+
 - **Roles**: VP Sales, VP Service, VP Operations, Corporate Controller, Compliance Officer, IT Administrator, HR Director
 - **Access**: All locations within their department/function across the company
 - **Permissions**:
@@ -40,7 +47,9 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
   - **HR Director**: Human resources policies and management company-wide
 
 ### 3. Regional Level (Multi-Location Management)
+
 **Level 6: Regional Manager**
+
 - **Roles**: Regional Sales Manager, Regional Service Manager, Regional Operations Manager
 - **Access**: Assigned region(s) and their locations only
 - **Permissions**:
@@ -51,6 +60,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
   - Assign location managers
 
 **Level 5: Regional Director**
+
 - **Roles**: Area Director, District Manager, Regional Training Manager, Regional HR Manager, Regional Quality Assurance Manager
 - **Access**: Multiple regions (broader than Regional Manager)
 - **Permissions**: Similar to Regional Manager but across multiple regions
@@ -59,7 +69,9 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 - **Regional QA Manager**: Quality assurance and process improvement across regions
 
 ### 4. Location Level (Single Location Management)
+
 **Level 5: Location Manager**
+
 - **Roles**: Branch Manager, Location General Manager, Site Manager
 - **Access**: Specific location only
 - **Permissions**:
@@ -70,6 +82,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
   - Assign department managers
 
 **Level 4: Department Manager (Location-Specific)**
+
 - **Roles**: Sales Manager, Service Manager, Operations Manager, Finance Manager, Business Analyst, Location Training Coordinator, Location IT Specialist, Location HR Coordinator
 - **Access**: Their department/function within their location
 - **Permissions**:
@@ -83,7 +96,9 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 - **Location HR Coordinator**: Local HR support and employee relations
 
 ### 5. Team Level (Department Subdivisions)
+
 **Level 3: Supervisor/Team Lead**
+
 - **Roles**: Senior Sales Rep, Lead Technician, Warehouse Supervisor, Accounting Supervisor, Senior Account Manager, Installation Supervisor, Parts Specialist
 - **Access**: Their team within their department/location
 - **Permissions**:
@@ -96,6 +111,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 - **Parts Specialist**: Manage parts inventory and coordinate with suppliers
 
 **Level 2: Team Lead**
+
 - **Roles**: Team Lead, Senior Associate
 - **Access**: Small team or project within location
 - **Permissions**:
@@ -104,7 +120,9 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
   - Training responsibilities
 
 ### 6. Individual Contributor Level
+
 **Level 1: Individual Contributor**
+
 - **Roles**: Sales Rep, Technician, Admin Assistant, Accounting Clerk, Customer Service Rep, Delivery Driver, Installation Technician, Parts Clerk, Meter Reader
 - **Access**: Their assigned tasks and customers within location
 - **Permissions**:
@@ -121,38 +139,46 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 ## Access Scope Definitions
 
 ### Platform Scope
+
 - **Who**: Platform Admins, Platform Support
 - **Access**: All tenants, all locations, system-wide metrics
 
-### Company Scope  
+### Company Scope
+
 - **Who**: C-Level Executives, Company Directors
 - **Access**: All locations and departments within their company tenant
 
 ### Regional Scope
+
 - **Who**: Regional Managers, Regional Directors
 - **Access**: All locations within assigned region(s)
 
 ### Location Scope
+
 - **Who**: Location Managers, Department Managers, and below
 - **Access**: Single location and its departments/teams
 
 ## Data Segmentation Strategy
 
 ### 1. Tenant Isolation
+
 - All business data filtered by `tenantId`
 - Platform users can access multiple tenants
 
 ### 2. Location Filtering
+
 - Users with `location` scope see only their location's data
 - Users with `regional` scope see all locations in their region
 - Users with `company` scope see all locations in their tenant
 
 ### 3. Department Filtering
+
 - Sales users see sales data, Service users see service data
 - Managers can see their department + some cross-department data
 - C-Level sees all departments
 
 ### 4. Hierarchical Data Access
+
 - Managers can see their direct reports' data
 - Regional managers can see all location managers' data in their region
 - Company admins can see all data in their tenant
@@ -160,10 +186,11 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 ## Permission Examples
 
 ### Sales Rep (Level 1, Location Scope)
+
 ```json
 {
   "customers": ["read", "create", "update"],
-  "leads": ["read", "create", "update"], 
+  "leads": ["read", "create", "update"],
   "contracts": ["read"],
   "service_tickets": ["read_assigned"],
   "reports": ["personal_metrics"],
@@ -172,6 +199,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 ```
 
 ### Regional Sales Manager (Level 6, Regional Scope)
+
 ```json
 {
   "customers": ["read", "create", "update", "reassign"],
@@ -185,6 +213,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 ```
 
 ### CEO (Level 7, Company Scope)
+
 ```json
 {
   "all_modules": ["full_access"],
@@ -200,21 +229,25 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 ## Scaling Considerations
 
 ### Performance
+
 - Indexed by tenantId, locationId, regionId for fast filtering
 - Role-based query optimization
 - Cached permission lookups
 
 ### Security
+
 - Row-level security enforced at database level
 - Multi-layered permission checks
 - Audit trail for cross-location access
 
 ### Management
+
 - Automated role assignment based on hierarchy
 - Bulk user management tools for Regional/Company admins
 - Role inheritance and delegation features
 
 ### Growth Path
+
 - Additional middle management levels can be added
 - Specialized roles (e.g., Technical Specialist, Account Executive)
 - Matrix organization support (users reporting to multiple managers)
@@ -222,8 +255,9 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 ## Role Count Summary
 
 ### Total Roles: 35+
+
 - **Platform Level (Level 8)**: 2 roles
-- **Company Level (Level 7)**: 4 roles  
+- **Company Level (Level 7)**: 4 roles
 - **Company Directors (Level 6)**: 7 roles
 - **Regional/Location Management (Level 5-6)**: 6 roles
 - **Department Management (Level 4)**: 8 roles
@@ -231,6 +265,7 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 - **Individual Contributors (Level 1)**: 7 roles
 
 ### Departments Covered
+
 - **Executive**: CEO, President, COO, CFO
 - **Sales**: VP Sales, Regional/Location Managers, Reps
 - **Service**: VP Service, Regional/Location Managers, Technicians
@@ -256,6 +291,6 @@ This document defines the comprehensive role hierarchy for Printyx's multi-locat
 
 1. **Run the role seeder** to populate all 35+ roles in the database
 2. **Create location management UI** for Company Admins to set up locations and regions
-3. **Build user assignment system** for assigning users to locations and regions  
+3. **Build user assignment system** for assigning users to locations and regions
 4. **Implement permission middleware** that enforces location-based access control
 5. **Create role management interface** for assigning and managing user roles

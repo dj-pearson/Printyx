@@ -5,13 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,14 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  Trophy,
-  Medal,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
-  RefreshCw,
-} from 'lucide-react';
+import { Trophy, Medal, TrendingUp, TrendingDown, AlertCircle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -169,7 +156,7 @@ export function TeamLeaderboard({
             <RefreshCw
               className={cn(
                 'h-4 w-4 mr-2',
-                (activityLoading || pipelineLoading || performanceLoading) && 'animate-spin'
+                (activityLoading || pipelineLoading || performanceLoading) && 'animate-spin',
               )}
             />
             Refresh
@@ -177,10 +164,7 @@ export function TeamLeaderboard({
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs
-          value={selectedMetric}
-          onValueChange={(value) => setSelectedMetric(value as any)}
-        >
+        <Tabs value={selectedMetric} onValueChange={(value) => setSelectedMetric(value as any)}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
@@ -257,9 +241,7 @@ export function TeamLeaderboard({
               <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                 <div className="text-center">
                   <div className="text-sm text-muted-foreground">Total</div>
-                  <div className="text-2xl font-bold">
-                    {activityData.summary.totalActivities}
-                  </div>
+                  <div className="text-2xl font-bold">{activityData.summary.totalActivities}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-sm text-muted-foreground">Avg/Rep</div>
@@ -294,7 +276,10 @@ export function TeamLeaderboard({
                   </TableHeader>
                   <TableBody>
                     {pipelineData?.teamMembers
-                      ?.sort((a: TeamMemberPipeline, b: TeamMemberPipeline) => b.pipelineValue - a.pipelineValue)
+                      ?.sort(
+                        (a: TeamMemberPipeline, b: TeamMemberPipeline) =>
+                          b.pipelineValue - a.pipelineValue,
+                      )
                       .map((member: TeamMemberPipeline, index: number) => (
                         <TableRow key={member.userId}>
                           <TableCell>
@@ -309,9 +294,7 @@ export function TeamLeaderboard({
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="font-bold">
-                              {formatCurrency(member.pipelineValue)}
-                            </div>
+                            <div className="font-bold">{formatCurrency(member.pipelineValue)}</div>
                             <div className="text-xs text-muted-foreground">
                               {formatCurrency(member.averageDealSize)} avg
                             </div>
@@ -325,8 +308,8 @@ export function TeamLeaderboard({
                                 member.pipelineCoverage >= 200
                                   ? 'default'
                                   : member.pipelineCoverage >= 100
-                                  ? 'secondary'
-                                  : 'destructive'
+                                    ? 'secondary'
+                                    : 'destructive'
                               }
                             >
                               {member.pipelineCoverage.toFixed(0)}%
@@ -405,10 +388,10 @@ export function TeamLeaderboard({
                                 member.attainment >= 100
                                   ? 'text-green-600'
                                   : member.attainment >= 90
-                                  ? 'text-blue-600'
-                                  : member.attainment >= 75
-                                  ? 'text-yellow-600'
-                                  : 'text-red-600'
+                                    ? 'text-blue-600'
+                                    : member.attainment >= 75
+                                      ? 'text-yellow-600'
+                                      : 'text-red-600',
                               )}
                             >
                               {member.attainment.toFixed(1)}%
@@ -453,10 +436,10 @@ export function TeamLeaderboard({
                       performanceData.teamQuota.attainment >= 100
                         ? 'text-green-600'
                         : performanceData.teamQuota.attainment >= 90
-                        ? 'text-blue-600'
-                        : performanceData.teamQuota.attainment >= 75
-                        ? 'text-yellow-600'
-                        : 'text-red-600'
+                          ? 'text-blue-600'
+                          : performanceData.teamQuota.attainment >= 75
+                            ? 'text-yellow-600'
+                            : 'text-red-600',
                     )}
                   >
                     {performanceData.teamQuota.attainment.toFixed(1)}%

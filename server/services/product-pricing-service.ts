@@ -90,7 +90,7 @@ export class ProductPricingService {
   async getProductPricing(
     productId: string,
     productType: ProductType,
-    pricingTier?: PricingTier
+    pricingTier?: PricingTier,
   ): Promise<EnhancedProductPricing | null> {
     const conditions = [
       eq(enhancedProductPricing.productId, productId),
@@ -118,13 +118,13 @@ export class ProductPricingService {
    */
   async getAllProductPricingTiers(
     productId: string,
-    productType: ProductType
+    productType: ProductType,
   ): Promise<EnhancedProductPricing[]> {
     return db.query.enhancedProductPricing.findMany({
       where: and(
         eq(enhancedProductPricing.productId, productId),
         eq(enhancedProductPricing.productType, productType),
-        eq(enhancedProductPricing.isActive, true)
+        eq(enhancedProductPricing.isActive, true),
       ),
     });
   }
@@ -140,7 +140,7 @@ export class ProductPricingService {
   async getProductPricingWithFallback(
     productId: string,
     productType: ProductType,
-    pricingTier: PricingTier
+    pricingTier: PricingTier,
   ): Promise<any> {
     // Try new pricing table first
     const newPricing = await this.getProductPricing(productId, productType, pricingTier);
@@ -244,11 +244,7 @@ export class ProductPricingService {
    * @param markupValue - Markup value
    * @returns Calculated rep cost
    */
-  calculateRepCost(
-    dealerCost: number,
-    markupType: MarkupType,
-    markupValue: number
-  ): number {
+  calculateRepCost(dealerCost: number, markupType: MarkupType, markupValue: number): number {
     if (markupType === 'percentage') {
       return dealerCost * (1 + markupValue / 100);
     } else if (markupType === 'fixed_amount') {
@@ -323,7 +319,7 @@ export class ProductPricingService {
     tenantId: string,
     updates: PricingUpdateParams,
     userId: string,
-    changeReason?: string
+    changeReason?: string,
   ): Promise<EnhancedProductPricing> {
     // Check if pricing already exists
     const existing = await this.getProductPricing(productId, productType, pricingTier);
@@ -336,7 +332,7 @@ export class ProductPricingService {
         pricingTier,
         updates,
         userId,
-        changeReason
+        changeReason,
       );
     } else {
       // Create new pricing
@@ -360,10 +356,7 @@ export class ProductPricingService {
         costChangeReason: changeReason || 'Initial pricing creation',
       };
 
-      const [created] = await db
-        .insert(enhancedProductPricing)
-        .values(newPricing)
-        .returning();
+      const [created] = await db.insert(enhancedProductPricing).values(newPricing).returning();
 
       return created;
     }
@@ -386,7 +379,7 @@ export class ProductPricingService {
     pricingTier: PricingTier,
     updates: PricingUpdateParams,
     userId: string,
-    changeReason?: string
+    changeReason?: string,
   ): Promise<EnhancedProductPricing> {
     const updateData: any = {
       updatedAt: new Date(),
@@ -435,8 +428,8 @@ export class ProductPricingService {
         and(
           eq(enhancedProductPricing.productId, productId),
           eq(enhancedProductPricing.productType, productType),
-          eq(enhancedProductPricing.pricingTier, pricingTier)
-        )
+          eq(enhancedProductPricing.pricingTier, pricingTier),
+        ),
       )
       .returning();
 
@@ -450,10 +443,7 @@ export class ProductPricingService {
    * @param category - Optional product category for category-specific markup
    * @returns Markup configuration
    */
-  async getCompanyMarkup(
-    tenantId: string,
-    category?: string
-  ): Promise<CompanyMarkupConfig> {
+  async getCompanyMarkup(tenantId: string, category?: string): Promise<CompanyMarkupConfig> {
     const settings = await db.query.companyPricingSettings.findFirst({
       where: eq(companyPricingSettings.tenantId, tenantId),
     });
@@ -484,9 +474,7 @@ export class ProductPricingService {
    * @param tenantId - Tenant ID
    * @returns Company pricing settings or null
    */
-  async getCompanyPricingSettings(
-    tenantId: string
-  ): Promise<CompanyPricingSettings | null> {
+  async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSettings | null> {
     const settings = await db.query.companyPricingSettings.findFirst({
       where: eq(companyPricingSettings.tenantId, tenantId),
     });
@@ -507,7 +495,7 @@ export class ProductPricingService {
     tenantId: string,
     productIds: string[],
     productType: ProductType,
-    userId: string
+    userId: string,
   ): Promise<number> {
     const markup = await this.getCompanyMarkup(tenantId);
     let updatedCount = 0;
@@ -522,7 +510,7 @@ export class ProductPricingService {
           const newRepCost = this.calculateRepCost(
             dealerCost,
             markup.type as MarkupType,
-            markup.value
+            markup.value,
           );
 
           await this.updateProductPricing(
@@ -535,7 +523,7 @@ export class ProductPricingService {
               useCustomMarkup: false,
             },
             userId,
-            'Applied default company markup'
+            'Applied default company markup',
           );
 
           updatedCount++;
@@ -559,7 +547,7 @@ export class ProductPricingService {
     tenantId: string,
     oldPrice: number,
     newPrice: number,
-    dealerCost: number
+    dealerCost: number,
   ): Promise<PricingValidationResult> {
     const settings = await this.getCompanyPricingSettings(tenantId);
 
@@ -626,7 +614,7 @@ export class ProductPricingService {
    */
   async getPricingHistory(
     productId: string,
-    productType: ProductType
+    productType: ProductType,
   ): Promise<EnhancedProductPricing[]> {
     // For now, return current pricing with audit information
     // In future, implement a separate pricing_history table for complete audit trail
@@ -647,7 +635,7 @@ export class ProductPricingService {
       pricingTier: PricingTier;
       updates: PricingUpdateParams;
     }>,
-    userId: string
+    userId: string,
   ): Promise<number> {
     let updatedCount = 0;
 
@@ -659,13 +647,13 @@ export class ProductPricingService {
           update.pricingTier,
           update.updates,
           userId,
-          'Bulk pricing update'
+          'Bulk pricing update',
         );
         updatedCount++;
       } catch (error) {
         console.error(
           `Failed to update pricing for ${update.productId} (${update.productType}/${update.pricingTier}):`,
-          error
+          error,
         );
         // Continue with other updates
       }
