@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { format, formatDistance } from 'date-fns';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Activity {
   id: string;
@@ -51,25 +52,14 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     data: activities,
     isLoading,
     error,
+    refetch,
   } = useQuery<Activity[]>({
     queryKey: [`/api/companies/${businessRecordId}/activities`],
     queryFn: async () => {
       console.log('🔍 ActivityTimeline - Fetching activities for company:', businessRecordId);
-      const response = await fetch(`/api/companies/${businessRecordId}/activities`, {
-        credentials: 'include',
-      });
-
-      console.log('🔍 ActivityTimeline - Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🔍 ActivityTimeline - Error response:', errorText);
-        throw new Error(`Failed to fetch activities: ${response.status} - ${errorText}`);
-      }
-
-      const data = await response.json();
+      const data = await apiRequest(`/api/companies/${businessRecordId}/activities`);
       console.log('🔍 ActivityTimeline - Fetched activities:', data);
-      return data;
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!businessRecordId, // Only run query if businessRecordId is defined
   });
@@ -157,13 +147,11 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
     return (
       <Card className={className}>
         <CardContent className="p-6 text-center">
-          <p className="text-gray-500">Failed to load activities</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={() => window.location.reload()}
-          >
+          <p className="text-gray-500 mb-2">Failed to load activities</p>
+          <p className="text-sm text-gray-400 mb-3">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
             Retry
           </Button>
         </CardContent>
