@@ -289,9 +289,13 @@ export default function Customers() {
     return (customers as any[]).map((c) => {
       // The companies edge function already maps fields to the expected format
       // Use the mapped fields directly: companyName, city, state, etc.
-      const contactData = Array.isArray(c.company_contacts)
-        ? c.company_contacts[0]
-        : c.company_contacts || {};
+      // Safely extract contact data - may be undefined, empty array, or null
+      const contactData =
+        Array.isArray(c.company_contacts) && c.company_contacts.length > 0
+          ? c.company_contacts[0]
+          : c.company_contacts && typeof c.company_contacts === 'object'
+            ? c.company_contacts
+            : null;
 
       // Use business_name directly from the company record (primary source)
       // Fall back to mapped companyName, then to a placeholder
@@ -302,15 +306,15 @@ export default function Customers() {
         companyName,
         city: c.billing_city || c.city || '',
         state: c.billing_state || c.state || '',
-        phone: c.phone || contactData.phone || '',
+        phone: c.phone || contactData?.phone || '',
         website: c.website || '',
         industry: c.industry || '',
         status: c.activity || c.status || 'active',
         recordType: c.business_record_type?.toLowerCase() || c.recordType || 'customer',
-        primaryContactName: contactData.first_name
+        primaryContactName: contactData?.first_name
           ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
           : c.primaryContactName || '',
-        primaryContactEmail: contactData.email || c.primaryContactEmail || c.email || '',
+        primaryContactEmail: contactData?.email || c.primaryContactEmail || c.email || '',
       };
     });
   }, [customers, companies]);
