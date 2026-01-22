@@ -216,16 +216,16 @@ export default function Customers() {
   const [page, setPage] = useState(1);
   const pageSize = 500; // Load 500 records at a time for better performance
 
-  // Fetch customers from unified business_records view with pagination
+  // Fetch all business records (leads, prospects, customers) with pagination
   const { data: customersResponse, isLoading: customersLoading } = useQuery({
-    queryKey: ['/api/customers', { limit: pageSize, offset: (page - 1) * pageSize }],
+    queryKey: ['/api/business-records', { limit: pageSize, offset: (page - 1) * pageSize }],
     enabled: isAuthenticated,
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: pageSize.toString(),
         offset: ((page - 1) * pageSize).toString(),
       });
-      const response = await apiRequest(`/api/customers?${params}`, 'GET');
+      const response = await apiRequest(`/api/business-records?${params}`, 'GET');
       return response;
     },
   });
