@@ -242,29 +242,30 @@ export default function Customers() {
 
   const enriched = useMemo(() => {
     return (customers as any[]).map((c) => {
-      // Extract nested company and contact data from Edge Function response
-      const companyData = c.companies || {};
+      // The companies edge function already maps fields to the expected format
+      // Use the mapped fields directly: companyName, city, state, etc.
       const contactData = Array.isArray(c.company_contacts)
         ? c.company_contacts[0]
         : c.company_contacts || {};
 
-      // Get company name from nested companies object
-      const companyName =
-        companyData.business_name || c.companyName || `Customer ${String(c.id).slice(0, 8)}`;
-
-      const city = companyData.billing_city || c.city || '';
-      const state = companyData.billing_state || c.state || '';
+      // Use business_name directly from the company record (primary source)
+      // Fall back to mapped companyName, then to a placeholder
+      const companyName = c.business_name || c.companyName || `Company ${String(c.id).slice(0, 8)}`;
 
       return {
         ...c,
         companyName,
-        city,
-        state,
-        phone: companyData.phone || c.phone || '',
-        website: companyData.website || c.website || '',
-        industry: companyData.industry || c.industry || '',
-        status: c.lead_status || c.status || 'active',
-        recordType: c.lead_status === 'active' ? 'customer' : 'lead',
+        city: c.billing_city || c.city || '',
+        state: c.billing_state || c.state || '',
+        phone: c.phone || contactData.phone || '',
+        website: c.website || '',
+        industry: c.industry || '',
+        status: c.activity || c.status || 'active',
+        recordType: c.business_record_type?.toLowerCase() || c.recordType || 'customer',
+        primaryContactName: contactData.first_name
+          ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
+          : c.primaryContactName || '',
+        primaryContactEmail: contactData.email || c.primaryContactEmail || c.email || '',
       };
     });
   }, [customers, companies]);
