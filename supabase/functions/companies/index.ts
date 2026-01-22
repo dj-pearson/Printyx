@@ -18,27 +18,53 @@ export default async function handler(req: Request) {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-    const supabase = createSupabaseClient(req);
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser(jwt);
+    // Check if using service role key (for admin operations like dedup)
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const isServiceRoleAuth = jwt === serviceRoleKey;
 
-    if (userError || !user) {
-      console.error('Auth error:', userError);
-      return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
-    }
+    let tenantId: string | null = null;
+    let user: any = null;
 
-    // Extract tenant ID from user metadata
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string);
+    if (isServiceRoleAuth) {
+      // Service role key auth - get tenant ID from query param or header
+      tenantId =
+        url.searchParams.get('tenant_id') ||
+        url.searchParams.get('tenantId') ||
+        req.headers.get('x-tenant-id');
 
-    if (!tenantId) {
-      console.error('No tenant ID in metadata for user:', user.id);
-      return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+      if (!tenantId) {
+        return createCorsResponse(
+          {
+            error: 'tenant_id query parameter or x-tenant-id header required for service role auth',
+          },
+          400,
+          req,
+        );
+      }
+      console.log(`[COMPANIES] Service role auth for tenant: ${tenantId}`);
+    } else {
+      // Normal user JWT auth
+      const supabase = createSupabaseClient(req);
+      const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
+
+      if (userError || !userData.user) {
+        console.error('Auth error:', userError);
+        return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
+      }
+
+      user = userData.user;
+
+      // Extract tenant ID from user metadata
+      tenantId =
+        (user.app_metadata?.tenantId as string) ||
+        (user.app_metadata?.tenant_id as string) ||
+        (user.user_metadata?.tenantId as string) ||
+        (user.user_metadata?.tenant_id as string);
+
+      if (!tenantId) {
+        console.error('No tenant ID in metadata for user:', user.id);
+        return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
+      }
     }
 
     const admin = createSupabaseServiceClient();
