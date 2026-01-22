@@ -477,23 +477,20 @@
       "id": "ROUTES-002",
       "phase": "Phase 4: API Routes Consolidation",
       "title": "Remove or fix broken/archived routes",
-      "description": "server/_archived/ contains broken route files that should be cleaned up or properly archived.",
+      "description": "COMPLETED: Removed server/_archived/ directory containing 6 obsolete backup route files (1.3MB total). No active code referenced these files.",
       "acceptanceCriteria": [
-        "Review server/_archived/routes-broken.ts for any needed code",
-        "Review server/_archived/routes-original.ts.broken",
-        "Review server/_archived/routes-clean-head.ts",
-        "Delete files if no longer needed",
-        "If code needed, extract and fix in proper route files",
-        "Remove _archived directory after cleanup"
+        "DONE: Reviewed routes-broken.ts - obsolete session-based routes, replaced by tenant middleware",
+        "DONE: Reviewed routes-original.ts.broken - 450KB backup copy, obsolete",
+        "DONE: Reviewed routes-clean-head.ts - 399KB backup copy, obsolete",
+        "DONE: Deleted all 6 archived files (no code extraction needed)",
+        "DONE: Verified no imports from _archived in active codebase",
+        "DONE: Removed _archived directory"
       ],
-      "files": [
-        "server/_archived/routes-broken.ts",
-        "server/_archived/routes-original.ts.broken",
-        "server/_archived/routes-clean-head.ts"
-      ],
-      "passes": false,
+      "files": [],
+      "passes": true,
       "priority": 4,
-      "severity": "low"
+      "severity": "resolved",
+      "resolution": "Deleted server/_archived/ directory containing 6 obsolete files: fix-hardcoded-tenants.ts.broken, routes_clean.ts.broken, routes-broken.ts, routes-clean-head.ts, routes-modular-dashboard-old.ts, routes-original.ts.broken. All were backup copies from previous refactoring efforts with no unique code worth preserving."
     },
     {
       "id": "ROUTES-003",
