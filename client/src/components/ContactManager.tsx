@@ -251,7 +251,9 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
   };
 
   const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    const first = (firstName || '').charAt(0);
+    const last = (lastName || '').charAt(0);
+    return `${first}${last}`.toUpperCase() || '??';
   };
 
   const handleBulkAction = (action: string) => {
