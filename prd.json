@@ -1136,19 +1136,20 @@
       "id": "TECH-001",
       "phase": "Phase 8: Code Quality & Technical Debt",
       "title": "Implement consistent error handling across routes",
-      "description": "Error handling varies across 174 route files. Need standardized error response format.",
+      "description": "INFRASTRUCTURE EXISTS: server/utils/apiErrorHandler.ts provides standardized error handling with ErrorCodes, handleApiError(), sendSuccess(), and asyncHandler(). Adoption across 174 route files is still pending.",
       "acceptanceCriteria": [
-        "Define standard error response format",
-        "Create error handling middleware",
-        "Update all routes to use standard format",
-        "Include request ID in error responses",
-        "Log all errors with context",
-        "Document error codes and messages"
+        "DONE: Standard error response format defined (ApiError interface in apiErrorHandler.ts)",
+        "DONE: Error handling middleware created (asyncHandler wrapper)",
+        "PENDING: Update all routes to use standard format (0/174 routes using it)",
+        "DONE: Error ID included in responses (generateErrorId())",
+        "DONE: All errors logged with context (console.error with errorId, code, stack)",
+        "DONE: Error codes documented (ErrorCodes enum with 17 codes)"
       ],
-      "files": ["server/routes.ts"],
+      "files": ["server/utils/apiErrorHandler.ts", "server/utils/apiErrorHandler.example.ts"],
       "passes": false,
       "priority": 3,
-      "severity": "medium"
+      "severity": "medium",
+      "notes": "Infrastructure complete. Adoption is a separate incremental task - should be done as routes are touched for other reasons."
     },
     {
       "id": "TECH-002",
