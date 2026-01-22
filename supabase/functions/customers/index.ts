@@ -47,33 +47,38 @@ export default async function handler(req: Request) {
     // - If pathname is just the ID (Supabase strips function name): /:id → pathParts[0]
     const customerId = pathParts[0] === 'customers' ? pathParts[1] : pathParts[0];
 
-    // GET /customers - List all customers from business_records (unified table)
+    // GET /customers - List all companies from companies table
     if (req.method === 'GET' && !customerId) {
       const search = url.searchParams.get('search');
       const status = url.searchParams.get('status');
+      const recordType =
+        url.searchParams.get('recordType') || url.searchParams.get('business_record_type');
       const limit = parseInt(url.searchParams.get('limit') || '100');
       const offset = parseInt(url.searchParams.get('offset') || '0');
 
-      // Query business_records table with recordType = 'customer'
+      // Query companies table (single source of truth)
       let query = admin
-        .from('business_records')
-        .select('*', { count: 'exact' })
+        .from('companies')
+        .select('*, company_contacts(*)', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .eq('record_type', 'customer')
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (status) {
-        query = query.eq('status', status);
+        query = query.eq('activity', status);
+      }
+
+      if (recordType) {
+        query = query.eq('business_record_type', recordType);
       }
 
       if (search) {
         query = query.or(
-          `company_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%,phone.ilike.%${search}%,city.ilike.%${search}%`,
+          `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%`,
         );
       }
 
-      const { data: customers, error, count } = await query;
+      const { data: companies, error, count } = await query;
 
       if (error) {
         console.error('[CUSTOMERS] Error fetching customers:', error);
@@ -81,17 +86,35 @@ export default async function handler(req: Request) {
       }
 
       console.log(
-        `[CUSTOMERS] Query returned ${customers?.length || 0} customers for tenant ${tenantId}`,
+        `[CUSTOMERS] Query returned ${companies?.length || 0} companies for tenant ${tenantId}`,
       );
+
+      // Map to expected frontend format
+      const records = (companies || []).map((company: any) => {
+        const contactData = company.company_contacts?.[0] || {};
+        return {
+          ...company,
+          companyName: company.business_name,
+          primaryContactName: contactData.first_name
+            ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
+            : null,
+          primaryContactEmail: contactData.email || company.email,
+          primaryContactPhone: contactData.phone || company.phone,
+          city: company.billing_city,
+          state: company.billing_state,
+          status: company.activity || 'active',
+          recordType: company.business_record_type?.toLowerCase() || 'customer',
+        };
+      });
 
       return createCorsResponse(
         {
-          records: customers || [],
+          records,
           pagination: {
             total: count || 0,
             limit,
             offset,
-            hasMore: offset + (customers?.length || 0) < (count || 0),
+            hasMore: offset + (companies?.length || 0) < (count || 0),
           },
         },
         200,
@@ -99,32 +122,57 @@ export default async function handler(req: Request) {
       );
     }
 
-    // GET /customers/:id - Get single customer from business_records
+    // GET /customers/:id - Get single company/customer by ID
     if (req.method === 'GET' && customerId) {
-      // Try to find by ID, URL slug, or display ID in business_records
-      const { data: customer, error } = await admin
-        .from('business_records')
-        .select('*')
+      // Query from companies table (single source of truth)
+      const { data: company, error } = await admin
+        .from('companies')
+        .select(
+          `
+          *,
+          company_contacts(*),
+          leads(*),
+          customers(*)
+        `,
+        )
         .eq('tenant_id', tenantId)
-        .eq('record_type', 'customer')
-        .or(`id.eq.${customerId},url_slug.eq.${customerId},company_display_id.eq.${customerId}`)
+        .or(`id.eq.${customerId},customer_number.eq.${customerId}`)
         .limit(1)
         .single();
 
-      if (error || !customer) {
+      if (error || !company) {
         console.error('Error fetching customer:', error);
         return createCorsResponse({ error: 'Customer not found' }, 404, req);
       }
 
-      // Get recent activities
+      // Get recent activities (check both company_id and business_record_id for migration support)
       const { data: activities } = await admin
         .from('business_record_activities')
         .select('*')
-        .eq('business_record_id', customer.id)
+        .or(`company_id.eq.${company.id},business_record_id.eq.${company.id}`)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(20);
 
-      return createCorsResponse({ ...customer, activities: activities || [] }, 200, req);
+      // Map company fields to expected frontend format
+      const contactData = company.company_contacts?.[0] || {};
+      const response = {
+        ...company,
+        // Map to expected field names
+        companyName: company.business_name,
+        primaryContactName: contactData.first_name
+          ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
+          : null,
+        primaryContactEmail: contactData.email || company.email,
+        primaryContactPhone: contactData.phone || company.phone,
+        city: company.billing_city,
+        state: company.billing_state,
+        status: company.activity || 'active',
+        recordType: company.business_record_type?.toLowerCase() || 'customer',
+        activities: activities || [],
+      };
+
+      return createCorsResponse(response, 200, req);
     }
 
     // POST /customers - Create new customer in business_records
