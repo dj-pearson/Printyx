@@ -161,62 +161,67 @@ export default function CustomerDetailHubspot() {
   console.log('🔍 CustomerDetail - customerData:', customerData);
   console.log('🔍 CustomerDetail - isLoading:', isLoading);
 
-  // Transform nested data structure from Edge Function to flat structure
+  // Transform data structure from Edge Function to expected format
+  // The companies edge function returns company data at root level with nested company_contacts
   const customer = useMemo(() => {
     if (!customerData) return null;
 
     // Handle if API returns an array instead of single object
-    // IMPORTANT: When array is returned, find the customer matching the slug (ID)
     const data = Array.isArray(customerData)
       ? customerData.find((c: any) => c.id === slug) || customerData[0]
       : customerData;
     if (!data) return null;
 
-    // Extract nested company and contact data
-    const companyData = (data as any).companies || {};
+    // Extract contact data - contacts are nested under company_contacts
     const contactData = Array.isArray((data as any).company_contacts)
       ? (data as any).company_contacts[0]
       : (data as any).company_contacts || {};
 
     console.log('🔍 CustomerDetail - Raw data:', data);
-    console.log('🔍 CustomerDetail - data.company_id:', (data as any).company_id);
-    console.log('🔍 CustomerDetail - companyData:', companyData);
-    console.log('🔍 CustomerDetail - companyData.id:', companyData.id);
 
+    // Company data is now at root level (from companies table), not nested
     return {
       ...(data as any),
-      // IMPORTANT: Extract company_id for activities and other company-related operations
-      company_id: (data as any).company_id || companyData.id,
+      // The record ID is the company_id for activities
+      company_id: (data as any).id,
 
-      // Company fields from nested companies object
-      companyName: companyData.business_name,
-      customerNumber: companyData.customer_number,
-      accountNumber: companyData.account_number,
-      website: companyData.website,
-      industry: companyData.industry,
-      companySize: companyData.company_size,
-      employeeCount: companyData.employee_count,
-      annualRevenue: companyData.annual_revenue,
-      customerSince: companyData.customer_since,
+      // Company fields - now directly on the data object (from companies table)
+      companyName: (data as any).business_name || (data as any).companyName,
+      customerNumber: (data as any).customer_number,
+      accountNumber: (data as any).account_number,
+      website: (data as any).website,
+      industry: (data as any).industry,
+      companySize: (data as any).company_size,
+      employeeCount: (data as any).employee_count,
+      annualRevenue: (data as any).annual_revenue,
+      customerSince: (data as any).customer_since,
 
-      // Address fields from companies
-      addressLine1: companyData.billing_address,
-      city: companyData.billing_city,
-      state: companyData.billing_state,
-      postalCode: companyData.billing_zip,
-      phone: companyData.phone,
-      email: companyData.email,
+      // Address fields - directly on the data object
+      addressLine1: (data as any).billing_address,
+      city: (data as any).billing_city || (data as any).city,
+      state: (data as any).billing_state || (data as any).state,
+      postalCode: (data as any).billing_zip,
+      phone: (data as any).phone,
+      email: (data as any).email,
+
+      // Status and record type
+      status: (data as any).activity || (data as any).status || 'active',
+      recordType:
+        (data as any).business_record_type?.toLowerCase() || (data as any).recordType || 'customer',
 
       // Contact fields from company_contacts
       primaryContactName:
         contactData.first_name && contactData.last_name
           ? `${contactData.first_name} ${contactData.last_name}`
-          : contactData.first_name || contactData.last_name || '',
-      primaryContactEmail: contactData.email,
-      primaryContactPhone: contactData.phone,
+          : contactData.first_name ||
+            contactData.last_name ||
+            (data as any).primaryContactName ||
+            '',
+      primaryContactEmail: contactData.email || (data as any).primaryContactEmail,
+      primaryContactPhone: contactData.phone || (data as any).primaryContactPhone,
       primaryContactTitle: contactData.title,
     };
-  }, [customerData]);
+  }, [customerData, slug]);
 
   console.log('🔍 CustomerDetail - Final customer object:', customer);
   console.log('🔍 CustomerDetail - Final company_id:', customer?.company_id);
