@@ -319,6 +319,13 @@ export default async function handler(req: Request) {
               const businessName = mappedData.companyName || mappedData.businessName || 'Unknown';
               const contactEmail = mappedData.primaryContactEmail || mappedData.email || null;
               const phone = mappedData.primaryContactPhone || mappedData.phone || null;
+              const city = mappedData.city || mappedData.billingCity || null;
+              const state = mappedData.state || mappedData.billingState || null;
+
+              // Normalize for matching
+              const normalizedName = businessName.toLowerCase().trim();
+              const normalizedCity = (city || '').toLowerCase().trim();
+              const normalizedState = (state || '').toLowerCase().trim();
 
               // Check for existing company by name
               const { data: existingCompanies, error: searchError } = await admin
@@ -326,7 +333,7 @@ export default async function handler(req: Request) {
                 .select('*')
                 .eq('tenant_id', job.tenantId)
                 .ilike('business_name', businessName)
-                .limit(5);
+                .limit(10);
 
               if (searchError) {
                 console.error('Search error:', searchError);
@@ -336,25 +343,37 @@ export default async function handler(req: Request) {
 
               let existingCompany = null;
 
-              // If we found companies with matching name, verify it's the same company
+              // If we found companies with matching name, verify by name + city + state
               if (existingCompanies && existingCompanies.length > 0) {
-                // Exact name match (case-insensitive)
-                existingCompany = existingCompanies.find(
-                  (c) => c.business_name.toLowerCase().trim() === businessName.toLowerCase().trim(),
-                );
+                // Match by name + city + state (case-insensitive)
+                existingCompany = existingCompanies.find((c) => {
+                  const candidateName = (c.business_name || '').toLowerCase().trim();
+                  const candidateCity = (c.billing_city || '').toLowerCase().trim();
+                  const candidateState = (c.billing_state || '').toLowerCase().trim();
 
-                // If multiple exact matches, try to match by phone or email
-                if (existingCompany && existingCompanies.length > 1) {
-                  if (phone) {
-                    const phoneMatch = existingCompanies.find(
-                      (c) =>
-                        c.business_name.toLowerCase().trim() ===
-                          businessName.toLowerCase().trim() &&
-                        c.phone &&
-                        c.phone.replace(/\D/g, '') === phone.replace(/\D/g, ''),
-                    );
-                    if (phoneMatch) existingCompany = phoneMatch;
-                  }
+                  return (
+                    candidateName === normalizedName &&
+                    candidateCity === normalizedCity &&
+                    candidateState === normalizedState
+                  );
+                });
+
+                // If no exact match on city/state, fall back to name + phone match
+                if (!existingCompany && phone) {
+                  const normalizedPhone = phone.replace(/\D/g, '');
+                  existingCompany = existingCompanies.find(
+                    (c) =>
+                      (c.business_name || '').toLowerCase().trim() === normalizedName &&
+                      c.phone &&
+                      c.phone.replace(/\D/g, '') === normalizedPhone,
+                  );
+                }
+
+                // Log duplicate detection for debugging
+                if (existingCompany) {
+                  console.log(
+                    `[IMPORT] Found existing company: ${existingCompany.business_name} (${existingCompany.billing_city}, ${existingCompany.billing_state})`,
+                  );
                 }
               }
 
