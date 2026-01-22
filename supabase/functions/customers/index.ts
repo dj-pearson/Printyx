@@ -47,55 +47,33 @@ export default async function handler(req: Request) {
     // - If pathname is just the ID (Supabase strips function name): /:id → pathParts[0]
     const customerId = pathParts[0] === 'customers' ? pathParts[1] : pathParts[0];
 
-    // GET /customers - List all customers with company information
+    // GET /customers - List all customers from business_records (unified table)
     if (req.method === 'GET' && !customerId) {
       const search = url.searchParams.get('search');
       const status = url.searchParams.get('status');
+      const limit = parseInt(url.searchParams.get('limit') || '100');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
 
+      // Query business_records table with recordType = 'customer'
       let query = admin
-        .from('customers')
-        .select(
-          `
-          *,
-          companies!inner(
-            id,
-            business_name,
-            customer_number,
-            phone,
-            email,
-            website,
-            billing_address,
-            billing_city,
-            billing_state,
-            billing_zip,
-            industry,
-            customer_since
-          ),
-          company_contacts!inner(
-            id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            title,
-            is_primary_contact
-          )
-        `,
-        )
+        .from('business_records')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('created_at', { ascending: false });
+        .eq('record_type', 'customer')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
       if (status) {
-        query = query.eq('lead_status', status);
+        query = query.eq('status', status);
       }
 
       if (search) {
         query = query.or(
-          `companies.business_name.ilike.%${search}%,companies.customer_number.ilike.%${search}%,company_contacts.email.ilike.%${search}%`,
+          `company_name.ilike.%${search}%,primary_contact_name.ilike.%${search}%,primary_contact_email.ilike.%${search}%,phone.ilike.%${search}%,city.ilike.%${search}%`,
         );
       }
 
-      const { data: customers, error } = await query;
+      const { data: customers, error, count } = await query;
 
       if (error) {
         console.error('[CUSTOMERS] Error fetching customers:', error);
@@ -105,175 +83,114 @@ export default async function handler(req: Request) {
       console.log(
         `[CUSTOMERS] Query returned ${customers?.length || 0} customers for tenant ${tenantId}`,
       );
-      if (customers && customers.length > 0) {
-        console.log('[CUSTOMERS] First customer:', {
-          id: customers[0].id,
-          company_name: customers[0].companies?.business_name,
-          has_contacts: !!customers[0].company_contacts,
-        });
-      }
 
-      return createCorsResponse(customers || [], 200, req);
+      return createCorsResponse(
+        {
+          records: customers || [],
+          pagination: {
+            total: count || 0,
+            limit,
+            offset,
+            hasMore: offset + (customers?.length || 0) < (count || 0),
+          },
+        },
+        200,
+        req,
+      );
     }
 
-    // GET /customers/:id - Get single customer with full company info
+    // GET /customers/:id - Get single customer from business_records
     if (req.method === 'GET' && customerId) {
+      // Try to find by ID, URL slug, or display ID in business_records
       const { data: customer, error } = await admin
-        .from('customers')
-        .select(
-          `
-          *,
-          companies!inner(*),
-          company_contacts(*),
-          equipment(*),
-          service_tickets(*),
-          invoices(*)
-        `,
-        )
-        .eq('id', customerId)
+        .from('business_records')
+        .select('*')
         .eq('tenant_id', tenantId)
+        .eq('record_type', 'customer')
+        .or(`id.eq.${customerId},url_slug.eq.${customerId},company_display_id.eq.${customerId}`)
+        .limit(1)
         .single();
 
-      if (error) {
+      if (error || !customer) {
         console.error('Error fetching customer:', error);
         return createCorsResponse({ error: 'Customer not found' }, 404, req);
       }
 
-      return createCorsResponse(customer, 200, req);
+      // Get recent activities
+      const { data: activities } = await admin
+        .from('business_record_activities')
+        .select('*')
+        .eq('business_record_id', customer.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      return createCorsResponse({ ...customer, activities: activities || [] }, 200, req);
     }
 
-    // POST /customers - Create new customer
-    // Supports two formats:
-    // 1. With existing company_id and contact_id
-    // 2. With inline company and contact data (will create them first)
+    // POST /customers - Create new customer in business_records
     if (req.method === 'POST') {
       const body = await req.json();
 
-      let companyId = body.company_id;
-      let contactId = body.contact_id;
-
-      // If company_id not provided, try to create company from inline data
-      if (!companyId && body.companyName) {
-        const companyData = {
-          tenant_id: tenantId,
-          business_name: body.companyName,
-          customer_number: body.customerNumber,
-          phone: body.primaryContactPhone || body.phone,
-          email: body.primaryContactEmail || body.email,
-          website: body.website,
-          billing_address: body.addressLine1
-            ? `${body.addressLine1}${body.addressLine2 ? ', ' + body.addressLine2 : ''}`
-            : undefined,
-          billing_city: body.city,
-          billing_state: body.state,
-          billing_zip: body.postalCode,
-          industry: body.industry,
-          business_record_type: 'Customer',
-          customer_since: body.customer_since || new Date().toISOString(),
-          created_by: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        const { data: company, error: companyError } = await admin
-          .from('companies')
-          .insert(companyData)
-          .select()
-          .single();
-
-        if (companyError) {
-          console.error('Error creating company:', companyError);
-          return createCorsResponse(
-            { error: 'Failed to create company', details: companyError.message },
-            500,
-            req,
-          );
-        }
-
-        companyId = company.id;
-
-        // Create primary contact if provided
-        if (body.primaryContactName || body.primaryContactEmail) {
-          const [firstName, ...lastNameParts] = (body.primaryContactName || '').split(' ');
-          const lastName = lastNameParts.join(' ');
-
-          const contactData = {
-            tenant_id: tenantId,
-            company_id: companyId,
-            first_name: firstName || 'Primary',
-            last_name: lastName || 'Contact',
-            email: body.primaryContactEmail,
-            phone: body.primaryContactPhone,
-            title: body.primaryContactTitle,
-            is_primary: true,
-            created_at: new Date().toISOString(),
-          };
-
-          const { data: contact, error: contactError } = await admin
-            .from('company_contacts')
-            .insert(contactData)
-            .select()
-            .single();
-
-          if (contactError) {
-            console.error('Error creating contact:', contactError);
-            // Don't fail the whole request, just log the error
-          } else {
-            contactId = contact.id;
-          }
-        }
-      } else if (!companyId) {
-        return createCorsResponse(
-          { error: 'Either company_id or companyName is required' },
-          400,
-          req,
-        );
-      } else {
-        // Verify company exists
-        const { data: companyExists } = await admin
-          .from('companies')
-          .select('id')
-          .eq('id', companyId)
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (!companyExists) {
-          return createCorsResponse({ error: 'Company not found' }, 404, req);
-        }
-      }
+      // Generate unique identifiers
+      const timestamp = Date.now();
+      const randomNum = Math.floor(Math.random() * 100000000);
+      const companyDisplayId = `${randomNum}`;
+      const companyNameSlug = (body.companyName || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const urlSlug = `${companyNameSlug}-${companyDisplayId}`;
+      const customerNumber = `CUST-${timestamp}-${randomNum}`;
 
       const customerData = {
         tenant_id: tenantId,
-        company_id: companyId,
-        contact_id: contactId,
-        converted_from_lead_id: body.converted_from_lead_id,
-        lead_source: body.leadSource || body.lead_source || 'website',
-        lead_status: body.lead_status || 'active',
-        // customer_since is stored in companies table, not customers table
-        estimated_amount: body.estimatedDealValue
-          ? parseFloat(body.estimatedDealValue)
-          : body.estimated_amount,
-        probability: body.probability ? parseInt(body.probability) : 100,
-        close_date: body.expectedCloseDate || body.close_date,
-        owner_id: body.assignedSalesRep || body.owner_id || user.id,
+        record_type: 'customer',
+        status: body.status || 'active',
+
+        // Company information
+        company_name: body.companyName,
+        company_display_id: companyDisplayId,
+        url_slug: urlSlug,
+        customer_number: customerNumber,
+        website: body.website,
+        industry: body.industry,
+        company_size: body.companySize,
+
+        // Primary contact
+        primary_contact_name: body.primaryContactName,
+        primary_contact_email: body.primaryContactEmail,
+        primary_contact_phone: body.primaryContactPhone,
+        primary_contact_title: body.primaryContactTitle,
+
+        // Address
+        address_line1: body.addressLine1,
+        address_line2: body.addressLine2,
+        city: body.city,
+        state: body.state,
+        postal_code: body.postalCode,
+        country: body.country || 'US',
+
+        // Customer management
         priority: body.priority || 'medium',
+        customer_tier: body.customerTier,
+        assigned_sales_rep: body.assignedSalesRep,
+        lead_source: body.leadSource || 'website',
+        estimated_amount: body.estimatedDealValue ? parseFloat(body.estimatedDealValue) : null,
+        probability: body.probability ? parseInt(body.probability) : 100,
+
+        // Notes and metadata
         notes: body.notes,
-        preferred_technician: body.preferred_technician,
-        current_balance: body.current_balance || 0,
+        tags: body.tags,
+        customer_since: new Date().toISOString(),
         created_by: user.id,
+        owner_id: body.ownerId || user.id,
         created_at: new Date().toISOString(),
       };
 
       const { data: customer, error } = await admin
-        .from('customers')
+        .from('business_records')
         .insert(customerData)
-        .select(
-          `
-          *,
-          companies(*),
-          company_contacts(*)
-        `,
-        )
+        .select()
         .single();
 
       if (error) {
@@ -285,37 +202,57 @@ export default async function handler(req: Request) {
         );
       }
 
+      // Log activity
+      await admin.from('business_record_activities').insert({
+        business_record_id: customer.id,
+        tenant_id: tenantId,
+        activity_type: 'record_created',
+        description: `Customer created: ${body.companyName}`,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+      });
+
       return createCorsResponse(customer, 201, req);
     }
 
-    // PATCH /customers/:id - Update customer record
+    // PATCH /customers/:id - Update customer record in business_records
     if ((req.method === 'PATCH' || req.method === 'PUT') && customerId) {
       const body = await req.json();
 
-      const updateData = {
-        ...body,
+      const updateData: any = {
         updated_at: new Date().toISOString(),
       };
 
-      // Remove fields that shouldn't be updated
-      delete updateData.id;
-      delete updateData.tenant_id;
-      delete updateData.created_by;
-      delete updateData.created_at;
-      delete updateData.company_id; // Don't allow changing company link
+      // Map frontend field names to database column names
+      if (body.companyName) updateData.company_name = body.companyName;
+      if (body.status) updateData.status = body.status;
+      if (body.website) updateData.website = body.website;
+      if (body.industry) updateData.industry = body.industry;
+      if (body.companySize) updateData.company_size = body.companySize;
+      if (body.primaryContactName) updateData.primary_contact_name = body.primaryContactName;
+      if (body.primaryContactEmail) updateData.primary_contact_email = body.primaryContactEmail;
+      if (body.primaryContactPhone) updateData.primary_contact_phone = body.primaryContactPhone;
+      if (body.primaryContactTitle) updateData.primary_contact_title = body.primaryContactTitle;
+      if (body.addressLine1) updateData.address_line1 = body.addressLine1;
+      if (body.addressLine2) updateData.address_line2 = body.addressLine2;
+      if (body.city) updateData.city = body.city;
+      if (body.state) updateData.state = body.state;
+      if (body.postalCode) updateData.postal_code = body.postalCode;
+      if (body.country) updateData.country = body.country;
+      if (body.priority) updateData.priority = body.priority;
+      if (body.customerTier) updateData.customer_tier = body.customerTier;
+      if (body.assignedSalesRep) updateData.assigned_sales_rep = body.assignedSalesRep;
+      if (body.leadSource) updateData.lead_source = body.leadSource;
+      if (body.notes !== undefined) updateData.notes = body.notes;
+      if (body.tags !== undefined) updateData.tags = body.tags;
 
       const { data: customer, error } = await admin
-        .from('customers')
+        .from('business_records')
         .update(updateData)
         .eq('id', customerId)
         .eq('tenant_id', tenantId)
-        .select(
-          `
-          *,
-          companies(*),
-          company_contacts(*)
-        `,
-        )
+        .eq('record_type', 'customer')
+        .select()
         .single();
 
       if (error) {
@@ -323,17 +260,27 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update customer' }, 500, req);
       }
 
+      // Log activity
+      await admin.from('business_record_activities').insert({
+        business_record_id: customer.id,
+        tenant_id: tenantId,
+        activity_type: 'record_updated',
+        description: `Customer updated: ${customer.company_name}`,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+      });
+
       return createCorsResponse(customer, 200, req);
     }
 
-    // DELETE /customers/:id - Delete customer relationship (company remains)
+    // DELETE /customers/:id - Delete customer record from business_records
     if (req.method === 'DELETE' && customerId) {
-      // Note: This only deletes the customer relationship, not the company
       const { error } = await admin
-        .from('customers')
+        .from('business_records')
         .delete()
         .eq('id', customerId)
-        .eq('tenant_id', tenantId);
+        .eq('tenant_id', tenantId)
+        .eq('record_type', 'customer');
 
       if (error) {
         console.error('Error deleting customer:', error);
@@ -341,7 +288,7 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(
-        { success: true, message: 'Customer relationship deleted (company preserved)' },
+        { success: true, message: 'Customer deleted successfully' },
         200,
         req,
       );

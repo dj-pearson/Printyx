@@ -212,11 +212,26 @@ export default function Customers() {
     return () => window.removeEventListener('resize', handler);
   }, [viewMode]);
 
-  // Fetch customers from unified business_records view
-  const { data: customers = [], isLoading: customersLoading } = useQuery({
-    queryKey: ['/api/customers'],
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 500; // Load 500 records at a time for better performance
+
+  // Fetch customers from unified business_records view with pagination
+  const { data: customersResponse, isLoading: customersLoading } = useQuery({
+    queryKey: ['/api/customers', { limit: pageSize, offset: (page - 1) * pageSize }],
     enabled: isAuthenticated,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        limit: pageSize.toString(),
+        offset: ((page - 1) * pageSize).toString(),
+      });
+      const response = await apiRequest(`/api/customers?${params}`, 'GET');
+      return response;
+    },
   });
+
+  const customers = customersResponse?.records || [];
+  const pagination = customersResponse?.pagination || { total: 0, hasMore: false };
 
   // Optional companies for enrichment
   const { data: companies = [] } = useQuery({
@@ -644,9 +659,14 @@ export default function Customers() {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 {filtered.length > 0 && (
-                  <Badge variant="secondary">
-                    {filtered.length} {filtered.length === 1 ? 'record' : 'records'}
-                  </Badge>
+                  <>
+                    <Badge variant="secondary">
+                      {filtered.length} {filtered.length === 1 ? 'record' : 'records'} on this page
+                    </Badge>
+                    {pagination.total > 0 && (
+                      <Badge variant="outline">{pagination.total} total records</Badge>
+                    )}
+                  </>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -917,6 +937,43 @@ export default function Customers() {
                         : undefined
                     }
                   />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pagination Controls */}
+            {pagination.total > 0 && (
+              <Card className="mt-4">
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {Math.min((page - 1) * pageSize + 1, pagination.total)} -{' '}
+                      {Math.min(page * pageSize, pagination.total)} of {pagination.total} records
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1 || customersLoading}
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          Page {page} of {Math.ceil(pagination.total / pageSize)}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => p + 1)}
+                        disabled={!pagination.hasMore || customersLoading}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
