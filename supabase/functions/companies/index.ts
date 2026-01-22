@@ -19,8 +19,26 @@ export default async function handler(req: Request) {
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     // Check if using service role key (for admin operations like dedup)
+    // Method 1: Direct comparison with env var
+    // Method 2: Decode JWT and check for "service_role" role claim
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const isServiceRoleAuth = jwt === serviceRoleKey;
+    let isServiceRoleAuth = jwt && serviceRoleKey && jwt.trim() === serviceRoleKey.trim();
+
+    // Also check by decoding the JWT payload for role: "service_role"
+    if (!isServiceRoleAuth && jwt) {
+      try {
+        const payloadBase64 = jwt.split('.')[1];
+        if (payloadBase64) {
+          const payload = JSON.parse(atob(payloadBase64));
+          if (payload.role === 'service_role') {
+            isServiceRoleAuth = true;
+            console.log('[COMPANIES] Detected service_role from JWT payload');
+          }
+        }
+      } catch (e) {
+        // Not a valid JWT, ignore
+      }
+    }
 
     let tenantId: string | null = null;
     let user: any = null;
