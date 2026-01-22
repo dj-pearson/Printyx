@@ -217,6 +217,54 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && !companyId) {
       const body = await req.json();
 
+      // Check for duplicate company (by name + city + state)
+      if (body.business_name) {
+        const normalizedName = body.business_name.toLowerCase().trim();
+        const normalizedCity = (body.billing_city || '').toLowerCase().trim();
+        const normalizedState = (body.billing_state || '').toLowerCase().trim();
+
+        // Search for companies with matching name
+        const { data: existingCompanies } = await admin
+          .from('companies')
+          .select('id, business_name, billing_city, billing_state')
+          .eq('tenant_id', tenantId)
+          .ilike('business_name', body.business_name)
+          .limit(10);
+
+        if (existingCompanies && existingCompanies.length > 0) {
+          // Check for exact match on name + city + state
+          const duplicate = existingCompanies.find((c: any) => {
+            const candidateName = (c.business_name || '').toLowerCase().trim();
+            const candidateCity = (c.billing_city || '').toLowerCase().trim();
+            const candidateState = (c.billing_state || '').toLowerCase().trim();
+
+            return (
+              candidateName === normalizedName &&
+              candidateCity === normalizedCity &&
+              candidateState === normalizedState
+            );
+          });
+
+          if (duplicate) {
+            console.log(
+              `[COMPANIES] Duplicate detected: ${body.business_name} (${body.billing_city}, ${body.billing_state})`,
+            );
+            return createCorsResponse(
+              {
+                error: 'Company already exists',
+                existingId: duplicate.id,
+                existingName: duplicate.business_name,
+                existingCity: duplicate.billing_city,
+                existingState: duplicate.billing_state,
+                suggestion: 'Add contacts to the existing company instead of creating a new one',
+              },
+              409,
+              req,
+            );
+          }
+        }
+      }
+
       // 1. Create company
       const companyData = {
         tenant_id: tenantId,
