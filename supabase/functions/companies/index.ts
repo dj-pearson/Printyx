@@ -208,6 +208,10 @@ export default async function handler(req: Request) {
 
     // GET /companies/:id/contacts - Get company contacts
     if (req.method === 'GET' && companyId && subResource === 'contacts') {
+      console.log(
+        `[COMPANIES] Fetching contacts for company_id: ${companyId}, tenant: ${tenantId}`,
+      );
+
       const { data: contacts, error } = await admin
         .from('company_contacts')
         .select('*')
@@ -216,10 +220,15 @@ export default async function handler(req: Request) {
         .order('is_primary', { ascending: false });
 
       if (error) {
-        console.error('Error fetching contacts:', error);
-        return createCorsResponse({ error: 'Failed to fetch contacts' }, 500, req);
+        console.error('[COMPANIES] Error fetching contacts:', error);
+        return createCorsResponse(
+          { error: 'Failed to fetch contacts', details: error.message },
+          500,
+          req,
+        );
       }
 
+      console.log(`[COMPANIES] Found ${contacts?.length || 0} contacts for company ${companyId}`);
       return createCorsResponse(contacts || [], 200, req);
     }
 
