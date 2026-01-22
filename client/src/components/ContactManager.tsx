@@ -120,8 +120,36 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
 
   // Fetch contacts for this company - using standardized endpoint
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
-    queryKey: [`/api/company-contacts`, { companyId }],
-    queryFn: async () => apiRequest(`/api/company-contacts?companyId=${companyId}`),
+    queryKey: ['/api/companies', companyId, 'contacts'],
+    queryFn: async () => {
+      const response = await apiRequest(`/api/companies/${companyId}/contacts`, 'GET');
+      // Transform snake_case API response to camelCase for component
+      return (response || []).map((c: any) => ({
+        id: c.id,
+        firstName: c.first_name || '',
+        lastName: c.last_name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        mobile: c.mobile || c.phone || '',
+        title: c.title || '',
+        department: c.department || '',
+        salutation: c.salutation || '',
+        companyId: c.company_id || companyId,
+        companyName: companyName,
+        isPrimaryContact: c.is_primary || c.isPrimaryContact || false,
+        leadStatus: c.lead_status || c.status || 'active',
+        lastContactDate: c.last_contact_date || c.lastContactDate,
+        nextFollowUpDate: c.next_follow_up_date || c.nextFollowUpDate,
+        ownerId: c.owner_id || c.ownerId || '',
+        ownerName: c.owner_name || c.ownerName || '',
+        favoriteContentType: c.favorite_content_type || c.favoriteContentType,
+        preferredChannels: c.preferred_channels || c.preferredChannels || [],
+        reportsTo: c.reports_to || c.reportsTo,
+        contactRoles: c.contact_roles || c.contactRoles || [],
+        createdAt: c.created_at || c.createdAt || new Date().toISOString(),
+        updatedAt: c.updated_at || c.updatedAt || new Date().toISOString(),
+      }));
+    },
   });
 
   // Create contact mutation - using standardized endpoint
