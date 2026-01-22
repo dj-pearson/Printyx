@@ -21,7 +21,9 @@
       "Bash(npm run lint:*)",
       "Bash(npm run format:write:*)",
       "Bash(npx vitest:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(./scripts/ralph/ralph.sh:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []
