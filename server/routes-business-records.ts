@@ -633,11 +633,149 @@ router.get(
   },
 );
 
-// Backward compatibility routes
+// Backward compatibility routes - GET all customers with pagination
 router.get('/api/customers', requireAuth, async (req: Request, res: Response) => {
-  // Redirect to business-records with customer filter
-  req.query.recordType = 'customer';
-  return router.handle(req, res, () => {});
+  try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    const {
+      search,
+      status,
+      priority,
+      industry,
+      leadSource,
+      customerTier,
+      limit = '100', // Default to 100 to prevent loading all 15k records
+      offset = '0',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = req.query;
+
+    // Build WHERE conditions - filter for customers only
+    const conditions: any[] = [
+      eq(businessRecords.tenantId, tenantId),
+      eq(businessRecords.recordType, 'customer'),
+    ];
+
+    if (status) {
+      conditions.push(eq(businessRecords.status, status as string));
+    }
+
+    if (priority) {
+      conditions.push(eq(businessRecords.priority, priority as string));
+    }
+
+    if (industry) {
+      conditions.push(eq(businessRecords.industry, industry as string));
+    }
+
+    if (leadSource) {
+      conditions.push(eq(businessRecords.leadSource, leadSource as string));
+    }
+
+    if (customerTier) {
+      conditions.push(eq(businessRecords.customerTier, customerTier as string));
+    }
+
+    // Search across multiple fields
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          like(businessRecords.companyName, searchTerm),
+          like(businessRecords.primaryContactName, searchTerm),
+          like(businessRecords.primaryContactEmail, searchTerm),
+          like(businessRecords.phone, searchTerm),
+          like(businessRecords.city, searchTerm),
+          like(businessRecords.industry, searchTerm),
+        ),
+      );
+    }
+
+    // Execute query with pagination
+    const sortColumn =
+      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
+    const orderFn = sortOrder === 'asc' ? asc : desc;
+
+    const records = await db
+      .select()
+      .from(businessRecords)
+      .where(and(...conditions))
+      .orderBy(orderFn(sortColumn))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+    // Get total count for pagination
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(businessRecords)
+      .where(and(...conditions));
+
+    res.json({
+      records,
+      pagination: {
+        total: count,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+        hasMore: parseInt(offset as string) + records.length < count,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ message: 'Failed to fetch customers' });
+  }
+});
+
+// GET single customer by ID or slug
+router.get('/api/customers/:identifier', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID is required' });
+    }
+
+    const { identifier } = req.params;
+
+    // Try to find by ID, URL slug, or display ID
+    const [record] = await db
+      .select()
+      .from(businessRecords)
+      .where(
+        and(
+          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.recordType, 'customer'), // Only return customer records
+          or(
+            eq(businessRecords.id, identifier),
+            eq(businessRecords.urlSlug, identifier),
+            eq(businessRecords.companyDisplayId, identifier),
+          ),
+        ),
+      )
+      .limit(1);
+
+    if (!record) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    // Get recent activities
+    const activities = await db
+      .select()
+      .from(businessRecordActivities)
+      .where(eq(businessRecordActivities.businessRecordId, record.id))
+      .orderBy(desc(businessRecordActivities.createdAt))
+      .limit(20);
+
+    res.json({
+      ...record,
+      activities,
+    });
+  } catch (error) {
+    console.error('Error fetching customer:', error);
+    res.status(500).json({ message: 'Failed to fetch customer' });
+  }
 });
 
 router.post('/api/customers', requireAuth, async (req: Request, res: Response) => {
