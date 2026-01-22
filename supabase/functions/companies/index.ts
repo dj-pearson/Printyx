@@ -544,6 +544,178 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true, message: 'Company deleted' }, 200, req);
     }
 
+    // ============================================
+    // DEDUPLICATION ENDPOINTS
+    // ============================================
+
+    // GET /companies/duplicates/scan - Scan for duplicate companies
+    if (req.method === 'GET' && companyId === 'duplicates' && subResource === 'scan') {
+      console.log(`[COMPANIES] Scanning for duplicates in tenant ${tenantId}`);
+
+      // Fetch all companies
+      const { data: allCompanies, error: fetchError } = await admin
+        .from('companies')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: true });
+
+      if (fetchError) {
+        console.error('Error fetching companies:', fetchError);
+        return createCorsResponse({ error: 'Failed to fetch companies' }, 500, req);
+      }
+
+      // Helper functions
+      const normalizeString = (str: string | null | undefined): string => {
+        if (!str) return '';
+        return str.toLowerCase().trim().replace(/\s+/g, ' ');
+      };
+
+      const createGroupKey = (company: any): string => {
+        const name = normalizeString(company.business_name);
+        const city = normalizeString(company.billing_city);
+        const state = normalizeString(company.billing_state);
+        return `${name}|${city}|${state}`;
+      };
+
+      const selectSurvivor = (companies: any[]): any => {
+        return companies.reduce((oldest, current) => {
+          if (!oldest.created_at) return current;
+          if (!current.created_at) return oldest;
+          return new Date(current.created_at) < new Date(oldest.created_at) ? current : oldest;
+        });
+      };
+
+      // Group by normalized key
+      const groupMap = new Map<string, any[]>();
+      for (const company of allCompanies || []) {
+        const key = createGroupKey(company);
+        if (!groupMap.has(key)) {
+          groupMap.set(key, []);
+        }
+        groupMap.get(key)!.push(company);
+      }
+
+      // Find duplicate groups (count > 1)
+      const duplicateGroups: any[] = [];
+      for (const [key, companies] of groupMap) {
+        if (companies.length > 1) {
+          const survivor = selectSurvivor(companies);
+          duplicateGroups.push({
+            key,
+            name: key.split('|')[0],
+            location: key.split('|').slice(1).join(', ') || 'No location',
+            count: companies.length,
+            survivorId: survivor.id,
+            duplicateIds: companies.filter((c) => c.id !== survivor.id).map((c) => c.id),
+            companies: companies.map((c) => ({
+              id: c.id,
+              business_name: c.business_name,
+              billing_city: c.billing_city,
+              billing_state: c.billing_state,
+              phone: c.phone,
+              created_at: c.created_at,
+            })),
+          });
+        }
+      }
+
+      console.log(
+        `[COMPANIES] Found ${duplicateGroups.length} duplicate groups out of ${allCompanies?.length || 0} companies`,
+      );
+
+      return createCorsResponse(
+        {
+          totalCompanies: allCompanies?.length || 0,
+          duplicateGroups: duplicateGroups.length,
+          totalDuplicates: duplicateGroups.reduce((sum, g) => sum + g.duplicateIds.length, 0),
+          groups: duplicateGroups,
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /companies/merge - Merge duplicate companies
+    if (req.method === 'POST' && companyId === 'merge') {
+      const body = await req.json();
+      const { survivorId, duplicateIds } = body;
+
+      if (!survivorId) {
+        return createCorsResponse({ error: 'survivorId is required' }, 400, req);
+      }
+
+      if (!duplicateIds || !Array.isArray(duplicateIds) || duplicateIds.length === 0) {
+        return createCorsResponse({ error: 'duplicateIds array is required' }, 400, req);
+      }
+
+      if (duplicateIds.includes(survivorId)) {
+        return createCorsResponse({ error: 'survivorId cannot be in duplicateIds' }, 400, req);
+      }
+
+      console.log(`[COMPANIES] Merging ${duplicateIds.length} companies into ${survivorId}`);
+
+      try {
+        // 1. Move contacts to survivor
+        const { data: movedContacts, error: contactError } = await admin
+          .from('company_contacts')
+          .update({ company_id: survivorId, updated_at: new Date().toISOString() })
+          .in('company_id', duplicateIds)
+          .eq('tenant_id', tenantId)
+          .select('id');
+
+        if (contactError) {
+          console.error('Error moving contacts:', contactError);
+        }
+
+        // 2. Move activities to survivor
+        const { data: movedActivities, error: activityError } = await admin
+          .from('business_record_activities')
+          .update({ company_id: survivorId, updated_at: new Date().toISOString() })
+          .in('company_id', duplicateIds)
+          .eq('tenant_id', tenantId)
+          .select('id');
+
+        if (activityError) {
+          console.error('Error moving activities:', activityError);
+        }
+
+        // 3. Delete duplicate companies
+        const { error: deleteError } = await admin
+          .from('companies')
+          .delete()
+          .in('id', duplicateIds)
+          .eq('tenant_id', tenantId);
+
+        if (deleteError) {
+          console.error('Error deleting duplicates:', deleteError);
+          return createCorsResponse(
+            { error: 'Failed to delete duplicates', details: deleteError.message },
+            500,
+            req,
+          );
+        }
+
+        console.log(
+          `[COMPANIES] Merged successfully: ${movedContacts?.length || 0} contacts, ${movedActivities?.length || 0} activities`,
+        );
+
+        return createCorsResponse(
+          {
+            success: true,
+            survivorId,
+            mergedCount: duplicateIds.length,
+            contactsMoved: movedContacts?.length || 0,
+            activitiesMoved: movedActivities?.length || 0,
+          },
+          200,
+          req,
+        );
+      } catch (err: any) {
+        console.error('Merge error:', err);
+        return createCorsResponse({ error: err.message }, 500, req);
+      }
+    }
+
     return createCorsResponse({ error: 'Method not allowed' }, 405, req);
   } catch (error) {
     console.error('Companies function error:', error);
