@@ -214,11 +214,34 @@ export default function Customers() {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const pageSize = 500; // Load 500 records at a time for better performance
+  const pageSize = 100; // Load 100 records at a time for better performance
 
-  // Fetch all companies (leads, prospects, customers) with pagination from companies table
+  // Debounced search term for API calls (prevents too many requests while typing)
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1); // Reset to page 1 when search changes
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset page when tab changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedTab]);
+
+  // Fetch all companies (leads, prospects, customers) with pagination and server-side filtering
   const { data: customersResponse, isLoading: customersLoading } = useQuery({
-    queryKey: ['/api/companies', { limit: pageSize, offset: (page - 1) * pageSize }],
+    queryKey: [
+      '/api/companies',
+      {
+        limit: pageSize,
+        offset: (page - 1) * pageSize,
+        search: debouncedSearch,
+        tab: selectedTab,
+      },
+    ],
     enabled: isAuthenticated,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -226,6 +249,28 @@ export default function Customers() {
         offset: ((page - 1) * pageSize).toString(),
         includeContacts: 'true',
       });
+
+      // Add search term for server-side filtering
+      if (debouncedSearch.trim()) {
+        params.set('search', debouncedSearch.trim());
+      }
+
+      // Add tab-based filtering (record type / status)
+      if (selectedTab && selectedTab !== 'all') {
+        // Map tab to appropriate filter
+        if (selectedTab === 'leads') {
+          params.set('recordType', 'Lead');
+        } else if (selectedTab === 'prospects') {
+          params.set('recordType', 'Prospect');
+        } else if (selectedTab === 'customers') {
+          params.set('recordType', 'Customer');
+        } else if (selectedTab === 'active') {
+          params.set('status', 'active');
+        } else if (selectedTab === 'inactive') {
+          params.set('status', 'inactive');
+        }
+      }
+
       const response = await apiRequest(`/api/companies?${params}`, 'GET');
       return response;
     },
@@ -271,60 +316,26 @@ export default function Customers() {
   }, [customers, companies]);
 
   const filtered = useMemo(() => {
+    // Server-side filtering handles: search term, tab (recordType/status)
+    // Client-side filtering handles: industry, state, source, priority (dropdown filters)
     return enriched.filter((r: any) => {
-      // Tab filter (record type)
-      const recordType =
-        r.recordType || (r.status === 'active' || r.status === 'inactive' ? 'customer' : 'lead');
-      const status = r.status || 'new';
-
-      let matchesTab = true;
-      if (selectedTab === 'leads') {
-        matchesTab =
-          recordType === 'lead' ||
-          ['new', 'contacted', 'qualified', 'proposal_sent'].includes(status);
-      } else if (selectedTab === 'prospects') {
-        matchesTab = status === 'qualified' || status === 'proposal_sent';
-      } else if (selectedTab === 'customers') {
-        matchesTab = recordType === 'customer' || status === 'active' || status === 'inactive';
-      } else if (selectedTab === 'active') {
-        matchesTab = status === 'active';
-      } else if (selectedTab === 'inactive') {
-        matchesTab = status === 'inactive';
-      }
-
-      // Search filter
-      const term = searchTerm.trim().toLowerCase();
-      const matchesSearch =
-        !term ||
-        [r.companyName, r.primaryContactName, r.primaryContactEmail, r.industry, r.city, r.state]
-          .filter(Boolean)
-          .some((v: string) => String(v).toLowerCase().includes(term));
-
-      // Industry filter
+      // Industry filter (client-side)
       const matchesIndustry = industryFilter === 'all' || r.industry === industryFilter;
 
-      // State filter
+      // State filter (client-side)
       const matchesState = stateFilter === 'all' || r.state === stateFilter;
 
-      // Status filter
+      // Status filter (client-side additional filtering)
       const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
 
-      // Source filter
+      // Source filter (client-side)
       const matchesSource =
         sourceFilter === 'all' || r.leadSource === sourceFilter || r.source === sourceFilter;
 
-      // Priority filter
+      // Priority filter (client-side)
       const matchesPriority = priorityFilter === 'all' || r.priority === priorityFilter;
 
-      return (
-        matchesTab &&
-        matchesSearch &&
-        matchesIndustry &&
-        matchesState &&
-        matchesStatus &&
-        matchesSource &&
-        matchesPriority
-      );
+      return matchesIndustry && matchesState && matchesStatus && matchesSource && matchesPriority;
     });
   }, [
     enriched,

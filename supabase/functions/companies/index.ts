@@ -70,8 +70,9 @@ export default async function handler(req: Request) {
         .order('created_at', { ascending: false });
 
       if (search) {
+        // Search across multiple fields for comprehensive results
         query = query.or(
-          `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%`,
+          `business_name.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%,customer_number.ilike.%${search}%,industry.ilike.%${search}%,billing_city.ilike.%${search}%,billing_state.ilike.%${search}%`,
         );
       }
 
