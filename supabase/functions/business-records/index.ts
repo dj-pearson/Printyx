@@ -158,7 +158,14 @@ export default async function handler(req: Request) {
         }
 
         // Fall back to business_records for backwards compatibility
-        let query = admin.from('business_records').select('*').eq('tenant_id', tenantId);
+        // Handle pagination parameters
+        const limit = parseInt(url.searchParams.get('limit') || '100');
+        const offset = parseInt(url.searchParams.get('offset') || '0');
+
+        let query = admin
+          .from('business_records')
+          .select('*', { count: 'exact' })
+          .eq('tenant_id', tenantId);
 
         if (recordType) {
           query = query.eq('record_type', recordType);
@@ -172,9 +179,9 @@ export default async function handler(req: Request) {
           );
         }
 
-        query = query.order('created_at', { ascending: false });
+        query = query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
-        const { data: records, error } = await query;
+        const { data: records, error, count } = await query;
 
         if (error) {
           console.error('Error fetching business records:', error);
@@ -186,8 +193,18 @@ export default async function handler(req: Request) {
           );
         }
 
+        // Return in the format expected by frontend: { records: [...], pagination: {...} }
         return createCorsResponse(
-          { data: records, _deprecated: true },
+          {
+            records: records || [],
+            pagination: {
+              total: count || 0,
+              limit,
+              offset,
+              hasMore: offset + (records?.length || 0) < (count || 0),
+            },
+            _deprecated: true,
+          },
           200,
           req,
           deprecationMessage,
