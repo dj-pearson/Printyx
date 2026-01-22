@@ -13299,19 +13299,24 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     })
     .catch((err) => console.error('Failed to load database updater routes:', err));
 
-  // Initialize Database Updater Manager (TEMPORARILY DISABLED to stop continuous execution)
-  // import("./database-updater")
-  //   .then(({ startDatabaseUpdater }) => {
-  //     startDatabaseUpdater({
-  //       enableScheduling: true,
-  //       logLevel: 'info'
-  //     }).then(() => {
-  //       console.log('✅ Database Updater system started');
-  //     });
-  //   })
-  //   .catch((err) => console.error("Failed to start Database Updater system:", err));
-
-  console.log('⚠️ Database Updater system is temporarily disabled to stop continuous execution');
+  // Initialize Database Updater Manager (controlled by ENABLE_DATABASE_UPDATER env var)
+  // Default: disabled to prevent continuous execution during development
+  if (process.env.ENABLE_DATABASE_UPDATER === 'true') {
+    import('./database-updater')
+      .then(({ startDatabaseUpdater }) => {
+        startDatabaseUpdater({
+          enableScheduling: true,
+          logLevel: 'info',
+        }).then(() => {
+          console.log('✅ Database Updater system started');
+        });
+      })
+      .catch((err) => console.error('Failed to start Database Updater system:', err));
+  } else {
+    console.log(
+      'ℹ️ Database Updater auto-start disabled (set ENABLE_DATABASE_UPDATER=true to enable)',
+    );
+  }
 
   // Register GDPR Core Features routes (Data Export, Consent Management, DPA, Contact Deduplication)
   import('./routes-gdpr-core')
@@ -13329,9 +13334,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     })
     .catch((err) => console.error('Failed to load territory management routes:', err));
 
-  // DISABLED: Automatic seeding causes database connection exhaustion and authentication timeouts
-  // Seed master catalog on startup (development only)
-  if (false && process.env.NODE_ENV === 'development') {
+  // Auto-seeding disabled by default (causes connection exhaustion)
+  // Use npm run seed:* commands instead for manual seeding
+  if (process.env.ENABLE_AUTO_SEED === 'true' && process.env.NODE_ENV === 'development') {
+    console.log('ℹ️ Auto-seeding enabled - this may cause connection issues');
     import('./catalog-seed')
       .then(({ seedMasterCatalog }) => {
         setTimeout(() => {
@@ -13340,51 +13346,28 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
               console.log('Master catalog seeded successfully');
             }
           });
-        }, 2000); // Wait 2 seconds for DB to be ready
+        }, 2000);
       })
       .catch((err) => console.error('Failed to load catalog seeding:', err));
-
-    // Seed customer success data on startup
-    import('./seed-customer-success')
-      .then(({ seedCustomerSuccessData }) => {
-        setTimeout(() => {
-          // Get the default tenant ID (first tenant in DB)
-          import('./db').then(({ db }) => {
-            import('@shared/schema').then(({ tenants }) => {
-              db.select()
-                .from(tenants)
-                .limit(1)
-                .then((results) => {
-                  if (results.length > 0) {
-                    seedCustomerSuccessData(results[0].id)
-                      .then(() => {
-                        console.log('Customer success data seeded successfully');
-                      })
-                      .catch((error) => {
-                        console.error('Failed to seed customer success data:', error);
-                      });
-                  }
-                });
-            });
-          });
-        }, 3000); // Wait 3 seconds for DB and master catalog to be ready
-      })
-      .catch((err) => console.error('Failed to load customer success seeding:', err));
   }
 
   const httpServer = createServer(app);
 
-  // Initialize WebSocket service for real-time updates (TEMPORARILY DISABLED to fix Vite WebSocket conflict)
-  // import("./websocket-service")
-  //   .then(({ webSocketService }) => {
-  //     webSocketService.initialize(httpServer);
-  //     console.log('✅ WebSocket service initialized');
-  //   })
-  //   .catch((err) => console.error("Failed to initialize WebSocket service:", err));
-
-  console.log(
-    '⚠️ Custom WebSocket service is temporarily disabled to resolve Vite WebSocket conflict',
-  );
+  // Initialize WebSocket service for real-time updates
+  // Disabled by default in development due to Vite HMR WebSocket conflict
+  // Enable in production or with ENABLE_WEBSOCKET=true
+  const enableWebSocket =
+    process.env.ENABLE_WEBSOCKET === 'true' || process.env.NODE_ENV === 'production';
+  if (enableWebSocket) {
+    import('./websocket-service')
+      .then(({ webSocketService }) => {
+        webSocketService.initialize(httpServer);
+        console.log('✅ WebSocket service initialized');
+      })
+      .catch((err) => console.error('Failed to initialize WebSocket service:', err));
+  } else {
+    console.log('ℹ️ WebSocket service disabled in dev (set ENABLE_WEBSOCKET=true to enable)');
+  }
 
   // Start subscription scheduled jobs
   import('./services/subscription-jobs')
