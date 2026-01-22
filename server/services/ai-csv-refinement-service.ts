@@ -16,7 +16,7 @@ import {
   type TemplateColumn,
 } from '@shared/csv-import-schema';
 import { db } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { csvImportJobs } from '@shared/csv-import-schema';
 
 interface ClaudeMessage {
@@ -403,9 +403,11 @@ If none are true duplicates, return { "matches": [] }`;
 
   /**
    * Process an entire import job with AI refinement
+   * @param tenantId - Required for defense-in-depth tenant isolation
    */
   async processImportWithAI(
     jobId: string,
+    tenantId: string,
     csvData: Record<string, any>[],
     headers: string[],
     entityType: string,
@@ -422,7 +424,7 @@ If none are true duplicates, return { "matches": [] }`;
     const mappingResult = await this.aiMapColumns(headers, csvData.slice(0, 5), entityType);
     totalTokens += mappingResult.tokensUsed;
 
-    // Update job with AI mapping confidence
+    // Update job with AI mapping confidence (defense-in-depth: filter by tenantId too)
     await db
       .update(csvImportJobs)
       .set({
@@ -431,7 +433,7 @@ If none are true duplicates, return { "matches": [] }`;
         aiMappingConfidence: mappingResult.confidence,
         updatedAt: new Date(),
       })
-      .where(eq(csvImportJobs.id, jobId));
+      .where(and(eq(csvImportJobs.id, jobId), eq(csvImportJobs.tenantId, tenantId)));
 
     // Step 2: AI Data Cleaning (if we have high enough mapping confidence)
     let cleanedData = csvData;
@@ -452,7 +454,7 @@ If none are true duplicates, return { "matches": [] }`;
       }
     }
 
-    // Update job with token usage
+    // Update job with token usage (defense-in-depth: filter by tenantId too)
     await db
       .update(csvImportJobs)
       .set({
@@ -460,7 +462,7 @@ If none are true duplicates, return { "matches": [] }`;
         transformedData: cleanedData,
         updatedAt: new Date(),
       })
-      .where(eq(csvImportJobs.id, jobId));
+      .where(and(eq(csvImportJobs.id, jobId), eq(csvImportJobs.tenantId, tenantId)));
 
     return {
       mappings: mappingResult.mappings,

@@ -705,6 +705,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         const result = await aiCsvRefinementService.processImportWithAI(
           jobId,
+          req.tenantId!, // Pass tenantId for defense-in-depth isolation
           rawData,
           headers,
           job.entityType,
