@@ -18,6 +18,7 @@ import {
   applyFontSize,
   announceToScreenReader,
 } from '@/lib/accessibility/utils';
+import { ColorBlindnessFilters } from '@/components/accessibility/ColorBlindnessFilters';
 
 const STORAGE_KEY = 'printyx-accessibility-preferences';
 
@@ -204,6 +205,8 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
         isHighContrast: preferences.highContrast || isHighContrast,
       }}
     >
+      {/* SVG filters for color blindness simulation - WCAG 2.1 Level A (1.4.1) */}
+      <ColorBlindnessFilters />
       {children}
     </AccessibilityContext.Provider>
   );
