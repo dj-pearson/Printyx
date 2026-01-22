@@ -219,11 +219,12 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
 
   // Filter contacts based on search and status
   const filteredContacts = contacts.filter((contact) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
-      contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.title.toLowerCase().includes(searchTerm.toLowerCase());
+      (contact.firstName || '').toLowerCase().includes(searchLower) ||
+      (contact.lastName || '').toLowerCase().includes(searchLower) ||
+      (contact.email || '').toLowerCase().includes(searchLower) ||
+      (contact.title || '').toLowerCase().includes(searchLower);
 
     const matchesStatus = statusFilter === 'all' || contact.leadStatus === statusFilter;
 
