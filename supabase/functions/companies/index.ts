@@ -43,13 +43,20 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
 
-    // GET /companies - List all companies
+    // GET /companies - List all companies with pagination
     if (req.method === 'GET' && !companyId) {
       const search = url.searchParams.get('search');
       const includeLeads = url.searchParams.get('includeLeads') === 'true';
       const includeCustomers = url.searchParams.get('includeCustomers') === 'true';
       const includeContacts = url.searchParams.get('includeContacts') !== 'false'; // Default true
       const industry = url.searchParams.get('industry');
+      const status = url.searchParams.get('status');
+      const recordType =
+        url.searchParams.get('recordType') || url.searchParams.get('business_record_type');
+
+      // Pagination parameters
+      const limit = parseInt(url.searchParams.get('limit') || '100');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
 
       let selectQuery = '*';
       if (includeContacts) selectQuery += ', company_contacts(*)';
@@ -58,7 +65,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('companies')
-        .select(selectQuery)
+        .select(selectQuery, { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -72,14 +79,58 @@ export default async function handler(req: Request) {
         query = query.eq('industry', industry);
       }
 
-      const { data: companies, error } = await query;
+      if (status) {
+        query = query.eq('activity', status);
+      }
+
+      if (recordType) {
+        query = query.eq('business_record_type', recordType);
+      }
+
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1);
+
+      const { data: companies, error, count } = await query;
 
       if (error) {
         console.error('Error fetching companies:', error);
         return createCorsResponse({ error: 'Failed to fetch companies' }, 500, req);
       }
 
-      return createCorsResponse(companies || [], 200, req);
+      console.log(
+        `[COMPANIES] Query returned ${companies?.length || 0} companies for tenant ${tenantId}`,
+      );
+
+      // Map companies to a format compatible with the customers page
+      const records = (companies || []).map((company: any) => ({
+        ...company,
+        // Map company fields to expected frontend format
+        companyName: company.business_name,
+        primaryContactName: company.company_contacts?.[0]?.first_name
+          ? `${company.company_contacts[0].first_name} ${company.company_contacts[0].last_name || ''}`.trim()
+          : null,
+        primaryContactEmail: company.company_contacts?.[0]?.email || company.email,
+        primaryContactPhone: company.company_contacts?.[0]?.phone || company.phone,
+        city: company.billing_city,
+        state: company.billing_state,
+        status: company.activity || 'active',
+        recordType: company.business_record_type?.toLowerCase() || 'customer',
+        lead_status: company.activity,
+      }));
+
+      return createCorsResponse(
+        {
+          records,
+          pagination: {
+            total: count || 0,
+            limit,
+            offset,
+            hasMore: offset + (companies?.length || 0) < (count || 0),
+          },
+        },
+        200,
+        req,
+      );
     }
 
     // GET /companies/:id - Get single company with all relationships
