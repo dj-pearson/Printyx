@@ -2,13 +2,32 @@
 
 **Generated**: January 16, 2026
 **Last Verified**: January 21, 2026
-**Status**: ⚠️ **VERIFICATION REQUIRED - Database Not Accessible**
+**Status**: ⚠️ **BLOCKED - Invalid Supabase Credentials**
+
+---
+
+## 🧹 Cleanup Completed - January 21, 2026
+
+- ✅ Deleted old backup files: `package.json.backup`, `package.json.fixed`, `package.json.corrected`
+- ✅ Archived migration scripts to `tools/_archived/`
+- ✅ No Neon dependencies in `package.json` (only optional peer dep in lock file from drizzle-orm)
+- ✅ No Neon references in `CLAUDE.md`
 
 ---
 
 ## 📋 Verification Attempt - January 21, 2026
 
-### Verification Results:
+### Root Cause Identified:
+
+- 🔑 **SUPABASE_SERVICE_ROLE_KEY is invalid or expired**
+- TCP port 5433 is reachable but PostgreSQL connection fails with ECONNRESET
+- Supabase REST API returns "Invalid authentication credentials"
+
+### Required Action:
+
+**Update `.env` file with valid Supabase credentials from the self-hosted Supabase dashboard.**
+
+### Previous Verification Results:
 
 - ❌ **Database connection failed** - ECONNRESET errors when connecting to 209.145.59.219:5433
 - ⚠️ **Cannot verify current table state** - Direct database query not possible
