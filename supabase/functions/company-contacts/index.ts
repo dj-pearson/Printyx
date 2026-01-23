@@ -148,6 +148,9 @@ export default async function handler(req: Request) {
 
     // PUT /company-contacts/:id - Update contact
     if ((req.method === 'PUT' || req.method === 'PATCH') && contactId) {
+      console.log(
+        `[COMPANY-CONTACTS] UPDATE request for contact: ${contactId}, tenant: ${tenantId}`,
+      );
       const body = await req.json();
 
       // Only include fields that exist in customer_contacts table
@@ -166,24 +169,36 @@ export default async function handler(req: Request) {
         updateData.is_primary = body.isPrimaryContact || body.is_primary;
       }
 
+      // First verify the contact exists and belongs to this tenant
+      const { data: existingContact, error: fetchError } = await admin
+        .from('customer_contacts')
+        .select('*')
+        .eq('id', contactId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Error fetching contact for update:', fetchError);
+        return createCorsResponse({ error: 'Failed to fetch contact' }, 500, req);
+      }
+
+      if (!existingContact) {
+        console.error(`Contact not found: id=${contactId}, tenant=${tenantId}`);
+        return createCorsResponse(
+          { error: 'Contact not found or does not belong to your organization' },
+          404,
+          req,
+        );
+      }
+
       // If this contact is being marked as primary, unmark others
       if (updateData.is_primary) {
-        // First get the contact to find the company ID
-        const { data: existingContact } = await admin
+        await admin
           .from('customer_contacts')
-          .select('customer_id')
-          .eq('id', contactId)
+          .update({ is_primary: false })
+          .eq('customer_id', existingContact.customer_id)
           .eq('tenant_id', tenantId)
-          .single();
-
-        if (existingContact) {
-          await admin
-            .from('customer_contacts')
-            .update({ is_primary: false })
-            .eq('customer_id', existingContact.customer_id)
-            .eq('tenant_id', tenantId)
-            .neq('id', contactId);
-        }
+          .neq('id', contactId);
       }
 
       const { data: contact, error } = await admin
@@ -196,7 +211,11 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error updating contact:', error);
-        return createCorsResponse({ error: 'Failed to update contact' }, 500, req);
+        return createCorsResponse(
+          { error: 'Failed to update contact', details: error.message },
+          500,
+          req,
+        );
       }
 
       return createCorsResponse(contact, 200, req);
