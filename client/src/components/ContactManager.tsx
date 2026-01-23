@@ -163,8 +163,9 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
       return apiRequest(`/api/company-contacts`, 'POST', payload);
     },
     onSuccess: () => {
+      // Invalidate the companies contacts cache (not company-contacts)
       queryClient.invalidateQueries({
-        queryKey: [`/api/company-contacts`, { companyId }],
+        queryKey: ['/api/companies', companyId, 'contacts'],
       });
       setIsCreateContactOpen(false);
       toast({ title: 'Success', description: 'Contact created successfully' });
@@ -183,8 +184,9 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     mutationFn: async ({ id, ...data }: Partial<Contact> & { id: string }) =>
       apiRequest(`/api/company-contacts/${id}`, 'PUT', data),
     onSuccess: () => {
+      // Invalidate the companies contacts cache (not company-contacts)
       queryClient.invalidateQueries({
-        queryKey: [`/api/company-contacts`, { companyId }],
+        queryKey: ['/api/companies', companyId, 'contacts'],
       });
       setEditingContact(null);
       toast({ title: 'Success', description: 'Contact updated successfully' });
@@ -203,8 +205,9 @@ export function ContactManager({ companyId, companyName, className }: ContactMan
     mutationFn: async (contactId: string) =>
       apiRequest(`/api/company-contacts/${contactId}`, 'DELETE'),
     onSuccess: () => {
+      // Invalidate the companies contacts cache (not company-contacts)
       queryClient.invalidateQueries({
-        queryKey: [`/api/company-contacts`, { companyId }],
+        queryKey: ['/api/companies', companyId, 'contacts'],
       });
       toast({ title: 'Success', description: 'Contact deleted successfully' });
     },
