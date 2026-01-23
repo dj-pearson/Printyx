@@ -61,11 +61,11 @@ export default async function handler(req: Request) {
       }
 
       const { data: contacts, error } = await admin
-        .from('customer_contacts')
+        .from('company_contacts')
         .select('*')
-        .eq('customer_id', companyId)
+        .eq('company_id', companyId)
         .eq('tenant_id', tenantId)
-        .order('is_primary', { ascending: false }) // Primary contacts first
+        .order('is_primary_contact', { ascending: false }) // Primary contacts first
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -74,29 +74,28 @@ export default async function handler(req: Request) {
       }
 
       // Transform snake_case to camelCase for frontend compatibility
-      // Note: Only including fields that exist in customer_contacts table
       const transformedContacts = (contacts || []).map((contact) => ({
         id: contact.id,
         firstName: contact.first_name,
         lastName: contact.last_name,
         email: contact.email || '',
         phone: contact.phone || '',
-        mobile: '', // Not in schema
+        mobile: contact.mobile || '',
         title: contact.title || '',
         department: contact.department || '',
-        salutation: '', // Not in schema
-        companyId: contact.customer_id,
+        salutation: contact.salutation || '',
+        companyId: contact.company_id,
         companyName: '', // Will be populated by frontend if needed
-        isPrimaryContact: contact.is_primary || false,
-        leadStatus: 'customer', // Company contacts are always customers
-        lastContactDate: undefined, // Not in schema
-        nextFollowUpDate: undefined, // Not in schema
-        ownerId: '', // Not in schema
-        ownerName: '', // Not in schema
-        favoriteContentType: undefined, // Not in schema
-        preferredChannels: [], // Not in schema
-        reportsTo: undefined, // Not in schema
-        contactRoles: [], // Not in schema
+        isPrimaryContact: contact.is_primary_contact || false,
+        leadStatus: contact.lead_status || 'customer',
+        lastContactDate: contact.last_contact_date,
+        nextFollowUpDate: contact.next_follow_up_date,
+        ownerId: contact.owner_id || '',
+        ownerName: '', // Not stored in table
+        favoriteContentType: contact.favorite_content_type,
+        preferredChannels: [], // Not stored in table
+        reportsTo: contact.reports_to,
+        contactRoles: contact.contact_roles ? JSON.parse(contact.contact_roles) : [],
         createdAt: contact.created_at,
         updatedAt: contact.updated_at,
       }));
@@ -108,32 +107,42 @@ export default async function handler(req: Request) {
     if (req.method === 'POST') {
       const body = await req.json();
 
-      // Only include fields that exist in customer_contacts table
       const contactData = {
         tenant_id: tenantId,
-        customer_id: body.companyId,
+        company_id: body.companyId,
         first_name: body.firstName || body.first_name,
         last_name: body.lastName || body.last_name,
         title: body.title || null,
         department: body.department || null,
         phone: body.phone || null,
+        mobile: body.mobile || null,
         email: body.email || null,
-        is_primary: body.isPrimaryContact || body.is_primary || false,
+        salutation: body.salutation || null,
+        is_primary_contact: body.isPrimaryContact || body.is_primary || false,
+        lead_status: body.leadStatus || body.lead_status || 'customer',
+        last_contact_date: body.lastContactDate || body.last_contact_date || null,
+        next_follow_up_date: body.nextFollowUpDate || body.next_follow_up_date || null,
+        owner_id: body.ownerId || body.owner_id || null,
+        favorite_content_type: body.favoriteContentType || body.favorite_content_type || null,
+        reports_to: body.reportsTo || body.reports_to || null,
+        contact_roles: body.contactRoles
+          ? JSON.stringify(body.contactRoles)
+          : body.contact_roles || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
       // If this contact is being marked as primary, unmark others
-      if (contactData.is_primary) {
+      if (contactData.is_primary_contact) {
         await admin
-          .from('customer_contacts')
-          .update({ is_primary: false })
-          .eq('customer_id', body.companyId)
+          .from('company_contacts')
+          .update({ is_primary_contact: false })
+          .eq('company_id', body.companyId)
           .eq('tenant_id', tenantId);
       }
 
       const { data: contact, error } = await admin
-        .from('customer_contacts')
+        .from('company_contacts')
         .insert(contactData)
         .select()
         .single();
@@ -153,7 +162,6 @@ export default async function handler(req: Request) {
       );
       const body = await req.json();
 
-      // Only include fields that exist in customer_contacts table
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
@@ -164,14 +172,26 @@ export default async function handler(req: Request) {
       if (body.title !== undefined) updateData.title = body.title;
       if (body.department !== undefined) updateData.department = body.department;
       if (body.phone !== undefined) updateData.phone = body.phone;
+      if (body.mobile !== undefined) updateData.mobile = body.mobile;
       if (body.email !== undefined) updateData.email = body.email;
-      if (body.isPrimaryContact !== undefined || body.is_primary !== undefined) {
-        updateData.is_primary = body.isPrimaryContact || body.is_primary;
+      if (body.salutation !== undefined) updateData.salutation = body.salutation;
+      if (body.isPrimaryContact !== undefined || body.is_primary_contact !== undefined) {
+        updateData.is_primary_contact = body.isPrimaryContact || body.is_primary_contact;
       }
+      if (body.leadStatus !== undefined) updateData.lead_status = body.leadStatus;
+      if (body.lastContactDate !== undefined) updateData.last_contact_date = body.lastContactDate;
+      if (body.nextFollowUpDate !== undefined)
+        updateData.next_follow_up_date = body.nextFollowUpDate;
+      if (body.ownerId !== undefined) updateData.owner_id = body.ownerId;
+      if (body.favoriteContentType !== undefined)
+        updateData.favorite_content_type = body.favoriteContentType;
+      if (body.reportsTo !== undefined) updateData.reports_to = body.reportsTo;
+      if (body.contactRoles !== undefined)
+        updateData.contact_roles = JSON.stringify(body.contactRoles);
 
       // First verify the contact exists and belongs to this tenant
       const { data: existingContact, error: fetchError } = await admin
-        .from('customer_contacts')
+        .from('company_contacts')
         .select('*')
         .eq('id', contactId)
         .eq('tenant_id', tenantId)
@@ -192,17 +212,17 @@ export default async function handler(req: Request) {
       }
 
       // If this contact is being marked as primary, unmark others
-      if (updateData.is_primary) {
+      if (updateData.is_primary_contact) {
         await admin
-          .from('customer_contacts')
-          .update({ is_primary: false })
-          .eq('customer_id', existingContact.customer_id)
+          .from('company_contacts')
+          .update({ is_primary_contact: false })
+          .eq('company_id', existingContact.company_id)
           .eq('tenant_id', tenantId)
           .neq('id', contactId);
       }
 
       const { data: contact, error } = await admin
-        .from('customer_contacts')
+        .from('company_contacts')
         .update(updateData)
         .eq('id', contactId)
         .eq('tenant_id', tenantId)
@@ -224,7 +244,7 @@ export default async function handler(req: Request) {
     // DELETE /company-contacts/:id - Delete contact
     if (req.method === 'DELETE' && contactId) {
       const { error } = await admin
-        .from('customer_contacts')
+        .from('company_contacts')
         .delete()
         .eq('id', contactId)
         .eq('tenant_id', tenantId);
