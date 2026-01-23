@@ -48,8 +48,9 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
-    // Extract contact ID from path if present (e.g., /company-contacts/123)
-    const contactId = pathParts.length > 1 ? pathParts[1] : null;
+    // Extract contact ID from path if present (e.g., /3167f30d-... after server strips function name)
+    // The server.ts router already removed the function name, so contactId is at index 0
+    const contactId = pathParts.length > 0 ? pathParts[0] : null;
 
     // GET /company-contacts?companyId=xxx - List contacts for a company
     if (req.method === 'GET' && !contactId) {
