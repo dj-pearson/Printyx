@@ -241,6 +241,22 @@ export default function CustomerDetailHubspot() {
   const { data: companyContacts = [] } = useQuery({
     queryKey: ['/api/companies', customer?.id, 'contacts'],
     enabled: !!customer?.id,
+    queryFn: async () => {
+      const response = await apiRequest(`/api/companies/${customer?.id}/contacts`, 'GET');
+      // Transform snake_case API response to camelCase
+      return (response || []).map((c: any) => ({
+        id: c.id,
+        firstName: c.first_name || '',
+        lastName: c.last_name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        mobile: c.mobile || '',
+        title: c.title || '',
+        department: c.department || '',
+        isPrimaryContact: c.is_primary_contact || c.is_primary || false,
+        companyId: c.company_id,
+      }));
+    },
   });
 
   const primaryContact = useMemo(() => {
