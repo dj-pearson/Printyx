@@ -74,28 +74,29 @@ export default async function handler(req: Request) {
       }
 
       // Transform snake_case to camelCase for frontend compatibility
+      // Note: Only including fields that exist in customer_contacts table
       const transformedContacts = (contacts || []).map((contact) => ({
         id: contact.id,
         firstName: contact.first_name,
         lastName: contact.last_name,
         email: contact.email || '',
         phone: contact.phone || '',
-        mobile: contact.mobile || '',
+        mobile: '', // Not in schema
         title: contact.title || '',
         department: contact.department || '',
-        salutation: contact.salutation || '',
+        salutation: '', // Not in schema
         companyId: contact.customer_id,
         companyName: '', // Will be populated by frontend if needed
         isPrimaryContact: contact.is_primary || false,
         leadStatus: 'customer', // Company contacts are always customers
-        lastContactDate: contact.last_contact_date,
-        nextFollowUpDate: contact.next_follow_up_date,
-        ownerId: contact.owner_id || '',
-        ownerName: contact.owner_name || '',
-        favoriteContentType: contact.favorite_content_type,
-        preferredChannels: contact.preferred_channels || [],
-        reportsTo: contact.reports_to,
-        contactRoles: contact.contact_roles || [],
+        lastContactDate: undefined, // Not in schema
+        nextFollowUpDate: undefined, // Not in schema
+        ownerId: '', // Not in schema
+        ownerName: '', // Not in schema
+        favoriteContentType: undefined, // Not in schema
+        preferredChannels: [], // Not in schema
+        reportsTo: undefined, // Not in schema
+        contactRoles: [], // Not in schema
         createdAt: contact.created_at,
         updatedAt: contact.updated_at,
       }));
@@ -107,6 +108,7 @@ export default async function handler(req: Request) {
     if (req.method === 'POST') {
       const body = await req.json();
 
+      // Only include fields that exist in customer_contacts table
       const contactData = {
         tenant_id: tenantId,
         customer_id: body.companyId,
@@ -115,18 +117,8 @@ export default async function handler(req: Request) {
         title: body.title || null,
         department: body.department || null,
         phone: body.phone || null,
-        mobile: body.mobile || null,
         email: body.email || null,
-        salutation: body.salutation || null,
         is_primary: body.isPrimaryContact || body.is_primary || false,
-        last_contact_date: body.lastContactDate || body.last_contact_date || null,
-        next_follow_up_date: body.nextFollowUpDate || body.next_follow_up_date || null,
-        owner_id: body.ownerId || body.owner_id || null,
-        owner_name: body.ownerName || body.owner_name || null,
-        favorite_content_type: body.favoriteContentType || body.favorite_content_type || null,
-        preferred_channels: body.preferredChannels || body.preferred_channels || [],
-        reports_to: body.reportsTo || body.reports_to || null,
-        contact_roles: body.contactRoles || body.contact_roles || [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -158,6 +150,7 @@ export default async function handler(req: Request) {
     if ((req.method === 'PUT' || req.method === 'PATCH') && contactId) {
       const body = await req.json();
 
+      // Only include fields that exist in customer_contacts table
       const updateData: Record<string, any> = {
         updated_at: new Date().toISOString(),
       };
@@ -168,23 +161,10 @@ export default async function handler(req: Request) {
       if (body.title !== undefined) updateData.title = body.title;
       if (body.department !== undefined) updateData.department = body.department;
       if (body.phone !== undefined) updateData.phone = body.phone;
-      if (body.mobile !== undefined) updateData.mobile = body.mobile;
       if (body.email !== undefined) updateData.email = body.email;
-      if (body.salutation !== undefined) updateData.salutation = body.salutation;
       if (body.isPrimaryContact !== undefined || body.is_primary !== undefined) {
         updateData.is_primary = body.isPrimaryContact || body.is_primary;
       }
-      if (body.lastContactDate !== undefined) updateData.last_contact_date = body.lastContactDate;
-      if (body.nextFollowUpDate !== undefined)
-        updateData.next_follow_up_date = body.nextFollowUpDate;
-      if (body.ownerId !== undefined) updateData.owner_id = body.ownerId;
-      if (body.ownerName !== undefined) updateData.owner_name = body.ownerName;
-      if (body.favoriteContentType !== undefined)
-        updateData.favorite_content_type = body.favoriteContentType;
-      if (body.preferredChannels !== undefined)
-        updateData.preferred_channels = body.preferredChannels;
-      if (body.reportsTo !== undefined) updateData.reports_to = body.reportsTo;
-      if (body.contactRoles !== undefined) updateData.contact_roles = body.contactRoles;
 
       // If this contact is being marked as primary, unmark others
       if (updateData.is_primary) {
