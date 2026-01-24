@@ -70,22 +70,52 @@ export default function Billing() {
   // Fetch payment methods
   const { data: paymentMethods, isLoading: loadingPaymentMethods } = useQuery({
     queryKey: ['/api/billing/payment-methods'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/billing/payment-methods', 'GET');
+      return (response || []).map((method: any) => ({
+        ...method,
+        id: method.id,
+        createdAt: method.created_at || method.createdAt || '',
+      }));
+    },
   });
 
   // Fetch billing history
   const { data: invoices, isLoading: loadingInvoices } = useQuery({
     queryKey: ['/api/billing/invoices'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/billing/invoices', 'GET');
+      return (response || []).map((invoice: any) => ({
+        ...invoice,
+        id: invoice.id,
+        invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
+        dueDate: invoice.due_date || invoice.dueDate || '',
+        createdAt: invoice.created_at || invoice.createdAt || '',
+      }));
+    },
   });
 
   // Fetch trial status
   const { data: trialStatus } = useQuery({
     queryKey: ['/api/trial/status'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/trial/status', 'GET');
+      return {
+        ...response,
+        trialEnd: response?.trial_end || response?.trialEnd || null,
+        isTrialing: response?.is_trialing || response?.isTrialing || false,
+      };
+    },
     retry: false, // Don't retry if not in trial
   });
 
   // Fetch billing info
   const { data: billingInfo } = useQuery({
     queryKey: ['/api/billing/info'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/billing/info', 'GET');
+      return response || {};
+    },
   });
 
   // Delete payment method mutation
