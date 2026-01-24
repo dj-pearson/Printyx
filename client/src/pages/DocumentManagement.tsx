@@ -148,16 +148,22 @@ export default function DocumentManagement() {
   // Fetch document library
   const { data: documentLibrary, isLoading: libraryLoading } = useQuery({
     queryKey: ['/api/document-management/library', selectedCategory],
+    queryFn: async () => {
+      const params = selectedCategory ? `?category=${selectedCategory}` : '';
+      const response = await apiRequest(`/api/document-management/library${params}`, 'GET');
+      return response || {};
+    },
     select: (data: any) => ({
       ...data,
       recentDocuments:
         data.recentDocuments?.map((doc: any) => ({
           ...doc,
-          lastModified: new Date(doc.lastModified),
+          lastModified: new Date(doc.lastModified || doc.last_modified),
+          createdAt: doc.created_at || doc.createdAt,
           workflow: doc.workflow
             ? {
                 ...doc.workflow,
-                dueDate: new Date(doc.workflow.dueDate),
+                dueDate: new Date(doc.workflow.dueDate || doc.workflow.due_date),
               }
             : undefined,
         })) || [],
@@ -167,11 +173,23 @@ export default function DocumentManagement() {
   // Fetch workflow templates
   const { data: workflowData } = useQuery({
     queryKey: ['/api/document-management/workflows'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/document-management/workflows', 'GET');
+      return response || {};
+    },
   });
 
   // Fetch search results
   const { data: searchResults } = useQuery({
     queryKey: ['/api/document-management/search', searchQuery],
+    queryFn: async () => {
+      if (searchQuery.length <= 2) return [];
+      const response = await apiRequest(
+        `/api/document-management/search?q=${encodeURIComponent(searchQuery)}`,
+        'GET',
+      );
+      return response || [];
+    },
     enabled: searchQuery.length > 2,
   });
 

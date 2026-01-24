@@ -67,6 +67,17 @@ export default function ProductModels() {
 
   const { data: models = [], isLoading } = useQuery<ProductModel[]>({
     queryKey: ['/api/product-models'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/product-models', 'GET');
+      return (response || []).map((model: any) => ({
+        ...model,
+        id: model.id,
+        modelNumber: model.model_number || model.modelNumber || '',
+        modelName: model.model_name || model.modelName || '',
+        createdAt: model.created_at || model.createdAt || '',
+        updatedAt: model.updated_at || model.updatedAt || '',
+      }));
+    },
   });
 
   const createModelMutation = useMutation({

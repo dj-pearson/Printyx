@@ -57,22 +57,73 @@ export default function AdvancedReporting() {
   // Data fetching
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ['/api/customers'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/customers', 'GET');
+      return (response || []).map((customer: any) => ({
+        ...customer,
+        id: customer.id,
+        companyName: customer.company_name || customer.companyName || '',
+        createdAt: customer.created_at || customer.createdAt || '',
+      }));
+    },
   });
 
   const { data: contracts } = useQuery<Contract[]>({
     queryKey: ['/api/contracts'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/contracts', 'GET');
+      return (response || []).map((contract: any) => ({
+        ...contract,
+        id: contract.id,
+        contractNumber: contract.contract_number || contract.contractNumber || '',
+        customerId: contract.customer_id || contract.customerId || '',
+        startDate: contract.start_date || contract.startDate || '',
+        endDate: contract.end_date || contract.endDate || '',
+      }));
+    },
   });
 
   const { data: serviceTickets } = useQuery<ServiceTicket[]>({
     queryKey: ['/api/service-tickets'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/service-tickets', 'GET');
+      return (response || []).map((ticket: any) => ({
+        ...ticket,
+        id: ticket.id,
+        ticketNumber: ticket.ticket_number || ticket.ticketNumber || '',
+        customerId: ticket.customer_id || ticket.customerId || '',
+        createdAt: ticket.created_at || ticket.createdAt || '',
+      }));
+    },
   });
 
   const { data: invoices } = useQuery<Invoice[]>({
     queryKey: ['/api/invoices'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/invoices', 'GET');
+      return (response || []).map((invoice: any) => ({
+        ...invoice,
+        id: invoice.id,
+        invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
+        issueDate: invoice.issue_date || invoice.issueDate || '',
+        dueDate: invoice.due_date || invoice.dueDate || '',
+      }));
+    },
   });
 
   const { data: meterReadings } = useQuery<MeterReading[]>({
     queryKey: ['/api/meter-readings'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/meter-readings', 'GET');
+      return (response || []).map((reading: any) => ({
+        ...reading,
+        id: reading.id,
+        equipmentId: reading.equipment_id || reading.equipmentId || '',
+        readingDate: reading.reading_date || reading.readingDate || '',
+        blackMeter: reading.black_meter || reading.blackMeter || 0,
+        colorMeter: reading.color_meter || reading.colorMeter || 0,
+      }));
+    },
   });
 
   // Revenue Analytics
