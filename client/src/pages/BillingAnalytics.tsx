@@ -29,16 +29,31 @@ export default function BillingAnalytics() {
   // Fetch revenue forecast
   const { data: forecastData, isLoading: loadingForecast } = useQuery({
     queryKey: ['/api/billing/analytics/revenue-forecast', { periods: forecastPeriods }],
+    queryFn: async () => {
+      const response = await apiRequest(
+        `/api/billing/analytics/revenue-forecast?periods=${forecastPeriods}`,
+        'GET',
+      );
+      return response || {};
+    },
   });
 
   // Fetch churn predictions
   const { data: churnData, isLoading: loadingChurn } = useQuery({
     queryKey: ['/api/billing/analytics/churn-prediction'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/billing/analytics/churn-prediction', 'GET');
+      return response || { predictions: [], summary: {} };
+    },
   });
 
   // Fetch customer lifetime value
   const { data: clvData, isLoading: loadingCLV } = useQuery({
     queryKey: ['/api/billing/analytics/lifetime-value'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/billing/analytics/lifetime-value', 'GET');
+      return response || { customers: [], summary: {} };
+    },
   });
 
   const churnPredictions = churnData?.predictions || [];
