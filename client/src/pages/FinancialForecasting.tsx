@@ -164,6 +164,15 @@ export default function FinancialForecasting() {
   // Fetch financial metrics
   const { data: metrics } = useQuery<FinancialMetrics>({
     queryKey: ['/api/financial/metrics'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/financial/metrics', 'GET');
+      return {
+        ...response,
+        totalRevenue: response?.total_revenue || response?.totalRevenue || 0,
+        totalExpenses: response?.total_expenses || response?.totalExpenses || 0,
+        netIncome: response?.net_income || response?.netIncome || 0,
+      };
+    },
   });
 
   // Fetch forecasts
@@ -172,7 +181,15 @@ export default function FinancialForecasting() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedForecastType !== 'all') params.append('type', selectedForecastType);
-      return await apiRequest(`/api/financial/forecasts?${params.toString()}`);
+      const response = await apiRequest(`/api/financial/forecasts?${params.toString()}`);
+      return (response || []).map((forecast: any) => ({
+        ...forecast,
+        id: forecast.id,
+        forecastType: forecast.forecast_type || forecast.forecastType || '',
+        forecastPeriod: forecast.forecast_period || forecast.forecastPeriod || '',
+        scenarioType: forecast.scenario_type || forecast.scenarioType || '',
+        createdAt: forecast.created_at || forecast.createdAt || '',
+      }));
     },
   });
 
@@ -181,6 +198,15 @@ export default function FinancialForecasting() {
     CashFlowProjection[]
   >({
     queryKey: ['/api/financial/cash-flow'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/financial/cash-flow', 'GET');
+      return (response || []).map((projection: any) => ({
+        ...projection,
+        id: projection.id,
+        projectionDate: projection.projection_date || projection.projectionDate || '',
+        createdAt: projection.created_at || projection.createdAt || '',
+      }));
+    },
   });
 
   // Fetch profitability analysis
@@ -191,13 +217,30 @@ export default function FinancialForecasting() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedAnalysisType !== 'all') params.append('type', selectedAnalysisType);
-      return await apiRequest(`/api/financial/profitability?${params.toString()}`);
+      const response = await apiRequest(`/api/financial/profitability?${params.toString()}`);
+      return (response || []).map((analysis: any) => ({
+        ...analysis,
+        id: analysis.id,
+        analysisType: analysis.analysis_type || analysis.analysisType || '',
+        createdAt: analysis.created_at || analysis.createdAt || '',
+      }));
     },
   });
 
   // Fetch KPIs
   const { data: kpis = [], isLoading: kpisLoading } = useQuery<FinancialKPI[]>({
     queryKey: ['/api/financial/kpis'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/financial/kpis', 'GET');
+      return (response || []).map((kpi: any) => ({
+        ...kpi,
+        id: kpi.id,
+        kpiName: kpi.kpi_name || kpi.kpiName || '',
+        currentValue: kpi.current_value || kpi.currentValue || 0,
+        targetValue: kpi.target_value || kpi.targetValue || 0,
+        createdAt: kpi.created_at || kpi.createdAt || '',
+      }));
+    },
   });
 
   // Create forecast mutation

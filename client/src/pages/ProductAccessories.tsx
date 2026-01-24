@@ -56,10 +56,30 @@ export default function ProductAccessories() {
 
   const { data: accessories = [], isLoading } = useQuery<ProductAccessory[]>({
     queryKey: ['/api/product-accessories'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/product-accessories', 'GET');
+      return (response || []).map((accessory: any) => ({
+        ...accessory,
+        id: accessory.id,
+        accessoryName: accessory.accessory_name || accessory.accessoryName || '',
+        modelId: accessory.model_id || accessory.modelId || null,
+        createdAt: accessory.created_at || accessory.createdAt || '',
+        updatedAt: accessory.updated_at || accessory.updatedAt || '',
+      }));
+    },
   });
 
   const { data: models = [] } = useQuery<ProductModel[]>({
     queryKey: ['/api/product-models'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/product-models', 'GET');
+      return (response || []).map((model: any) => ({
+        ...model,
+        id: model.id,
+        modelNumber: model.model_number || model.modelNumber || '',
+        modelName: model.model_name || model.modelName || '',
+      }));
+    },
   });
 
   const createAccessoryMutation = useMutation({
