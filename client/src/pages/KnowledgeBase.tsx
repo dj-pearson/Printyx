@@ -47,12 +47,33 @@ export default function KnowledgeBase() {
 
   const { data: categories, isLoading: categoriesLoading } = useQuery<Category[]>({
     queryKey: ['/api/knowledge-base/categories'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/knowledge-base/categories', 'GET');
+      return (response || []).map((category: any) => ({
+        ...category,
+        id: category.id,
+        categoryName: category.category_name || category.categoryName || '',
+        createdAt: category.created_at || category.createdAt || '',
+      }));
+    },
   });
 
   const { data: articlesResponse, isLoading: articlesLoading } = useQuery<
     { articles: Article[] } | Article[]
   >({
     queryKey: ['/api/knowledge-base/articles'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/knowledge-base/articles', 'GET');
+      const articles = Array.isArray(response) ? response : response?.articles || [];
+      return articles.map((article: any) => ({
+        ...article,
+        id: article.id,
+        categoryId: article.category_id || article.categoryId || '',
+        viewCount: article.view_count || article.viewCount || 0,
+        createdAt: article.created_at || article.createdAt || '',
+        updatedAt: article.updated_at || article.updatedAt || '',
+      }));
+    },
   });
 
   // Handle both array and object responses

@@ -53,6 +53,18 @@ export default function MyApprovals() {
   // Fetch approvals
   const { data: approvals = [], isLoading } = useQuery<Approval[]>({
     queryKey: ['/api/approvals', statusFilter === 'pending' ? { status: 'pending' } : {}],
+    queryFn: async () => {
+      const params = statusFilter === 'pending' ? '?status=pending' : '';
+      const response = await apiRequest(`/api/approvals${params}`, 'GET');
+      return (response || []).map((approval: any) => ({
+        ...approval,
+        id: approval.id,
+        requestType: approval.request_type || approval.requestType || '',
+        requestedBy: approval.requested_by || approval.requestedBy || '',
+        requestedAt: approval.requested_at || approval.requestedAt || '',
+        createdAt: approval.created_at || approval.createdAt || '',
+      }));
+    },
   });
 
   // Respond to approval mutation

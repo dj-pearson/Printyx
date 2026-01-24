@@ -54,11 +54,30 @@ export default function WorkflowAutomation() {
   // Fetch workflows
   const { data: workflows = [], isLoading } = useQuery<Workflow[]>({
     queryKey: ['/api/workflows'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/workflows', 'GET');
+      return (response || []).map((workflow: any) => ({
+        ...workflow,
+        id: workflow.id,
+        workflowName: workflow.workflow_name || workflow.workflowName || '',
+        triggerType: workflow.trigger_type || workflow.triggerType || '',
+        createdAt: workflow.created_at || workflow.createdAt || '',
+        updatedAt: workflow.updated_at || workflow.updatedAt || '',
+      }));
+    },
   });
 
   // Fetch dashboard stats
   const { data: stats } = useQuery<DashboardStats>({
     queryKey: ['/api/workflows/dashboard'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/workflows/dashboard', 'GET');
+      return {
+        totalWorkflows: response?.total_workflows || response?.totalWorkflows || 0,
+        activeWorkflows: response?.active_workflows || response?.activeWorkflows || 0,
+        ...response,
+      };
+    },
   });
 
   // Delete workflow mutation

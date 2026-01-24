@@ -57,6 +57,18 @@ export default function MyTasks() {
   // Fetch tasks
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks', { assignedToMe: true }],
+    queryFn: async () => {
+      const response = await apiRequest('/api/tasks?assignedToMe=true', 'GET');
+      return (response || []).map((task: any) => ({
+        ...task,
+        id: task.id,
+        taskName: task.task_name || task.taskName || '',
+        assignedTo: task.assigned_to || task.assignedTo || null,
+        dueDate: task.due_date || task.dueDate || null,
+        createdAt: task.created_at || task.createdAt || '',
+        updatedAt: task.updated_at || task.updatedAt || '',
+      }));
+    },
   });
 
   // Complete task mutation
