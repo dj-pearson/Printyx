@@ -1315,9 +1315,20 @@ function LeadForm({
   // Fetch existing companies for autocomplete
   const { data: existingCompanies = [] } = useQuery({
     queryKey: ['/api/companies'],
-    select: (data: any[]) => {
-      // Companies endpoint returns companies with business_name field
-      return data.filter((company: any) => company.business_name && company.business_name.trim());
+    queryFn: async () => {
+      const response = await apiRequest('/api/companies', 'GET');
+      const companies = response?.records || response || [];
+
+      // Transform snake_case to camelCase and filter
+      return companies
+        .map((c: any) => ({
+          id: c.id,
+          companyName: c.business_name || c.companyName || '',
+          businessRecordType: c.business_record_type || c.businessRecordType || '',
+          billingCity: c.billing_city || c.billingCity || '',
+          billingState: c.billing_state || c.billingState || '',
+        }))
+        .filter((company: any) => company.companyName && company.companyName.trim());
     },
   });
 
