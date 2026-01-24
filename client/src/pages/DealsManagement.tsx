@@ -613,6 +613,15 @@ export default function DealsManagement() {
   // Fetch deal stages
   const { data: stages = [], isLoading: stagesLoading } = useQuery<DealStage[]>({
     queryKey: ['/api/deal-stages'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/deal-stages', 'GET');
+      return (response || []).map((stage: any) => ({
+        ...stage,
+        id: stage.id,
+        displayOrder: stage.display_order || stage.displayOrder || 0,
+        createdAt: stage.created_at || stage.createdAt || '',
+      }));
+    },
   });
 
   // Fetch companies for dropdown search
@@ -622,7 +631,13 @@ export default function DealsManagement() {
       const params = new URLSearchParams();
       if (companySearchTerm) params.append('search', companySearchTerm);
 
-      return await apiRequest('/api/companies?' + params.toString());
+      const response = await apiRequest('/api/companies?' + params.toString());
+      return (response?.records || response || []).map((c: any) => ({
+        ...c,
+        id: c.id,
+        companyName: c.business_name || c.companyName || '',
+        businessRecordType: c.business_record_type || c.businessRecordType || '',
+      }));
     },
   });
 
@@ -631,7 +646,15 @@ export default function DealsManagement() {
     queryKey: ['/api/companies', selectedCompanyId, 'contacts'],
     queryFn: async () => {
       if (!selectedCompanyId) return [];
-      return await apiRequest(`/api/companies/${selectedCompanyId}/contacts`);
+      const response = await apiRequest(`/api/companies/${selectedCompanyId}/contacts`);
+      return (response || []).map((c: any) => ({
+        ...c,
+        id: c.id,
+        firstName: c.first_name || c.firstName || '',
+        lastName: c.last_name || c.lastName || '',
+        isPrimaryContact: c.is_primary_contact || c.isPrimaryContact || false,
+        companyId: c.company_id || c.companyId || '',
+      }));
     },
     enabled: !!selectedCompanyId,
   });
