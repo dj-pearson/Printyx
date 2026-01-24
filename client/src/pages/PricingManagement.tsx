@@ -72,16 +72,44 @@ export default function PricingManagement() {
   // Fetch company pricing settings
   const { data: companySettings, isLoading: isLoadingSettings } = useQuery<CompanyPricingSetting>({
     queryKey: ['/api/pricing/company-settings'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/pricing/company-settings', 'GET');
+      return {
+        ...response,
+        defaultMargin: response?.default_margin || response?.defaultMargin || 0,
+        minMargin: response?.min_margin || response?.minMargin || 0,
+        maxDiscount: response?.max_discount || response?.maxDiscount || 0,
+      };
+    },
   });
 
   // Fetch product pricing
   const { data: productPricing = [], isLoading: isLoadingProducts } = useQuery<ProductPricing[]>({
     queryKey: ['/api/pricing/products'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/pricing/products', 'GET');
+      return (response || []).map((pricing: any) => ({
+        ...pricing,
+        id: pricing.id,
+        productId: pricing.product_id || pricing.productId || '',
+        baseCost: pricing.base_cost || pricing.baseCost || 0,
+        createdAt: pricing.created_at || pricing.createdAt || '',
+        updatedAt: pricing.updated_at || pricing.updatedAt || '',
+      }));
+    },
   });
 
   // Fetch available products for selection
   const { data: availableProducts = [] } = useQuery({
     queryKey: ['/api/products/all'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/products/all', 'GET');
+      return (response || []).map((product: any) => ({
+        ...product,
+        id: product.id,
+        productName: product.product_name || product.productName || '',
+      }));
+    },
   });
 
   // Company settings mutation

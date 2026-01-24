@@ -187,12 +187,23 @@ export default function BusinessProcessOptimization() {
     refetch,
   } = useQuery({
     queryKey: ['/api/business-process/dashboard', selectedCategory, selectedDepartment],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (selectedDepartment) params.append('department', selectedDepartment);
+      const response = await apiRequest(
+        `/api/business-process/dashboard?${params.toString()}`,
+        'GET',
+      );
+      return response || {};
+    },
     select: (data: any) => ({
       ...data,
       workflowTemplates:
         data.workflowTemplates?.map((template: any) => ({
           ...template,
-          lastUpdated: new Date(template.lastUpdated),
+          lastUpdated: new Date(template.lastUpdated || template.last_updated),
+          createdAt: template.created_at || template.createdAt,
         })) || [],
     }),
     refetchInterval: 300000, // Refresh every 5 minutes

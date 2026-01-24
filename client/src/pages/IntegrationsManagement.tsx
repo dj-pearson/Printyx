@@ -239,6 +239,16 @@ export function IntegrationsManagement() {
 
   const { data: integrations = [], isLoading } = useQuery({
     queryKey: ['/api/integrations'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/integrations', 'GET');
+      return (response || []).map((integration: any) => ({
+        ...integration,
+        id: integration.id,
+        integrationName: integration.integration_name || integration.integrationName || '',
+        lastSync: integration.last_sync || integration.lastSync || null,
+        createdAt: integration.created_at || integration.createdAt || '',
+      }));
+    },
   });
 
   const createMutation = useMutation({

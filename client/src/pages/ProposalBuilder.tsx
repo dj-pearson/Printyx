@@ -275,12 +275,31 @@ export default function ProposalBuilder() {
   // Fetch existing quotes that can be converted to proposals
   const { data: quotes, isLoading: quotesLoading } = useQuery({
     queryKey: ['/api/proposals'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/proposals', 'GET');
+      return (response || []).map((proposal: any) => ({
+        ...proposal,
+        id: proposal.id,
+        quoteNumber: proposal.quote_number || proposal.quoteNumber || '',
+        businessRecordId: proposal.business_record_id || proposal.businessRecordId || '',
+        createdAt: proposal.created_at || proposal.createdAt || '',
+      }));
+    },
     enabled: true,
   });
 
   // Fetch business records for customer mapping
   const { data: businessRecords } = useQuery({
     queryKey: ['/api/business-records'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/business-records', 'GET');
+      return (response || []).map((record: any) => ({
+        ...record,
+        id: record.id,
+        businessName: record.business_name || record.businessName || '',
+        businessRecordType: record.business_record_type || record.businessRecordType || '',
+      }));
+    },
     enabled: true,
   });
 
