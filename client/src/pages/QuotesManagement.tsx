@@ -151,6 +151,13 @@ export default function QuotesManagement() {
       const response = await apiRequest('/api/proposals', 'GET');
       return response.map((proposal: any) => ({
         ...proposal,
+        id: proposal.id,
+        quoteNumber: proposal.quote_number || proposal.quoteNumber || '',
+        customerId: proposal.customer_id || proposal.customerId || '',
+        validUntil: proposal.valid_until || proposal.validUntil || null,
+        createdAt: proposal.created_at || proposal.createdAt || '',
+        updatedAt: proposal.updated_at || proposal.updatedAt || '',
+        createdBy: proposal.created_by || proposal.createdBy || null,
         // Map proposal fields to quote fields for consistency
         status:
           proposal.status === 'draft'

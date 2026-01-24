@@ -107,13 +107,28 @@ export default function ProductCatalog() {
   // Fetch enabled products for tenant
   const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery<EnabledProduct[]>({
     queryKey: ['/api/enabled-products'],
-    queryFn: () => apiRequest('/api/enabled-products'),
+    queryFn: async () => {
+      const response = await apiRequest('/api/enabled-products');
+      return (response || []).map((product: any) => ({
+        ...product,
+        id: product.id,
+        masterProductId: product.master_product_id || product.masterProductId || '',
+        tenantId: product.tenant_id || product.tenantId || '',
+        dealerCost: product.dealer_cost || product.dealerCost || 0,
+        marginPercentage: product.margin_percentage || product.marginPercentage || 0,
+        createdAt: product.created_at || product.createdAt || '',
+        updatedAt: product.updated_at || product.updatedAt || '',
+      }));
+    },
   });
 
   // Fetch manufacturers list
   const { data: manufacturers = [] } = useQuery({
     queryKey: ['/api/catalog/manufacturers'],
-    queryFn: () => apiRequest('/api/catalog/manufacturers'),
+    queryFn: async () => {
+      const response = await apiRequest('/api/catalog/manufacturers');
+      return response || [];
+    },
   });
 
   // Derive categories from products
