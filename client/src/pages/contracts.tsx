@@ -42,6 +42,21 @@ export default function Contracts() {
   const [, setLocation] = useLocation();
   const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({
     queryKey: ['/api/contracts'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/contracts', 'GET');
+      return (response || []).map((contract: any) => ({
+        ...contract,
+        id: contract.id,
+        contractNumber: contract.contract_number || contract.contractNumber || '',
+        customerId: contract.customer_id || contract.customerId || '',
+        quoteId: contract.quote_id || contract.quoteId || null,
+        startDate: contract.start_date || contract.startDate || '',
+        endDate: contract.end_date || contract.endDate || '',
+        signedDate: contract.signed_date || contract.signedDate || null,
+        createdAt: contract.created_at || contract.createdAt || '',
+        updatedAt: contract.updated_at || contract.updatedAt || '',
+      }));
+    },
   });
 
   // Create Contract dialog state
@@ -67,7 +82,15 @@ export default function Contracts() {
       // Prefer active/accepted quotes for contracts; fall back to all if API ignores param
       params.append('status', 'accepted');
       params.append('limit', '50');
-      return apiRequest(`/api/quotes?${params.toString()}`);
+      const response = await apiRequest(`/api/quotes?${params.toString()}`);
+      return (response || []).map((quote: any) => ({
+        ...quote,
+        id: quote.id,
+        quoteNumber: quote.quote_number || quote.quoteNumber || '',
+        customerId: quote.customer_id || quote.customerId || '',
+        validUntil: quote.valid_until || quote.validUntil || null,
+        createdAt: quote.created_at || quote.createdAt || '',
+      }));
     },
     enabled: isCreateOpen,
   });
@@ -75,6 +98,16 @@ export default function Contracts() {
   // Fetch line items when a quote is selected
   const { data: quoteLineItems = [], isLoading: lineItemsLoading } = useQuery({
     queryKey: ['/api/quotes', selectedQuoteId, 'line-items'],
+    queryFn: async () => {
+      if (!selectedQuoteId) return [];
+      const response = await apiRequest(`/api/quotes/${selectedQuoteId}/line-items`, 'GET');
+      return (response || []).map((item: any) => ({
+        ...item,
+        id: item.id,
+        productId: item.product_id || item.productId || '',
+        quoteId: item.quote_id || item.quoteId || '',
+      }));
+    },
     enabled: !!selectedQuoteId,
   });
 
