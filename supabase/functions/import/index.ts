@@ -435,17 +435,57 @@ export default async function handler(req: Request) {
                     // Check for existing contact
                     const { data: existingContacts } = await admin
                       .from('company_contacts')
-                      .select('id')
+                      .select('id, first_name, last_name')
                       .eq('company_id', existingCompany.id)
+                      .eq('is_primary_contact', true)
                       .limit(1);
 
                     console.log(
                       `[IMPORT] Checking contacts for ${businessName}: found ${existingContacts?.length || 0} contacts`,
                     );
 
+                    // Check if we have real contact data in the import
+                    const hasRealContactData =
+                      mappedData.primaryContactFirstName &&
+                      mappedData.primaryContactLastName &&
+                      mappedData.primaryContactFirstName !== 'Primary' &&
+                      mappedData.primaryContactLastName !== 'Contact';
+
                     if (existingContacts && existingContacts.length > 0) {
+                      const existingContact = existingContacts[0];
+                      const isPlaceholder =
+                        existingContact.first_name === 'Primary' &&
+                        existingContact.last_name === 'Contact';
+
+                      // Update placeholder with real data
+                      if (isPlaceholder && hasRealContactData) {
+                        console.log(
+                          `[IMPORT] Updating placeholder contact for ${businessName} with real data`,
+                        );
+
+                        const { error: updateError } = await admin
+                          .from('company_contacts')
+                          .update({
+                            first_name: mappedData.primaryContactFirstName,
+                            last_name: mappedData.primaryContactLastName,
+                            email: contactEmail || null,
+                            phone: phone || null,
+                            updated_at: new Date().toISOString(),
+                          })
+                          .eq('id', existingContact.id);
+
+                        if (!updateError) {
+                          contactCreated = true; // Mark as created for tracking
+                          console.log(
+                            `[IMPORT] ✅ Contact updated for ${businessName}: ${existingContact.id}`,
+                          );
+                        } else {
+                          console.error(`[IMPORT] ❌ Failed to update contact:`, updateError);
+                        }
+                      }
+
                       // Use existing contact
-                      contactId = existingContacts[0].id;
+                      contactId = existingContact.id;
                       console.log(
                         `[IMPORT] Using existing contact for ${businessName}: ${contactId}`,
                       );
@@ -811,9 +851,13 @@ function autoMapColumns(csvHeaders: string[], entityType: string) {
     'billing city': 'billingCity',
     'billing state/province': 'billingState',
     'billing zip/postal code': 'billingZipPostalCode',
-    'first name': 'firstName',
-    'last name': 'lastName',
+    'first name': 'primaryContactFirstName',
+    'last name': 'primaryContactLastName',
     'lead source': 'leadSource',
+    'contact first name': 'primaryContactFirstName',
+    'contact last name': 'primaryContactLastName',
+    'primary contact first name': 'primaryContactFirstName',
+    'primary contact last name': 'primaryContactLastName',
   };
 
   csvHeaders.forEach((header: string) => {
@@ -963,12 +1007,20 @@ function getTemplateColumns(entityType: string) {
         example: 'USA',
       },
       {
-        name: 'Primary Contact Name',
-        dbField: 'primaryContactName',
+        name: 'Primary Contact First Name',
+        dbField: 'primaryContactFirstName',
         type: 'string',
         required: false,
-        description: 'Contact name',
-        example: 'John Smith',
+        description: 'Primary contact first name',
+        example: 'John',
+      },
+      {
+        name: 'Primary Contact Last Name',
+        dbField: 'primaryContactLastName',
+        type: 'string',
+        required: false,
+        description: 'Primary contact last name',
+        example: 'Smith',
       },
       {
         name: 'Primary Contact Email',
