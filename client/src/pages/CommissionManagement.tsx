@@ -171,42 +171,65 @@ export default function CommissionManagement() {
   // Fetch commission plans
   const { data: plans = [], isLoading: plansLoading } = useQuery({
     queryKey: ['/api/commission/plans'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/commission/plans', 'GET');
+      return response || [];
+    },
     select: (data: any[]) =>
       data.map((plan) => ({
         ...plan,
-        effectiveDate: new Date(plan.effectiveDate),
-        createdAt: new Date(plan.createdAt),
-        updatedAt: new Date(plan.updatedAt),
+        effectiveDate: new Date(plan.effectiveDate || plan.effective_date),
+        createdAt: new Date(plan.createdAt || plan.created_at),
+        updatedAt: new Date(plan.updatedAt || plan.updated_at),
       })),
   });
 
   // Fetch commission calculations
   const { data: calculations = [] } = useQuery<CommissionCalculation[]>({
     queryKey: ['/api/commission/calculations'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/commission/calculations', 'GET');
+      return response || [];
+    },
     select: (data: any[]) =>
       data.map((calc) => ({
         ...calc,
         calculationPeriod: {
           ...calc.calculationPeriod,
-          startDate: new Date(calc.calculationPeriod.startDate),
-          endDate: new Date(calc.calculationPeriod.endDate),
+          startDate: new Date(
+            calc.calculationPeriod.startDate || calc.calculationPeriod.start_date,
+          ),
+          endDate: new Date(calc.calculationPeriod.endDate || calc.calculationPeriod.end_date),
         },
         summary: {
           ...calc.summary,
-          payoutDate: new Date(calc.summary.payoutDate),
+          payoutDate: new Date(calc.summary.payoutDate || calc.summary.payout_date),
         },
-        calculatedAt: new Date(calc.calculatedAt),
+        calculatedAt: new Date(calc.calculatedAt || calc.calculated_at),
       })),
   });
 
   // Fetch commission analytics
   const { data: analytics } = useQuery({
     queryKey: ['/api/commission/analytics', selectedPeriod],
+    queryFn: async () => {
+      const params = selectedPeriod ? `?period=${selectedPeriod}` : '';
+      const response = await apiRequest(`/api/commission/analytics${params}`, 'GET');
+      return response || {};
+    },
   });
 
   // Fetch commission disputes
   const { data: disputes = [] } = useQuery({
     queryKey: ['/api/commission/disputes'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/commission/disputes', 'GET');
+      return (response || []).map((dispute: any) => ({
+        ...dispute,
+        id: dispute.id,
+        createdAt: dispute.created_at || dispute.createdAt || '',
+      }));
+    },
   });
 
   // Calculate commission mutation

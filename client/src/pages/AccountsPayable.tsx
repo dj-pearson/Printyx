@@ -82,10 +82,32 @@ export default function AccountsPayable() {
 
   const { data: accountsPayable = [], isLoading } = useQuery({
     queryKey: ['/api/accounts-payable'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/accounts-payable', 'GET');
+      return (response || []).map((ap: any) => ({
+        ...ap,
+        id: ap.id,
+        vendorId: ap.vendor_id || ap.vendorId || '',
+        billNumber: ap.bill_number || ap.billNumber || '',
+        purchaseOrderNumber: ap.purchase_order_number || ap.purchaseOrderNumber || '',
+        referenceNumber: ap.reference_number || ap.referenceNumber || '',
+        billDate: ap.bill_date || ap.billDate || '',
+        dueDate: ap.due_date || ap.dueDate || '',
+        createdAt: ap.created_at || ap.createdAt || '',
+      }));
+    },
   });
 
   const { data: vendors = [] } = useQuery({
     queryKey: ['/api/vendors'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/vendors', 'GET');
+      return (response || []).map((vendor: any) => ({
+        ...vendor,
+        id: vendor.id,
+        vendorName: vendor.vendor_name || vendor.vendorName || '',
+      }));
+    },
   });
 
   const form = useForm<AccountsPayableFormData>({

@@ -54,6 +54,22 @@ export default function BillingRules() {
         ruleType: ruleTypeFilter !== 'all' ? ruleTypeFilter : undefined,
       },
     ],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (ruleTypeFilter !== 'all') params.append('ruleType', ruleTypeFilter);
+      const response = await apiRequest(`/api/billing/rules?${params.toString()}`, 'GET');
+      return {
+        rules: (response?.rules || []).map((rule: any) => ({
+          ...rule,
+          id: rule.id,
+          ruleName: rule.rule_name || rule.ruleName || '',
+          ruleType: rule.rule_type || rule.ruleType || '',
+          createdAt: rule.created_at || rule.createdAt || '',
+          updatedAt: rule.updated_at || rule.updatedAt || '',
+        })),
+      };
+    },
   });
 
   const rules = rulesData?.rules || [];

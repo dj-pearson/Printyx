@@ -77,6 +77,18 @@ export default function ChartOfAccounts() {
 
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['/api/chart-of-accounts'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/chart-of-accounts', 'GET');
+      return (response || []).map((account: any) => ({
+        ...account,
+        id: account.id,
+        accountCode: account.account_code || account.accountCode || '',
+        accountName: account.account_name || account.accountName || '',
+        accountType: account.account_type || account.accountType || '',
+        parentAccountId: account.parent_account_id || account.parentAccountId || null,
+        createdAt: account.created_at || account.createdAt || '',
+      }));
+    },
   });
 
   const form = useForm<ChartOfAccountFormData>({
