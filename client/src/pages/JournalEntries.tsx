@@ -67,6 +67,18 @@ export default function JournalEntries() {
 
   const { data: entries = [], isLoading } = useQuery({
     queryKey: ['/api/journal-entries'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/journal-entries', 'GET');
+      return (response || []).map((entry: any) => ({
+        ...entry,
+        id: entry.id,
+        entryNumber: entry.entry_number || entry.entryNumber || '',
+        entryDate: entry.entry_date || entry.entryDate || '',
+        totalDebit: entry.total_debit || entry.totalDebit || 0,
+        totalCredit: entry.total_credit || entry.totalCredit || 0,
+        createdAt: entry.created_at || entry.createdAt || '',
+      }));
+    },
   });
 
   const form = useForm<JournalEntryFormData>({

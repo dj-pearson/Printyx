@@ -82,10 +82,32 @@ export default function AccountsReceivable() {
 
   const { data: accountsReceivable = [], isLoading } = useQuery({
     queryKey: ['/api/accounts-receivable'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/accounts-receivable', 'GET');
+      return (response || []).map((ar: any) => ({
+        ...ar,
+        id: ar.id,
+        customerId: ar.customer_id || ar.customerId || '',
+        invoiceNumber: ar.invoice_number || ar.invoiceNumber || '',
+        contractId: ar.contract_id || ar.contractId || null,
+        referenceNumber: ar.reference_number || ar.referenceNumber || '',
+        invoiceDate: ar.invoice_date || ar.invoiceDate || '',
+        dueDate: ar.due_date || ar.dueDate || '',
+        createdAt: ar.created_at || ar.createdAt || '',
+      }));
+    },
   });
 
   const { data: customers = [] } = useQuery({
     queryKey: ['/api/customers'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/customers', 'GET');
+      return (response || []).map((customer: any) => ({
+        ...customer,
+        id: customer.id,
+        companyName: customer.company_name || customer.companyName || '',
+      }));
+    },
   });
 
   const form = useForm<AccountsReceivableFormData>({
