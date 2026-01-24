@@ -286,6 +286,9 @@ export default function EquipmentLifecycleHub() {
   // Fetch lifecycle metrics
   const { data: metrics } = useQuery<LifecycleMetrics>({
     queryKey: ['/api/equipment-lifecycle/metrics'],
+    queryFn: async () => {
+      return await apiRequest('/api/equipment-lifecycle/metrics', 'GET');
+    },
   });
 
   // Fetch lifecycle stages
@@ -304,32 +307,61 @@ export default function EquipmentLifecycleHub() {
   // Fetch purchase orders
   const { data: purchaseOrders = [], isLoading: poLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ['/api/equipment-lifecycle/purchase-orders'],
+    queryFn: async () => {
+      return await apiRequest('/api/equipment-lifecycle/purchase-orders', 'GET');
+    },
   });
 
   // Fetch delivery schedules
   const { data: deliverySchedules = [], isLoading: deliveryLoading } = useQuery<DeliverySchedule[]>(
     {
       queryKey: ['/api/equipment-lifecycle/deliveries'],
+      queryFn: async () => {
+        return await apiRequest('/api/equipment-lifecycle/deliveries', 'GET');
+      },
     },
   );
 
   // Fetch installations
   const { data: installations = [], isLoading: installationsLoading } = useQuery<Installation[]>({
     queryKey: ['/api/equipment-lifecycle/installations'],
+    queryFn: async () => {
+      return await apiRequest('/api/equipment-lifecycle/installations', 'GET');
+    },
   });
 
   // Fetch asset tracking
   const { data: assets = [], isLoading: assetsLoading } = useQuery<AssetTracking[]>({
     queryKey: ['/api/equipment-lifecycle/assets'],
+    queryFn: async () => {
+      return await apiRequest('/api/equipment-lifecycle/assets', 'GET');
+    },
   });
 
   // Fetch technicians and customers for dropdowns
   const { data: technicians = [] } = useQuery<any[]>({
     queryKey: ['/api/technicians'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/technicians', 'GET');
+      return (response || []).map((t: any) => ({
+        ...t,
+        id: t.id,
+        firstName: t.first_name || t.firstName || '',
+        lastName: t.last_name || t.lastName || '',
+      }));
+    },
   });
 
   const { data: businessRecords = [] } = useQuery<any[]>({
     queryKey: ['/api/business-records'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/business-records', 'GET');
+      return (response?.records || response || []).map((r: any) => ({
+        ...r,
+        id: r.id,
+        companyName: r.company_name || r.companyName || '',
+      }));
+    },
   });
 
   // Mutations
