@@ -48,6 +48,22 @@ export default function Leases() {
 
   const { data: leases = [], isLoading } = useQuery<Lease[]>({
     queryKey: ['/api/leases'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/leases', 'GET');
+      return (response || []).map((lease: any) => ({
+        ...lease,
+        id: lease.id,
+        leaseNumber: lease.lease_number || lease.leaseNumber || '',
+        leaseName: lease.lease_name || lease.leaseName || '',
+        customerId: lease.customer_id || lease.customerId || '',
+        equipmentId: lease.equipment_id || lease.equipmentId || '',
+        startDate: lease.start_date || lease.startDate || '',
+        endDate: lease.end_date || lease.endDate || '',
+        signedDate: lease.signed_date || lease.signedDate || null,
+        createdAt: lease.created_at || lease.createdAt || '',
+        updatedAt: lease.updated_at || lease.updatedAt || '',
+      }));
+    },
   });
 
   const filteredLeases = leases.filter((lease) => {
