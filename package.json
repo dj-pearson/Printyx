@@ -59,7 +59,10 @@
     "migrate:analyze": "tsx scripts/migrate-business-records-to-companies.ts analyze",
     "migrate:preview": "tsx scripts/migrate-business-records-to-companies.ts preview",
     "migrate:execute": "tsx scripts/migrate-business-records-to-companies.ts execute",
-    "fix:contacts": "tsx scripts/fix-missing-contacts.ts"
+    "fix:contacts": "tsx scripts/fix-missing-contacts.ts",
+    "lint:transformations": "tsx tools/data-transformation-linter.ts",
+    "fix:transformations": "tsx tools/data-transformation-fixer.ts",
+    "fix:transformations:dry-run": "tsx tools/data-transformation-fixer.ts --dry-run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
