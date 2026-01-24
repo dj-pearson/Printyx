@@ -89,18 +89,47 @@ export default function ServiceHub() {
   } = useQuery<ServiceTicket[]>({
     queryKey: ['/api/service-tickets'],
     enabled: isAuthenticated,
+    queryFn: async () => {
+      const response = await apiRequest('/api/service-tickets', 'GET');
+      return (response || []).map((t: any) => ({
+        ...t,
+        id: t.id,
+        ticketNumber: t.ticket_number || t.ticketNumber || '',
+        customerId: t.customer_id || t.customerId || '',
+        equipmentId: t.equipment_id || t.equipmentId || null,
+        assignedTo: t.assigned_to || t.assignedTo || null,
+        createdAt: t.created_at || t.createdAt || '',
+        updatedAt: t.updated_at || t.updatedAt || '',
+        scheduledDate: t.scheduled_date || t.scheduledDate || null,
+        completedDate: t.completed_date || t.completedDate || null,
+      }));
+    },
   });
 
   // Fetch phone-in tickets (these might need their own type)
   const { data: phoneInTickets = [], isLoading: phoneInLoading } = useQuery<any[]>({
     queryKey: ['/api/phone-in-tickets'],
     enabled: isAuthenticated,
+    queryFn: async () => {
+      const response = await apiRequest('/api/phone-in-tickets', 'GET');
+      return (response || []).map((t: any) => ({
+        ...t,
+        id: t.id,
+        callerName: t.caller_name || t.callerName || '',
+        callerPhone: t.caller_phone || t.callerPhone || '',
+        createdAt: t.created_at || t.createdAt || '',
+        issueDescription: t.issue_description || t.issueDescription || '',
+      }));
+    },
   });
 
   // Fetch service analytics
   const { data: analytics } = useQuery({
     queryKey: ['/api/service-analytics'],
     enabled: isAuthenticated,
+    queryFn: async () => {
+      return await apiRequest('/api/service-analytics', 'GET');
+    },
   });
 
   // Convert phone-in ticket to service ticket
