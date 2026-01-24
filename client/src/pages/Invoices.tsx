@@ -54,14 +54,53 @@ export default function Invoices() {
 
   const { data: invoices, isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
     queryKey: ['/api/billing/invoices'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/billing/invoices', 'GET');
+      return (response || []).map((inv: any) => ({
+        ...inv,
+        id: inv.id,
+        invoiceNumber: inv.invoice_number || inv.invoiceNumber || '',
+        contractId: inv.contract_id || inv.contractId || null,
+        customerId: inv.customer_id || inv.customerId || '',
+        billingPeriodStart: inv.billing_period_start || inv.billingPeriodStart || '',
+        billingPeriodEnd: inv.billing_period_end || inv.billingPeriodEnd || '',
+        dueDate: inv.due_date || inv.dueDate || '',
+        createdAt: inv.created_at || inv.createdAt || '',
+        updatedAt: inv.updated_at || inv.updatedAt || '',
+      }));
+    },
   });
 
   const { data: contracts } = useQuery<Contract[]>({
     queryKey: ['/api/contracts'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/contracts', 'GET');
+      return (response || []).map((c: any) => ({
+        ...c,
+        id: c.id,
+        contractNumber: c.contract_number || c.contractNumber || '',
+        customerId: c.customer_id || c.customerId || '',
+        startDate: c.start_date || c.startDate || '',
+        endDate: c.end_date || c.endDate || '',
+        createdAt: c.created_at || c.createdAt || '',
+        updatedAt: c.updated_at || c.updatedAt || '',
+      }));
+    },
   });
 
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ['/api/customers'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/customers', 'GET');
+      return (response?.records || response || []).map((cust: any) => ({
+        ...cust,
+        id: cust.id,
+        companyName: cust.company_name || cust.companyName || '',
+        contactId: cust.contact_id || cust.contactId || '',
+        createdAt: cust.created_at || cust.createdAt || '',
+        updatedAt: cust.updated_at || cust.updatedAt || '',
+      }));
+    },
   });
 
   const generateInvoiceMutation = useMutation({

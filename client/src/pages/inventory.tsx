@@ -65,6 +65,21 @@ export default function Inventory() {
 
   const { data: inventory, isLoading: inventoryLoading } = useQuery<InventoryItem[]>({
     queryKey: ['/api/inventory'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/inventory', 'GET');
+      return (response || []).map((item: any) => ({
+        ...item,
+        id: item.id,
+        productId: item.product_id || item.productId || '',
+        warehouseId: item.warehouse_id || item.warehouseId || '',
+        currentStock: item.current_stock || item.currentStock || 0,
+        reorderPoint: item.reorder_point || item.reorderPoint || 0,
+        reorderQuantity: item.reorder_quantity || item.reorderQuantity || 0,
+        lastRestocked: item.last_restocked || item.lastRestocked || null,
+        createdAt: item.created_at || item.createdAt || '',
+        updatedAt: item.updated_at || item.updatedAt || '',
+      }));
+    },
   });
 
   const getStockStatus = (currentStock: number, reorderPoint: number) => {
