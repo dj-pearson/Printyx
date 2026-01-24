@@ -76,6 +76,18 @@ export default function SoftwareProducts() {
 
   const { data: products = [], isLoading } = useQuery<SoftwareProduct[]>({
     queryKey: ['/api/software-products'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/software-products', 'GET');
+      return (response || []).map((product: any) => ({
+        ...product,
+        id: product.id,
+        productName: product.product_name || product.productName || '',
+        productType: product.product_type || product.productType || '',
+        baseCost: product.base_cost || product.baseCost || 0,
+        createdAt: product.created_at || product.createdAt || '',
+        updatedAt: product.updated_at || product.updatedAt || '',
+      }));
+    },
   });
 
   const createProductMutation = useMutation({

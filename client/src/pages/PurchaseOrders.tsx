@@ -150,13 +150,33 @@ export default function PurchaseOrders() {
         if (filter) params.append('filter', filter);
       }
       const path = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
-      return await apiRequest(path, 'GET');
+      const response = await apiRequest(path, 'GET');
+      return (response || []).map((po: any) => ({
+        ...po,
+        id: po.id,
+        poNumber: po.po_number || po.poNumber || '',
+        vendorId: po.vendor_id || po.vendorId || '',
+        orderDate: po.order_date || po.orderDate || '',
+        expectedDate: po.expected_date || po.expectedDate || null,
+        receivedDate: po.received_date || po.receivedDate || null,
+        createdAt: po.created_at || po.createdAt || '',
+        updatedAt: po.updated_at || po.updatedAt || '',
+      }));
     },
   });
 
   // Fetch vendors for dropdown
   const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/vendors', 'GET');
+      return (response || []).map((vendor: any) => ({
+        ...vendor,
+        id: vendor.id,
+        vendorName: vendor.vendor_name || vendor.vendorName || '',
+        createdAt: vendor.created_at || vendor.createdAt || '',
+      }));
+    },
   });
 
   // Fetch statistics
@@ -168,6 +188,16 @@ export default function PurchaseOrders() {
     totalValue: number;
   }>({
     queryKey: ['/api/purchase-orders/stats/summary'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/purchase-orders/stats/summary', 'GET');
+      return {
+        total: response?.total || 0,
+        pending: response?.pending || 0,
+        approved: response?.approved || 0,
+        received: response?.received || 0,
+        totalValue: response?.total_value || response?.totalValue || 0,
+      };
+    },
   });
 
   // Create purchase order mutation
