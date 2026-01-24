@@ -272,7 +272,43 @@ export default function Customers() {
       }
 
       const response = await apiRequest(`/api/companies?${params}`, 'GET');
-      return response;
+
+      // Transform snake_case to camelCase
+      const records = (response?.records || []).map((c: any) => ({
+        ...c,
+        id: c.id,
+        companyName: c.business_name || c.companyName || '',
+        businessRecordType: c.business_record_type || c.businessRecordType || 'Customer',
+        billingAddress: c.billing_address || c.billingAddress || '',
+        billingCity: c.billing_city || c.billingCity || '',
+        billingState: c.billing_state || c.billingState || '',
+        billingZip: c.billing_zip || c.billingZip || '',
+        phone: c.phone || '',
+        website: c.website || '',
+        industry: c.industry || '',
+        createdAt: c.created_at || c.createdAt || '',
+        updatedAt: c.updated_at || c.updatedAt || '',
+        // Transform contacts array
+        companyContacts: Array.isArray(c.company_contacts)
+          ? c.company_contacts.map((contact: any) => ({
+              id: contact.id,
+              firstName: contact.first_name || '',
+              lastName: contact.last_name || '',
+              email: contact.email || '',
+              phone: contact.phone || '',
+              mobile: contact.mobile || '',
+              title: contact.title || '',
+              department: contact.department || '',
+              isPrimaryContact: contact.is_primary_contact || contact.is_primary || false,
+              companyId: contact.company_id || contact.companyId,
+            }))
+          : [],
+      }));
+
+      return {
+        records,
+        pagination: response?.pagination || { total: 0, hasMore: false },
+      };
     },
   });
 
@@ -283,38 +319,38 @@ export default function Customers() {
   const { data: companies = [] } = useQuery({
     queryKey: ['/api/companies'],
     enabled: isAuthenticated,
+    queryFn: async () => {
+      const response = await apiRequest('/api/companies', 'GET');
+      return (response?.records || response || []).map((c: any) => ({
+        id: c.id,
+        companyName: c.business_name || c.companyName || '',
+        businessRecordType: c.business_record_type || c.businessRecordType || '',
+      }));
+    },
   });
 
   const enriched = useMemo(() => {
     return (customers as any[]).map((c) => {
-      // The companies edge function already maps fields to the expected format
-      // Use the mapped fields directly: companyName, city, state, etc.
-      // Safely extract contact data - may be undefined, empty array, or null
+      // Data is now already transformed to camelCase by queryFn
       const contactData =
-        Array.isArray(c.company_contacts) && c.company_contacts.length > 0
-          ? c.company_contacts[0]
-          : c.company_contacts && typeof c.company_contacts === 'object'
-            ? c.company_contacts
-            : null;
-
-      // Use business_name directly from the company record (primary source)
-      // Fall back to mapped companyName, then to a placeholder
-      const companyName = c.business_name || c.companyName || `Company ${String(c.id).slice(0, 8)}`;
+        Array.isArray(c.companyContacts) && c.companyContacts.length > 0
+          ? c.companyContacts[0]
+          : null;
 
       return {
         ...c,
-        companyName,
-        city: c.billing_city || c.city || '',
-        state: c.billing_state || c.state || '',
+        companyName: c.companyName || `Company ${String(c.id).slice(0, 8)}`,
+        city: c.billingCity || '',
+        state: c.billingState || '',
         phone: c.phone || contactData?.phone || '',
         website: c.website || '',
         industry: c.industry || '',
         status: c.activity || c.status || 'active',
-        recordType: c.business_record_type?.toLowerCase() || c.recordType || 'customer',
-        primaryContactName: contactData?.first_name
-          ? `${contactData.first_name} ${contactData.last_name || ''}`.trim()
-          : c.primaryContactName || '',
-        primaryContactEmail: contactData?.email || c.primaryContactEmail || c.email || '',
+        recordType: c.businessRecordType?.toLowerCase() || 'customer',
+        primaryContactName: contactData
+          ? `${contactData.firstName} ${contactData.lastName || ''}`.trim()
+          : '',
+        primaryContactEmail: contactData?.email || '',
       };
     });
   }, [customers, companies]);
