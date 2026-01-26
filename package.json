@@ -66,7 +66,11 @@
     "check:system": "tsx scripts/comprehensive-system-check.ts",
     "check:schema": "tsx scripts/database-schema-reporter.ts",
     "check:schema:ssh": "tsx scripts/database-schema-reporter.ts --ssh",
-    "check:schema:docker": "tsx scripts/database-schema-via-docker.ts"
+    "check:schema:docker": "tsx scripts/database-schema-via-docker.ts",
+    "validate:schema": "tsx tests/schema-validator.ts",
+    "fix:schema": "tsx tests/schema-fixer.ts",
+    "fix:schema:apply": "tsx tests/schema-fixer.ts --apply",
+    "fix:schema:auto": "tsx tests/schema-fixer.ts --apply --auto"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
