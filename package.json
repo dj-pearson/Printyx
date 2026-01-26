@@ -65,7 +65,8 @@
     "fix:transformations:dry-run": "tsx tools/data-transformation-fixer.ts --dry-run",
     "check:system": "tsx scripts/comprehensive-system-check.ts",
     "check:schema": "tsx scripts/database-schema-reporter.ts",
-    "check:schema:ssh": "tsx scripts/database-schema-reporter.ts --ssh"
+    "check:schema:ssh": "tsx scripts/database-schema-reporter.ts --ssh",
+    "check:schema:docker": "tsx scripts/database-schema-via-docker.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

@@ -184,7 +184,8 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
     }
 
     const dbHost = process.env.DB_HOST;
-    const dbPort = parseInt(process.env.DB_PORT || '5432');
+    // For SSH tunnel: try pooler port (5433) on localhost since that's what's exposed
+    const dbPort = 5433;
     const dbUser = process.env.DB_USER || 'postgres';
     const dbPassword = process.env.DB_PASSWORD;
     const dbName = process.env.DB_NAME || 'postgres';
@@ -204,6 +205,18 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
           '  SERVER_USER=root',
       );
     }
+
+    // Debug: Show what we're using
+    console.log(`\n🔍 SSH Configuration Debug:`);
+    console.log(`   SSH_USER env var: "${process.env.SSH_USER}"`);
+    console.log(`   SERVER_USER env var: "${process.env.SERVER_USER}"`);
+    console.log(`   DB_USER env var: "${process.env.DB_USER}"`);
+    console.log(`   → Using SSH user: "${sshUser}"`);
+    console.log(`   SSH_PASSWORD set: ${!!process.env.SSH_PASSWORD}`);
+    console.log(`   DB_PASSWORD set: ${!!process.env.DB_PASSWORD}`);
+    console.log(`   → Using password: ${!!sshPassword}`);
+    console.log(`   SSH_PRIVATE_KEY set: ${!!process.env.SSH_PRIVATE_KEY}`);
+    console.log(`   → Using private key: ${!!sshPrivateKey}\n`);
 
     if (!sshPassword && !sshPrivateKey) {
       throw new Error(
@@ -228,22 +241,31 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
       sshUser,
       sshPassword,
       sshPrivateKey,
-      dbHost,
+      // Connect to localhost on remote server (where Docker containers are exposed)
+      dbHost: '127.0.0.1',
       dbPort,
       localPort,
     });
 
-    // Wait a moment for tunnel to be fully ready
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait longer for tunnel to be fully ready (pooler might take time)
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
+    // Try with SSL first since Supabase pooler might require it
     connectionConfig = {
       host: '127.0.0.1',
       port: localPort,
       user: dbUser,
       password: dbPassword,
       database: dbName,
-      ssl: false, // Local tunnel doesn't need SSL
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      connectionTimeoutMillis: 10000,
     };
+
+    console.log(
+      `🔌 Connecting to database through tunnel: ${dbUser}@127.0.0.1:${localPort}/${dbName} (SSL enabled)`,
+    );
   } else {
     // Direct connection mode (existing behavior)
     const databaseUrl = process.env.DATABASE_URL;
@@ -260,62 +282,66 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
 
     console.log(`🔌 Connecting to: ${databaseUrl.replace(/:[^:@]+@/, ':****@')}`);
 
-    // Parse DATABASE_URL to add SSL configuration
-    const sslEnabled = process.env.DB_SSL === 'true';
+    // Try multiple SSL configurations automatically
+    const sslConfigs = [
+      { name: 'SSL with self-signed cert acceptance', ssl: { rejectUnauthorized: false } },
+      { name: 'SSL strict', ssl: { rejectUnauthorized: true } },
+      { name: 'No SSL', ssl: false },
+    ];
 
-    // Debug: Show what we're reading
-    console.log(`🔍 DB_SSL environment variable: "${process.env.DB_SSL}"`);
-    console.log(`🔒 SSL: ${sslEnabled ? 'Enabled' : 'Disabled'}`);
+    let lastError: any;
+    let client: any;
 
-    connectionConfig = {
-      connectionString: databaseUrl,
-      ssl: sslEnabled
-        ? {
-            rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
-          }
-        : false,
-      // Add connection timeout
-      connectionTimeoutMillis: 10000,
-    };
+    for (const config of sslConfigs) {
+      console.log(`🔄 Trying: ${config.name}...`);
+
+      connectionConfig = {
+        connectionString: databaseUrl,
+        ssl: config.ssl,
+        connectionTimeoutMillis: 10000,
+      };
+
+      client = new Client(connectionConfig);
+
+      try {
+        await client.connect();
+        console.log(`✅ Connected successfully using: ${config.name}`);
+        return client;
+      } catch (error: any) {
+        console.log(`   ❌ Failed: ${error.message}`);
+        lastError = error;
+        try {
+          await client.end();
+        } catch {}
+      }
+    }
+
+    // All attempts failed
+    throw new Error(
+      'Failed to connect with any SSL configuration.\n\n' +
+        `Last error: ${lastError.message}\n\n` +
+        'Possible issues:\n' +
+        '1. Check credentials in DATABASE_URL\n' +
+        '2. Verify database is accessible from this network\n' +
+        '3. Confirm port 5433 (Supabase Pooler) is correct\n' +
+        '4. Try SSH tunnel mode: npm run check:schema:ssh',
+    );
   }
 
+  // SSH tunnel mode - connect through tunnel
   const client = new Client(connectionConfig);
 
   try {
     await client.connect();
     console.log('✅ Connected to database');
   } catch (error: any) {
-    // Provide helpful error messages based on error type
-    if (error.code === 'ECONNRESET') {
-      throw new Error(
-        'Connection was reset by the server.\n\n' +
-          'This usually means SSL/TLS configuration mismatch.\n\n' +
-          'Try these fixes:\n' +
-          '1. If database requires SSL, set in .env:\n' +
-          '     DB_SSL=true\n' +
-          '     DB_SSL_REJECT_UNAUTHORIZED=false\n\n' +
-          '2. If database does NOT require SSL, set in .env:\n' +
-          '     DB_SSL=false\n\n' +
-          '3. Check your DATABASE_URL format:\n' +
-          '     DATABASE_URL=postgresql://user:pass@host:port/dbname',
-      );
-    } else if (error.code === 'ENOTFOUND') {
-      throw new Error(
-        `Could not resolve hostname.\n\n` +
-          `Check DB_HOST or DATABASE_URL in .env file.\n` +
-          `Original error: ${error.message}`,
-      );
-    } else if (error.code === 'ECONNREFUSED') {
-      throw new Error(
-        `Connection refused by server.\n\n` +
-          `Check that:\n` +
-          `1. Database is running\n` +
-          `2. Port is correct (usually 5432 or 5433)\n` +
-          `3. Firewall allows connections`,
-      );
-    } else {
-      throw error;
-    }
+    console.log(`❌ Database connection error details:`);
+    console.log(`   Code: ${error.code}`);
+    console.log(`   Message: ${error.message}`);
+    console.log(`   Stack: ${error.stack?.split('\n')[0]}`);
+    throw new Error(
+      `Database connection failed: ${error.message}\n\nConnection config: ${JSON.stringify({ ...connectionConfig, password: '****' }, null, 2)}`,
+    );
   }
 
   return client;
