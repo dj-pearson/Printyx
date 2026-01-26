@@ -156,7 +156,7 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
     const sshHost = process.env.SSH_HOST || process.env.DB_HOST;
     const sshPort = parseInt(process.env.SSH_PORT || '22');
     const sshUser = process.env.SSH_USER || process.env.DB_USER || 'postgres';
-    const sshPassword = process.env.SSH_PASSWORD || process.env.DB_PASSWORD;
+    const sshPassword = process.env.SSH_PASSWORD; // Don't fallback to DB_PASSWORD
     const sshPrivateKey = process.env.SSH_PRIVATE_KEY;
 
     const dbHost = process.env.DB_HOST;
@@ -168,7 +168,29 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
 
     if (!sshHost || !dbHost) {
       throw new Error(
-        'SSH_HOST (or DB_HOST) and DB_HOST environment variables required for SSH mode',
+        'SSH mode requires DB_HOST environment variable.\n\n' +
+          'Please add to your .env file:\n' +
+          '  DB_HOST=209.145.59.219\n' +
+          '  DB_PORT=5433\n' +
+          '  DB_USER=postgres\n' +
+          '  DB_PASSWORD=your_password\n' +
+          '  DB_NAME=postgres\n' +
+          '  SSH_HOST=209.145.59.219\n' +
+          '  SSH_USER=postgres\n' +
+          '  SSH_PASSWORD=your_ssh_password',
+      );
+    }
+
+    if (!sshPassword && !sshPrivateKey) {
+      throw new Error(
+        'SSH authentication requires either SSH_PASSWORD or SSH_PRIVATE_KEY.\n\n' +
+          'Please add one of these to your .env file:\n\n' +
+          'Option 1 - Password:\n' +
+          '  SSH_PASSWORD=your_ssh_password\n\n' +
+          'Option 2 - Private Key:\n' +
+          '  SSH_PRIVATE_KEY=/path/to/your/private/key\n\n' +
+          'If you cannot access via SSH, use direct connection instead:\n' +
+          '  npm run check:schema',
       );
     }
 
@@ -200,7 +222,13 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
     const databaseUrl = process.env.DATABASE_URL;
 
     if (!databaseUrl) {
-      throw new Error('DATABASE_URL environment variable not set');
+      throw new Error(
+        'Direct connection mode requires DATABASE_URL environment variable.\n\n' +
+          'Please add to your .env file:\n' +
+          '  DATABASE_URL=postgresql://postgres:PASSWORD@209.145.59.219:5433/postgres\n\n' +
+          'Or use SSH tunnel mode instead:\n' +
+          '  npm run check:schema:ssh',
+      );
     }
 
     connectionConfig = {
