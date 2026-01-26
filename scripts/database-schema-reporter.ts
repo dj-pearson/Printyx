@@ -230,21 +230,63 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
       );
     }
 
+    console.log(`🔌 Connecting to: ${databaseUrl.replace(/:[^:@]+@/, ':****@')}`);
+
+    // Parse DATABASE_URL to add SSL configuration
+    const sslEnabled = process.env.DB_SSL === 'true';
+
     connectionConfig = {
       connectionString: databaseUrl,
-      ssl:
-        process.env.DB_SSL === 'true'
-          ? {
-              rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
-            }
-          : false,
+      ssl: sslEnabled
+        ? {
+            rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+          }
+        : false,
+      // Add connection timeout
+      connectionTimeoutMillis: 10000,
     };
+
+    console.log(`🔒 SSL: ${sslEnabled ? 'Enabled' : 'Disabled'}`);
   }
 
   const client = new Client(connectionConfig);
 
-  await client.connect();
-  console.log('✅ Connected to database');
+  try {
+    await client.connect();
+    console.log('✅ Connected to database');
+  } catch (error: any) {
+    // Provide helpful error messages based on error type
+    if (error.code === 'ECONNRESET') {
+      throw new Error(
+        'Connection was reset by the server.\n\n' +
+          'This usually means SSL/TLS configuration mismatch.\n\n' +
+          'Try these fixes:\n' +
+          '1. If database requires SSL, set in .env:\n' +
+          '     DB_SSL=true\n' +
+          '     DB_SSL_REJECT_UNAUTHORIZED=false\n\n' +
+          '2. If database does NOT require SSL, set in .env:\n' +
+          '     DB_SSL=false\n\n' +
+          '3. Check your DATABASE_URL format:\n' +
+          '     DATABASE_URL=postgresql://user:pass@host:port/dbname',
+      );
+    } else if (error.code === 'ENOTFOUND') {
+      throw new Error(
+        `Could not resolve hostname.\n\n` +
+          `Check DB_HOST or DATABASE_URL in .env file.\n` +
+          `Original error: ${error.message}`,
+      );
+    } else if (error.code === 'ECONNREFUSED') {
+      throw new Error(
+        `Connection refused by server.\n\n` +
+          `Check that:\n` +
+          `1. Database is running\n` +
+          `2. Port is correct (usually 5432 or 5433)\n` +
+          `3. Firewall allows connections`,
+      );
+    } else {
+      throw error;
+    }
+  }
 
   return client;
 }
