@@ -154,11 +154,34 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
   if (useSSH) {
     // SSH tunnel mode - use individual env vars
     // Use DB_* vars by default, allow SSH_* to override
-    const sshHost = process.env.SSH_HOST || process.env.DB_HOST;
+    const sshHost = process.env.SSH_HOST || process.env.SERVER_HOST || process.env.DB_HOST;
     const sshPort = parseInt(process.env.SSH_PORT || '22');
-    const sshUser = process.env.SSH_USER || process.env.DB_USER || 'postgres';
-    const sshPassword = process.env.SSH_PASSWORD || process.env.DB_PASSWORD; // Use DB_PASSWORD if SSH_PASSWORD not set
-    const sshPrivateKey = process.env.SSH_PRIVATE_KEY;
+    const sshUser =
+      process.env.SSH_USER || process.env.SERVER_USER || process.env.DB_USER || 'root';
+    const sshPassword = process.env.SSH_PASSWORD || process.env.DB_PASSWORD; // Fallback to password
+
+    // Auto-detect SSH private key from standard locations
+    let sshPrivateKey = process.env.SSH_PRIVATE_KEY;
+    if (!sshPrivateKey && !sshPassword) {
+      // Try to read from standard Windows SSH key location
+      const { readFileSync: readFile } = await import('fs');
+      const { join: joinPath } = await import('path');
+      const homedir = process.env.USERPROFILE || process.env.HOME || '';
+      const keyPaths = [
+        joinPath(homedir, '.ssh', 'id_rsa'),
+        joinPath(homedir, '.ssh', 'id_ed25519'),
+      ];
+
+      for (const keyPath of keyPaths) {
+        try {
+          sshPrivateKey = readFile(keyPath, 'utf8');
+          console.log(`🔑 Using SSH key: ${keyPath}`);
+          break;
+        } catch (e) {
+          // Key doesn't exist, try next
+        }
+      }
+    }
 
     const dbHost = process.env.DB_HOST;
     const dbPort = parseInt(process.env.DB_PORT || '5432');
@@ -175,21 +198,26 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
           '  DB_PORT=5433\n' +
           '  DB_USER=postgres\n' +
           '  DB_PASSWORD=your_password\n' +
-          '  DB_NAME=postgres',
+          '  DB_NAME=postgres\n\n' +
+          'Optional (will use SSH keys from ~/.ssh/ by default):\n' +
+          '  SERVER_HOST=209.145.59.219\n' +
+          '  SERVER_USER=root',
       );
     }
 
     if (!sshPassword && !sshPrivateKey) {
       throw new Error(
         'SSH authentication requires a password or private key.\n\n' +
-          'By default, DB_PASSWORD is used for SSH authentication.\n' +
-          'If DB_PASSWORD is not set, add it to your .env file:\n' +
-          '  DB_PASSWORD=your_password\n\n' +
-          'Or specify separate SSH credentials:\n' +
-          '  SSH_PASSWORD=your_ssh_password\n' +
-          '  (or SSH_PRIVATE_KEY=/path/to/key)\n\n' +
-          'Or use direct connection instead:\n' +
-          '  npm run check:schema',
+          'No SSH keys found in:\n' +
+          '  ~/.ssh/id_rsa\n' +
+          '  ~/.ssh/id_ed25519\n\n' +
+          'Please either:\n' +
+          '1. Set up SSH keys (recommended):\n' +
+          '     See deployment/SETUP_SSH_KEYS.md\n\n' +
+          '2. Use password in .env:\n' +
+          '     DB_PASSWORD=your_password\n\n' +
+          '3. Or use direct connection:\n' +
+          '     npm run check:schema',
       );
     }
 
