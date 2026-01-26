@@ -63,7 +63,8 @@
     "lint:transformations": "tsx tools/data-transformation-linter.ts",
     "fix:transformations": "tsx tools/data-transformation-fixer.ts",
     "fix:transformations:dry-run": "tsx tools/data-transformation-fixer.ts --dry-run",
-    "check:system": "tsx scripts/comprehensive-system-check.ts"
+    "check:system": "tsx scripts/comprehensive-system-check.ts",
+    "check:schema": "tsx scripts/database-schema-reporter.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
