@@ -28,7 +28,8 @@
       "Bash(for f in server/services/*.ts)",
       "Bash(do if ! grep -q \"tenantId\" \"$f\")",
       "Bash(then basename \"$f\" fi done)",
-      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsc:*)"
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsc:*)",
+      "Bash(npm run check:system:*)"
     ],
     "deny": [],
     "ask": []

@@ -12629,16 +12629,16 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   app.use('/api', enhancedServiceRoutes);
 
   // Register new reporting architecture routes FIRST (takes precedence)
-  app.use('/api', reportingArchitectureRoutes);
+  app.use('/api/reporting', reportingArchitectureRoutes);
 
   // Register sales reports API (RBAC-aware reporting)
-  app.use('/api', salesReportsAPI);
+  app.use('/api/sales-reports', salesReportsAPI);
 
   // Register service reports API (RBAC-aware reporting for technicians)
-  app.use('/api', serviceReportsAPI);
+  app.use('/api/service-reports', serviceReportsAPI);
 
   // Register warehouse reports API (RBAC-aware reporting for warehouse teams)
-  app.use('/api', warehouseReportsAPI);
+  app.use('/api/warehouse-reports', warehouseReportsAPI);
 
   // Register sales supervisor reports API (RBAC-aware reporting for location supervisors)
   app.use('/api/sales-supervisor-reports', salesSupervisorReportsAPI);
@@ -13122,6 +13122,30 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       console.log('✅ Territory Management routes registered');
     })
     .catch((err) => console.error('Failed to load territory management routes:', err));
+
+  // Register Cross-Module Integration routes
+  import('./routes-cross-module')
+    .then(({ default: crossModuleRoutes }) => {
+      app.use('/api/cross-module', crossModuleRoutes);
+      console.log('✅ Cross-Module Integration routes registered');
+    })
+    .catch((err) => console.error('Failed to load cross-module routes:', err));
+
+  // Register OID Mappings routes
+  import('./routes-oid-mappings')
+    .then(({ default: oidMappingsRoutes }) => {
+      app.use('/api/oid-mappings', oidMappingsRoutes);
+      console.log('✅ OID Mappings routes registered');
+    })
+    .catch((err) => console.error('Failed to load OID mappings routes:', err));
+
+  // Register miscellaneous stub routes (customer-access, bug-reports, service-analytics)
+  import('./routes-misc-stubs')
+    .then(({ registerMiscStubRoutes }) => {
+      registerMiscStubRoutes(app);
+      console.log('✅ Miscellaneous stub routes registered');
+    })
+    .catch((err) => console.error('Failed to load misc stub routes:', err));
 
   // Auto-seeding disabled by default (causes connection exhaustion)
   // Use npm run seed:* commands instead for manual seeding
