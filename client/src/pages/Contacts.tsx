@@ -333,7 +333,7 @@ export default function Contacts() {
       });
       contactForm.reset();
       setDialogs((prev) => ({ ...prev, createContact: false }));
-      queryClient.invalidateQueries({ queryKey: ['supabase-company-contacts', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['api-contacts', tenantId] });
     },
     onError: (error) => {
       toast({
@@ -403,14 +403,14 @@ export default function Contacts() {
       company.companyName?.toLowerCase().includes(currentCompanyName.toLowerCase()),
     ) || [];
 
-  // Fetch all company contacts directly (since /api/contacts has auth issues)
+  // Fetch all company contacts via API endpoint
   const {
     data: contactsData,
     isLoading,
     error,
   } = useQuery({
     queryKey: [
-      'supabase-company-contacts',
+      'api-contacts',
       tenantId,
       filters,
       searchQuery,
@@ -420,97 +420,69 @@ export default function Contacts() {
       pageSize,
     ],
     queryFn: async () => {
-      if (!tenantId) return { contacts: [], total: 0, page: currentPage, limit: pageSize };
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('limit', pageSize.toString());
+      params.append('sortBy', sortBy);
+      params.append('sortOrder', sortOrder);
 
-      const { data, error } = await supabase
-        .from('company_contacts')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('updated_at', { ascending: false });
+      if (searchQuery && searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+      if (filters.leadStatus && filters.leadStatus !== 'all') {
+        params.append('status', filters.leadStatus);
+      }
+      if (filters.contactOwner && filters.contactOwner !== 'all') {
+        params.append('ownerId', filters.contactOwner);
+      }
 
-      if (error) throw error;
-
-      // Transform the flat array into the expected format with pagination
-      const allContacts = Array.isArray(data) ? data : [];
-      const companyNameById = new Map<string, string>();
-      (companies || []).forEach((c: any) => companyNameById.set(c.id, c.companyName));
-      const ownerNameById = new Map<string, string>();
-      (users || []).forEach((u: any) =>
-        ownerNameById.set(
-          u.id,
-          (`${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Unassigned').trim(),
-        ),
-      );
-
-      const filteredContacts = allContacts.filter((contact) => {
-        // Only apply search filter if there's actually a search query
-        if (searchQuery && searchQuery.trim() !== '') {
-          const matchesSearch =
-            contact.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            contact.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            contact.email?.toLowerCase().includes(searchQuery.toLowerCase());
-          if (!matchesSearch) {
-            return false;
-          }
-        }
-
-        // Apply view filter first
-        if (filters.view === 'my' && !contact.owner_id) {
-          return false;
-        }
-
-        if (filters.view === 'unassigned' && contact.owner_id) {
-          return false;
-        }
-
-        // Apply other filters
-        if (filters.leadStatus && contact.lead_status !== filters.leadStatus) {
-          return false;
-        }
-
-        if (filters.contactOwner && contact.owner_id !== filters.contactOwner) {
-          return false;
-        }
-
-        return true;
+      const response = await fetch(`/api/contacts?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
       });
 
-      const startIndex = (currentPage - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch contacts: ${response.statusText}`);
+      }
 
+      const data = await response.json();
+
+      // Transform snake_case to camelCase
       return {
-        contacts: paginatedContacts.map((c: any) => ({
+        contacts: (data.contacts || []).map((c: any) => ({
           id: c.id,
-          firstName: c.first_name || undefined,
-          lastName: c.last_name,
-          email: c.email || undefined,
-          phone: c.phone || undefined,
-          title: c.title || undefined,
+          firstName: c.first_name || '',
+          lastName: c.last_name || '',
+          email: c.email || '',
+          phone: c.phone || '',
+          title: c.title || '',
           companyId: c.company_id,
-          companyName: companyNameById.get(c.company_id) || undefined,
-          leadStatus: c.lead_status || undefined,
-          lastContactDate: c.last_contact_date || undefined,
-          nextFollowUpDate: c.next_follow_up_date || undefined,
-          createdAt: c.created_at || undefined,
-          ownerId: c.owner_id || undefined,
-          ownerName: (c.owner_id && ownerNameById.get(c.owner_id)) || undefined,
-          favoriteContentType: c.favorite_content_type || undefined,
-          preferredChannels: c.preferred_channels || undefined,
+          companyName: c.business_records?.company_name || getCompanyName(c.company_id) || '',
+          leadStatus: c.lead_status || 'new',
+          lastContactDate: c.last_contact_date,
+          nextFollowUpDate: c.next_follow_up_date,
+          createdAt: c.created_at,
+          ownerId: c.owner_id,
+          ownerName: getUserName(c.owner_id),
+          favoriteContentType: c.favorite_content_type,
+          preferredChannels: c.preferred_channels,
           tenantId: c.tenant_id,
-          salutation: c.salutation || undefined,
-          department: c.department || undefined,
-          mobile: c.mobile || undefined,
-          reportsTo: c.reports_to || undefined,
-          contactRoles: c.contact_roles || undefined,
-          isPrimaryContact: c.is_primary_contact || undefined,
-          leadSource: c.lead_source || undefined,
-          emailOptOut: c.email_opt_out || undefined,
-          doNotCall: c.do_not_call || undefined,
+          salutation: c.salutation,
+          department: c.department,
+          mobile: c.mobile,
+          reportsTo: c.reports_to,
+          contactRoles: c.contact_roles,
+          isPrimaryContact: c.is_primary_contact,
+          leadSource: c.lead_source,
+          emailOptOut: c.email_opt_out,
+          doNotCall: c.do_not_call,
         })),
-        total: filteredContacts.length,
-        page: currentPage,
-        limit: pageSize,
+        total: data.total || 0,
+        page: data.page || currentPage,
+        limit: data.limit || pageSize,
       };
     },
     retry: 2,
@@ -519,10 +491,24 @@ export default function Contacts() {
 
   // Delete contact mutation
   const deleteContactMutation = useMutation({
-    mutationFn: async (contactId: string) =>
-      supabase.from('company_contacts').delete().eq('id', contactId).eq('tenant_id', tenantId),
+    mutationFn: async (contactId: string) => {
+      const response = await fetch(`/api/company-contacts/${contactId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Failed to delete contact');
+      }
+
+      return response.json();
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['supabase-company-contacts', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['api-contacts', tenantId] });
       toast({ title: 'Success', description: 'Contact deleted successfully' });
     },
     onError: (err: any) => {
@@ -591,7 +577,7 @@ export default function Contacts() {
       icon: Trash2,
       onClick: async (ids) => {
         await Promise.all(ids.map((id) => deleteContactMutation.mutateAsync(id).catch(() => null)));
-        queryClient.invalidateQueries({ queryKey: ['supabase-company-contacts', tenantId] });
+        queryClient.invalidateQueries({ queryKey: ['api-contacts', tenantId] });
       },
       variant: 'destructive',
       requiresConfirmation: true,
