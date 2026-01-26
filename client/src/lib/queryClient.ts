@@ -50,15 +50,41 @@ function getRequestUrl(url: string): string {
   return getApiUrl(url);
 }
 
+// Options object format for apiRequest
+interface ApiRequestOptions {
+  method?: string;
+  body?: string | any;
+  headers?: Record<string, string>;
+}
+
 export async function apiRequest(
   url: string,
-  method: string = 'GET',
+  methodOrOptions: string | ApiRequestOptions = 'GET',
   body?: any,
   headers?: Record<string, string>,
 ): Promise<any> {
+  // Support both formats:
+  // apiRequest(url, 'POST', data) - positional params
+  // apiRequest(url, { method: 'POST', body: data }) - options object
+  let finalMethod: string;
+  let finalBody: any;
+  let finalHeaders: Record<string, string> | undefined;
+
+  if (typeof methodOrOptions === 'object') {
+    // Options object format
+    finalMethod = methodOrOptions.method || 'GET';
+    finalBody = methodOrOptions.body;
+    finalHeaders = methodOrOptions.headers;
+  } else {
+    // Positional params format
+    finalMethod = methodOrOptions;
+    finalBody = body;
+    finalHeaders = headers;
+  }
+
   const requestHeaders: HeadersInit = {
     'Content-Type': 'application/json',
-    ...headers,
+    ...finalHeaders,
   };
 
   const authMode = config.authMode;
@@ -84,7 +110,7 @@ export async function apiRequest(
   }
 
   // CSRF token only needed for legacy auth (session-based)
-  const safeMethod = method || 'GET';
+  const safeMethod = finalMethod || 'GET';
   const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(safeMethod.toUpperCase());
 
   if (authMode === 'legacy' && isMutating && !('x-csrf-token' in requestHeaders)) {
@@ -94,10 +120,17 @@ export async function apiRequest(
 
   const requestUrl = getRequestUrl(url);
 
+  // Handle body - if it's already a string, use it as-is, otherwise stringify
+  const getBodyString = (b: any) => {
+    if (!b) return undefined;
+    if (typeof b === 'string') return b;
+    return JSON.stringify(b);
+  };
+
   let res = await fetch(requestUrl, {
     method: safeMethod,
     headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
+    body: getBodyString(finalBody),
     // Only include credentials for legacy auth (cookies)
     credentials: authMode === 'legacy' ? 'include' : 'omit',
   });
@@ -111,7 +144,7 @@ export async function apiRequest(
       res = await fetch(requestUrl, {
         method: safeMethod,
         headers: requestHeaders,
-        body: body ? JSON.stringify(body) : undefined,
+        body: getBodyString(finalBody),
         credentials: 'include',
       });
     }
