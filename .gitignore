@@ -60,3 +60,4 @@ START_HERE_DEPLOYMENT.md
 scripts/export-complete-database.js
 report*
 Output.json
+.env.tmp
