@@ -62,7 +62,8 @@
     "fix:contacts": "tsx scripts/fix-missing-contacts.ts",
     "lint:transformations": "tsx tools/data-transformation-linter.ts",
     "fix:transformations": "tsx tools/data-transformation-fixer.ts",
-    "fix:transformations:dry-run": "tsx tools/data-transformation-fixer.ts --dry-run"
+    "fix:transformations:dry-run": "tsx tools/data-transformation-fixer.ts --dry-run",
+    "check:system": "tsx scripts/comprehensive-system-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
