@@ -9,9 +9,11 @@
  * - JSON export for programmatic validation
  */
 
-import { Client } from 'pg';
+import pg from 'pg';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+
+const { Client } = pg;
 
 interface Column {
   name: string;
