@@ -153,10 +153,11 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
 
   if (useSSH) {
     // SSH tunnel mode - use individual env vars
+    // Use DB_* vars by default, allow SSH_* to override
     const sshHost = process.env.SSH_HOST || process.env.DB_HOST;
     const sshPort = parseInt(process.env.SSH_PORT || '22');
     const sshUser = process.env.SSH_USER || process.env.DB_USER || 'postgres';
-    const sshPassword = process.env.SSH_PASSWORD; // Don't fallback to DB_PASSWORD
+    const sshPassword = process.env.SSH_PASSWORD || process.env.DB_PASSWORD; // Use DB_PASSWORD if SSH_PASSWORD not set
     const sshPrivateKey = process.env.SSH_PRIVATE_KEY;
 
     const dbHost = process.env.DB_HOST;
@@ -166,7 +167,7 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
     const dbName = process.env.DB_NAME || 'postgres';
     const localPort = parseInt(process.env.LOCAL_TUNNEL_PORT || '5532');
 
-    if (!sshHost || !dbHost) {
+    if (!dbHost) {
       throw new Error(
         'SSH mode requires DB_HOST environment variable.\n\n' +
           'Please add to your .env file:\n' +
@@ -174,27 +175,25 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
           '  DB_PORT=5433\n' +
           '  DB_USER=postgres\n' +
           '  DB_PASSWORD=your_password\n' +
-          '  DB_NAME=postgres\n' +
-          '  SSH_HOST=209.145.59.219\n' +
-          '  SSH_USER=postgres\n' +
-          '  SSH_PASSWORD=your_ssh_password',
+          '  DB_NAME=postgres',
       );
     }
 
     if (!sshPassword && !sshPrivateKey) {
       throw new Error(
-        'SSH authentication requires either SSH_PASSWORD or SSH_PRIVATE_KEY.\n\n' +
-          'Please add one of these to your .env file:\n\n' +
-          'Option 1 - Password:\n' +
-          '  SSH_PASSWORD=your_ssh_password\n\n' +
-          'Option 2 - Private Key:\n' +
-          '  SSH_PRIVATE_KEY=/path/to/your/private/key\n\n' +
-          'If you cannot access via SSH, use direct connection instead:\n' +
+        'SSH authentication requires a password or private key.\n\n' +
+          'By default, DB_PASSWORD is used for SSH authentication.\n' +
+          'If DB_PASSWORD is not set, add it to your .env file:\n' +
+          '  DB_PASSWORD=your_password\n\n' +
+          'Or specify separate SSH credentials:\n' +
+          '  SSH_PASSWORD=your_ssh_password\n' +
+          '  (or SSH_PRIVATE_KEY=/path/to/key)\n\n' +
+          'Or use direct connection instead:\n' +
           '  npm run check:schema',
       );
     }
 
-    console.log('🔐 Setting up SSH tunnel...');
+    console.log(`🔐 Connecting to SSH server: ${sshUser}@${sshHost}:${sshPort}`);
     await createSSHTunnel({
       sshHost,
       sshPort,
