@@ -1,0 +1,16 @@
+# Schema Validation - Generated Files
+# Uncomment to ignore generated reports (recommended for CI/CD)
+
+# Validation reports (commit these to track issues over time)
+# schema-validation-report.json
+# SCHEMA_VALIDATION_REPORT.md
+
+# Fix reports (commit these to track fixes applied)
+# schema-fix-report.json
+# SCHEMA_FIX_REPORT.md
+
+# Backups (never commit these - they're temporary)
+backups/
+
+# Test files (cleanup)
+test-parser*.ts
