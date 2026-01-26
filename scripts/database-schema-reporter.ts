@@ -263,6 +263,10 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
     // Parse DATABASE_URL to add SSL configuration
     const sslEnabled = process.env.DB_SSL === 'true';
 
+    // Debug: Show what we're reading
+    console.log(`🔍 DB_SSL environment variable: "${process.env.DB_SSL}"`);
+    console.log(`🔒 SSL: ${sslEnabled ? 'Enabled' : 'Disabled'}`);
+
     connectionConfig = {
       connectionString: databaseUrl,
       ssl: sslEnabled
@@ -273,8 +277,6 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
       // Add connection timeout
       connectionTimeoutMillis: 10000,
     };
-
-    console.log(`🔒 SSL: ${sslEnabled ? 'Enabled' : 'Disabled'}`);
   }
 
   const client = new Client(connectionConfig);
