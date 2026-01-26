@@ -43,21 +43,81 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
 
-    // Determine if this is /leads/:id/contacts or /companies/:id/contacts
-    const entityType = pathParts[0]; // 'leads' or 'companies'
-    const entityId = pathParts[1];
-    const contactId = pathParts[3]; // If accessing specific contact
+    // Support both:
+    // 1. /api/contacts (all contacts)
+    // 2. /api/leads/:id/contacts or /api/companies/:id/contacts (specific entity)
+    const entityType = pathParts.length > 1 ? pathParts[0] : null; // 'leads' or 'companies'
+    const entityId = pathParts.length > 1 ? pathParts[1] : null;
+    const contactId = pathParts.length > 3 ? pathParts[3] : null; // If accessing specific contact
 
-    // Map entity type to table name
+    // GET /api/contacts - List ALL contacts (from company_contacts table)
+    if (req.method === 'GET' && !entityType && !entityId) {
+      const searchParams = url.searchParams;
+      const page = parseInt(searchParams.get('page') || '1');
+      const limit = parseInt(searchParams.get('limit') || '25');
+      const search = searchParams.get('search') || '';
+      const status = searchParams.get('status') || '';
+      const ownerId = searchParams.get('ownerId') || '';
+      const sortBy = searchParams.get('sortBy') || 'updated_at';
+      const sortOrder = searchParams.get('sortOrder') || 'desc';
+
+      const offset = (page - 1) * limit;
+
+      // Build query
+      let query = admin
+        .from('company_contacts')
+        .select('*, business_records!company_contacts_company_id_fkey(company_name)', {
+          count: 'exact',
+        })
+        .eq('tenant_id', tenantId);
+
+      // Apply filters
+      if (search) {
+        query = query.or(
+          `first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`,
+        );
+      }
+      if (status && status !== 'all') {
+        query = query.eq('lead_status', status);
+      }
+      if (ownerId && ownerId !== 'all') {
+        query = query.eq('owner_id', ownerId);
+      }
+
+      // Apply sorting and pagination
+      query = query
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .range(offset, offset + limit - 1);
+
+      const { data: contacts, error, count } = await query;
+
+      if (error) {
+        console.error('Error fetching all contacts:', error);
+        return createCorsResponse({ error: 'Failed to fetch contacts' }, 500, req);
+      }
+
+      return createCorsResponse(
+        {
+          contacts: contacts || [],
+          total: count || 0,
+          page,
+          limit,
+        },
+        200,
+        req,
+      );
+    }
+
+    // Map entity type to table name (for entity-specific requests)
     const tableName = entityType === 'leads' ? 'lead_contacts' : 'customer_contacts';
     const foreignKeyColumn = entityType === 'leads' ? 'lead_id' : 'customer_id';
 
-    if (!entityId) {
+    if (!entityId && entityType) {
       return createCorsResponse({ error: 'Entity ID is required' }, 400, req);
     }
 
-    // GET /leads/:id/contacts or /companies/:id/contacts - List contacts
-    if (req.method === 'GET' && !contactId) {
+    // GET /leads/:id/contacts or /companies/:id/contacts - List contacts for specific entity
+    if (req.method === 'GET' && entityId && !contactId) {
       const { data: contacts, error } = await admin
         .from(tableName)
         .select('*')
