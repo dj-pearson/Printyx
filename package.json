@@ -64,7 +64,8 @@
     "fix:transformations": "tsx tools/data-transformation-fixer.ts",
     "fix:transformations:dry-run": "tsx tools/data-transformation-fixer.ts --dry-run",
     "check:system": "tsx scripts/comprehensive-system-check.ts",
-    "check:schema": "tsx scripts/database-schema-reporter.ts"
+    "check:schema": "tsx scripts/database-schema-reporter.ts",
+    "check:schema:ssh": "tsx scripts/database-schema-reporter.ts --ssh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
@@ -245,10 +246,12 @@
     "playwright": "^1.57.0",
     "postcss": "^8.4.47",
     "prettier": "^3.3.3",
+    "ssh2": "^1.17.0",
     "supertest": "^7.0.0",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
+    "tunnel-ssh": "^5.2.0",
     "typescript": "5.6.3",
     "vite": "^5.4.19",
     "vitest": "^3.0.0"

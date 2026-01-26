@@ -163,7 +163,6 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
 
     // Priority 2: x-tenant-id header (for self-hosted and API scenarios)
     // SECURITY: Validate header against user's JWT tenant to prevent cross-tenant access
-    const headerTenantId = req.get('x-tenant-id');
     if (headerTenantId && headerTenantId.length > 0) {
       const validation = validateTenantHeader(req, headerTenantId);
 

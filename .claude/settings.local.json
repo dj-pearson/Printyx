@@ -29,7 +29,11 @@
       "Bash(do if ! grep -q \"tenantId\" \"$f\")",
       "Bash(then basename \"$f\" fi done)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx tsc:*)",
-      "Bash(npm run check:system:*)"
+      "Bash(npm run check:system:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout 30 npm run dev:*)",
+      "Bash(timeout 10 powershell:*)"
     ],
     "deny": [],
     "ask": []

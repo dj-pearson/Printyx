@@ -2,7 +2,7 @@
 /**
  * Database Schema Reporter
  *
- * Connects to the Supabase PostgreSQL database and generates:
+ * Connects to the Supabase PostgreSQL database via SSH tunnel and generates:
  * - Comprehensive schema documentation
  * - Table/column reference for validation
  * - Easy-to-read markdown report
@@ -12,6 +12,8 @@
 import pg from 'pg';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+import { Client as SSHClient } from 'ssh2';
+import * as net from 'net';
 
 const { Client } = pg;
 
@@ -43,22 +45,175 @@ interface SchemaReport {
   };
 }
 
-async function getDatabaseConnection(): Promise<Client> {
-  const databaseUrl = process.env.DATABASE_URL;
+interface SSHTunnelConfig {
+  sshHost: string;
+  sshPort: number;
+  sshUser: string;
+  sshPassword?: string;
+  sshPrivateKey?: string;
+  dbHost: string;
+  dbPort: number;
+  localPort: number;
+}
 
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL environment variable not set');
+let sshClient: SSHClient | null = null;
+let tunnelServer: net.Server | null = null;
+
+async function createSSHTunnel(config: SSHTunnelConfig): Promise<void> {
+  return new Promise((resolve, reject) => {
+    sshClient = new SSHClient();
+
+    sshClient.on('ready', () => {
+      console.log('✅ SSH connection established');
+
+      // Create local server that forwards to remote database
+      tunnelServer = net.createServer((localSocket) => {
+        sshClient!.forwardOut(
+          '127.0.0.1',
+          config.localPort,
+          config.dbHost,
+          config.dbPort,
+          (err, remoteSocket) => {
+            if (err) {
+              console.error('❌ SSH forwarding error:', err);
+              localSocket.end();
+              return;
+            }
+            localSocket.pipe(remoteSocket);
+            remoteSocket.pipe(localSocket);
+          },
+        );
+      });
+
+      tunnelServer.listen(config.localPort, '127.0.0.1', () => {
+        console.log(
+          `✅ SSH tunnel active: localhost:${config.localPort} → ${config.dbHost}:${config.dbPort}`,
+        );
+        resolve();
+      });
+
+      tunnelServer.on('error', (err) => {
+        reject(err);
+      });
+    });
+
+    sshClient.on('error', (err) => {
+      console.error('❌ SSH connection error:', err);
+      reject(err);
+    });
+
+    // Connect to SSH server
+    const sshConfig: any = {
+      host: config.sshHost,
+      port: config.sshPort,
+      username: config.sshUser,
+    };
+
+    if (config.sshPrivateKey) {
+      sshConfig.privateKey = config.sshPrivateKey;
+    } else if (config.sshPassword) {
+      sshConfig.password = config.sshPassword;
+    } else {
+      reject(new Error('SSH authentication requires either password or private key'));
+      return;
+    }
+
+    console.log(
+      `🔐 Connecting to SSH server: ${config.sshUser}@${config.sshHost}:${config.sshPort}`,
+    );
+    sshClient.connect(sshConfig);
+  });
+}
+
+async function closeSSHTunnel(): Promise<void> {
+  return new Promise((resolve) => {
+    if (tunnelServer) {
+      tunnelServer.close(() => {
+        console.log('🔌 SSH tunnel closed');
+        if (sshClient) {
+          sshClient.end();
+          sshClient = null;
+        }
+        tunnelServer = null;
+        resolve();
+      });
+    } else {
+      if (sshClient) {
+        sshClient.end();
+        sshClient = null;
+      }
+      resolve();
+    }
+  });
+}
+
+async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
+  let connectionConfig: any;
+
+  if (useSSH) {
+    // SSH tunnel mode - use individual env vars
+    const sshHost = process.env.SSH_HOST || process.env.DB_HOST;
+    const sshPort = parseInt(process.env.SSH_PORT || '22');
+    const sshUser = process.env.SSH_USER || process.env.DB_USER || 'postgres';
+    const sshPassword = process.env.SSH_PASSWORD || process.env.DB_PASSWORD;
+    const sshPrivateKey = process.env.SSH_PRIVATE_KEY;
+
+    const dbHost = process.env.DB_HOST;
+    const dbPort = parseInt(process.env.DB_PORT || '5432');
+    const dbUser = process.env.DB_USER || 'postgres';
+    const dbPassword = process.env.DB_PASSWORD;
+    const dbName = process.env.DB_NAME || 'postgres';
+    const localPort = parseInt(process.env.LOCAL_TUNNEL_PORT || '5532');
+
+    if (!sshHost || !dbHost) {
+      throw new Error(
+        'SSH_HOST (or DB_HOST) and DB_HOST environment variables required for SSH mode',
+      );
+    }
+
+    console.log('🔐 Setting up SSH tunnel...');
+    await createSSHTunnel({
+      sshHost,
+      sshPort,
+      sshUser,
+      sshPassword,
+      sshPrivateKey,
+      dbHost,
+      dbPort,
+      localPort,
+    });
+
+    // Wait a moment for tunnel to be fully ready
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    connectionConfig = {
+      host: '127.0.0.1',
+      port: localPort,
+      user: dbUser,
+      password: dbPassword,
+      database: dbName,
+      ssl: false, // Local tunnel doesn't need SSL
+    };
+  } else {
+    // Direct connection mode (existing behavior)
+    const databaseUrl = process.env.DATABASE_URL;
+
+    if (!databaseUrl) {
+      throw new Error('DATABASE_URL environment variable not set');
+    }
+
+    connectionConfig = {
+      connectionString: databaseUrl,
+      ssl:
+        process.env.DB_SSL === 'true'
+          ? {
+              rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+            }
+          : false,
+    };
   }
 
-  const client = new Client({
-    connectionString: databaseUrl,
-    ssl:
-      process.env.DB_SSL === 'true'
-        ? {
-            rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
-          }
-        : false,
-  });
+  const client = new Client(connectionConfig);
 
   await client.connect();
   console.log('✅ Connected to database');
@@ -312,11 +467,20 @@ function generateValidationHelper(report: SchemaReport): string {
 async function main() {
   console.log('🔍 Starting Database Schema Report Generation...\n');
 
+  // Check if SSH mode is requested
+  const useSSH = process.env.USE_SSH_TUNNEL === 'true' || process.argv.includes('--ssh');
+
+  if (useSSH) {
+    console.log('🔐 SSH Tunnel Mode Enabled\n');
+  } else {
+    console.log('🔌 Direct Connection Mode\n');
+  }
+
   let client: Client | null = null;
 
   try {
     // Connect to database
-    client = await getDatabaseConnection();
+    client = await getDatabaseConnection(useSSH);
 
     // Get all tables
     console.log('📊 Fetching all tables and columns...');
@@ -338,7 +502,8 @@ async function main() {
     // Create report
     const report: SchemaReport = {
       generatedAt: new Date().toISOString(),
-      database: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'Unknown',
+      database:
+        process.env.DB_HOST || process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'Unknown',
       totalTables: tables.length,
       totalColumns,
       schemas,
@@ -388,6 +553,9 @@ async function main() {
     if (client) {
       await client.end();
       console.log('🔌 Database connection closed');
+    }
+    if (useSSH) {
+      await closeSSHTunnel();
     }
   }
 }

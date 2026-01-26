@@ -6678,9 +6678,7 @@ export const insertCompanyBrandingProfileSchema = createInsertSchema(companyBran
   updatedAt: true,
 });
 
-// Proposal System Types
-export type ProposalTemplate = typeof proposalTemplates.$inferSelect;
-export type InsertProposalTemplate = z.infer<typeof insertProposalTemplateSchema>;
+// Proposal System Types (additional - ProposalTemplate already defined above at line ~6088)
 export type ProposalTemplateSection = typeof proposalTemplateSections.$inferSelect;
 export type InsertProposalTemplateSection = z.infer<typeof insertProposalTemplateSectionSchema>;
 export type ProposalContentBlock = typeof proposalContentBlocks.$inferSelect;

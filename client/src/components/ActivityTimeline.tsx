@@ -134,9 +134,7 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (activityId: string) => {
-      await apiRequest(`/api/activities/${activityId}`, {
-        method: 'DELETE',
-      });
+      await apiRequest(`/api/activities/${activityId}`, 'DELETE');
     },
     onSuccess: () => {
       toast({
@@ -159,10 +157,7 @@ export function ActivityTimeline({ businessRecordId, className }: ActivityTimeli
   // Edit mutation
   const editMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest(`/api/activities/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      return await apiRequest(`/api/activities/${id}`, 'PATCH', data);
     },
     onSuccess: () => {
       toast({

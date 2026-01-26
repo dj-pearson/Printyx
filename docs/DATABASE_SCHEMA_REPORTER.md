@@ -20,12 +20,27 @@ The Database Schema Reporter is a comprehensive tool that connects to your Supab
 
 ### Run the Reporter
 
+**Direct Connection (default):**
 ```bash
 npm run check:schema
 ```
 
+**SSH Tunnel Mode:**
+```bash
+npm run check:schema:ssh
+```
+
+**Use SSH mode when:**
+- Database is behind a firewall
+- You have SSH access to the database server
+- You want an extra layer of security
+- Direct database connection is blocked
+
+**📖 See full SSH guide:** `docs/DATABASE_SCHEMA_REPORTER_SSH.md`
+
 ### What You Need
 
+#### Direct Connection Mode
 The script uses your existing `DATABASE_URL` environment variable from `.env`:
 
 ```env
@@ -34,7 +49,22 @@ DB_SSL=true
 DB_SSL_REJECT_UNAUTHORIZED=false
 ```
 
-**No additional configuration needed!** It uses the same connection as your app.
+#### SSH Tunnel Mode
+Add these to your `.env`:
+
+```env
+DB_HOST=209.145.59.219
+DB_PORT=5433
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_NAME=postgres
+
+SSH_HOST=209.145.59.219   # Often same as DB_HOST
+SSH_PORT=22
+SSH_USER=postgres
+SSH_PASSWORD=your_ssh_password
+# OR: SSH_PRIVATE_KEY=/path/to/key
+```
 
 ---
 
