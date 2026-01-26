@@ -82,28 +82,38 @@ function scanClientCode(dir: string, edgeFunctions: string[], dbTables: string[]
     const lines = content.split('\n');
 
     lines.forEach((line, index) => {
-      // Check for Edge Function calls
-      const edgeFunctionMatch = line.match(/['"`]\/([a-z-]+)\/[^'"`]*['"`]/g);
-      if (edgeFunctionMatch) {
-        edgeFunctionMatch.forEach((match) => {
-          const cleanMatch = match.replace(/['"`]/g, '');
-          const functionName = cleanMatch.split('/')[1];
+      // Check for API endpoint calls (but not route definitions)
+      // Look for: fetch('/api/...')  or  apiRequest('/api/...')
+      // Skip: <Route path="/..." (these are route definitions, not API calls)
+      const isRouteDefinition = line.includes('<Route') || line.includes('path=');
 
-          // Skip common API paths that aren't edge functions
-          if (['api', 'rest', 'auth', 'storage'].includes(functionName)) {
-            return;
-          }
+      if (!isRouteDefinition) {
+        const apiCallMatch = line.match(
+          /(?:fetch|apiRequest|axios\.get|axios\.post)\s*\(\s*['"`](\/api\/[a-z-]+)/gi,
+        );
+        if (apiCallMatch) {
+          apiCallMatch.forEach((match) => {
+            // Extract the API path from the match
+            const pathMatch = match.match(/['"`](\/api\/[a-z-]+)/i);
+            if (!pathMatch) return;
 
-          if (!edgeFunctions.includes(functionName)) {
+            const apiPath = pathMatch[1];
+            const functionName = apiPath.split('/')[2]; // /api/function-name
+
+            // Skip if it's a known edge function
+            if (edgeFunctions.includes(functionName)) {
+              return;
+            }
+
             issues.push({
               severity: 'error',
               file: fullPath,
               line: index + 1,
-              issue: `Calling non-existent edge function: ${functionName}`,
-              suggestion: `Create edge function or use correct endpoint. Available: ${edgeFunctions.join(', ')}`,
+              issue: `API call to non-existent edge function: ${apiPath}`,
+              suggestion: `Create '${functionName}' edge function or use correct endpoint. Available: ${edgeFunctions.slice(0, 10).join(', ')}...`,
             });
-          }
-        });
+          });
+        }
       }
 
       // Check for direct Supabase REST API calls
@@ -119,15 +129,19 @@ function scanClientCode(dir: string, edgeFunctions: string[], dbTables: string[]
         });
       }
 
-      // Check for missing queryFn in useQuery
+      // Check for missing queryFn in useQuery that references an API endpoint
       if (line.includes('useQuery') && !line.includes('queryFn')) {
-        const nextLines = lines.slice(index, index + 5).join(' ');
-        if (!nextLines.includes('queryFn')) {
+        const nextLines = lines.slice(index, index + 10).join(' ');
+        // Only flag if it's making an API call but missing queryFn
+        const hasApiCall = nextLines.match(/(?:fetch|apiRequest|axios)\s*\(/i);
+        const hasQueryFn = nextLines.includes('queryFn');
+
+        if (hasApiCall && !hasQueryFn) {
           issues.push({
             severity: 'warning',
             file: fullPath,
             line: index + 1,
-            issue: 'useQuery missing queryFn - may cause data transformation issues',
+            issue: 'useQuery with API call missing queryFn - may cause data transformation issues',
             suggestion: 'Add queryFn with proper snake_case → camelCase transformation',
           });
         }
@@ -197,8 +211,7 @@ async function main() {
 
   // Save detailed report
   const report = JSON.stringify(issues, null, 2);
-  const fs = require('fs');
-  fs.writeFileSync('system-check-report.json', report);
+  writeFileSync('system-check-report.json', report);
   console.log('\n📄 Detailed report saved to: system-check-report.json');
 }
 
