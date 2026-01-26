@@ -9,6 +9,7 @@
  * - JSON export for programmatic validation
  */
 
+import 'dotenv/config';
 import pg from 'pg';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
