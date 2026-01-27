@@ -151,7 +151,7 @@ export default function Contacts() {
     view: 'all',
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [sortBy, setSortBy] = useState('lastActivityDate');
+  const [sortBy, setSortBy] = useState('last_contact_date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [pageSize, setPageSize] = useState(25);
   const [currentPage, setCurrentPage] = useState(1);
