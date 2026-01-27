@@ -319,7 +319,12 @@ export function useSupabaseAuth() {
 
         // If still no role found, provide a default role for navigation
         if (!roleData) {
-          console.warn('No role found (neither role string nor role_id), using default user role');
+          // Only log in development to reduce console noise in production
+          if (import.meta.env.DEV) {
+            console.warn(
+              'No role found (neither role string nor role_id), using default user role',
+            );
+          }
           roleData = {
             id: 'default',
             name: 'User',
