@@ -1,0 +1,3716 @@
+﻿{
+  "UnusedFunctions": [
+    "appointments",
+    "db-check",
+    "dedup-companies",
+    "exports",
+    "files",
+    "hello",
+    "opportunities",
+    "pipeline",
+    "settings",
+    "signup",
+    "teams"
+  ],
+  "ExpressRoutes": [
+    ".well-known",
+    "{param}",
+    "accessories",
+    "accessory-model-compatibility",
+    "access-review",
+    "accounts-payable",
+    "accounts-receivable",
+    "active-alerts",
+    "activities",
+    "activity-trends",
+    "advanced-reports",
+    "ai-analytics",
+    "alerts",
+    "analytics",
+    "analyze",
+    "analyze-all",
+    "analyze-lead",
+    "analyze-service",
+    "articles",
+    "assign",
+    "assign-lead",
+    "at-risk",
+    "audit",
+    "audit-logs",
+    "auth",
+    "auto-invoice",
+    "auto-invoices",
+    "auto-lead-routing",
+    "automation",
+    "backfill",
+    "billing",
+    "build-processes",
+    "bulk-operations",
+    "bulk-qr-codes",
+    "business-analytics",
+    "business-process",
+    "business-records",
+    "calculator",
+    "cancel",
+    "capacity",
+    "catalog",
+    "categories",
+    "chart-of-accounts",
+    "check-inventory",
+    "checkout",
+    "churn-analysis",
+    "churn-predictions",
+    "classify-inquiry",
+    "client-metrics",
+    "clients",
+    "clone",
+    "cohort-analysis",
+    "commission",
+    "companies",
+    "company-contacts",
+    "compliance-settings",
+    "config",
+    "configs",
+    "consent",
+    "contacts",
+    "containment",
+    "content",
+    "contract",
+    "contract-renewals",
+    "contracts",
+    "contract-tiered-rates",
+    "conversion-funnel",
+    "convert-lead",
+    "convert-trial",
+    "corrections",
+    "create",
+    "create-order",
+    "crm",
+    "csrf-token",
+    "current",
+    "customer-portal",
+    "customers",
+    "customer-success",
+    "custom-prompt",
+    "dashboard",
+    "dashboards",
+    "data-access-logs",
+    "database-tables",
+    "data-export",
+    "data-sources",
+    "deal-desk",
+    "deals",
+    "deals-management",
+    "deal-stages",
+    "deduplication",
+    "delivery-schedules",
+    "demos",
+    "deployment-readiness",
+    "device",
+    "devices",
+    "diagnostics",
+    "disable",
+    "discounts",
+    "dispatch",
+    "document-field-mappings",
+    "document-management",
+    "documents",
+    "document-templates",
+    "dpa",
+    "enable",
+    "enabled-products",
+    "enrichment",
+    "env",
+    "equipment",
+    "equipment-analytics",
+    "equipment-disposal",
+    "equipment-health",
+    "equipment-lifecycle",
+    "equipment-maintenance",
+    "equipment-packages",
+    "equipment-usage",
+    "erp-integration",
+    "execute-action",
+    "execute-query",
+    "expansion-opportunities",
+    "expiring",
+    "exports",
+    "features",
+    "feedback",
+    "financial",
+    "fleet",
+    "fpy-metrics",
+    "gdpr-requests",
+    "generate",
+    "generate-code",
+    "generate-proposal",
+    "goals-tracking",
+    "handoff-tasks",
+    "handoff-task-templates",
+    "health",
+    "health-scores",
+    "health-trends",
+    "heartbeat",
+    "high-value-signups",
+    "history",
+    "image-sitemap.xml",
+    "impersonate",
+    "implementation-projects",
+    "import",
+    "incident-response",
+    "incidents",
+    "integration-hub",
+    "integrations",
+    "interventions",
+    "inventory",
+    "kpis",
+    "latest-metrics",
+    "layout",
+    "layouts",
+    "lead-assignment-history",
+    "lead-assignment-queue",
+    "lead-assignment-rules",
+    "leads",
+    "llms.txt",
+    "location",
+    "log-call",
+    "log-demo",
+    "log-email",
+    "log-event",
+    "log-meeting",
+    "low-supplies",
+    "maintenance",
+    "maintenance-appointments",
+    "maintenance-availability",
+    "managed-services",
+    "manufacturer-integrations",
+    "match",
+    "me",
+    "meta.json",
+    "meter-readings",
+    "meter-submissions",
+    "missing-ids",
+    "mobile",
+    "mobile-field",
+    "models",
+    "monitoring",
+    "monitoring-clients",
+    "new",
+    "notifications",
+    "onboarding",
+    "opportunities",
+    "orders",
+    "organizational-units",
+    "overview",
+    "parts-availability",
+    "parts-orders",
+    "parts-requests",
+    "patterns",
+    "pending-tasks",
+    "performance",
+    "permission-overrides",
+    "permissions",
+    "phone-in-tickets",
+    "phone-tickets",
+    "pipeline",
+    "pipeline-config",
+    "pipeline-forecast",
+    "pipeline-stages",
+    "plans",
+    "portal",
+    "predictive-analytics",
+    "predictive-dispatch",
+    "predictive-maintenance",
+    "preferences",
+    "preview",
+    "preview-slug",
+    "preview-upgrade",
+    "pricing",
+    "printer-monitoring",
+    "processed-emails",
+    "process-emails",
+    "product-accessories",
+    "product-models",
+    "products",
+    "professional-services",
+    "projects",
+    "proposals",
+    "proposal-templates",
+    "provision",
+    "public",
+    "purchase-order-items",
+    "purchase-orders",
+    "quickbooks",
+    "quotes",
+    "rbac-audit-logs",
+    "remote-monitoring",
+    "renewal-activities",
+    "renewal-playbooks",
+    "rep-capacity",
+    "reports",
+    "revenue-metrics",
+    "robots.txt",
+    "roles",
+    "routing-rules",
+    "rules",
+    "salesforce",
+    "sales-forecasting-rules",
+    "sales-forecasts",
+    "sales-handoffs",
+    "sales-performance",
+    "sales-performance-metrics",
+    "sales-pipeline",
+    "sales-territories",
+    "sales-trends",
+    "satisfaction",
+    "schedule-maintenance",
+    "schema.json",
+    "search",
+    "security",
+    "security-alerts",
+    "security-compliance",
+    "security-dashboard",
+    "security-sessions",
+    "seed",
+    "seo",
+    "serial-numbers",
+    "service",
+    "service-analysis",
+    "service-products",
+    "service-requests",
+    "service-tickets",
+    "setup-intent",
+    "signature-analytics",
+    "signature-requests",
+    "signature-templates",
+    "signups",
+    "signups-analytics",
+    "sitemap.xml",
+    "snapshot",
+    "snapshots",
+    "social-media",
+    "software-products",
+    "statement",
+    "statistics",
+    "stats",
+    "status",
+    "stripe",
+    "submit",
+    "subscriptions",
+    "suggestions",
+    "supplies",
+    "supply",
+    "support-response",
+    "sync",
+    "system-resources",
+    "tasks",
+    "technician-management",
+    "technician-sessions",
+    "templates",
+    "tenants",
+    "test",
+    "test-connection",
+    "threats",
+    "tickets",
+    "trial-funnel",
+    "trials",
+    "trigger-billing",
+    "trigger-service",
+    "types",
+    "universal-search",
+    "upgrade",
+    "usage",
+    "usage-analytics",
+    "user",
+    "user-assignments",
+    "users",
+    "validate",
+    "validate-discount",
+    "vendors",
+    "versions",
+    "vpat",
+    "warehouse-kitting-operations",
+    "warehouse-operations",
+    "webhooks",
+    "white-label",
+    "widgets",
+    "workflow-automation",
+    "workflow-rules",
+    "workflows"
+  ],
+  "ExistingFunctions": [
+    "activities",
+    "analytics",
+    "appointments",
+    "business-records",
+    "catalog",
+    "companies",
+    "company-contacts",
+    "contacts",
+    "contracts",
+    "crm",
+    "cross-module",
+    "csrf-token",
+    "customers",
+    "dashboard",
+    "db-check",
+    "deal-stages",
+    "deals",
+    "dedup-companies",
+    "demos",
+    "enabled-products",
+    "equipment",
+    "exports",
+    "files",
+    "hello",
+    "import",
+    "inventory",
+    "invoices",
+    "leases",
+    "locations",
+    "me",
+    "meter-readings",
+    "notifications",
+    "onboarding",
+    "opportunities",
+    "performance",
+    "phone-in-tickets",
+    "pipeline",
+    "pipeline-config",
+    "pricing",
+    "product-models",
+    "products",
+    "projects",
+    "proposals",
+    "quotes",
+    "reports",
+    "roles",
+    "sales-pipeline",
+    "search",
+    "service-analytics",
+    "service-tickets",
+    "settings",
+    "signup",
+    "software-products",
+    "tasks",
+    "teams",
+    "technicians",
+    "territories",
+    "users"
+  ],
+  "Summary": {
+    "TotalEdgeFunctions": 58,
+    "MissingNeedsCreation": 147,
+    "WorkingWithCalls": 47,
+    "UnusedNoCalls": 11
+  },
+  "MissingFunctions": [
+    {
+      "CallCount": 111,
+      "Files": [
+        "components\\billing\\billing-rule-dialog.tsx",
+        "components\\billing\\invoice-email-dialog.tsx",
+        "components\\billing\\invoice-pdf-preview.tsx",
+        "components\\service\\TechnicianTicketWorkflow.tsx",
+        "pages\\AdvancedBillingEngine.tsx",
+        "pages\\Billing.tsx",
+        "pages\\BillingAnalytics.tsx",
+        "pages\\BillingRules.tsx",
+        "pages\\Invoices.tsx",
+        "pages\\MeterBilling.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "billing",
+      "Paths": [
+        "api/billing/rules",
+        "api/billing/rules/{param}",
+        "billing",
+        "api/billing/invoices/{param}/email",
+        "api/billing/invoices",
+        "api/billing/invoices/{param}/pdf",
+        "api/billing/service-entries",
+        "api/billing/configurations",
+        "api/billing/adjustments",
+        "api/billing/cycles/run",
+        "api/billing/analytics",
+        "api/billing/cycles",
+        "api/billing/payment-methods",
+        "api/billing/info",
+        "api/billing/address",
+        "api/billing/payment-methods/{param}",
+        "api/billing/analytics/churn-prediction",
+        "api/billing/analytics/lifetime-value",
+        "api/billing/analytics/revenue-forecast",
+        "api/billing/rules/{param}/{param}",
+        "api/billing/invoices/generate-from-contract",
+        "api/billing/invoices/{param}",
+        "api/billing/invoices/{param}/pay",
+        "api/billing/generate-invoices"
+      ]
+    },
+    {
+      "CallCount": 100,
+      "Files": [
+        "components\\customer-portal\\CustomerDashboard.tsx",
+        "components\\customer-portal\\CustomerPortalLogin.tsx",
+        "components\\customer-portal\\CustomerSatisfactionAnalyticsDashboard.tsx",
+        "components\\customer-portal\\CustomerSatisfactionForm.tsx",
+        "components\\customer-portal\\EquipmentHealthDashboard.tsx",
+        "components\\customer-portal\\MaintenanceSchedulingComponent.tsx",
+        "components\\customer-portal\\ServiceRequestForm.tsx",
+        "components\\customer-portal\\ServiceRequestsDashboard.tsx",
+        "components\\customer-portal\\UsageAnalyticsDashboard.tsx",
+        "pages\\CustomerPortal.tsx",
+        "pages\\CustomerSelfServicePortal.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "customer-portal",
+      "Paths": [
+        "api/customer-portal/dashboard",
+        "customer-portal",
+        "api/customer-portal/auth/reset-password",
+        "api/customer-portal/satisfaction/analytics",
+        "api/customer-portal/satisfaction/surveys/{param}",
+        "api/customer-portal/satisfaction/surveys/{param}/start",
+        "api/customer-portal/satisfaction/surveys/{param}/submit",
+        "api/customer-portal/satisfaction/surveys",
+        "api/customer-portal/equipment-health",
+        "api/customer-portal/maintenance-appointments",
+        "api/customer-portal/maintenance-availability",
+        "api/customer-portal/maintenance-appointments/{param}",
+        "api/customer-portal/maintenance-appointments/{param}/reschedule",
+        "api/customer-portal/equipment",
+        "api/customer-portal/service-requests",
+        "api/customer-portal/service-requests/{param}/history",
+        "api/customer-portal/usage-analytics",
+        "api/customer-portal/auth/login",
+        "api/customer-portal/auth/logout",
+        "api/customer-portal/notifications",
+        "api/customer-portal/supply-orders",
+        "api/customer-portal/knowledge-base"
+      ]
+    },
+    {
+      "CallCount": 91,
+      "Files": [
+        "components\\equipment\\EquipmentDisposalDialog.tsx",
+        "components\\equipment\\EquipmentTransitionDialog.tsx",
+        "components\\equipment\\EquipmentTransitionHistory.tsx",
+        "hooks\\useCrossModuleIntegration.ts",
+        "pages\\EquipmentLifecycleHub.tsx",
+        "pages\\EquipmentLifecycleManagement.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-equipment-lifecycle-state-machine.ts",
+      "Endpoint": "equipment-lifecycle",
+      "Paths": [
+        "api/equipment-lifecycle/{param}/transition",
+        "api/equipment-lifecycle/stages",
+        "equipment-lifecycle",
+        "api/equipment-lifecycle/metrics",
+        "api/equipment-lifecycle",
+        "api/equipment-lifecycle/purchase-orders",
+        "api/equipment-lifecycle/deliveries",
+        "api/equipment-lifecycle/installations",
+        "api/equipment-lifecycle/assets"
+      ]
+    },
+    {
+      "Paths": [
+        "api/platform-crm/assignment-rules",
+        "api/platform-crm/territories",
+        "api/platform-crm/managers",
+        "api/platform-crm/assignment-rules/{param}",
+        "api/platform-crm/assignment-rules/{param}/toggle",
+        "api/platform-crm/assignment-rules/{param}/test",
+        "platform-crm",
+        "api/platform-crm/business-records/{param}",
+        "api/platform-crm/business-records/{param}/convert-to-tenant",
+        "api/platform-crm/business-records",
+        "api/platform-crm/business-records/bulk/assign",
+        "api/platform-crm/business-records/export",
+        "api/platform-crm/customer-success/health",
+        "api/platform-crm/customer-success/metrics",
+        "api/platform-crm/customer-success/csms",
+        "api/platform-crm/scoring-models",
+        "api/platform-crm/scoring-rules",
+        "api/platform-crm/scoring-rules/{param}",
+        "api/platform-crm/territories/{param}"
+      ],
+      "Endpoint": "platform-crm",
+      "CallCount": 86,
+      "Files": [
+        "pages\\PlatformAssignmentRules.tsx",
+        "pages\\PlatformBusinessRecordDetail.tsx",
+        "pages\\PlatformBusinessRecords.tsx",
+        "pages\\PlatformCustomerSuccess.tsx",
+        "pages\\PlatformLeadScoring.tsx",
+        "pages\\PlatformTerritories.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 78,
+      "Files": [
+        "hooks\\useExternalIntegrations.ts",
+        "pages\\IntegrationHub.tsx",
+        "pages\\IntegrationsManagement.tsx",
+        "pages\\SystemIntegrations.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-integrations-real.ts",
+      "Endpoint": "integrations",
+      "Paths": [
+        "api/integrations/eautomate/config",
+        "api/integrations/eautomate/sync",
+        "api/integrations/salesforce/config",
+        "api/integrations/salesforce/sync",
+        "api/integrations/quickbooks/config",
+        "api/integrations/quickbooks/sync",
+        "api/integrations/bulk-sync",
+        "api/integrations/status",
+        "integrations",
+        "api/integrations",
+        "api/integrations/oauth/init",
+        "api/integrations/connect",
+        "api/integrations/{param}/disconnect",
+        "api/integrations/{param}/test"
+      ]
+    },
+    {
+      "CallCount": 72,
+      "Files": ["pages\\RootAdminSEO.tsx", "pages\\SEODashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-seo.ts",
+      "Endpoint": "seo",
+      "Paths": [
+        "api/seo/settings",
+        "api/seo/pages",
+        "api/seo/regenerate-sitemap",
+        "api/seo/regenerate-robots",
+        "api/seo/regenerate-llms",
+        "seo",
+        "api/seo/audit/history",
+        "api/seo/keywords",
+        "api/seo/competitors",
+        "api/seo/alerts",
+        "api/seo/crawl/results",
+        "api/seo/audit",
+        "api/seo/crawl",
+        "api/seo/images/analyze",
+        "api/seo/links/analyze",
+        "api/seo/links/broken",
+        "api/seo/redirects/check",
+        "api/seo/content/duplicates",
+        "api/seo/security/analyze",
+        "api/seo/mobile/analyze",
+        "api/seo/performance/check",
+        "api/seo/structured-data/validate",
+        "api/seo/content/optimize",
+        "api/seo/semantic/analyze",
+        "api/seo/sitemap/generate"
+      ]
+    },
+    {
+      "Paths": [
+        "api/knowledge-base/ratings",
+        "api/knowledge-base/votes",
+        "api/knowledge-base/ratings/{param}",
+        "api/knowledge-base/ratings/user/{param}",
+        "api/knowledge-base/votes/user/{param}",
+        "knowledge-base",
+        "api/knowledge-base/categories",
+        "api/knowledge-base/articles",
+        "api/knowledge-base/articles/{param}",
+        "api/knowledge-base/articles/{param}/publish",
+        "api/knowledge-base/analytics",
+        "api/knowledge-base/articles/{param}/archive"
+      ],
+      "Endpoint": "knowledge-base",
+      "CallCount": 65,
+      "Files": [
+        "components\\knowledge-base\\ArticleRatingWidget.tsx",
+        "pages\\admin\\ArticleEditor.tsx",
+        "pages\\admin\\KnowledgeBaseAdmin.tsx",
+        "pages\\KnowledgeArticle.tsx",
+        "pages\\KnowledgeBase.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/database-updater/start",
+        "api/database-updater/stop",
+        "api/database-updater/execute/{param}",
+        "api/database-updater/status",
+        "database-updater",
+        "api/database-updater/dry-run/{param}",
+        "api/database-updater/disable/{param}",
+        "api/database-updater/enable/{param}"
+      ],
+      "Endpoint": "database-updater",
+      "CallCount": 42,
+      "Files": ["pages\\admin\\DatabaseUpdaterPage.tsx", "pages\\DatabaseManagement.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/admin/knowledge-base/dashboard",
+        "api/admin/knowledge-base/feedback/pending",
+        "api/admin/knowledge-base/ai-queue",
+        "api/admin/knowledge-base/articles/bulk-update",
+        "api/admin/knowledge-base/feedback/{param}/resolve",
+        "api/admin/knowledge-base/ai-queue/{param}/retry",
+        "api/admin/knowledge-base/export",
+        "admin",
+        "api/admin/security/metrics",
+        "api/admin/audit-logs",
+        "api/admin/security/threats",
+        "api/admin/system/health",
+        "api/admin/tenants",
+        "api/admin/tenant-stats",
+        "api/admin/users",
+        "api/admin/user-stats",
+        "api/admin/execute-action"
+      ],
+      "Endpoint": "admin",
+      "CallCount": 42,
+      "Files": [
+        "pages\\admin\\KnowledgeBaseAdminDashboard.tsx",
+        "pages\\admin\\RootAdminSecurity.tsx",
+        "pages\\admin\\SystemSecurity.tsx",
+        "pages\\admin\\TenantManagement.tsx",
+        "pages\\admin\\UserManagement.tsx",
+        "pages\\AdminCommandCenter.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 37,
+      "Files": [
+        "pages\\ApprovalRequestDetail.tsx",
+        "pages\\ApprovalRulesConfiguration.tsx",
+        "pages\\DealDeskDashboard.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-deal-desk.ts",
+      "Endpoint": "deal-desk",
+      "Paths": [
+        "api/deal-desk/requests/{param}/comments",
+        "api/deal-desk/requests/{param}/decision",
+        "api/deal-desk/my-approvals",
+        "api/deal-desk/dashboard",
+        "deal-desk",
+        "api/deal-desk/rules",
+        "api/deal-desk/rules/{param}",
+        "api/deal-desk/requests"
+      ]
+    },
+    {
+      "CallCount": 36,
+      "Files": [
+        "pages\\AccountsPayable.tsx",
+        "pages\\PurchaseOrders.tsx",
+        "pages\\VendorManagement.tsx",
+        "pages\\Vendors.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-purchase-orders.ts",
+      "Endpoint": "vendors",
+      "Paths": ["api/vendors", "vendors", "api/vendors/{param}"]
+    },
+    {
+      "Paths": [
+        "api/root-admin/overview",
+        "api/root-admin/system-resources",
+        "api/root-admin/pending-tasks",
+        "root-admin",
+        "api/root-admin/execute-query",
+        "api/root-admin/database-tables",
+        "api/root-admin/audit-logs",
+        "api/root-admin/tenants",
+        "api/root-admin/security-alerts",
+        "api/root-admin/signups",
+        "api/root-admin/signups-analytics",
+        "api/root-admin/trial-funnel",
+        "api/root-admin/high-value-signups"
+      ],
+      "Endpoint": "root-admin",
+      "CallCount": 34,
+      "Files": [
+        "pages\\AdminCommandCenter.tsx",
+        "pages\\AdminHub.tsx",
+        "pages\\DatabaseManagement.tsx",
+        "pages\\RootAdminDashboard.tsx",
+        "pages\\RootAdminSignupsCRM.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 34,
+      "Files": [
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\LineItemManager.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "pages\\EnhancedProductAccessories.tsx",
+        "pages\\ProductAccessories.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "product-accessories",
+      "Paths": ["product-accessories", "api/product-accessories", "api/product-accessories/{param}"]
+    },
+    {
+      "CallCount": 34,
+      "Files": [
+        "pages\\MobileFieldService.tsx",
+        "pages\\MobileOptimization.tsx",
+        "pages\\MobileServiceApp.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-mobile.ts",
+      "Endpoint": "mobile",
+      "Paths": [
+        "api/mobile/sessions",
+        "api/mobile/photos",
+        "api/mobile/photos/upload",
+        "api/mobile/sessions/{param}",
+        "mobile",
+        "api/mobile/metrics",
+        "api/mobile/devices",
+        "api/mobile/service-report",
+        "api/mobile/jobs/{param}/status",
+        "api/mobile/dashboard",
+        "api/mobile/route-optimization"
+      ]
+    },
+    {
+      "CallCount": 32,
+      "Files": ["pages\\FinancialForecasting.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "financial",
+      "Paths": [
+        "api/financial/metrics",
+        "api/financial/cash-flow",
+        "api/financial/kpis",
+        "api/financial/forecasts",
+        "api/financial/profitability/run",
+        "api/financial/profitability",
+        "financial"
+      ]
+    },
+    {
+      "CallCount": 32,
+      "Files": ["hooks\\useSubscription.ts"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-admin-subscriptions.ts",
+      "Endpoint": "subscriptions",
+      "Paths": [
+        "api/subscriptions/current",
+        "api/subscriptions/plans",
+        "api/subscriptions/usage",
+        "api/subscriptions/notifications",
+        "api/subscriptions/create",
+        "api/subscriptions/upgrade",
+        "api/subscriptions/cancel",
+        "api/subscriptions/convert-trial",
+        "api/subscriptions/stripe/config",
+        "api/subscriptions/checkout",
+        "api/subscriptions/checkout/addon",
+        "api/subscriptions/portal",
+        "api/subscriptions/setup-intent",
+        "api/subscriptions/notifications/{param}/dismiss",
+        "api/subscriptions/preview-upgrade",
+        "api/subscriptions/checkout/session/{param}",
+        "subscriptions"
+      ]
+    },
+    {
+      "Paths": [
+        "platform-deals",
+        "api/platform-deals/pipeline",
+        "api/platform-deals/{param}",
+        "api/platform-deals/{param}/move-stage",
+        "api/platform-deals/{param}/close-won",
+        "api/platform-deals/{param}/close-lost"
+      ],
+      "Endpoint": "platform-deals",
+      "CallCount": 31,
+      "Files": [
+        "pages\\PlatformBusinessRecordDetail.tsx",
+        "pages\\PlatformCRMDashboard.tsx",
+        "pages\\PlatformDealDetail.tsx",
+        "pages\\PlatformDealsPipeline.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/oid-mappings",
+        "api/oid-mappings/manufacturers",
+        "api/oid-mappings/test",
+        "api/oid-mappings/export",
+        "api/oid-mappings/import",
+        "api/oid-mappings/{param}",
+        "oid-mappings"
+      ],
+      "Endpoint": "oid-mappings",
+      "CallCount": 30,
+      "Files": ["pages\\OidManagement.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 30,
+      "Files": [
+        "hooks\\useCrossModuleIntegration.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\PurchaseOrders.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-purchase-orders.ts",
+      "Endpoint": "purchase-orders",
+      "Paths": [
+        "api/purchase-orders",
+        "purchase-orders",
+        "api/purchase-orders/stats/summary",
+        "api/purchase-orders/suggestions/low-stock",
+        "api/purchase-orders/generate-from-suggestions",
+        "api/purchase-orders/{param}/status"
+      ]
+    },
+    {
+      "CallCount": 28,
+      "Files": ["components\\layout\\notification-preferences.tsx", "pages\\Settings.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "user",
+      "Paths": [
+        "api/user/notification-preferences",
+        "user",
+        "api/user/profile",
+        "api/user/password",
+        "api/user/preferences",
+        "api/user/accessibility",
+        "api/user/export",
+        "api/user/delete",
+        "api/user/settings"
+      ]
+    },
+    {
+      "CallCount": 26,
+      "Files": [
+        "pages\\PreventiveMaintenanceAutomation.tsx",
+        "pages\\PreventiveMaintenanceScheduling.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-preventive-maintenance.ts",
+      "Endpoint": "maintenance",
+      "Paths": [
+        "api/maintenance/auto-generate",
+        "api/maintenance/schedules",
+        "api/maintenance/templates",
+        "api/maintenance/analytics",
+        "api/maintenance/predictions",
+        "maintenance",
+        "api/maintenance/analytics/overview",
+        "api/maintenance/schedules/due"
+      ]
+    },
+    {
+      "Paths": [
+        "api/apollo/credentials",
+        "api/apollo/credentials/{param}",
+        "apollo",
+        "api/apollo/search",
+        "api/apollo/leads/bulk-add",
+        "api/apollo/leads/{param}/add-to-crm",
+        "api/apollo/stats"
+      ],
+      "Endpoint": "apollo",
+      "CallCount": 25,
+      "Files": [
+        "components\\integrations\\ApolloCredentialManager.tsx",
+        "pages\\ApolloLeadEnrichment.tsx",
+        "pages\\LeadIntelligenceDashboard.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/rbac/seed",
+        "api/rbac/status",
+        "api/rbac/roles",
+        "api/rbac/permissions",
+        "api/rbac/organizational-units",
+        "api/rbac",
+        "api/rbac/roles/{param}",
+        "rbac"
+      ],
+      "Endpoint": "rbac",
+      "CallCount": 24,
+      "Files": ["pages\\RoleManagement.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 22,
+      "Files": ["pages\\SocialMediaGenerator.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-social-media.ts",
+      "Endpoint": "social-media",
+      "Paths": [
+        "api/social-media/posts",
+        "api/social-media/cron-jobs",
+        "api/social-media/posts/generate",
+        "api/social-media/cron-jobs/{param}/execute",
+        "api/social-media/posts/{param}/broadcast",
+        "social-media"
+      ]
+    },
+    {
+      "Paths": [
+        "sales-reports",
+        "api/sales-reports/personal/quota",
+        "api/sales-reports/personal/pipeline",
+        "api/sales-reports/personal/activity",
+        "api/sales-reports/personal/leaderboard",
+        "api/sales-reports/personal/commissions",
+        "api/sales-reports/team/comparison",
+        "api/sales-reports/team/pipeline-summary"
+      ],
+      "Endpoint": "sales-reports",
+      "CallCount": 21,
+      "Files": [
+        "pages\\dashboards\\SalesRepDashboard.tsx",
+        "pages\\dashboards\\TeamLeadDashboard.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 20,
+      "Files": ["pages\\workflow-automation.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-admin-workflows.ts",
+      "Endpoint": "workflows",
+      "Paths": ["api/workflows", "api/workflows/dashboard", "api/workflows/{param}", "workflows"]
+    },
+    {
+      "CallCount": 20,
+      "Files": ["components\\dashboards\\role-dashboards.tsx", "pages\\TodayDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-today-dashboard.ts",
+      "Endpoint": "dashboards",
+      "Paths": [
+        "api/dashboards/service-manager",
+        "api/dashboards/sales-rep",
+        "api/dashboards/technician",
+        "api/dashboards/executive",
+        "dashboards",
+        "api/dashboards/today"
+      ]
+    },
+    {
+      "CallCount": 20,
+      "Files": [
+        "components\\customer\\CustomerSupplies.tsx",
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "pages\\Supplies.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-auto-supply-replenishment.ts",
+      "Endpoint": "supplies",
+      "Paths": ["api/supplies", "supplies", "api/supplies/{param}"]
+    },
+    {
+      "CallCount": 20,
+      "Files": ["pages\\CommissionManagement.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-commission.ts",
+      "Endpoint": "commission",
+      "Paths": [
+        "api/commission/plans",
+        "api/commission/calculations",
+        "api/commission/disputes",
+        "api/commission/calculate",
+        "api/commission/analytics{param}",
+        "api/commission/analytics",
+        "commission"
+      ]
+    },
+    {
+      "CallCount": 20,
+      "Files": ["pages\\MobileFieldOperations.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "mobile-field",
+      "Paths": [
+        "api/mobile-field/technicians",
+        "api/mobile-field/work-orders",
+        "api/mobile-field/voice-notes",
+        "api/mobile-field/metrics",
+        "mobile-field"
+      ]
+    },
+    {
+      "CallCount": 18,
+      "Files": ["pages\\PredictiveServiceDispatchDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-predictive-service-dispatch.ts",
+      "Endpoint": "predictive-dispatch",
+      "Paths": [
+        "api/predictive-dispatch/analyze-all",
+        "api/predictive-dispatch/analyze/{param}",
+        "api/predictive-dispatch/dashboard",
+        "api/predictive-dispatch/devices-at-risk",
+        "api/predictive-dispatch/technician-performance",
+        "predictive-dispatch"
+      ]
+    },
+    {
+      "CallCount": 18,
+      "Files": ["pages\\LeadDetail.tsx", "pages\\LeadsManagement.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "leads",
+      "Paths": ["api/leads/{param}/contacts", "api/leads/{param}", "api/leads", "leads"]
+    },
+    {
+      "Paths": [
+        "api/contract-renewal/dashboard",
+        "api/contract-renewal/at-risk",
+        "api/contract-renewal/expiring",
+        "api/contract-renewal/proposals",
+        "api/contract-renewal/analyze-all",
+        "contract-renewal"
+      ],
+      "Endpoint": "contract-renewal",
+      "CallCount": 18,
+      "Files": ["pages\\ContractRenewalDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\DocumentManagement.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-document-management.ts",
+      "Endpoint": "document-management",
+      "Paths": [
+        "api/document-management/workflows",
+        "api/document-management/upload",
+        "api/document-management/library{param}",
+        "api/document-management/search",
+        "api/document-management/library",
+        "document-management"
+      ]
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\ChartOfAccounts.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-financial.ts",
+      "Endpoint": "chart-of-accounts",
+      "Paths": ["api/chart-of-accounts", "api/chart-of-accounts/{param}", "chart-of-accounts"]
+    },
+    {
+      "CallCount": 16,
+      "Files": [
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "pages\\ProfessionalServices.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "professional-services",
+      "Paths": [
+        "professional-services",
+        "api/professional-services",
+        "api/professional-services/{param}"
+      ]
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\AutoLeadRoutingDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-auto-lead-routing.ts",
+      "Endpoint": "auto-lead-routing",
+      "Paths": [
+        "api/auto-lead-routing/dashboard",
+        "api/auto-lead-routing/config",
+        "api/auto-lead-routing/route/{param}",
+        "auto-lead-routing"
+      ]
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\RemoteMonitoring.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-remote-monitoring.ts",
+      "Endpoint": "remote-monitoring",
+      "Paths": [
+        "api/remote-monitoring/acknowledge-alert",
+        "api/remote-monitoring/equipment-status",
+        "api/remote-monitoring/fleet-overview",
+        "api/remote-monitoring/sensor-data",
+        "api/remote-monitoring",
+        "remote-monitoring"
+      ]
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\QuickBooksIntegration.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-quickbooks-integration.ts",
+      "Endpoint": "quickbooks",
+      "Paths": [
+        "api/quickbooks/connect",
+        "api/quickbooks/disconnect",
+        "api/quickbooks/sync/customers",
+        "api/quickbooks/sync/items",
+        "api/quickbooks/status",
+        "api/quickbooks/entities",
+        "quickbooks"
+      ]
+    },
+    {
+      "Paths": ["api/journal-entries", "api/journal-entries/{param}", "journal-entries"],
+      "Endpoint": "journal-entries",
+      "CallCount": 16,
+      "Files": ["pages\\JournalEntries.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/customer-numbers/config",
+        "api/customer-numbers/generate",
+        "api/customer-numbers/preview",
+        "api/customer-numbers/history",
+        "customer-numbers"
+      ],
+      "Endpoint": "customer-numbers",
+      "CallCount": 16,
+      "Files": ["pages\\CustomerNumberSettings.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\TechnicianManagement.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-technician-management.ts",
+      "Endpoint": "technician-management",
+      "Paths": [
+        "api/technician-management/technicians",
+        "api/technician-management/technicians/{param}",
+        "api/technician-management/dashboard",
+        "technician-management"
+      ]
+    },
+    {
+      "CallCount": 16,
+      "Files": [
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "pages\\ManagedServices.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "managed-services",
+      "Paths": ["managed-services", "api/managed-services", "api/managed-services/{param}"]
+    },
+    {
+      "Paths": [
+        "api/gdpr/consent/stats",
+        "api/gdpr/dpa/stats",
+        "api/gdpr/deduplication/stats",
+        "api/gdpr/data-export/requests",
+        "gdpr"
+      ],
+      "Endpoint": "gdpr",
+      "CallCount": 16,
+      "Files": ["pages\\GdprComplianceDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 16,
+      "Files": ["pages\\ManufacturerIntegration.tsx", "pages\\ManufacturerIntegrationAudit.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-manufacturer-integration.ts",
+      "Endpoint": "manufacturer-integrations",
+      "Paths": [
+        "api/manufacturer-integrations",
+        "api/manufacturer-integrations/stats",
+        "api/manufacturer-integrations/{param}/test",
+        "api/manufacturer-integrations/{param}/discover",
+        "manufacturer-integrations",
+        "api/manufacturer-integrations/audit-logs"
+      ]
+    },
+    {
+      "Paths": [
+        "api/company-ids/missing-ids",
+        "api/company-ids/backfill",
+        "api/company-ids/preview-slug",
+        "api/company-ids/generate/{param}",
+        "company-ids"
+      ],
+      "Endpoint": "company-ids",
+      "CallCount": 16,
+      "Files": ["pages\\CompanyIdsTest.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 15,
+      "Files": ["lib\\queryOptimizations.ts", "pages\\WarehouseOperations.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-warehouse.ts",
+      "Endpoint": "warehouse-operations",
+      "Paths": [
+        "warehouse-operations",
+        "api/warehouse-operations",
+        "api/warehouse-operations/{param}/status",
+        "api/warehouse-operations/stats"
+      ]
+    },
+    {
+      "CallCount": 14,
+      "Files": ["pages\\FleetMonitoringDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-client-monitoring.ts",
+      "Endpoint": "fleet",
+      "Paths": ["api/fleet/dashboard", "api/fleet/devices", "fleet"]
+    },
+    {
+      "Paths": [
+        "api/auto-supply-replenishment/dashboard",
+        "api/auto-supply-replenishment/low-supplies",
+        "api/auto-supply-replenishment/orders",
+        "api/auto-supply-replenishment/analyze-all",
+        "auto-supply-replenishment"
+      ],
+      "Endpoint": "auto-supply-replenishment",
+      "CallCount": 14,
+      "Files": ["pages\\AutoSupplyReplenishmentDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/team-reports/activity-leaderboard",
+        "api/team-reports/pipeline-comparison",
+        "api/team-reports/performance-dashboard",
+        "team-reports",
+        "api/team-reports/quick-stats",
+        "api/team-reports/coaching",
+        "api/team-reports/lead-management"
+      ],
+      "Endpoint": "team-reports",
+      "CallCount": 14,
+      "Files": [
+        "components\\stats\\TeamLeaderboard.tsx",
+        "components\\stats\\TeamStatsWidget.tsx",
+        "pages\\dashboards\\TeamLeadDashboardNew.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "platform-analytics",
+        "api/platform-analytics/revenue-metrics",
+        "api/platform-analytics/health-trends",
+        "api/platform-analytics/conversion-funnel",
+        "api/platform-analytics/sales-performance"
+      ],
+      "Endpoint": "platform-analytics",
+      "CallCount": 14,
+      "Files": [
+        "pages\\PlatformAnalytics.tsx",
+        "pages\\PlatformCohortAnalysis.tsx",
+        "pages\\PlatformCRMDashboard.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/service-reports/team/quick-stats",
+        "service-reports",
+        "api/service-reports/team/dispatch-queue",
+        "api/service-reports/personal/calls",
+        "api/service-reports/personal/parts",
+        "api/service-reports/personal/time"
+      ],
+      "Endpoint": "service-reports",
+      "CallCount": 14,
+      "Files": [
+        "components\\stats\\ServiceTeamStatsWidget.tsx",
+        "pages\\dashboards\\TeamLeadDashboard.tsx",
+        "pages\\dashboards\\TechnicianDashboard.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 14,
+      "Files": ["pages\\DataEnrichment.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-data-enrichment.ts",
+      "Endpoint": "enrichment",
+      "Paths": [
+        "api/enrichment/campaigns",
+        "api/enrichment/contacts",
+        "api/enrichment/companies",
+        "api/enrichment/analytics",
+        "enrichment"
+      ]
+    },
+    {
+      "CallCount": 13,
+      "Files": ["lib\\queryOptimizations.ts", "pages\\AccountsPayable.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "accounts-payable",
+      "Paths": ["accounts-payable", "api/accounts-payable", "api/accounts-payable/{param}"]
+    },
+    {
+      "CallCount": 13,
+      "Files": ["lib\\queryOptimizations.ts", "pages\\AccountsReceivable.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "accounts-receivable",
+      "Paths": ["accounts-receivable", "api/accounts-receivable", "api/accounts-receivable/{param}"]
+    },
+    {
+      "CallCount": 12,
+      "Files": ["components\\service\\PhoneInTicketCreator.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-enhanced-service.ts",
+      "Endpoint": "phone-tickets",
+      "Paths": [
+        "api/phone-tickets/search-companies",
+        "api/phone-tickets/search-contacts/{param}{param}",
+        "api/phone-tickets/equipment/{param}",
+        "api/phone-tickets/search-contacts",
+        "api/phone-tickets/equipment",
+        "phone-tickets"
+      ]
+    },
+    {
+      "Paths": [
+        "api/ai/gpt5/custom-prompt",
+        "api/ai/gpt5/analyze-lead",
+        "api/ai/gpt5/generate-proposal",
+        "api/ai/gpt5/analyze-service",
+        "api/ai/gpt5/classify-inquiry",
+        "api/ai/gpt5/configs",
+        "ai"
+      ],
+      "Endpoint": "ai",
+      "CallCount": 12,
+      "Files": ["pages\\GPT5Dashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "sales-manager-reports",
+        "api/sales-manager-reports/regional-pipeline",
+        "api/sales-manager-reports/regional-performance",
+        "api/sales-manager-reports/regional-quota",
+        "api/sales-manager-reports/regional-activity"
+      ],
+      "Endpoint": "sales-manager-reports",
+      "CallCount": 12,
+      "Files": ["pages\\dashboards\\SalesManagerDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "sales-supervisor-reports",
+        "api/sales-supervisor-reports/location/quota",
+        "api/sales-supervisor-reports/location/pipeline-overview",
+        "api/sales-supervisor-reports/location/performance",
+        "api/sales-supervisor-reports/location/activity"
+      ],
+      "Endpoint": "sales-supervisor-reports",
+      "CallCount": 12,
+      "Files": ["pages\\dashboards\\SalesSupervisorDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "service-supervisor-reports",
+        "api/service-supervisor-reports/location-service-calls",
+        "api/service-supervisor-reports/location-performance",
+        "api/service-supervisor-reports/location-sla",
+        "api/service-supervisor-reports/location-activity"
+      ],
+      "Endpoint": "service-supervisor-reports",
+      "CallCount": 12,
+      "Files": ["pages\\dashboards\\ServiceSupervisorDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "service-manager-reports",
+        "api/service-manager-reports/regional-service-calls",
+        "api/service-manager-reports/regional-performance",
+        "api/service-manager-reports/regional-sla",
+        "api/service-manager-reports/regional-activity"
+      ],
+      "Endpoint": "service-manager-reports",
+      "CallCount": 12,
+      "Files": ["pages\\dashboards\\ServiceManagerDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "api/email-parser/config",
+        "api/email-parser/stats",
+        "api/email-parser/processed-emails",
+        "api/email-parser/test-connection",
+        "email-parser"
+      ],
+      "Endpoint": "email-parser",
+      "CallCount": 12,
+      "Files": ["pages\\settings\\email-parser-settings.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 12,
+      "Files": ["pages\\FleetMonitoringDashboard.tsx", "pages\\ManufacturerIntegrationDevices.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-client-monitoring.ts",
+      "Endpoint": "devices",
+      "Paths": [
+        "api/devices/{param}/order-toner",
+        "devices",
+        "api/devices",
+        "api/devices/{param}/collect"
+      ]
+    },
+    {
+      "CallCount": 12,
+      "Files": ["pages\\PredictiveMaintenanceHub.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-predictive-maintenance-hub.ts",
+      "Endpoint": "predictive-maintenance",
+      "Paths": [
+        "api/predictive-maintenance/analyze-fleet",
+        "api/predictive-maintenance/{param}/schedule",
+        "api/predictive-maintenance/dashboard",
+        "api/predictive-maintenance/parts-forecast",
+        "predictive-maintenance"
+      ]
+    },
+    {
+      "Paths": ["subscription"],
+      "Endpoint": "subscription",
+      "CallCount": 11,
+      "Files": ["hooks\\useSubscription.ts"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 10,
+      "Files": ["pages\\EnhancedProductAccessories.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "accessories",
+      "Paths": [
+        "api/accessories/{param}/compatibility",
+        "api/accessories/{param}/compatibility/{param}",
+        "api/accessories",
+        "accessories"
+      ]
+    },
+    {
+      "CallCount": 10,
+      "Files": ["components\\service\\TechnicianTicketWorkflow.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-enhanced-service.ts",
+      "Endpoint": "technician-sessions",
+      "Paths": [
+        "api/technician-sessions/{param}/complete-step",
+        "api/technician-sessions",
+        "technician-sessions"
+      ]
+    },
+    {
+      "CallCount": 10,
+      "Files": ["pages\\ESignatureIntegration.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-esignature.ts",
+      "Endpoint": "signature-requests",
+      "Paths": [
+        "api/signature-requests",
+        "api/signature-requests/{param}/remind",
+        "signature-requests"
+      ]
+    },
+    {
+      "CallCount": 10,
+      "Files": ["components\\integrations\\SalesforceIntegration.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-salesforce-integration.ts",
+      "Endpoint": "salesforce",
+      "Paths": [
+        "api/salesforce/sync-status",
+        "api/salesforce/mappings",
+        "api/salesforce/import",
+        "api/salesforce/preview-transform",
+        "api/salesforce/field-mappings/{param}",
+        "salesforce"
+      ]
+    },
+    {
+      "Paths": [
+        "api/reporting/reports/export",
+        "api/reporting/reports/{param}/data",
+        "reporting",
+        "api/reporting/reports",
+        "api/reporting/kpis",
+        "reporting/reports",
+        "reporting/kpis"
+      ],
+      "Endpoint": "reporting",
+      "CallCount": 10,
+      "Files": ["components\\reports\\ReportViewer.tsx", "pages\\EnhancedReportsHub.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api/quote-templates", "quote-templates"],
+      "Endpoint": "quote-templates",
+      "CallCount": 10,
+      "Files": ["components\\quotes\\quote-templates.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 10,
+      "Files": ["pages\\CustomerSuccessManagement.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-customer-success.ts",
+      "Endpoint": "customer-success",
+      "Paths": [
+        "api/customer-success/calculate-health",
+        "api/customer-success/health-scores",
+        "api/customer-success/usage-analytics",
+        "api/customer-success/satisfaction",
+        "customer-success"
+      ]
+    },
+    {
+      "Paths": ["api/customer-access", "api/customer-access/{param}", "customer-access"],
+      "Endpoint": "customer-access",
+      "CallCount": 10,
+      "Files": ["pages\\CustomerAccessManagement.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api/assignment-groups", "api/assignment-groups/{param}", "assignment-groups"],
+      "Endpoint": "assignment-groups",
+      "CallCount": 10,
+      "Files": ["pages\\assignment-groups.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 10,
+      "Files": ["pages\\MonitoringClients.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-client-monitoring.ts",
+      "Endpoint": "client-metrics",
+      "Paths": [
+        "api/client-metrics/clients",
+        "api/client-metrics/clients/{param}/regenerate-key",
+        "client-metrics"
+      ]
+    },
+    {
+      "CallCount": 8,
+      "Files": [
+        "components\\dod\\DoDEnforcementButton.tsx",
+        "components\\dod\\DoDValidationBanner.tsx",
+        "pages\\ProposalBuilder.tsx",
+        "pages\\QuoteProposalGeneration.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-dod-enforcement.ts",
+      "Endpoint": "validate",
+      "Paths": [
+        "api/validate/{param}/{param}",
+        "validate",
+        "api/validate/proposal-to-contract/{param}",
+        "api/validate/quote-to-proposal/{param}"
+      ]
+    },
+    {
+      "CallCount": 8,
+      "Files": [
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "pages\\ServiceProducts.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "service-products",
+      "Paths": ["service-products", "api/service-products"]
+    },
+    {
+      "CallCount": 8,
+      "Files": ["components\\calculator\\EmailCaptureModal.tsx", "pages\\PrintCostCalculator.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-print-cost-calculator.ts",
+      "Endpoint": "public",
+      "Paths": [
+        "api/public/calculator/leads",
+        "api/public/calculator/track/pdf-download",
+        "public",
+        "api/public/calculator/sessions",
+        "api/public/calculator/track/event"
+      ]
+    },
+    {
+      "CallCount": 8,
+      "Files": ["pages\\SalesCommandCenter.tsx", "pages\\SalesPipelineForecasting.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-sales-forecasting.ts",
+      "Endpoint": "sales-forecasts",
+      "Paths": ["api/sales-forecasts", "sales-forecasts"]
+    },
+    {
+      "CallCount": 8,
+      "Files": ["pages\\DocumentBuilder.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-document-automation.ts",
+      "Endpoint": "documents",
+      "Paths": ["api/documents", "api/documents/{param}/pdf", "documents"]
+    },
+    {
+      "Paths": ["api/approvals", "api/approvals/{param}/respond", "approvals"],
+      "Endpoint": "approvals",
+      "CallCount": 7,
+      "Files": ["pages\\my-approvals.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": [
+        "lead-intelligence",
+        "api/lead-intelligence/analytics/overview",
+        "api/lead-intelligence/attention/required",
+        "api/lead-intelligence/batch/score"
+      ],
+      "Endpoint": "lead-intelligence",
+      "CallCount": 7,
+      "Files": ["components\\leads\\BANTAssessment.tsx", "pages\\LeadIntelligenceDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 6,
+      "Files": ["components\\tasks\\TemplatesView.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-templates.ts",
+      "Endpoint": "templates",
+      "Paths": ["api/templates", "api/templates/{param}/instantiate", "templates"]
+    },
+    {
+      "CallCount": 6,
+      "Files": ["components\\service\\ServiceTicketAnalysis.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-service-analysis.ts",
+      "Endpoint": "service-analysis",
+      "Paths": [
+        "api/service-analysis/{param}/parts-order",
+        "api/service-analysis",
+        "service-analysis"
+      ]
+    },
+    {
+      "CallCount": 6,
+      "Files": ["pages\\MeterBilling.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "contract-tiered-rates",
+      "Paths": ["api/contract-tiered-rates", "contract-tiered-rates"]
+    },
+    {
+      "Paths": [
+        "director-reports",
+        "api/director-reports/sales/company-performance",
+        "api/director-reports/service/company-performance"
+      ],
+      "Endpoint": "director-reports",
+      "CallCount": 6,
+      "Files": ["pages\\dashboards\\DirectorDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 6,
+      "Files": ["pages\\AutopilotDashboard.tsx", "pages\\WorkflowAutomation.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-workflow-automation.ts",
+      "Endpoint": "workflow-automation",
+      "Paths": ["api/workflow-automation/dashboard", "workflow-automation"]
+    },
+    {
+      "CallCount": 6,
+      "Files": ["pages\\SalesCommandCenter.tsx", "pages\\SalesPipelineForecasting.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-platform-analytics.ts",
+      "Endpoint": "pipeline-forecast",
+      "Paths": ["api/pipeline-forecast", "pipeline-forecast"]
+    },
+    {
+      "CallCount": 6,
+      "Files": [
+        "components\\calendar\\CalendarProvider.tsx",
+        "hooks\\useAuth-old.ts",
+        "pages\\VerifyEmail.tsx"
+      ],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-user-profile.ts",
+      "Endpoint": "auth",
+      "Paths": ["auth", "api/auth/user", "api/auth/verify-email"]
+    },
+    {
+      "CallCount": 6,
+      "Files": ["pages\\PredictiveAnalytics.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "predictive-analytics",
+      "Paths": [
+        "api/predictive-analytics/dashboard",
+        "api/predictive-analytics/models",
+        "api/predictive-analytics/data-sources",
+        "predictive-analytics"
+      ]
+    },
+    {
+      "Paths": [
+        "executive-reports",
+        "api/executive-reports/dashboard",
+        "api/executive-reports/platform-admin"
+      ],
+      "Endpoint": "executive-reports",
+      "CallCount": 6,
+      "Files": [
+        "pages\\dashboards\\ExecutiveDashboard.tsx",
+        "pages\\dashboards\\PlatformAdminDashboard.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["POST"],
+      "Endpoint": "POST",
+      "CallCount": 6,
+      "Files": [
+        "components\\dashboard\\DashboardCustomizer.tsx",
+        "pages\\IntegrationsManagement.tsx",
+        "pages\\KnowledgeArticle.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 6,
+      "Files": ["pages\\WhiteLabelDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-white-label.ts",
+      "Endpoint": "white-label",
+      "Paths": ["api/white-label/config", "white-label"]
+    },
+    {
+      "Paths": ["api/trial/status", "trial"],
+      "Endpoint": "trial",
+      "CallCount": 4,
+      "Files": ["pages\\Billing.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 4,
+      "Files": ["pages\\BusinessProcessOptimization.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-business-process-optimization.ts",
+      "Endpoint": "business-process",
+      "Paths": ["api/business-process/dashboard", "business-process"]
+    },
+    {
+      "Paths": ["api/deployment/readiness", "api/deployment/metrics", "deployment"],
+      "Endpoint": "deployment",
+      "CallCount": 4,
+      "Files": ["pages\\DeploymentReadiness.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api-contacts"],
+      "Endpoint": "api-contacts",
+      "CallCount": 4,
+      "Files": ["pages\\Contacts.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 4,
+      "Files": ["components\\equipment\\EquipmentDisposalDialog.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-equipment-disposal.ts",
+      "Endpoint": "equipment-disposal",
+      "Paths": ["api/equipment-disposal", "equipment-disposal"]
+    },
+    {
+      "Paths": ["api/lead-scoring/bant/{param}", "lead-scoring"],
+      "Endpoint": "lead-scoring",
+      "CallCount": 4,
+      "Files": ["components\\leads\\BANTAssessment.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 4,
+      "Files": ["pages\\IntegrationHub.tsx", "pages\\SystemIntegrations.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-integrations.ts",
+      "Endpoint": "webhooks",
+      "Paths": ["api/webhooks", "webhooks"]
+    },
+    {
+      "Paths": ["platform-activities", "api/platform-activities"],
+      "Endpoint": "platform-activities",
+      "CallCount": 4,
+      "Files": [
+        "pages\\PlatformBusinessRecordDetail.tsx",
+        "pages\\PlatformCRMDashboard.tsx",
+        "pages\\PlatformDealDetail.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 4,
+      "Files": ["components\\navigation\\command-palette.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-universal-search.ts",
+      "Endpoint": "universal-search",
+      "Paths": ["api/universal-search", "universal-search"]
+    },
+    {
+      "Paths": [
+        "api/device-monitoring/latest-metrics",
+        "api/device-monitoring/active-alerts",
+        "device-monitoring"
+      ],
+      "Endpoint": "device-monitoring",
+      "CallCount": 4,
+      "Files": ["pages\\DeviceMonitoring.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["supabase-business-records"],
+      "Endpoint": "supabase-business-records",
+      "CallCount": 3,
+      "Files": ["pages\\LeadsManagement.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["supabase-auth-user"],
+      "Endpoint": "supabase-auth-user",
+      "CallCount": 3,
+      "Files": ["hooks\\useSupabaseAuth.ts", "pages\\Login.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["email-parser-config"],
+      "Endpoint": "email-parser-config",
+      "CallCount": 3,
+      "Files": ["pages\\settings\\email-parser-settings.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["email-parser-stats"],
+      "Endpoint": "email-parser-stats",
+      "CallCount": 3,
+      "Files": ["pages\\settings\\email-parser-settings.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["article-ratings"],
+      "Endpoint": "article-ratings",
+      "CallCount": 3,
+      "Files": ["components\\knowledge-base\\ArticleRatingWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["bant-assessment"],
+      "Endpoint": "bant-assessment",
+      "CallCount": 2,
+      "Files": ["components\\leads\\BANTAssessment.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 2,
+      "Files": ["components\\service\\ServiceTicketAnalysis.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-service-analysis.ts",
+      "Endpoint": "parts-orders",
+      "Paths": ["api/parts-orders/{param}/items", "parts-orders"]
+    },
+    {
+      "Paths": ["supabase-companies"],
+      "Endpoint": "supabase-companies",
+      "CallCount": 2,
+      "Files": ["pages\\Contacts.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["user-rating"],
+      "Endpoint": "user-rating",
+      "CallCount": 2,
+      "Files": ["components\\knowledge-base\\ArticleRatingWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["user-vote"],
+      "Endpoint": "user-vote",
+      "CallCount": 2,
+      "Files": ["components\\knowledge-base\\ArticleRatingWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["team-pipeline-comparison"],
+      "Endpoint": "team-pipeline-comparison",
+      "CallCount": 2,
+      "Files": [
+        "components\\stats\\TeamLeaderboard.tsx",
+        "pages\\dashboards\\TeamLeadDashboardNew.tsx"
+      ],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api/warehouse-reports/team/quick-stats", "warehouse-reports"],
+      "Endpoint": "warehouse-reports",
+      "CallCount": 2,
+      "Files": ["components\\stats\\WarehouseTeamStatsWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\AIAnalyticsDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-ai-analytics.ts",
+      "Endpoint": "ai-analytics",
+      "Paths": ["api/ai-analytics/dashboard", "ai-analytics"]
+    },
+    {
+      "Paths": ["email-parser-emails"],
+      "Endpoint": "email-parser-emails",
+      "CallCount": 2,
+      "Files": ["pages\\settings\\email-parser-settings.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api/quote-line-items", "quote-line-items"],
+      "Endpoint": "quote-line-items",
+      "CallCount": 2,
+      "Files": ["pages\\EnhancedOnboardingForm.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["salesforce-sync-status"],
+      "Endpoint": "salesforce-sync-status",
+      "CallCount": 2,
+      "Files": ["components\\integrations\\SalesforceIntegration.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\ProactiveServiceDashboard.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-proactive-maintenance.ts",
+      "Endpoint": "service",
+      "Paths": ["api/service/proactive-maintenance", "service"]
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\SecurityComplianceManagement.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes.ts",
+      "Endpoint": "security-compliance",
+      "Paths": ["api/security-compliance/dashboard", "security-compliance"]
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\ERPIntegration.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-erp-integration.ts",
+      "Endpoint": "erp-integration",
+      "Paths": ["api/erp-integration/dashboard", "erp-integration"]
+    },
+    {
+      "Paths": ["lead-intelligence-attention"],
+      "Endpoint": "lead-intelligence-attention",
+      "CallCount": 2,
+      "Files": ["pages\\LeadIntelligenceDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api/lease-payments/{param}/process", "lease-payments"],
+      "Endpoint": "lease-payments",
+      "CallCount": 2,
+      "Files": ["pages\\LeaseDetail.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["lead-intelligence-analytics"],
+      "Endpoint": "lead-intelligence-analytics",
+      "CallCount": 2,
+      "Files": ["pages\\LeadIntelligenceDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\IncidentResponseSystem.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-incident-response.ts",
+      "Endpoint": "incident-response",
+      "Paths": ["api/incident-response/dashboard", "incident-response"]
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\IntegrationHub.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-integration-hub.ts",
+      "Endpoint": "integration-hub",
+      "Paths": ["api/integration-hub/dashboard", "integration-hub"]
+    },
+    {
+      "Paths": ["api/content-gap-analysis", "content-gap-analysis"],
+      "Endpoint": "content-gap-analysis",
+      "CallCount": 2,
+      "Files": ["components\\knowledge-base\\ContentGapDashboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\ESignatureIntegration.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-esignature.ts",
+      "Endpoint": "signature-templates",
+      "Paths": ["api/signature-templates", "signature-templates"]
+    },
+    {
+      "CallCount": 2,
+      "Files": ["pages\\ESignatureIntegration.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-esignature.ts",
+      "Endpoint": "signature-analytics",
+      "Paths": ["api/signature-analytics", "signature-analytics"]
+    },
+    {
+      "CallCount": 2,
+      "Files": ["lib\\seoUtils.tsx"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-content-marketing.ts",
+      "Endpoint": "content",
+      "Paths": ["api/content/analytics/view", "content"]
+    },
+    {
+      "Paths": ["api/bug-reports", "bug-reports"],
+      "Endpoint": "bug-reports",
+      "CallCount": 2,
+      "Files": ["components\\error-boundary.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "CallCount": 2,
+      "Files": ["hooks\\useSubscription.ts"],
+      "HasExpressRoute": true,
+      "ExpressFile": "routes-subscriptions.ts",
+      "Endpoint": "stripe",
+      "Paths": ["stripe"]
+    },
+    {
+      "Paths": ["supabase-users"],
+      "Endpoint": "supabase-users",
+      "CallCount": 1,
+      "Files": ["pages\\Contacts.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["platform-cs"],
+      "Endpoint": "platform-cs",
+      "CallCount": 1,
+      "Files": ["pages\\PlatformBusinessRecordDetail.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["service-team-quick-stats"],
+      "Endpoint": "service-team-quick-stats",
+      "CallCount": 1,
+      "Files": ["components\\stats\\ServiceTeamStatsWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["warehouse-team-quick-stats"],
+      "Endpoint": "warehouse-team-quick-stats",
+      "CallCount": 1,
+      "Files": ["components\\stats\\WarehouseTeamStatsWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["team-quick-stats"],
+      "Endpoint": "team-quick-stats",
+      "CallCount": 1,
+      "Files": ["components\\stats\\TeamStatsWidget.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["team-lead-management"],
+      "Endpoint": "team-lead-management",
+      "CallCount": 1,
+      "Files": ["pages\\dashboards\\TeamLeadDashboardNew.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["team-coaching-report"],
+      "Endpoint": "team-coaching-report",
+      "CallCount": 1,
+      "Files": ["pages\\dashboards\\TeamLeadDashboardNew.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["team-performance-dashboard"],
+      "Endpoint": "team-performance-dashboard",
+      "CallCount": 1,
+      "Files": ["components\\stats\\TeamLeaderboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["api/approvals{param}"],
+      "Endpoint": "approvals{param}",
+      "CallCount": 1,
+      "Files": ["pages\\my-approvals.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["salesforce-mappings"],
+      "Endpoint": "salesforce-mappings",
+      "CallCount": 1,
+      "Files": ["components\\integrations\\SalesforceIntegration.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["report"],
+      "Endpoint": "report",
+      "CallCount": 1,
+      "Files": ["components\\reports\\ReportViewer.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["team-activity-leaderboard"],
+      "Endpoint": "team-activity-leaderboard",
+      "CallCount": 1,
+      "Files": ["components\\stats\\TeamLeaderboard.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["salesforce-field-mapping"],
+      "Endpoint": "salesforce-field-mapping",
+      "CallCount": 1,
+      "Files": ["components\\integrations\\SalesforceIntegration.tsx"],
+      "HasExpressRoute": false
+    },
+    {
+      "Paths": ["apollo-stats"],
+      "Endpoint": "apollo-stats",
+      "CallCount": 1,
+      "Files": ["pages\\LeadIntelligenceDashboard.tsx"],
+      "HasExpressRoute": false
+    }
+  ],
+  "PageBreakdown": {
+    "ProposalBuilder": {
+      "File": "pages\\ProposalBuilder.tsx",
+      "Apis": ["proposals", "business-records", "validate"]
+    },
+    "ServiceHub": {
+      "File": "pages\\ServiceHub.tsx",
+      "Apis": ["service-tickets", "phone-in-tickets", "service-analytics"]
+    },
+    "AdminHub": {
+      "File": "pages\\AdminHub.tsx",
+      "Apis": "root-admin"
+    },
+    "ChartOfAccounts": {
+      "File": "pages\\ChartOfAccounts.tsx",
+      "Apis": "chart-of-accounts"
+    },
+    "OidManagement": {
+      "File": "pages\\OidManagement.tsx",
+      "Apis": "oid-mappings"
+    },
+    "DatabaseUpdaterPage": {
+      "File": "pages\\admin\\DatabaseUpdaterPage.tsx",
+      "Apis": "database-updater"
+    },
+    "WorkflowAutomation": {
+      "File": "pages\\WorkflowAutomation.tsx",
+      "Apis": "workflow-automation"
+    },
+    "PlatformAnalytics": {
+      "File": "pages\\PlatformAnalytics.tsx",
+      "Apis": "platform-analytics"
+    },
+    "PricingSettings": {
+      "File": "pages\\PricingSettings.tsx",
+      "Apis": "pricing"
+    },
+    "PipelineConfiguration": {
+      "File": "pages\\PipelineConfiguration.tsx",
+      "Apis": "pipeline-config"
+    },
+    "ManagedServices": {
+      "File": "pages\\ManagedServices.tsx",
+      "Apis": "managed-services"
+    },
+    "ServiceAnalytics": {
+      "File": "pages\\ServiceAnalytics.tsx",
+      "Apis": "analytics"
+    },
+    "workflow-automation": {
+      "File": "pages\\workflow-automation.tsx",
+      "Apis": "workflows"
+    },
+    "AdvancedReporting": {
+      "File": "pages\\AdvancedReporting.tsx",
+      "Apis": ["customers", "contracts", "service-tickets", "invoices", "meter-readings"]
+    },
+    "FinancialForecasting": {
+      "File": "pages\\FinancialForecasting.tsx",
+      "Apis": "financial"
+    },
+    "ApprovalRequestDetail": {
+      "File": "pages\\ApprovalRequestDetail.tsx",
+      "Apis": "deal-desk"
+    },
+    "WarehouseOperations": {
+      "File": "pages\\WarehouseOperations.tsx",
+      "Apis": ["warehouse-operations", "equipment", "technicians", "customers"]
+    },
+    "PlatformAdminDashboard": {
+      "File": "pages\\dashboards\\PlatformAdminDashboard.tsx",
+      "Apis": "executive-reports"
+    },
+    "RemoteMonitoring": {
+      "File": "pages\\RemoteMonitoring.tsx",
+      "Apis": "remote-monitoring"
+    },
+    "QuickBooksIntegration": {
+      "File": "pages\\QuickBooksIntegration.tsx",
+      "Apis": "quickbooks"
+    },
+    "IntegrationHub": {
+      "File": "pages\\IntegrationHub.tsx",
+      "Apis": ["integration-hub", "integrations", "webhooks"]
+    },
+    "EnhancedOnboardingForm": {
+      "File": "pages\\EnhancedOnboardingForm.tsx",
+      "Apis": [
+        "products",
+        "onboarding",
+        "business-records",
+        "quotes",
+        "companies",
+        "quote-line-items",
+        "company-contacts"
+      ]
+    },
+    "ServiceManagerDashboard": {
+      "File": "pages\\dashboards\\ServiceManagerDashboard.tsx",
+      "Apis": "service-manager-reports"
+    },
+    "PerformanceMonitoring": {
+      "File": "pages\\PerformanceMonitoring.tsx",
+      "Apis": ["performance", "customers", "service-tickets", "contracts", "inventory", "reports"]
+    },
+    "Vendors": {
+      "File": "pages\\Vendors.tsx",
+      "Apis": "vendors"
+    },
+    "DataEnrichment": {
+      "File": "pages\\DataEnrichment.tsx",
+      "Apis": "enrichment"
+    },
+    "BasicTaskManagement": {
+      "File": "pages\\BasicTaskManagement.tsx",
+      "Apis": ["tasks", "projects"]
+    },
+    "SystemIntegrations": {
+      "File": "pages\\SystemIntegrations.tsx",
+      "Apis": ["integrations", "webhooks"]
+    },
+    "ERPIntegration": {
+      "File": "pages\\ERPIntegration.tsx",
+      "Apis": "erp-integration"
+    },
+    "QuoteView": {
+      "File": "pages\\QuoteView.tsx",
+      "Apis": ["proposals", "business-records"]
+    },
+    "ServiceProducts": {
+      "File": "pages\\ServiceProducts.tsx",
+      "Apis": "service-products"
+    },
+    "GPT5Dashboard": {
+      "File": "pages\\GPT5Dashboard.tsx",
+      "Apis": "ai"
+    },
+    "MobileFieldOperations": {
+      "File": "pages\\MobileFieldOperations.tsx",
+      "Apis": "mobile-field"
+    },
+    "PreventiveMaintenanceScheduling": {
+      "File": "pages\\PreventiveMaintenanceScheduling.tsx",
+      "Apis": ["maintenance", "business-records"]
+    },
+    "Supplies": {
+      "File": "pages\\Supplies.tsx",
+      "Apis": "supplies"
+    },
+    "AutoSupplyReplenishmentDashboard": {
+      "File": "pages\\AutoSupplyReplenishmentDashboard.tsx",
+      "Apis": "auto-supply-replenishment"
+    },
+    "SystemSecurity": {
+      "File": "pages\\admin\\SystemSecurity.tsx",
+      "Apis": "admin"
+    },
+    "IntegrationsManagement": {
+      "File": "pages\\IntegrationsManagement.tsx",
+      "Apis": ["integrations", "POST"]
+    },
+    "JournalEntries": {
+      "File": "pages\\JournalEntries.tsx",
+      "Apis": "journal-entries"
+    },
+    "TerritoryManagement": {
+      "File": "pages\\TerritoryManagement.tsx",
+      "Apis": "territories"
+    },
+    "RootAdminSecurity": {
+      "File": "pages\\admin\\RootAdminSecurity.tsx",
+      "Apis": "admin"
+    },
+    "GdprComplianceDashboard": {
+      "File": "pages\\GdprComplianceDashboard.tsx",
+      "Apis": "gdpr"
+    },
+    "KnowledgeBase": {
+      "File": "pages\\KnowledgeBase.tsx",
+      "Apis": "knowledge-base"
+    },
+    "SalesPerformanceAnalytics": {
+      "File": "pages\\SalesPerformanceAnalytics.tsx",
+      "Apis": "reports"
+    },
+    "PlatformBusinessRecords": {
+      "File": "pages\\PlatformBusinessRecords.tsx",
+      "Apis": "platform-crm"
+    },
+    "DirectorDashboard": {
+      "File": "pages\\dashboards\\DirectorDashboard.tsx",
+      "Apis": "director-reports"
+    },
+    "DeviceMonitoring": {
+      "File": "pages\\DeviceMonitoring.tsx",
+      "Apis": "device-monitoring"
+    },
+    "ContractRenewalDashboard": {
+      "File": "pages\\ContractRenewalDashboard.tsx",
+      "Apis": "contract-renewal"
+    },
+    "CustomerSelfServicePortal": {
+      "File": "pages\\CustomerSelfServicePortal.tsx",
+      "Apis": "customer-portal"
+    },
+    "BusinessProcessOptimization": {
+      "File": "pages\\BusinessProcessOptimization.tsx",
+      "Apis": "business-process"
+    },
+    "AdvancedBillingEngine": {
+      "File": "pages\\AdvancedBillingEngine.tsx",
+      "Apis": ["billing", "business-records"]
+    },
+    "QuotesManagement": {
+      "File": "pages\\QuotesManagement.tsx",
+      "Apis": "proposals"
+    },
+    "ApolloLeadEnrichment": {
+      "File": "pages\\ApolloLeadEnrichment.tsx",
+      "Apis": "apollo"
+    },
+    "Settings": {
+      "File": "pages\\Settings.tsx",
+      "Apis": "user"
+    },
+    "inventory": {
+      "File": "pages\\inventory.tsx",
+      "Apis": "inventory"
+    },
+    "SalesManagerDashboard": {
+      "File": "pages\\dashboards\\SalesManagerDashboard.tsx",
+      "Apis": "sales-manager-reports"
+    },
+    "AdminCommandCenter": {
+      "File": "pages\\AdminCommandCenter.tsx",
+      "Apis": ["root-admin", "admin"]
+    },
+    "CustomerDetail": {
+      "File": "pages\\CustomerDetail.tsx",
+      "Apis": ["companies", "customers"]
+    },
+    "ProductAccessories": {
+      "File": "pages\\ProductAccessories.tsx",
+      "Apis": ["product-accessories", "product-models"]
+    },
+    "Login": {
+      "File": "pages\\Login.tsx",
+      "Apis": "supabase-auth-user"
+    },
+    "EquipmentLifecycleHub": {
+      "File": "pages\\EquipmentLifecycleHub.tsx",
+      "Apis": ["equipment-lifecycle", "technicians", "business-records"]
+    },
+    "FinancialIntelligenceDashboard": {
+      "File": "pages\\FinancialIntelligenceDashboard.tsx",
+      "Apis": "reports"
+    },
+    "QuoteProposalGeneration": {
+      "File": "pages\\QuoteProposalGeneration.tsx",
+      "Apis": ["proposals", "business-records", "validate"]
+    },
+    "TaskHub": {
+      "File": "pages\\TaskHub.tsx",
+      "Apis": ["tasks", "projects", "users"]
+    },
+    "ESignatureIntegration": {
+      "File": "pages\\ESignatureIntegration.tsx",
+      "Apis": ["signature-requests", "signature-templates", "demos", "signature-analytics"]
+    },
+    "MobileServiceApp": {
+      "File": "pages\\MobileServiceApp.tsx",
+      "Apis": "mobile"
+    },
+    "EnhancedProductModels": {
+      "File": "pages\\EnhancedProductModels.tsx",
+      "Apis": "product-models"
+    },
+    "KnowledgeBaseAdminDashboard": {
+      "File": "pages\\admin\\KnowledgeBaseAdminDashboard.tsx",
+      "Apis": "admin"
+    },
+    "contracts": {
+      "File": "pages\\contracts.tsx",
+      "Apis": ["contracts", "quotes"]
+    },
+    "my-tasks": {
+      "File": "pages\\my-tasks.tsx",
+      "Apis": "tasks"
+    },
+    "ProductHubUnified": {
+      "File": "pages\\ProductHubUnified.tsx",
+      "Apis": ["catalog", "pricing", "enabled-products", "products"]
+    },
+    "PlatformLeadScoring": {
+      "File": "pages\\PlatformLeadScoring.tsx",
+      "Apis": "platform-crm"
+    },
+    "ProductManagementHub": {
+      "File": "pages\\ProductManagementHub.tsx",
+      "Apis": ["pricing", "products"]
+    },
+    "TechnicianManagement": {
+      "File": "pages\\TechnicianManagement.tsx",
+      "Apis": "technician-management"
+    },
+    "SocialMediaGenerator": {
+      "File": "pages\\SocialMediaGenerator.tsx",
+      "Apis": "social-media"
+    },
+    "MarginAnalysisReport": {
+      "File": "pages\\MarginAnalysisReport.tsx",
+      "Apis": "pricing"
+    },
+    "RootAdminSEO": {
+      "File": "pages\\RootAdminSEO.tsx",
+      "Apis": "seo"
+    },
+    "assignment-groups": {
+      "File": "pages\\assignment-groups.tsx",
+      "Apis": ["assignment-groups", "users"]
+    },
+    "ExecutiveDashboard": {
+      "File": "pages\\ExecutiveDashboard.tsx",
+      "Apis": "reports"
+    },
+    "ServiceForecastingAnalytics": {
+      "File": "pages\\ServiceForecastingAnalytics.tsx",
+      "Apis": "reports"
+    },
+    "AutoLeadRoutingDashboard": {
+      "File": "pages\\AutoLeadRoutingDashboard.tsx",
+      "Apis": "auto-lead-routing"
+    },
+    "PricingManagement": {
+      "File": "pages\\PricingManagement.tsx",
+      "Apis": ["pricing", "products"]
+    },
+    "TeamLeadDashboardNew": {
+      "File": "pages\\dashboards\\TeamLeadDashboardNew.tsx",
+      "Apis": [
+        "team-coaching-report",
+        "team-lead-management",
+        "team-pipeline-comparison",
+        "team-reports"
+      ]
+    },
+    "enhanced-crm": {
+      "File": "pages\\enhanced-crm.tsx",
+      "Apis": "business-records"
+    },
+    "DocumentManagement": {
+      "File": "pages\\DocumentManagement.tsx",
+      "Apis": "document-management"
+    },
+    "PredictiveServiceDispatchDashboard": {
+      "File": "pages\\PredictiveServiceDispatchDashboard.tsx",
+      "Apis": "predictive-dispatch"
+    },
+    "ServiceSupervisorDashboard": {
+      "File": "pages\\dashboards\\ServiceSupervisorDashboard.tsx",
+      "Apis": "service-supervisor-reports"
+    },
+    "PlatformCRMDashboard": {
+      "File": "pages\\PlatformCRMDashboard.tsx",
+      "Apis": ["platform-analytics", "platform-deals", "platform-activities"]
+    },
+    "LeaseForm": {
+      "File": "pages\\LeaseForm.tsx",
+      "Apis": ["leases", "business-records"]
+    },
+    "Contacts": {
+      "File": "pages\\Contacts.tsx",
+      "Apis": [
+        "supabase-companies",
+        "supabase-users",
+        "api-contacts",
+        "contacts",
+        "company-contacts"
+      ]
+    },
+    "MobileFieldService": {
+      "File": "pages\\MobileFieldService.tsx",
+      "Apis": "mobile"
+    },
+    "CustomerSuccessManagement": {
+      "File": "pages\\CustomerSuccessManagement.tsx",
+      "Apis": "customer-success"
+    },
+    "KnowledgeBaseAdmin": {
+      "File": "pages\\admin\\KnowledgeBaseAdmin.tsx",
+      "Apis": "knowledge-base"
+    },
+    "SEODashboard": {
+      "File": "pages\\SEODashboard.tsx",
+      "Apis": "seo"
+    },
+    "SoftwareProducts": {
+      "File": "pages\\SoftwareProducts.tsx",
+      "Apis": "software-products"
+    },
+    "ReportsHub": {
+      "File": "pages\\ReportsHub.tsx",
+      "Apis": "reports"
+    },
+    "ProductCatalog": {
+      "File": "pages\\ProductCatalog.tsx",
+      "Apis": ["enabled-products", "catalog"]
+    },
+    "PlatformDealsPipeline": {
+      "File": "pages\\PlatformDealsPipeline.tsx",
+      "Apis": "platform-deals"
+    },
+    "LeaseDetail": {
+      "File": "pages\\LeaseDetail.tsx",
+      "Apis": ["lease-payments", "leases"]
+    },
+    "CompanyIdsTest": {
+      "File": "pages\\CompanyIdsTest.tsx",
+      "Apis": "company-ids"
+    },
+    "Invoices": {
+      "File": "pages\\Invoices.tsx",
+      "Apis": ["billing", "contracts", "customers"]
+    },
+    "DemoScheduling": {
+      "File": "pages\\DemoScheduling.tsx",
+      "Apis": "demos"
+    },
+    "DatabaseManagement": {
+      "File": "pages\\DatabaseManagement.tsx",
+      "Apis": ["root-admin", "database-updater"]
+    },
+    "KnowledgeArticle": {
+      "File": "pages\\KnowledgeArticle.tsx",
+      "Apis": ["POST", "knowledge-base"]
+    },
+    "ComprehensiveOnboardingForm": {
+      "File": "pages\\ComprehensiveOnboardingForm.tsx",
+      "Apis": "onboarding"
+    },
+    "IncidentResponseSystem": {
+      "File": "pages\\IncidentResponseSystem.tsx",
+      "Apis": "incident-response"
+    },
+    "LeadDetail": {
+      "File": "pages\\LeadDetail.tsx",
+      "Apis": "leads"
+    },
+    "CustomDashboard": {
+      "File": "pages\\CustomDashboard.tsx",
+      "Apis": "dashboard"
+    },
+    "Leases": {
+      "File": "pages\\Leases.tsx",
+      "Apis": "leases"
+    },
+    "LeadIntelligenceDashboard": {
+      "File": "pages\\LeadIntelligenceDashboard.tsx",
+      "Apis": [
+        "lead-intelligence-analytics",
+        "lead-intelligence-attention",
+        "apollo-stats",
+        "lead-intelligence",
+        "apollo"
+      ]
+    },
+    "ManufacturerIntegrationAudit": {
+      "File": "pages\\ManufacturerIntegrationAudit.tsx",
+      "Apis": "manufacturer-integrations"
+    },
+    "DealDeskDashboard": {
+      "File": "pages\\DealDeskDashboard.tsx",
+      "Apis": "deal-desk"
+    },
+    "ProfessionalServices": {
+      "File": "pages\\ProfessionalServices.tsx",
+      "Apis": "professional-services"
+    },
+    "PredictiveAnalytics": {
+      "File": "pages\\PredictiveAnalytics.tsx",
+      "Apis": "predictive-analytics"
+    },
+    "ApprovalRulesConfiguration": {
+      "File": "pages\\ApprovalRulesConfiguration.tsx",
+      "Apis": "deal-desk"
+    },
+    "onboarding": {
+      "File": "pages\\onboarding.tsx",
+      "Apis": "onboarding"
+    },
+    "MeterReadings": {
+      "File": "pages\\MeterReadings.tsx",
+      "Apis": ["equipment", "contracts", "locations", "meter-readings"]
+    },
+    "PlatformDealDetail": {
+      "File": "pages\\PlatformDealDetail.tsx",
+      "Apis": ["platform-deals", "platform-activities"]
+    },
+    "CustomerNumberSettings": {
+      "File": "pages\\CustomerNumberSettings.tsx",
+      "Apis": "customer-numbers"
+    },
+    "AIAnalyticsDashboard": {
+      "File": "pages\\AIAnalyticsDashboard.tsx",
+      "Apis": "ai-analytics"
+    },
+    "Billing": {
+      "File": "pages\\Billing.tsx",
+      "Apis": ["billing", "trial"]
+    },
+    "PurchaseOrders": {
+      "File": "pages\\PurchaseOrders.tsx",
+      "Apis": ["vendors", "purchase-orders"]
+    },
+    "RootAdminDashboard": {
+      "File": "pages\\RootAdminDashboard.tsx",
+      "Apis": "root-admin"
+    },
+    "PriceApprovals": {
+      "File": "pages\\PriceApprovals.tsx",
+      "Apis": "pricing"
+    },
+    "ProactiveServiceDashboard": {
+      "File": "pages\\ProactiveServiceDashboard.tsx",
+      "Apis": "service"
+    },
+    "CustomReportBuilder": {
+      "File": "pages\\CustomReportBuilder.tsx",
+      "Apis": "reports"
+    },
+    "SalesSupervisorDashboard": {
+      "File": "pages\\dashboards\\SalesSupervisorDashboard.tsx",
+      "Apis": "sales-supervisor-reports"
+    },
+    "AccountsPayable": {
+      "File": "pages\\AccountsPayable.tsx",
+      "Apis": ["accounts-payable", "vendors"]
+    },
+    "MobileOptimization": {
+      "File": "pages\\MobileOptimization.tsx",
+      "Apis": "mobile"
+    },
+    "BillingRules": {
+      "File": "pages\\BillingRules.tsx",
+      "Apis": "billing"
+    },
+    "UserManagement": {
+      "File": "pages\\admin\\UserManagement.tsx",
+      "Apis": "admin"
+    },
+    "VerifyEmail": {
+      "File": "pages\\VerifyEmail.tsx",
+      "Apis": "auth"
+    },
+    "MonitoringClients": {
+      "File": "pages\\MonitoringClients.tsx",
+      "Apis": "client-metrics"
+    },
+    "ManufacturerIntegration": {
+      "File": "pages\\ManufacturerIntegration.tsx",
+      "Apis": "manufacturer-integrations"
+    },
+    "FleetMonitoringDashboard": {
+      "File": "pages\\FleetMonitoringDashboard.tsx",
+      "Apis": ["devices", "fleet"]
+    },
+    "PlatformAssignmentRules": {
+      "File": "pages\\PlatformAssignmentRules.tsx",
+      "Apis": "platform-crm"
+    },
+    "PredictiveMaintenanceHub": {
+      "File": "pages\\PredictiveMaintenanceHub.tsx",
+      "Apis": "predictive-maintenance"
+    },
+    "PlatformBusinessRecordDetail": {
+      "File": "pages\\PlatformBusinessRecordDetail.tsx",
+      "Apis": ["platform-crm", "platform-deals", "platform-activities", "platform-cs"]
+    },
+    "EnhancedProductAccessories": {
+      "File": "pages\\EnhancedProductAccessories.tsx",
+      "Apis": ["product-accessories", "accessories", "product-models"]
+    },
+    "my-approvals": {
+      "File": "pages\\my-approvals.tsx",
+      "Apis": ["approvals{param}", "approvals"]
+    },
+    "ProductModels": {
+      "File": "pages\\ProductModels.tsx",
+      "Apis": "product-models"
+    },
+    "SecurityComplianceManagement": {
+      "File": "pages\\SecurityComplianceManagement.tsx",
+      "Apis": "security-compliance"
+    },
+    "CompanyContacts": {
+      "File": "pages\\CompanyContacts.tsx",
+      "Apis": "companies"
+    },
+    "RoleManagement": {
+      "File": "pages\\RoleManagement.tsx",
+      "Apis": "rbac"
+    },
+    "AutopilotDashboard": {
+      "File": "pages\\AutopilotDashboard.tsx",
+      "Apis": "workflow-automation"
+    },
+    "OnboardingDashboard": {
+      "File": "pages\\OnboardingDashboard.tsx",
+      "Apis": ["service-tickets", "onboarding"]
+    },
+    "ManufacturerIntegrationDevices": {
+      "File": "pages\\ManufacturerIntegrationDevices.tsx",
+      "Apis": "devices"
+    },
+    "TechnicianDashboard": {
+      "File": "pages\\dashboards\\TechnicianDashboard.tsx",
+      "Apis": "service-reports"
+    },
+    "BillingAnalytics": {
+      "File": "pages\\BillingAnalytics.tsx",
+      "Apis": "billing"
+    },
+    "TeamLeadDashboard": {
+      "File": "pages\\dashboards\\TeamLeadDashboard.tsx",
+      "Apis": ["sales-reports", "service-reports"]
+    },
+    "TaskManagement": {
+      "File": "pages\\TaskManagement.tsx",
+      "Apis": ["tasks", "projects", "users"]
+    },
+    "SalesCommandCenter": {
+      "File": "pages\\SalesCommandCenter.tsx",
+      "Apis": ["users", "crm", "sales-forecasts", "pipeline-forecast"]
+    },
+    "CommissionManagement": {
+      "File": "pages\\CommissionManagement.tsx",
+      "Apis": "commission"
+    },
+    "RootAdminSignupsCRM": {
+      "File": "pages\\RootAdminSignupsCRM.tsx",
+      "Apis": "root-admin"
+    },
+    "ArticleEditor": {
+      "File": "pages\\admin\\ArticleEditor.tsx",
+      "Apis": "knowledge-base"
+    },
+    "PlatformTerritories": {
+      "File": "pages\\PlatformTerritories.tsx",
+      "Apis": "platform-crm"
+    },
+    "EquipmentLifecycleManagement": {
+      "File": "pages\\EquipmentLifecycleManagement.tsx",
+      "Apis": ["equipment-lifecycle", "technicians", "business-records"]
+    },
+    "WhiteLabelDashboard": {
+      "File": "pages\\WhiteLabelDashboard.tsx",
+      "Apis": "white-label"
+    },
+    "SalesPipelineForecasting": {
+      "File": "pages\\SalesPipelineForecasting.tsx",
+      "Apis": ["sales-forecasts", "pipeline-forecast"]
+    },
+    "LeadsManagement": {
+      "File": "pages\\LeadsManagement.tsx",
+      "Apis": ["companies", "supabase-business-records", "leads"]
+    },
+    "DeploymentReadiness": {
+      "File": "pages\\DeploymentReadiness.tsx",
+      "Apis": "deployment"
+    },
+    "email-parser-settings": {
+      "File": "pages\\settings\\email-parser-settings.tsx",
+      "Apis": ["email-parser-config", "email-parser-stats", "email-parser-emails", "email-parser"]
+    },
+    "SalesRepDashboard": {
+      "File": "pages\\dashboards\\SalesRepDashboard.tsx",
+      "Apis": "sales-reports"
+    },
+    "SalesPipelineWorkflow": {
+      "File": "pages\\SalesPipelineWorkflow.tsx",
+      "Apis": ["pipeline-config", "sales-pipeline"]
+    },
+    "CSVImportWizard": {
+      "File": "pages\\CSVImportWizard.tsx",
+      "Apis": "import"
+    },
+    "VendorManagement": {
+      "File": "pages\\VendorManagement.tsx",
+      "Apis": "vendors"
+    },
+    "PlatformCohortAnalysis": {
+      "File": "pages\\PlatformCohortAnalysis.tsx",
+      "Apis": "platform-analytics"
+    },
+    "EnhancedReportsHub": {
+      "File": "pages\\EnhancedReportsHub.tsx",
+      "Apis": "reporting"
+    },
+    "CustomerPortal": {
+      "File": "pages\\CustomerPortal.tsx",
+      "Apis": "customer-portal"
+    },
+    "TenantManagement": {
+      "File": "pages\\admin\\TenantManagement.tsx",
+      "Apis": "admin"
+    },
+    "OnboardingDetails": {
+      "File": "pages\\OnboardingDetails.tsx",
+      "Apis": "onboarding"
+    },
+    "PreventiveMaintenanceAutomation": {
+      "File": "pages\\PreventiveMaintenanceAutomation.tsx",
+      "Apis": "maintenance"
+    },
+    "CustomerAccessManagement": {
+      "File": "pages\\CustomerAccessManagement.tsx",
+      "Apis": ["customer-access", "users", "customers", "roles"]
+    },
+    "TodayDashboard": {
+      "File": "pages\\TodayDashboard.tsx",
+      "Apis": "dashboards"
+    },
+    "CrmGoalsDashboard": {
+      "File": "pages\\CrmGoalsDashboard.tsx",
+      "Apis": ["crm", "users"]
+    },
+    "PlatformCustomerSuccess": {
+      "File": "pages\\PlatformCustomerSuccess.tsx",
+      "Apis": "platform-crm"
+    },
+    "AdvancedAnalyticsDashboard": {
+      "File": "pages\\AdvancedAnalyticsDashboard.tsx",
+      "Apis": "analytics"
+    },
+    "AccountsReceivable": {
+      "File": "pages\\AccountsReceivable.tsx",
+      "Apis": ["accounts-receivable", "customers"]
+    },
+    "customers": {
+      "File": "pages\\customers.tsx",
+      "Apis": ["customers", "companies"]
+    },
+    "DealsManagement": {
+      "File": "pages\\DealsManagement.tsx",
+      "Apis": ["deal-stages", "companies", "deals"]
+    },
+    "DocumentBuilder": {
+      "File": "pages\\DocumentBuilder.tsx",
+      "Apis": ["quotes", "business-records", "documents"]
+    },
+    "PrintCostCalculator": {
+      "File": "pages\\PrintCostCalculator.tsx",
+      "Apis": "public"
+    },
+    "MeterBilling": {
+      "File": "pages\\MeterBilling.tsx",
+      "Apis": [
+        "meter-readings",
+        "contract-tiered-rates",
+        "billing",
+        "equipment",
+        "contracts",
+        "invoices"
+      ]
+    }
+  },
+  "WorkingFunctions": [
+    {
+      "Paths": [
+        "api/reports/breaches",
+        "reports",
+        "api/reports/custom/preview",
+        "api/reports/custom",
+        "api/reports",
+        "api/reports/business-insights",
+        "api/reports/competitive-metrics",
+        "api/reports/executive-summary",
+        "api/reports/kpi-scorecards",
+        "api/reports/territory-performance",
+        "api/reports/revenue-attribution",
+        "api/reports/cash-flow-forecast",
+        "api/reports/financial-summary",
+        "api/reports/payment-alerts",
+        "api/reports/ar-aging",
+        "api/reports/customer-profitability",
+        "api/reports/territory-financials",
+        "api/reports/sales-reps",
+        "api/reports/team-performance",
+        "api/reports/pipeline-funnel",
+        "api/reports/service-forecasts",
+        "api/reports/customer-health",
+        "api/reports/technician-capacity",
+        "api/reports/inventory-forecast",
+        "api/reports/service-summary"
+      ],
+      "Endpoint": "reports",
+      "CallCount": 96,
+      "Files": [
+        "components\\dashboard\\BreachDetectionTiles.tsx",
+        "components\\dashboard\\BreachTiles.tsx",
+        "pages\\CustomReportBuilder.tsx",
+        "pages\\ExecutiveDashboard.tsx",
+        "pages\\FinancialIntelligenceDashboard.tsx",
+        "pages\\PerformanceMonitoring.tsx",
+        "pages\\ReportsHub.tsx",
+        "pages\\SalesPerformanceAnalytics.tsx",
+        "pages\\ServiceForecastingAnalytics.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/proposals/proposal-templates",
+        "api/proposals",
+        "api/proposals/{param}/status",
+        "proposals",
+        "api/proposals/{param}",
+        "api/proposals/equipment-packages",
+        "api/proposals/{param}/export/pdf",
+        "api/proposals/{param}/export/manager-pdf"
+      ],
+      "Endpoint": "proposals",
+      "CallCount": 89,
+      "Files": [
+        "components\\customer\\CustomerProposals.tsx",
+        "components\\leads\\LeadProposals.tsx",
+        "components\\proposal-builder\\QuoteTransformer.tsx",
+        "components\\quote-builder\\QuoteBuilder.tsx",
+        "pages\\ProposalBuilder.tsx",
+        "pages\\QuoteProposalGeneration.tsx",
+        "pages\\QuotesManagement.tsx",
+        "pages\\QuoteView.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/customers/{param}/360-view",
+        "api/customers/{param}",
+        "customers",
+        "api/customers/{param}/equipment",
+        "api/customers/{param}/financial-summary",
+        "api/customers/{param}/payments",
+        "api/customers/{param}/aging",
+        "api/customers/{param}/contracts",
+        "api/customers/{param}/invoices",
+        "api/customers",
+        "api/customers/{param}/service-tickets",
+        "api/customers/{param}/service-calls",
+        "api/customers/{param}/supply-orders",
+        "api/customers/{param}/activities"
+      ],
+      "Endpoint": "customers",
+      "CallCount": 85,
+      "Files": [
+        "components\\customer\\customer-360-view.tsx",
+        "components\\customer\\CustomerEquipment.tsx",
+        "components\\customer\\CustomerFinancials.tsx",
+        "components\\customer\\CustomerInvoices.tsx",
+        "components\\customer\\CustomerMeterReadings.tsx",
+        "components\\customer\\CustomerServiceHistory.tsx",
+        "components\\customer\\CustomerSupplies.tsx",
+        "components\\layout\\command-palette.tsx",
+        "components\\layout\\context-panel.tsx",
+        "components\\layout\\header.tsx",
+        "hooks\\useCrossModuleIntegration.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\AccountsReceivable.tsx",
+        "pages\\AdvancedReporting.tsx",
+        "pages\\CustomerAccessManagement.tsx",
+        "pages\\CustomerDetail.tsx",
+        "pages\\customers.tsx",
+        "pages\\Invoices.tsx",
+        "pages\\PerformanceMonitoring.tsx",
+        "pages\\WarehouseOperations.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/tasks", "tasks", "api/tasks/{param}", "api/tasks/stats"],
+      "Endpoint": "tasks",
+      "CallCount": 78,
+      "Files": [
+        "components\\layout\\header.tsx",
+        "components\\tasks\\AllTasksView.tsx",
+        "components\\tasks\\MyTasksView.tsx",
+        "components\\tasks\\TemplatesView.tsx",
+        "lib\\config.ts",
+        "pages\\BasicTaskManagement.tsx",
+        "pages\\my-tasks.tsx",
+        "pages\\TaskHub.tsx",
+        "pages\\TaskManagement.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/companies/{param}/activities",
+        "companies",
+        "api/companies/{param}/contacts",
+        "api/companies",
+        "api/companies/{param}"
+      ],
+      "Endpoint": "companies",
+      "CallCount": 72,
+      "Files": [
+        "components\\forms\\ActivityForms.tsx",
+        "components\\forms\\MultipleContactsForm.tsx",
+        "components\\quote-builder\\CompanyContactSelector.tsx",
+        "components\\quote-builder\\QuoteBuilder.tsx",
+        "components\\ActivityTimeline.tsx",
+        "components\\ContactManager.tsx",
+        "pages\\CompanyContacts.tsx",
+        "pages\\CustomerDetail.tsx",
+        "pages\\customers.tsx",
+        "pages\\DealsManagement.tsx",
+        "pages\\EnhancedOnboardingForm.tsx",
+        "pages\\LeadsManagement.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/pricing/approvals/pending",
+        "api/pricing/margin-report",
+        "pricing",
+        "api/pricing/visibility",
+        "api/pricing/settings",
+        "api/pricing/margin-report/export",
+        "api/pricing/approval/{param}",
+        "api/pricing/company-settings",
+        "api/pricing/products",
+        "api/pricing/products/{param}",
+        "api/pricing/products/bulk-update"
+      ],
+      "Endpoint": "pricing",
+      "CallCount": 67,
+      "Files": [
+        "components\\dashboards\\PricingDashboardWidgets.tsx",
+        "components\\pricing\\PricingNotificationBadge.tsx",
+        "components\\product-management\\ProductPricingForm.tsx",
+        "hooks\\usePricingVisibility.ts",
+        "pages\\MarginAnalysisReport.tsx",
+        "pages\\PriceApprovals.tsx",
+        "pages\\PricingManagement.tsx",
+        "pages\\PricingSettings.tsx",
+        "pages\\ProductHubUnified.tsx",
+        "pages\\ProductManagementHub.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/business-records",
+        "business-records",
+        "api/business-records/import",
+        "api/business-records/{param}/status",
+        "api/business-records/stats/overview",
+        "api/business-records/{param}/contacts"
+      ],
+      "Endpoint": "business-records",
+      "CallCount": 61,
+      "Files": [
+        "components\\import\\CsvImportWizard.tsx",
+        "components\\leads\\LeadsImport.tsx",
+        "components\\proposal-builder\\QuoteTransformer.tsx",
+        "hooks\\useOptimisticMutations.ts",
+        "hooks\\usePaginatedQuery.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\AdvancedBillingEngine.tsx",
+        "pages\\DocumentBuilder.tsx",
+        "pages\\enhanced-crm.tsx",
+        "pages\\EnhancedOnboardingForm.tsx",
+        "pages\\EquipmentLifecycleHub.tsx",
+        "pages\\EquipmentLifecycleManagement.tsx",
+        "pages\\LeaseForm.tsx",
+        "pages\\PreventiveMaintenanceScheduling.tsx",
+        "pages\\ProposalBuilder.tsx",
+        "pages\\QuoteProposalGeneration.tsx",
+        "pages\\QuoteView.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/service-tickets",
+        "service-tickets",
+        "api/service-tickets/{param}",
+        "api/service-tickets/{param}/analysis",
+        "api/service-tickets/{param}/check-in"
+      ],
+      "Endpoint": "service-tickets",
+      "CallCount": 60,
+      "Files": [
+        "components\\dashboards\\role-dashboards.tsx",
+        "components\\layout\\command-palette.tsx",
+        "components\\layout\\context-panel.tsx",
+        "components\\layout\\header.tsx",
+        "components\\service\\PhoneInTicketCreator.tsx",
+        "components\\service\\ServiceTicketAnalysis.tsx",
+        "components\\service\\TechnicianTicketWorkflow.tsx",
+        "hooks\\useCrossModuleIntegration.ts",
+        "hooks\\useOptimisticMutations.ts",
+        "hooks\\usePaginatedQuery.ts",
+        "hooks\\useRealTimeData.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\AdvancedReporting.tsx",
+        "pages\\OnboardingDashboard.tsx",
+        "pages\\PerformanceMonitoring.tsx",
+        "pages\\ServiceHub.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/import/entity-types",
+        "api/import/ai/status",
+        "api/import/templates/{param}",
+        "api/import/jobs/{param}",
+        "api/import/jobs/{param}/duplicates",
+        "api/import/jobs/{param}/validate",
+        "api/import/jobs/{param}/duplicates/resolve-all",
+        "api/import/templates",
+        "api/import/jobs",
+        "import",
+        "api/import/jobs/{param}/mappings",
+        "api/import/jobs/{param}/duplicates/{param}/resolve",
+        "api/import/jobs/{param}/execute",
+        "api/import/upload",
+        "api/import/preview-mapping",
+        "api/import/ai/map-columns"
+      ],
+      "Endpoint": "import",
+      "CallCount": 58,
+      "Files": ["components\\import\\CsvImportWizard.tsx", "pages\\CSVImportWizard.tsx"]
+    },
+    {
+      "Paths": [
+        "api/dashboard/alerts",
+        "dashboard",
+        "api/dashboard/widgets",
+        "api/dashboard/layout",
+        "api/dashboard/metrics",
+        "api/dashboard/recent-tickets",
+        "api/dashboard/top-customers",
+        "api/dashboard/modules",
+        "api/dashboard/card-config",
+        "api/dashboard/layouts/default",
+        "api/dashboard/layouts"
+      ],
+      "Endpoint": "dashboard",
+      "CallCount": 52,
+      "Files": [
+        "components\\dashboard\\alerts.tsx",
+        "components\\dashboard\\DashboardCustomizer.tsx",
+        "components\\dashboard\\metrics-cards.tsx",
+        "components\\dashboard\\service-tickets.tsx",
+        "components\\dashboard\\top-customers.tsx",
+        "components\\ModularDashboard.tsx",
+        "hooks\\useRealTimeData.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\CustomDashboard.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "product-models",
+        "api/product-models/{param}/required-accessories",
+        "api/product-models",
+        "api/product-models/bulk-delete",
+        "api/product-models/{param}"
+      ],
+      "Endpoint": "product-models",
+      "CallCount": 52,
+      "Files": [
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "lib\\useRequiredAccessories.ts",
+        "pages\\EnhancedProductAccessories.tsx",
+        "pages\\EnhancedProductModels.tsx",
+        "pages\\ProductAccessories.tsx",
+        "pages\\ProductModels.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/analytics/conversion-metrics",
+        "api/analytics/activity-nudges",
+        "analytics",
+        "api/analytics/control-charts",
+        "api/analytics/trend-widgets",
+        "api/analytics/dashboard",
+        "api/analytics/dashboards",
+        "api/analytics/benchmarks",
+        "api/analytics/generate-reports",
+        "api/analytics/performance-metrics",
+        "api/analytics/trends",
+        "api/analytics/metrics",
+        "api/analytics/technician-performance",
+        "api/analytics/customer-service"
+      ],
+      "Endpoint": "analytics",
+      "CallCount": 44,
+      "Files": [
+        "components\\analytics\\ConversionInsights.tsx",
+        "components\\analytics\\PipelineTrendWidgets.tsx",
+        "pages\\AdvancedAnalyticsDashboard.tsx",
+        "pages\\ServiceAnalytics.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/catalog/manufacturers",
+        "api/catalog/models/bulk-enable",
+        "api/catalog/normalize-categories",
+        "api/catalog/models",
+        "api/catalog/models/{param}/enable",
+        "api/catalog/models/{param}",
+        "catalog"
+      ],
+      "Endpoint": "catalog",
+      "CallCount": 42,
+      "Files": ["pages\\ProductCatalog.tsx", "pages\\ProductHubUnified.tsx"]
+    },
+    {
+      "Paths": [
+        "api/onboarding/checklists",
+        "onboarding",
+        "api/onboarding/check-subdomain",
+        "api/onboarding/confirm-subdomain",
+        "api/onboarding/update-step",
+        "api/onboarding/checklists/{param}/generate-pdf",
+        "api/onboarding/checklists/{param}",
+        "api/onboarding/checklists/{param}/equipment",
+        "api/onboarding/checklists/{param}/sections",
+        "api/onboarding/checklists/{param}/tasks"
+      ],
+      "Endpoint": "onboarding",
+      "CallCount": 41,
+      "Files": [
+        "pages\\ComprehensiveOnboardingForm.tsx",
+        "pages\\EnhancedOnboardingForm.tsx",
+        "pages\\onboarding.tsx",
+        "pages\\OnboardingDashboard.tsx",
+        "pages\\OnboardingDetails.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/pipeline-config/templates",
+        "api/pipeline-config/stages",
+        "api/pipeline-config/stages/reorder",
+        "api/pipeline-config/templates/{param}",
+        "api/pipeline-config/templates/{param}/clone",
+        "api/pipeline-config/stages/{param}",
+        "pipeline-config"
+      ],
+      "Endpoint": "pipeline-config",
+      "CallCount": 36,
+      "Files": ["pages\\PipelineConfiguration.tsx", "pages\\SalesPipelineWorkflow.tsx"]
+    },
+    {
+      "Paths": [
+        "api/crm/goals",
+        "api/crm/teams",
+        "api/crm/goals/bulk-assign",
+        "api/crm/analytics/calculate-activities",
+        "api/crm/dashboard-stats",
+        "api/crm/goal-progress",
+        "api/crm/manager-insights",
+        "api/crm/analytics/conversion-analysis",
+        "crm"
+      ],
+      "Endpoint": "crm",
+      "CallCount": 36,
+      "Files": ["pages\\CrmGoalsDashboard.tsx", "pages\\SalesCommandCenter.tsx"]
+    },
+    {
+      "Paths": ["api/deals", "deals", "api/deals/{param}/stage", "api/deals/{param}"],
+      "Endpoint": "deals",
+      "CallCount": 29,
+      "Files": ["components\\leads\\LeadDeals.tsx", "pages\\DealsManagement.tsx"]
+    },
+    {
+      "Paths": [
+        "api/quotes",
+        "quotes",
+        "api/quotes/{param}/status",
+        "api/quotes/{param}/line-items"
+      ],
+      "Endpoint": "quotes",
+      "CallCount": 28,
+      "Files": [
+        "components\\customer\\CustomerQuotes.tsx",
+        "components\\leads\\LeadQuotes.tsx",
+        "pages\\contracts.tsx",
+        "pages\\DocumentBuilder.tsx",
+        "pages\\EnhancedOnboardingForm.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/equipment",
+        "equipment",
+        "api/equipment/{param}/meter-readings",
+        "api/equipment/{param}",
+        "api/equipment/{param}/status"
+      ],
+      "Endpoint": "equipment",
+      "CallCount": 28,
+      "Files": [
+        "components\\customer\\customer-360-view.tsx",
+        "components\\customer\\CustomerEquipment.tsx",
+        "components\\import\\CsvImportWizard.tsx",
+        "components\\layout\\command-palette.tsx",
+        "components\\layout\\context-panel.tsx",
+        "hooks\\useRealTimeData.ts",
+        "pages\\MeterBilling.tsx",
+        "pages\\MeterReadings.tsx",
+        "pages\\WarehouseOperations.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/contracts", "contracts"],
+      "Endpoint": "contracts",
+      "CallCount": 27,
+      "Files": [
+        "components\\customer\\CustomerContracts.tsx",
+        "pages\\AdvancedReporting.tsx",
+        "pages\\contracts.tsx",
+        "pages\\Invoices.tsx",
+        "pages\\MeterBilling.tsx",
+        "pages\\MeterReadings.tsx",
+        "pages\\PerformanceMonitoring.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "software-products",
+        "api/software-products",
+        "api/software-products/bulk-delete",
+        "api/software-products/{param}",
+        "api/software-products/import"
+      ],
+      "Endpoint": "software-products",
+      "CallCount": 26,
+      "Files": [
+        "components\\product-import\\ProductImport.tsx",
+        "components\\quote-builder\\ProductTypeSelector.tsx",
+        "pages\\SoftwareProducts.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/territories/stats",
+        "api/territories/types",
+        "api/territories",
+        "api/territories/{param}",
+        "territories"
+      ],
+      "Endpoint": "territories",
+      "CallCount": 26,
+      "Files": ["pages\\TerritoryManagement.tsx"]
+    },
+    {
+      "Paths": ["api/inventory", "inventory", "api/inventory/{param}"],
+      "Endpoint": "inventory",
+      "CallCount": 26,
+      "Files": [
+        "components\\import\\CsvImportWizard.tsx",
+        "hooks\\useCrossModuleIntegration.ts",
+        "hooks\\useOptimisticMutations.ts",
+        "hooks\\usePaginatedQuery.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\inventory.tsx",
+        "pages\\PerformanceMonitoring.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/enabled-products", "enabled-products"],
+      "Endpoint": "enabled-products",
+      "CallCount": 24,
+      "Files": ["pages\\ProductCatalog.tsx", "pages\\ProductHubUnified.tsx"]
+    },
+    {
+      "Paths": ["api/products", "products", "api/products/with-pricing", "api/products/all"],
+      "Endpoint": "products",
+      "CallCount": 23,
+      "Files": [
+        "components\\import\\CsvImportWizard.tsx",
+        "lib\\queryOptimizations.ts",
+        "pages\\EnhancedOnboardingForm.tsx",
+        "pages\\PricingManagement.tsx",
+        "pages\\ProductHubUnified.tsx",
+        "pages\\ProductManagementHub.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/projects", "projects"],
+      "Endpoint": "projects",
+      "CallCount": 23,
+      "Files": [
+        "components\\tasks\\TemplatesView.tsx",
+        "lib\\config.ts",
+        "pages\\BasicTaskManagement.tsx",
+        "pages\\TaskHub.tsx",
+        "pages\\TaskManagement.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/leases/{param}/initiate-renewal",
+        "leases",
+        "api/leases",
+        "api/leases/{param}"
+      ],
+      "Endpoint": "leases",
+      "CallCount": 21,
+      "Files": ["pages\\LeaseDetail.tsx", "pages\\LeaseForm.tsx", "pages\\Leases.tsx"]
+    },
+    {
+      "Paths": [
+        "api/sales-pipeline/opportunities",
+        "api/sales-pipeline/opportunities/{param}/stage",
+        "api/sales-pipeline/opportunities/{param}/activity",
+        "api/sales-pipeline/rep-metrics",
+        "api/sales-pipeline/summary",
+        "sales-pipeline"
+      ],
+      "Endpoint": "sales-pipeline",
+      "CallCount": 20,
+      "Files": ["pages\\SalesPipelineWorkflow.tsx"]
+    },
+    {
+      "Paths": ["api/users/{param}/dashboard-layout", "users", "api/users"],
+      "Endpoint": "users",
+      "CallCount": 20,
+      "Files": [
+        "components\\dashboards\\customizable-dashboard.tsx",
+        "pages\\assignment-groups.tsx",
+        "pages\\CrmGoalsDashboard.tsx",
+        "pages\\CustomerAccessManagement.tsx",
+        "pages\\SalesCommandCenter.tsx",
+        "pages\\TaskHub.tsx",
+        "pages\\TaskManagement.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/meter-readings", "meter-readings"],
+      "Endpoint": "meter-readings",
+      "CallCount": 19,
+      "Files": [
+        "pages\\AdvancedReporting.tsx",
+        "pages\\MeterBilling.tsx",
+        "pages\\MeterReadings.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/cross-module/trigger-service",
+        "api/cross-module/check-inventory",
+        "api/cross-module/trigger-billing",
+        "api/cross-module/schedule-maintenance",
+        "api/cross-module/parts-availability",
+        "api/cross-module/status",
+        "api/cross-module/log-event",
+        "cross-module"
+      ],
+      "Endpoint": "cross-module",
+      "CallCount": 18,
+      "Files": ["hooks\\useCrossModuleIntegration.ts"]
+    },
+    {
+      "Paths": ["api/invoices", "invoices"],
+      "Endpoint": "invoices",
+      "CallCount": 16,
+      "Files": [
+        "components\\layout\\command-palette.tsx",
+        "hooks\\useCrossModuleIntegration.ts",
+        "hooks\\usePaginatedQuery.ts",
+        "lib\\queryOptimizations.ts",
+        "pages\\AdvancedReporting.tsx",
+        "pages\\MeterBilling.tsx"
+      ]
+    },
+    {
+      "Paths": [
+        "api/notifications",
+        "api/notifications/read-all",
+        "api/notifications/{param}/read",
+        "api/notifications/{param}",
+        "notifications"
+      ],
+      "Endpoint": "notifications",
+      "CallCount": 16,
+      "Files": ["components\\layout\\enhanced-notification-bell.tsx"]
+    },
+    {
+      "Paths": ["api/performance/alerts", "performance", "api/performance/metrics"],
+      "Endpoint": "performance",
+      "CallCount": 16,
+      "Files": [
+        "components\\contextual\\PageAlerts.tsx",
+        "components\\dashboard\\KpiSummaryBar.tsx",
+        "components\\layout\\enhanced-notification-bell.tsx",
+        "components\\layout\\SystemAlertBell.tsx",
+        "pages\\PerformanceMonitoring.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/phone-in-tickets", "api/phone-in-tickets/{param}/convert", "phone-in-tickets"],
+      "Endpoint": "phone-in-tickets",
+      "CallCount": 16,
+      "Files": ["components\\service\\PhoneInTicketCreator.tsx", "pages\\ServiceHub.tsx"]
+    },
+    {
+      "Paths": ["api/demos", "api/demos/{param}/status", "api/demos/customers", "demos"],
+      "Endpoint": "demos",
+      "CallCount": 14,
+      "Files": ["pages\\DemoScheduling.tsx", "pages\\ESignatureIntegration.tsx"]
+    },
+    {
+      "Paths": ["api/technicians", "technicians"],
+      "Endpoint": "technicians",
+      "CallCount": 11,
+      "Files": [
+        "components\\dashboards\\role-dashboards.tsx",
+        "lib\\queryOptimizations.ts",
+        "pages\\EquipmentLifecycleHub.tsx",
+        "pages\\EquipmentLifecycleManagement.tsx",
+        "pages\\WarehouseOperations.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/company-contacts", "api/company-contacts/{param}", "company-contacts"],
+      "Endpoint": "company-contacts",
+      "CallCount": 9,
+      "Files": [
+        "components\\ContactManager.tsx",
+        "pages\\Contacts.tsx",
+        "pages\\EnhancedOnboardingForm.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/deal-stages", "deal-stages"],
+      "Endpoint": "deal-stages",
+      "CallCount": 8,
+      "Files": ["components\\leads\\LeadDeals.tsx", "pages\\DealsManagement.tsx"]
+    },
+    {
+      "Paths": ["api/contacts", "contacts", "api/contacts/search"],
+      "Endpoint": "contacts",
+      "CallCount": 7,
+      "Files": [
+        "components\\import\\CsvImportWizard.tsx",
+        "components\\service\\PhoneInTicketCreator.tsx",
+        "pages\\Contacts.tsx"
+      ]
+    },
+    {
+      "Paths": ["api/service-analytics", "service-analytics"],
+      "Endpoint": "service-analytics",
+      "CallCount": 4,
+      "Files": ["pages\\ServiceHub.tsx"]
+    },
+    {
+      "Paths": ["api/locations", "locations"],
+      "Endpoint": "locations",
+      "CallCount": 4,
+      "Files": ["pages\\MeterReadings.tsx"]
+    },
+    {
+      "Paths": ["api/csrf-token", "csrf-token"],
+      "Endpoint": "csrf-token",
+      "CallCount": 4,
+      "Files": ["lib\\queryClient.ts", "lib\\rbacQueryClient.ts", "main.tsx"]
+    },
+    {
+      "Paths": ["api/activities/{param}", "activities"],
+      "Endpoint": "activities",
+      "CallCount": 4,
+      "Files": ["components\\ActivityTimeline.tsx"]
+    },
+    {
+      "Paths": ["api/roles", "roles"],
+      "Endpoint": "roles",
+      "CallCount": 2,
+      "Files": ["pages\\CustomerAccessManagement.tsx"]
+    },
+    {
+      "Paths": ["api/search", "search"],
+      "Endpoint": "search",
+      "CallCount": 2,
+      "Files": ["components\\search\\global-search.tsx"]
+    },
+    {
+      "Paths": ["me"],
+      "Endpoint": "me",
+      "CallCount": 1,
+      "Files": ["hooks\\useSupabaseAuth.ts"]
+    }
+  ],
+  "GeneratedAt": "2026-01-27 12:36:10"
+}

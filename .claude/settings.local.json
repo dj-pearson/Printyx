@@ -39,7 +39,9 @@
       "Bash(powershell -Command \"try { $tcp = New-Object System.Net.Sockets.TcpClient\\(''209.145.59.219'', 5433\\); ''Port 5433 is open''; $tcp.Close\\(\\) } catch { ''Port 5433 is closed or blocked: '' + $_Exception.Message }\")",
       "Bash(timeout 20 npm run dev:*)",
       "Bash(git stash:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"scripts\\\\audit-edge-functions.ps1\" -Verbose)",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"scripts\\\\audit-edge-functions.ps1\" -ExportJson)"
     ],
     "deny": [],
     "ask": []
