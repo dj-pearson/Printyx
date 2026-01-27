@@ -244,7 +244,7 @@ export function enforceIpWhitelist(options?: {
     try {
       const clientIp = getClientIp(req);
       const session = req.session as any;
-      const tenantId = session?.tenantId || (req.headers['x-tenant-id'] as string);
+      const tenantId = session?.tenant_id || (req.headers['x-tenant-id'] as string);
 
       // Get tenant configuration
       const config = tenantId ? await getTenantIpConfig(tenantId) : { ...DEFAULT_IP_CONFIG };

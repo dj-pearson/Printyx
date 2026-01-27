@@ -219,13 +219,13 @@ export class SubscriptionService {
     // Get active subscription
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenantId, tenantId),
+        eq(tenantSubscriptions.tenant_id, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
       with: {
         plan: true,
       },
-      orderBy: [desc(tenantSubscriptions.createdAt)],
+      orderBy: [desc(tenantSubscriptions.created_at)],
     });
 
     if (!subscription) {
@@ -244,7 +244,7 @@ export class SubscriptionService {
     const now = new Date();
     const usage = await db.query.usageMetrics.findFirst({
       where: and(
-        eq(usageMetrics.tenantId, tenantId),
+        eq(usageMetrics.tenant_id, tenantId),
         lte(usageMetrics.periodStart, now),
         gte(usageMetrics.periodEnd, now),
       ),
@@ -348,10 +348,10 @@ export class SubscriptionService {
     // Get current subscription
     const currentSubscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenantId, tenantId),
+        eq(tenantSubscriptions.tenant_id, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
-      orderBy: [desc(tenantSubscriptions.createdAt)],
+      orderBy: [desc(tenantSubscriptions.created_at)],
     });
 
     if (!currentSubscription) {
@@ -444,10 +444,10 @@ export class SubscriptionService {
   static async cancelSubscription(tenantId: string, immediate: boolean = false): Promise<void> {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenantId, tenantId),
+        eq(tenantSubscriptions.tenant_id, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
-      orderBy: [desc(tenantSubscriptions.createdAt)],
+      orderBy: [desc(tenantSubscriptions.created_at)],
     });
 
     if (!subscription) {
@@ -525,10 +525,10 @@ export class SubscriptionService {
   ): Promise<TenantSubscription> {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenantId, tenantId),
+        eq(tenantSubscriptions.tenant_id, tenantId),
         eq(tenantSubscriptions.status, 'trialing'),
       ),
-      orderBy: [desc(tenantSubscriptions.createdAt)],
+      orderBy: [desc(tenantSubscriptions.created_at)],
     });
 
     if (!subscription) {
@@ -596,10 +596,10 @@ export class SubscriptionService {
   static async handleTrialExpiration(tenantId: string): Promise<void> {
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenantId, tenantId),
+        eq(tenantSubscriptions.tenant_id, tenantId),
         eq(tenantSubscriptions.status, 'trialing'),
       ),
-      orderBy: [desc(tenantSubscriptions.createdAt)],
+      orderBy: [desc(tenantSubscriptions.created_at)],
     });
 
     if (!subscription || !subscription.trialEndDate) {
@@ -778,7 +778,7 @@ export class SubscriptionService {
       // Send warnings at 7, 3, and 1 day marks
       if ([7, 3, 1].includes(daysRemaining)) {
         await this.createNotification({
-          tenantId: subscription.tenantId,
+          tenantId: subscription.tenant_id,
           type: 'trial_expiring',
           priority: daysRemaining === 1 ? 'urgent' : 'high',
           title: `Trial Ending in ${daysRemaining} Day${daysRemaining > 1 ? 's' : ''}`,
@@ -807,7 +807,7 @@ export class SubscriptionService {
         continue;
       }
 
-      const status = await this.getSubscriptionStatus(subscription.tenantId);
+      const status = await this.getSubscriptionStatus(subscription.tenant_id);
       if (!status) {
         continue;
       }
@@ -829,7 +829,7 @@ export class SubscriptionService {
         }
 
         await this.createNotification({
-          tenantId: subscription.tenantId,
+          tenantId: subscription.tenant_id,
           type: 'usage_limit_exceeded',
           priority: 'high',
           title: 'Usage Limits Exceeded',
@@ -860,7 +860,7 @@ export class SubscriptionService {
 
         if (warnings.length > 0) {
           await this.createNotification({
-            tenantId: subscription.tenantId,
+            tenantId: subscription.tenant_id,
             type: 'usage_limit_warning',
             priority: 'normal',
             title: 'Approaching Plan Limits',

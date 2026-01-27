@@ -265,7 +265,7 @@ export class UpdaterRegistry {
         const errors: string[] = [];
 
         // Basic validation
-        if (!config.tenantId) {
+        if (!config.tenant_id) {
           errors.push('Missing tenant ID');
         }
 

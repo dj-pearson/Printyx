@@ -114,13 +114,16 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get enriched contacts with advanced filtering
   app.get('/api/enrichment/contacts', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const searchParams = enrichContactSearchSchema.parse(req.query);
 
-      let query = db.select().from(enrichedContacts).where(eq(enrichedContacts.tenantId, tenantId));
+      let query = db
+        .select()
+        .from(enrichedContacts)
+        .where(eq(enrichedContacts.tenant_id, tenantId));
 
       // Apply filters
-      const conditions = [eq(enrichedContacts.tenantId, tenantId)];
+      const conditions = [eq(enrichedContacts.tenant_id, tenantId)];
 
       if (searchParams.query) {
         conditions.push(
@@ -231,13 +234,13 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get enriched contact by ID
   app.get('/api/enrichment/contacts/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { id } = req.params;
 
       const contact = await db
         .select()
         .from(enrichedContacts)
-        .where(and(eq(enrichedContacts.id, id), eq(enrichedContacts.tenantId, tenantId)))
+        .where(and(eq(enrichedContacts.id, id), eq(enrichedContacts.tenant_id, tenantId)))
         .limit(1);
 
       if (!contact.length) {
@@ -254,7 +257,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Create/update enriched contact
   app.post('/api/enrichment/contacts', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const contactData = insertEnrichedContactSchema.parse({
         ...req.body,
         tenantId,
@@ -272,14 +275,14 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Update enriched contact
   app.put('/api/enrichment/contacts/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { id } = req.params;
       const updateData = { ...req.body, updatedAt: new Date() };
 
       const [contact] = await db
         .update(enrichedContacts)
         .set(updateData)
-        .where(and(eq(enrichedContacts.id, id), eq(enrichedContacts.tenantId, tenantId)))
+        .where(and(eq(enrichedContacts.id, id), eq(enrichedContacts.tenant_id, tenantId)))
         .returning();
 
       if (!contact) {
@@ -300,10 +303,10 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get enriched companies with advanced filtering
   app.get('/api/enrichment/companies', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const searchParams = enrichCompanySearchSchema.parse(req.query);
 
-      const conditions = [eq(enrichedCompanies.tenantId, tenantId)];
+      const conditions = [eq(enrichedCompanies.tenant_id, tenantId)];
 
       if (searchParams.query) {
         conditions.push(
@@ -387,13 +390,13 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get enriched company by ID
   app.get('/api/enrichment/companies/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { id } = req.params;
 
       const company = await db
         .select()
         .from(enrichedCompanies)
-        .where(and(eq(enrichedCompanies.id, id), eq(enrichedCompanies.tenantId, tenantId)))
+        .where(and(eq(enrichedCompanies.id, id), eq(enrichedCompanies.tenant_id, tenantId)))
         .limit(1);
 
       if (!company.length) {
@@ -410,7 +413,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Create/update enriched company
   app.post('/api/enrichment/companies', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const companyData = insertEnrichedCompanySchema.parse({
         ...req.body,
         tenantId,
@@ -432,10 +435,10 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get intent data for companies
   app.get('/api/enrichment/intent', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { companyId, intentLevel, buyingStage } = req.query;
 
-      let whereConditions = [eq(enrichedIntentData.tenantId, tenantId)];
+      let whereConditions = [eq(enrichedIntentData.tenant_id, tenantId)];
 
       if (companyId) {
         whereConditions.push(eq(enrichedIntentData.company_external_id, companyId as string));
@@ -470,10 +473,10 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get prospecting campaigns
   app.get('/api/enrichment/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { status } = req.query;
 
-      let whereConditions = [eq(prospectingCampaigns.tenantId, tenantId)];
+      let whereConditions = [eq(prospectingCampaigns.tenant_id, tenantId)];
 
       if (status) {
         whereConditions.push(eq(prospectingCampaigns.status, status as string));
@@ -483,7 +486,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         .select()
         .from(prospectingCampaigns)
         .where(and(...whereConditions))
-        .orderBy(desc(prospectingCampaigns.createdAt));
+        .orderBy(desc(prospectingCampaigns.created_at));
 
       res.json(campaigns);
     } catch (error) {
@@ -495,7 +498,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Create prospecting campaign
   app.post('/api/enrichment/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const userId = req.user?.id || req.user?.claims?.sub;
 
       const campaignData = prospectingCampaignSchema.parse(req.body);
@@ -523,7 +526,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Import contacts from ZoomInfo
   app.post('/api/enrichment/import/zoominfo/contacts', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { contacts: rawContacts } = req.body;
 
       if (!Array.isArray(rawContacts)) {
@@ -582,7 +585,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Import contacts from Apollo.io
   app.post('/api/enrichment/import/apollo/contacts', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { people: rawContacts } = req.body;
 
       if (!Array.isArray(rawContacts)) {
@@ -642,7 +645,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
   // Get enrichment analytics
   app.get('/api/enrichment/analytics', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Get contact counts by source
       const contactsBySource = await db
@@ -651,7 +654,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
           count: sql<number>`count(*)`,
         })
         .from(enrichedContacts)
-        .where(eq(enrichedContacts.tenantId, tenantId))
+        .where(eq(enrichedContacts.tenant_id, tenantId))
         .groupBy(enrichedContacts.enrichment_source);
 
       // Get contact counts by prospecting status
@@ -661,7 +664,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
           count: sql<number>`count(*)`,
         })
         .from(enrichedContacts)
-        .where(eq(enrichedContacts.tenantId, tenantId))
+        .where(eq(enrichedContacts.tenant_id, tenantId))
         .groupBy(enrichedContacts.prospecting_status);
 
       // Get contact counts by management level
@@ -671,7 +674,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
           count: sql<number>`count(*)`,
         })
         .from(enrichedContacts)
-        .where(eq(enrichedContacts.tenantId, tenantId))
+        .where(eq(enrichedContacts.tenant_id, tenantId))
         .groupBy(enrichedContacts.management_level);
 
       // Get company counts by industry
@@ -681,7 +684,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
           count: sql<number>`count(*)`,
         })
         .from(enrichedCompanies)
-        .where(eq(enrichedCompanies.tenantId, tenantId))
+        .where(eq(enrichedCompanies.tenant_id, tenantId))
         .groupBy(enrichedCompanies.primary_industry)
         .limit(10);
 

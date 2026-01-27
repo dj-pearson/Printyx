@@ -30,9 +30,9 @@ router.get('/api/reports/service-sla-compliance', async (req: any, res) => {
 
     const tickets = await db.query.serviceTickets.findMany({
       where: and(
-        eq(serviceTickets.tenantId, tenantId),
-        gte(serviceTickets.createdAt, fromDate),
-        lte(serviceTickets.createdAt, toDate),
+        eq(serviceTickets.tenant_id, tenantId),
+        gte(serviceTickets.created_at, fromDate),
+        lte(serviceTickets.created_at, toDate),
       ),
       with: { technician: true },
     });
@@ -41,7 +41,7 @@ router.get('/api/reports/service-sla-compliance', async (req: any, res) => {
     const onTimeTickets = tickets.filter((t) => {
       if (!t.completedAt) return false;
       const slaMin = t.slaResponseMinutes || 480;
-      return (t.completedAt.getTime() - t.createdAt.getTime()) / (1000 * 60) <= slaMin;
+      return (t.completedAt.getTime() - t.created_at.getTime()) / (1000 * 60) <= slaMin;
     }).length;
 
     const byTechnician = Array.from(
@@ -57,7 +57,7 @@ router.get('/api/reports/service-sla-compliance', async (req: any, res) => {
       const onTime = group.filter((t: any) => {
         if (!t.completedAt) return false;
         const slaMin = t.slaResponseMinutes || 480;
-        return (t.completedAt.getTime() - t.createdAt.getTime()) / (1000 * 60) <= slaMin;
+        return (t.completedAt.getTime() - t.created_at.getTime()) / (1000 * 60) <= slaMin;
       }).length;
       return {
         technicianName: group[0]?.technician?.name || 'Unassigned',
@@ -86,7 +86,7 @@ router.get('/api/reports/sales-pipeline', async (req: any, res) => {
     if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
 
     const allDeals = await db.query.deals.findMany({
-      where: eq(deals.tenantId, tenantId),
+      where: eq(deals.tenant_id, tenantId),
       with: { stage: true, owner: true },
     });
 
@@ -140,7 +140,7 @@ router.get('/api/reports/revenue-recognition', async (req: any, res) => {
 
     const invoiceList = await db.query.invoices.findMany({
       where: and(
-        eq(invoices.tenantId, tenantId),
+        eq(invoices.tenant_id, tenantId),
         gte(invoices.invoiceDate, fromDate),
         lte(invoices.invoiceDate, toDate),
       ),
@@ -178,7 +178,7 @@ router.get('/api/reports/customer-health', async (req: any, res) => {
 
     // Get customers with their record type = 'customer' (not leads)
     const allCustomers = await db.query.customers.findMany({
-      where: and(eq(customers.tenantId, tenantId), eq(customers.recordType, 'customer')),
+      where: and(eq(customers.tenant_id, tenantId), eq(customers.recordType, 'customer')),
     });
 
     // Get related data for health calculation
@@ -188,19 +188,19 @@ router.get('/api/reports/customer-health', async (req: any, res) => {
     // Fetch service tickets for all customers
     const customerTickets = await db.query.serviceTickets.findMany({
       where: and(
-        eq(serviceTickets.tenantId, tenantId),
-        gte(serviceTickets.createdAt, ninetyDaysAgo),
+        eq(serviceTickets.tenant_id, tenantId),
+        gte(serviceTickets.created_at, ninetyDaysAgo),
       ),
     });
 
     // Fetch invoices for all customers
     const customerInvoices = await db.query.invoices.findMany({
-      where: and(eq(invoices.tenantId, tenantId), gte(invoices.invoiceDate, ninetyDaysAgo)),
+      where: and(eq(invoices.tenant_id, tenantId), gte(invoices.invoiceDate, ninetyDaysAgo)),
     });
 
     // Fetch active contracts
     const activeContracts = await db.query.contracts.findMany({
-      where: and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active')),
+      where: and(eq(contracts.tenant_id, tenantId), eq(contracts.status, 'active')),
     });
 
     // Build lookup maps for efficient access
@@ -267,7 +267,7 @@ router.get('/api/reports/customer-health', async (req: any, res) => {
       // Engagement Score (25 points max)
       // Based on recency of activity and tenure
       let engagementScore = 25;
-      const lastActivity = c.lastActivityDate || c.updatedAt || c.createdAt;
+      const lastActivity = c.lastActivityDate || c.updatedAt || c.created_at;
       if (lastActivity) {
         const daysSinceActivity = Math.floor(
           (Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24),
@@ -277,7 +277,7 @@ router.get('/api/reports/customer-health', async (req: any, res) => {
         else if (daysSinceActivity > 30) engagementScore -= 5;
       }
       // Tenure bonus
-      const customerSince = c.customerSince || c.createdAt;
+      const customerSince = c.customerSince || c.created_at;
       if (customerSince) {
         const monthsAsTenant = Math.floor(
           (Date.now() - new Date(customerSince).getTime()) / (1000 * 60 * 60 * 24 * 30),
@@ -397,14 +397,14 @@ router.get('/api/reports/technician-utilization', async (req: any, res) => {
 
     // Get all technicians
     const techList = await db.query.technicians.findMany({
-      where: eq(technicians.tenantId, tenantId),
+      where: eq(technicians.tenant_id, tenantId),
     });
 
     // Get all service tickets from the last 30 days
     const periodTickets = await db.query.serviceTickets.findMany({
       where: and(
-        eq(serviceTickets.tenantId, tenantId),
-        gte(serviceTickets.createdAt, thirtyDaysAgo),
+        eq(serviceTickets.tenant_id, tenantId),
+        gte(serviceTickets.created_at, thirtyDaysAgo),
       ),
     });
 
@@ -478,7 +478,7 @@ router.get('/api/reports/technician-utilization', async (req: any, res) => {
         const onTimeTickets = ticketsWithSLA.filter((tk) => {
           if (!tk.completedAt) return false;
           const responseTime =
-            (new Date(tk.completedAt).getTime() - new Date(tk.createdAt).getTime()) / (1000 * 60);
+            (new Date(tk.completedAt).getTime() - new Date(tk.created_at).getTime()) / (1000 * 60);
           return responseTime <= (tk.slaResponseMinutes || 480);
         });
         slaCompliance = Math.round((onTimeTickets.length / ticketsWithSLA.length) * 100);
@@ -492,9 +492,9 @@ router.get('/api/reports/technician-utilization', async (req: any, res) => {
               other.id !== tk.id &&
               other.customerId === tk.customerId &&
               other.equipmentId === tk.equipmentId &&
-              other.createdAt > tk.createdAt &&
-              new Date(other.createdAt).getTime() -
-                new Date(tk.completedAt || tk.createdAt).getTime() <
+              other.created_at > tk.created_at &&
+              new Date(other.created_at).getTime() -
+                new Date(tk.completedAt || tk.created_at).getTime() <
                 7 * 24 * 60 * 60 * 1000,
           ),
       );

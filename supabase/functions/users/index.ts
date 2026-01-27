@@ -35,7 +35,7 @@ export default async function handler(req: Request) {
     }
 
     // Get tenant ID from user metadata or query from database
-    let tenantId = (user.app_metadata as any)?.tenantId;
+    let tenantId = (user.app_metadata as any)?.tenant_id;
 
     if (!tenantId) {
       // Fallback: query tenant_id from users table

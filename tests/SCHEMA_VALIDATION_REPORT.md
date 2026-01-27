@@ -1,13 +1,13 @@
 # Schema Validation Report
 
-**Generated:** 2026-01-26T22:46:18.063Z
+**Generated:** 2026-01-27T03:45:22.460Z
 
 ## Summary
 
 - **Files Scanned:** 1108
-- **Total Issues:** 3511
+- **Total Issues:** 3217
   - Errors: 2248 ❌
-  - Warnings: 1263 ⚠️
+  - Warnings: 969 ⚠️
   - Info: 0 ℹ️
 
 ## Schema Information
@@ -211,7 +211,7 @@ console.log("   DELETE FROM service_contracts WHERE contract_number = 'TEST-SVC-
 ❌ **Line 2386:** Table 'serviceTickets' not found in schema
 
 ```
-let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
+let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'service_tickets'?
@@ -291,7 +291,7 @@ let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, t
 ❌ **Line 2892:** Table 'serviceTickets' not found in schema
 
 ```
-return await db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
+return await db.select().from(serviceTickets).where(eq(serviceTickets.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'service_tickets'?
@@ -301,7 +301,7 @@ return await db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, 
 ❌ **Line 2917:** Table 'inventoryItems' not found in schema
 
 ```
-return await db.select().from(inventoryItems).where(eq(inventoryItems.tenantId, tenantId));
+return await db.select().from(inventoryItems).where(eq(inventoryItems.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'inventory_items'?
@@ -311,7 +311,7 @@ return await db.select().from(inventoryItems).where(eq(inventoryItems.tenantId, 
 ❌ **Line 2954:** Table 'meterReadings' not found in schema
 
 ```
-return await db.select().from(meterReadings).where(eq(meterReadings.tenantId, tenantId));
+return await db.select().from(meterReadings).where(eq(meterReadings.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'meter_readings'?
@@ -701,7 +701,7 @@ return await db.select().from(meterReadings).where(eq(meterReadings.tenantId, te
 ❌ **Line 4209:** Table 'vendors' not found in schema
 
 ```
-return await db.select().from(vendors).where(eq(vendors.tenantId, tenantId));
+return await db.select().from(vendors).where(eq(vendors.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -721,7 +721,7 @@ return await db.select().from(vendors).where(eq(vendors.tenantId, tenantId));
 ❌ **Line 4247:** Table 'accountsPayable' not found in schema
 
 ```
-return await db.select().from(accountsPayable).where(eq(accountsPayable.tenantId, tenantId));
+return await db.select().from(accountsPayable).where(eq(accountsPayable.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'accounts_payable'?
@@ -761,7 +761,7 @@ return await db.select().from(accountsPayable).where(eq(accountsPayable.tenantId
 ❌ **Line 4315:** Table 'chartOfAccounts' not found in schema
 
 ```
-return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenantId, tenantId));
+return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -781,7 +781,7 @@ return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenantId
 ❌ **Line 4346:** Table 'purchaseOrders' not found in schema
 
 ```
-return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenantId, tenantId));
+return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'purchase_orders'?
@@ -941,7 +941,7 @@ const [contact] = await db.select().from(companyContacts).where(eq(companyContac
 ❌ **Line 5015:** Table 'userSettings' not found in schema
 
 ```
-const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
+const [settings] = await db.select().from(userSettings).where(eq(userSettings.user_id, userId));
 ```
 
 💡 **Suggestion:** Did you mean 'user_settings'?
@@ -971,7 +971,7 @@ const [settings] = await db.select().from(userSettings).where(eq(userSettings.us
 ❌ **Line 5290:** Table 'servicePhotos' not found in schema
 
 ```
-let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenantId, params.tenantId));
+let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenant_id, params.tenant_id));
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -1441,7 +1441,7 @@ let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenantId, par
 ❌ **Line 6339:** Table 'emailTemplates' not found in schema
 
 ```
-let query = db.select().from(emailTemplates).where(eq(emailTemplates.tenantId, tenantId));
+let query = db.select().from(emailTemplates).where(eq(emailTemplates.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -4089,7 +4089,7 @@ const rows = await db.select().from(seoSettings).limit(1);
 ❌ **Line 7352:** Table 'seoPages' not found in schema
 
 ```
-const rows = await db.select().from(seoPages).orderBy(desc(seoPages.updatedAt));
+const rows = await db.select().from(seoPages).orderBy(desc(seoPages.updated_at));
 ```
 
 💡 **Suggestion:** Did you mean 'seo_pages'?
@@ -10003,7 +10003,7 @@ description: 'Automated procurement process from requisition to payment',
 ❌ **Line 183:** Table 'equipmentDisposal' not found in schema
 
 ```
-let query = db.select().from(equipmentDisposal).where(eq(equipmentDisposal.tenantId, tenantId));
+let query = db.select().from(equipmentDisposal).where(eq(equipmentDisposal.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -10769,7 +10769,7 @@ res.status(500).json({ error: 'Failed to update approval rule' });
 ❌ **Line 120:** Table 'enrichedContacts' not found in schema
 
 ```
-let query = db.select().from(enrichedContacts).where(eq(enrichedContacts.tenantId, tenantId));
+let query = db.select().from(enrichedContacts).where(eq(enrichedContacts.tenant_id, tenantId));
 ```
 
 💡 **Suggestion:** Did you mean 'enriched_contacts'?
@@ -11107,7 +11107,7 @@ message: 'Usage down 38% from last month - investigate cause',
 ❌ **Line 155:** Table 'customerPortalAccess' not found in schema
 
 ```
-db.select().from(customerPortalAccess).where(eq(customerPortalAccess.tenantId, tenantId)),
+db.select().from(customerPortalAccess).where(eq(customerPortalAccess.tenant_id, tenantId)),
 ```
 
 💡 **Suggestion:** Did you mean 'customer_portal_access'?
@@ -11137,7 +11137,7 @@ db.select().from(customerPortalAccess).where(eq(customerPortalAccess.tenantId, t
 ❌ **Line 164:** Table 'customerSupplyOrders' not found in schema
 
 ```
-db.select().from(customerSupplyOrders).where(eq(customerSupplyOrders.tenantId, tenantId)),
+db.select().from(customerSupplyOrders).where(eq(customerSupplyOrders.tenant_id, tenantId)),
 ```
 
 💡 **Suggestion:** Did you mean 'customer_supply_orders'?
@@ -11147,7 +11147,7 @@ db.select().from(customerSupplyOrders).where(eq(customerSupplyOrders.tenantId, t
 ❌ **Line 165:** Table 'customerPayments' not found in schema
 
 ```
-db.select().from(customerPayments).where(eq(customerPayments.tenantId, tenantId)),
+db.select().from(customerPayments).where(eq(customerPayments.tenant_id, tenantId)),
 ```
 
 💡 **Suggestion:** Did you mean 'customer_payments'?
@@ -11157,7 +11157,7 @@ db.select().from(customerPayments).where(eq(customerPayments.tenantId, tenantId)
 ❌ **Line 166:** Table 'customerNotifications' not found in schema
 
 ```
-db.select().from(customerNotifications).where(eq(customerNotifications.tenantId, tenantId)),
+db.select().from(customerNotifications).where(eq(customerNotifications.tenant_id, tenantId)),
 ```
 
 💡 **Suggestion:** Did you mean 'customer_notifications'?
@@ -18244,6 +18244,428 @@ const existingCategories = await db.select().from(knowledgeCategories);
 
 ---
 
+### `server\openapi\config.ts`
+
+❌ **Line 661:** Table 'business' not found in schema
+
+```
+summary: 'Update business record',
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 662:** Table 'an' not found in schema
+
+```
+description: 'Update an existing business record',
+```
+
+💡 **Suggestion:** Similar tables: tenants, instances, commission_analytics
+
+---
+
+### `server\middleware\supabase-auth.ts`
+
+❌ **Line 260:** Table 'database' not found in schema
+
+```
+console.warn('[Auth] Could not fetch user from database:', dbError);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `server\middleware\subscription.ts`
+
+❌ **Line 72:** Table 'your' not found in schema
+
+```
+message = 'Your payment is past due. Please update your payment method.';
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `server\middleware\session-timeout.ts`
+
+❌ **Line 406:** Table 'securitySessions' not found in schema
+
+```
+.from(securitySessions)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `server\middleware\ip-whitelist.ts`
+
+❌ **Line 452:** Table 'IP' not found in schema
+
+```
+console.error('Failed to update IP whitelist:', error);
+```
+
+💡 **Suggestion:** Similar tables: customer_equipment, equipment, equipment_asset_tracking
+
+---
+
+❌ **Line 455:** Table 'IP' not found in schema
+
+```
+error: 'Failed to update IP whitelist settings',
+```
+
+💡 **Suggestion:** Similar tables: customer_equipment, equipment, equipment_asset_tracking
+
+---
+
+### `server\middleware\hierarchical-query-builder.ts`
+
+❌ **Line 197:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 205:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 223:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 238:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 271:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 279:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 304:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+❌ **Line 313:** Table 'organizationalUnits' not found in schema
+
+```
+.from(organizationalUnits)
+```
+
+💡 **Suggestion:** Did you mean 'organizational_units'?
+
+---
+
+### `server\middleware\enhanced-rbac-middleware.ts`
+
+❌ **Line 104:** Table 'permissionCache' not found in schema
+
+```
+.from(permissionCache)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 147:** Table 'permissionSet' not found in schema
+
+```
+const permissionsArray = Array.from(permissionSet);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 230:** Table 'userRoleAssignments' not found in schema
+
+```
+.from(userRoleAssignments)
+```
+
+💡 **Suggestion:** Did you mean 'user_role_assignments'?
+
+---
+
+❌ **Line 272:** Table 'permissions' not found in schema
+
+```
+.from(permissions)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 340:** Table 'rolePermissions' not found in schema
+
+```
+.from(rolePermissions)
+```
+
+💡 **Suggestion:** Did you mean 'role_permissions'?
+
+---
+
+❌ **Line 356:** Table 'permissionOverrides' not found in schema
+
+```
+.from(permissionOverrides)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 519:** Table 'userRoleAssignments' not found in schema
+
+```
+.from(userRoleAssignments)
+```
+
+💡 **Suggestion:** Did you mean 'user_role_assignments'?
+
+---
+
+❌ **Line 915:** Table 'permissions' not found in schema
+
+```
+.from(permissions)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 926:** Table 'permissionOverrides' not found in schema
+
+```
+.from(permissionOverrides)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 988:** Table 'a' not found in schema
+
+```
+message: 'This action requires approval from a supervisor.',
+```
+
+💡 **Suggestion:** Similar tables: schema_migrations, tenants, audit_log_entries
+
+---
+
+❌ **Line 1153:** Table 'permissions' not found in schema
+
+```
+return Array.from(permissions);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `server\integrations\routes.ts`
+
+❌ **Line 72:** Table 'integrationMetrics' not found in schema
+
+```
+.from(integrationMetrics)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 86:** Table 'integrationApiLogs' not found in schema
+
+```
+.from(integrationApiLogs)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `server\integrations\integration-service.ts`
+
+❌ **Line 151:** Table 'systemIntegrations' not found in schema
+
+```
+.from(systemIntegrations)
+```
+
+💡 **Suggestion:** Did you mean 'system_integrations'?
+
+---
+
+❌ **Line 411:** Table 'systemIntegrations' not found in schema
+
+```
+.from(systemIntegrations)
+```
+
+💡 **Suggestion:** Did you mean 'system_integrations'?
+
+---
+
+❌ **Line 458:** Table 'Account' not found in schema
+
+```
+'SELECT Id, Name, Website, Phone, Industry, BillingStreet, BillingCity, BillingState FROM Account LIMIT 100';
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 462:** Table 'Contact' not found in schema
+
+```
+'SELECT Id, FirstName, LastName, Email, Phone, Title, AccountId FROM Contact LIMIT 100';
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 466:** Table 'Opportunity' not found in schema
+
+```
+'SELECT Id, Name, Amount, StageName, CloseDate, AccountId FROM Opportunity LIMIT 100';
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `server\integrations\error-monitor.ts`
+
+❌ **Line 405:** Table 'integration' not found in schema
+
+```
+console.error(`Failed to update integration status:`, error);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 416:** Table 'systemIntegrations' not found in schema
+
+```
+.from(systemIntegrations)
+```
+
+💡 **Suggestion:** Did you mean 'system_integrations'?
+
+---
+
+### `server\integrations\dashboard-service.ts`
+
+❌ **Line 46:** Table 'systemIntegrations' not found in schema
+
+```
+.from(systemIntegrations)
+```
+
+💡 **Suggestion:** Did you mean 'system_integrations'?
+
+---
+
+❌ **Line 75:** Table 'integrationMetrics' not found in schema
+
+```
+.from(integrationMetrics)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 137:** Table 'integrationMetrics' not found in schema
+
+```
+.from(integrationMetrics)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 153:** Table 'integrationApiLogs' not found in schema
+
+```
+.from(integrationApiLogs)
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 341:** Table 'systemIntegrations' not found in schema
+
+```
+.from(systemIntegrations)
+```
+
+💡 **Suggestion:** Did you mean 'system_integrations'?
+
+---
+
 ### `server\routes\workflow-automation-routes.ts`
 
 ❌ **Line 119:** Table 'workflow' not found in schema
@@ -20140,425 +20562,25 @@ res.status(500).json({ error: 'Failed to update credit memo' });
 
 ---
 
-### `server\openapi\config.ts`
+### `server\data\article-templates.ts`
 
-❌ **Line 661:** Table 'business' not found in schema
-
-```
-summary: 'Update business record',
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 662:** Table 'an' not found in schema
+❌ **Line 378:** Table 'simple' not found in schema
 
 ```
-description: 'Update an existing business record',
-```
-
-💡 **Suggestion:** Similar tables: tenants, instances, commission_analytics
-
----
-
-### `server\middleware\supabase-auth.ts`
-
-❌ **Line 260:** Table 'database' not found in schema
-
-```
-console.warn('[Auth] Could not fetch user from database:', dbError);
+guidance: 'Ordered troubleshooting steps from simple to complex',
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
 
 ---
 
-### `server\middleware\subscription.ts`
-
-❌ **Line 72:** Table 'your' not found in schema
+❌ **Line 687:** Table 'previous' not found in schema
 
 ```
-message = 'Your payment is past due. Please update your payment method.';
+guidance: 'Resolved issues from previous versions',
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `server\middleware\session-timeout.ts`
-
-❌ **Line 406:** Table 'securitySessions' not found in schema
-
-```
-.from(securitySessions)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `server\middleware\ip-whitelist.ts`
-
-❌ **Line 452:** Table 'IP' not found in schema
-
-```
-console.error('Failed to update IP whitelist:', error);
-```
-
-💡 **Suggestion:** Similar tables: customer_equipment, equipment, equipment_asset_tracking
-
----
-
-❌ **Line 455:** Table 'IP' not found in schema
-
-```
-error: 'Failed to update IP whitelist settings',
-```
-
-💡 **Suggestion:** Similar tables: customer_equipment, equipment, equipment_asset_tracking
-
----
-
-### `server\middleware\hierarchical-query-builder.ts`
-
-❌ **Line 197:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 205:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 223:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 238:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 271:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 279:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 304:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-❌ **Line 313:** Table 'organizationalUnits' not found in schema
-
-```
-.from(organizationalUnits)
-```
-
-💡 **Suggestion:** Did you mean 'organizational_units'?
-
----
-
-### `server\middleware\enhanced-rbac-middleware.ts`
-
-❌ **Line 104:** Table 'permissionCache' not found in schema
-
-```
-.from(permissionCache)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 147:** Table 'permissionSet' not found in schema
-
-```
-const permissionsArray = Array.from(permissionSet);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 230:** Table 'userRoleAssignments' not found in schema
-
-```
-.from(userRoleAssignments)
-```
-
-💡 **Suggestion:** Did you mean 'user_role_assignments'?
-
----
-
-❌ **Line 272:** Table 'permissions' not found in schema
-
-```
-.from(permissions)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 340:** Table 'rolePermissions' not found in schema
-
-```
-.from(rolePermissions)
-```
-
-💡 **Suggestion:** Did you mean 'role_permissions'?
-
----
-
-❌ **Line 356:** Table 'permissionOverrides' not found in schema
-
-```
-.from(permissionOverrides)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 519:** Table 'userRoleAssignments' not found in schema
-
-```
-.from(userRoleAssignments)
-```
-
-💡 **Suggestion:** Did you mean 'user_role_assignments'?
-
----
-
-❌ **Line 915:** Table 'permissions' not found in schema
-
-```
-.from(permissions)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 926:** Table 'permissionOverrides' not found in schema
-
-```
-.from(permissionOverrides)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 988:** Table 'a' not found in schema
-
-```
-message: 'This action requires approval from a supervisor.',
-```
-
-💡 **Suggestion:** Similar tables: schema_migrations, tenants, audit_log_entries
-
----
-
-❌ **Line 1153:** Table 'permissions' not found in schema
-
-```
-return Array.from(permissions);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `server\integrations\routes.ts`
-
-❌ **Line 72:** Table 'integrationMetrics' not found in schema
-
-```
-.from(integrationMetrics)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 86:** Table 'integrationApiLogs' not found in schema
-
-```
-.from(integrationApiLogs)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `server\integrations\integration-service.ts`
-
-❌ **Line 151:** Table 'systemIntegrations' not found in schema
-
-```
-.from(systemIntegrations)
-```
-
-💡 **Suggestion:** Did you mean 'system_integrations'?
-
----
-
-❌ **Line 411:** Table 'systemIntegrations' not found in schema
-
-```
-.from(systemIntegrations)
-```
-
-💡 **Suggestion:** Did you mean 'system_integrations'?
-
----
-
-❌ **Line 458:** Table 'Account' not found in schema
-
-```
-'SELECT Id, Name, Website, Phone, Industry, BillingStreet, BillingCity, BillingState FROM Account LIMIT 100';
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 462:** Table 'Contact' not found in schema
-
-```
-'SELECT Id, FirstName, LastName, Email, Phone, Title, AccountId FROM Contact LIMIT 100';
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 466:** Table 'Opportunity' not found in schema
-
-```
-'SELECT Id, Name, Amount, StageName, CloseDate, AccountId FROM Opportunity LIMIT 100';
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `server\integrations\error-monitor.ts`
-
-❌ **Line 405:** Table 'integration' not found in schema
-
-```
-console.error(`Failed to update integration status:`, error);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 416:** Table 'systemIntegrations' not found in schema
-
-```
-.from(systemIntegrations)
-```
-
-💡 **Suggestion:** Did you mean 'system_integrations'?
-
----
-
-### `server\integrations\dashboard-service.ts`
-
-❌ **Line 46:** Table 'systemIntegrations' not found in schema
-
-```
-.from(systemIntegrations)
-```
-
-💡 **Suggestion:** Did you mean 'system_integrations'?
-
----
-
-❌ **Line 75:** Table 'integrationMetrics' not found in schema
-
-```
-.from(integrationMetrics)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 137:** Table 'integrationMetrics' not found in schema
-
-```
-.from(integrationMetrics)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 153:** Table 'integrationApiLogs' not found in schema
-
-```
-.from(integrationApiLogs)
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 341:** Table 'systemIntegrations' not found in schema
-
-```
-.from(systemIntegrations)
-```
-
-💡 **Suggestion:** Did you mean 'system_integrations'?
 
 ---
 
@@ -20608,28 +20630,6 @@ const feedback = await db.query.articleFeedback.findMany({
 
 ```
 const article = await db.query.knowledgeArticles.findFirst({
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `server\data\article-templates.ts`
-
-❌ **Line 378:** Table 'simple' not found in schema
-
-```
-guidance: 'Ordered troubleshooting steps from simple to complex',
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 687:** Table 'previous' not found in schema
-
-```
-guidance: 'Resolved issues from previous versions',
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -21014,28 +21014,6 @@ content: "Scores range from 0-100. Here's how to use them strategically:",
 
 ---
 
-### `server\database-updater\examples\basic-usage.ts`
-
-❌ **Line 143:** Table 'example...' not found in schema
-
-```
-console.log('🔄 Configuration update example...');
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-❌ **Line 173:** Table 'failed' not found in schema
-
-```
-console.error('❌ Configuration update failed:', error);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
 ### `server\database-updater\updaters\ServiceTicketUpdater.ts`
 
 ❌ **Line 228:** Table 'Network' not found in schema
@@ -21077,6 +21055,28 @@ console.error('❌ Configuration update failed:', error);
 ```
 
 💡 **Suggestion:** Did you mean 'business_records'?
+
+---
+
+### `server\database-updater\examples\basic-usage.ts`
+
+❌ **Line 143:** Table 'example...' not found in schema
+
+```
+console.log('🔄 Configuration update example...');
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+❌ **Line 173:** Table 'failed' not found in schema
+
+```
+console.error('❌ Configuration update failed:', error);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
 
 ---
 
@@ -22398,6 +22398,18 @@ selectedIds: Array.from(selectedIds),
 
 ---
 
+### `client\src\components\service\ServiceTicketAnalysis.tsx`
+
+❌ **Line 521:** Table 'the' not found in schema
+
+```
+placeholder="Any feedback from the customer..."
+```
+
+💡 **Suggestion:** Table not found in DATABASE_SCHEMA.md
+
+---
+
 ### `client\src\components\tasks\TemplatesView.tsx`
 
 ❌ **Line 76:** Table 'template' not found in schema
@@ -22454,30 +22466,6 @@ description: 'Failed to update task',
 
 ---
 
-### `client\src\components\service\ServiceTicketAnalysis.tsx`
-
-❌ **Line 521:** Table 'the' not found in schema
-
-```
-placeholder="Any feedback from the customer..."
-```
-
-💡 **Suggestion:** Table not found in DATABASE_SCHEMA.md
-
----
-
-### `client\src\components\proposal-builder\QuoteTransformer.tsx`
-
-❌ **Line 157:** Table 'the' not found in schema
-
-```
-'Here are the key benefits and value propositions that set us apart from the competition.',
-```
-
-💡 **Suggestion:** Table not found in DATABASE_SCHEMA.md
-
----
-
 ### `client\src\components\pwa\PWAInstallPrompt.tsx`
 
 ❌ **Line 40:** Table 'your' not found in schema
@@ -22497,6 +22485,18 @@ description: 'You can install Printyx anytime from your browser menu.',
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `client\src\components\proposal-builder\QuoteTransformer.tsx`
+
+❌ **Line 157:** Table 'the' not found in schema
+
+```
+'Here are the key benefits and value propositions that set us apart from the competition.',
+```
+
+💡 **Suggestion:** Table not found in DATABASE_SCHEMA.md
 
 ---
 
@@ -22580,6 +22580,30 @@ description: `Print volume increased 40% over last quarter. Customer may benefit
 
 ---
 
+### `client\src\pages\admin\KnowledgeBaseAdminDashboard.tsx`
+
+❌ **Line 130:** Table 'failed' not found in schema
+
+```
+if (!res.ok) throw new Error('Bulk update failed');
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `client\src\pages\admin\ArticleEditor.tsx`
+
+❌ **Line 229:** Table 'article' not found in schema
+
+```
+{isNew ? 'Create a new knowledge base article' : 'Update article content'}
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
 ### `client\src\pages\marketing\Homepage.tsx`
 
 ❌ **Line 93:** Table 'E' not found in schema
@@ -22644,30 +22668,6 @@ question: 'What kind of ROI can we expect from switching to Printyx?',
 
 ---
 
-### `client\src\pages\admin\KnowledgeBaseAdminDashboard.tsx`
-
-❌ **Line 130:** Table 'failed' not found in schema
-
-```
-if (!res.ok) throw new Error('Bulk update failed');
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `client\src\pages\admin\ArticleEditor.tsx`
-
-❌ **Line 229:** Table 'article' not found in schema
-
-```
-{isNew ? 'Create a new knowledge base article' : 'Update article content'}
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
 ### `shared\csv-import-schema.ts`
 
 ❌ **Line 511:** Table 'external' not found in schema
@@ -22690,30 +22690,6 @@ example: 'Sync from EA',
 
 ---
 
-### `supabase\functions\territories\index.ts`
-
-❌ **Line 272:** Table 'territory' not found in schema
-
-```
-return createCorsResponse({ error: 'Failed to update territory' }, 500, req);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `supabase\functions\technicians\index.ts`
-
-❌ **Line 307:** Table 'technician' not found in schema
-
-```
-return createCorsResponse({ error: 'Failed to update technician' }, 500, req);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
 ### `supabase\functions\teams\index.ts`
 
 ❌ **Line 148:** Table 'team' not found in schema
@@ -22732,6 +22708,18 @@ return createCorsResponse({ error: 'Failed to update team' }, 500, req);
 
 ```
 return createCorsResponse({ error: 'Failed to update task' }, 500, req);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `supabase\functions\territories\index.ts`
+
+❌ **Line 272:** Table 'territory' not found in schema
+
+```
+return createCorsResponse({ error: 'Failed to update territory' }, 500, req);
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -22808,6 +22796,18 @@ return createCorsResponse({ error: 'Failed to update project' }, 500, req);
 
 ---
 
+### `supabase\functions\technicians\index.ts`
+
+❌ **Line 307:** Table 'technician' not found in schema
+
+```
+return createCorsResponse({ error: 'Failed to update technician' }, 500, req);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
 ### `supabase\functions\pricing\index.ts`
 
 ❌ **Line 118:** Table 'pricing' not found in schema
@@ -22824,18 +22824,6 @@ return createCorsResponse({ error: 'Failed to update pricing settings' }, 500, r
 
 ```
 return createCorsResponse({ error: 'Failed to update product pricing' }, 500, req);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `supabase\functions\pipeline\index.ts`
-
-❌ **Line 129:** Table 'pipeline' not found in schema
-
-```
-return createCorsResponse({ error: 'Failed to update pipeline stage' }, 500, req);
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -22878,6 +22866,18 @@ return createCorsResponse({ error: 'Failed to update meter reading' }, 500, req)
 
 ---
 
+### `supabase\functions\pipeline\index.ts`
+
+❌ **Line 129:** Table 'pipeline' not found in schema
+
+```
+return createCorsResponse({ error: 'Failed to update pipeline stage' }, 500, req);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
 ### `supabase\functions\locations\index.ts`
 
 ❌ **Line 172:** Table 'location' not found in schema
@@ -22902,6 +22902,18 @@ return createCorsResponse({ error: 'Failed to update lease' }, 500, req);
 
 ---
 
+### `supabase\functions\inventory\index.ts`
+
+❌ **Line 442:** Table 'inventory' not found in schema
+
+```
+return createCorsResponse({ error: 'Failed to update inventory item' }, 500, req);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
 ### `supabase\functions\invoices\index.ts`
 
 ❌ **Line 266:** Table 'invoice' not found in schema
@@ -22920,18 +22932,6 @@ return createCorsResponse({ error: 'Failed to update invoice' }, 500, req);
 
 ```
 console.error(`[IMPORT] ❌ Failed to update contact:`, updateError);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `supabase\functions\inventory\index.ts`
-
-❌ **Line 442:** Table 'inventory' not found in schema
-
-```
-return createCorsResponse({ error: 'Failed to update inventory item' }, 500, req);
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -22968,18 +22968,6 @@ subtitle: '+12% from last month',
 
 ```
 return createCorsResponse({ error: 'Failed to update customer' }, 500, req);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
-### `supabase\functions\contracts\index.ts`
-
-❌ **Line 228:** Table 'contract' not found in schema
-
-```
-return createCorsResponse({ error: 'Failed to update contract' }, 500, req);
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -23068,18 +23056,6 @@ return createCorsResponse({ error: 'Failed to update contact' }, 500, req);
 
 ---
 
-### `supabase\functions\companies\index.ts`
-
-❌ **Line 576:** Table 'company' not found in schema
-
-```
-return createCorsResponse({ error: 'Failed to update company' }, 500, req);
-```
-
-💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
-
----
-
 ### `supabase\functions\company-contacts\index.ts`
 
 ❌ **Line 235:** Table 'contact' not found in schema
@@ -23098,6 +23074,18 @@ return createCorsResponse({ error: 'Failed to update company' }, 500, req);
 
 ```
 return createCorsResponse({ error: 'Failed to update product model' }, 500, req);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `supabase\functions\contracts\index.ts`
+
+❌ **Line 228:** Table 'contract' not found in schema
+
+```
+return createCorsResponse({ error: 'Failed to update contract' }, 500, req);
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -23132,6 +23120,18 @@ return createCorsResponse({ error: 'Failed to update business record' }, 500, re
 
 ```
 return createCorsResponse({ error: 'Failed to update appointment' }, 500, req);
+```
+
+💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
+
+---
+
+### `supabase\functions\companies\index.ts`
+
+❌ **Line 576:** Table 'company' not found in schema
+
+```
+return createCorsResponse({ error: 'Failed to update company' }, 500, req);
 ```
 
 💡 **Suggestion:** Similar tables: extensions, schema_migrations, tenants
@@ -23266,7 +23266,7 @@ COMMENT ON TABLE meeting_content_analytics IS 'Aggregated analytics and insights
 
 ## ⚠️ Invalid Column References
 
-Found 1263 issue(s)
+Found 969 issue(s)
 
 ### `server\websocket-service.ts`
 
@@ -23332,16 +23332,6 @@ isActive: users.isActive,
 
 ---
 
-⚠️ **Line 2206:** Column 'tenantId' not found in table 'users'
-
-```
-.where(eq(users.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 2260:** Column 'domain' not found in table 'tenants'
 
 ```
@@ -23372,43 +23362,13 @@ domain: tenants.domain,
 
 ---
 
-⚠️ **Line 2294:** Column 'tenantId' not found in table 'customers'
-
-```
-let query = db.select().from(customers).where(eq(customers.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
 ⚠️ **Line 2322:** Column 'teamId' not found in table 'users'
 
 ```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
+.where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'users.team_id'?
-
----
-
-⚠️ **Line 2322:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 2357:** Column 'tenantId' not found in table 'leads'
-
-```
-let query = db.select().from(leads).where(eq(leads.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'leads.tenant_id'?
 
 ---
 
@@ -23425,20 +23385,10 @@ query = query.where(eq(leads.ownerId, userId));
 ⚠️ **Line 2367:** Column 'teamId' not found in table 'users'
 
 ```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
+.where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'users.team_id'?
-
----
-
-⚠️ **Line 2367:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -23452,43 +23402,13 @@ leads.ownerId,
 
 ---
 
-⚠️ **Line 2398:** Column 'userId' not found in table 'technicians'
-
-```
-.innerJoin(users, eq(technicians.userId, users.id))
-```
-
-💡 **Suggestion:** Did you mean 'technicians.user_id'?
-
----
-
 ⚠️ **Line 2399:** Column 'teamId' not found in table 'users'
 
 ```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
+.where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'users.team_id'?
-
----
-
-⚠️ **Line 2399:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 2420:** Column 'tenantId' not found in table 'contracts'
-
-```
-let query = db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
 
 ---
 
@@ -23505,20 +23425,10 @@ query = query.where(eq(contracts.assignedSalespersonId, userId));
 ⚠️ **Line 2430:** Column 'teamId' not found in table 'users'
 
 ```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
+.where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'users.team_id'?
-
----
-
-⚠️ **Line 2430:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -23532,83 +23442,23 @@ contracts.assignedSalespersonId,
 
 ---
 
-⚠️ **Line 2445:** Column 'tenantId' not found in table 'customers'
-
-```
-return await db.select().from(customers).where(eq(customers.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
-⚠️ **Line 2453:** Column 'tenantId' not found in table 'customers'
-
-```
-.where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
-⚠️ **Line 2475:** Column 'tenantId' not found in table 'customers'
-
-```
-.where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
-⚠️ **Line 2483:** Column 'tenantId' not found in table 'customers'
-
-```
-.where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
 ⚠️ **Line 2493:** Column 'customerId' not found in table 'equipment'
 
 ```
-.where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)));
+.where(and(eq(equipment.customerId, customerId), eq(equipment.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'equipment.customer_id'?
 
 ---
 
-⚠️ **Line 2493:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 2518:** Column 'customerId' not found in table 'invoices'
 
 ```
-.where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
+.where(and(eq(invoices.customerId, customerId), eq(invoices.tenant_id, tenantId)))
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.customer_id'?
-
----
-
-⚠️ **Line 2518:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -23625,160 +23475,20 @@ return await db.select().from(customers).where(eq(customers.tenantId, tenantId))
 ⚠️ **Line 2546:** Column 'customerId' not found in table 'contracts'
 
 ```
-.where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)));
+.where(and(eq(contracts.customerId, customerId), eq(contracts.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'contracts.customer_id'?
 
 ---
 
-⚠️ **Line 2546:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
-⚠️ **Line 2555:** Column 'tenantId' not found in table 'companies'
-
-```
-return await db.select().from(companies).where(eq(companies.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 2562:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
 ⚠️ **Line 2576:** Column 'businessName' not found in table 'companies'
 
 ```
-.where(and(eq(companies.businessName, name.trim()), eq(companies.tenantId, tenantId)));
+.where(and(eq(companies.businessName, name.trim()), eq(companies.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'companies.business_name'?
-
----
-
-⚠️ **Line 2576:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(eq(companies.businessName, name.trim()), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 2597:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 2605:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 2858:** Column 'tenantId' not found in table 'quotes'
-
-```
-return await db.select().from(quotes).where(eq(quotes.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
-⚠️ **Line 2868:** Column 'tenantId' not found in table 'equipment'
-
-```
-return await db.select().from(equipment).where(eq(equipment.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
-⚠️ **Line 2880:** Column 'tenantId' not found in table 'contracts'
-
-```
-return await db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
-⚠️ **Line 2942:** Column 'tenantId' not found in table 'technicians'
-
-```
-return await db.select().from(technicians).where(eq(technicians.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 2988:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
-⚠️ **Line 2994:** Column 'tenantId' not found in table 'invoices'
-
-```
-return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 3030:** Column 'tenantId' not found in table 'leads'
-
-```
-.where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'leads.tenant_id'?
-
----
-
-⚠️ **Line 3670:** Column 'tenantId' not found in table 'tasks'
-
-```
-let query = db.select().from(tasks).where(eq(tasks.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -23792,36 +23502,6 @@ query = query.where(eq(tasks.assignedTo, userId));
 
 ---
 
-⚠️ **Line 3676:** Column 'createdAt' not found in table 'tasks'
-
-```
-return await query.orderBy(desc(tasks.createdAt)).limit(50);
-```
-
-💡 **Suggestion:** Did you mean 'tasks.created_at'?
-
----
-
-⚠️ **Line 3683:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
-⚠️ **Line 3696:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 3706:** Column 'actualHours' not found in table 'tasks'
 
 ```
@@ -23829,16 +23509,6 @@ avgHours: sql<number>`AVG(${tasks.actualHours})`,
 ```
 
 💡 **Suggestion:** Column not found in table 'tasks'
-
----
-
-⚠️ **Line 3709:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(eq(tasks.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -23852,16 +23522,6 @@ baseQuery = baseQuery.where(eq(tasks.assignedTo, userId));
 
 ---
 
-⚠️ **Line 3742:** Column 'tenantId' not found in table 'tasks'
-
-```
-eq(tasks.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 3743:** Column 'dueDate' not found in table 'tasks'
 
 ```
@@ -23869,36 +23529,6 @@ lt(tasks.dueDate, new Date()),
 ```
 
 💡 **Suggestion:** Did you mean 'tasks.due_date'?
-
----
-
-⚠️ **Line 3757:** Column 'tenantId' not found in table 'projects'
-
-```
-.where(eq(projects.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'projects.tenant_id'?
-
----
-
-⚠️ **Line 3758:** Column 'createdAt' not found in table 'projects'
-
-```
-.orderBy(desc(projects.createdAt));
-```
-
-💡 **Suggestion:** Did you mean 'projects.created_at'?
-
----
-
-⚠️ **Line 4075:** Column 'tenantId' not found in table 'supplies'
-
-```
-.where(eq(supplies.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'supplies.tenant_id'?
 
 ---
 
@@ -23915,40 +23545,10 @@ lt(tasks.dueDate, new Date()),
 ⚠️ **Line 4083:** Column 'productCode' not found in table 'supplies'
 
 ```
-.where(and(eq(supplies.productCode, productCode), eq(supplies.tenantId, tenantId)));
+.where(and(eq(supplies.productCode, productCode), eq(supplies.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'supplies.product_code'?
-
----
-
-⚠️ **Line 4083:** Column 'tenantId' not found in table 'supplies'
-
-```
-.where(and(eq(supplies.productCode, productCode), eq(supplies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'supplies.tenant_id'?
-
----
-
-⚠️ **Line 4100:** Column 'tenantId' not found in table 'supplies'
-
-```
-.where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'supplies.tenant_id'?
-
----
-
-⚠️ **Line 4108:** Column 'tenantId' not found in table 'supplies'
-
-```
-.where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'supplies.tenant_id'?
 
 ---
 
@@ -24062,26 +23662,6 @@ ownerName: users.firstName,
 
 ---
 
-⚠️ **Line 4487:** Column 'createdAt' not found in table 'deals'
-
-```
-createdAt: deals.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
-
----
-
-⚠️ **Line 4488:** Column 'updatedAt' not found in table 'deals'
-
-```
-updatedAt: deals.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.updated_at'?
-
----
-
 ⚠️ **Line 4491:** Column 'stageId' not found in table 'deals'
 
 ```
@@ -24099,16 +23679,6 @@ updatedAt: deals.updatedAt,
 ```
 
 💡 **Suggestion:** Did you mean 'deals.owner_id'?
-
----
-
-⚠️ **Line 4493:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(eq(deals.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -24149,16 +23719,6 @@ like(deals.primaryContactName, `%${search}%`),
 ```
 
 💡 **Suggestion:** Did you mean 'deals.primary_contact_name'?
-
----
-
-⚠️ **Line 4513:** Column 'createdAt' not found in table 'deals'
-
-```
-return await query.orderBy(desc(deals.createdAt));
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
 
 ---
 
@@ -24272,26 +23832,6 @@ ownerName: users.firstName,
 
 ---
 
-⚠️ **Line 4541:** Column 'createdAt' not found in table 'deals'
-
-```
-createdAt: deals.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
-
----
-
-⚠️ **Line 4542:** Column 'updatedAt' not found in table 'deals'
-
-```
-updatedAt: deals.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.updated_at'?
-
----
-
 ⚠️ **Line 4545:** Column 'stageId' not found in table 'deals'
 
 ```
@@ -24309,36 +23849,6 @@ updatedAt: deals.updatedAt,
 ```
 
 💡 **Suggestion:** Did you mean 'deals.owner_id'?
-
----
-
-⚠️ **Line 4547:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 4575:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 4598:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -24442,43 +23952,13 @@ twoFactorEnabled: users.twoFactorEnabled,
 
 ---
 
-⚠️ **Line 7030:** Column 'tenantId' not found in table 'users'
-
-```
-.where(eq(users.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 7038:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.tenantId, tenantId), eq(users.twoFactorEnabled, true)));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 7038:** Column 'twoFactorEnabled' not found in table 'users'
 
 ```
-.where(and(eq(users.tenantId, tenantId), eq(users.twoFactorEnabled, true)));
+.where(and(eq(users.tenant_id, tenantId), eq(users.twoFactorEnabled, true)));
 ```
 
 💡 **Suggestion:** Column not found in table 'users'
-
----
-
-⚠️ **Line 7093:** Column 'tenantId' not found in table 'users'
-
-```
-eq(users.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -24519,20 +23999,10 @@ eventName: 'equipment.installed',
 ⚠️ **Line 193:** Column 'productCode' not found in table 'supplies'
 
 ```
-sql`${supplies.productCode} = ${product.productCode} AND ${supplies.tenantId} = ${DEFAULT_TENANT_ID}`,
+sql`${supplies.productCode} = ${product.productCode} AND ${supplies.tenant_id} = ${DEFAULT_TENANT_ID}`,
 ```
 
 💡 **Suggestion:** Did you mean 'supplies.product_code'?
-
----
-
-⚠️ **Line 193:** Column 'tenantId' not found in table 'supplies'
-
-```
-sql`${supplies.productCode} = ${product.productCode} AND ${supplies.tenantId} = ${DEFAULT_TENANT_ID}`,
-```
-
-💡 **Suggestion:** Did you mean 'supplies.tenant_id'?
 
 ---
 
@@ -24557,18 +24027,6 @@ const tenants = await db.query.tenants.findMany({ limit: 1 });
 ```
 
 💡 **Suggestion:** Column not found in table 'tenants'
-
----
-
-### `server\seed-sales-metrics.ts`
-
-⚠️ **Line 24:** Column 'tenantId' not found in table 'users'
-
-```
-const tenantUsers = await db.select().from(users).where(eq(users.tenantId, tenant.id)).limit(5);
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -24644,30 +24102,6 @@ objectPath: 'public/service-photos/inst-002-new-equipment.jpg',
 
 ---
 
-### `server\seed-customer-success.ts`
-
-⚠️ **Line 32:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(eq(contracts.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
-### `server\seed-crm-goals.ts`
-
-⚠️ **Line 28:** Column 'tenantId' not found in table 'users'
-
-```
-.where(eq(users.tenantId, tenant.id))
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ### `server\security-compliance.ts`
 
 ⚠️ **Line 311:** Column 'findFirst' not found in table 'users'
@@ -24677,16 +24111,6 @@ user: await db.query.users.findFirst({
 ```
 
 💡 **Suggestion:** Column not found in table 'users'
-
----
-
-⚠️ **Line 312:** Column 'tenantId' not found in table 'users'
-
-```
-where: (users, { eq, and }) => and(eq(users.tenantId, tenantId), eq(users.id, subjectId)),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -24762,16 +24186,6 @@ isActive: locations.isActive,
 
 ---
 
-⚠️ **Line 896:** Column 'tenantId' not found in table 'locations'
-
-```
-.where(eq(locations.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'locations.tenant_id'?
-
----
-
 ⚠️ **Line 931:** Column 'regionId' not found in table 'locations'
 
 ```
@@ -24779,16 +24193,6 @@ isActive: locations.isActive,
 ```
 
 💡 **Suggestion:** Did you mean 'locations.region_id'?
-
----
-
-⚠️ **Line 932:** Column 'tenantId' not found in table 'regions'
-
-```
-.where(eq(regions.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'regions.tenant_id'?
 
 ---
 
@@ -24802,26 +24206,6 @@ isActive: locations.isActive,
 
 ---
 
-⚠️ **Line 977:** Column 'tenantId' not found in table 'locations'
-
-```
-.where(eq(locations.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'locations.tenant_id'?
-
----
-
-⚠️ **Line 1011:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 1016:** Column 'totalAmount' not found in table 'invoices'
 
 ```
@@ -24829,26 +24213,6 @@ total: sql<number>`coalesce(sum(${invoices.totalAmount}::numeric), 0)::numeric`,
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.total_amount'?
-
----
-
-⚠️ **Line 1021:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 1022:** Column 'createdAt' not found in table 'invoices'
-
-```
-sql`date_trunc('month', ${invoices.createdAt}) = date_trunc('month', current_date)`,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
 
 ---
 
@@ -24879,16 +24243,6 @@ accountValue: sql<number>`coalesce(sum(${contracts.monthlyBase}::numeric), 0)::n
 ```
 
 💡 **Suggestion:** Did you mean 'contracts.monthly_base'?
-
----
-
-⚠️ **Line 5513:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.tenantId, tenantId), inArray(contracts.id, contractIds)));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
 
 ---
 
@@ -24942,16 +24296,6 @@ totalPaid: sql<string>`COALESCE(SUM(${invoices.amountPaid}::numeric), 0)`,
 
 ---
 
-⚠️ **Line 5653:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(eq(contracts.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 5654:** Column 'contractNumber' not found in table 'contracts'
 
 ```
@@ -24982,16 +24326,6 @@ totalPaid: sql<string>`COALESCE(SUM(${invoices.amountPaid}::numeric), 0)`,
 
 ---
 
-⚠️ **Line 5663:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(eq(contracts.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 6861:** Column 'invoiceNumber' not found in table 'invoices'
 
 ```
@@ -24999,16 +24333,6 @@ invoiceNumber: invoices.invoiceNumber,
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.invoice_number'?
-
----
-
-⚠️ **Line 6862:** Column 'createdAt' not found in table 'invoices'
-
-```
-createdAt: invoices.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
 
 ---
 
@@ -25029,26 +24353,6 @@ totalAmount: invoices.totalAmount,
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.total_amount'?
-
----
-
-⚠️ **Line 6870:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 6874:** Column 'createdAt' not found in table 'invoices'
-
-```
-.orderBy(desc(invoices.createdAt))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
 
 ---
 
@@ -25154,16 +24458,6 @@ validUntil: quotes.validUntil,
 
 ---
 
-⚠️ **Line 42:** Column 'tenantId' not found in table 'quotes'
-
-```
-.where(and(eq(quotes.id, quoteId), eq(quotes.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
 ⚠️ **Line 143:** Column 'businessRecordId' not found in table 'proposals'
 
 ```
@@ -25224,16 +24518,6 @@ termsAndConditions: proposals.termsAndConditions,
 
 ---
 
-⚠️ **Line 152:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
 ### `server\routes-universal-search.ts`
 
 ⚠️ **Line 112:** Column 'stage' not found in table 'deals'
@@ -25263,16 +24547,6 @@ expectedCloseDate: deals.expectedCloseDate,
 ```
 
 💡 **Suggestion:** Column not found in table 'deals'
-
----
-
-⚠️ **Line 121:** Column 'tenantId' not found in table 'deals'
-
-```
-eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -25316,16 +24590,6 @@ validUntil: quotes.validUntil,
 
 ---
 
-⚠️ **Line 226:** Column 'tenantId' not found in table 'quotes'
-
-```
-eq(quotes.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
 ⚠️ **Line 228:** Column 'quoteNumber' not found in table 'quotes'
 
 ```
@@ -25337,16 +24601,6 @@ ilike(quotes.quoteNumber, searchTerm),
 ---
 
 ### `server\routes-today-dashboard.ts`
-
-⚠️ **Line 138:** Column 'tenantId' not found in table 'deals'
-
-```
-eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
 
 ⚠️ **Line 140:** Column 'dealStage' not found in table 'deals'
 
@@ -25385,16 +24639,6 @@ eq(deals.dealStage, 'negotiation'),
 ```
 
 💡 **Suggestion:** Similar columns: deal_type
-
----
-
-⚠️ **Line 179:** Column 'tenantId' not found in table 'deals'
-
-```
-eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -25438,45 +24682,15 @@ orderBy: [desc(deals.actualCloseDate)],
 
 ---
 
-⚠️ **Line 201:** Column 'tenantId' not found in table 'deals'
-
-```
-where: eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ### `server\routes-templates.ts`
-
-⚠️ **Line 192:** Column 'tenantId' not found in table 'projects'
-
-```
-.where(and(eq(projects.id, projectId), eq(projects.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'projects.tenant_id'?
-
----
 
 ⚠️ **Line 202:** Column 'projectId' not found in table 'tasks'
 
 ```
-.where(and(eq(tasks.projectId, projectId), eq(tasks.tenantId, tenantId)));
+.where(and(eq(tasks.projectId, projectId), eq(tasks.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Did you mean 'tasks.project_id'?
-
----
-
-⚠️ **Line 202:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.projectId, projectId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -25582,66 +24796,6 @@ performanceRating: technicians.performanceRating,
 
 ---
 
-⚠️ **Line 54:** Column 'createdAt' not found in table 'technicians'
-
-```
-createdAt: technicians.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'technicians.created_at'?
-
----
-
-⚠️ **Line 55:** Column 'updatedAt' not found in table 'technicians'
-
-```
-updatedAt: technicians.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'technicians.updated_at'?
-
----
-
-⚠️ **Line 58:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(eq(technicians.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 119:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 202:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 248:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
 ⚠️ **Line 277:** Column 'specialties' not found in table 'technicians'
 
 ```
@@ -25672,46 +24826,6 @@ availability: technicians.availability,
 
 ---
 
-⚠️ **Line 283:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'active')));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 372:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(eq(technicians.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 377:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'active')));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 384:** Column 'tenantId' not found in table 'technicians'
-
-```
-eq(technicians.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
 ⚠️ **Line 386:** Column 'availability' not found in table 'technicians'
 
 ```
@@ -25719,16 +24833,6 @@ eq(technicians.availability, 'available'),
 ```
 
 💡 **Suggestion:** Column not found in table 'technicians'
-
----
-
-⚠️ **Line 395:** Column 'tenantId' not found in table 'technicians'
-
-```
-eq(technicians.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
 
 ---
 
@@ -25786,16 +24890,6 @@ currentPlan: subscription.planId,
 
 ### `server\routes-service-dispatch.ts`
 
-⚠️ **Line 87:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'available')));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
 ⚠️ **Line 277:** Column 'location' not found in table 'technicians'
 
 ```
@@ -25803,36 +24897,6 @@ location: technicians.location,
 ```
 
 💡 **Suggestion:** Column not found in table 'technicians'
-
----
-
-⚠️ **Line 282:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(eq(technicians.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 478:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'available')));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
-
----
-
-⚠️ **Line 545:** Column 'tenantId' not found in table 'technicians'
-
-```
-.where(eq(technicians.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
 
 ---
 
@@ -25938,16 +25002,6 @@ billingStatus: tenants.billingStatus,
 
 ---
 
-⚠️ **Line 151:** Column 'tenantId' not found in table 'users'
-
-```
-.leftJoin(users, eq(users.tenantId, tenants.id))
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 153:** Column 'lastActivity' not found in table 'tenants'
 
 ```
@@ -25968,16 +25022,6 @@ roleId: users.roleId,
 
 ---
 
-⚠️ **Line 308:** Column 'tenantId' not found in table 'users'
-
-```
-tenantId: users.tenantId,
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 310:** Column 'lastLogin' not found in table 'users'
 
 ```
@@ -25988,16 +25032,6 @@ lastLogin: users.lastLogin,
 
 ---
 
-⚠️ **Line 311:** Column 'createdAt' not found in table 'users'
-
-```
-createdAt: users.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'users.created_at'?
-
----
-
 ⚠️ **Line 314:** Column 'roleId' not found in table 'users'
 
 ```
@@ -26005,16 +25039,6 @@ createdAt: users.createdAt,
 ```
 
 💡 **Suggestion:** Did you mean 'users.role_id'?
-
----
-
-⚠️ **Line 315:** Column 'tenantId' not found in table 'users'
-
-```
-.leftJoin(tenants, eq(users.tenantId, tenants.id));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -26035,16 +25059,6 @@ canAccessAllTenants: roles.canAccessAllTenants,
 ```
 
 💡 **Suggestion:** Did you mean 'roles.can_access_all_tenants'?
-
----
-
-⚠️ **Line 385:** Column 'createdAt' not found in table 'roles'
-
-```
-createdAt: roles.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'roles.created_at'?
 
 ---
 
@@ -26070,16 +25084,6 @@ const allDeals = await db.query.deals.findMany({
 
 ---
 
-⚠️ **Line 89:** Column 'tenantId' not found in table 'deals'
-
-```
-where: eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ⚠️ **Line 141:** Column 'findMany' not found in table 'invoices'
 
 ```
@@ -26087,16 +25091,6 @@ const invoiceList = await db.query.invoices.findMany({
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
-
----
-
-⚠️ **Line 143:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -26130,20 +25124,10 @@ const allCustomers = await db.query.customers.findMany({
 
 ---
 
-⚠️ **Line 181:** Column 'tenantId' not found in table 'customers'
-
-```
-where: and(eq(customers.tenantId, tenantId), eq(customers.recordType, 'customer')),
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
 ⚠️ **Line 181:** Column 'recordType' not found in table 'customers'
 
 ```
-where: and(eq(customers.tenantId, tenantId), eq(customers.recordType, 'customer')),
+where: and(eq(customers.tenant_id, tenantId), eq(customers.recordType, 'customer')),
 ```
 
 💡 **Suggestion:** Column not found in table 'customers'
@@ -26160,20 +25144,10 @@ const customerInvoices = await db.query.invoices.findMany({
 
 ---
 
-⚠️ **Line 198:** Column 'tenantId' not found in table 'invoices'
-
-```
-where: and(eq(invoices.tenantId, tenantId), gte(invoices.invoiceDate, ninetyDaysAgo)),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 198:** Column 'invoiceDate' not found in table 'invoices'
 
 ```
-where: and(eq(invoices.tenantId, tenantId), gte(invoices.invoiceDate, ninetyDaysAgo)),
+where: and(eq(invoices.tenant_id, tenantId), gte(invoices.invoiceDate, ninetyDaysAgo)),
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
@@ -26190,16 +25164,6 @@ const activeContracts = await db.query.contracts.findMany({
 
 ---
 
-⚠️ **Line 203:** Column 'tenantId' not found in table 'contracts'
-
-```
-where: and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active')),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 399:** Column 'findMany' not found in table 'technicians'
 
 ```
@@ -26207,16 +25171,6 @@ const techList = await db.query.technicians.findMany({
 ```
 
 💡 **Suggestion:** Column not found in table 'technicians'
-
----
-
-⚠️ **Line 400:** Column 'tenantId' not found in table 'technicians'
-
-```
-where: eq(technicians.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'technicians.tenant_id'?
 
 ---
 
@@ -26322,16 +25276,6 @@ assignedTo: proposals.assignedTo,
 
 ---
 
-⚠️ **Line 205:** Column 'createdAt' not found in table 'proposals'
-
-```
-createdAt: proposals.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'proposals.created_at'?
-
----
-
 ⚠️ **Line 211:** Column 'businessRecordId' not found in table 'proposals'
 
 ```
@@ -26342,16 +25286,6 @@ createdAt: proposals.createdAt,
 
 ---
 
-⚠️ **Line 213:** Column 'tenantId' not found in table 'proposals'
-
-```
-const conditions: any[] = [eq(proposals.tenantId, req.user.tenantId)];
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
 ⚠️ **Line 220:** Column 'businessRecordId' not found in table 'proposals'
 
 ```
@@ -26359,76 +25293,6 @@ conditions.push(eq(proposals.businessRecordId, businessRecordId as string));
 ```
 
 💡 **Suggestion:** Did you mean 'proposals.business_record_id'?
-
----
-
-⚠️ **Line 227:** Column 'createdAt' not found in table 'proposals'
-
-```
-conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '${n} days'`);
-```
-
-💡 **Suggestion:** Did you mean 'proposals.created_at'?
-
----
-
-⚠️ **Line 233:** Column 'createdAt' not found in table 'proposals'
-
-```
-const result = await query.orderBy(desc(proposals.createdAt));
-```
-
-💡 **Suggestion:** Did you mean 'proposals.created_at'?
-
----
-
-⚠️ **Line 289:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-⚠️ **Line 418:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-⚠️ **Line 484:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-⚠️ **Line 528:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-⚠️ **Line 581:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
 
 ---
 
@@ -26452,20 +25316,10 @@ openCount: sql`${proposals.openCount} + 1`,
 
 ---
 
-⚠️ **Line 794:** Column 'tenantId' not found in table 'proposals'
-
-```
-and(eq(proposals.tenantId, tenantId), sql`${proposals.proposalNumber} LIKE ${prefix + '%'}`),
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
 ⚠️ **Line 794:** Column 'proposalNumber' not found in table 'proposals'
 
 ```
-and(eq(proposals.tenantId, tenantId), sql`${proposals.proposalNumber} LIKE ${prefix + '%'}`),
+and(eq(proposals.tenant_id, tenantId), sql`${proposals.proposalNumber} LIKE ${prefix + '%'}`),
 ```
 
 💡 **Suggestion:** Did you mean 'proposals.proposal_number'?
@@ -26482,36 +25336,6 @@ and(eq(proposals.tenantId, tenantId), sql`${proposals.proposalNumber} LIKE ${pre
 
 ---
 
-⚠️ **Line 822:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-⚠️ **Line 908:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, tenantId), eq(deals.title, title)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 934:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, existing[0].id), eq(deals.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ⚠️ **Line 966:** Column 'contractNumber' not found in table 'contracts'
 
 ```
@@ -26522,20 +25346,10 @@ and(eq(proposals.tenantId, tenantId), sql`${proposals.proposalNumber} LIKE ${pre
 
 ---
 
-⚠️ **Line 969:** Column 'tenantId' not found in table 'contracts'
-
-```
-and(eq(contracts.tenantId, tenantId), sql`${contracts.contractNumber} LIKE ${prefix + '%'}`),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 969:** Column 'contractNumber' not found in table 'contracts'
 
 ```
-and(eq(contracts.tenantId, tenantId), sql`${contracts.contractNumber} LIKE ${prefix + '%'}`),
+and(eq(contracts.tenant_id, tenantId), sql`${contracts.contractNumber} LIKE ${prefix + '%'}`),
 ```
 
 💡 **Suggestion:** Did you mean 'contracts.contract_number'?
@@ -26549,16 +25363,6 @@ and(eq(contracts.tenantId, tenantId), sql`${contracts.contractNumber} LIKE ${pre
 ```
 
 💡 **Suggestion:** Did you mean 'contracts.contract_number'?
-
----
-
-⚠️ **Line 1026:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
 
 ---
 
@@ -26706,16 +25510,6 @@ installDate: equipment.installDate,
 
 ---
 
-⚠️ **Line 46:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 47:** Column 'nextServiceDue' not found in table 'equipment'
 
 ```
@@ -26756,16 +25550,6 @@ make: equipment.make,
 
 ---
 
-⚠️ **Line 197:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ### `server\routes-predictive-service-dispatch.ts`
 
 ⚠️ **Line 277:** Column 'findFirst' not found in table 'equipment'
@@ -26775,16 +25559,6 @@ const device = await db.query.equipment.findFirst({
 ```
 
 💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 278:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.id, service.equipmentId), eq(equipment.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
 
 ---
 
@@ -26801,20 +25575,10 @@ const device = await db.query.equipment.findFirst({
 ⚠️ **Line 334:** Column 'serialNumber' not found in table 'equipment'
 
 ```
-where: and(eq(equipment.serialNumber, serialNumber), eq(equipment.tenantId, tenantId)),
+where: and(eq(equipment.serialNumber, serialNumber), eq(equipment.tenant_id, tenantId)),
 ```
 
 💡 **Suggestion:** Did you mean 'equipment.serial_number'?
-
----
-
-⚠️ **Line 334:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.serialNumber, serialNumber), eq(equipment.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
 
 ---
 
@@ -26900,16 +25664,6 @@ installDate: equipment.installDate,
 
 ---
 
-⚠️ **Line 60:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 61:** Column 'nextServiceDue' not found in table 'equipment'
 
 ```
@@ -26950,16 +25704,6 @@ make: equipment.make,
 
 ---
 
-⚠️ **Line 266:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 425:** Column 'serialNumber' not found in table 'equipment'
 
 ```
@@ -26967,16 +25711,6 @@ make: equipment.make,
 ```
 
 💡 **Suggestion:** Did you mean 'equipment.serial_number'?
-
----
-
-⚠️ **Line 427:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
 
 ---
 
@@ -27000,79 +25734,29 @@ make: equipment.make,
 
 ---
 
-⚠️ **Line 504:** Column 'tenantId' not found in table 'equipment'
-
-```
-.where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ### `server\routes-pipeline-configuration.ts`
-
-⚠️ **Line 279:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, user.tenantId), eq(deals.pipelineTemplateId, id)));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
 
 ⚠️ **Line 279:** Column 'pipelineTemplateId' not found in table 'deals'
 
 ```
-.where(and(eq(deals.tenantId, user.tenantId), eq(deals.pipelineTemplateId, id)));
+.where(and(eq(deals.tenant_id, user.tenant_id), eq(deals.pipelineTemplateId, id)));
 ```
 
 💡 **Suggestion:** Column not found in table 'deals'
-
----
-
-⚠️ **Line 530:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, user.tenantId), eq(deals.currentStageId, id)));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
 ⚠️ **Line 530:** Column 'currentStageId' not found in table 'deals'
 
 ```
-.where(and(eq(deals.tenantId, user.tenantId), eq(deals.currentStageId, id)));
+.where(and(eq(deals.tenant_id, user.tenant_id), eq(deals.currentStageId, id)));
 ```
 
 💡 **Suggestion:** Column not found in table 'deals'
 
 ---
 
-⚠️ **Line 573:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, dealId), eq(deals.tenantId, user.tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ### `server\routes-pagination.ts`
-
-⚠️ **Line 217:** Column 'tenantId' not found in table 'invoices'
-
-```
-const conditions = [eq(invoices.tenantId, tenantId)];
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
 
 ⚠️ **Line 222:** Column 'invoiceNumber' not found in table 'invoices'
 
@@ -27091,16 +25775,6 @@ conditions.push(eq(invoices.customerId, req.query.customerId as string));
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.customer_id'?
-
----
-
-⚠️ **Line 246:** Column 'createdAt' not found in table 'invoices'
-
-```
-.orderBy(sortDirection(invoices[sortBy as keyof typeof invoices] || invoices.createdAt))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
 
 ---
 
@@ -27129,84 +25803,24 @@ assignedToName: users.firstName,
 ⚠️ **Line 114:** Column 'customerId' not found in table 'quotes'
 
 ```
-.where(and(eq(quotes.customerId, opportunityId), eq(quotes.tenantId, tenantId)))
+.where(and(eq(quotes.customerId, opportunityId), eq(quotes.tenant_id, tenantId)))
 ```
 
 💡 **Suggestion:** Did you mean 'quotes.customer_id'?
 
 ---
 
-⚠️ **Line 114:** Column 'tenantId' not found in table 'quotes'
-
-```
-.where(and(eq(quotes.customerId, opportunityId), eq(quotes.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
-⚠️ **Line 115:** Column 'createdAt' not found in table 'quotes'
-
-```
-.orderBy(desc(quotes.createdAt));
-```
-
-💡 **Suggestion:** Did you mean 'quotes.created_at'?
-
----
-
 ⚠️ **Line 121:** Column 'customerId' not found in table 'deals'
 
 ```
-.where(and(eq(deals.customerId, opportunityId), eq(deals.tenantId, tenantId)))
+.where(and(eq(deals.customerId, opportunityId), eq(deals.tenant_id, tenantId)))
 ```
 
 💡 **Suggestion:** Did you mean 'deals.customer_id'?
 
 ---
 
-⚠️ **Line 121:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.customerId, opportunityId), eq(deals.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 122:** Column 'createdAt' not found in table 'deals'
-
-```
-.orderBy(desc(deals.createdAt));
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
-
----
-
 ### `server\routes-onboarding.ts`
-
-⚠️ **Line 461:** Column 'tenantId' not found in table 'quotes'
-
-```
-let query = db.select().from(quotes).where(eq(quotes.tenantId, tenantId)).limit(Number(limit));
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
-⚠️ **Line 466:** Column 'tenantId' not found in table 'quotes'
-
-```
-eq(quotes.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
 
 ⚠️ **Line 467:** Column 'leadId' not found in table 'quotes'
 
@@ -27225,16 +25839,6 @@ or(eq(quotes.leadId, businessRecordId), eq(quotes.customerId, businessRecordId))
 ```
 
 💡 **Suggestion:** Did you mean 'quotes.customer_id'?
-
----
-
-⚠️ **Line 475:** Column 'tenantId' not found in table 'quotes'
-
-```
-eq(quotes.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
 
 ---
 
@@ -27260,26 +25864,6 @@ ilike(quotes.quoteNumber, `%${search}%`),
 
 ---
 
-⚠️ **Line 107:** Column 'tenantId' not found in table 'invoices'
-
-```
-and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 126:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(eq(deals.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ⚠️ **Line 180:** Column 'totalAmount' not found in table 'invoices'
 
 ```
@@ -27287,16 +25871,6 @@ and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`)
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.total_amount'?
-
----
-
-⚠️ **Line 183:** Column 'tenantId' not found in table 'invoices'
-
-```
-and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -27310,26 +25884,6 @@ and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`)
 
 ---
 
-⚠️ **Line 275:** Column 'tenantId' not found in table 'invoices'
-
-```
-and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 306:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 309:** Column 'totalAmount' not found in table 'invoices'
 
 ```
@@ -27337,16 +25891,6 @@ and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`)
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.total_amount'?
-
----
-
-⚠️ **Line 312:** Column 'tenantId' not found in table 'invoices'
-
-```
-and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days'`),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -27362,16 +25906,6 @@ and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days
 
 ---
 
-⚠️ **Line 28:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`)),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 31:** Column 'totalAmount' not found in table 'invoices'
 
 ```
@@ -27382,43 +25916,13 @@ and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days
 
 ---
 
-⚠️ **Line 33:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${previousMonth}`)),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 41:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, tenantId), ...(userId ? [eq(deals.ownerId, userId)] : []))),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ⚠️ **Line 41:** Column 'ownerId' not found in table 'deals'
 
 ```
-.where(and(eq(deals.tenantId, tenantId), ...(userId ? [eq(deals.ownerId, userId)] : []))),
+.where(and(eq(deals.tenant_id, tenantId), ...(userId ? [eq(deals.ownerId, userId)] : []))),
 ```
 
 💡 **Suggestion:** Did you mean 'deals.owner_id'?
-
----
-
-⚠️ **Line 65:** Column 'tenantId' not found in table 'deals'
-
-```
-eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -27429,16 +25933,6 @@ eq(deals.tenantId, tenantId),
 ```
 
 💡 **Suggestion:** Did you mean 'deals.owner_id'?
-
----
-
-⚠️ **Line 76:** Column 'tenantId' not found in table 'deals'
-
-```
-eq(deals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -27462,26 +25956,6 @@ eq(deals.tenantId, tenantId),
 
 ---
 
-⚠️ **Line 98:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 262:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 265:** Column 'totalAmount' not found in table 'invoices'
 
 ```
@@ -27489,16 +25963,6 @@ eq(deals.tenantId, tenantId),
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.total_amount'?
-
----
-
-⚠️ **Line 268:** Column 'tenantId' not found in table 'invoices'
-
-```
-and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days'`),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -27514,16 +25978,6 @@ const equipmentList = await db.query.equipment.findMany({
 
 ---
 
-⚠️ **Line 65:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: eq(equipment.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 76:** Column 'findFirst' not found in table 'users'
 
 ```
@@ -27531,16 +25985,6 @@ const technician = await db.query.users.findFirst({
 ```
 
 💡 **Suggestion:** Column not found in table 'users'
-
----
-
-⚠️ **Line 77:** Column 'tenantId' not found in table 'users'
-
-```
-where: and(eq(users.id, technicianId), eq(users.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -27554,16 +25998,6 @@ const equipmentItem = await db.query.equipment.findFirst({
 
 ---
 
-⚠️ **Line 433:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 475:** Column 'findFirst' not found in table 'equipment'
 
 ```
@@ -27571,16 +26005,6 @@ const equipmentItem = await db.query.equipment.findFirst({
 ```
 
 💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 477:** Column 'tenantId' not found in table 'equipment'
-
-```
-eq(equipment.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
 
 ---
 
@@ -27606,16 +26030,6 @@ const equipmentItem = await db.query.equipment.findFirst({
 
 ---
 
-⚠️ **Line 23:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 56:** Column 'findFirst' not found in table 'equipment'
 
 ```
@@ -27626,16 +26040,6 @@ const equipmentItem = await db.query.equipment.findFirst({
 
 ---
 
-⚠️ **Line 57:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 187:** Column 'findMany' not found in table 'equipment'
 
 ```
@@ -27643,16 +26047,6 @@ const equipmentItems = await db.query.equipment.findMany({
 ```
 
 💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 189:** Column 'tenantId' not found in table 'equipment'
-
-```
-eq(equipment.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
 
 ---
 
@@ -27852,26 +26246,6 @@ createdBy: tasks.createdBy,
 
 ---
 
-⚠️ **Line 47:** Column 'createdAt' not found in table 'tasks'
-
-```
-createdAt: tasks.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'tasks.created_at'?
-
----
-
-⚠️ **Line 48:** Column 'updatedAt' not found in table 'tasks'
-
-```
-updatedAt: tasks.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'tasks.updated_at'?
-
----
-
 ⚠️ **Line 49:** Column 'completedAt' not found in table 'tasks'
 
 ```
@@ -27932,16 +26306,6 @@ assignedToAvatar: users.profileImageUrl,
 
 ---
 
-⚠️ **Line 65:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(eq(tasks.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 69:** Column 'projectId' not found in table 'tasks'
 
 ```
@@ -27959,16 +26323,6 @@ query = query.where(eq(tasks.assignedTo, assignedTo as string));
 ```
 
 💡 **Suggestion:** Did you mean 'tasks.assigned_to'?
-
----
-
-⚠️ **Line 81:** Column 'updatedAt' not found in table 'tasks'
-
-```
-const allTasks = await query.orderBy(desc(tasks.updatedAt));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.updated_at'?
 
 ---
 
@@ -28082,16 +26436,6 @@ tags: projects.tags,
 
 ---
 
-⚠️ **Line 133:** Column 'createdAt' not found in table 'projects'
-
-```
-createdAt: projects.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'projects.created_at'?
-
----
-
 ⚠️ **Line 143:** Column 'projectManager' not found in table 'projects'
 
 ```
@@ -28099,16 +26443,6 @@ createdAt: projects.createdAt,
 ```
 
 💡 **Suggestion:** Column not found in table 'projects'
-
----
-
-⚠️ **Line 145:** Column 'tenantId' not found in table 'projects'
-
-```
-.where(eq(projects.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'projects.tenant_id'?
 
 ---
 
@@ -28222,26 +26556,6 @@ projects.tags,
 
 ---
 
-⚠️ **Line 162:** Column 'createdAt' not found in table 'projects'
-
-```
-projects.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'projects.created_at'?
-
----
-
-⚠️ **Line 166:** Column 'updatedAt' not found in table 'projects'
-
-```
-.orderBy(desc(projects.updatedAt));
-```
-
-💡 **Suggestion:** Did you mean 'projects.updated_at'?
-
----
-
 ⚠️ **Line 183:** Column 'firstName' not found in table 'users'
 
 ```
@@ -28282,20 +26596,10 @@ role: users.role,
 
 ---
 
-⚠️ **Line 189:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)))
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 189:** Column 'isActive' not found in table 'users'
 
 ```
-.where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)))
+.where(and(eq(users.tenant_id, tenantId), eq(users.isActive, true)))
 ```
 
 💡 **Suggestion:** Did you mean 'users.is_active'?
@@ -28322,16 +26626,6 @@ role: users.role,
 
 ---
 
-⚠️ **Line 252:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 292:** Column 'commentCount' not found in table 'tasks'
 
 ```
@@ -28339,16 +26633,6 @@ commentCount: sql`${tasks.commentCount} + 1`,
 ```
 
 💡 **Suggestion:** Column not found in table 'tasks'
-
----
-
-⚠️ **Line 295:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -28362,26 +26646,6 @@ timeTracked: sql`${tasks.timeTracked} + ${req.body.minutes}`,
 
 ---
 
-⚠️ **Line 330:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
-⚠️ **Line 357:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(inArray(tasks.id, taskIds), eq(tasks.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 375:** Column 'parentTaskId' not found in table 'tasks'
 
 ```
@@ -28392,43 +26656,13 @@ timeTracked: sql`${tasks.timeTracked} + ${req.body.minutes}`,
 
 ---
 
-⚠️ **Line 377:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 386:** Column 'parentTaskId' not found in table 'tasks'
 
 ```
-.where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId)));
+.where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Column not found in table 'tasks'
-
----
-
-⚠️ **Line 386:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
-⚠️ **Line 389:** Column 'tenantId' not found in table 'tasks'
-
-```
-await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -28484,16 +26718,6 @@ address: customers.address,
 
 ---
 
-⚠️ **Line 692:** Column 'tenantId' not found in table 'customers'
-
-```
-eq(customers.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'customers.tenant_id'?
-
----
-
 ⚠️ **Line 695:** Column 'phone' not found in table 'customers'
 
 ```
@@ -28546,16 +26770,6 @@ lineItems: quotes.lineItems,
 
 ---
 
-⚠️ **Line 31:** Column 'tenantId' not found in table 'quotes'
-
-```
-.where(and(eq(quotes.tenantId, tenantId), eq(quotes.id, quoteId)))
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
 ⚠️ **Line 104:** Column 'sections' not found in table 'proposals'
 
 ```
@@ -28576,79 +26790,7 @@ branding: proposals.branding,
 
 ---
 
-⚠️ **Line 108:** Column 'tenantId' not found in table 'proposals'
-
-```
-.where(and(eq(proposals.tenantId, tenantId), eq(proposals.id, proposalId)))
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-### `server\routes-documents.ts`
-
-⚠️ **Line 34:** Column 'tenantId' not found in table 'documents'
-
-```
-.where(eq(documents.tenantId, req.tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'documents.tenant_id'?
-
----
-
-⚠️ **Line 35:** Column 'createdAt' not found in table 'documents'
-
-```
-.orderBy(documents.createdAt);
-```
-
-💡 **Suggestion:** Did you mean 'documents.created_at'?
-
----
-
-⚠️ **Line 73:** Column 'tenantId' not found in table 'documents'
-
-```
-.where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'documents.tenant_id'?
-
----
-
-⚠️ **Line 92:** Column 'tenantId' not found in table 'documents'
-
-```
-.where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'documents.tenant_id'?
-
----
-
 ### `server\routes-deals-management.ts`
-
-⚠️ **Line 60:** Column 'tenantId' not found in table 'deals'
-
-```
-? and(eq(deals.tenantId, tenantId), scopeFilter)
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 61:** Column 'tenantId' not found in table 'deals'
-
-```
-: eq(deals.tenantId, tenantId);
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
 
 ⚠️ **Line 70:** Column 'stage' not found in table 'deals'
 
@@ -28710,26 +26852,6 @@ assignedToName: users.firstName,
 
 ---
 
-⚠️ **Line 78:** Column 'createdAt' not found in table 'deals'
-
-```
-createdAt: deals.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
-
----
-
-⚠️ **Line 79:** Column 'updatedAt' not found in table 'deals'
-
-```
-updatedAt: deals.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.updated_at'?
-
----
-
 ⚠️ **Line 82:** Column 'customerId' not found in table 'deals'
 
 ```
@@ -28747,16 +26869,6 @@ updatedAt: deals.updatedAt,
 ```
 
 💡 **Suggestion:** Column not found in table 'deals'
-
----
-
-⚠️ **Line 85:** Column 'createdAt' not found in table 'deals'
-
-```
-.orderBy(desc(deals.createdAt));
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
 
 ---
 
@@ -28820,26 +26932,6 @@ assignedToName: users.firstName,
 
 ---
 
-⚠️ **Line 116:** Column 'createdAt' not found in table 'deals'
-
-```
-createdAt: deals.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.created_at'?
-
----
-
-⚠️ **Line 117:** Column 'updatedAt' not found in table 'deals'
-
-```
-updatedAt: deals.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'deals.updated_at'?
-
----
-
 ⚠️ **Line 120:** Column 'customerId' not found in table 'deals'
 
 ```
@@ -28860,36 +26952,6 @@ updatedAt: deals.updatedAt,
 
 ---
 
-⚠️ **Line 122:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 195:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 226:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ⚠️ **Line 292:** Column 'firstName' not found in table 'users'
 
 ```
@@ -28897,46 +26959,6 @@ createdByName: users.firstName,
 ```
 
 💡 **Suggestion:** Did you mean 'users.first_name'?
-
----
-
-⚠️ **Line 339:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(eq(deals.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 344:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'active')));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 352:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'won')));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
-⚠️ **Line 357:** Column 'tenantId' not found in table 'deals'
-
-```
-.where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'lost')));
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
 
 ---
 
@@ -29164,16 +27186,6 @@ contractType: contracts.contractType,
 
 ---
 
-⚠️ **Line 101:** Column 'tenantId' not found in table 'contracts'
-
-```
-eq(contracts.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 103:** Column 'endDate' not found in table 'contracts'
 
 ```
@@ -29274,16 +27286,6 @@ contractType: contracts.contractType,
 
 ---
 
-⚠️ **Line 242:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.id, contractId), eq(contracts.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ### `server\routes-client-monitoring.ts`
 
 ⚠️ **Line 140:** Column 'productCode' not found in table 'supplies'
@@ -29306,20 +27308,10 @@ or(like(supplies.productCode, pattern), like(supplies.productName, pattern)),
 
 ---
 
-⚠️ **Line 146:** Column 'tenantId' not found in table 'supplies'
-
-```
-.where(and(eq(supplies.tenantId, tenantId), eq(supplies.isActive, true), or(...conditions)))
-```
-
-💡 **Suggestion:** Did you mean 'supplies.tenant_id'?
-
----
-
 ⚠️ **Line 146:** Column 'isActive' not found in table 'supplies'
 
 ```
-.where(and(eq(supplies.tenantId, tenantId), eq(supplies.isActive, true), or(...conditions)))
+.where(and(eq(supplies.tenant_id, tenantId), eq(supplies.isActive, true), or(...conditions)))
 ```
 
 💡 **Suggestion:** Did you mean 'supplies.is_active'?
@@ -29478,26 +27470,6 @@ createdBy: tasks.createdBy,
 
 ---
 
-⚠️ **Line 41:** Column 'createdAt' not found in table 'tasks'
-
-```
-createdAt: tasks.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'tasks.created_at'?
-
----
-
-⚠️ **Line 42:** Column 'updatedAt' not found in table 'tasks'
-
-```
-updatedAt: tasks.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'tasks.updated_at'?
-
----
-
 ⚠️ **Line 43:** Column 'completedAt' not found in table 'tasks'
 
 ```
@@ -29558,16 +27530,6 @@ assignedToAvatar: users.profileImageUrl,
 
 ---
 
-⚠️ **Line 59:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(eq(tasks.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 63:** Column 'projectId' not found in table 'tasks'
 
 ```
@@ -29585,16 +27547,6 @@ query = query.where(eq(tasks.assignedTo, assignedTo as string));
 ```
 
 💡 **Suggestion:** Did you mean 'tasks.assigned_to'?
-
----
-
-⚠️ **Line 75:** Column 'updatedAt' not found in table 'tasks'
-
-```
-const allTasks = await query.orderBy(desc(tasks.updatedAt));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.updated_at'?
 
 ---
 
@@ -29708,16 +27660,6 @@ tags: projects.tags,
 
 ---
 
-⚠️ **Line 127:** Column 'createdAt' not found in table 'projects'
-
-```
-createdAt: projects.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'projects.created_at'?
-
----
-
 ⚠️ **Line 137:** Column 'projectManager' not found in table 'projects'
 
 ```
@@ -29725,16 +27667,6 @@ createdAt: projects.createdAt,
 ```
 
 💡 **Suggestion:** Column not found in table 'projects'
-
----
-
-⚠️ **Line 139:** Column 'tenantId' not found in table 'projects'
-
-```
-.where(eq(projects.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'projects.tenant_id'?
 
 ---
 
@@ -29848,26 +27780,6 @@ projects.tags,
 
 ---
 
-⚠️ **Line 156:** Column 'createdAt' not found in table 'projects'
-
-```
-projects.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'projects.created_at'?
-
----
-
-⚠️ **Line 160:** Column 'updatedAt' not found in table 'projects'
-
-```
-.orderBy(desc(projects.updatedAt));
-```
-
-💡 **Suggestion:** Did you mean 'projects.updated_at'?
-
----
-
 ⚠️ **Line 177:** Column 'firstName' not found in table 'users'
 
 ```
@@ -29908,20 +27820,10 @@ role: users.role,
 
 ---
 
-⚠️ **Line 183:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)))
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 183:** Column 'isActive' not found in table 'users'
 
 ```
-.where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)))
+.where(and(eq(users.tenant_id, tenantId), eq(users.isActive, true)))
 ```
 
 💡 **Suggestion:** Did you mean 'users.is_active'?
@@ -29948,16 +27850,6 @@ role: users.role,
 
 ---
 
-⚠️ **Line 246:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 286:** Column 'commentCount' not found in table 'tasks'
 
 ```
@@ -29965,16 +27857,6 @@ commentCount: sql`${tasks.commentCount} + 1`,
 ```
 
 💡 **Suggestion:** Column not found in table 'tasks'
-
----
-
-⚠️ **Line 289:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -29988,26 +27870,6 @@ timeTracked: sql`${tasks.timeTracked} + ${req.body.minutes}`,
 
 ---
 
-⚠️ **Line 324:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
-⚠️ **Line 351:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(inArray(tasks.id, taskIds), eq(tasks.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 369:** Column 'parentTaskId' not found in table 'tasks'
 
 ```
@@ -30018,43 +27880,13 @@ timeTracked: sql`${tasks.timeTracked} + ${req.body.minutes}`,
 
 ---
 
-⚠️ **Line 371:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
 ⚠️ **Line 380:** Column 'parentTaskId' not found in table 'tasks'
 
 ```
-.where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId)));
+.where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenant_id, tenantId)));
 ```
 
 💡 **Suggestion:** Column not found in table 'tasks'
-
----
-
-⚠️ **Line 380:** Column 'tenantId' not found in table 'tasks'
-
-```
-.where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
-
-⚠️ **Line 383:** Column 'tenantId' not found in table 'tasks'
-
-```
-await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
 
 ---
 
@@ -30078,54 +27910,12 @@ completionPercentage: tasks.completionPercentage,
 
 ---
 
-### `server\routes-breach-detection.ts`
-
-⚠️ **Line 77:** Column 'tenantId' not found in table 'proposals'
-
-```
-eq(proposals.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'proposals.tenant_id'?
-
----
-
-⚠️ **Line 79:** Column 'createdAt' not found in table 'proposals'
-
-```
-lt(proposals.createdAt, fourteenDaysAgo),
-```
-
-💡 **Suggestion:** Did you mean 'proposals.created_at'?
-
----
-
-⚠️ **Line 152:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 154:** Column 'createdAt' not found in table 'invoices'
-
-```
-lt(invoices.createdAt, twentyFourHoursAgo),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
-
----
-
 ### `server\routes-admin-subscriptions.ts`
 
-⚠️ **Line 110:** Column 'tenantId' not found in table 'subscription'
+⚠️ **Line 110:** Column 'tenant_id' not found in table 'subscription'
 
 ```
-const status = await SubscriptionService.getSubscriptionStatus(subscription.tenantId);
+const status = await SubscriptionService.getSubscriptionStatus(subscription.tenant_id);
 ```
 
 💡 **Suggestion:** Column not found in table 'subscription'
@@ -30194,43 +27984,13 @@ const newTrialEndDate = new Date(subscription.trialEndDate);
 
 ---
 
-⚠️ **Line 383:** Column 'tenantId' not found in table 'locations'
-
-```
-.where(eq(locations.tenantId, user.tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'locations.tenant_id'?
-
----
-
-⚠️ **Line 392:** Column 'tenantId' not found in table 'locations'
-
-```
-.where(and(eq(locations.tenantId, user.tenantId), eq(locations.regionId, user.regionId)));
-```
-
-💡 **Suggestion:** Did you mean 'locations.tenant_id'?
-
----
-
 ⚠️ **Line 392:** Column 'regionId' not found in table 'locations'
 
 ```
-.where(and(eq(locations.tenantId, user.tenantId), eq(locations.regionId, user.regionId)));
+.where(and(eq(locations.tenant_id, user.tenant_id), eq(locations.regionId, user.regionId)));
 ```
 
 💡 **Suggestion:** Did you mean 'locations.region_id'?
-
----
-
-⚠️ **Line 419:** Column 'tenantId' not found in table 'regions'
-
-```
-.where(eq(regions.tenantId, user.tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'regions.tenant_id'?
 
 ---
 
@@ -30376,28 +28136,6 @@ permissions: ['ticket.view_own', 'equipment.install', 'equipment.configure', 'le
 
 ---
 
-### `server\auth-setup.ts`
-
-⚠️ **Line 310:** Column 'tenantId' not found in table 'teams'
-
-```
-.where(and(eq(teams.department, 'sales'), eq(teams.tenantId, demoTenant.id)));
-```
-
-💡 **Suggestion:** Did you mean 'teams.tenant_id'?
-
----
-
-⚠️ **Line 318:** Column 'tenantId' not found in table 'teams'
-
-```
-.where(and(eq(teams.department, 'service'), eq(teams.tenantId, demoTenant.id)));
-```
-
-💡 **Suggestion:** Did you mean 'teams.tenant_id'?
-
----
-
 ### `server\utils\apiErrorHandler.example.ts`
 
 ⚠️ **Line 25:** Column 'findFirst' not found in table 'customers'
@@ -30449,16 +28187,6 @@ lastName: users.lastName,
 ```
 
 💡 **Suggestion:** Did you mean 'users.last_name'?
-
----
-
-⚠️ **Line 261:** Column 'tenantId' not found in table 'users'
-
-```
-eq(users.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -30570,16 +28298,6 @@ apiCalls: sql`${tenants.apiCalls} + 1`,
 
 ---
 
-⚠️ **Line 173:** Column 'tenantId' not found in table 'users'
-
-```
-eq(users.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 174:** Column 'isActive' not found in table 'users'
 
 ```
@@ -30600,40 +28318,20 @@ gte(users.lastLoginAt, thirtyDaysAgo),
 
 ---
 
-⚠️ **Line 183:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 183:** Column 'isActive' not found in table 'users'
 
 ```
-.where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)));
+.where(and(eq(users.tenant_id, tenantId), eq(users.isActive, true)));
 ```
 
 💡 **Suggestion:** Did you mean 'users.is_active'?
 
 ---
 
-⚠️ **Line 189:** Column 'tenantId' not found in table 'locations'
-
-```
-.where(and(eq(locations.tenantId, tenantId), eq(locations.isActive, true)));
-```
-
-💡 **Suggestion:** Did you mean 'locations.tenant_id'?
-
----
-
 ⚠️ **Line 189:** Column 'isActive' not found in table 'locations'
 
 ```
-.where(and(eq(locations.tenantId, tenantId), eq(locations.isActive, true)));
+.where(and(eq(locations.tenant_id, tenantId), eq(locations.isActive, true)));
 ```
 
 💡 **Suggestion:** Did you mean 'locations.is_active'?
@@ -30722,46 +28420,6 @@ firstName: users.firstName,
 
 ---
 
-⚠️ **Line 153:** Column 'tenantId' not found in table 'users'
-
-```
-tenantId: users.tenantId,
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 156:** Column 'tenantId' not found in table 'users'
-
-```
-.where(sql`${users.tenantId} IS NOT NULL`);
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 215:** Column 'tenantId' not found in table 'users'
-
-```
-tenantId: users.tenantId,
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 218:** Column 'tenantId' not found in table 'users'
-
-```
-.where(sql`${users.tenantId} IS NOT NULL`);
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ### `server\services\ticket-creation-service.ts`
 
 ⚠️ **Line 124:** Column 'findMany' not found in table 'equipment'
@@ -30774,20 +28432,10 @@ const customerEquipment = await db.query.equipment.findMany({
 
 ---
 
-⚠️ **Line 125:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customerId)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 125:** Column 'customerId' not found in table 'equipment'
 
 ```
-where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customerId)),
+where: and(eq(equipment.tenant_id, this.tenant_id), eq(equipment.customerId, customerId)),
 ```
 
 💡 **Suggestion:** Did you mean 'equipment.customer_id'?
@@ -30801,16 +28449,6 @@ const technicians = await db.query.users.findMany({
 ```
 
 💡 **Suggestion:** Column not found in table 'users'
-
----
-
-⚠️ **Line 270:** Column 'tenantId' not found in table 'users'
-
-```
-eq(users.tenantId, this.tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -31060,10 +28698,10 @@ trialEndDate: subscription.trialEndDate,
 
 ---
 
-⚠️ **Line 781:** Column 'tenantId' not found in table 'subscription'
+⚠️ **Line 781:** Column 'tenant_id' not found in table 'subscription'
 
 ```
-tenantId: subscription.tenantId,
+tenantId: subscription.tenant_id,
 ```
 
 💡 **Suggestion:** Column not found in table 'subscription'
@@ -31080,30 +28718,30 @@ if (subscription.isFree) {
 
 ---
 
-⚠️ **Line 810:** Column 'tenantId' not found in table 'subscription'
+⚠️ **Line 810:** Column 'tenant_id' not found in table 'subscription'
 
 ```
-const status = await this.getSubscriptionStatus(subscription.tenantId);
-```
-
-💡 **Suggestion:** Column not found in table 'subscription'
-
----
-
-⚠️ **Line 832:** Column 'tenantId' not found in table 'subscription'
-
-```
-tenantId: subscription.tenantId,
+const status = await this.getSubscriptionStatus(subscription.tenant_id);
 ```
 
 💡 **Suggestion:** Column not found in table 'subscription'
 
 ---
 
-⚠️ **Line 863:** Column 'tenantId' not found in table 'subscription'
+⚠️ **Line 832:** Column 'tenant_id' not found in table 'subscription'
 
 ```
-tenantId: subscription.tenantId,
+tenantId: subscription.tenant_id,
+```
+
+💡 **Suggestion:** Column not found in table 'subscription'
+
+---
+
+⚠️ **Line 863:** Column 'tenant_id' not found in table 'subscription'
+
+```
+tenantId: subscription.tenant_id,
 ```
 
 💡 **Suggestion:** Column not found in table 'subscription'
@@ -31139,16 +28777,6 @@ const adminUser = await db.query.users.findFirst({
 ```
 
 💡 **Suggestion:** Column not found in table 'users'
-
----
-
-⚠️ **Line 154:** Column 'tenantId' not found in table 'users'
-
-```
-where: eq(users.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
 
 ---
 
@@ -31416,36 +29044,6 @@ billingPeriodEnd: invoices.billingPeriodEnd,
 
 ---
 
-⚠️ **Line 638:** Column 'tenantId' not found in table 'invoices'
-
-```
-tenantId: invoices.tenantId,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 639:** Column 'createdAt' not found in table 'invoices'
-
-```
-createdAt: invoices.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
-
----
-
-⚠️ **Line 640:** Column 'updatedAt' not found in table 'invoices'
-
-```
-updatedAt: invoices.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.updated_at'?
-
----
-
 ⚠️ **Line 643:** Column 'customerId' not found in table 'invoices'
 
 ```
@@ -31453,16 +29051,6 @@ updatedAt: invoices.updatedAt,
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.customer_id'?
-
----
-
-⚠️ **Line 644:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -31582,16 +29170,6 @@ data.user = await db.query.users.findFirst({
 
 ---
 
-⚠️ **Line 250:** Column 'tenantId' not found in table 'users'
-
-```
-where: and(eq(users.tenantId, tenantId), eq(users.id, subjectId)),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ### `server\services\equipment-lifecycle-state-machine.ts`
 
 ⚠️ **Line 246:** Column 'currentStage' not found in table 'equipment'
@@ -31616,16 +29194,6 @@ const quote = await db.query.quotes.findFirst({
 
 ---
 
-⚠️ **Line 153:** Column 'tenantId' not found in table 'quotes'
-
-```
-and(eq(quotes.id, contextIds.quoteId!), eq(quotes.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'quotes.tenant_id'?
-
----
-
 ⚠️ **Line 165:** Column 'findFirst' not found in table 'deals'
 
 ```
@@ -31636,16 +29204,6 @@ const deal = await db.query.deals.findFirst({
 
 ---
 
-⚠️ **Line 167:** Column 'tenantId' not found in table 'deals'
-
-```
-and(eq(deals.id, contextIds.dealId!), eq(deals.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'deals.tenant_id'?
-
----
-
 ⚠️ **Line 187:** Column 'findFirst' not found in table 'invoices'
 
 ```
@@ -31653,16 +29211,6 @@ const invoice = await db.query.invoices.findFirst({
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
-
----
-
-⚠️ **Line 189:** Column 'tenantId' not found in table 'invoices'
-
-```
-and(eq(invoices.id, contextIds.invoiceId!), eq(invoices.tenantId, tenantId)),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -31798,29 +29346,7 @@ lastReading: equipment.lastReading,
 
 ---
 
-### `server\services\csv-import-service.ts`
-
-⚠️ **Line 665:** Column 'tenantId' not found in table 'equipment'
-
-```
-const whereConditions: any[] = [eq(equipment.tenantId, tenantId)];
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ### `server\services\contract-renewal-workflow.ts`
-
-⚠️ **Line 166:** Column 'tenantId' not found in table 'tasks'
-
-```
-eq(tasks.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'tasks.tenant_id'?
-
----
 
 ⚠️ **Line 167:** Column 'relatedRecordId' not found in table 'tasks'
 
@@ -31829,78 +29355,6 @@ eq(tasks.relatedRecordId, contract.id),
 ```
 
 💡 **Suggestion:** Column not found in table 'tasks'
-
----
-
-### `server\services\company-deduplication-service.ts`
-
-⚠️ **Line 100:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(eq(companies.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 101:** Column 'createdAt' not found in table 'companies'
-
-```
-.orderBy(companies.createdAt);
-```
-
-💡 **Suggestion:** Did you mean 'companies.created_at'?
-
----
-
-⚠️ **Line 182:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(eq(companies.id, survivorId), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 200:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 265:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 352:** Column 'tenantId' not found in table 'companies'
-
-```
-const candidates = await db.select().from(companies).where(eq(companies.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
-
----
-
-⚠️ **Line 385:** Column 'tenantId' not found in table 'companies'
-
-```
-.where(and(inArray(companies.id, companyIds), eq(companies.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'companies.tenant_id'?
 
 ---
 
@@ -31956,16 +29410,6 @@ outstanding: sql<number>`COALESCE(SUM(CAST(${invoices.balance} AS DECIMAL)) FILT
 
 ---
 
-⚠️ **Line 823:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 824:** Column 'invoiceDate' not found in table 'invoices'
 
 ```
@@ -32003,16 +29447,6 @@ avgDays: sql<number>`AVG(EXTRACT(DAY FROM (${invoices.paymentDate} - ${invoices.
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
-
----
-
-⚠️ **Line 842:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -32056,16 +29490,6 @@ isNotNull(invoices.paymentDate),
 
 ---
 
-⚠️ **Line 935:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.id, contractId), eq(contracts.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 1083:** Column 'invoiceNumber' not found in table 'invoices'
 
 ```
@@ -32073,26 +29497,6 @@ isNotNull(invoices.paymentDate),
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.invoice_number'?
-
----
-
-⚠️ **Line 1085:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(eq(invoices.tenantId, tenantId))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 1086:** Column 'createdAt' not found in table 'invoices'
-
-```
-.orderBy(desc(invoices.createdAt))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
 
 ---
 
@@ -32156,26 +29560,6 @@ balance: invoices.balance,
 
 ---
 
-⚠️ **Line 1161:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 1196:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ### `server\services\billing-analytics-service.ts`
 
 ⚠️ **Line 172:** Column 'invoiceDate' not found in table 'invoices'
@@ -32195,16 +29579,6 @@ revenue: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS DECIMAL)), 0)`
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.total_amount'?
-
----
-
-⚠️ **Line 178:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -32360,16 +29734,6 @@ lastInvoiceDate: sql<Date>`MAX(${invoices.invoiceDate})`,
 
 ### `server\services\automated-billing-service.ts`
 
-⚠️ **Line 127:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.id, schedule.contractId), eq(contracts.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
 ⚠️ **Line 140:** Column 'customerId' not found in table 'contracts'
 
 ```
@@ -32377,36 +29741,6 @@ eq(contracts.customerId, schedule.customerId),
 ```
 
 💡 **Suggestion:** Did you mean 'contracts.customer_id'?
-
----
-
-⚠️ **Line 141:** Column 'tenantId' not found in table 'contracts'
-
-```
-eq(contracts.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
-⚠️ **Line 150:** Column 'tenantId' not found in table 'contracts'
-
-```
-.where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active')));
-```
-
-💡 **Suggestion:** Did you mean 'contracts.tenant_id'?
-
----
-
-⚠️ **Line 263:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -32447,26 +29781,6 @@ for (const row of equipment.rows as any[]) {
 ```
 
 💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 587:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'open')));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 593:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'overdue')));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -32524,20 +29838,10 @@ userLastName: users.lastName,
 
 ---
 
-⚠️ **Line 251:** Column 'tenantId' not found in table 'users'
-
-```
-.where(and(eq(users.tenantId, tenantId), eq(users.roleId, approver.roleId)))
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
 ⚠️ **Line 251:** Column 'roleId' not found in table 'users'
 
 ```
-.where(and(eq(users.tenantId, tenantId), eq(users.roleId, approver.roleId)))
+.where(and(eq(users.tenant_id, tenantId), eq(users.roleId, approver.roleId)))
 ```
 
 💡 **Suggestion:** Did you mean 'users.role_id'?
@@ -32648,23 +29952,79 @@ equipmentList = await db.query.equipment.findMany({
 
 ---
 
-⚠️ **Line 238:** Column 'tenantId' not found in table 'equipment'
-
-```
-where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customer.id)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 238:** Column 'customerId' not found in table 'equipment'
 
 ```
-where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customer.id)),
+where: and(eq(equipment.tenant_id, this.tenant_id), eq(equipment.customerId, customer.id)),
 ```
 
 💡 **Suggestion:** Did you mean 'equipment.customer_id'?
+
+---
+
+### `server\middleware\hierarchical-query-builder.ts`
+
+⚠️ **Line 359:** Column 'primaryLocationId' not found in table 'users'
+
+```
+inArray(users.primaryLocationId, locationIds),
+```
+
+💡 **Suggestion:** Column not found in table 'users'
+
+---
+
+⚠️ **Line 372:** Column 'managerId' not found in table 'users'
+
+```
+or(eq(users.managerId, this.userContext.id), eq(users.id, this.userContext.id)),
+```
+
+💡 **Suggestion:** Column not found in table 'users'
+
+---
+
+### `server\integrations\webhook-service.ts`
+
+⚠️ **Line 123:** Column 'created' not found in table 'subscription'
+
+```
+case 'subscription.created':
+```
+
+💡 **Suggestion:** Similar columns: created_at
+
+---
+
+⚠️ **Line 124:** Column 'updated' not found in table 'subscription'
+
+```
+case 'subscription.updated':
+```
+
+💡 **Suggestion:** Column not found in table 'subscription'
+
+---
+
+⚠️ **Line 125:** Column 'deleted' not found in table 'subscription'
+
+```
+case 'subscription.deleted':
+```
+
+💡 **Suggestion:** Column not found in table 'subscription'
+
+---
+
+### `server\integrations\dashboard-service.ts`
+
+⚠️ **Line 545:** Column 'created' not found in table 'subscription'
+
+```
+event: 'subscription.created',
+```
+
+💡 **Suggestion:** Similar columns: created_at
 
 ---
 
@@ -32810,26 +30170,6 @@ billingPeriodEnd: invoices.billingPeriodEnd,
 
 ---
 
-⚠️ **Line 303:** Column 'createdAt' not found in table 'invoices'
-
-```
-createdAt: invoices.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
-
----
-
-⚠️ **Line 304:** Column 'updatedAt' not found in table 'invoices'
-
-```
-updatedAt: invoices.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.updated_at'?
-
----
-
 ⚠️ **Line 307:** Column 'customerId' not found in table 'invoices'
 
 ```
@@ -32837,16 +30177,6 @@ updatedAt: invoices.updatedAt,
 ```
 
 💡 **Suggestion:** Did you mean 'invoices.customer_id'?
-
----
-
-⚠️ **Line 310:** Column 'tenantId' not found in table 'invoices'
-
-```
-const conditions = [eq(invoices.tenantId, tenantId)];
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -32937,26 +30267,6 @@ isNotNull(invoices.externalCustomerId),
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
-
----
-
-⚠️ **Line 345:** Column 'createdAt' not found in table 'invoices'
-
-```
-gte(invoices.createdAt, sql`NOW() - INTERVAL '7 days'`),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
-
----
-
-⚠️ **Line 352:** Column 'createdAt' not found in table 'invoices'
-
-```
-.orderBy(desc(invoices.createdAt))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
 
 ---
 
@@ -33150,26 +30460,6 @@ billingPeriodEnd: invoices.billingPeriodEnd,
 
 ---
 
-⚠️ **Line 423:** Column 'createdAt' not found in table 'invoices'
-
-```
-createdAt: invoices.createdAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.created_at'?
-
----
-
-⚠️ **Line 424:** Column 'updatedAt' not found in table 'invoices'
-
-```
-updatedAt: invoices.updatedAt,
-```
-
-💡 **Suggestion:** Did you mean 'invoices.updated_at'?
-
----
-
 ⚠️ **Line 427:** Column 'customerId' not found in table 'invoices'
 
 ```
@@ -33180,26 +30470,6 @@ updatedAt: invoices.updatedAt,
 
 ---
 
-⚠️ **Line 428:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 511:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 536:** Column 'invoiceStatus' not found in table 'invoices'
 
 ```
@@ -33207,26 +30477,6 @@ updatedAt: invoices.updatedAt,
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
-
----
-
-⚠️ **Line 538:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 554:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -33300,66 +30550,6 @@ invoiceStatus: invoices.invoiceStatus,
 
 ---
 
-⚠️ **Line 599:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 705:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 746:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 771:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 794:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
-⚠️ **Line 960:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(eq(invoices.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 965:** Column 'totalAmount' not found in table 'invoices'
 
 ```
@@ -33370,20 +30560,10 @@ totalValue: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS DECIMAL)), 
 
 ---
 
-⚠️ **Line 968:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), eq(invoices.invoiceStatus, 'paid')));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 968:** Column 'invoiceStatus' not found in table 'invoices'
 
 ```
-.where(and(eq(invoices.tenantId, tenantId), eq(invoices.invoiceStatus, 'paid')));
+.where(and(eq(invoices.tenant_id, tenantId), eq(invoices.invoiceStatus, 'paid')));
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
@@ -33400,20 +30580,10 @@ totalValue: sql<number>`COALESCE(SUM(CAST(${invoices.balance} AS DECIMAL)), 0)`,
 
 ---
 
-⚠️ **Line 976:** Column 'tenantId' not found in table 'invoices'
-
-```
-.where(and(eq(invoices.tenantId, tenantId), eq(invoices.invoiceStatus, 'sent')));
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
-
----
-
 ⚠️ **Line 976:** Column 'invoiceStatus' not found in table 'invoices'
 
 ```
-.where(and(eq(invoices.tenantId, tenantId), eq(invoices.invoiceStatus, 'sent')));
+.where(and(eq(invoices.tenant_id, tenantId), eq(invoices.invoiceStatus, 'sent')));
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
@@ -33427,16 +30597,6 @@ totalValue: sql<number>`COALESCE(SUM(CAST(${invoices.balance} AS DECIMAL)), 0)`,
 ```
 
 💡 **Suggestion:** Column not found in table 'invoices'
-
----
-
-⚠️ **Line 986:** Column 'tenantId' not found in table 'invoices'
-
-```
-eq(invoices.tenantId, tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'invoices.tenant_id'?
 
 ---
 
@@ -33460,114 +30620,6 @@ sql`${invoices.dueDate} < CURRENT_DATE`,
 
 ---
 
-### `server\middleware\mfa-enforcement.ts`
-
-⚠️ **Line 344:** Column 'tenantId' not found in table 'users'
-
-```
-const allUsers = await db.select().from(users).where(eq(users.tenantId, tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-### `server\middleware\hierarchical-query-builder.ts`
-
-⚠️ **Line 344:** Column 'tenantId' not found in table 'users'
-
-```
-.where(eq(users.tenantId, this.userContext.tenantId));
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 358:** Column 'tenantId' not found in table 'users'
-
-```
-eq(users.tenantId, this.userContext.tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 359:** Column 'primaryLocationId' not found in table 'users'
-
-```
-inArray(users.primaryLocationId, locationIds),
-```
-
-💡 **Suggestion:** Column not found in table 'users'
-
----
-
-⚠️ **Line 371:** Column 'tenantId' not found in table 'users'
-
-```
-eq(users.tenantId, this.userContext.tenantId),
-```
-
-💡 **Suggestion:** Did you mean 'users.tenant_id'?
-
----
-
-⚠️ **Line 372:** Column 'managerId' not found in table 'users'
-
-```
-or(eq(users.managerId, this.userContext.id), eq(users.id, this.userContext.id)),
-```
-
-💡 **Suggestion:** Column not found in table 'users'
-
----
-
-### `server\integrations\webhook-service.ts`
-
-⚠️ **Line 123:** Column 'created' not found in table 'subscription'
-
-```
-case 'subscription.created':
-```
-
-💡 **Suggestion:** Similar columns: created_at
-
----
-
-⚠️ **Line 124:** Column 'updated' not found in table 'subscription'
-
-```
-case 'subscription.updated':
-```
-
-💡 **Suggestion:** Column not found in table 'subscription'
-
----
-
-⚠️ **Line 125:** Column 'deleted' not found in table 'subscription'
-
-```
-case 'subscription.deleted':
-```
-
-💡 **Suggestion:** Column not found in table 'subscription'
-
----
-
-### `server\integrations\dashboard-service.ts`
-
-⚠️ **Line 545:** Column 'created' not found in table 'subscription'
-
-```
-event: 'subscription.created',
-```
-
-💡 **Suggestion:** Similar columns: created_at
-
----
-
 ### `server\services\manufacturer-adapters\xerox-adapter.ts`
 
 ⚠️ **Line 292:** Column 'forEach' not found in table 'supplies'
@@ -33582,20 +30634,10 @@ supplies.forEach((supply: any) => {
 
 ### `server\database-updater\updaters\ServiceTicketUpdater.ts`
 
-⚠️ **Line 526:** Column 'tenantId' not found in table 'equipment'
-
-```
-and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, this.customerId!)),
-```
-
-💡 **Suggestion:** Did you mean 'equipment.tenant_id'?
-
----
-
 ⚠️ **Line 526:** Column 'customerId' not found in table 'equipment'
 
 ```
-and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, this.customerId!)),
+and(eq(equipment.tenant_id, this.tenant_id), eq(equipment.customerId, this.customerId!)),
 ```
 
 💡 **Suggestion:** Did you mean 'equipment.customer_id'?
@@ -35218,6 +32260,48 @@ trend: equipment.healthScore > 80 ? 'up' : 'down',
 
 ---
 
+### `client\src\components\customer\customer-360-view.tsx`
+
+⚠️ **Line 504:** Column 'currentMeter' not found in table 'equipment'
+
+```
+<p className="text-sm font-medium">{equipment.currentMeter.toLocaleString()}</p>
+```
+
+💡 **Suggestion:** Column not found in table 'equipment'
+
+---
+
+⚠️ **Line 508:** Column 'avgMonthlyVolume' not found in table 'equipment'
+
+```
+<p className="text-sm font-medium">{equipment.avgMonthlyVolume.toLocaleString()}</p>
+```
+
+💡 **Suggestion:** Column not found in table 'equipment'
+
+---
+
+⚠️ **Line 513:** Column 'nextMaintenance' not found in table 'equipment'
+
+```
+{formatDistanceToNow(new Date(equipment.nextMaintenance), { addSuffix: true })}
+```
+
+💡 **Suggestion:** Column not found in table 'equipment'
+
+---
+
+⚠️ **Line 521:** Column 'healthScore' not found in table 'equipment'
+
+```
+<div className="text-2xl font-bold">{equipment.healthScore}%</div>
+```
+
+💡 **Suggestion:** Column not found in table 'equipment'
+
+---
+
 ### `client\src\components\customer-portal\UsageAnalyticsDashboard.tsx`
 
 ⚠️ **Line 481:** Column 'equipmentId' not found in table 'equipment'
@@ -35396,48 +32480,6 @@ className={`text-lg font-semibold ${getHealthColor(equipment.overallHealthScore)
 
 ```
 {equipment.connectionStatus.isOnline ? (
-```
-
-💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-### `client\src\components\customer\customer-360-view.tsx`
-
-⚠️ **Line 504:** Column 'currentMeter' not found in table 'equipment'
-
-```
-<p className="text-sm font-medium">{equipment.currentMeter.toLocaleString()}</p>
-```
-
-💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 508:** Column 'avgMonthlyVolume' not found in table 'equipment'
-
-```
-<p className="text-sm font-medium">{equipment.avgMonthlyVolume.toLocaleString()}</p>
-```
-
-💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 513:** Column 'nextMaintenance' not found in table 'equipment'
-
-```
-{formatDistanceToNow(new Date(equipment.nextMaintenance), { addSuffix: true })}
-```
-
-💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 521:** Column 'healthScore' not found in table 'equipment'
-
-```
-<div className="text-2xl font-bold">{equipment.healthScore}%</div>
 ```
 
 💡 **Suggestion:** Column not found in table 'equipment'
@@ -35878,6 +32920,28 @@ quotes.data?.forEach((q) => {
 
 ---
 
+### `supabase\functions\onboarding\index.ts`
+
+⚠️ **Line 118:** Column 'data' not found in table 'equipment'
+
+```
+equipment: equipment.data || [],
+```
+
+💡 **Suggestion:** Column not found in table 'equipment'
+
+---
+
+⚠️ **Line 120:** Column 'data' not found in table 'tasks'
+
+```
+tasks: tasks.data || [],
+```
+
+💡 **Suggestion:** Similar columns: tags
+
+---
+
 ### `supabase\functions\pipeline\index.ts`
 
 ⚠️ **Line 163:** Column 'data' not found in table 'deals'
@@ -35907,28 +32971,6 @@ totalValue: deals.data?.reduce((sum, d) => sum + parseFloat(d.deal_value || '0')
 ```
 
 💡 **Suggestion:** Column not found in table 'deals'
-
----
-
-### `supabase\functions\onboarding\index.ts`
-
-⚠️ **Line 118:** Column 'data' not found in table 'equipment'
-
-```
-equipment: equipment.data || [],
-```
-
-💡 **Suggestion:** Column not found in table 'equipment'
-
----
-
-⚠️ **Line 120:** Column 'data' not found in table 'tasks'
-
-```
-tasks: tasks.data || [],
-```
-
-💡 **Suggestion:** Similar columns: tags
 
 ---
 

@@ -12,7 +12,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get all software products
   app.get('/api/software-products', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const { search, category, vendor, status } = req.query;
 
       let query = db
@@ -30,11 +30,11 @@ export function registerSoftwareProductsRoutes(app: Express) {
           supportIncluded: softwareProducts.supportIncluded,
           systemRequirements: softwareProducts.systemRequirements,
           status: softwareProducts.status,
-          createdAt: softwareProducts.createdAt,
-          updatedAt: softwareProducts.updatedAt,
+          createdAt: softwareProducts.created_at,
+          updatedAt: softwareProducts.updated_at,
         })
         .from(softwareProducts)
-        .where(eq(softwareProducts.tenantId, tenantId));
+        .where(eq(softwareProducts.tenant_id, tenantId));
 
       // Apply filters
       if (search) {
@@ -66,13 +66,13 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get software product by ID
   app.get('/api/software-products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const productId = req.params.id;
 
       const [product] = await db
         .select()
         .from(softwareProducts)
-        .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenantId, tenantId)));
+        .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenant_id, tenantId)));
 
       if (!product) {
         return res.status(404).json({ error: 'Software product not found' });
@@ -88,7 +88,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Create new software product
   app.post('/api/software-products', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const productData = insertSoftwareProductSchema.parse({
         ...req.body,
@@ -108,7 +108,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Update software product
   app.put('/api/software-products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const productId = req.params.id;
 
       const [updatedProduct] = await db
@@ -117,7 +117,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
           ...req.body,
           updatedAt: new Date(),
         })
-        .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenantId, tenantId)))
+        .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenant_id, tenantId)))
         .returning();
 
       if (!updatedProduct) {
@@ -134,12 +134,12 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Delete software product
   app.delete('/api/software-products/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const productId = req.params.id;
 
       const [deletedProduct] = await db
         .delete(softwareProducts)
-        .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenantId, tenantId)))
+        .where(and(eq(softwareProducts.id, productId), eq(softwareProducts.tenant_id, tenantId)))
         .returning();
 
       if (!deletedProduct) {
@@ -156,14 +156,14 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get software categories
   app.get('/api/software-products/categories', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const categories = await db
         .selectDistinct({ category: softwareProducts.category })
         .from(softwareProducts)
         .where(
           and(
-            eq(softwareProducts.tenantId, tenantId),
+            eq(softwareProducts.tenant_id, tenantId),
             sql`${softwareProducts.category} IS NOT NULL`,
           ),
         );
@@ -178,13 +178,16 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get vendors
   app.get('/api/software-products/vendors', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const vendors = await db
         .selectDistinct({ vendor: softwareProducts.vendor })
         .from(softwareProducts)
         .where(
-          and(eq(softwareProducts.tenantId, tenantId), sql`${softwareProducts.vendor} IS NOT NULL`),
+          and(
+            eq(softwareProducts.tenant_id, tenantId),
+            sql`${softwareProducts.vendor} IS NOT NULL`,
+          ),
         );
 
       res.json(vendors.map((v) => v.vendor));
@@ -197,14 +200,14 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get license types
   app.get('/api/software-products/license-types', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const licenseTypes = await db
         .selectDistinct({ licenseType: softwareProducts.licenseType })
         .from(softwareProducts)
         .where(
           and(
-            eq(softwareProducts.tenantId, tenantId),
+            eq(softwareProducts.tenant_id, tenantId),
             sql`${softwareProducts.licenseType} IS NOT NULL`,
           ),
         );
@@ -219,24 +222,26 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get software products dashboard stats
   app.get('/api/software-products/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const totalProductsResult = await db
         .select({ count: count() })
         .from(softwareProducts)
-        .where(eq(softwareProducts.tenantId, tenantId));
+        .where(eq(softwareProducts.tenant_id, tenantId));
 
       const activeProductsResult = await db
         .select({ count: count() })
         .from(softwareProducts)
-        .where(and(eq(softwareProducts.tenantId, tenantId), eq(softwareProducts.status, 'active')));
+        .where(
+          and(eq(softwareProducts.tenant_id, tenantId), eq(softwareProducts.status, 'active')),
+        );
 
       const licensedProductsResult = await db
         .select({ count: count() })
         .from(softwareProducts)
         .where(
           and(
-            eq(softwareProducts.tenantId, tenantId),
+            eq(softwareProducts.tenant_id, tenantId),
             sql`${softwareProducts.licenseType} IN ('perpetual', 'subscription')`,
           ),
         );
@@ -246,7 +251,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
           totalValue: sql<number>`COALESCE(SUM(${softwareProducts.price}), 0)`,
         })
         .from(softwareProducts)
-        .where(eq(softwareProducts.tenantId, tenantId));
+        .where(eq(softwareProducts.tenant_id, tenantId));
 
       const totalProducts = totalProductsResult[0]?.count || 0;
       const activeProducts = activeProductsResult[0]?.count || 0;
@@ -269,7 +274,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
   // Get products by license type
   app.get('/api/software-products/by-license-type', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const productsByLicense = await db
         .select({
@@ -278,7 +283,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
           totalValue: sql<number>`COALESCE(SUM(${softwareProducts.price}), 0)`,
         })
         .from(softwareProducts)
-        .where(eq(softwareProducts.tenantId, tenantId))
+        .where(eq(softwareProducts.tenant_id, tenantId))
         .groupBy(softwareProducts.licenseType);
 
       res.json(productsByLicense);

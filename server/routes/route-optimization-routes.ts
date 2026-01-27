@@ -54,7 +54,7 @@ router.post('/optimize', async (req: Request, res: Response) => {
     const data = optimizeRouteSchema.parse(req.body);
 
     const input: RouteOptimizationInput = {
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       technicianId: user.id, // Will be overridden if specified
       startLocation: data.startLocation,
       endLocation: data.endLocation,
@@ -87,7 +87,7 @@ router.post('/create', async (req: Request, res: Response) => {
     const data = createOptimizedRouteSchema.parse(req.body);
 
     const input: RouteOptimizationInput = {
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       technicianId: data.technicianId,
       startLocation: data.startLocation,
       endLocation: data.endLocation,
@@ -127,7 +127,7 @@ router.post('/routes/:id/reoptimize', async (req: Request, res: Response) => {
 
     const optimized = await routeOptimizationService.reoptimizeRoute(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       algorithm,
     );
 
@@ -161,7 +161,7 @@ router.get('/technicians/:id/analytics', async (req: Request, res: Response) => 
 
     const analytics = await routeOptimizationService.getRouteAnalytics(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       new Date(startDate as string),
       new Date(endDate as string),
     );
@@ -195,7 +195,7 @@ router.post('/multi-technician', async (req: Request, res: Response) => {
     });
 
     const routes = await routeOptimizationService.suggestMultiTechnicianRoutes(
-      user.tenantId,
+      user.tenant_id,
       data.technicianIds,
       data.waypoints as Waypoint[],
       baseLocationsMap,

@@ -22,8 +22,8 @@ router.get('/api/integrations', async (req: any, res) => {
     if (!tenantId) return res.status(400).json({ error: 'Missing x-tenant-id header' });
 
     const integrations = await db.query.platformIntegrations.findMany({
-      where: eq(platformIntegrations.tenantId, tenantId),
-      orderBy: desc(platformIntegrations.createdAt),
+      where: eq(platformIntegrations.tenant_id, tenantId),
+      orderBy: desc(platformIntegrations.created_at),
     });
 
     // Don't return actual credentials
@@ -87,7 +87,7 @@ router.put('/api/integrations/:id', async (req: any, res) => {
         syncFrequency,
         updatedAt: new Date(),
       })
-      .where(and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)))
+      .where(and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenant_id, tenantId)))
       .returning();
 
     res.json(integration);
@@ -105,7 +105,7 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
     const { id } = req.params;
 
     const integration = await db.query.platformIntegrations.findFirst({
-      where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)),
+      where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenant_id, tenantId)),
     });
 
     if (!integration) return res.status(404).json({ error: 'Integration not found' });
@@ -155,7 +155,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
     const { entityType } = req.body; // leads, customers, invoices, equipment
 
     const integration = await db.query.platformIntegrations.findFirst({
-      where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)),
+      where: and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenant_id, tenantId)),
     });
 
     if (!integration) return res.status(404).json({ error: 'Integration not found' });
@@ -291,7 +291,7 @@ router.post('/api/integrations/:id/disconnect', async (req: any, res) => {
         credentials: {},
         updatedAt: new Date(),
       })
-      .where(and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenantId, tenantId)));
+      .where(and(eq(platformIntegrations.id, id), eq(platformIntegrations.tenant_id, tenantId)));
 
     res.json({ success: true, message: 'Integration disconnected' });
   } catch (error) {

@@ -223,7 +223,7 @@ app.use((req: any, res, next) => {
         .update(JSON.stringify(req.body || {}))
         .digest('hex');
       const tenantId = req.header('x-tenant-id');
-      const userId = req.session?.userId || req.user?.id;
+      const userId = req.session?.user_id || req.user?.id;
       const record = {
         ts: new Date().toISOString(),
         requestId: req.requestId,

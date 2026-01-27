@@ -235,7 +235,7 @@ export class EquipmentLifecycleStateMachine {
           .where(
             and(
               eq(equipmentLifecycle.equipmentId, equipmentId),
-              eq(equipmentLifecycle.tenantId, tenantId),
+              eq(equipmentLifecycle.tenant_id, tenantId),
             ),
           );
 
@@ -278,7 +278,7 @@ export class EquipmentLifecycleStateMachine {
           .where(
             and(
               eq(equipmentLifecycle.equipmentId, equipmentId),
-              eq(equipmentLifecycle.tenantId, tenantId),
+              eq(equipmentLifecycle.tenant_id, tenantId),
             ),
           );
 
@@ -330,7 +330,7 @@ export class EquipmentLifecycleStateMachine {
       .where(
         and(
           eq(equipmentLifecycleTransitions.equipmentId, equipmentId),
-          eq(equipmentLifecycleTransitions.tenantId, tenantId),
+          eq(equipmentLifecycleTransitions.tenant_id, tenantId),
         ),
       )
       .orderBy(desc(equipmentLifecycleTransitions.triggeredAt));
@@ -359,7 +359,7 @@ export class EquipmentLifecycleStateMachine {
       .where(
         and(
           eq(equipmentLifecycleTransitions.id, transitionId),
-          eq(equipmentLifecycleTransitions.tenantId, tenantId),
+          eq(equipmentLifecycleTransitions.tenant_id, tenantId),
         ),
       );
 
@@ -396,7 +396,7 @@ export class EquipmentLifecycleStateMachine {
           .where(
             and(
               eq(equipmentLifecycleTransitions.id, transitionId),
-              eq(equipmentLifecycleTransitions.tenantId, tenantId),
+              eq(equipmentLifecycleTransitions.tenant_id, tenantId),
             ),
           );
 

@@ -182,7 +182,7 @@ export class SalesReportingService {
         END as conversion_rate
       FROM opportunities o
       WHERE o.owner_id = ${userContext.id}
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateRange?.dateFrom ? sql`AND o.created_at >= ${dateRange.dateFrom}` : sql``}
         ${dateRange?.dateTo ? sql`AND o.created_at <= ${dateRange.dateTo}` : sql``}
@@ -237,7 +237,7 @@ export class SalesReportingService {
         SUM(CASE WHEN a.activity_type = 'proposal' THEN 1 ELSE 0 END)::int as proposals
       FROM activities a
       WHERE a.user_id = ${userContext.id}
-        AND a.tenant_id = ${userContext.tenantId}
+        AND a.tenant_id = ${userContext.tenant_id}
         AND a.activity_date >= ${dateRange.dateFrom}
         AND a.activity_date <= ${dateRange.dateTo}
       GROUP BY TO_CHAR(a.activity_date, ${dateFormat})
@@ -302,7 +302,7 @@ export class SalesReportingService {
           AVG(o.amount) as avg_deal_size
         FROM opportunities o
         WHERE o.owner_id = ${userContext.id}
-          AND o.tenant_id = ${userContext.tenantId}
+          AND o.tenant_id = ${userContext.tenant_id}
           AND o.stage = 'Closed Won'
           AND o.close_date >= ${dateFilter}
           ${period !== 'ytd' ? sql`AND o.close_date < ${dateFilter} + INTERVAL '1 month'` : sql``}
@@ -370,7 +370,7 @@ export class SalesReportingService {
       LEFT JOIN commission_plans cp ON cp.user_id = ${userContext.id}
         AND cp.opportunity_id = o.id
       WHERE o.owner_id = ${userContext.id}
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage = 'Closed Won'
         AND o.close_date >= ${dateRange.dateFrom}
         AND o.close_date <= ${dateRange.dateTo}
@@ -403,7 +403,7 @@ export class SalesReportingService {
     metric: 'revenue' | 'deals' | 'pipeline' | 'activities' = 'revenue',
     scope: 'team' | 'location' | 'company' = 'location',
   ): Promise<LeaderboardEntry[]> {
-    const cacheKey = `leaderboard:${metric}:${scope}:${userContext.tenantId}`;
+    const cacheKey = `leaderboard:${metric}:${scope}:${userContext.tenant_id}`;
     const cached = ReportCache.get<LeaderboardEntry[]>(cacheKey);
     if (cached) return cached;
 
@@ -444,10 +444,10 @@ export class SalesReportingService {
           u.profile_image_url as user_avatar,
           ${metricSql} as metric_value
         FROM users u
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenantId}
-        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenantId}
+        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id}
         WHERE u.id = ANY(${userIds})
-          AND u.tenant_id = ${userContext.tenantId}
+          AND u.tenant_id = ${userContext.tenant_id}
         GROUP BY u.id, u.first_name, u.last_name, u.profile_image_url
       ),
       ranked AS (
@@ -496,7 +496,7 @@ export class SalesReportingService {
     const teamMemberIds = await db.execute(sql`
       SELECT id FROM users
       WHERE manager_id = ${userContext.id}
-        AND tenant_id = ${userContext.tenantId}
+        AND tenant_id = ${userContext.tenant_id}
         AND is_active = true
     `);
 
@@ -523,11 +523,11 @@ export class SalesReportingService {
             ELSE 0
           END as quota_attainment
         FROM users u
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenantId}
-        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenantId}
+        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id}
         LEFT JOIN quotas q ON q.user_id = u.id AND q.quota_period = 'monthly'
         WHERE u.id = ANY(${userIds})
-          AND u.tenant_id = ${userContext.tenantId}
+          AND u.tenant_id = ${userContext.tenant_id}
         GROUP BY u.id, u.first_name, u.last_name, q.quota_amount
       )
       SELECT
@@ -617,7 +617,7 @@ export class SalesReportingService {
         COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as conversion_rate
       FROM opportunities o
       WHERE o.owner_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
       GROUP BY o.stage
@@ -659,7 +659,7 @@ export class SalesReportingService {
           SUM(o.amount)::decimal as total_value
         FROM users u
         LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenantId}
+          AND o.tenant_id = ${userContext.tenant_id}
           AND o.stage NOT IN ('Closed Lost', 'Cancelled')
           ${dateFilter}
         WHERE u.id = ${userId}
@@ -708,7 +708,7 @@ export class SalesReportingService {
     const topPerformer =
       individualPipelines.length > 0
         ? {
-            userId: individualPipelines[0].userId,
+            userId: individualPipelines[0].user_id,
             userName: individualPipelines[0].userName,
             value: individualPipelines[0].totalValue,
           }

@@ -128,7 +128,7 @@ export class BusinessRecordUpdater extends BaseUpdater {
         for (const lead of leads) {
           await tx.insert(businessRecords).values({
             id: lead.id,
-            tenantId: lead.tenantId,
+            tenantId: lead.tenant_id,
             recordType: lead.recordType,
             status: lead.status,
             companyName: lead.companyName,
@@ -153,8 +153,8 @@ export class BusinessRecordUpdater extends BaseUpdater {
             salesStage: lead.salesStage,
             estimatedDealValue: lead.estimatedDealValue,
             createdBy: lead.createdBy,
-            createdAt: lead.createdAt,
-            updatedAt: lead.updatedAt,
+            createdAt: lead.created_at,
+            updatedAt: lead.updated_at,
           });
         }
       });
@@ -183,7 +183,7 @@ export class BusinessRecordUpdater extends BaseUpdater {
 
     const lead: BusinessRecordData = {
       id: this.generateUuid(),
-      tenantId: this.tenantId,
+      tenantId: this.tenant_id,
       recordType: 'lead',
       status: 'new',
       companyName,

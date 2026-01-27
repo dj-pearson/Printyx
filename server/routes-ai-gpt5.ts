@@ -19,12 +19,12 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId || !req.user.id) {
+  } else if (!req.user.tenant_id || !req.user.id) {
     // Ensure user object has id and tenantId
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
+      tenantId: req.user.tenant_id || getTenantId(req),
     };
   }
 
@@ -93,7 +93,7 @@ const customPromptSchema = z.object({
 router.post('/analyze-lead', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -133,7 +133,7 @@ router.post('/analyze-lead', async (req, res) => {
 router.post('/generate-proposal', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -177,7 +177,7 @@ router.post('/generate-proposal', async (req, res) => {
 router.post('/analyze-service', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -217,7 +217,7 @@ router.post('/analyze-service', async (req, res) => {
 router.post('/support-response', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -257,7 +257,7 @@ router.post('/support-response', async (req, res) => {
 router.post('/business-analytics', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -297,7 +297,7 @@ router.post('/business-analytics', async (req, res) => {
 router.post('/classify-inquiry', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -337,7 +337,7 @@ router.post('/classify-inquiry', async (req, res) => {
 router.post('/generate-code', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -377,7 +377,7 @@ router.post('/generate-code', async (req, res) => {
 router.post('/custom-prompt', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -419,7 +419,7 @@ router.post('/custom-prompt', async (req, res) => {
 router.get('/configs', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'Authentication required' });

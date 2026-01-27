@@ -17,7 +17,7 @@ const router = express.Router();
 // Get workflow automation dashboard
 router.get('/api/workflow-automation/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -628,7 +628,7 @@ router.get('/api/workflow-automation/dashboard', async (req: any, res) => {
 // Get workflow execution history
 router.get('/api/workflow-automation/workflows/:workflowId/executions', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { workflowId } = req.params;
 
     if (!tenantId) {
@@ -692,7 +692,7 @@ router.get('/api/workflow-automation/workflows/:workflowId/executions', async (r
 // Execute workflow manually
 router.post('/api/workflow-automation/workflows/:workflowId/execute', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { workflowId } = req.params;
     const { inputData } = req.body;
 

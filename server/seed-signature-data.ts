@@ -22,7 +22,7 @@ async function seedSignatureData() {
 
     // Get some customers for testing
     const customers = await db.query.businessRecords.findMany({
-      where: (records, { eq }) => eq(records.tenantId, tenantId),
+      where: (records, { eq }) => eq(records.tenant_id, tenantId),
       limit: 3,
     });
 

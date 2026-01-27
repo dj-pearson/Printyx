@@ -221,10 +221,10 @@ export class ServiceManagerReportingService {
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
-        AND sc.tenant_id = ${userContext.tenantId}
+        AND sc.tenant_id = ${userContext.tenant_id}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenantId}
+        AND r.tenant_id = ${userContext.tenant_id}
       GROUP BY r.id, r.name, sc.priority, sc.status
       ORDER BY r.name, CASE sc.priority
         WHEN 'Critical' THEN 1
@@ -342,13 +342,13 @@ export class ServiceManagerReportingService {
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN service_calls sc ON sc.technician_id = u.id
-          AND sc.tenant_id = ${userContext.tenantId}
+          AND sc.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
         LEFT JOIN time_entries te ON te.user_id = u.id
-          AND te.tenant_id = ${userContext.tenantId}
+          AND te.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenantId}
+          AND r.tenant_id = ${userContext.tenant_id}
         GROUP BY r.id, r.name
       )
       SELECT
@@ -444,10 +444,10 @@ export class ServiceManagerReportingService {
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
-        AND sc.tenant_id = ${userContext.tenantId}
+        AND sc.tenant_id = ${userContext.tenant_id}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenantId}
+        AND r.tenant_id = ${userContext.tenant_id}
       GROUP BY r.id, r.name
       ORDER BY sla_compliance DESC
     `);
@@ -534,10 +534,10 @@ export class ServiceManagerReportingService {
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN time_entries te ON te.user_id = u.id
-        AND te.tenant_id = ${userContext.tenantId}
+        AND te.tenant_id = ${userContext.tenant_id}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenantId}
+        AND r.tenant_id = ${userContext.tenant_id}
       GROUP BY r.id, r.name
       ORDER BY total_hours DESC
     `);

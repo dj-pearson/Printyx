@@ -78,7 +78,7 @@ export class CustomerNotificationService {
           phone: businessRecords.primaryContactPhone,
         })
         .from(businessRecords)
-        .where(and(eq(businessRecords.id, customerId), eq(businessRecords.tenantId, tenantId)))
+        .where(and(eq(businessRecords.id, customerId), eq(businessRecords.tenant_id, tenantId)))
         .limit(1);
 
       if (!customer) {

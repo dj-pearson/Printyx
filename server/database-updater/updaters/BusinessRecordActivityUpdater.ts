@@ -93,7 +93,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
         for (const activity of activities) {
           await tx.insert(businessRecordActivities).values({
             id: activity.id,
-            tenantId: activity.tenantId,
+            tenantId: activity.tenant_id,
             businessRecordId: activity.businessRecordId,
             activityType: activity.activityType,
             subject: activity.subject,
@@ -104,8 +104,8 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
             nextAction: activity.nextAction,
             followUpDate: activity.followUpDate,
             createdBy: activity.createdBy,
-            createdAt: activity.createdAt,
-            updatedAt: activity.updatedAt,
+            createdAt: activity.created_at,
+            updatedAt: activity.updated_at,
           });
         }
       });
@@ -128,7 +128,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
     // Base activity data
     const activity: BusinessRecordActivityData = {
       id: this.generateUuid(),
-      tenantId: this.tenantId,
+      tenantId: this.tenant_id,
       businessRecordId,
       activityType,
       subject: this.generateSubject(activityType),
@@ -397,7 +397,7 @@ export class BusinessRecordActivityUpdater extends BaseUpdater {
       const records = await db
         .select({ id: businessRecords.id })
         .from(businessRecords)
-        .where(eq(businessRecords.tenantId, this.tenantId))
+        .where(eq(businessRecords.tenant_id, this.tenant_id))
         .limit(50); // Limit to prevent too much data
 
       return records.map((record) => record.id);

@@ -22,7 +22,7 @@ const getUserId = (req: Request): string | undefined => {
   return (
     reqAny.user?.id ||
     reqAny.user?.claims?.sub ||
-    reqAny.session?.userId ||
+    reqAny.session?.user_id ||
     reqAny.session?.user?.id
   );
 };
@@ -65,7 +65,7 @@ type CreateDisposalInput = z.infer<typeof createDisposalSchema>;
 router.post('/api/equipment-disposal', async (req: TenantRequest, res: Response) => {
   try {
     const userId = getUserId(req);
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     if (!userId) {
       return res.status(401).json({
@@ -100,7 +100,7 @@ router.post('/api/equipment-disposal', async (req: TenantRequest, res: Response)
       .where(
         and(
           eq(equipmentLifecycle.equipmentId, data.equipmentId),
-          eq(equipmentLifecycle.tenantId, tenantId),
+          eq(equipmentLifecycle.tenant_id, tenantId),
         ),
       );
 
@@ -169,7 +169,7 @@ router.post('/api/equipment-disposal', async (req: TenantRequest, res: Response)
  */
 router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -180,7 +180,10 @@ router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) 
 
     const { status, equipmentId } = req.query;
 
-    let query = db.select().from(equipmentDisposal).where(eq(equipmentDisposal.tenantId, tenantId));
+    let query = db
+      .select()
+      .from(equipmentDisposal)
+      .where(eq(equipmentDisposal.tenant_id, tenantId));
 
     // Apply filters
     if (status && typeof status === 'string') {
@@ -214,7 +217,7 @@ router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) 
 router.get('/api/equipment-disposal/:disposalId', async (req: TenantRequest, res: Response) => {
   try {
     const { disposalId } = req.params;
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -226,7 +229,7 @@ router.get('/api/equipment-disposal/:disposalId', async (req: TenantRequest, res
     const [disposal] = await db
       .select()
       .from(equipmentDisposal)
-      .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenantId, tenantId)));
+      .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenant_id, tenantId)));
 
     if (!disposal) {
       return res.status(404).json({
@@ -259,7 +262,7 @@ router.patch(
     try {
       const { disposalId } = req.params;
       const { status, completedDate, actualCost, certificateUrl } = req.body;
-      const tenantId = req.tenantId;
+      const tenantId = req.tenant_id;
 
       if (!tenantId) {
         return res.status(400).json({
@@ -296,7 +299,7 @@ router.patch(
       const [updated] = await db
         .update(equipmentDisposal)
         .set(updateData)
-        .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenantId, tenantId)))
+        .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenant_id, tenantId)))
         .returning();
 
       if (!updated) {
@@ -329,7 +332,7 @@ router.patch(
 router.delete('/api/equipment-disposal/:disposalId', async (req: TenantRequest, res: Response) => {
   try {
     const { disposalId } = req.params;
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -342,7 +345,7 @@ router.delete('/api/equipment-disposal/:disposalId', async (req: TenantRequest, 
     const [disposal] = await db
       .select()
       .from(equipmentDisposal)
-      .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenantId, tenantId)));
+      .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenant_id, tenantId)));
 
     if (!disposal) {
       return res.status(404).json({
@@ -360,7 +363,7 @@ router.delete('/api/equipment-disposal/:disposalId', async (req: TenantRequest, 
 
     await db
       .delete(equipmentDisposal)
-      .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenantId, tenantId)));
+      .where(and(eq(equipmentDisposal.id, disposalId), eq(equipmentDisposal.tenant_id, tenantId)));
 
     return res.json({
       success: true,

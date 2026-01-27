@@ -31,7 +31,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW, PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user!.tenantId;
+        const tenantId = req.user!.tenant_id;
 
         const techniciansData = await db
           .select({
@@ -51,11 +51,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
             hireDate: technicians.hireDate,
             lastTrainingDate: technicians.lastTrainingDate,
             performanceRating: technicians.performanceRating,
-            createdAt: technicians.createdAt,
-            updatedAt: technicians.updatedAt,
+            createdAt: technicians.created_at,
+            updatedAt: technicians.updated_at,
           })
           .from(technicians)
-          .where(eq(technicians.tenantId, tenantId))
+          .where(eq(technicians.tenant_id, tenantId))
           .orderBy(technicians.name);
 
         // Get active ticket counts for each technician
@@ -67,7 +67,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
               .where(
                 and(
                   eq(serviceTickets.technicianId, tech.id),
-                  eq(serviceTickets.tenantId, tenantId),
+                  eq(serviceTickets.tenant_id, tenantId),
                   sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
                 ),
               );
@@ -78,10 +78,10 @@ export function registerTechnicianManagementRoutes(app: Express) {
               .where(
                 and(
                   eq(serviceTickets.technicianId, tech.id),
-                  eq(serviceTickets.tenantId, tenantId),
+                  eq(serviceTickets.tenant_id, tenantId),
                   eq(serviceTickets.status, 'completed'),
                   gte(
-                    serviceTickets.updatedAt,
+                    serviceTickets.updated_at,
                     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                   ),
                 ),
@@ -110,13 +110,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const technicianId = req.params.id;
 
         const [technician] = await db
           .select()
           .from(technicians)
-          .where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)));
+          .where(and(eq(technicians.id, technicianId), eq(technicians.tenant_id, tenantId)));
 
         if (!technician) {
           return res.status(404).json({ error: 'Technician not found' });
@@ -133,16 +133,16 @@ export function registerTechnicianManagementRoutes(app: Express) {
             customerId: serviceTickets.customerId,
             scheduledDate: serviceTickets.scheduledDate,
             completedDate: serviceTickets.completedDate,
-            createdAt: serviceTickets.createdAt,
+            createdAt: serviceTickets.created_at,
           })
           .from(serviceTickets)
           .where(
             and(
               eq(serviceTickets.technicianId, technicianId),
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
             ),
           )
-          .orderBy(desc(serviceTickets.createdAt))
+          .orderBy(desc(serviceTickets.created_at))
           .limit(20);
 
         res.json({
@@ -163,7 +163,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const technicianData = insertTechnicianSchema.parse({
           ...req.body,
@@ -190,7 +190,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const technicianId = req.params.id;
 
         const [updatedTechnician] = await db
@@ -199,7 +199,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
             ...req.body,
             updatedAt: new Date(),
           })
-          .where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)))
+          .where(and(eq(technicians.id, technicianId), eq(technicians.tenant_id, tenantId)))
           .returning();
 
         if (!updatedTechnician) {
@@ -221,7 +221,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const technicianId = req.params.id;
 
         // Check if technician has active service tickets
@@ -231,7 +231,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(
             and(
               eq(serviceTickets.technicianId, technicianId),
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
             ),
           );
@@ -245,7 +245,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         const [deletedTechnician] = await db
           .delete(technicians)
-          .where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)))
+          .where(and(eq(technicians.id, technicianId), eq(technicians.tenant_id, tenantId)))
           .returning();
 
         if (!deletedTechnician) {
@@ -267,7 +267,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const { date } = req.query;
 
         const availableTechnicians = await db
@@ -280,7 +280,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
             availability: technicians.availability,
           })
           .from(technicians)
-          .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'active')));
+          .where(and(eq(technicians.tenant_id, tenantId), eq(technicians.status, 'active')));
 
         // If date is provided, check for conflicting appointments
         if (date) {
@@ -293,7 +293,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
             .from(serviceTickets)
             .where(
               and(
-                eq(serviceTickets.tenantId, tenantId),
+                eq(serviceTickets.tenant_id, tenantId),
                 sql`${serviceTickets.scheduledDate} BETWEEN ${startOfDay} AND ${endOfDay}`,
                 sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
               ),
@@ -323,7 +323,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const { period = '30' } = req.query;
 
         const daysAgo = new Date();
@@ -335,11 +335,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
             technicianName: technicians.name,
             totalTickets: count(),
             completedTickets: sql<number>`SUM(CASE WHEN ${serviceTickets.status} = 'completed' THEN 1 ELSE 0 END)`,
-            avgResolutionTime: sql<number>`AVG(EXTRACT(EPOCH FROM (${serviceTickets.completedDate} - ${serviceTickets.createdAt})) / 3600)`,
+            avgResolutionTime: sql<number>`AVG(EXTRACT(EPOCH FROM (${serviceTickets.completedDate} - ${serviceTickets.created_at})) / 3600)`,
           })
           .from(serviceTickets)
           .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
-          .where(and(eq(serviceTickets.tenantId, tenantId), gte(serviceTickets.createdAt, daysAgo)))
+          .where(
+            and(eq(serviceTickets.tenant_id, tenantId), gte(serviceTickets.created_at, daysAgo)),
+          )
           .groupBy(serviceTickets.technicianId, technicians.name);
 
         const performanceMetrics = performanceData.map((data) => ({
@@ -364,24 +366,24 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const totalTechniciansResult = await db
           .select({ count: count() })
           .from(technicians)
-          .where(eq(technicians.tenantId, tenantId));
+          .where(eq(technicians.tenant_id, tenantId));
 
         const activeTechniciansResult = await db
           .select({ count: count() })
           .from(technicians)
-          .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'active')));
+          .where(and(eq(technicians.tenant_id, tenantId), eq(technicians.status, 'active')));
 
         const availableTechniciansResult = await db
           .select({ count: count() })
           .from(technicians)
           .where(
             and(
-              eq(technicians.tenantId, tenantId),
+              eq(technicians.tenant_id, tenantId),
               eq(technicians.status, 'active'),
               eq(technicians.availability, 'available'),
             ),
@@ -392,7 +394,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .from(technicians)
           .where(
             and(
-              eq(technicians.tenantId, tenantId),
+              eq(technicians.tenant_id, tenantId),
               eq(technicians.status, 'active'),
               eq(technicians.availability, 'busy'),
             ),

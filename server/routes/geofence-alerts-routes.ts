@@ -36,7 +36,7 @@ router.get('/rules', async (req: Request, res: Response) => {
   try {
     const { geofenceId, isActive, triggerType } = req.query;
 
-    let whereConditions = [eq(geofenceAlertRules.tenantId, user.tenantId)];
+    let whereConditions = [eq(geofenceAlertRules.tenant_id, user.tenant_id)];
 
     if (geofenceId) {
       whereConditions.push(eq(geofenceAlertRules.geofenceId, geofenceId as string));
@@ -77,7 +77,7 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertRules.id, req.params.id),
-          eq(geofenceAlertRules.tenantId, user.tenantId),
+          eq(geofenceAlertRules.tenant_id, user.tenant_id),
         ),
       )
       .limit(1);
@@ -114,7 +114,7 @@ router.post('/rules', async (req: Request, res: Response) => {
       .insert(geofenceAlertRules)
       .values({
         ...data,
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
       })
       .returning();
 
@@ -146,7 +146,7 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertRules.id, req.params.id),
-          eq(geofenceAlertRules.tenantId, user.tenantId),
+          eq(geofenceAlertRules.tenant_id, user.tenant_id),
         ),
       )
       .limit(1);
@@ -194,7 +194,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertRules.id, req.params.id),
-          eq(geofenceAlertRules.tenantId, user.tenantId),
+          eq(geofenceAlertRules.tenant_id, user.tenant_id),
         ),
       )
       .limit(1);
@@ -224,7 +224,7 @@ router.get('/alerts', async (req: Request, res: Response) => {
   try {
     const { technicianId, geofenceId, severity, isAcknowledged, isResolved, limit } = req.query;
 
-    let whereConditions = [eq(geofenceAlerts.tenantId, user.tenantId)];
+    let whereConditions = [eq(geofenceAlerts.tenant_id, user.tenant_id)];
 
     if (technicianId) {
       whereConditions.push(eq(geofenceAlerts.technicianId, technicianId as string));
@@ -274,7 +274,7 @@ router.get('/alerts/unacknowledged', async (req: Request, res: Response) => {
   try {
     const { severity, limit } = req.query;
 
-    const alerts = await geofenceAlertsService.getUnacknowledgedAlerts(user.tenantId, {
+    const alerts = await geofenceAlertsService.getUnacknowledgedAlerts(user.tenant_id, {
       severity: severity as string | undefined,
       limit: limit ? parseInt(limit as string) : undefined,
     });
@@ -297,7 +297,9 @@ router.get('/alerts/:id', async (req: Request, res: Response) => {
     const [alert] = await db
       .select()
       .from(geofenceAlerts)
-      .where(and(eq(geofenceAlerts.id, req.params.id), eq(geofenceAlerts.tenantId, user.tenantId)))
+      .where(
+        and(eq(geofenceAlerts.id, req.params.id), eq(geofenceAlerts.tenant_id, user.tenant_id)),
+      )
       .limit(1);
 
     if (!alert) {
@@ -327,7 +329,7 @@ router.post('/alerts/:id/acknowledge', async (req: Request, res: Response) => {
 
     const alert = await geofenceAlertsService.acknowledgeAlert(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       user.id,
       notes,
     );
@@ -363,7 +365,7 @@ router.post('/alerts/:id/resolve', async (req: Request, res: Response) => {
 
     const alert = await geofenceAlertsService.resolveAlert(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       user.id,
       resolutionType,
       notes,
@@ -400,7 +402,7 @@ router.post('/alerts/:id/escalate', async (req: Request, res: Response) => {
 
     const alert = await geofenceAlertsService.escalateAlert(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       escalatedTo,
       reason,
     );
@@ -447,7 +449,7 @@ router.post('/process-event', async (req: Request, res: Response) => {
     const data = eventSchema.parse(req.body);
 
     const alerts = await geofenceAlertsService.processGeofenceEvent(
-      user.tenantId,
+      user.tenant_id,
       data.technicianId,
       data.geofenceId,
       data.eventType,
@@ -478,7 +480,7 @@ router.post('/check-dwell', async (req: Request, res: Response) => {
   }
 
   try {
-    const alerts = await geofenceAlertsService.checkDwellAlerts(user.tenantId);
+    const alerts = await geofenceAlertsService.checkDwellAlerts(user.tenant_id);
     res.json({ alertsTriggered: alerts.length, alerts });
   } catch (error) {
     console.error('Check dwell alerts error:', error);
@@ -498,7 +500,7 @@ router.get('/dwell-sessions', async (req: Request, res: Response) => {
   try {
     const { technicianId, geofenceId, isActive } = req.query;
 
-    let whereConditions = [eq(technicianDwellSessions.tenantId, user.tenantId)];
+    let whereConditions = [eq(technicianDwellSessions.tenant_id, user.tenant_id)];
 
     if (technicianId) {
       whereConditions.push(eq(technicianDwellSessions.technicianId, technicianId as string));
@@ -550,7 +552,7 @@ router.post('/dwell-sessions/start', async (req: Request, res: Response) => {
     const data = startSchema.parse(req.body);
 
     const session = await geofenceAlertsService.startDwellSession(
-      user.tenantId,
+      user.tenant_id,
       data.technicianId,
       data.geofenceId,
       data.entryLocation,
@@ -594,7 +596,7 @@ router.post('/dwell-sessions/end', async (req: Request, res: Response) => {
     const data = endSchema.parse(req.body);
 
     const session = await geofenceAlertsService.endDwellSession(
-      user.tenantId,
+      user.tenant_id,
       data.technicianId,
       data.geofenceId,
       data.exitLocation,
@@ -630,8 +632,8 @@ router.get('/subscriptions', async (req: Request, res: Response) => {
       .from(geofenceAlertSubscriptions)
       .where(
         and(
-          eq(geofenceAlertSubscriptions.tenantId, user.tenantId),
-          eq(geofenceAlertSubscriptions.userId, user.id),
+          eq(geofenceAlertSubscriptions.tenant_id, user.tenant_id),
+          eq(geofenceAlertSubscriptions.user_id, user.id),
         ),
       );
 
@@ -659,7 +661,7 @@ router.post('/subscriptions', async (req: Request, res: Response) => {
       .insert(geofenceAlertSubscriptions)
       .values({
         ...data,
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
       })
       .returning();
 
@@ -687,8 +689,8 @@ router.delete('/subscriptions/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(geofenceAlertSubscriptions.id, req.params.id),
-          eq(geofenceAlertSubscriptions.tenantId, user.tenantId),
-          eq(geofenceAlertSubscriptions.userId, user.id),
+          eq(geofenceAlertSubscriptions.tenant_id, user.tenant_id),
+          eq(geofenceAlertSubscriptions.user_id, user.id),
         ),
       )
       .limit(1);
@@ -725,7 +727,7 @@ router.get('/statistics', async (req: Request, res: Response) => {
     }
 
     const statistics = await geofenceAlertsService.getAlertStatistics(
-      user.tenantId,
+      user.tenant_id,
       new Date(startDate as string),
       new Date(endDate as string),
     );

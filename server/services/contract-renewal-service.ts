@@ -72,7 +72,7 @@ export async function analyzeContractRenewal(
   const contract = await db.query.contractRenewalTracking.findFirst({
     where: and(
       eq(contractRenewalTracking.id, contractTrackingId),
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
     ),
   });
 
@@ -259,7 +259,7 @@ export async function generateRenewalProposal(
   const contract = await db.query.contractRenewalTracking.findFirst({
     where: and(
       eq(contractRenewalTracking.id, contractTrackingId),
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
     ),
   });
 
@@ -402,7 +402,7 @@ export async function createRenewalProposal(
   const contract = await db.query.contractRenewalTracking.findFirst({
     where: and(
       eq(contractRenewalTracking.id, contractTrackingId),
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
     ),
   });
 
@@ -508,7 +508,7 @@ export async function analyzeExpiringContracts(tenantId: number): Promise<{
   // Find contracts expiring within renewal window
   const contracts = await db.query.contractRenewalTracking.findMany({
     where: and(
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
       lt(contractRenewalTracking.daysUntilExpiration, renewalWindowDays),
       gte(contractRenewalTracking.daysUntilExpiration, 0),
       eq(contractRenewalTracking.status, 'active'),
@@ -589,7 +589,7 @@ export async function getDashboardMetrics(tenantId: number) {
       .from(contractRenewalTracking)
       .where(
         and(
-          eq(contractRenewalTracking.tenantId, tenantId),
+          eq(contractRenewalTracking.tenant_id, tenantId),
           eq(contractRenewalTracking.status, 'active'),
         ),
       )
@@ -599,7 +599,7 @@ export async function getDashboardMetrics(tenantId: number) {
       .from(contractRenewalTracking)
       .where(
         and(
-          eq(contractRenewalTracking.tenantId, tenantId),
+          eq(contractRenewalTracking.tenant_id, tenantId),
           lt(contractRenewalTracking.daysUntilExpiration, rules.renewalWindowDays || 90),
           gte(contractRenewalTracking.daysUntilExpiration, 0),
         ),
@@ -610,7 +610,7 @@ export async function getDashboardMetrics(tenantId: number) {
       .from(contractRenewalTracking)
       .where(
         and(
-          eq(contractRenewalTracking.tenantId, tenantId),
+          eq(contractRenewalTracking.tenant_id, tenantId),
           sql`renewal_risk IN ('high', 'very_high')`,
         ),
       )
@@ -618,14 +618,14 @@ export async function getDashboardMetrics(tenantId: number) {
     db
       .select({ count: sql<number>`count(*)` })
       .from(renewalProposals)
-      .where(and(eq(renewalProposals.tenantId, tenantId), sql`status IN ('sent', 'viewed')`))
+      .where(and(eq(renewalProposals.tenant_id, tenantId), sql`status IN ('sent', 'viewed')`))
       .then((res) => res[0]?.count || 0),
   ]);
 
   // Get MRR at risk
   const atRiskContracts = await db.query.contractRenewalTracking.findMany({
     where: and(
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
       sql`renewal_risk IN ('high', 'very_high')`,
     ),
   });
@@ -638,7 +638,10 @@ export async function getDashboardMetrics(tenantId: number) {
 
   // Get recent analytics
   const analytics = await db.query.renewalAnalytics.findFirst({
-    where: and(eq(renewalAnalytics.tenantId, tenantId), eq(renewalAnalytics.periodType, 'monthly')),
+    where: and(
+      eq(renewalAnalytics.tenant_id, tenantId),
+      eq(renewalAnalytics.periodType, 'monthly'),
+    ),
     orderBy: [desc(renewalAnalytics.periodEnd)],
   });
 
@@ -662,7 +665,7 @@ export async function getDashboardMetrics(tenantId: number) {
 export async function getContractsAtRisk(tenantId: number) {
   return db.query.contractRenewalTracking.findMany({
     where: and(
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
       sql`renewal_risk IN ('high', 'very_high')`,
     ),
     orderBy: [contractRenewalTracking.churnRiskScore],
@@ -676,7 +679,7 @@ export async function getContractsAtRisk(tenantId: number) {
 export async function getExpiringContracts(tenantId: number, days: number = 90) {
   return db.query.contractRenewalTracking.findMany({
     where: and(
-      eq(contractRenewalTracking.tenantId, tenantId),
+      eq(contractRenewalTracking.tenant_id, tenantId),
       lt(contractRenewalTracking.daysUntilExpiration, days),
       gte(contractRenewalTracking.daysUntilExpiration, 0),
     ),
@@ -690,7 +693,7 @@ export async function getExpiringContracts(tenantId: number, days: number = 90) 
  */
 export async function getRenewalAutomationRules(tenantId: number) {
   let rules = await db.query.renewalAutomationRules.findFirst({
-    where: eq(renewalAutomationRules.tenantId, tenantId),
+    where: eq(renewalAutomationRules.tenant_id, tenantId),
   });
 
   if (!rules) {

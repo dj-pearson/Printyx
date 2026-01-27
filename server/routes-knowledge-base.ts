@@ -22,7 +22,7 @@ const router = Router();
 
 // Helper to get user ID from request (supports Supabase JWT and session)
 const getUserId = (req: Request): string | undefined => {
-  return (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.userId;
+  return (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.user_id;
 };
 
 // Middleware to require authentication
@@ -52,7 +52,9 @@ const requireAdmin = (req: Request, res: Response, next: Function) => {
 // Helper to get tenant ID
 const getTenantId = (req: Request): string => {
   return (
-    (req as any).tenantId || (req.session as any).tenantId || '00000000-0000-0000-0000-000000000000'
+    (req as any).tenant_id ||
+    (req.session as any).tenant_id ||
+    '00000000-0000-0000-0000-000000000000'
   );
 };
 
@@ -67,7 +69,7 @@ router.get('/categories', async (req: Request, res: Response) => {
     const { parentId } = req.query;
 
     const whereConditions = [
-      eq(knowledgeCategories.tenantId, tenantId),
+      eq(knowledgeCategories.tenant_id, tenantId),
       eq(knowledgeCategories.isActive, true),
     ];
 
@@ -102,7 +104,7 @@ router.get('/categories/:id', async (req: Request, res: Response) => {
       .where(
         and(
           eq(knowledgeCategories.id, id),
-          eq(knowledgeCategories.tenantId, tenantId),
+          eq(knowledgeCategories.tenant_id, tenantId),
           eq(knowledgeCategories.isActive, true),
         ),
       )
@@ -158,7 +160,7 @@ router.put('/categories/:id', requireAdmin, async (req: Request, res: Response) 
         ...data,
         updatedAt: new Date(),
       })
-      .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenantId, tenantId)))
+      .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenant_id, tenantId)))
       .returning();
 
     if (!updated) {
@@ -184,7 +186,7 @@ router.delete('/categories/:id', requireAdmin, async (req: Request, res: Respons
         isActive: false,
         updatedAt: new Date(),
       })
-      .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenantId, tenantId)))
+      .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenant_id, tenantId)))
       .returning();
 
     if (!deleted) {
@@ -217,7 +219,7 @@ router.get('/articles', async (req: Request, res: Response) => {
       limit = '20',
     } = req.query;
 
-    const whereConditions = [eq(knowledgeArticles.tenantId, tenantId)];
+    const whereConditions = [eq(knowledgeArticles.tenant_id, tenantId)];
 
     // Only show published articles to non-admin users
     const userRole = (req.session as any)?.role || 'guest';
@@ -277,7 +279,7 @@ router.get('/articles', async (req: Request, res: Response) => {
         estimatedReadingTime: knowledgeArticles.estimatedReadingTime,
         featured: knowledgeArticles.featured,
         publishedAt: knowledgeArticles.publishedAt,
-        updatedAt: knowledgeArticles.updatedAt,
+        updatedAt: knowledgeArticles.updated_at,
       })
       .from(knowledgeArticles)
       .where(and(...whereConditions))
@@ -315,7 +317,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
     // Try to find by ID first, then by slug
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
 
-    const whereConditions = [eq(knowledgeArticles.tenantId, tenantId)];
+    const whereConditions = [eq(knowledgeArticles.tenant_id, tenantId)];
 
     if (isUUID) {
       whereConditions.push(eq(knowledgeArticles.id, slugOrId));
@@ -456,7 +458,7 @@ router.put('/articles/:id', requireAdmin, async (req: Request, res: Response) =>
     const [currentArticle] = await db
       .select()
       .from(knowledgeArticles)
-      .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenantId, tenantId)))
+      .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenant_id, tenantId)))
       .limit(1);
 
     if (!currentArticle) {
@@ -489,7 +491,7 @@ router.put('/articles/:id', requireAdmin, async (req: Request, res: Response) =>
         updatedBy: userId,
         updatedAt: new Date(),
       })
-      .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenantId, tenantId)))
+      .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenant_id, tenantId)))
       .returning();
 
     // Create version history
@@ -531,7 +533,7 @@ router.patch(
           publishedVersion: sql`${knowledgeArticles.version}`,
           updatedAt: new Date(),
         })
-        .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenantId, tenantId)))
+        .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenant_id, tenantId)))
         .returning();
 
       if (!published) {
@@ -563,7 +565,7 @@ router.patch(
           archivedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenantId, tenantId)))
+        .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenant_id, tenantId)))
         .returning();
 
       if (!archived) {
@@ -587,12 +589,12 @@ router.delete('/articles/:id', requireAdmin, async (req: Request, res: Response)
     // Delete article versions first
     await db
       .delete(articleVersions)
-      .where(and(eq(articleVersions.articleId, id), eq(articleVersions.tenantId, tenantId)));
+      .where(and(eq(articleVersions.articleId, id), eq(articleVersions.tenant_id, tenantId)));
 
     // Delete article
     const [deleted] = await db
       .delete(knowledgeArticles)
-      .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenantId, tenantId)))
+      .where(and(eq(knowledgeArticles.id, id), eq(knowledgeArticles.tenant_id, tenantId)))
       .returning();
 
     if (!deleted) {
@@ -644,7 +646,7 @@ router.get('/search', async (req: Request, res: Response) => {
       .from(knowledgeArticles)
       .where(
         and(
-          eq(knowledgeArticles.tenantId, tenantId),
+          eq(knowledgeArticles.tenant_id, tenantId),
           eq(knowledgeArticles.status, 'published'),
           eq(knowledgeArticles.isPublic, true),
           or(
@@ -749,8 +751,8 @@ router.get(
       const feedback = await db
         .select()
         .from(articleFeedback)
-        .where(and(eq(articleFeedback.tenantId, tenantId), eq(articleFeedback.articleId, id)))
-        .orderBy(desc(articleFeedback.createdAt));
+        .where(and(eq(articleFeedback.tenant_id, tenantId), eq(articleFeedback.articleId, id)))
+        .orderBy(desc(articleFeedback.created_at));
 
       res.json(feedback);
     } catch (error) {
@@ -779,7 +781,7 @@ router.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
         averageRating: sql<number>`avg(${knowledgeArticles.averageRating})`,
       })
       .from(knowledgeArticles)
-      .where(eq(knowledgeArticles.tenantId, tenantId));
+      .where(eq(knowledgeArticles.tenant_id, tenantId));
 
     // Get category stats
     const [categoryStats] = await db
@@ -788,7 +790,7 @@ router.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
         activeCategories: sql<number>`count(*) FILTER (WHERE is_active = true)`,
       })
       .from(knowledgeCategories)
-      .where(eq(knowledgeCategories.tenantId, tenantId));
+      .where(eq(knowledgeCategories.tenant_id, tenantId));
 
     // Get popular articles
     const popularArticles = await db
@@ -800,7 +802,7 @@ router.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
       })
       .from(knowledgeArticles)
       .where(
-        and(eq(knowledgeArticles.tenantId, tenantId), eq(knowledgeArticles.status, 'published')),
+        and(eq(knowledgeArticles.tenant_id, tenantId), eq(knowledgeArticles.status, 'published')),
       )
       .orderBy(desc(knowledgeArticles.viewCount))
       .limit(10);
@@ -810,11 +812,11 @@ router.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
       .select({
         queryText: knowledgeSearchQueries.queryText,
         resultsCount: knowledgeSearchQueries.resultsCount,
-        createdAt: knowledgeSearchQueries.createdAt,
+        createdAt: knowledgeSearchQueries.created_at,
       })
       .from(knowledgeSearchQueries)
-      .where(eq(knowledgeSearchQueries.tenantId, tenantId))
-      .orderBy(desc(knowledgeSearchQueries.createdAt))
+      .where(eq(knowledgeSearchQueries.tenant_id, tenantId))
+      .orderBy(desc(knowledgeSearchQueries.created_at))
       .limit(20);
 
     res.json({

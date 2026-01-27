@@ -28,7 +28,7 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
         lineItems: quotes.lineItems,
       })
       .from(quotes)
-      .where(and(eq(quotes.tenantId, tenantId), eq(quotes.id, quoteId)))
+      .where(and(eq(quotes.tenant_id, tenantId), eq(quotes.id, quoteId)))
       .limit(1);
 
     if (!quote) {
@@ -60,7 +60,7 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
         })
         .from(businessRecords)
         .where(
-          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, quote.customerId)),
+          and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.id, quote.customerId)),
         )
         .limit(1);
 
@@ -105,7 +105,7 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
         branding: proposals.branding,
       })
       .from(proposals)
-      .where(and(eq(proposals.tenantId, tenantId), eq(proposals.id, proposalId)))
+      .where(and(eq(proposals.tenant_id, tenantId), eq(proposals.id, proposalId)))
       .limit(1);
 
     if (!proposal) {
@@ -169,7 +169,7 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
         lineItems: purchaseOrders.lineItems,
       })
       .from(purchaseOrders)
-      .where(and(eq(purchaseOrders.tenantId, tenantId), eq(purchaseOrders.id, poId)))
+      .where(and(eq(purchaseOrders.tenant_id, tenantId), eq(purchaseOrders.id, poId)))
       .limit(1);
 
     if (!po) {
@@ -235,7 +235,7 @@ router.get('/validate/kitting-to-delivery/:operationId', async (req, res) => {
       .from(warehouseKittingOperations)
       .where(
         and(
-          eq(warehouseKittingOperations.tenantId, tenantId),
+          eq(warehouseKittingOperations.tenant_id, tenantId),
           eq(warehouseKittingOperations.id, operationId),
         ),
       )

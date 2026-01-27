@@ -178,7 +178,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
 // Create blog post (admin only)
 router.post('/api/content/blog', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId || null;
+    const tenantId = req.user?.tenant_id || null;
     const userId = req.user?.id;
 
     const validatedData = insertBlogPostSchema.parse({
@@ -339,7 +339,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
 // Create guide (admin only)
 router.post('/api/content/guides', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId || null;
+    const tenantId = req.user?.tenant_id || null;
     const userId = req.user?.id;
 
     const validatedData = insertGuideSchema.parse({
@@ -431,7 +431,7 @@ router.get('/api/content/case-studies/:slug', optionalAuth, async (req: any, res
 // Create case study (admin only)
 router.post('/api/content/case-studies', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId || null;
+    const tenantId = req.user?.tenant_id || null;
 
     const validatedData = insertCaseStudySchema.parse({
       ...req.body,
@@ -481,7 +481,7 @@ router.get('/api/content/landing/:slug', optionalAuth, async (req: any, res) => 
 // Create landing page (admin only)
 router.post('/api/content/landing', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId || null;
+    const tenantId = req.user?.tenant_id || null;
 
     const validatedData = insertLandingPageSchema.parse({
       ...req.body,
@@ -672,7 +672,7 @@ router.get('/sitemap.xml', async (req, res) => {
         db
           .select({
             slug: blogPosts.slug,
-            updatedAt: blogPosts.updatedAt,
+            updatedAt: blogPosts.updated_at,
             publishedAt: blogPosts.publishedAt,
           })
           .from(blogPosts)
@@ -681,7 +681,7 @@ router.get('/sitemap.xml', async (req, res) => {
         db
           .select({
             slug: guides.slug,
-            updatedAt: guides.updatedAt,
+            updatedAt: guides.updated_at,
             publishedAt: guides.publishedAt,
           })
           .from(guides)
@@ -690,7 +690,7 @@ router.get('/sitemap.xml', async (req, res) => {
         db
           .select({
             slug: caseStudies.slug,
-            updatedAt: caseStudies.updatedAt,
+            updatedAt: caseStudies.updated_at,
             publishedAt: caseStudies.publishedAt,
           })
           .from(caseStudies)
@@ -699,7 +699,7 @@ router.get('/sitemap.xml', async (req, res) => {
         db
           .select({
             slug: landingPages.slug,
-            updatedAt: landingPages.updatedAt,
+            updatedAt: landingPages.updated_at,
             publishedAt: landingPages.publishedAt,
           })
           .from(landingPages)
@@ -720,7 +720,7 @@ router.get('/sitemap.xml', async (req, res) => {
 
     // Add blog posts
     for (const post of publishedBlogPosts) {
-      const lastmod = (post.updatedAt || post.publishedAt)?.toISOString().split('T')[0];
+      const lastmod = (post.updated_at || post.publishedAt)?.toISOString().split('T')[0];
       xml += `  <url>
     <loc>${baseUrl}/blog/${post.slug}</loc>
     <lastmod>${lastmod}</lastmod>
@@ -732,7 +732,7 @@ router.get('/sitemap.xml', async (req, res) => {
 
     // Add guides
     for (const guide of publishedGuides) {
-      const lastmod = (guide.updatedAt || guide.publishedAt)?.toISOString().split('T')[0];
+      const lastmod = (guide.updated_at || guide.publishedAt)?.toISOString().split('T')[0];
       xml += `  <url>
     <loc>${baseUrl}/resources/guides/${guide.slug}</loc>
     <lastmod>${lastmod}</lastmod>
@@ -744,7 +744,7 @@ router.get('/sitemap.xml', async (req, res) => {
 
     // Add case studies
     for (const study of publishedCaseStudies) {
-      const lastmod = (study.updatedAt || study.publishedAt)?.toISOString().split('T')[0];
+      const lastmod = (study.updated_at || study.publishedAt)?.toISOString().split('T')[0];
       xml += `  <url>
     <loc>${baseUrl}/customers/${study.slug}</loc>
     <lastmod>${lastmod}</lastmod>
@@ -756,7 +756,7 @@ router.get('/sitemap.xml', async (req, res) => {
 
     // Add landing pages
     for (const page of publishedLandingPages) {
-      const lastmod = page.updatedAt?.toISOString().split('T')[0];
+      const lastmod = page.updated_at?.toISOString().split('T')[0];
       xml += `  <url>
     <loc>${baseUrl}/${page.slug}</loc>
     <lastmod>${lastmod}</lastmod>

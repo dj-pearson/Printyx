@@ -29,7 +29,7 @@ router.post('/workflows', async (req: Request, res: Response) => {
     const data = insertWorkflowSchema.parse(req.body);
     const workflow = await storage.createWorkflow({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -52,7 +52,7 @@ router.get('/workflows', async (req: Request, res: Response) => {
 
   try {
     const { status } = req.query;
-    const workflows = await storage.getWorkflows(user.tenantId, status as string);
+    const workflows = await storage.getWorkflows(user.tenant_id, status as string);
     res.json(workflows);
   } catch (error) {
     console.error('Get workflows error:', error);
@@ -69,7 +69,7 @@ router.get('/workflows/:id', async (req: Request, res: Response) => {
 
   try {
     const workflow = await storage.getWorkflow(req.params.id);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -101,7 +101,7 @@ router.put('/workflows/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getWorkflow(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -130,7 +130,7 @@ router.delete('/workflows/:id', async (req: Request, res: Response) => {
 
   try {
     const workflow = await storage.getWorkflow(req.params.id);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -153,7 +153,7 @@ router.post('/workflows/:workflowId/triggers', async (req: Request, res: Respons
 
   try {
     const workflow = await storage.getWorkflow(req.params.workflowId);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -193,7 +193,7 @@ router.get('/workflows/:workflowId/triggers', async (req: Request, res: Response
 
   try {
     const workflow = await storage.getWorkflow(req.params.workflowId);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -231,7 +231,7 @@ router.put('/triggers/:id', async (req: Request, res: Response) => {
     }
 
     const workflow = await storage.getWorkflow(trigger.workflowId);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -262,7 +262,7 @@ router.delete('/triggers/:id', async (req: Request, res: Response) => {
     }
 
     const workflow = await storage.getWorkflow(trigger.workflowId);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -285,7 +285,7 @@ router.post('/workflows/:workflowId/steps', async (req: Request, res: Response) 
 
   try {
     const workflow = await storage.getWorkflow(req.params.workflowId);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -314,7 +314,7 @@ router.get('/workflows/:workflowId/steps', async (req: Request, res: Response) =
 
   try {
     const workflow = await storage.getWorkflow(req.params.workflowId);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -373,7 +373,7 @@ router.post('/workflows/:id/execute', async (req: Request, res: Response) => {
 
   try {
     const workflow = await storage.getWorkflow(req.params.id);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -391,7 +391,7 @@ router.post('/workflows/:id/execute', async (req: Request, res: Response) => {
     const execution = await storage.createWorkflowExecution({
       workflowId: workflow.id,
       workflowVersionId: version.id,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       initiatedBy: user.id,
       context: req.body.context || {},
       status: 'queued',
@@ -427,7 +427,7 @@ router.get('/workflows/:id/executions', async (req: Request, res: Response) => {
 
   try {
     const workflow = await storage.getWorkflow(req.params.id);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -449,7 +449,7 @@ router.get('/executions/:id', async (req: Request, res: Response) => {
 
   try {
     const execution = await storage.getWorkflowExecution(req.params.id);
-    if (!execution || execution.tenantId !== user.tenantId) {
+    if (!execution || execution.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Execution not found' });
     }
 
@@ -478,7 +478,7 @@ router.get('/executions', async (req: Request, res: Response) => {
 
   try {
     const limit = parseInt(req.query.limit as string) || 100;
-    const executions = await storage.getWorkflowExecutionsByTenant(user.tenantId, limit);
+    const executions = await storage.getWorkflowExecutionsByTenant(user.tenant_id, limit);
     res.json(executions);
   } catch (error) {
     console.error('Get tenant executions error:', error);
@@ -547,7 +547,7 @@ router.post('/workflow-templates/:id/clone', async (req: Request, res: Response)
 
     // Create workflow from template
     const workflow = await storage.createWorkflow({
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       name: name || template.name,
       description: template.description || null,
       category: template.category,
@@ -616,7 +616,7 @@ router.get('/workflows/:id/stats', async (req: Request, res: Response) => {
 
   try {
     const workflow = await storage.getWorkflow(req.params.id);
-    if (!workflow || workflow.tenantId !== user.tenantId) {
+    if (!workflow || workflow.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
@@ -637,8 +637,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
   try {
     const [workflows, executions] = await Promise.all([
-      storage.getWorkflows(user.tenantId),
-      storage.getWorkflowExecutionsByTenant(user.tenantId, 100),
+      storage.getWorkflows(user.tenant_id),
+      storage.getWorkflowExecutionsByTenant(user.tenant_id, 100),
     ]);
 
     const activeWorkflows = workflows.filter((w) => w.status === 'active').length;
@@ -675,7 +675,7 @@ router.get('/assignment-groups', async (req: Request, res: Response) => {
   }
 
   try {
-    const groups = await storage.getAssignmentGroups(user.tenantId);
+    const groups = await storage.getAssignmentGroups(user.tenant_id);
     res.json(groups);
   } catch (error) {
     console.error('Get assignment groups error:', error);
@@ -692,7 +692,7 @@ router.get('/assignment-groups/:id', async (req: Request, res: Response) => {
 
   try {
     const group = await storage.getAssignmentGroup(req.params.id);
-    if (!group || group.tenantId !== user.tenantId) {
+    if (!group || group.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Assignment group not found' });
     }
 
@@ -718,7 +718,7 @@ router.post('/assignment-groups', async (req: Request, res: Response) => {
     }
 
     const group = await storage.createAssignmentGroup({
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       name,
       description: description || null,
       type,
@@ -743,7 +743,7 @@ router.put('/assignment-groups/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getAssignmentGroup(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Assignment group not found' });
     }
 
@@ -773,7 +773,7 @@ router.delete('/assignment-groups/:id', async (req: Request, res: Response) => {
 
   try {
     const group = await storage.getAssignmentGroup(req.params.id);
-    if (!group || group.tenantId !== user.tenantId) {
+    if (!group || group.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Assignment group not found' });
     }
 
@@ -796,7 +796,7 @@ router.get('/approvals', async (req: Request, res: Response) => {
 
   try {
     const { status } = req.query;
-    const approvals = await storage.getUserApprovals(user.id, user.tenantId, status as string);
+    const approvals = await storage.getUserApprovals(user.id, user.tenant_id, status as string);
     res.json(approvals);
   } catch (error) {
     console.error('Get approvals error:', error);
@@ -813,7 +813,7 @@ router.get('/approvals/:id', async (req: Request, res: Response) => {
 
   try {
     const approval = await storage.getWorkflowApproval(req.params.id);
-    if (!approval || approval.tenantId !== user.tenantId) {
+    if (!approval || approval.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Approval not found' });
     }
 
@@ -839,7 +839,7 @@ router.post('/approvals/:id/respond', async (req: Request, res: Response) => {
     }
 
     const approval = await storage.getWorkflowApproval(req.params.id);
-    if (!approval || approval.tenantId !== user.tenantId) {
+    if (!approval || approval.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Approval not found' });
     }
 
@@ -876,7 +876,7 @@ router.get('/approvals/execution/:executionId', async (req: Request, res: Respon
   }
 
   try {
-    const approvals = await storage.getExecutionApprovals(req.params.executionId, user.tenantId);
+    const approvals = await storage.getExecutionApprovals(req.params.executionId, user.tenant_id);
     res.json(approvals);
   } catch (error) {
     console.error('Get execution approvals error:', error);

@@ -42,7 +42,7 @@ All API endpoints require authentication via one of the following methods:
 
 All requests must include tenant context:
 - **Header**: \`x-tenant-id: <tenant-uuid>\` (preferred)
-- **JWT Claim**: \`app_metadata.tenantId\` (automatic)
+- **JWT Claim**: \`app_metadata.tenant_id\` (automatic)
 
 ## Rate Limiting
 

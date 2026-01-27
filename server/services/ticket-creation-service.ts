@@ -33,7 +33,7 @@ export class TicketCreationService {
   private tenantId: string;
 
   constructor(tenantId: string) {
-    this.tenantId = tenantId;
+    this.tenant_id = tenantId;
   }
 
   /**
@@ -82,7 +82,7 @@ export class TicketCreationService {
     // Try to find existing customer by email
     let customer = await db.query.businessRecords.findFirst({
       where: and(
-        eq(businessRecords.tenantId, this.tenantId),
+        eq(businessRecords.tenant_id, this.tenant_id),
         eq(businessRecords.email, ticketData.customerEmail),
       ),
     });
@@ -98,7 +98,7 @@ export class TicketCreationService {
     const [newCustomer] = await db
       .insert(businessRecords)
       .values({
-        tenantId: this.tenantId,
+        tenantId: this.tenant_id,
         name: ticketData.customerName || ticketData.customerEmail.split('@')[0],
         email: ticketData.customerEmail,
         phone: ticketData.contactPhone || null,
@@ -122,7 +122,7 @@ export class TicketCreationService {
 
     // Get customer's equipment
     const customerEquipment = await db.query.equipment.findMany({
-      where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customerId)),
+      where: and(eq(equipment.tenant_id, this.tenant_id), eq(equipment.customerId, customerId)),
     });
 
     // Try fuzzy matching
@@ -202,7 +202,7 @@ export class TicketCreationService {
     // Insert into service_tickets table (or phoneInTickets if using enhanced service)
     // For now, using a generic structure - adapt to your actual schema
     const ticketValues: any = {
-      tenantId: this.tenantId,
+      tenantId: this.tenant_id,
       customerId: data.customerId,
       equipmentId: data.equipmentId,
       title,
@@ -267,7 +267,7 @@ export class TicketCreationService {
       // Get available technicians
       const technicians = await db.query.users.findMany({
         where: and(
-          eq(users.tenantId, this.tenantId),
+          eq(users.tenant_id, this.tenant_id),
           eq(users.role, 'Technician'),
           eq(users.status, 'active'),
         ),
@@ -398,7 +398,7 @@ export class TicketCreationService {
         .from(serviceTickets)
         .where(
           and(
-            eq(serviceTickets.tenantId, this.tenantId),
+            eq(serviceTickets.tenant_id, this.tenant_id),
             eq(serviceTickets.technicianId, technicianId),
             sql`status IN ('open', 'in_progress', 'pending')`,
           ),
@@ -492,7 +492,7 @@ export class TicketCreationService {
         .from(serviceTickets)
         .where(
           and(
-            eq(serviceTickets.tenantId, this.tenantId),
+            eq(serviceTickets.tenant_id, this.tenant_id),
             eq(serviceTickets.technicianId, technicianId),
             eq(serviceTickets.customerId, customerId),
             eq(serviceTickets.status, 'completed'),

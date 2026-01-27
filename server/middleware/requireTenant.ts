@@ -9,7 +9,7 @@ import { TenantRequest } from './tenancy';
  * Returns 401 if no tenant is found
  */
 export const requireTenant = (req: TenantRequest, res: Response, next: NextFunction) => {
-  if (!req.tenantId) {
+  if (!req.tenant_id) {
     return res.status(401).json({
       message: 'Tenant identification required',
       code: 'TENANT_REQUIRED',

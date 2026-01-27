@@ -248,7 +248,7 @@ export class WebSocketService {
         const reportId = channel.split(':')[1];
         // Get cached report data or fetch fresh data
         const reportData = await this.getCurrentReportData(
-          client.tenantId,
+          client.tenant_id,
           reportId,
           data.parameters,
         );
@@ -261,7 +261,7 @@ export class WebSocketService {
         });
       } else if (channel.startsWith('kpi:')) {
         const kpiId = channel.split(':')[1];
-        const kpiData = await this.getCurrentKPIData(client.tenantId, kpiId);
+        const kpiData = await this.getCurrentKPIData(client.tenant_id, kpiId);
 
         this.sendToClient(client, {
           type: 'kpi_update',
@@ -358,7 +358,7 @@ export class WebSocketService {
         const tenantIds = new Set(
           Array.from(this.clients.values())
             .filter((client) => client.subscriptions.has(channel))
-            .map((client) => client.tenantId),
+            .map((client) => client.tenant_id),
         );
 
         // Update for each tenant
@@ -395,7 +395,7 @@ export class WebSocketService {
           const tenantIds = new Set(
             Array.from(this.clients.values())
               .filter((client) => client.subscriptions.has(channel))
-              .map((client) => client.tenantId),
+              .map((client) => client.tenant_id),
           );
 
           // Update for each tenant

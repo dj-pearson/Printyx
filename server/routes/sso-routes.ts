@@ -64,7 +64,7 @@ const initiateAuthSchema = z.object({
  */
 router.get('/providers', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
     }
@@ -84,8 +84,8 @@ router.get('/providers', async (req: Request, res: Response) => {
       isPrimary: p.isPrimary,
       lastLoginAt: p.lastLoginAt,
       loginCount: p.loginCount,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
     }));
 
     res.json(sanitizedProviders);
@@ -101,7 +101,7 @@ router.get('/providers', async (req: Request, res: Response) => {
  */
 router.get('/providers/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const providerId = req.params.id;
 
     if (!tenantId) {
@@ -133,7 +133,7 @@ router.get('/providers/:id', async (req: Request, res: Response) => {
  */
 router.post('/providers', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = (req as any).user?.id;
 
     if (!tenantId) {
@@ -171,7 +171,7 @@ router.post('/providers', async (req: Request, res: Response) => {
  */
 router.patch('/providers/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = (req as any).user?.id;
     const providerId = req.params.id;
 
@@ -210,7 +210,7 @@ router.patch('/providers/:id', async (req: Request, res: Response) => {
  */
 router.delete('/providers/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const providerId = req.params.id;
 
     if (!tenantId) {
@@ -236,7 +236,7 @@ router.delete('/providers/:id', async (req: Request, res: Response) => {
  */
 router.post('/auth/initiate', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
@@ -300,8 +300,8 @@ router.post('/callback/saml/:providerId', async (req: Request, res: Response) =>
 
     // Set session cookie
     if (result.session) {
-      (req.session as any).userId = result.user!.id;
-      (req.session as any).tenantId = result.user!.tenantId;
+      (req.session as any).user_id = result.user!.id;
+      (req.session as any).tenant_id = result.user!.tenant_id;
       (req.session as any).ssoSessionId = result.session.id;
     }
 
@@ -371,8 +371,8 @@ router.get('/callback/oidc/:providerId', async (req: Request, res: Response) => 
 
     // Set session cookie
     if (result.session) {
-      (req.session as any).userId = result.user!.id;
-      (req.session as any).tenantId = result.user!.tenantId;
+      (req.session as any).user_id = result.user!.id;
+      (req.session as any).tenant_id = result.user!.tenant_id;
       (req.session as any).ssoSessionId = result.session.id;
     }
 
@@ -489,7 +489,7 @@ router.post('/logout/saml/:providerId', async (req: Request, res: Response) => {
  */
 router.post('/providers/:id/test', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const providerId = req.params.id;
 
     if (!tenantId) {
@@ -573,7 +573,7 @@ router.post('/providers/:id/test', async (req: Request, res: Response) => {
  */
 router.post('/providers/import', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = (req as any).user?.id;
     const { metadataUrl, name, providerType } = req.body;
 

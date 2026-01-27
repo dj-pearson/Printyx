@@ -209,11 +209,11 @@ export class SalesSupervisorReportingService {
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN opportunities o ON o.owner_id = u.id
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenantId}
+        AND l.tenant_id = ${userContext.tenant_id}
       GROUP BY l.id, l.name, o.stage
       ORDER BY l.name, CASE o.stage
         WHEN 'Lead' THEN 1
@@ -326,11 +326,11 @@ export class SalesSupervisorReportingService {
           AVG(CASE WHEN o.stage = 'Closed Won' THEN o.amount ELSE NULL END)::decimal as avg_deal_size,
           COUNT(a.id)::int as total_activities
         FROM locations l
-        LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenantId}
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenantId} ${dateFilter}
-        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenantId} ${dateFilter}
+        LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id} ${dateFilter}
+        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id} ${dateFilter}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND l.tenant_id = ${userContext.tenantId}
+          AND l.tenant_id = ${userContext.tenant_id}
         GROUP BY l.id, l.name
       ),
       location_quotas AS (
@@ -341,7 +341,7 @@ export class SalesSupervisorReportingService {
         FROM locations l
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN quotas q ON q.user_id = u.id AND q.period = 'current'
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.stage = 'Closed Won' AND o.tenant_id = ${userContext.tenantId}
+        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.stage = 'Closed Won' AND o.tenant_id = ${userContext.tenant_id}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
         GROUP BY l.id
       )
@@ -435,9 +435,9 @@ export class SalesSupervisorReportingService {
         FROM locations l
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN quotas q ON q.user_id = u.id AND q.period = ${period}
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenantId}
+        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND l.tenant_id = ${userContext.tenantId}
+          AND l.tenant_id = ${userContext.tenant_id}
         GROUP BY l.id, l.name
       )
       SELECT
@@ -534,10 +534,10 @@ export class SalesSupervisorReportingService {
         COUNT(CASE WHEN a.activity_type = 'proposal' THEN 1 END)::int as proposals,
         COUNT(a.id)::int as total_activities
       FROM locations l
-      LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenantId}
-      LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenantId} ${dateFilter}
+      LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenant_id}
+      LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id} ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenantId}
+        AND l.tenant_id = ${userContext.tenant_id}
       GROUP BY l.id, l.name
       ORDER BY total_activities DESC
     `);

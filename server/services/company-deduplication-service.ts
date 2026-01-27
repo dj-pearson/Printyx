@@ -80,9 +80,9 @@ function createGroupKey(company: Company): string {
  */
 function selectSurvivor(companies: Company[]): Company {
   return companies.reduce((oldest, current) => {
-    if (!oldest.createdAt) return current;
-    if (!current.createdAt) return oldest;
-    return new Date(current.createdAt) < new Date(oldest.createdAt) ? current : oldest;
+    if (!oldest.created_at) return current;
+    if (!current.created_at) return oldest;
+    return new Date(current.created_at) < new Date(oldest.created_at) ? current : oldest;
   });
 }
 
@@ -97,8 +97,8 @@ export async function findDuplicateGroups(tenantId: string): Promise<Deduplicati
   const allCompanies = await db
     .select()
     .from(companies)
-    .where(eq(companies.tenantId, tenantId))
-    .orderBy(companies.createdAt);
+    .where(eq(companies.tenant_id, tenantId))
+    .orderBy(companies.created_at);
 
   // Group by normalized key
   const groupMap = new Map<string, Company[]>();
@@ -179,7 +179,7 @@ export async function mergeCompanies(
     const [survivor] = await db
       .select()
       .from(companies)
-      .where(and(eq(companies.id, survivorId), eq(companies.tenantId, tenantId)));
+      .where(and(eq(companies.id, survivorId), eq(companies.tenant_id, tenantId)));
 
     if (!survivor) {
       return {
@@ -197,7 +197,7 @@ export async function mergeCompanies(
     const duplicateCompanies = await db
       .select()
       .from(companies)
-      .where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
+      .where(and(inArray(companies.id, duplicateIds), eq(companies.tenant_id, tenantId)));
 
     // 1. Move company_contacts to survivor
     const contactsResult = await db
@@ -206,7 +206,7 @@ export async function mergeCompanies(
       .where(
         and(
           inArray(companyContacts.companyId, duplicateIds),
-          eq(companyContacts.tenantId, tenantId),
+          eq(companyContacts.tenant_id, tenantId),
         ),
       )
       .returning({ id: companyContacts.id });
@@ -220,7 +220,7 @@ export async function mergeCompanies(
       .where(
         and(
           inArray(businessRecordActivities.companyId, duplicateIds),
-          eq(businessRecordActivities.tenantId, tenantId),
+          eq(businessRecordActivities.tenant_id, tenantId),
         ),
       )
       .returning({ id: businessRecordActivities.id });
@@ -234,7 +234,7 @@ export async function mergeCompanies(
       .where(
         and(
           inArray(enhancedContacts.companyId, duplicateIds),
-          eq(enhancedContacts.tenantId, tenantId),
+          eq(enhancedContacts.tenant_id, tenantId),
         ),
       )
       .returning({ id: enhancedContacts.id });
@@ -262,7 +262,7 @@ export async function mergeCompanies(
     // 5. Delete duplicate company records
     await db
       .delete(companies)
-      .where(and(inArray(companies.id, duplicateIds), eq(companies.tenantId, tenantId)));
+      .where(and(inArray(companies.id, duplicateIds), eq(companies.tenant_id, tenantId)));
 
     return {
       success: true,
@@ -349,7 +349,7 @@ export async function findExistingCompany(
   if (!normalizedName) return null;
 
   // Find companies with matching name
-  const candidates = await db.select().from(companies).where(eq(companies.tenantId, tenantId));
+  const candidates = await db.select().from(companies).where(eq(companies.tenant_id, tenantId));
 
   // Filter to exact match on normalized name + city + state
   const match = candidates.find((c) => {
@@ -382,13 +382,13 @@ export async function getDuplicateGroupDetails(
   const companyList = await db
     .select()
     .from(companies)
-    .where(and(inArray(companies.id, companyIds), eq(companies.tenantId, tenantId)));
+    .where(and(inArray(companies.id, companyIds), eq(companies.tenant_id, tenantId)));
 
   const contacts = await db
     .select()
     .from(companyContacts)
     .where(
-      and(inArray(companyContacts.companyId, companyIds), eq(companyContacts.tenantId, tenantId)),
+      and(inArray(companyContacts.companyId, companyIds), eq(companyContacts.tenant_id, tenantId)),
     );
 
   const activities = await db
@@ -397,7 +397,7 @@ export async function getDuplicateGroupDetails(
     .where(
       and(
         inArray(businessRecordActivities.companyId, companyIds),
-        eq(businessRecordActivities.tenantId, tenantId),
+        eq(businessRecordActivities.tenant_id, tenantId),
       ),
     );
 

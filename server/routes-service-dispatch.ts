@@ -56,7 +56,7 @@ router.get(
   etag(),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const autoAssign = req.query.autoAssign !== 'false'; // Allow override via query param
 
       if (!tenantId) {
@@ -72,19 +72,19 @@ router.get(
           priority: serviceTickets.priority,
           customerId: serviceTickets.customerId,
           status: serviceTickets.status,
-          createdAt: serviceTickets.createdAt,
+          createdAt: serviceTickets.created_at,
           technicianId: serviceTickets.technicianId,
         })
         .from(serviceTickets)
-        .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'pending')))
-        .orderBy(desc(serviceTickets.createdAt))
+        .where(and(eq(serviceTickets.tenant_id, tenantId), eq(serviceTickets.status, 'pending')))
+        .orderBy(desc(serviceTickets.created_at))
         .limit(10);
 
       // Get available technicians with their current workload
       const availableTechnicians = await db
         .select()
         .from(technicians)
-        .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'available')));
+        .where(and(eq(technicians.tenant_id, tenantId), eq(technicians.status, 'available')));
 
       // Get assigned ticket counts for capacity planning
       const assignedTicketsQuery = await db
@@ -95,7 +95,7 @@ router.get(
         .from(serviceTickets)
         .where(
           and(
-            eq(serviceTickets.tenantId, tenantId),
+            eq(serviceTickets.tenant_id, tenantId),
             inArray(serviceTickets.status, ['assigned', 'in_progress']),
           ),
         )
@@ -130,7 +130,7 @@ router.get(
             estimatedDuration: 90,
             recommendedTechnician: null,
             suggestedTimeSlot: 'Next Available',
-            createdAt: ticket.createdAt,
+            createdAt: ticket.created_at,
             autoAssigned: false,
             aiConfidence: 0,
           });
@@ -157,7 +157,7 @@ router.get(
             overallScore: aiConfidence,
           },
           suggestedTimeSlot: 'Next Available',
-          createdAt: ticket.createdAt,
+          createdAt: ticket.created_at,
           autoAssigned: false,
           aiConfidence: aiConfidence,
         };
@@ -260,7 +260,7 @@ router.get(
   etag(),
   async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -279,7 +279,7 @@ router.get(
           certifications: technicians.certifications,
         })
         .from(technicians)
-        .where(eq(technicians.tenantId, tenantId));
+        .where(eq(technicians.tenant_id, tenantId));
 
       // Get assigned tickets count for each technician
       const assignedTicketsQuery = await db
@@ -290,7 +290,7 @@ router.get(
         .from(serviceTickets)
         .where(
           and(
-            eq(serviceTickets.tenantId, tenantId),
+            eq(serviceTickets.tenant_id, tenantId),
             inArray(serviceTickets.status, ['assigned', 'in_progress']),
           ),
         )
@@ -347,7 +347,7 @@ router.get(
 // Get dispatch analytics (converted to use real database data)
 router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -361,7 +361,7 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
         count: count(serviceTickets.id),
       })
       .from(serviceTickets)
-      .where(eq(serviceTickets.tenantId, tenantId))
+      .where(eq(serviceTickets.tenant_id, tenantId))
       .groupBy(serviceTickets.status, serviceTickets.priority);
 
     // Get technician performance data
@@ -373,7 +373,7 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
       })
       .from(serviceTickets)
       .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
-      .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'completed')))
+      .where(and(eq(serviceTickets.tenant_id, tenantId), eq(serviceTickets.status, 'completed')))
       .groupBy(serviceTickets.technicianId, technicians.name);
 
     // Calculate summary statistics
@@ -452,7 +452,7 @@ router.post(
   requirePermission([PERMISSIONS.SERVICE.DISPATCH.SCHEDULE]),
   async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const { ticketIds } = req.body;
 
       if (!tenantId) {
@@ -465,7 +465,7 @@ router.post(
         .from(serviceTickets)
         .where(
           and(
-            eq(serviceTickets.tenantId, tenantId),
+            eq(serviceTickets.tenant_id, tenantId),
             inArray(serviceTickets.id, ticketIds),
             eq(serviceTickets.status, 'pending'),
           ),
@@ -475,7 +475,7 @@ router.post(
       const availableTechnicians = await db
         .select()
         .from(technicians)
-        .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'available')));
+        .where(and(eq(technicians.tenant_id, tenantId), eq(technicians.status, 'available')));
 
       const assignments = [];
       const updatePromises = [];
@@ -532,7 +532,7 @@ router.post(
 // Get real-time technician tracking (converted to use real database data)
 router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -542,7 +542,7 @@ router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, 
     const allTechnicians = await db
       .select()
       .from(technicians)
-      .where(eq(technicians.tenantId, tenantId));
+      .where(eq(technicians.tenant_id, tenantId));
 
     // Create tracking data based on real technician data
     const tracking = allTechnicians.map((tech) => ({
@@ -584,7 +584,7 @@ router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, 
  */
 router.post('/api/dispatch/check-parts', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { ticketId, requiredParts } = req.body;
 
     if (!tenantId) {
@@ -614,7 +614,7 @@ router.post('/api/dispatch/check-parts', async (req: any, res) => {
           })
           .from(inventoryItems)
           .where(
-            and(eq(inventoryItems.tenantId, tenantId), eq(inventoryItems.partNumber, partNumber)),
+            and(eq(inventoryItems.tenant_id, tenantId), eq(inventoryItems.partNumber, partNumber)),
           )
           .limit(1);
 
@@ -669,7 +669,7 @@ router.post('/api/dispatch/check-parts', async (req: any, res) => {
  */
 router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { ticketIds } = req.body;
 
     if (!tenantId) {
@@ -689,7 +689,7 @@ router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
         requiredParts: serviceTickets.requiredParts,
       })
       .from(serviceTickets)
-      .where(and(eq(serviceTickets.tenantId, tenantId), inArray(serviceTickets.id, ticketIds)));
+      .where(and(eq(serviceTickets.tenant_id, tenantId), inArray(serviceTickets.id, ticketIds)));
 
     // Check parts for each ticket
     const results = await Promise.all(
@@ -715,7 +715,7 @@ router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
               .from(inventoryItems)
               .where(
                 and(
-                  eq(inventoryItems.tenantId, tenantId),
+                  eq(inventoryItems.tenant_id, tenantId),
                   eq(inventoryItems.partNumber, partNumber),
                 ),
               )

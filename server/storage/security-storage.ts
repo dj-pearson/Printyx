@@ -99,7 +99,7 @@ export async function getComplianceSettings(
 ): Promise<ComplianceSettingsResult | null> {
   try {
     const settings = await db.query.complianceSettings.findFirst({
-      where: eq(complianceSettings.tenantId, tenantId),
+      where: eq(complianceSettings.tenant_id, tenantId),
     });
 
     if (!settings) {
@@ -112,7 +112,7 @@ export async function getComplianceSettings(
 
     return {
       id: settings.id,
-      tenantId: settings.tenantId,
+      tenantId: settings.tenant_id,
       sessionTimeoutMinutes:
         settings.sessionTimeoutMinutes ?? DEFAULT_COMPLIANCE_SETTINGS.sessionTimeoutMinutes,
       sessionWarningMinutes:
@@ -150,7 +150,7 @@ export async function updateComplianceSettings(
 ): Promise<boolean> {
   try {
     const existing = await db.query.complianceSettings.findFirst({
-      where: eq(complianceSettings.tenantId, tenantId),
+      where: eq(complianceSettings.tenant_id, tenantId),
     });
 
     if (existing) {
@@ -160,7 +160,7 @@ export async function updateComplianceSettings(
           ...updates,
           updatedAt: new Date(),
         })
-        .where(eq(complianceSettings.tenantId, tenantId));
+        .where(eq(complianceSettings.tenant_id, tenantId));
     } else {
       await db.insert(complianceSettings).values({
         tenantId,
@@ -187,7 +187,7 @@ export async function getSecuritySettings(
 ): Promise<SecuritySettingsResult | null> {
   try {
     const settings = await db.query.complianceSettings.findFirst({
-      where: eq(complianceSettings.tenantId, tenantId),
+      where: eq(complianceSettings.tenant_id, tenantId),
     });
 
     // Security settings may be stored in a metadata/settings JSONB column
@@ -214,7 +214,7 @@ export async function updateSecuritySettings(
     // For now, security settings are stored as part of compliance settings
     // In a production system, these would be in their own table or JSONB column
     const existing = await db.query.complianceSettings.findFirst({
-      where: eq(complianceSettings.tenantId, tenantId),
+      where: eq(complianceSettings.tenant_id, tenantId),
     });
 
     if (existing) {
@@ -225,7 +225,7 @@ export async function updateSecuritySettings(
           // This is a simplified implementation
           updatedAt: new Date(),
         })
-        .where(eq(complianceSettings.tenantId, tenantId));
+        .where(eq(complianceSettings.tenant_id, tenantId));
     } else {
       await db.insert(complianceSettings).values({
         tenantId,
@@ -258,7 +258,7 @@ export async function getTenantAdmins(tenantId: string): Promise<TenantAdmin[]> 
       .from(users)
       .where(
         and(
-          eq(users.tenantId, tenantId),
+          eq(users.tenant_id, tenantId),
           or(
             eq(users.role, 'admin'),
             eq(users.role, 'super_admin'),
@@ -299,7 +299,7 @@ export async function getUserActiveSessions(userId: string): Promise<
     const sessions = await db
       .select()
       .from(securitySessions)
-      .where(and(eq(securitySessions.userId, userId), eq(securitySessions.isActive, true)))
+      .where(and(eq(securitySessions.user_id, userId), eq(securitySessions.isActive, true)))
       .orderBy(desc(securitySessions.lastActivity));
 
     return sessions.map((session) => ({
@@ -307,7 +307,7 @@ export async function getUserActiveSessions(userId: string): Promise<
       ipAddress: session.ipAddress,
       userAgent: session.userAgent,
       lastActivity: session.lastActivity,
-      createdAt: session.createdAt,
+      createdAt: session.created_at,
     }));
   } catch (error) {
     console.error('Error getting user sessions:', error);
@@ -330,7 +330,7 @@ export async function terminateOtherSessions(
         terminatedAt: new Date(),
         terminationReason: 'logout_other_sessions',
       })
-      .where(and(eq(securitySessions.userId, userId), eq(securitySessions.isActive, true)));
+      .where(and(eq(securitySessions.user_id, userId), eq(securitySessions.isActive, true)));
 
     return 1; // Drizzle doesn't return affected count easily
   } catch (error) {
@@ -353,8 +353,8 @@ export async function createSecuritySession(session: {
   try {
     await db.insert(securitySessions).values({
       sessionId: session.sessionId,
-      userId: session.userId,
-      tenantId: session.tenantId,
+      userId: session.user_id,
+      tenantId: session.tenant_id,
       ipAddress: session.ipAddress,
       userAgent: session.userAgent,
       expiresAt: session.expiresAt,

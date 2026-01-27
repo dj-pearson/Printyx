@@ -120,7 +120,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         .from(leadAssignmentHistory)
         .where(
           and(
-            eq(leadAssignmentHistory.tenantId, tenantId),
+            eq(leadAssignmentHistory.tenant_id, tenantId),
             eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing'),
             gte(leadAssignmentHistory.assignedAt, thirtyDaysAgo),
           ),
@@ -137,7 +137,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         .from(leadAssignmentHistory)
         .where(
           and(
-            eq(leadAssignmentHistory.tenantId, tenantId),
+            eq(leadAssignmentHistory.tenant_id, tenantId),
             eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing'),
             gte(leadAssignmentHistory.assignedAt, thirtyDaysAgo),
           ),
@@ -156,7 +156,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         .from(leadScoreCalculations)
         .where(
           and(
-            eq(leadScoreCalculations.tenantId, tenantId),
+            eq(leadScoreCalculations.tenant_id, tenantId),
             gte(leadScoreCalculations.calculatedAt, thirtyDaysAgo),
           ),
         )
@@ -165,7 +165,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       // Rep workload distribution
       const repWorkload = await db
         .select({
-          userId: repCapacity.userId,
+          userId: repCapacity.user_id,
           currentLoad: repCapacity.currentActiveLeads,
           maxLoad: repCapacity.maxActiveLeads,
           leadsToday: repCapacity.leadsAssignedToday,
@@ -173,7 +173,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
           avgResponseTime: repCapacity.averageResponseTimeMinutes,
         })
         .from(repCapacity)
-        .where(and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.isAvailable, true)));
+        .where(and(eq(repCapacity.tenant_id, tenantId), eq(repCapacity.isAvailable, true)));
 
       // Recent auto-routed leads
       const recentLeads = await db
@@ -188,7 +188,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         .from(leadAssignmentHistory)
         .where(
           and(
-            eq(leadAssignmentHistory.tenantId, tenantId),
+            eq(leadAssignmentHistory.tenant_id, tenantId),
             eq(leadAssignmentHistory.assignmentReason, 'auto_ai_routing'),
           ),
         )
@@ -215,7 +215,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
           count: d.count,
         })),
         repWorkload: repWorkload.map((rep) => ({
-          userId: rep.userId,
+          userId: rep.user_id,
           utilizationPercent: ((rep.currentLoad / (rep.maxLoad || 50)) * 100).toFixed(0),
           currentLoad: rep.currentLoad,
           maxLoad: rep.maxLoad || 50,
@@ -310,7 +310,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
 
       // Fetch lead
       const lead = await db.query.businessRecords.findFirst({
-        where: and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)),
+        where: and(eq(businessRecords.id, leadId), eq(businessRecords.tenant_id, tenantId)),
       });
 
       if (!lead) {

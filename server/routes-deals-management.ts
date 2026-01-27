@@ -46,7 +46,7 @@ export function registerDealsManagementRoutes(app: Express) {
     etag(),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user!.tenantId;
+        const tenantId = req.user!.tenant_id;
 
         // Use hierarchical query builder to automatically scope data
         const queryBuilder = getQueryBuilder(req);
@@ -57,8 +57,8 @@ export function registerDealsManagementRoutes(app: Express) {
         // Build query with RBAC scope filter
         // This automatically limits data based on user's role level
         const whereConditions = scopeFilter
-          ? and(eq(deals.tenantId, tenantId), scopeFilter)
-          : eq(deals.tenantId, tenantId);
+          ? and(eq(deals.tenant_id, tenantId), scopeFilter)
+          : eq(deals.tenant_id, tenantId);
 
         const dealsData = await db
           .select({
@@ -75,14 +75,14 @@ export function registerDealsManagementRoutes(app: Express) {
             customerName: businessRecords.companyName,
             customerId: deals.customerId,
             assignedToName: users.firstName,
-            createdAt: deals.createdAt,
-            updatedAt: deals.updatedAt,
+            createdAt: deals.created_at,
+            updatedAt: deals.updated_at,
           })
           .from(deals)
           .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
           .leftJoin(users, eq(deals.assignedToId, users.id))
           .where(whereConditions)
-          .orderBy(desc(deals.createdAt));
+          .orderBy(desc(deals.created_at));
 
         res.json(dealsData);
       } catch (error) {
@@ -95,7 +95,7 @@ export function registerDealsManagementRoutes(app: Express) {
   // Get deal by ID
   app.get('/api/deals-management/deals/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const dealId = req.params.id;
 
       const [deal] = await db
@@ -113,13 +113,13 @@ export function registerDealsManagementRoutes(app: Express) {
           customerName: businessRecords.companyName,
           customerId: deals.customerId,
           assignedToName: users.firstName,
-          createdAt: deals.createdAt,
-          updatedAt: deals.updatedAt,
+          createdAt: deals.created_at,
+          updatedAt: deals.updated_at,
         })
         .from(deals)
         .leftJoin(businessRecords, eq(deals.customerId, businessRecords.id))
         .leftJoin(users, eq(deals.assignedToId, users.id))
-        .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)));
+        .where(and(eq(deals.id, dealId), eq(deals.tenant_id, tenantId)));
 
       if (!deal) {
         return res.status(404).json({ error: 'Deal not found' });
@@ -129,8 +129,8 @@ export function registerDealsManagementRoutes(app: Express) {
       const activities = await db
         .select()
         .from(dealActivities)
-        .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenantId, tenantId)))
-        .orderBy(desc(dealActivities.createdAt));
+        .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenant_id, tenantId)))
+        .orderBy(desc(dealActivities.created_at));
 
       res.json({ ...deal, activities });
     } catch (error) {
@@ -142,7 +142,7 @@ export function registerDealsManagementRoutes(app: Express) {
   // Create new deal
   app.post('/api/deals-management/deals', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const userId = req.user?.id || req.user?.claims?.sub;
 
       const dealData = insertDealSchema.parse({
@@ -180,7 +180,7 @@ export function registerDealsManagementRoutes(app: Express) {
   // Update deal
   app.put('/api/deals-management/deals/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const dealId = req.params.id;
 
       // SECURITY FIX: Validate input to prevent mass assignment
@@ -192,7 +192,7 @@ export function registerDealsManagementRoutes(app: Express) {
           ...validatedData,
           updatedAt: new Date(),
         })
-        .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
+        .where(and(eq(deals.id, dealId), eq(deals.tenant_id, tenantId)))
         .returning();
 
       if (!updatedDeal) {
@@ -212,18 +212,18 @@ export function registerDealsManagementRoutes(app: Express) {
   // Delete deal
   app.delete('/api/deals-management/deals/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const dealId = req.params.id;
 
       // Delete deal activities first
       await db
         .delete(dealActivities)
-        .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenantId, tenantId)));
+        .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenant_id, tenantId)));
 
       // Delete deal
       const [deletedDeal] = await db
         .delete(deals)
-        .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
+        .where(and(eq(deals.id, dealId), eq(deals.tenant_id, tenantId)))
         .returning();
 
       if (!deletedDeal) {
@@ -240,12 +240,12 @@ export function registerDealsManagementRoutes(app: Express) {
   // Get deal stages
   app.get('/api/deals-management/stages', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const stages = await db
         .select()
         .from(dealStages)
-        .where(eq(dealStages.tenantId, tenantId))
+        .where(eq(dealStages.tenant_id, tenantId))
         .orderBy(dealStages.order);
 
       res.json(stages);
@@ -258,7 +258,7 @@ export function registerDealsManagementRoutes(app: Express) {
   // Create deal stage
   app.post('/api/deals-management/stages', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const stageData = insertDealStageSchema.parse({
         ...req.body,
@@ -277,7 +277,7 @@ export function registerDealsManagementRoutes(app: Express) {
   // Get deal activities
   app.get('/api/deals-management/deals/:id/activities', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const dealId = req.params.id;
 
       const activities = await db
@@ -290,12 +290,12 @@ export function registerDealsManagementRoutes(app: Express) {
           followUpDate: dealActivities.followUpDate,
           createdBy: dealActivities.createdBy,
           createdByName: users.firstName,
-          createdAt: dealActivities.createdAt,
+          createdAt: dealActivities.created_at,
         })
         .from(dealActivities)
         .leftJoin(users, eq(dealActivities.createdBy, users.id))
-        .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenantId, tenantId)))
-        .orderBy(desc(dealActivities.createdAt));
+        .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenant_id, tenantId)))
+        .orderBy(desc(dealActivities.created_at));
 
       res.json(activities);
     } catch (error) {
@@ -307,7 +307,7 @@ export function registerDealsManagementRoutes(app: Express) {
   // Add deal activity
   app.post('/api/deals-management/deals/:id/activities', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const dealId = req.params.id;
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -330,18 +330,18 @@ export function registerDealsManagementRoutes(app: Express) {
   // Get deals dashboard stats
   app.get('/api/deals-management/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Get deal statistics
       const totalDealsResult = await db
         .select({ count: count() })
         .from(deals)
-        .where(eq(deals.tenantId, tenantId));
+        .where(eq(deals.tenant_id, tenantId));
 
       const activeDealsResult = await db
         .select({ count: count() })
         .from(deals)
-        .where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'active')));
+        .where(and(eq(deals.tenant_id, tenantId), eq(deals.status, 'active')));
 
       const wonDealsResult = await db
         .select({
@@ -349,12 +349,12 @@ export function registerDealsManagementRoutes(app: Express) {
           totalValue: sql<number>`COALESCE(SUM(${deals.value}), 0)`,
         })
         .from(deals)
-        .where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'won')));
+        .where(and(eq(deals.tenant_id, tenantId), eq(deals.status, 'won')));
 
       const lostDealsResult = await db
         .select({ count: count() })
         .from(deals)
-        .where(and(eq(deals.tenantId, tenantId), eq(deals.status, 'lost')));
+        .where(and(eq(deals.tenant_id, tenantId), eq(deals.status, 'lost')));
 
       const totalDeals = totalDealsResult[0]?.count || 0;
       const activeDeals = activeDealsResult[0]?.count || 0;

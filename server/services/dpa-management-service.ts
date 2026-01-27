@@ -112,7 +112,7 @@ export class DpaManagementService {
       (await db.query.dataProcessingAgreements.findFirst({
         where: and(
           eq(dataProcessingAgreements.id, dpaId),
-          eq(dataProcessingAgreements.tenantId, tenantId),
+          eq(dataProcessingAgreements.tenant_id, tenantId),
         ),
       })) || null
     );
@@ -150,7 +150,7 @@ export class DpaManagementService {
       .where(
         and(
           eq(dataProcessingAgreements.id, dpaId),
-          eq(dataProcessingAgreements.tenantId, tenantId),
+          eq(dataProcessingAgreements.tenant_id, tenantId),
         ),
       )
       .returning();
@@ -191,7 +191,7 @@ export class DpaManagementService {
     const { page = 1, limit = 25, status, vendorName, riskLevel, expiringWithinDays } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(dataProcessingAgreements.tenantId, tenantId)];
+    const conditions = [eq(dataProcessingAgreements.tenant_id, tenantId)];
 
     if (status) {
       conditions.push(eq(dataProcessingAgreements.status, status as any));
@@ -220,7 +220,7 @@ export class DpaManagementService {
         .select()
         .from(dataProcessingAgreements)
         .where(whereClause)
-        .orderBy(desc(dataProcessingAgreements.createdAt))
+        .orderBy(desc(dataProcessingAgreements.created_at))
         .limit(limit)
         .offset(offset),
       db
@@ -329,7 +329,7 @@ export class DpaManagementService {
 
     return await db.query.dataProcessingAgreements.findMany({
       where: and(
-        eq(dataProcessingAgreements.tenantId, tenantId),
+        eq(dataProcessingAgreements.tenant_id, tenantId),
         eq(dataProcessingAgreements.status, 'active'),
         lte(dataProcessingAgreements.expirationDate, futureDate),
         gte(dataProcessingAgreements.expirationDate, new Date()),
@@ -393,7 +393,10 @@ export class DpaManagementService {
   async getComplianceCheck(tenantId: string, checkId: string): Promise<DpaComplianceCheck | null> {
     return (
       (await db.query.dpaComplianceChecks.findFirst({
-        where: and(eq(dpaComplianceChecks.id, checkId), eq(dpaComplianceChecks.tenantId, tenantId)),
+        where: and(
+          eq(dpaComplianceChecks.id, checkId),
+          eq(dpaComplianceChecks.tenant_id, tenantId),
+        ),
       })) || null
     );
   }
@@ -410,7 +413,7 @@ export class DpaManagementService {
     const offset = (page - 1) * limit;
 
     const whereClause = and(
-      eq(dpaComplianceChecks.tenantId, tenantId),
+      eq(dpaComplianceChecks.tenant_id, tenantId),
       eq(dpaComplianceChecks.dpaId, dpaId),
     );
 
@@ -442,7 +445,7 @@ export class DpaManagementService {
     const [updated] = await db
       .update(dpaComplianceChecks)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(dpaComplianceChecks.id, checkId), eq(dpaComplianceChecks.tenantId, tenantId)))
+      .where(and(eq(dpaComplianceChecks.id, checkId), eq(dpaComplianceChecks.tenant_id, tenantId)))
       .returning();
 
     return updated;
@@ -458,7 +461,7 @@ export class DpaManagementService {
 
     return await db.query.dataProcessingAgreements.findMany({
       where: and(
-        eq(dataProcessingAgreements.tenantId, tenantId),
+        eq(dataProcessingAgreements.tenant_id, tenantId),
         eq(dataProcessingAgreements.status, 'active'),
         or(
           isNull(dataProcessingAgreements.riskAssessmentDate),
@@ -555,23 +558,23 @@ export class DpaManagementService {
         db
           .select({ count: sql`count(*)` })
           .from(dataProcessingAgreements)
-          .where(eq(dataProcessingAgreements.tenantId, tenantId)),
+          .where(eq(dataProcessingAgreements.tenant_id, tenantId)),
         db
           .select({ status: dataProcessingAgreements.status, count: sql`count(*)` })
           .from(dataProcessingAgreements)
-          .where(eq(dataProcessingAgreements.tenantId, tenantId))
+          .where(eq(dataProcessingAgreements.tenant_id, tenantId))
           .groupBy(dataProcessingAgreements.status),
         db
           .select({ riskLevel: dataProcessingAgreements.riskLevel, count: sql`count(*)` })
           .from(dataProcessingAgreements)
-          .where(eq(dataProcessingAgreements.tenantId, tenantId))
+          .where(eq(dataProcessingAgreements.tenant_id, tenantId))
           .groupBy(dataProcessingAgreements.riskLevel),
         db
           .select({ count: sql`count(*)` })
           .from(dataProcessingAgreements)
           .where(
             and(
-              eq(dataProcessingAgreements.tenantId, tenantId),
+              eq(dataProcessingAgreements.tenant_id, tenantId),
               eq(dataProcessingAgreements.status, 'active'),
               lte(dataProcessingAgreements.expirationDate, thirtyDaysFromNow),
               gte(dataProcessingAgreements.expirationDate, new Date()),
@@ -582,7 +585,7 @@ export class DpaManagementService {
           .from(dataProcessingAgreements)
           .where(
             and(
-              eq(dataProcessingAgreements.tenantId, tenantId),
+              eq(dataProcessingAgreements.tenant_id, tenantId),
               eq(dataProcessingAgreements.status, 'active'),
               or(
                 isNull(dataProcessingAgreements.riskAssessmentDate),

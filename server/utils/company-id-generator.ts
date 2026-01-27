@@ -19,7 +19,7 @@ export async function generateCompanyDisplayId(tenantId: string): Promise<string
       .select({ id: businessRecords.id })
       .from(businessRecords)
       .where(
-        sql`${businessRecords.tenantId} = ${tenantId} AND ${businessRecords.companyDisplayId} = ${displayId}`,
+        sql`${businessRecords.tenant_id} = ${tenantId} AND ${businessRecords.companyDisplayId} = ${displayId}`,
       )
       .limit(1);
 
@@ -74,13 +74,13 @@ export async function isSlugUnique(
   excludeId?: string,
 ): Promise<boolean> {
   let whereCondition = and(
-    eq(businessRecords.tenantId, tenantId),
+    eq(businessRecords.tenant_id, tenantId),
     eq(businessRecords.urlSlug, slug),
   );
 
   if (excludeId) {
     whereCondition = and(
-      eq(businessRecords.tenantId, tenantId),
+      eq(businessRecords.tenant_id, tenantId),
       eq(businessRecords.urlSlug, slug),
       sql`${businessRecords.id} != ${excludeId}`,
     );
@@ -168,7 +168,7 @@ export async function backfillExistingRecords(tenantId: string, limit = 100): Pr
     })
     .from(businessRecords)
     .where(
-      sql`${businessRecords.tenantId} = ${tenantId} AND ${businessRecords.companyDisplayId} IS NULL`,
+      sql`${businessRecords.tenant_id} = ${tenantId} AND ${businessRecords.companyDisplayId} IS NULL`,
     )
     .limit(limit);
 

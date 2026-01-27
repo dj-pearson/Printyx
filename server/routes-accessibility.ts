@@ -46,7 +46,7 @@ router.get('/preferences', async (req: Request, res: Response) => {
     }
 
     const preferences = await db.query.userAccessibilityPreferences.findFirst({
-      where: eq(userAccessibilityPreferences.userId, userId),
+      where: eq(userAccessibilityPreferences.user_id, userId),
     });
 
     if (!preferences) {
@@ -98,7 +98,7 @@ router.put('/preferences', async (req: Request, res: Response) => {
 
     // Check if preferences exist
     const existing = await db.query.userAccessibilityPreferences.findFirst({
-      where: eq(userAccessibilityPreferences.userId, userId),
+      where: eq(userAccessibilityPreferences.user_id, userId),
     });
 
     let result;
@@ -110,7 +110,7 @@ router.put('/preferences', async (req: Request, res: Response) => {
           ...data,
           updatedAt: new Date(),
         })
-        .where(eq(userAccessibilityPreferences.userId, userId))
+        .where(eq(userAccessibilityPreferences.user_id, userId))
         .returning();
       result = updated[0];
     } else {
@@ -147,7 +147,7 @@ router.delete('/preferences', async (req: Request, res: Response) => {
 
     await db
       .delete(userAccessibilityPreferences)
-      .where(eq(userAccessibilityPreferences.userId, userId));
+      .where(eq(userAccessibilityPreferences.user_id, userId));
 
     return res.json({ message: 'Preferences reset to defaults' });
   } catch (error) {
@@ -221,7 +221,7 @@ router.get('/feedback', async (req: Request, res: Response) => {
     let query = db.select().from(accessibilityFeedback);
 
     // Apply filters
-    const conditions = [eq(accessibilityFeedback.tenantId, tenantId)];
+    const conditions = [eq(accessibilityFeedback.tenant_id, tenantId)];
     if (status) {
       conditions.push(eq(accessibilityFeedback.status, status as string));
     }
@@ -350,7 +350,7 @@ router.get('/audit', async (req: Request, res: Response) => {
     const limitNum = Math.min(parseInt(limit as string, 10) || 20, 100);
     const offset = (pageNum - 1) * limitNum;
 
-    let conditions = [eq(accessibilityAuditLog.tenantId, tenantId)];
+    let conditions = [eq(accessibilityAuditLog.tenant_id, tenantId)];
 
     if (pageUrl) {
       conditions.push(eq(accessibilityAuditLog.pageUrl, pageUrl as string));

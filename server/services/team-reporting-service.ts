@@ -264,19 +264,19 @@ export class TeamReportingService {
         COALESCE(uq.quota_amount, 0) as quota_amount
       FROM users u
       LEFT JOIN opportunities o ON o.owner_id = u.id
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
         ${dateFilter}
       LEFT JOIN (
         SELECT user_id, SUM(amount) as quota_amount
         FROM quotas
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND period_start <= CURRENT_DATE
           AND period_end >= CURRENT_DATE
         GROUP BY user_id
       ) uq ON uq.user_id = u.id
       WHERE u.id = ANY(${accessibleUserIds})
-        AND u.tenant_id = ${userContext.tenantId}
+        AND u.tenant_id = ${userContext.tenant_id}
       GROUP BY u.id, u.name, u.email, uq.quota_amount
       ORDER BY pipeline_value DESC
     `;
@@ -292,7 +292,7 @@ export class TeamReportingService {
         COALESCE(SUM(o.amount), 0) as value
       FROM opportunities o
       WHERE o.owner_id = ANY(${accessibleUserIds})
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
         ${dateFilter}
       GROUP BY o.owner_id, o.stage
@@ -406,10 +406,10 @@ export class TeamReportingService {
         COALESCE(AVG(CASE WHEN a.status = 'completed' THEN 1.0 ELSE 0.0 END) * 100, 0) as completion_rate
       FROM users u
       LEFT JOIN activities a ON a.user_id = u.id
-        AND a.tenant_id = ${userContext.tenantId}
+        AND a.tenant_id = ${userContext.tenant_id}
         AND a.created_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
       WHERE u.id = ANY(${accessibleUserIds})
-        AND u.tenant_id = ${userContext.tenantId}
+        AND u.tenant_id = ${userContext.tenant_id}
       GROUP BY u.id, u.name
       ORDER BY total_activities DESC
     `;
@@ -502,7 +502,7 @@ export class TeamReportingService {
         COALESCE(SUM(CASE WHEN o.close_date >= ${startOfYear.toISOString()} THEN o.amount ELSE 0 END), 0) as ytd
       FROM opportunities o
       WHERE o.owner_id = ANY(${accessibleUserIds})
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage = 'Closed Won'
         AND o.close_date <= CURRENT_DATE
     `;
@@ -521,7 +521,7 @@ export class TeamReportingService {
       LEFT JOIN (
         SELECT user_id, SUM(amount) as amount
         FROM quotas
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND period_start <= CURRENT_DATE
           AND period_end >= CURRENT_DATE
         GROUP BY user_id
@@ -529,14 +529,14 @@ export class TeamReportingService {
       LEFT JOIN (
         SELECT owner_id, SUM(amount) as revenue
         FROM opportunities
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND stage = 'Closed Won'
           AND close_date >= ${startOfMonth.toISOString()}
           AND close_date <= CURRENT_DATE
         GROUP BY owner_id
       ) rev ON rev.owner_id = u.id
       WHERE u.id = ANY(${accessibleUserIds})
-        AND u.tenant_id = ${userContext.tenantId}
+        AND u.tenant_id = ${userContext.tenant_id}
     `;
 
     const quotaResults = await db.execute(quotaQuery);
@@ -575,12 +575,12 @@ export class TeamReportingService {
         SELECT created_at
         FROM activities
         WHERE business_record_id = l.id
-          AND tenant_id = ${userContext.tenantId}
+          AND tenant_id = ${userContext.tenant_id}
         ORDER BY created_at ASC
         LIMIT 1
       ) first_activity ON true
       WHERE o.owner_id = ANY(${accessibleUserIds})
-        AND o.tenant_id = ${userContext.tenantId}
+        AND o.tenant_id = ${userContext.tenant_id}
         AND o.stage IN ('Closed Won', 'Closed Lost')
     `;
 
@@ -657,7 +657,7 @@ export class TeamReportingService {
         ) as conversion_rate
       FROM business_records br
       WHERE (br.owner_id = ANY(${accessibleUserIds}) OR br.owner_id IS NULL)
-        AND br.tenant_id = ${userContext.tenantId}
+        AND br.tenant_id = ${userContext.tenant_id}
         AND br.created_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
       GROUP BY br.source
       ORDER BY count DESC
@@ -677,7 +677,7 @@ export class TeamReportingService {
         COUNT(br.id) as count
       FROM business_records br
       WHERE (br.owner_id = ANY(${accessibleUserIds}) OR br.owner_id IS NULL)
-        AND br.tenant_id = ${userContext.tenantId}
+        AND br.tenant_id = ${userContext.tenant_id}
         AND br.created_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
       GROUP BY br.status
       ORDER BY count DESC
@@ -699,7 +699,7 @@ export class TeamReportingService {
         SUM(CASE WHEN br.next_follow_up_date < CURRENT_DATE AND br.status = 'lead' THEN 1 ELSE 0 END) as leads_overdue
       FROM business_records br
       WHERE (br.owner_id = ANY(${accessibleUserIds}) OR br.owner_id IS NULL)
-        AND br.tenant_id = ${userContext.tenantId}
+        AND br.tenant_id = ${userContext.tenant_id}
         AND br.created_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
     `;
 
@@ -779,7 +779,7 @@ export class TeamReportingService {
           SUM(CASE WHEN type = 'meeting' AND status = 'completed' THEN 1 ELSE 0 END) as meetings_held,
           SUM(CASE WHEN type = 'meeting' THEN 1 ELSE 0 END) as meetings_planned
         FROM activities
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND created_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
         GROUP BY user_id
       ) act ON act.user_id = u.id
@@ -793,7 +793,7 @@ export class TeamReportingService {
             0
           ) as quote_win_rate
         FROM quotes
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND created_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
         GROUP BY owner_id
       ) quotes ON quotes.owner_id = u.id
@@ -802,7 +802,7 @@ export class TeamReportingService {
           owner_id,
           COUNT(id) as deals_stuck
         FROM opportunities
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND stage NOT IN ('Closed Won', 'Closed Lost')
           AND EXTRACT(DAY FROM (CURRENT_DATE - updated_at)) > 30
         GROUP BY owner_id
@@ -812,12 +812,12 @@ export class TeamReportingService {
           owner_id,
           AVG(days_in_stage) as avg_stage_velocity
         FROM opportunities
-        WHERE tenant_id = ${userContext.tenantId}
+        WHERE tenant_id = ${userContext.tenant_id}
           AND updated_at BETWEEN ${dateFrom.toISOString()} AND ${dateTo.toISOString()}
         GROUP BY owner_id
       ) velocity ON velocity.owner_id = u.id
       WHERE u.id = ANY(${accessibleUserIds})
-        AND u.tenant_id = ${userContext.tenantId}
+        AND u.tenant_id = ${userContext.tenant_id}
     `;
 
     const results = await db.execute(coachingQuery);

@@ -178,7 +178,7 @@ export class ContactDeduplicationService {
       (await db.query.duplicateDetectionRules.findFirst({
         where: and(
           eq(duplicateDetectionRules.id, ruleId),
-          eq(duplicateDetectionRules.tenantId, tenantId),
+          eq(duplicateDetectionRules.tenant_id, tenantId),
         ),
       })) || null
     );
@@ -189,7 +189,7 @@ export class ContactDeduplicationService {
    */
   async listRules(tenantId: string, entityType?: string): Promise<DuplicateDetectionRule[]> {
     const conditions = [
-      eq(duplicateDetectionRules.tenantId, tenantId),
+      eq(duplicateDetectionRules.tenant_id, tenantId),
       eq(duplicateDetectionRules.isActive, true),
     ];
 
@@ -199,7 +199,7 @@ export class ContactDeduplicationService {
 
     return await db.query.duplicateDetectionRules.findMany({
       where: and(...conditions),
-      orderBy: [desc(duplicateDetectionRules.createdAt)],
+      orderBy: [desc(duplicateDetectionRules.created_at)],
     });
   }
 
@@ -215,7 +215,10 @@ export class ContactDeduplicationService {
       .update(duplicateDetectionRules)
       .set({ ...updates, updatedAt: new Date() })
       .where(
-        and(eq(duplicateDetectionRules.id, ruleId), eq(duplicateDetectionRules.tenantId, tenantId)),
+        and(
+          eq(duplicateDetectionRules.id, ruleId),
+          eq(duplicateDetectionRules.tenant_id, tenantId),
+        ),
       )
       .returning();
 
@@ -320,14 +323,14 @@ export class ContactDeduplicationService {
       entityType === 'customer'
     ) {
       return await db.query.businessRecords.findMany({
-        where: eq(businessRecords.tenantId, tenantId),
+        where: eq(businessRecords.tenant_id, tenantId),
         limit: 5000, // Limit for performance
       });
     }
 
     if (entityType === 'enhanced_contact') {
       return await db.query.enhancedContacts.findMany({
-        where: eq(enhancedContacts.tenantId, tenantId),
+        where: eq(enhancedContacts.tenant_id, tenantId),
         limit: 5000,
       });
     }
@@ -459,7 +462,7 @@ export class ContactDeduplicationService {
     // Check if this pair already exists
     const existing = await db.query.duplicateMatches.findFirst({
       where: and(
-        eq(duplicateMatches.tenantId, tenantId),
+        eq(duplicateMatches.tenant_id, tenantId),
         or(
           and(
             eq(duplicateMatches.primaryRecordId, data.primaryRecordId),
@@ -520,7 +523,7 @@ export class ContactDeduplicationService {
     const { page = 1, limit = 25, status, entityType, minScore } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(duplicateMatches.tenantId, tenantId)];
+    const conditions = [eq(duplicateMatches.tenant_id, tenantId)];
 
     if (status) {
       conditions.push(eq(duplicateMatches.status, status));
@@ -571,7 +574,7 @@ export class ContactDeduplicationService {
         resolutionNotes: notes,
         updatedAt: new Date(),
       })
-      .where(and(eq(duplicateMatches.id, matchId), eq(duplicateMatches.tenantId, tenantId)))
+      .where(and(eq(duplicateMatches.id, matchId), eq(duplicateMatches.tenant_id, tenantId)))
       .returning();
 
     return updated;
@@ -602,10 +605,10 @@ export class ContactDeduplicationService {
 
     const [survivingRecord, mergedRecord] = await Promise.all([
       (db.query as any)[tableRef].findFirst({
-        where: and(eq(table.id, survivingRecordId), eq(table.tenantId, tenantId)),
+        where: and(eq(table.id, survivingRecordId), eq(table.tenant_id, tenantId)),
       }),
       (db.query as any)[tableRef].findFirst({
-        where: and(eq(table.id, mergedRecordId), eq(table.tenantId, tenantId)),
+        where: and(eq(table.id, mergedRecordId), eq(table.tenant_id, tenantId)),
       }),
     ]);
 
@@ -668,7 +671,7 @@ export class ContactDeduplicationService {
 
     // Update surviving record if there are changes
     if (Object.keys(updates).length > 0) {
-      updates.updatedAt = new Date();
+      updates.updated_at = new Date();
       await db.update(table).set(updates).where(eq(table.id, survivingRecordId));
     }
 
@@ -694,7 +697,7 @@ export class ContactDeduplicationService {
         .set({ companyId: survivingRecordId, updatedAt: new Date() })
         .where(
           and(
-            eq(enhancedContacts.tenantId, tenantId),
+            eq(enhancedContacts.tenant_id, tenantId),
             eq(enhancedContacts.companyId, mergedRecordId),
           ),
         );
@@ -787,7 +790,7 @@ export class ContactDeduplicationService {
     const history = await db.query.contactMergeHistory.findFirst({
       where: and(
         eq(contactMergeHistory.id, mergeHistoryId),
-        eq(contactMergeHistory.tenantId, tenantId),
+        eq(contactMergeHistory.tenant_id, tenantId),
       ),
     });
 
@@ -848,7 +851,7 @@ export class ContactDeduplicationService {
             .set({ companyId: update.oldValue, updatedAt: new Date() })
             .where(
               and(
-                eq(enhancedContacts.tenantId, tenantId),
+                eq(enhancedContacts.tenant_id, tenantId),
                 eq(enhancedContacts.companyId, update.newValue),
               ),
             );
@@ -890,7 +893,7 @@ export class ContactDeduplicationService {
   async getMergeHistory(tenantId: string, recordId: string): Promise<ContactMergeHistory[]> {
     return await db.query.contactMergeHistory.findMany({
       where: and(
-        eq(contactMergeHistory.tenantId, tenantId),
+        eq(contactMergeHistory.tenant_id, tenantId),
         or(
           eq(contactMergeHistory.survivingRecordId, recordId),
           eq(contactMergeHistory.mergedRecordId, recordId),
@@ -928,7 +931,7 @@ export class ContactDeduplicationService {
    */
   async runScanJob(tenantId: string, jobId: string): Promise<void> {
     const job = await db.query.duplicateScanJobs.findFirst({
-      where: and(eq(duplicateScanJobs.id, jobId), eq(duplicateScanJobs.tenantId, tenantId)),
+      where: and(eq(duplicateScanJobs.id, jobId), eq(duplicateScanJobs.tenant_id, tenantId)),
     });
 
     if (!job) {
@@ -1036,7 +1039,7 @@ export class ContactDeduplicationService {
     const { page = 1, limit = 25, status } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(duplicateScanJobs.tenantId, tenantId)];
+    const conditions = [eq(duplicateScanJobs.tenant_id, tenantId)];
 
     if (status) {
       conditions.push(eq(duplicateScanJobs.status, status));
@@ -1049,7 +1052,7 @@ export class ContactDeduplicationService {
         .select()
         .from(duplicateScanJobs)
         .where(whereClause)
-        .orderBy(desc(duplicateScanJobs.createdAt))
+        .orderBy(desc(duplicateScanJobs.created_at))
         .limit(limit)
         .offset(offset),
       db
@@ -1077,32 +1080,32 @@ export class ContactDeduplicationService {
         db
           .select({ count: sql`count(*)` })
           .from(duplicateMatches)
-          .where(eq(duplicateMatches.tenantId, tenantId)),
+          .where(eq(duplicateMatches.tenant_id, tenantId)),
         db
           .select({ count: sql`count(*)` })
           .from(duplicateMatches)
           .where(
-            and(eq(duplicateMatches.tenantId, tenantId), eq(duplicateMatches.status, 'pending')),
+            and(eq(duplicateMatches.tenant_id, tenantId), eq(duplicateMatches.status, 'pending')),
           ),
         db
           .select({ count: sql`count(*)` })
           .from(duplicateMatches)
           .where(
-            and(eq(duplicateMatches.tenantId, tenantId), eq(duplicateMatches.status, 'merged')),
+            and(eq(duplicateMatches.tenant_id, tenantId), eq(duplicateMatches.status, 'merged')),
           ),
         db
           .select({ count: sql`count(*)` })
           .from(duplicateMatches)
           .where(
-            and(eq(duplicateMatches.tenantId, tenantId), eq(duplicateMatches.status, 'dismissed')),
+            and(eq(duplicateMatches.tenant_id, tenantId), eq(duplicateMatches.status, 'dismissed')),
           ),
         db
           .select({ avg: sql`avg(${duplicateMatches.matchScore})` })
           .from(duplicateMatches)
-          .where(eq(duplicateMatches.tenantId, tenantId)),
+          .where(eq(duplicateMatches.tenant_id, tenantId)),
         db.query.duplicateScanJobs.findMany({
-          where: eq(duplicateScanJobs.tenantId, tenantId),
-          orderBy: [desc(duplicateScanJobs.createdAt)],
+          where: eq(duplicateScanJobs.tenant_id, tenantId),
+          orderBy: [desc(duplicateScanJobs.created_at)],
           limit: 5,
         }),
       ]);

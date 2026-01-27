@@ -498,7 +498,7 @@ export class RouteOptimizationService {
     const optimized = await this.optimizeRoute(input);
 
     const routeData: InsertRouteAssignment = {
-      tenantId: input.tenantId,
+      tenantId: input.tenant_id,
       technicianId: input.technicianId,
       routeName,
       routeDate: new Date(),

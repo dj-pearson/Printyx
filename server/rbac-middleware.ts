@@ -62,7 +62,7 @@ export const requireRole = (minimumLevel: number, department?: string): RequestH
       req.user.roleLevel = role.level;
       req.user.department = role.department;
       req.user.teamId = team?.id;
-      req.user.tenantId = tenantId || undefined;
+      req.user.tenant_id = tenantId || undefined;
 
       next();
     } catch (error) {

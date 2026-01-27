@@ -50,7 +50,10 @@ router.get(
         .select()
         .from(reportDefinitions)
         .where(
-          and(eq(reportDefinitions.tenantId, user.tenantId), eq(reportDefinitions.isActive, true)),
+          and(
+            eq(reportDefinitions.tenant_id, user.tenant_id),
+            eq(reportDefinitions.isActive, true),
+          ),
         );
 
       // Apply category filter
@@ -127,7 +130,7 @@ router.get(
         .where(
           and(
             eq(reportDefinitions.id, id),
-            eq(reportDefinitions.tenantId, user.tenantId),
+            eq(reportDefinitions.tenant_id, user.tenant_id),
             eq(reportDefinitions.isActive, true),
           ),
         )
@@ -164,7 +167,7 @@ router.get(
       try {
         // For now, return mock data structure - you'd implement actual SQL execution here
         reportData = await executeReportQuery(report.sqlQuery, {
-          tenantId: user.tenantId,
+          tenantId: user.tenant_id,
           userAccessScope: user.accessScope,
           locationIds: user.locationIds,
           regionIds: user.regionIds,
@@ -182,7 +185,7 @@ router.get(
 
       // Log report execution for audit trail
       await db.insert(reportExecutions).values({
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
         reportDefinitionId: report.id,
         userId: user.id,
         parameters: {
@@ -207,7 +210,7 @@ router.get(
 
       // Log user activity
       await db.insert(userReportActivity).values({
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
         userId: user.id,
         activityType: 'view_report',
         reportDefinitionId: report.id,
@@ -257,7 +260,9 @@ router.get(
       let kpiQuery = db
         .select()
         .from(kpiDefinitions)
-        .where(and(eq(kpiDefinitions.tenantId, user.tenantId), eq(kpiDefinitions.isActive, true)));
+        .where(
+          and(eq(kpiDefinitions.tenant_id, user.tenant_id), eq(kpiDefinitions.isActive, true)),
+        );
 
       if (category && typeof category === 'string') {
         kpiQuery = kpiQuery.where(eq(kpiDefinitions.category, category as any));
@@ -476,7 +481,7 @@ router.post(
         .where(
           and(
             eq(reportDefinitions.id, report_id),
-            eq(reportDefinitions.tenantId, user.tenantId),
+            eq(reportDefinitions.tenant_id, user.tenant_id),
             eq(reportDefinitions.isActive, true),
           ),
         )
@@ -506,7 +511,7 @@ router.post(
       }
 
       // Initiate export
-      const exportResult = await exportService.exportReport(user.tenantId, user.id, {
+      const exportResult = await exportService.exportReport(user.tenant_id, user.id, {
         report_id,
         parameters: parameters || {},
         format,
@@ -516,7 +521,7 @@ router.post(
 
       // Log export activity
       await db.insert(userReportActivity).values({
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
         userId: user.id,
         activityType: 'export_report',
         reportDefinitionId: report_id,
@@ -605,7 +610,10 @@ router.get(
         .select()
         .from(reportDefinitions)
         .where(
-          and(eq(reportDefinitions.tenantId, user.tenantId), eq(reportDefinitions.isActive, true)),
+          and(
+            eq(reportDefinitions.tenant_id, user.tenant_id),
+            eq(reportDefinitions.isActive, true),
+          ),
         );
 
       const reports = await reportsQuery;
@@ -620,7 +628,9 @@ router.get(
       const kpisQuery = db
         .select()
         .from(kpiDefinitions)
-        .where(and(eq(kpiDefinitions.tenantId, user.tenantId), eq(kpiDefinitions.isActive, true)));
+        .where(
+          and(eq(kpiDefinitions.tenant_id, user.tenant_id), eq(kpiDefinitions.isActive, true)),
+        );
 
       const kpis = await kpisQuery;
 
@@ -648,11 +658,11 @@ router.get(
         .from(userReportActivity)
         .where(
           and(
-            eq(userReportActivity.tenantId, user.tenantId),
-            eq(userReportActivity.userId, user.id),
+            eq(userReportActivity.tenant_id, user.tenant_id),
+            eq(userReportActivity.user_id, user.id),
           ),
         )
-        .orderBy(desc(userReportActivity.createdAt))
+        .orderBy(desc(userReportActivity.created_at))
         .limit(10);
 
       res.json({

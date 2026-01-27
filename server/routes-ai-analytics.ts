@@ -27,7 +27,7 @@ router.use(enhanceUserContext);
 // Get AI analytics dashboard
 router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -520,7 +520,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
 // Get model training status
 router.get('/api/ai-analytics/models/training-status', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -576,7 +576,7 @@ router.get('/api/ai-analytics/models/training-status', async (req: any, res) => 
 // Execute AI recommendation
 router.post('/api/ai-analytics/recommendations/execute', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { recommendationId, customerId, action } = req.body;
 
     if (!tenantId) {

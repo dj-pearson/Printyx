@@ -22,9 +22,9 @@ export default async function handler(req: Request) {
     }
 
     const tenantId =
-      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
+      (user.app_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenant_id as string);
 
     if (!tenantId) {
@@ -157,7 +157,7 @@ export default async function handler(req: Request) {
 
       const notificationData = {
         tenant_id: tenantId,
-        user_id: body.userId || body.user_id || user.id,
+        user_id: body.user_id || body.user_id || user.id,
         type: body.type || 'info',
         title: body.title,
         message: body.message,

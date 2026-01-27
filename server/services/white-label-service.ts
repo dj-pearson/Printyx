@@ -19,7 +19,7 @@ export class WhiteLabelService {
    */
   async getConfig(tenantId: string): Promise<WhiteLabelConfig | null> {
     const config = await db.query.whiteLabelConfig.findFirst({
-      where: eq(whiteLabelConfig.tenantId, tenantId),
+      where: eq(whiteLabelConfig.tenant_id, tenantId),
     });
 
     return config || null;
@@ -42,7 +42,7 @@ export class WhiteLabelService {
           ...data,
           updatedAt: new Date(),
         })
-        .where(eq(whiteLabelConfig.tenantId, tenantId))
+        .where(eq(whiteLabelConfig.tenant_id, tenantId))
         .returning();
 
       return updated;
@@ -79,7 +79,7 @@ export class WhiteLabelService {
         updatedAt: new Date(),
       })
       .where(
-        and(eq(whiteLabelConfig.tenantId, tenantId), eq(whiteLabelConfig.customDomain, domain)),
+        and(eq(whiteLabelConfig.tenant_id, tenantId), eq(whiteLabelConfig.customDomain, domain)),
       );
 
     return true;
@@ -90,7 +90,7 @@ export class WhiteLabelService {
    */
   async getEmailTemplates(tenantId: string): Promise<WhiteLabelEmailTemplate[]> {
     return await db.query.whiteLabelEmailTemplates.findMany({
-      where: eq(whiteLabelEmailTemplates.tenantId, tenantId),
+      where: eq(whiteLabelEmailTemplates.tenant_id, tenantId),
       orderBy: [whiteLabelEmailTemplates.templateKey],
     });
   }
@@ -104,7 +104,7 @@ export class WhiteLabelService {
   ): Promise<WhiteLabelEmailTemplate | null> {
     const template = await db.query.whiteLabelEmailTemplates.findFirst({
       where: and(
-        eq(whiteLabelEmailTemplates.tenantId, tenantId),
+        eq(whiteLabelEmailTemplates.tenant_id, tenantId),
         eq(whiteLabelEmailTemplates.templateKey, templateKey),
         eq(whiteLabelEmailTemplates.isActive, true),
       ),
@@ -123,7 +123,7 @@ export class WhiteLabelService {
   ): Promise<WhiteLabelEmailTemplate> {
     const existing = await db.query.whiteLabelEmailTemplates.findFirst({
       where: and(
-        eq(whiteLabelEmailTemplates.tenantId, tenantId),
+        eq(whiteLabelEmailTemplates.tenant_id, tenantId),
         eq(whiteLabelEmailTemplates.templateKey, templateKey),
       ),
     });
@@ -138,7 +138,7 @@ export class WhiteLabelService {
         })
         .where(
           and(
-            eq(whiteLabelEmailTemplates.tenantId, tenantId),
+            eq(whiteLabelEmailTemplates.tenant_id, tenantId),
             eq(whiteLabelEmailTemplates.templateKey, templateKey),
           ),
         )
@@ -169,7 +169,7 @@ export class WhiteLabelService {
       .where(
         and(
           eq(whiteLabelEmailTemplates.id, templateId),
-          eq(whiteLabelEmailTemplates.tenantId, tenantId),
+          eq(whiteLabelEmailTemplates.tenant_id, tenantId),
         ),
       );
 

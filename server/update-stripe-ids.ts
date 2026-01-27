@@ -10,7 +10,7 @@
  */
 
 import { db } from './db';
-import { subscriptionPlans } from '@shared/schema';
+import { subscriptionPlans } from '@shared/schema-subscriptions';
 import { eq } from 'drizzle-orm';
 
 interface StripeConfig {

@@ -189,8 +189,8 @@ export function contextMiddleware() {
     const reqWithSession = req as RequestWithSession;
     const context: LogContext = {
       requestId: req.requestId,
-      userId: reqWithSession.session?.userId || reqWithSession.user?.id,
-      tenantId: req.tenantId || reqWithSession.session?.tenantId || req.header('x-tenant-id'),
+      userId: reqWithSession.session?.user_id || reqWithSession.user?.id,
+      tenantId: req.tenant_id || reqWithSession.session?.tenant_id || req.header('x-tenant-id'),
       sessionId: (req as Request & { sessionID?: string }).sessionID,
     };
 
@@ -250,8 +250,8 @@ export function httpLoggingMiddleware(options: LoggingMiddlewareOptions = {}) {
         duration,
         userAgent: req.get('user-agent'),
         ip: req.ip || req.socket.remoteAddress,
-        userId: reqWithSession.session?.userId || reqWithSession.user?.id,
-        tenantId: req.tenantId || reqWithSession.session?.tenantId || req.header('x-tenant-id'),
+        userId: reqWithSession.session?.user_id || reqWithSession.user?.id,
+        tenantId: req.tenant_id || reqWithSession.session?.tenant_id || req.header('x-tenant-id'),
         contentLength: res.get('content-length'),
         contentType: res.get('content-type'),
       };
@@ -330,8 +330,8 @@ export function errorLoggingMiddleware(): ErrorRequestHandler {
         url: req.originalUrl,
         statusCode: status,
         duration,
-        userId: reqWithSession.session?.userId || reqWithSession.user?.id,
-        tenantId: req.tenantId || reqWithSession.session?.tenantId || req.header('x-tenant-id'),
+        userId: reqWithSession.session?.user_id || reqWithSession.user?.id,
+        tenantId: req.tenant_id || reqWithSession.session?.tenant_id || req.header('x-tenant-id'),
         errorCode: err.code,
         errorDetails: err.details,
         stack: err.stack,
@@ -382,8 +382,8 @@ export function auditLoggingMiddleware() {
           path: req.originalUrl || req.path,
           statusCode: res.statusCode,
           duration,
-          userId: reqWithSession.session?.userId || reqWithSession.user?.id,
-          tenantId: req.tenantId || reqWithSession.session?.tenantId || req.header('x-tenant-id'),
+          userId: reqWithSession.session?.user_id || reqWithSession.user?.id,
+          tenantId: req.tenant_id || reqWithSession.session?.tenant_id || req.header('x-tenant-id'),
           bodyHash: hashBody(req.body),
           userAgent: req.get('user-agent'),
           ip: req.ip || req.socket.remoteAddress,

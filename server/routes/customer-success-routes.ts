@@ -31,7 +31,7 @@ router.get('/health-scores', async (req: Request, res: Response) => {
     if (minScore) filters.minScore = parseInt(minScore as string);
     if (maxScore) filters.maxScore = parseInt(maxScore as string);
 
-    const scores = await storage.getHealthScores(user.tenantId, filters);
+    const scores = await storage.getHealthScores(user.tenant_id, filters);
     res.json(scores);
   } catch (error) {
     console.error('Get health scores error:', error);
@@ -49,7 +49,7 @@ router.get('/health-scores/:id', async (req: Request, res: Response) => {
   try {
     const score = await storage.getHealthScore(req.params.id);
 
-    if (!score || score.tenantId !== user.tenantId) {
+    if (!score || score.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Health score not found' });
     }
 
@@ -70,7 +70,7 @@ router.post('/health-scores', async (req: Request, res: Response) => {
   try {
     const scoreData = {
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       calculatedBy: req.body.calculatedBy || 'system',
     };
 
@@ -91,11 +91,11 @@ router.patch('/health-scores/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getHealthScore(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Health score not found' });
     }
 
-    const updated = await storage.updateHealthScore(req.params.id, user.tenantId, req.body);
+    const updated = await storage.updateHealthScore(req.params.id, user.tenant_id, req.body);
     res.json(updated);
   } catch (error) {
     console.error('Update health score error:', error);
@@ -111,7 +111,7 @@ router.get('/health-scores/customer/:customerId', async (req: Request, res: Resp
   }
 
   try {
-    const score = await storage.getHealthScoreByCustomer(req.params.customerId, user.tenantId);
+    const score = await storage.getHealthScoreByCustomer(req.params.customerId, user.tenant_id);
 
     if (!score) {
       return res.status(404).json({ error: 'Health score not found for customer' });
@@ -135,7 +135,7 @@ router.get('/health-scores/customer/:customerId/history', async (req: Request, r
     const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
     const history = await storage.getHealthScoreHistory(
       req.params.customerId,
-      user.tenantId,
+      user.tenant_id,
       limit,
     );
     res.json(history);
@@ -157,7 +157,7 @@ router.get('/health-scores/due-calculation', async (req: Request, res: Response)
   }
 
   try {
-    const scores = await storage.getScoresDueForCalculation(user.tenantId);
+    const scores = await storage.getScoresDueForCalculation(user.tenant_id);
     res.json(scores);
   } catch (error) {
     console.error('Get scores due for calculation error:', error);
@@ -173,7 +173,7 @@ router.get('/health-scores/at-risk', async (req: Request, res: Response) => {
   }
 
   try {
-    const scores = await storage.getCustomersAtRisk(user.tenantId);
+    const scores = await storage.getCustomersAtRisk(user.tenant_id);
     res.json(scores);
   } catch (error) {
     console.error('Get customers at risk error:', error);
@@ -197,7 +197,7 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
     if (churnRisk) filters.churnRisk = churnRisk as string;
     if (interventionRequired) filters.interventionRequired = interventionRequired === 'true';
 
-    const predictions = await storage.getChurnPredictions(user.tenantId, filters);
+    const predictions = await storage.getChurnPredictions(user.tenant_id, filters);
     res.json(predictions);
   } catch (error) {
     console.error('Get churn predictions error:', error);
@@ -215,7 +215,7 @@ router.get('/churn-predictions/:id', async (req: Request, res: Response) => {
   try {
     const prediction = await storage.getChurnPrediction(req.params.id);
 
-    if (!prediction || prediction.tenantId !== user.tenantId) {
+    if (!prediction || prediction.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Churn prediction not found' });
     }
 
@@ -242,7 +242,7 @@ router.post('/churn-predictions', async (req: Request, res: Response) => {
   try {
     const predictionData = {
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     };
 
     const prediction = await storage.createChurnPrediction(predictionData);
@@ -266,11 +266,11 @@ router.patch('/churn-predictions/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getChurnPrediction(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Churn prediction not found' });
     }
 
-    const updated = await storage.updateChurnPrediction(req.params.id, user.tenantId, req.body);
+    const updated = await storage.updateChurnPrediction(req.params.id, user.tenant_id, req.body);
     res.json(updated);
   } catch (error) {
     console.error('Update churn prediction error:', error);
@@ -288,7 +288,7 @@ router.get('/churn-predictions/customer/:customerId', async (req: Request, res: 
   try {
     const prediction = await storage.getChurnPredictionByCustomer(
       req.params.customerId,
-      user.tenantId,
+      user.tenant_id,
     );
 
     if (!prediction) {
@@ -310,7 +310,7 @@ router.get('/churn-predictions/high-risk', async (req: Request, res: Response) =
   }
 
   try {
-    const predictions = await storage.getHighRiskChurns(user.tenantId);
+    const predictions = await storage.getHighRiskChurns(user.tenant_id);
     res.json(predictions);
   } catch (error) {
     console.error('Get high risk churns error:', error);
@@ -330,7 +330,7 @@ router.get('/churn-predictions/expired', async (req: Request, res: Response) => 
   }
 
   try {
-    const predictions = await storage.getExpiredPredictions(user.tenantId);
+    const predictions = await storage.getExpiredPredictions(user.tenant_id);
     res.json(predictions);
   } catch (error) {
     console.error('Get expired predictions error:', error);
@@ -346,7 +346,7 @@ router.get('/churn-predictions/intervention-required', async (req: Request, res:
   }
 
   try {
-    const predictions = await storage.getPredictionsRequiringIntervention(user.tenantId);
+    const predictions = await storage.getPredictionsRequiringIntervention(user.tenant_id);
     res.json(predictions);
   } catch (error) {
     console.error('Get predictions requiring intervention error:', error);
@@ -372,7 +372,7 @@ router.get('/interventions', async (req: Request, res: Response) => {
     if (priority) filters.priority = priority as string;
     if (assignedTo) filters.assignedTo = assignedTo as string;
 
-    const interventions = await storage.getInterventions(user.tenantId, filters);
+    const interventions = await storage.getInterventions(user.tenant_id, filters);
     res.json(interventions);
   } catch (error) {
     console.error('Get interventions error:', error);
@@ -390,7 +390,7 @@ router.get('/interventions/:id', async (req: Request, res: Response) => {
   try {
     const intervention = await storage.getIntervention(req.params.id);
 
-    if (!intervention || intervention.tenantId !== user.tenantId) {
+    if (!intervention || intervention.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Intervention not found' });
     }
 
@@ -411,7 +411,7 @@ router.post('/interventions', async (req: Request, res: Response) => {
   try {
     const interventionData = {
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     };
 
@@ -432,11 +432,11 @@ router.patch('/interventions/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getIntervention(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Intervention not found' });
     }
 
-    const updated = await storage.updateIntervention(req.params.id, user.tenantId, req.body);
+    const updated = await storage.updateIntervention(req.params.id, user.tenant_id, req.body);
     res.json(updated);
   } catch (error) {
     console.error('Update intervention error:', error);
@@ -454,7 +454,7 @@ router.get('/interventions/customer/:customerId', async (req: Request, res: Resp
   try {
     const interventions = await storage.getInterventionsByCustomer(
       req.params.customerId,
-      user.tenantId,
+      user.tenant_id,
     );
     res.json(interventions);
   } catch (error) {
@@ -478,7 +478,7 @@ router.post('/interventions/:id/assign', async (req: Request, res: Response) => 
 
   try {
     const existing = await storage.getIntervention(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Intervention not found' });
     }
 
@@ -487,7 +487,7 @@ router.post('/interventions/:id/assign', async (req: Request, res: Response) => 
       return res.status(400).json({ error: 'userId is required' });
     }
 
-    const assigned = await storage.assignIntervention(req.params.id, user.tenantId, userId);
+    const assigned = await storage.assignIntervention(req.params.id, user.tenant_id, userId);
     res.json(assigned);
   } catch (error) {
     console.error('Assign intervention error:', error);
@@ -504,7 +504,7 @@ router.post('/interventions/:id/complete', async (req: Request, res: Response) =
 
   try {
     const existing = await storage.getIntervention(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Intervention not found' });
     }
 
@@ -515,7 +515,7 @@ router.post('/interventions/:id/complete', async (req: Request, res: Response) =
 
     const completed = await storage.completeIntervention(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       outcome,
       notes,
     );
@@ -541,7 +541,7 @@ router.post('/interventions/:id/cancel', async (req: Request, res: Response) => 
 
   try {
     const existing = await storage.getIntervention(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Intervention not found' });
     }
 
@@ -550,7 +550,7 @@ router.post('/interventions/:id/cancel', async (req: Request, res: Response) => 
       return res.status(400).json({ error: 'reason is required' });
     }
 
-    const cancelled = await storage.cancelIntervention(req.params.id, user.tenantId, reason);
+    const cancelled = await storage.cancelIntervention(req.params.id, user.tenant_id, reason);
     res.json(cancelled);
   } catch (error) {
     console.error('Cancel intervention error:', error);
@@ -566,7 +566,7 @@ router.get('/interventions/overdue', async (req: Request, res: Response) => {
   }
 
   try {
-    const interventions = await storage.getOverdueInterventions(user.tenantId);
+    const interventions = await storage.getOverdueInterventions(user.tenant_id);
     res.json(interventions);
   } catch (error) {
     console.error('Get overdue interventions error:', error);
@@ -582,7 +582,7 @@ router.get('/interventions/my', async (req: Request, res: Response) => {
   }
 
   try {
-    const interventions = await storage.getMyInterventions(user.id, user.tenantId);
+    const interventions = await storage.getMyInterventions(user.id, user.tenant_id);
     res.json(interventions);
   } catch (error) {
     console.error('Get my interventions error:', error);
@@ -607,7 +607,7 @@ router.get('/journeys', async (req: Request, res: Response) => {
     if (lifecyclePhase) filters.lifecyclePhase = lifecyclePhase as string;
     if (journeyHealth) filters.journeyHealth = journeyHealth as string;
 
-    const journeys = await storage.getJourneys(user.tenantId, filters);
+    const journeys = await storage.getJourneys(user.tenant_id, filters);
     res.json(journeys);
   } catch (error) {
     console.error('Get journeys error:', error);
@@ -625,7 +625,7 @@ router.get('/journeys/:id', async (req: Request, res: Response) => {
   try {
     const journey = await storage.getJourney(req.params.id);
 
-    if (!journey || journey.tenantId !== user.tenantId) {
+    if (!journey || journey.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Journey not found' });
     }
 
@@ -646,7 +646,7 @@ router.post('/journeys', async (req: Request, res: Response) => {
   try {
     const journeyData = {
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     };
 
     const journey = await storage.createJourney(journeyData);
@@ -666,11 +666,11 @@ router.patch('/journeys/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getJourney(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Journey not found' });
     }
 
-    const updated = await storage.updateJourney(req.params.id, user.tenantId, req.body);
+    const updated = await storage.updateJourney(req.params.id, user.tenant_id, req.body);
     res.json(updated);
   } catch (error) {
     console.error('Update journey error:', error);
@@ -686,7 +686,7 @@ router.get('/journeys/customer/:customerId', async (req: Request, res: Response)
   }
 
   try {
-    const journey = await storage.getJourneyByCustomer(req.params.customerId, user.tenantId);
+    const journey = await storage.getJourneyByCustomer(req.params.customerId, user.tenant_id);
 
     if (!journey) {
       return res.status(404).json({ error: 'Journey not found for customer' });
@@ -708,7 +708,7 @@ router.post('/journeys/:id/advance-stage', async (req: Request, res: Response) =
 
   try {
     const existing = await storage.getJourney(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Journey not found' });
     }
 
@@ -717,7 +717,7 @@ router.post('/journeys/:id/advance-stage', async (req: Request, res: Response) =
       return res.status(400).json({ error: 'newStage is required' });
     }
 
-    const advanced = await storage.advanceJourneyStage(req.params.id, user.tenantId, newStage);
+    const advanced = await storage.advanceJourneyStage(req.params.id, user.tenant_id, newStage);
     res.json(advanced);
   } catch (error) {
     console.error('Advance journey stage error:', error);
@@ -734,7 +734,7 @@ router.post('/journeys/:id/record-touchpoint', async (req: Request, res: Respons
 
   try {
     const existing = await storage.getJourney(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Journey not found' });
     }
 
@@ -745,7 +745,7 @@ router.post('/journeys/:id/record-touchpoint', async (req: Request, res: Respons
 
     const updated = await storage.recordJourneyTouchpoint(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       touchpointType,
     );
     res.json(updated);
@@ -763,7 +763,7 @@ router.get('/journeys/needing-attention', async (req: Request, res: Response) =>
   }
 
   try {
-    const journeys = await storage.getJourneysNeedingAttention(user.tenantId);
+    const journeys = await storage.getJourneysNeedingAttention(user.tenant_id);
     res.json(journeys);
   } catch (error) {
     console.error('Get journeys needing attention error:', error);
@@ -788,7 +788,7 @@ router.get('/renewals', async (req: Request, res: Response) => {
     if (renewalRisk) filters.renewalRisk = renewalRisk as string;
     if (daysUntilMax) filters.daysUntilMax = parseInt(daysUntilMax as string);
 
-    const renewals = await storage.getRenewalOpportunities(user.tenantId, filters);
+    const renewals = await storage.getRenewalOpportunities(user.tenant_id, filters);
     res.json(renewals);
   } catch (error) {
     console.error('Get renewal opportunities error:', error);
@@ -806,7 +806,7 @@ router.get('/renewals/:id', async (req: Request, res: Response) => {
   try {
     const renewal = await storage.getRenewalOpportunity(req.params.id);
 
-    if (!renewal || renewal.tenantId !== user.tenantId) {
+    if (!renewal || renewal.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Renewal opportunity not found' });
     }
 
@@ -827,7 +827,7 @@ router.post('/renewals', async (req: Request, res: Response) => {
   try {
     const renewalData = {
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     };
 
@@ -848,11 +848,11 @@ router.patch('/renewals/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getRenewalOpportunity(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Renewal opportunity not found' });
     }
 
-    const updated = await storage.updateRenewalOpportunity(req.params.id, user.tenantId, req.body);
+    const updated = await storage.updateRenewalOpportunity(req.params.id, user.tenant_id, req.body);
     res.json(updated);
   } catch (error) {
     console.error('Update renewal opportunity error:', error);
@@ -868,7 +868,7 @@ router.get('/renewals/customer/:customerId', async (req: Request, res: Response)
   }
 
   try {
-    const renewals = await storage.getRenewalsByCustomer(req.params.customerId, user.tenantId);
+    const renewals = await storage.getRenewalsByCustomer(req.params.customerId, user.tenant_id);
     res.json(renewals);
   } catch (error) {
     console.error('Get renewals by customer error:', error);
@@ -884,7 +884,7 @@ router.get('/renewals/contract/:contractId', async (req: Request, res: Response)
   }
 
   try {
-    const renewal = await storage.getRenewalByContract(req.params.contractId, user.tenantId);
+    const renewal = await storage.getRenewalByContract(req.params.contractId, user.tenant_id);
 
     if (!renewal) {
       return res.status(404).json({ error: 'Renewal opportunity not found for contract' });
@@ -912,7 +912,7 @@ router.post('/renewals/:id/assign-csm', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getRenewalOpportunity(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Renewal opportunity not found' });
     }
 
@@ -921,7 +921,7 @@ router.post('/renewals/:id/assign-csm', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'csmId is required' });
     }
 
-    const assigned = await storage.assignRenewalCsm(req.params.id, user.tenantId, csmId);
+    const assigned = await storage.assignRenewalCsm(req.params.id, user.tenant_id, csmId);
     res.json(assigned);
   } catch (error) {
     console.error('Assign renewal CSM error:', error);
@@ -938,7 +938,7 @@ router.post('/renewals/:id/close', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getRenewalOpportunity(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Renewal opportunity not found' });
     }
 
@@ -950,7 +950,7 @@ router.post('/renewals/:id/close', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'notes is required' });
     }
 
-    const closed = await storage.closeRenewal(req.params.id, user.tenantId, won, notes);
+    const closed = await storage.closeRenewal(req.params.id, user.tenant_id, won, notes);
     res.json(closed);
   } catch (error) {
     console.error('Close renewal error:', error);
@@ -971,7 +971,7 @@ router.get('/renewals/upcoming/:days', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid days parameter' });
     }
 
-    const renewals = await storage.getUpcomingRenewals(user.tenantId, days);
+    const renewals = await storage.getUpcomingRenewals(user.tenant_id, days);
     res.json(renewals);
   } catch (error) {
     console.error('Get upcoming renewals error:', error);
@@ -992,7 +992,7 @@ router.get('/renewals/high-value/:minMrr', async (req: Request, res: Response) =
       return res.status(400).json({ error: 'Invalid minMrr parameter' });
     }
 
-    const renewals = await storage.getHighValueRenewals(user.tenantId, minMrr);
+    const renewals = await storage.getHighValueRenewals(user.tenant_id, minMrr);
     res.json(renewals);
   } catch (error) {
     console.error('Get high value renewals error:', error);

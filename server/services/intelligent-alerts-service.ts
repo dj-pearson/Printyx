@@ -220,8 +220,8 @@ export class IntelligentAlertsService {
     if (userId) {
       const recentLogs = await db.query.auditLogs.findMany({
         where: and(
-          eq(auditLogs.tenantId, tenantId),
-          eq(auditLogs.userId, userId),
+          eq(auditLogs.tenant_id, tenantId),
+          eq(auditLogs.user_id, userId),
           gte(auditLogs.timestamp, sql`NOW() - INTERVAL '24 hours'`),
         ),
         limit: 50,
@@ -236,9 +236,9 @@ export class IntelligentAlertsService {
     if (ipAddress) {
       const relatedAlerts = await db.query.alertTriageResults.findMany({
         where: and(
-          eq(alertTriageResults.tenantId, tenantId),
+          eq(alertTriageResults.tenant_id, tenantId),
           sql`${alertTriageResults.contextGathered}->>'ipAddress' = ${ipAddress}`,
-          gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '24 hours'`),
+          gte(alertTriageResults.created_at, sql`NOW() - INTERVAL '24 hours'`),
         ),
         limit: 10,
       });
@@ -383,13 +383,13 @@ export class IntelligentAlertsService {
     // Get incidents in same category
     const pastIncidents = await db.query.alertTriageResults.findMany({
       where: and(
-        eq(alertTriageResults.tenantId, tenantId),
+        eq(alertTriageResults.tenant_id, tenantId),
         sql`${alertTriageResults.aiClassification}->>'category' = ${category}`,
         eq(alertTriageResults.humanReviewed, true),
         eq(alertTriageResults.classificationAccurate, true),
       ),
       limit: 20,
-      orderBy: [desc(alertTriageResults.createdAt)],
+      orderBy: [desc(alertTriageResults.created_at)],
     });
 
     // Calculate similarity scores (placeholder - would use vector similarity in production)
@@ -511,7 +511,7 @@ export class IntelligentAlertsService {
     // Get active routing rules
     const rules = await db.query.alertRoutingRules.findMany({
       where: and(
-        or(eq(alertRoutingRules.tenantId, tenantId), sql`${alertRoutingRules.tenantId} IS NULL`),
+        or(eq(alertRoutingRules.tenant_id, tenantId), sql`${alertRoutingRules.tenant_id} IS NULL`),
         eq(alertRoutingRules.isActive, true),
       ),
       orderBy: [desc(alertRoutingRules.priority)],
@@ -733,8 +733,8 @@ export class IntelligentAlertsService {
       .from(alertTriageResults)
       .where(
         and(
-          eq(alertTriageResults.tenantId, tenantId),
-          gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '7 days'`),
+          eq(alertTriageResults.tenant_id, tenantId),
+          gte(alertTriageResults.created_at, sql`NOW() - INTERVAL '7 days'`),
         ),
       );
 
@@ -809,7 +809,7 @@ export class IntelligentAlertsService {
               terminatedAt: new Date(),
               terminationReason: 'user_suspended',
             })
-            .where(and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)));
+            .where(and(eq(securitySessions.user_id, target), eq(securitySessions.isActive, true)));
 
           result = `User ${target} (${user.email}) suspended and all sessions terminated`;
           success = true;
@@ -819,7 +819,7 @@ export class IntelligentAlertsService {
         case 'terminate_session': {
           // Terminate all active sessions for the user
           const sessions = await db.query.securitySessions.findMany({
-            where: and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)),
+            where: and(eq(securitySessions.user_id, target), eq(securitySessions.isActive, true)),
           });
 
           if (sessions.length === 0) {
@@ -835,7 +835,7 @@ export class IntelligentAlertsService {
               terminatedAt: new Date(),
               terminationReason: 'security_containment',
             })
-            .where(and(eq(securitySessions.userId, target), eq(securitySessions.isActive, true)));
+            .where(and(eq(securitySessions.user_id, target), eq(securitySessions.isActive, true)));
 
           result = `Terminated ${sessions.length} active session(s) for user ${target}`;
           success = true;
@@ -1174,8 +1174,8 @@ export class IntelligentAlertsService {
     // Find related incidents from past 24 hours
     const relatedIncidents = await db.query.alertTriageResults.findMany({
       where: and(
-        eq(alertTriageResults.tenantId, tenantId),
-        gte(alertTriageResults.createdAt, sql`NOW() - INTERVAL '24 hours'`),
+        eq(alertTriageResults.tenant_id, tenantId),
+        gte(alertTriageResults.created_at, sql`NOW() - INTERVAL '24 hours'`),
         sql`${alertTriageResults.alertId} != ${alertId}`, // Exclude current alert
       ),
       limit: 50,
@@ -1188,7 +1188,7 @@ export class IntelligentAlertsService {
       let correlationScore = 0;
 
       // Check for same user
-      const incidentUserId = (incident.contextGathered as any)?.userId;
+      const incidentUserId = (incident.contextGathered as any)?.user_id;
       if (userId && incidentUserId === userId) {
         correlationScore += 30;
         correlationFactors.sameUser = true;
@@ -1267,7 +1267,7 @@ export class IntelligentAlertsService {
     // Check if we already detected this anomaly
     const existing = await db.query.proactiveThreatDetection.findFirst({
       where: and(
-        eq(proactiveThreatDetection.tenantId, tenantId),
+        eq(proactiveThreatDetection.tenant_id, tenantId),
         eq(proactiveThreatDetection.affectedEntityId, entityId),
         eq(proactiveThreatDetection.detectionType, 'anomaly'),
         inArray(proactiveThreatDetection.status, ['monitoring', 'alert_created']),

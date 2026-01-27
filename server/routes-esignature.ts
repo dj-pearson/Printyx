@@ -12,7 +12,7 @@ const router = express.Router();
 // Get all signature requests
 router.get('/api/signature-requests', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -118,7 +118,7 @@ router.get('/api/signature-requests', async (req: any, res) => {
 // Get signature templates
 router.get('/api/signature-templates', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -185,7 +185,7 @@ router.get('/api/signature-templates', async (req: any, res) => {
 // Create new signature request
 router.post('/api/signature-requests', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const userId = req.user?.id;
 
     if (!tenantId) {
@@ -213,7 +213,7 @@ router.post('/api/signature-requests', async (req: any, res) => {
         email: businessRecords.email,
       })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, businessRecordId)))
+      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.id, businessRecordId)))
       .limit(1);
 
     if (!customer.length) {
@@ -307,7 +307,7 @@ router.post('/api/signature-requests/:id/remind', async (req: any, res) => {
 // Get signature analytics
 router.get('/api/signature-analytics', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { period = 'monthly' } = req.query;
 
     if (!tenantId) {
@@ -357,7 +357,7 @@ router.get('/api/signature-analytics', async (req: any, res) => {
 // Bulk send signature requests
 router.post('/api/signature-requests/bulk-send', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const userId = req.user?.id;
 
     if (!tenantId) {

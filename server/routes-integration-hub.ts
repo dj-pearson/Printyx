@@ -18,7 +18,7 @@ const router = express.Router();
 // Get integration hub dashboard
 router.get('/api/integration-hub/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -37,7 +37,7 @@ router.get('/api/integration-hub/dashboard', async (req: any, res) => {
 // Legacy mock data endpoint (kept for backward compatibility during transition)
 router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -793,7 +793,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
 // Get available APIs for marketplace
 router.get('/api/integration-hub/marketplace', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { category, search } = req.query;
 
     if (!tenantId) {
@@ -816,7 +816,7 @@ router.get('/api/integration-hub/marketplace', async (req: any, res) => {
 // Configure new integration
 router.post('/api/integration-hub/integrations', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { apiId, configuration } = req.body;
 
     if (!tenantId) {

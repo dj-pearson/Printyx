@@ -26,11 +26,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.id || !req.user.tenantId) {
+  } else if (!req.user.id || !req.user.tenant_id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
+      tenantId: req.user.tenant_id || getTenantId(req),
     };
   }
 
@@ -51,7 +51,7 @@ router.post('/generate/:recordId', async (req: any, res) => {
     const record = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.id, recordId), eq(businessRecords.tenantId, tenantId)))
+      .where(and(eq(businessRecords.id, recordId), eq(businessRecords.tenant_id, tenantId)))
       .limit(1);
 
     if (!record[0]) {
@@ -119,10 +119,10 @@ router.get('/missing-ids', async (req: any, res) => {
         companyName: businessRecords.companyName,
         recordType: businessRecords.recordType,
         status: businessRecords.status,
-        createdAt: businessRecords.createdAt,
+        createdAt: businessRecords.created_at,
       })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), isNull(businessRecords.companyDisplayId)))
+      .where(and(eq(businessRecords.tenant_id, tenantId), isNull(businessRecords.companyDisplayId)))
       .limit(100);
 
     res.json({

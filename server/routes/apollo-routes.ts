@@ -40,7 +40,7 @@ function transformApolloContact(apolloContact: ApolloContact) {
 // POST /api/apollo/search - Search for leads with filters
 router.post('/search', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
     if (!tenantId) {
       return res.status(403).json({ error: 'No tenant ID found' });
     }
@@ -152,7 +152,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
     // Track failed API call
     if (req.session?.user) {
       await apolloStorage.trackApiUsage({
-        tenantId: req.session.user.tenantId,
+        tenantId: req.session.user.tenant_id,
         endpoint: '/v1/mixed_people/search',
         method: 'POST',
         requestParams: req.body,
@@ -174,7 +174,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
 // POST /api/apollo/leads/:contactId/add-to-crm - Add single lead to CRM
 router.post('/leads/:contactId/add-to-crm', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
       return res.status(403).json({ error: 'No tenant ID found' });
@@ -275,7 +275,7 @@ router.post('/leads/:contactId/add-to-crm', isAuthenticated, async (req, res) =>
 // POST /api/apollo/leads/bulk-add - Bulk add leads to CRM
 router.post('/leads/bulk-add', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
     if (!tenantId || !userId) {
       return res.status(403).json({ error: 'No tenant ID found' });
@@ -388,7 +388,7 @@ router.post('/leads/bulk-add', isAuthenticated, async (req, res) => {
 // GET /api/apollo/stats - Get API usage stats
 router.get('/stats', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
     if (!tenantId) {
       return res.status(403).json({ error: 'No tenant ID found' });
     }
@@ -415,7 +415,7 @@ router.get('/stats', isAuthenticated, async (req, res) => {
 // GET /api/apollo/credentials - Get tenant's Apollo.io credentials (masked)
 router.get('/credentials', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
     if (!tenantId) {
       return res.status(403).json({ error: 'No tenant ID found' });
     }
@@ -432,8 +432,8 @@ router.get('/credentials', isAuthenticated, async (req, res) => {
       configured: true,
       id: credential.id,
       status: credential.status,
-      createdAt: credential.createdAt,
-      updatedAt: credential.updatedAt,
+      createdAt: credential.created_at,
+      updatedAt: credential.updated_at,
       apiKeyMasked: credential.apiKey
         ? `${String(credential.apiKey).substring(0, 10)}...${String(credential.apiKey).slice(-4)}`
         : null,
@@ -451,7 +451,7 @@ router.get('/credentials', isAuthenticated, async (req, res) => {
 // POST /api/apollo/credentials - Save Apollo.io API key for tenant
 router.post('/credentials', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
     const userId = (req.user as any)?.claims?.sub || (req.user as any)?.id;
 
     if (!tenantId || !userId) {
@@ -532,7 +532,7 @@ router.post('/credentials', isAuthenticated, async (req, res) => {
 // POST /api/apollo/credentials/verify - Test Apollo.io API key
 router.post('/credentials/verify', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
 
     if (!tenantId) {
       return res.status(403).json({ error: 'No tenant ID found' });
@@ -557,7 +557,7 @@ router.post('/credentials/verify', isAuthenticated, async (req, res) => {
           hasApiKey: !!credential?.apiKey,
           credentialId: credential?.id,
           provider: credential?.provider,
-          tenantId: credential?.tenantId,
+          tenantId: credential?.tenant_id,
         }),
       );
 
@@ -609,7 +609,7 @@ router.post('/credentials/verify', isAuthenticated, async (req, res) => {
 // DELETE /api/apollo/credentials/:id - Remove Apollo.io credentials
 router.delete('/credentials/:id', isAuthenticated, async (req, res) => {
   try {
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenant_id;
 
     if (!tenantId) {
       return res.status(403).json({ error: 'No tenant ID found' });

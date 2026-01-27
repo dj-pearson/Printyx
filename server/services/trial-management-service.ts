@@ -26,18 +26,18 @@ export class TrialManagementService {
   static async getTrialStatus(userId: string): Promise<TrialStatus | null> {
     const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
-    if (!user || !user.tenantId) {
+    if (!user || !user.tenant_id) {
       return null;
     }
 
-    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, user.tenantId)).limit(1);
+    const [tenant] = await db.select().from(tenants).where(eq(tenants.id, user.tenant_id)).limit(1);
 
-    if (!tenant || !tenant.createdAt) {
+    if (!tenant || !tenant.created_at) {
       return null;
     }
 
     // Calculate trial period (14 days from tenant creation)
-    const trialStartDate = new Date(tenant.createdAt);
+    const trialStartDate = new Date(tenant.created_at);
     const trialEndDate = new Date(trialStartDate);
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
@@ -150,10 +150,10 @@ export class TrialManagementService {
           id: users.id,
           email: users.email,
           firstName: users.firstName,
-          tenantId: users.tenantId,
+          tenantId: users.tenant_id,
         })
         .from(users)
-        .where(sql`${users.tenantId} IS NOT NULL`);
+        .where(sql`${users.tenant_id} IS NOT NULL`);
 
       for (const user of allUsers) {
         results.processed++;
@@ -212,10 +212,10 @@ export class TrialManagementService {
     const allUsers = await db
       .select({
         id: users.id,
-        tenantId: users.tenantId,
+        tenantId: users.tenant_id,
       })
       .from(users)
-      .where(sql`${users.tenantId} IS NOT NULL`);
+      .where(sql`${users.tenant_id} IS NOT NULL`);
 
     const trialUsers: TrialStatus[] = [];
 

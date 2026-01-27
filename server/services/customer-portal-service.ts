@@ -137,7 +137,7 @@ export class CustomerPortalService {
         .where(eq(customerPortalAccess.id, customer.id));
 
       await this.logActivity(
-        customer.tenantId,
+        customer.tenant_id,
         customer.customerId,
         customer.id,
         'login',
@@ -248,7 +248,7 @@ export class CustomerPortalService {
     const startTime = Date.now();
 
     const conditions = [
-      eq(customerServiceRequests.tenantId, tenantId),
+      eq(customerServiceRequests.tenant_id, tenantId),
       eq(customerServiceRequests.customerId, customerId),
     ];
 
@@ -311,7 +311,7 @@ export class CustomerPortalService {
       offset?: number;
     } = {},
   ): Promise<CustomerServiceRequest[]> {
-    const conditions = [eq(customerServiceRequests.tenantId, tenantId)];
+    const conditions = [eq(customerServiceRequests.tenant_id, tenantId)];
 
     if (options.status) {
       conditions.push(eq(customerServiceRequests.status, options.status as any));
@@ -339,7 +339,7 @@ export class CustomerPortalService {
       .from(customerServiceRequests)
       .where(
         and(
-          eq(customerServiceRequests.tenantId, tenantId),
+          eq(customerServiceRequests.tenant_id, tenantId),
           eq(customerServiceRequests.customerId, customerId),
           eq(customerServiceRequests.id, requestId),
         ),
@@ -374,7 +374,7 @@ export class CustomerPortalService {
         .from(customerServiceRequests)
         .where(
           and(
-            eq(customerServiceRequests.tenantId, tenantId),
+            eq(customerServiceRequests.tenant_id, tenantId),
             eq(customerServiceRequests.id, requestId),
           ),
         );
@@ -423,7 +423,7 @@ export class CustomerPortalService {
         .where(
           and(
             eq(customerServiceRequests.id, requestId),
-            eq(customerServiceRequests.tenantId, tenantId), // CRITICAL: tenant constraint for security
+            eq(customerServiceRequests.tenant_id, tenantId), // CRITICAL: tenant constraint for security
           ),
         )
         .returning();
@@ -501,7 +501,7 @@ export class CustomerPortalService {
       .from(customerServiceRequests)
       .where(
         and(
-          eq(customerServiceRequests.tenantId, tenantId),
+          eq(customerServiceRequests.tenant_id, tenantId),
           eq(customerServiceRequests.customerId, customerId),
           eq(customerServiceRequests.id, requestId),
         ),
@@ -517,11 +517,11 @@ export class CustomerPortalService {
       .from(customerServiceRequestStatusHistory)
       .where(
         and(
-          eq(customerServiceRequestStatusHistory.tenantId, tenantId),
+          eq(customerServiceRequestStatusHistory.tenant_id, tenantId),
           eq(customerServiceRequestStatusHistory.serviceRequestId, requestId),
         ),
       )
-      .orderBy(desc(customerServiceRequestStatusHistory.createdAt));
+      .orderBy(desc(customerServiceRequestStatusHistory.created_at));
   }
 
   /**
@@ -564,7 +564,7 @@ export class CustomerPortalService {
     limit: number = 50,
   ): Promise<CustomerMeterSubmission[]> {
     const conditions = [
-      eq(customerMeterSubmissions.tenantId, tenantId),
+      eq(customerMeterSubmissions.tenant_id, tenantId),
       eq(customerMeterSubmissions.customerId, customerId),
     ];
 
@@ -661,7 +661,7 @@ export class CustomerPortalService {
     } = {},
   ): Promise<any[]> {
     const conditions = [
-      eq(customerSupplyOrders.tenantId, tenantId),
+      eq(customerSupplyOrders.tenant_id, tenantId),
       eq(customerSupplyOrders.customerId, customerId),
     ];
 
@@ -680,7 +680,7 @@ export class CustomerPortalService {
         eq(customerSupplyOrders.id, customerSupplyOrderItems.orderId),
       )
       .where(and(...conditions))
-      .orderBy(desc(customerSupplyOrders.createdAt))
+      .orderBy(desc(customerSupplyOrders.created_at))
       .limit(options.limit || 50)
       .offset(options.offset || 0);
   }
@@ -745,7 +745,7 @@ export class CustomerPortalService {
       .select()
       .from(customerPayments)
       .where(
-        and(eq(customerPayments.tenantId, tenantId), eq(customerPayments.customerId, customerId)),
+        and(eq(customerPayments.tenant_id, tenantId), eq(customerPayments.customerId, customerId)),
       )
       .orderBy(desc(customerPayments.paymentDate))
       .limit(limit);
@@ -764,7 +764,7 @@ export class CustomerPortalService {
     } = {},
   ): Promise<CustomerNotification[]> {
     const conditions = [
-      eq(customerNotifications.tenantId, tenantId),
+      eq(customerNotifications.tenant_id, tenantId),
       eq(customerNotifications.customerId, customerId),
     ];
 
@@ -776,7 +776,7 @@ export class CustomerPortalService {
       .select()
       .from(customerNotifications)
       .where(and(...conditions))
-      .orderBy(desc(customerNotifications.createdAt))
+      .orderBy(desc(customerNotifications.created_at))
       .limit(options.limit || 50)
       .offset(options.offset || 0);
   }
@@ -794,7 +794,7 @@ export class CustomerPortalService {
       .where(
         and(
           eq(customerNotifications.id, notificationId),
-          eq(customerNotifications.tenantId, tenantId),
+          eq(customerNotifications.tenant_id, tenantId),
         ),
       );
   }
@@ -852,7 +852,7 @@ export class CustomerPortalService {
         .from(customerServiceRequests)
         .where(
           and(
-            eq(customerServiceRequests.tenantId, tenantId),
+            eq(customerServiceRequests.tenant_id, tenantId),
             eq(customerServiceRequests.customerId, customerId),
             sql`${customerServiceRequests.status} NOT IN ('completed', 'cancelled')`,
           ),
@@ -864,7 +864,7 @@ export class CustomerPortalService {
         .from(customerPayments)
         .where(
           and(
-            eq(customerPayments.tenantId, tenantId),
+            eq(customerPayments.tenant_id, tenantId),
             eq(customerPayments.customerId, customerId),
             eq(customerPayments.status, 'pending'),
           ),
@@ -876,7 +876,7 @@ export class CustomerPortalService {
         .from(customerMeterSubmissions)
         .where(
           and(
-            eq(customerMeterSubmissions.tenantId, tenantId),
+            eq(customerMeterSubmissions.tenant_id, tenantId),
             eq(customerMeterSubmissions.customerId, customerId),
             gte(
               customerMeterSubmissions.submissionDate,
@@ -891,7 +891,7 @@ export class CustomerPortalService {
         .from(customerNotifications)
         .where(
           and(
-            eq(customerNotifications.tenantId, tenantId),
+            eq(customerNotifications.tenant_id, tenantId),
             eq(customerNotifications.customerId, customerId),
             eq(customerNotifications.isPortalRead, false),
           ),
@@ -903,7 +903,7 @@ export class CustomerPortalService {
         .from(customerSupplyOrders)
         .where(
           and(
-            eq(customerSupplyOrders.tenantId, tenantId),
+            eq(customerSupplyOrders.tenant_id, tenantId),
             eq(customerSupplyOrders.customerId, customerId),
             sql`${customerSupplyOrders.status} IN ('submitted', 'confirmed', 'processing')`,
           ),
@@ -1005,7 +1005,7 @@ export class CustomerPortalService {
         .from(customerPortalAccess)
         .where(
           and(
-            eq(customerPortalAccess.tenantId, tenantId),
+            eq(customerPortalAccess.tenant_id, tenantId),
             eq(customerPortalAccess.customerId, customerId),
             eq(customerPortalAccess.status, 'active'),
           ),
@@ -1393,7 +1393,7 @@ export class CustomerPortalService {
       .from(customerMeterSubmissions)
       .where(
         and(
-          eq(customerMeterSubmissions.tenantId, tenantId),
+          eq(customerMeterSubmissions.tenant_id, tenantId),
           eq(customerMeterSubmissions.customerId, customerId),
           gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
           lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
@@ -1406,7 +1406,7 @@ export class CustomerPortalService {
     if (options.equipmentIds && options.equipmentIds.length > 0) {
       query = query.where(
         and(
-          eq(customerMeterSubmissions.tenantId, tenantId),
+          eq(customerMeterSubmissions.tenant_id, tenantId),
           eq(customerMeterSubmissions.customerId, customerId),
           gte(customerMeterSubmissions.readingDate, startDate.toISOString()),
           lte(customerMeterSubmissions.readingDate, endDate.toISOString()),
@@ -2153,7 +2153,7 @@ export class CustomerPortalService {
   ): Promise<CustomerMaintenanceAppointment[]> {
     try {
       const conditions = [
-        eq(customerMaintenanceAppointments.tenantId, tenantId),
+        eq(customerMaintenanceAppointments.tenant_id, tenantId),
         eq(customerMaintenanceAppointments.customerId, customerId),
       ];
 
@@ -2209,7 +2209,7 @@ export class CustomerPortalService {
         .where(
           and(
             eq(customerMaintenanceAppointments.id, request.appointmentId),
-            eq(customerMaintenanceAppointments.tenantId, tenantId),
+            eq(customerMaintenanceAppointments.tenant_id, tenantId),
             eq(customerMaintenanceAppointments.customerId, customerId),
           ),
         );
@@ -2275,7 +2275,7 @@ export class CustomerPortalService {
         .where(
           and(
             eq(customerMaintenanceAppointments.id, appointmentId),
-            eq(customerMaintenanceAppointments.tenantId, tenantId),
+            eq(customerMaintenanceAppointments.tenant_id, tenantId),
             eq(customerMaintenanceAppointments.customerId, customerId),
           ),
         );
@@ -2328,7 +2328,7 @@ export class CustomerPortalService {
         .where(
           and(
             eq(customerMaintenanceAppointments.id, appointmentId),
-            eq(customerMaintenanceAppointments.tenantId, tenantId),
+            eq(customerMaintenanceAppointments.tenant_id, tenantId),
             eq(customerMaintenanceAppointments.customerId, customerId),
           ),
         );

@@ -46,7 +46,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const userId = getUserId(req);
 
         if (!userId) {
@@ -59,8 +59,8 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           .from(dashboardLayouts)
           .where(
             and(
-              eq(dashboardLayouts.tenantId, tenantId),
-              eq(dashboardLayouts.userId, userId),
+              eq(dashboardLayouts.tenant_id, tenantId),
+              eq(dashboardLayouts.user_id, userId),
               eq(dashboardLayouts.isDefault, true),
               eq(dashboardLayouts.isActive, true),
             ),
@@ -82,8 +82,8 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           description: layout.description,
           widgets: layout.widgets,
           isDefault: layout.isDefault,
-          createdAt: layout.createdAt,
-          updatedAt: layout.updatedAt,
+          createdAt: layout.created_at,
+          updatedAt: layout.updated_at,
         });
       } catch (error: any) {
         console.error('Error fetching default layout:', error);
@@ -100,7 +100,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const userId = getUserId(req);
 
         if (!userId) {
@@ -115,18 +115,18 @@ export function registerDashboardLayoutsRoutes(app: Express) {
             description: dashboardLayouts.description,
             isDefault: dashboardLayouts.isDefault,
             isPublic: dashboardLayouts.isPublic,
-            createdAt: dashboardLayouts.createdAt,
-            updatedAt: dashboardLayouts.updatedAt,
+            createdAt: dashboardLayouts.created_at,
+            updatedAt: dashboardLayouts.updated_at,
           })
           .from(dashboardLayouts)
           .where(
             and(
-              eq(dashboardLayouts.tenantId, tenantId),
+              eq(dashboardLayouts.tenant_id, tenantId),
               eq(dashboardLayouts.isActive, true),
-              or(eq(dashboardLayouts.userId, userId), eq(dashboardLayouts.isPublic, true)),
+              or(eq(dashboardLayouts.user_id, userId), eq(dashboardLayouts.isPublic, true)),
             ),
           )
-          .orderBy(desc(dashboardLayouts.isDefault), desc(dashboardLayouts.updatedAt));
+          .orderBy(desc(dashboardLayouts.isDefault), desc(dashboardLayouts.updated_at));
 
         res.json(layouts);
       } catch (error: any) {
@@ -144,7 +144,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const userId = getUserId(req);
 
         if (!userId) {
@@ -164,8 +164,8 @@ export function registerDashboardLayoutsRoutes(app: Express) {
             .set({ isDefault: false, updatedAt: new Date() })
             .where(
               and(
-                eq(dashboardLayouts.tenantId, tenantId),
-                eq(dashboardLayouts.userId, userId),
+                eq(dashboardLayouts.tenant_id, tenantId),
+                eq(dashboardLayouts.user_id, userId),
                 eq(dashboardLayouts.isDefault, true),
               ),
             );
@@ -177,8 +177,8 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           .from(dashboardLayouts)
           .where(
             and(
-              eq(dashboardLayouts.tenantId, tenantId),
-              eq(dashboardLayouts.userId, userId),
+              eq(dashboardLayouts.tenant_id, tenantId),
+              eq(dashboardLayouts.user_id, userId),
               eq(dashboardLayouts.name, name),
             ),
           )
@@ -236,7 +236,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const userId = getUserId(req);
         const layoutId = req.params.id;
 
@@ -251,8 +251,8 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           .where(
             and(
               eq(dashboardLayouts.id, layoutId),
-              eq(dashboardLayouts.tenantId, tenantId),
-              eq(dashboardLayouts.userId, userId),
+              eq(dashboardLayouts.tenant_id, tenantId),
+              eq(dashboardLayouts.user_id, userId),
             ),
           )
           .returning();
@@ -279,7 +279,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const { type } = req.params;
 
         let result: any = { value: 0, change: 0 };
@@ -297,7 +297,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
               .from(businessRecords)
               .where(
                 and(
-                  eq(businessRecords.tenantId, tenantId),
+                  eq(businessRecords.tenant_id, tenantId),
                   eq(businessRecords.recordType, 'customer'),
                   eq(businessRecords.status, 'active'),
                 ),
@@ -315,7 +315,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
               .from(opportunities)
               .where(
                 and(
-                  eq(opportunities.tenantId, tenantId),
+                  eq(opportunities.tenant_id, tenantId),
                   sql`${opportunities.stage} NOT IN ('Closed Won', 'Closed Lost')`,
                 ),
               );
@@ -365,7 +365,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
     isAuthenticated,
     async (req: DashboardRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const { type } = req.params;
 
         let data: any[] = [];
@@ -379,7 +379,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
                 total: sql<number>`COALESCE(SUM(value), 0)`,
               })
               .from(opportunities)
-              .where(eq(opportunities.tenantId, tenantId))
+              .where(eq(opportunities.tenant_id, tenantId))
               .groupBy(opportunities.stage);
 
             data = stages.map((s) => ({
@@ -412,7 +412,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
               .from(businessRecords)
               .where(
                 and(
-                  eq(businessRecords.tenantId, tenantId),
+                  eq(businessRecords.tenant_id, tenantId),
                   eq(businessRecords.recordType, 'customer'),
                 ),
               )

@@ -129,10 +129,10 @@ function buildWhereClause(filters: any): SQL | undefined {
 
   // Date range filters
   if (filters.createdAfter) {
-    conditions.push(gte(platformBusinessRecords.createdAt, new Date(filters.createdAfter)));
+    conditions.push(gte(platformBusinessRecords.created_at, new Date(filters.createdAfter)));
   }
   if (filters.createdBefore) {
-    conditions.push(lte(platformBusinessRecords.createdAt, new Date(filters.createdBefore)));
+    conditions.push(lte(platformBusinessRecords.created_at, new Date(filters.createdBefore)));
   }
 
   // Tags filter (JSONB contains)
@@ -173,7 +173,7 @@ async function generateCompanyDisplayId(recordType: 'prospect' | 'tenant'): Prom
   // Get the latest ID for this type
   const latestRecord = await db.query.platformBusinessRecords.findFirst({
     where: eq(platformBusinessRecords.recordType, recordType),
-    orderBy: [desc(platformBusinessRecords.createdAt)],
+    orderBy: [desc(platformBusinessRecords.created_at)],
   });
 
   let nextNumber = 1;
@@ -215,7 +215,7 @@ router.get('/business-records', async (req: Request, res: Response) => {
     // Build ORDER BY clause
     const orderByColumn =
       platformBusinessRecords[sortBy as keyof typeof platformBusinessRecords] ||
-      platformBusinessRecords.createdAt;
+      platformBusinessRecords.created_at;
     const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
     // Execute query with pagination
@@ -370,7 +370,7 @@ router.get('/business-records/:id', async (req: Request, res: Response) => {
     if (includeFields.includes('deals')) {
       response.deals = await db.query.platformDeals.findMany({
         where: eq(platformDeals.businessRecordId, id),
-        orderBy: [desc(platformDeals.createdAt)],
+        orderBy: [desc(platformDeals.created_at)],
       });
     }
 
@@ -722,7 +722,7 @@ router.get('/business-records/export', async (req: Request, res: Response) => {
     // Fetch all matching records
     const records = await db.query.platformBusinessRecords.findMany({
       where: whereClause,
-      orderBy: [desc(platformBusinessRecords.createdAt)],
+      orderBy: [desc(platformBusinessRecords.created_at)],
     });
 
     if (format === 'csv') {
@@ -759,7 +759,7 @@ router.get('/business-records/export', async (req: Request, res: Response) => {
         r.companySize,
         r.territory,
         r.assignedSalesRep,
-        r.createdAt?.toISOString(),
+        r.created_at?.toISOString(),
         r.customerSince?.toISOString(),
         r.currentMRR,
         r.currentARR,

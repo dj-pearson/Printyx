@@ -74,14 +74,14 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const supabaseUser = (req as any).supabaseUser as SupabaseUser;
 
     // If tenantId is not in JWT, try to look it up from database
-    let tenantId = supabaseUser.tenantId;
+    let tenantId = supabaseUser.tenant_id;
     let roleId = supabaseUser.roleId;
 
     if (!tenantId || !roleId) {
       try {
         const dbUser = await storage.getUser(supabaseUser.id);
         if (dbUser) {
-          tenantId = tenantId || dbUser.tenantId;
+          tenantId = tenantId || dbUser.tenant_id;
           roleId = roleId || dbUser.roleId;
         } else {
           // SECURITY: Require explicit DEMO_TENANT_ID - no hardcoded fallback
@@ -115,7 +115,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     };
 
     // Set tenant context
-    (req as any).tenantId = tenantId;
+    (req as any).tenant_id = tenantId;
 
     return next();
   }
@@ -186,8 +186,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   // Priority 3: Session-based authentication (backward compatibility)
-  const sessionUserId = (req.session as any)?.userId;
-  const sessionTenantId = (req.session as any)?.tenantId;
+  const sessionUserId = (req.session as any)?.user_id;
+  const sessionTenantId = (req.session as any)?.tenant_id;
   const user = req.user as any;
 
   if (sessionUserId && sessionTenantId) {
@@ -197,8 +197,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
         tenantId: sessionTenantId,
         id: sessionUserId,
       };
-    } else if (!user.tenantId) {
-      user.tenantId = sessionTenantId;
+    } else if (!user.tenant_id) {
+      user.tenant_id = sessionTenantId;
     }
     return next();
   }

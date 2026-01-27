@@ -19,7 +19,7 @@ const router = Router();
 
 router.get('/api/service/proactive-maintenance', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -43,7 +43,7 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
-      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
+      .where(and(eq(equipment.tenant_id, tenantId), eq(equipment.status, 'active')))
       .orderBy(equipment.nextServiceDue);
 
     // Calculate maintenance metrics for each equipment
@@ -175,7 +175,7 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
  */
 router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { equipmentId } = req.params;
     const { scheduledDate, priority = 'medium', notes } = req.body;
 
@@ -194,7 +194,7 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
         location: equipment.location,
       })
       .from(equipment)
-      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
+      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenant_id, tenantId)))
       .limit(1);
 
     if (!equipmentItem) {

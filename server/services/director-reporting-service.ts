@@ -129,7 +129,7 @@ export class DirectorReportingService {
     userContext: EnhancedUserContext,
     dateRange?: Partial<DateRange>,
   ): Promise<CompanySalesPerformance> {
-    const cacheKey = `company-sales-performance:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
+    const cacheKey = `company-sales-performance:${userContext.tenant_id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<CompanySalesPerformance>(cacheKey);
     if (cached) return cached;
 
@@ -147,14 +147,14 @@ export class DirectorReportingService {
           COUNT(CASE WHEN o.stage IN ('Closed Won', 'Closed Lost') THEN 1 END)::int as total_closed,
           SUM(CASE WHEN o.stage NOT IN ('Closed Won', 'Closed Lost', 'Cancelled') THEN o.weighted_amount ELSE 0 END)::decimal as pipeline_value
         FROM opportunities o
-        WHERE o.tenant_id = ${userContext.tenantId}
+        WHERE o.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
       ),
       quota_metrics AS (
         SELECT
           SUM(q.quota_amount)::decimal as total_quota
         FROM sales_quotas q
-        WHERE q.tenant_id = ${userContext.tenantId}
+        WHERE q.tenant_id = ${userContext.tenant_id}
       ),
       regional_performance AS (
         SELECT
@@ -168,11 +168,11 @@ export class DirectorReportingService {
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenantId}
+          AND o.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
         LEFT JOIN sales_quotas q ON q.user_id = u.id
-          AND q.tenant_id = ${userContext.tenantId}
-        WHERE r.tenant_id = ${userContext.tenantId}
+          AND q.tenant_id = ${userContext.tenant_id}
+        WHERE r.tenant_id = ${userContext.tenant_id}
         GROUP BY r.id, r.name
       ),
       top_performers AS (
@@ -183,9 +183,9 @@ export class DirectorReportingService {
           COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::int as deals
         FROM users u
         LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenantId}
+          AND o.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
-        WHERE u.tenant_id = ${userContext.tenantId}
+        WHERE u.tenant_id = ${userContext.tenant_id}
         GROUP BY u.id, u.name
         ORDER BY revenue DESC
         LIMIT 10
@@ -248,7 +248,7 @@ export class DirectorReportingService {
     userContext: EnhancedUserContext,
     dateRange?: Partial<DateRange>,
   ): Promise<CompanyServicePerformance> {
-    const cacheKey = `company-service-performance:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
+    const cacheKey = `company-service-performance:${userContext.tenant_id}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<CompanyServicePerformance>(cacheKey);
     if (cached) return cached;
 
@@ -269,9 +269,9 @@ export class DirectorReportingService {
         FROM service_calls sc
         LEFT JOIN users u ON sc.technician_id = u.id
         LEFT JOIN time_entries te ON te.user_id = u.id
-          AND te.tenant_id = ${userContext.tenantId}
+          AND te.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
-        WHERE sc.tenant_id = ${userContext.tenantId}
+        WHERE sc.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
       ),
       regional_performance AS (
@@ -286,9 +286,9 @@ export class DirectorReportingService {
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN service_calls sc ON sc.technician_id = u.id
-          AND sc.tenant_id = ${userContext.tenantId}
+          AND sc.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
-        WHERE r.tenant_id = ${userContext.tenantId}
+        WHERE r.tenant_id = ${userContext.tenant_id}
         GROUP BY r.id, r.name
       ),
       top_performers AS (
@@ -299,9 +299,9 @@ export class DirectorReportingService {
           AVG(sc.satisfaction_rating)::decimal as satisfaction
         FROM users u
         LEFT JOIN service_calls sc ON sc.technician_id = u.id
-          AND sc.tenant_id = ${userContext.tenantId}
+          AND sc.tenant_id = ${userContext.tenant_id}
           ${dateFilter}
-        WHERE u.tenant_id = ${userContext.tenantId}
+        WHERE u.tenant_id = ${userContext.tenant_id}
         GROUP BY u.id, u.name
         ORDER BY ftf_rate DESC, satisfaction DESC
         LIMIT 10

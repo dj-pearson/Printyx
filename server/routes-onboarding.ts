@@ -43,7 +43,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
       if (user) {
         req.user = {
           id: user.id,
-          tenantId: user.tenantId,
+          tenantId: user.tenant_id,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
@@ -53,11 +53,11 @@ const requireAuth = async (req: any, res: any, next: any) => {
 
     // Ensure tenantId is available
     const tenantId = getTenantId(req);
-    if (!req.user?.tenantId && tenantId) {
+    if (!req.user?.tenant_id && tenantId) {
       req.user = { ...req.user, tenantId };
     }
 
-    if (!req.user?.tenantId) {
+    if (!req.user?.tenant_id) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
@@ -282,7 +282,7 @@ class OnboardingPDFService {
         </div>
         <div class="field-group">
           <div class="field-label">Created Date:</div>
-          <div class="field-value">${new Date(checklist.createdAt).toLocaleDateString()}</div>
+          <div class="field-value">${new Date(checklist.created_at).toLocaleDateString()}</div>
         </div>
         ${
           checklist.actualInstallDate
@@ -426,7 +426,7 @@ async function searchBusinessRecords(req: Request, res: Response) {
     let query = db
       .select()
       .from(businessRecords)
-      .where(eq(businessRecords.tenantId, tenantId))
+      .where(eq(businessRecords.tenant_id, tenantId))
       .limit(Number(limit));
 
     if (search && typeof search === 'string') {
@@ -452,18 +452,18 @@ async function searchQuotes(req: Request, res: Response) {
     const user = req.user as any;
     const { search, businessRecordId, limit = 10 } = req.query;
 
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
-    const tenantId = user.tenantId;
+    const tenantId = user.tenant_id;
 
-    let query = db.select().from(quotes).where(eq(quotes.tenantId, tenantId)).limit(Number(limit));
+    let query = db.select().from(quotes).where(eq(quotes.tenant_id, tenantId)).limit(Number(limit));
 
     if (businessRecordId && typeof businessRecordId === 'string') {
       query = query.where(
         and(
-          eq(quotes.tenantId, tenantId),
+          eq(quotes.tenant_id, tenantId),
           or(eq(quotes.leadId, businessRecordId), eq(quotes.customerId, businessRecordId)),
         ),
       );
@@ -472,7 +472,7 @@ async function searchQuotes(req: Request, res: Response) {
     if (search && typeof search === 'string') {
       query = query.where(
         and(
-          eq(quotes.tenantId, tenantId),
+          eq(quotes.tenant_id, tenantId),
           or(
             ilike(quotes.quoteNumber, `%${search}%`),
             ilike(quotes.title, `%${search}%`),
@@ -495,16 +495,16 @@ async function getQuoteLineItems(req: Request, res: Response) {
     const user = req.user as any;
     const { quoteId } = req.params;
 
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
-    const tenantId = user.tenantId;
+    const tenantId = user.tenant_id;
 
     const lineItems = await db
       .select()
       .from(quoteLineItems)
-      .where(and(eq(quoteLineItems.tenantId, tenantId), eq(quoteLineItems.quoteId, quoteId)))
+      .where(and(eq(quoteLineItems.tenant_id, tenantId), eq(quoteLineItems.quoteId, quoteId)))
       .execute();
 
     res.json(lineItems);
@@ -519,17 +519,17 @@ async function getCompanyContacts(req: Request, res: Response) {
     const user = req.user as any;
     const { businessRecordId } = req.params;
 
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
-    const tenantId = user.tenantId;
+    const tenantId = user.tenant_id;
 
     // First get the business record to find the company
     const businessRecord = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, businessRecordId)))
+      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.id, businessRecordId)))
       .limit(1)
       .execute();
 
@@ -568,11 +568,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       const checklists = await storage.getOnboardingChecklists(tenantId);
       res.json(checklists);
@@ -594,11 +594,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       const checklist = await storage.getOnboardingChecklist(id, tenantId);
       if (!checklist) {
@@ -638,11 +638,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       console.log('[DEBUG] Raw request body:', JSON.stringify(req.body, null, 2));
 
@@ -676,11 +676,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       const updateData = {
         ...req.body,
@@ -710,11 +710,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       await storage.deleteOnboardingChecklist(id, tenantId);
       res.status(204).send();
@@ -735,11 +735,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       const pdfUrl = await pdfService.generatePDF(id, tenantId);
       res.json({ pdfUrl });
@@ -760,11 +760,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       const validatedData = insertOnboardingEquipmentSchema.parse({
         ...req.body,
@@ -794,11 +794,11 @@ export function registerOnboardingRoutes(app: Express): void {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
 
       const validatedData = insertOnboardingDynamicSectionSchema.parse({
         ...req.body,
