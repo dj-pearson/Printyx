@@ -58,8 +58,23 @@ export default async function handler(req: Request) {
       const search = searchParams.get('search') || '';
       const status = searchParams.get('status') || '';
       const ownerId = searchParams.get('ownerId') || '';
-      const sortBy = searchParams.get('sortBy') || 'updated_at';
+      const sortByParam = searchParams.get('sortBy') || 'updated_at';
       const sortOrder = searchParams.get('sortOrder') || 'desc';
+
+      // Map frontend column names (camelCase) to database column names (snake_case)
+      const columnMapping: Record<string, string> = {
+        lastActivityDate: 'last_contact_date',
+        lastContactDate: 'last_contact_date',
+        nextFollowUpDate: 'next_follow_up_date',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+        firstName: 'first_name',
+        lastName: 'last_name',
+        companyId: 'company_id',
+        ownerId: 'owner_id',
+        leadStatus: 'lead_status',
+      };
+      const sortBy = columnMapping[sortByParam] || sortByParam;
 
       const offset = (page - 1) * limit;
 
