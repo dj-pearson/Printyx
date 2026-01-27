@@ -132,12 +132,12 @@ export default function AdvancedReporting() {
 
     const monthlyRevenue = invoices
       .filter((inv) => {
-        const invDate = new Date(inv.issueDate);
+        const invDate = new Date(inv.issuedAt);
         return invDate >= dateRange.from && invDate <= dateRange.to;
       })
       .reduce(
         (acc, inv) => {
-          const month = format(new Date(inv.issueDate), 'MMM yyyy');
+          const month = format(new Date(inv.issuedAt), 'MMM yyyy');
           acc[month] = (acc[month] || 0) + parseFloat(inv.totalAmount.toString());
           return acc;
         },

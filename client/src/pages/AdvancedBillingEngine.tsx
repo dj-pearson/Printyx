@@ -1262,7 +1262,7 @@ export default function AdvancedBillingEngine() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium">
-                              ${cycle.totalAmount.toFixed(2)}
+                              ${cycle.total_amount.toFixed(2)}
                             </span>
                             <Badge variant={getStatusColor(cycle.status)} className="text-xs">
                               {getStatusIcon(cycle.status)}
@@ -1812,21 +1812,22 @@ export default function AdvancedBillingEngine() {
                               {cycle.failed_customers > 0 && (
                                 <p className="text-red-600">Failed: {cycle.failed_customers}</p>
                               )}
-                              {cycle.startedAt && (
+                              {cycle.started_at && (
                                 <p>
-                                  Started: {format(new Date(cycle.startedAt), 'MMM dd, yyyy HH:mm')}
+                                  Started:{' '}
+                                  {format(new Date(cycle.started_at), 'MMM dd, yyyy HH:mm')}
                                 </p>
                               )}
-                              {cycle.completedAt && (
+                              {cycle.completed_at && (
                                 <p>
                                   Completed:{' '}
-                                  {format(new Date(cycle.completedAt), 'MMM dd, yyyy HH:mm')}
+                                  {format(new Date(cycle.completed_at), 'MMM dd, yyyy HH:mm')}
                                 </p>
                               )}
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold">${cycle.totalAmount.toFixed(2)}</p>
+                            <p className="text-lg font-bold">${cycle.total_amount.toFixed(2)}</p>
                             <p className="text-sm text-muted-foreground">Total Generated</p>
                           </div>
                         </div>
@@ -1875,7 +1876,7 @@ export default function AdvancedBillingEngine() {
                                 <p>Approved by: {adjustment.approved_by_name}</p>
                               )}
                               <p>
-                                Created: {format(new Date(adjustment.createdAt), 'MMM dd, yyyy')}
+                                Created: {format(new Date(adjustment.created_at), 'MMM dd, yyyy')}
                               </p>
                             </div>
                           </div>

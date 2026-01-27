@@ -8,7 +8,7 @@ import {
   servicePhotos,
   locationHistory,
 } from '@shared/schema';
-import { eq, and, or, gte, desc, inArray } from 'drizzle-orm';
+import { eq, and, or, gte, desc, inArray, count } from 'drizzle-orm';
 import multer from 'multer';
 import { storage } from './storage';
 import { getUserId, getTenantId } from './utils/auth-helpers';
@@ -543,7 +543,7 @@ router.get('/stats', async (req: any, res) => {
     const stats = await db
       .select({
         status: phoneInTickets.enhancedTicketStatus,
-        count: db.count(),
+        count: count(),
       })
       .from(phoneInTickets)
       .where(

@@ -97,7 +97,7 @@ export class UnifiedMeterCollectionService {
         apiEndpoint: integration.apiEndpoint,
         apiVersion: integration.apiVersion,
         authType: integration.authType,
-        authCredentials: integration.authCredentials,
+        authCredentials: integration.credentials,
         settings: integration.settings,
         fieldMappings: integration.fieldMappings,
       });
@@ -133,7 +133,7 @@ export class UnifiedMeterCollectionService {
                 jsonValue: metric.jsonValue,
                 unit: metric.unit,
                 measurementTimestamp: metric.measurementTimestamp,
-                collectionMethod: integration.integrationMethod,
+                collectionMethod: integration.integrationName,
                 dataSource: integration.platformName,
                 rawData: metric.rawData,
               })),
@@ -258,7 +258,7 @@ export class UnifiedMeterCollectionService {
         apiEndpoint: integration.apiEndpoint,
         apiVersion: integration.apiVersion,
         authType: integration.authType,
-        authCredentials: integration.authCredentials,
+        authCredentials: integration.credentials,
         settings: integration.settings,
         fieldMappings: integration.fieldMappings,
       });
@@ -301,7 +301,7 @@ export class UnifiedMeterCollectionService {
         apiEndpoint: integration.apiEndpoint,
         apiVersion: integration.apiVersion,
         authType: integration.authType,
-        authCredentials: integration.authCredentials,
+        authCredentials: integration.credentials,
         settings: integration.settings,
         fieldMappings: integration.fieldMappings,
       });
@@ -355,7 +355,7 @@ export class UnifiedMeterCollectionService {
         apiEndpoint: integration.apiEndpoint,
         apiVersion: integration.apiVersion,
         authType: integration.authType,
-        authCredentials: integration.authCredentials,
+        authCredentials: integration.credentials,
         settings: integration.settings,
         fieldMappings: integration.fieldMappings,
       });
@@ -377,7 +377,7 @@ export class UnifiedMeterCollectionService {
             jsonValue: metric.jsonValue,
             unit: metric.unit,
             measurementTimestamp: metric.measurementTimestamp,
-            collectionMethod: integration.integrationMethod,
+            collectionMethod: integration.integrationName,
             dataSource: integration.platformName,
             rawData: metric.rawData,
           })),

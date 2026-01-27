@@ -644,7 +644,7 @@ export const CustomerSatisfactionForm = ({
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader>
               <CardTitle className="text-lg leading-relaxed">
-                {currentQuestion.questionText}
+                {currentQuestion.question_text}
               </CardTitle>
               {currentQuestion.is_required && (
                 <div className="flex items-center text-sm text-red-600">

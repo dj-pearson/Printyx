@@ -317,7 +317,7 @@ class PDFGenerationService {
       .text('Issue Date:', pageWidth / 2 + 50, startY + 15, { continued: true });
     doc
       .font('Helvetica')
-      .text(`  ${this.formatDate(invoice.invoiceDate || invoice.issueDate)}`, { align: 'right' });
+      .text(`  ${this.formatDate(invoice.invoiceDate || invoice.issuedAt)}`, { align: 'right' });
 
     // Due date
     doc
@@ -617,7 +617,7 @@ class PDFGenerationService {
         customerEmail: businessRecords.email,
         customerPhone: businessRecords.phone,
         contractId: invoices.contractId,
-        issueDate: invoices.issueDate,
+        issueDate: invoices.issuedAt,
         invoiceDate: invoices.invoiceDate,
         dueDate: invoices.dueDate,
         subtotal: invoices.subtotal,

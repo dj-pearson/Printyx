@@ -12,8 +12,8 @@ const router = express.Router();
 function transformApolloContact(apolloContact: ApolloContact) {
   return {
     apolloId: apolloContact.id,
-    firstName: apolloContact.firstName,
-    lastName: apolloContact.lastName,
+    firstName: apolloContact.first_name,
+    lastName: apolloContact.last_name,
     name: apolloContact.name,
     title: apolloContact.title,
     email: apolloContact.email,

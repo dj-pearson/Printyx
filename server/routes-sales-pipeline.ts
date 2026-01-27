@@ -512,7 +512,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         sql.raw(insertQuery, [
           tenantId,
           'lead',
-          data.companyName,
+          data.company_name,
           data.contact_name,
           data.contact_email,
           data.contact_phone || null,

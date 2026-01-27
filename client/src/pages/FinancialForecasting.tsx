@@ -975,8 +975,8 @@ export default function FinancialForecasting() {
                               <p>Type: {forecast.forecast_type.replace('_', ' ')}</p>
                               <p>Period: {forecast.forecast_period}</p>
                               <p>
-                                Duration: {format(new Date(forecast.startDate), 'MMM dd')} -{' '}
-                                {format(new Date(forecast.endDate), 'MMM dd, yyyy')}
+                                Duration: {format(new Date(forecast.start_date), 'MMM dd')} -{' '}
+                                {format(new Date(forecast.end_date), 'MMM dd, yyyy')}
                               </p>
                               <p>Growth Rate: {(forecast.growth_rate * 100).toFixed(1)}%</p>
                               <p>Confidence: {(forecast.confidence_level * 100).toFixed(0)}%</p>

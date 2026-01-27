@@ -604,8 +604,8 @@ export default function PreventiveMaintenanceScheduling() {
                               <Badge variant={getPriorityColor(schedule.priority)}>
                                 {schedule.priority}
                               </Badge>
-                              <Badge variant={schedule.isActive ? 'default' : 'secondary'}>
-                                {schedule.isActive ? 'Active' : 'Inactive'}
+                              <Badge variant={schedule.is_active ? 'default' : 'secondary'}>
+                                {schedule.is_active ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">

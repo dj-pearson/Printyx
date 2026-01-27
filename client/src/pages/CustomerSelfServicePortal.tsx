@@ -862,7 +862,7 @@ export default function CustomerSelfServicePortal() {
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">{request.subject}</h4>
                             <p className="text-xs text-muted-foreground">
-                              {request.equipmentMake} {request.equipmentModel}
+                              {request.equipment_make} {request.equipment_model}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -960,7 +960,7 @@ export default function CustomerSelfServicePortal() {
                               <strong>Make/Model:</strong> {item.make} {item.model}
                             </p>
                             <p>
-                              <strong>Serial:</strong> {item.serialNumber}
+                              <strong>Serial:</strong> {item.serial_number}
                             </p>
                             <p>
                               <strong>Location:</strong> {item.location}
@@ -1067,7 +1067,7 @@ export default function CustomerSelfServicePortal() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <h3 className="font-medium">{article.title}</h3>
-                              {article.isFeatured && (
+                              {article.is_featured && (
                                 <Badge variant="secondary" className="text-xs">
                                   <Star className="w-3 h-3 mr-1" />
                                   Featured
