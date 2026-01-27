@@ -4852,6 +4852,30 @@ export class DatabaseStorage implements IStorage {
     offset: number;
     limit: number;
   }): Promise<CompanyContact[]> {
+    // Build where conditions array
+    const whereConditions: any[] = [eq(companyContacts.tenantId, options.filters.tenantId)];
+
+    // Apply additional filters
+    if (options.filters.ownerId) {
+      whereConditions.push(eq(companyContacts.ownerId, options.filters.ownerId));
+    }
+
+    if (options.filters.leadStatus) {
+      whereConditions.push(eq(companyContacts.leadStatus, options.filters.leadStatus));
+    }
+
+    // Apply search
+    if (options.search) {
+      whereConditions.push(
+        or(
+          like(companyContacts.firstName, `%${options.search}%`),
+          like(companyContacts.lastName, `%${options.search}%`),
+          like(companyContacts.email, `%${options.search}%`),
+          like(companyContacts.phone, `%${options.search}%`),
+        ),
+      );
+    }
+
     let query = db
       .select({
         id: companyContacts.id,
@@ -4875,28 +4899,7 @@ export class DatabaseStorage implements IStorage {
       .from(companyContacts)
       .leftJoin(companies, eq(companyContacts.companyId, companies.id))
       .leftJoin(users, eq(companyContacts.ownerId, users.id))
-      .where(eq(companyContacts.tenantId, options.filters.tenantId));
-
-    // Apply additional filters
-    if (options.filters.ownerId) {
-      query = query.where(eq(companyContacts.ownerId, options.filters.ownerId));
-    }
-
-    if (options.filters.leadStatus) {
-      query = query.where(eq(companyContacts.leadStatus, options.filters.leadStatus));
-    }
-
-    // Apply search
-    if (options.search) {
-      query = query.where(
-        or(
-          like(companyContacts.firstName, `%${options.search}%`),
-          like(companyContacts.lastName, `%${options.search}%`),
-          like(companyContacts.email, `%${options.search}%`),
-          like(companyContacts.phone, `%${options.search}%`),
-        ),
-      );
-    }
+      .where(and(...whereConditions));
 
     // Apply sorting - simplified to avoid dynamic column access issues
     if (options.sortBy === 'lastActivityDate' || options.sortBy === 'lastContactDate') {
@@ -4926,23 +4929,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContactsCount(options: { filters: any; search: string }): Promise<number> {
-    let query = db
-      .select({ count: count() })
-      .from(companyContacts)
-      .where(eq(companyContacts.tenantId, options.filters.tenantId));
+    // Build where conditions array
+    const whereConditions: any[] = [eq(companyContacts.tenantId, options.filters.tenantId)];
 
     // Apply additional filters
     if (options.filters.ownerId) {
-      query = query.where(eq(companyContacts.ownerId, options.filters.ownerId));
+      whereConditions.push(eq(companyContacts.ownerId, options.filters.ownerId));
     }
 
     if (options.filters.leadStatus) {
-      query = query.where(eq(companyContacts.leadStatus, options.filters.leadStatus));
+      whereConditions.push(eq(companyContacts.leadStatus, options.filters.leadStatus));
     }
 
     // Apply search
     if (options.search) {
-      query = query.where(
+      whereConditions.push(
         or(
           like(companyContacts.firstName, `%${options.search}%`),
           like(companyContacts.lastName, `%${options.search}%`),
@@ -4952,7 +4953,11 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    const result = await query;
+    const result = await db
+      .select({ count: count() })
+      .from(companyContacts)
+      .where(and(...whereConditions));
+
     return result[0]?.count ?? 0;
   }
 
