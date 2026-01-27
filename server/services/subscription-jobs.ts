@@ -18,6 +18,12 @@ export class SubscriptionJobs {
    * Start all scheduled jobs
    */
   static startAll() {
+    // Allow disabling in development (similar to WebSocket and Database Updater)
+    if (process.env.DISABLE_SUBSCRIPTION_JOBS === 'true') {
+      console.log('ℹ️ Subscription jobs disabled (set DISABLE_SUBSCRIPTION_JOBS=false to enable)');
+      return;
+    }
+
     console.log('🚀 Starting subscription scheduled jobs...');
 
     // Check trial expirations every hour
@@ -25,7 +31,10 @@ export class SubscriptionJobs {
       setInterval(
         () => {
           this.checkTrialExpirations().catch((error) => {
-            console.error('Trial expiration check failed:', error);
+            // Only log in development to reduce noise
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Trial expiration check failed:', error?.message || error);
+            }
           });
         },
         60 * 60 * 1000,
@@ -37,7 +46,10 @@ export class SubscriptionJobs {
       setInterval(
         () => {
           this.checkUsageLimits().catch((error) => {
-            console.error('Usage limit check failed:', error);
+            // Only log in development to reduce noise
+            if (process.env.NODE_ENV === 'development') {
+              console.error('Usage limit check failed:', error?.message || error);
+            }
           });
         },
         6 * 60 * 60 * 1000,
@@ -99,11 +111,31 @@ export class SubscriptionJobs {
     try {
       console.log('🔍 Running initial subscription checks...');
 
-      await Promise.all([this.checkTrialExpirations(), this.checkUsageLimits()]);
+      // Run checks individually with error handling to prevent one failure from blocking others
+      const results = await Promise.allSettled([
+        this.checkTrialExpirations(),
+        this.checkUsageLimits(),
+      ]);
+
+      // Log any failures but don't crash
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const checkName = index === 0 ? 'Trial expiration' : 'Usage limit';
+          if (import.meta.env?.DEV) {
+            console.warn(
+              `${checkName} check failed on startup (will retry on schedule):`,
+              result.reason?.message,
+            );
+          }
+        }
+      });
 
       console.log('✅ Initial subscription checks completed');
     } catch (error) {
-      console.error('Initial checks failed:', error);
+      // Catch any unexpected errors
+      if (import.meta.env?.DEV) {
+        console.error('Initial checks failed:', error);
+      }
     }
   }
 
@@ -118,7 +150,10 @@ export class SubscriptionJobs {
 
       console.log('✅ Trial expiration check completed');
     } catch (error) {
-      console.error('Trial expiration check failed:', error);
+      // Only log in development to reduce noise
+      if (import.meta.env?.DEV) {
+        console.error('Trial expiration check failed:', error);
+      }
       throw error;
     }
   }
@@ -134,7 +169,10 @@ export class SubscriptionJobs {
 
       console.log('✅ Usage limit check completed');
     } catch (error) {
-      console.error('Usage limit check failed:', error);
+      // Only log in development to reduce noise
+      if (import.meta.env?.DEV) {
+        console.error('Usage limit check failed:', error);
+      }
       throw error;
     }
   }
