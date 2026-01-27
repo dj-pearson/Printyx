@@ -196,19 +196,19 @@ export default function Contacts() {
   // Tenant context is required for Supabase/RLS
   const tenantId = user?.tenantId;
 
-  // Fetch business records (companies) for dropdown
+  // Fetch companies for dropdown
   const {
     data: companies,
     isLoading: companiesLoading,
     error: companiesError,
   } = useQuery({
-    queryKey: ['supabase-business-records-companies', tenantId],
+    queryKey: ['supabase-companies', tenantId],
     enabled: !!tenantId,
     retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('business_records')
-        .select('id, company_name, record_type, status')
+        .from('companies')
+        .select('id, business_name, status')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -216,8 +216,7 @@ export default function Contacts() {
 
       return (data || []).map((row: any) => ({
         id: row.id,
-        companyName: row.companyName,
-        recordType: row.record_type,
+        companyName: row.business_name,
         status: row.status,
       }));
     },
@@ -264,30 +263,27 @@ export default function Contacts() {
       }
 
       const { data, error } = await supabase
-        .from('business_records')
+        .from('companies')
         .insert({
           tenant_id: tenantId,
-          record_type: 'lead',
-          status: 'new',
-          company_name: companyName,
-          source: 'manual',
+          business_name: companyName,
+          status: 'active',
           created_by: user.id,
         })
-        .select('id, company_name, record_type, status')
+        .select('id, business_name, status')
         .single();
 
       if (error) throw error;
 
       return {
         id: data.id,
-        companyName: data.company_name,
-        recordType: data.record_type,
+        companyName: data.business_name,
         status: data.status,
       };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['supabase-business-records-companies', tenantId],
+        queryKey: ['supabase-companies', tenantId],
       });
     },
   });
@@ -468,7 +464,7 @@ export default function Contacts() {
           phone: c.phone || '',
           title: c.title || '',
           companyId: c.companyId,
-          companyName: c.business_records?.companyName || getCompanyName(c.companyId) || '',
+          companyName: c.companies?.business_name || getCompanyName(c.companyId) || '',
           leadStatus: c.lead_status || 'new',
           lastContactDate: c.last_contact_date,
           nextFollowUpDate: c.next_follow_up_date,
