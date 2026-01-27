@@ -39,11 +39,13 @@ export function usePWA(): UsePWAReturn {
   const [installable, setInstallable] = useState(canInstall());
   const [offline, setOffline] = useState(checkIsOffline());
 
-  // Register service worker on mount
+  // Get existing service worker registration (already registered in main.tsx)
   useEffect(() => {
-    registerServiceWorker().then((reg) => {
-      setRegistration(reg);
-    });
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        setRegistration(reg || null);
+      });
+    }
   }, []);
 
   // Listen for updates
