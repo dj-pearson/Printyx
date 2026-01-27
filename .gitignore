@@ -61,3 +61,6 @@ scripts/export-complete-database.js
 report*
 Output.json
 .env.tmp
+
+# Audit reports
+audit-reports/
