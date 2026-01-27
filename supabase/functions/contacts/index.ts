@@ -76,9 +76,11 @@ export default async function handler(req: Request) {
       });
 
       // Build query
+      // Note: Removed business_records join due to foreign key constraint issues
+      // Frontend will handle company name resolution via separate query if needed
       let query = admin
         .from('company_contacts')
-        .select('*, business_records!company_contacts_company_id_fkey(company_name)', {
+        .select('*', {
           count: 'exact',
         })
         .eq('tenant_id', tenantId);
