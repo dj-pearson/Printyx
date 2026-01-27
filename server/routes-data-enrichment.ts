@@ -124,9 +124,9 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       if (searchParams.query) {
         conditions.push(
-          sql`(${enrichedContacts.firstName} ILIKE ${`%${searchParams.query}%`} OR 
-               ${enrichedContacts.lastName} ILIKE ${`%${searchParams.query}%`} OR 
-               ${enrichedContacts.companyName} ILIKE ${`%${searchParams.query}%`} OR 
+          sql`(${enrichedContacts.first_name} ILIKE ${`%${searchParams.query}%`} OR
+               ${enrichedContacts.last_name} ILIKE ${`%${searchParams.query}%`} OR
+               ${enrichedContacts.company_name} ILIKE ${`%${searchParams.query}%`} OR
                ${enrichedContacts.job_title} ILIKE ${`%${searchParams.query}%`})`,
         );
       }
@@ -307,8 +307,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       if (searchParams.query) {
         conditions.push(
-          sql`(${enrichedCompanies.companyName} ILIKE ${`%${searchParams.query}%`} OR 
-               ${enrichedCompanies.primary_domain} ILIKE ${`%${searchParams.query}%`} OR 
+          sql`(${enrichedCompanies.company_name} ILIKE ${`%${searchParams.query}%`} OR
+               ${enrichedCompanies.primary_domain} ILIKE ${`%${searchParams.query}%`} OR
                ${enrichedCompanies.primary_industry} ILIKE ${`%${searchParams.query}%`})`,
         );
       }
@@ -320,7 +320,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
       }
 
       if (searchParams.companyTypes?.length) {
-        conditions.push(sql`${enrichedCompanies.companyType} = ANY(${searchParams.companyTypes})`);
+        conditions.push(sql`${enrichedCompanies.company_type} = ANY(${searchParams.companyTypes})`);
       }
 
       if (searchParams.employeeCount?.min !== undefined) {

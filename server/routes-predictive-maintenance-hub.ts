@@ -51,14 +51,14 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
         location: equipment.location,
         meterReading: equipment.currentMeterReading,
         lastServiceDate: equipment.lastServiceDate,
-        nextServiceDue: equipment.nextServiceDue,
+        nextServiceDue: equipment.nextServiceDueDate,
         installDate: equipment.installDate,
         status: equipment.status,
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
       .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
-      .orderBy(equipment.nextServiceDue);
+      .orderBy(equipment.nextServiceDueDate);
 
     // Calculate health metrics for each equipment
     const equipmentHealth = await Promise.all(

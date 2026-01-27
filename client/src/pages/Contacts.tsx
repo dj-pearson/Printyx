@@ -279,7 +279,7 @@ export default function Contacts() {
 
       return {
         id: data.id,
-        companyName: data.companyName,
+        companyName: data.company_name,
         recordType: data.record_type,
         status: data.status,
       };

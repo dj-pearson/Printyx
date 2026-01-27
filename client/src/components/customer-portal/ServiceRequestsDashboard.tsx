@@ -234,7 +234,7 @@ const StatusTimeline = memo(
                   {history.new_status.replace('_', ' ').toUpperCase()}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {format(new Date(history.createdAt), 'MMM dd, yyyy HH:mm')}
+                  {format(new Date(history.created_at), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               {history.customer_visible_notes && (
@@ -828,7 +828,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
                             <Badge variant="outline" className={getPriorityColor(request.priority)}>
                               {request.priority}
                             </Badge>
-                            <span className="text-xs text-gray-500">#{request.requestNumber}</span>
+                            <span className="text-xs text-gray-500">#{request.request_number}</span>
                           </div>
 
                           <h4 className="font-medium text-gray-900 mb-1">{request.subject}</h4>
@@ -838,17 +838,17 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
 
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500">
                             <span>
-                              Created: {format(new Date(request.createdAt), 'MMM dd, yyyy')}
+                              Created: {format(new Date(request.created_at), 'MMM dd, yyyy')}
                             </span>
-                            {request.equipmentMake && (
+                            {request.equipment_make && (
                               <span>
-                                Equipment: {request.equipmentMake} {request.equipmentModel}
+                                Equipment: {request.equipment_make} {request.equipment_model}
                               </span>
                             )}
-                            {request.estimatedCompletionDate && (
+                            {request.estimated_completion_date && (
                               <span>
                                 Est. completion:{' '}
-                                {format(new Date(request.estimatedCompletionDate), 'MMM dd')}
+                                {format(new Date(request.estimated_completion_date), 'MMM dd')}
                               </span>
                             )}
                           </div>

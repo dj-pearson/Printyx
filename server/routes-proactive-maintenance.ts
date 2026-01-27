@@ -37,14 +37,14 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
         location: equipment.location,
         meterReading: equipment.currentMeterReading,
         lastServiceDate: equipment.lastServiceDate,
-        nextServiceDue: equipment.nextServiceDue,
+        nextServiceDue: equipment.nextServiceDueDate,
         installDate: equipment.installDate,
         status: equipment.status,
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
       .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
-      .orderBy(equipment.nextServiceDue);
+      .orderBy(equipment.nextServiceDueDate);
 
     // Calculate maintenance metrics for each equipment
     const maintenanceItems = equipmentList.map((item) => {

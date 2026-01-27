@@ -240,7 +240,7 @@ export function registerTodayDashboardRoutes(app: Router) {
           where: and(
             eq(businessRecordActivities.tenantId, tenantId),
             eq(businessRecordActivities.status, 'completed'),
-            gte(businessRecordActivities.completedAt!, todayStart),
+            gte(businessRecordActivities.completedDate!, todayStart),
           ),
         })) || [];
 

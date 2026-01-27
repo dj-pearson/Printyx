@@ -119,7 +119,7 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
       conditions.push(
         or(
           ilike(serviceTickets.ticketNumber, `%${search}%`),
-          ilike(serviceTickets.issueDescription, `%${search}%`),
+          ilike(serviceTickets.description, `%${search}%`),
         )!,
       );
     }

@@ -1,7 +1,7 @@
 import { Router, Request } from 'express';
 import { db } from './db';
 import { emailMonitorConfig, processedEmails, parsingCorrections } from '@shared/schema';
-import { eq, and, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
 import { startEmailMonitor, stopEmailMonitor } from './services/email-monitor-service';
 import { z } from 'zod';
 import {
@@ -267,7 +267,7 @@ router.get('/processed-emails', async (req: any, res) => {
         offset,
       }),
       db
-        .select({ count: db.count() })
+        .select({ count: count() })
         .from(processedEmails)
         .where(whereConditions)
         .then((result) => result[0]?.count || 0),
@@ -317,7 +317,7 @@ router.get('/stats', async (req: any, res) => {
     const stats = await db
       .select({
         status: processedEmails.processingStatus,
-        count: db.count(),
+        count: count(),
       })
       .from(processedEmails)
       .where(

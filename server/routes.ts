@@ -9178,7 +9178,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
           await db.$client.query(invoiceQuery, [
             tenantId,
             invoice.business_record_id,
-            invoice.invoiceNumber,
+            invoice.invoice_number,
             invoiceDate,
             dueDate,
             periodStart,
@@ -12880,11 +12880,11 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
           equipment_model, equipment_serial, issue_category, issue_description,
           priority, contact_method, preferred_service_date, notes
         ) VALUES (
-          ${phoneTicketData.tenantId}, ${phoneTicketData.caller_name}, ${phoneTicketData.caller_phone}, 
-          ${phoneTicketData.caller_email}, ${phoneTicketData.caller_role}, ${phoneTicketData.customerId}, 
-          ${phoneTicketData.customer_name}, ${phoneTicketData.location_address}, ${phoneTicketData.location_building}, 
-          ${phoneTicketData.location_floor}, ${phoneTicketData.location_room}, ${phoneTicketData.equipmentId}, 
-          ${phoneTicketData.equipment_brand}, ${phoneTicketData.equipmentModel}, ${phoneTicketData.equipment_serial}, 
+          ${phoneTicketData.tenant_id}, ${phoneTicketData.caller_name}, ${phoneTicketData.caller_phone},
+          ${phoneTicketData.caller_email}, ${phoneTicketData.caller_role}, ${phoneTicketData.customer_id},
+          ${phoneTicketData.customer_name}, ${phoneTicketData.location_address}, ${phoneTicketData.location_building},
+          ${phoneTicketData.location_floor}, ${phoneTicketData.location_room}, ${phoneTicketData.equipment_id},
+          ${phoneTicketData.equipment_brand}, ${phoneTicketData.equipment_model}, ${phoneTicketData.equipment_serial}, 
           ${phoneTicketData.issue_category}, ${phoneTicketData.issue_description}, ${phoneTicketData.priority}, 
           ${phoneTicketData.contact_method}, ${phoneTicketData.preferred_service_date}, ${phoneTicketData.notes}
         ) RETURNING *

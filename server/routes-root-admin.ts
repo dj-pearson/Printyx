@@ -99,7 +99,7 @@ router.get('/overview', requireRootAdmin, async (req, res) => {
     const activeUsers = await db
       .select({ count: count() })
       .from(users)
-      .where(gte(users.lastLogin, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))); // Last 7 days
+      .where(gte(users.lastLoginAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))); // Last 7 days
 
     // Get critical alerts count
     const criticalAlerts = await db
@@ -307,7 +307,7 @@ router.get('/users', requireRootAdmin, async (req, res) => {
         roleId: users.roleId,
         tenantId: users.tenantId,
         status: users.status,
-        lastLogin: users.lastLogin,
+        lastLogin: users.lastLoginAt,
         createdAt: users.createdAt,
       })
       .from(users)
@@ -332,7 +332,7 @@ router.get('/users', requireRootAdmin, async (req, res) => {
       query = query.where(and(...conditions));
     }
 
-    const userList = await query.orderBy(desc(users.lastLogin)).limit(100);
+    const userList = await query.orderBy(desc(users.lastLoginAt)).limit(100);
 
     // Enrich with role and tenant information
     const enrichedUsers = await Promise.all(

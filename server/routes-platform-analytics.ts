@@ -49,19 +49,15 @@ router.get('/cohort-analysis', async (req, res) => {
 
     const whereConditions = [];
     if (startDate) {
-      whereConditions.push(
-        gte(platformCohortAnalysis.cohortStartDate, new Date(startDate as string)),
-      );
+      whereConditions.push(gte(platformCohortAnalysis.cohortDate, new Date(startDate as string)));
     }
     if (endDate) {
-      whereConditions.push(
-        lte(platformCohortAnalysis.cohortStartDate, new Date(endDate as string)),
-      );
+      whereConditions.push(lte(platformCohortAnalysis.cohortDate, new Date(endDate as string)));
     }
 
     const cohorts = await db.query.platformCohortAnalysis.findMany({
       where: and(eq(platformCohortAnalysis.periodType, periodType as string), ...whereConditions),
-      orderBy: [desc(platformCohortAnalysis.cohortStartDate)],
+      orderBy: [desc(platformCohortAnalysis.cohortDate)],
     });
 
     // Calculate aggregated metrics

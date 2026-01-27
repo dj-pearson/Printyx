@@ -271,7 +271,7 @@ class OnboardingPDFService {
         <div class="field-group">
           <div class="field-label">Progress:</div>
           <div class="field-value">${
-            checklist.progressPercentage || 0
+            checklist.progressPercent || 0
           }% Complete (${checklist.completedSections || 0}/${
             checklist.totalSections || 0
           } sections)</div>

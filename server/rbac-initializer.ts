@@ -237,7 +237,7 @@ export class RBACInitializer {
         if (unit.lft < expectedLft) {
           issues.push(`Organizational unit ${unit.name} has invalid left value`);
         }
-        expectedLft = Math.max(expectedLft, unit.rgt + 1);
+        expectedLft = Math.max(expectedLft, unit.rght + 1);
       }
 
       return {
