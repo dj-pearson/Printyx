@@ -152,19 +152,37 @@ export function registerContactsRoutes(app: Express) {
   app.get('/api/contacts', resolveTenant, async (req: TenantRequest, res) => {
     try {
       const user = req.user as any;
-      const tenantId = req.tenantId || user.tenantId;
+      const tenantId = req.tenantId || user?.tenantId;
+
+      console.log('[CONTACTS] Request received:', {
+        hasTenantId: !!tenantId,
+        hasUser: !!user,
+        userId: user?.id,
+        userRole: user?.role,
+        queryParams: req.query,
+      });
 
       if (!tenantId) {
-        return res.status(401).json({ message: 'Authentication required' });
+        console.error('[CONTACTS] Missing tenant ID');
+        return res
+          .status(401)
+          .json({ message: 'Authentication required', error: 'Missing tenant ID' });
+      }
+
+      if (!user) {
+        console.error('[CONTACTS] Missing user object');
+        return res.status(401).json({ message: 'Authentication required', error: 'Missing user' });
       }
 
       // Get query parameters
       const {
         search = '',
-        contactOwner = '',
+        ownerId = '', // Frontend sends 'ownerId', not 'contactOwner'
+        contactOwner = '', // Keep for backwards compatibility
         createDate = '',
         lastActivityDate = '',
         leadStatus = '',
+        status = '', // Frontend sends 'status' for leadStatus
         view = 'all',
         sortBy = 'lastActivityDate',
         sortOrder = 'desc',
@@ -191,16 +209,28 @@ export function registerContactsRoutes(app: Express) {
         filters.ownerId = null;
       }
 
-      // Apply other filters
-      if (contactOwner) {
-        const ownerUser = await storage.getUserByName(contactOwner);
-        if (ownerUser) {
-          filters.ownerId = ownerUser.id;
+      // Apply owner filter (check both ownerId and contactOwner for compatibility)
+      const ownerFilter = ownerId || contactOwner;
+      if (ownerFilter && ownerFilter !== 'all') {
+        // If it looks like a UUID, use it directly; otherwise try to look up by name
+        if (ownerFilter.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          filters.ownerId = ownerFilter;
+        } else {
+          try {
+            const ownerUser = await storage.getUserByName(ownerFilter);
+            if (ownerUser) {
+              filters.ownerId = ownerUser.id;
+            }
+          } catch (err) {
+            console.warn('[CONTACTS] Failed to lookup user by name:', ownerFilter, err);
+          }
         }
       }
 
-      if (leadStatus) {
-        filters.leadStatus = leadStatus;
+      // Apply status filter (check both status and leadStatus for compatibility)
+      const statusFilter = status || leadStatus;
+      if (statusFilter && statusFilter !== 'all') {
+        filters.leadStatus = statusFilter;
       }
 
       // Date filters
@@ -264,6 +294,8 @@ export function registerContactsRoutes(app: Express) {
         }
       }
 
+      console.log('[CONTACTS] Fetching contacts with filters:', filters);
+
       const contacts = await storage.getContacts({
         filters,
         search: search as string,
@@ -273,10 +305,14 @@ export function registerContactsRoutes(app: Express) {
         limit: limitNum,
       });
 
+      console.log('[CONTACTS] Fetched contacts count:', contacts.length);
+
       const total = await storage.getContactsCount({
         filters,
         search: search as string,
       });
+
+      console.log('[CONTACTS] Total contacts:', total);
 
       res.json({
         contacts,
@@ -285,9 +321,14 @@ export function registerContactsRoutes(app: Express) {
         limit: limitNum,
         pages: Math.ceil(total / limitNum),
       });
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      res.status(500).json({ error: 'Failed to fetch contacts' });
+    } catch (error: any) {
+      console.error('[CONTACTS] Error fetching contacts:', error);
+      console.error('[CONTACTS] Error stack:', error.stack);
+      res.status(500).json({
+        error: 'Failed to fetch contacts',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      });
     }
   });
 
